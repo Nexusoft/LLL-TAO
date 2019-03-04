@@ -10,6 +10,7 @@
             "ad vocem populi" - To the Voice of the People
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_TYPES_LEGACY_MINER_H
 #define NEXUS_LLP_TYPES_LEGACY_MINER_H
 

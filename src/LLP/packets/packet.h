@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_PACKETS_PACKET_H
 #define NEXUS_LLP_PACKETS_PACKET_H
 
@@ -79,7 +80,7 @@ namespace LLP
          **/
         bool Complete() const
         {
-            return (Header() && DATA.size() == LENGTH);
+            return (Header() && static_cast<uint32_t>(DATA.size()) == LENGTH);
         }
 
 
@@ -119,10 +120,10 @@ namespace LLP
 
             if(HEADER < 128) /* Handle for Data Packets. */
             {
-                BYTES.push_back((LENGTH >> 24));
-                BYTES.push_back((LENGTH >> 16));
-                BYTES.push_back((LENGTH >> 8));
-                BYTES.push_back(LENGTH);
+                BYTES.push_back(static_cast<uint8_t>(LENGTH >> 24));
+                BYTES.push_back(static_cast<uint8_t>(LENGTH >> 16));
+                BYTES.push_back(static_cast<uint8_t>(LENGTH >> 8));
+                BYTES.push_back(static_cast<uint8_t>(LENGTH));
 
                 BYTES.insert(BYTES.end(),  DATA.begin(), DATA.end());
             }

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_TYPES_TRITIUM_H
 #define NEXUS_LLP_TYPES_TRITIUM_H
 
@@ -47,7 +48,6 @@ namespace LLP
         /** Default Constructor **/
         TritiumNode()
         : BaseConnection<TritiumPacket>()
-        , fInbound(false)
         , nLastPing(0)
         , nLastSamples(0)
         , mapLatencyTracker()
@@ -55,13 +55,13 @@ namespace LLP
         , hashContinue(0)
         , nConsecutiveFails(0)
         , nConsecutiveOrphans(0)
+        , fInbound(false)
         {
         }
 
         /** Constructor **/
         TritiumNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN, isDDOS )
-        , fInbound(false)
         , nLastPing(0)
         , nLastSamples(0)
         , mapLatencyTracker()
@@ -69,6 +69,7 @@ namespace LLP
         , hashContinue(0)
         , nConsecutiveFails(0)
         , nConsecutiveOrphans(0)
+        , fInbound(false)
         {
         }
 
@@ -76,7 +77,6 @@ namespace LLP
         /** Constructor **/
         TritiumNode( DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS )
-        , fInbound(false)
         , nLastPing(0)
         , nLastSamples(0)
         , mapLatencyTracker()
@@ -84,6 +84,7 @@ namespace LLP
         , hashContinue(0)
         , nConsecutiveFails(0)
         , nConsecutiveOrphans(0)
+        , fInbound(false)
         {
         }
 
@@ -99,11 +100,6 @@ namespace LLP
            sever, but via a different RLOC / EID */
         static std::map<uint64_t, TritiumNode*> mapSessions;
 
-
-        /** Flag to determine if a connection is Inbound. **/
-        bool fInbound;
-
-
         /** Counter to keep track of the last time a ping was made. **/
         std::atomic<uint64_t> nLastPing;
 
@@ -113,11 +109,11 @@ namespace LLP
 
 
         /** timer object to keep track of ping latency. **/
-        std::map<uint32_t, uint64_t> mapLatencyTracker;
+        std::map<uint64_t, runtime::timer> mapLatencyTracker;
 
 
         /** Map to keep track of sent request ID's while witing for them to return. **/
-        std::map<uint32_t, uint64_t> mapSentRequests;
+        std::map<uint64_t, uint64_t> mapSentRequests;
 
         /** The trigger hash to send a continue inv message to remote node. **/
         uint1024_t hashContinue;
@@ -144,6 +140,10 @@ namespace LLP
         static std::atomic<uint64_t> nLastTimeReceived;
 
         static LLD::KeyLRU cacheInventory;
+
+
+        /** Flag to determine if a connection is Inbound. **/
+        bool fInbound;
 
 
         /** Event
@@ -220,7 +220,7 @@ namespace LLP
                     if(Read(DATA, DATA.size()) == DATA.size())
                     {
                         INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                        Event(EVENT_PACKET, DATA.size());
+                        Event(EVENT_PACKET, static_cast<uint32_t>(DATA.size()));
                     }
                 }
             }

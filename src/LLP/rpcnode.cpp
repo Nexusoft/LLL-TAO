@@ -158,7 +158,7 @@ namespace LLP
     void RPCNode::ErrorReply(const json::json& jsonError, const json::json& jsonID)
     {
         /* Default error status code is 500. */
-        int32_t nStatus = 500;
+        uint16_t nStatus = 500;
 
         /* Get the error code from json. */
         int32_t nError = jsonError["code"].get<int32_t>();

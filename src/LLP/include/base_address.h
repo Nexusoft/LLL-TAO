@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_INCLUDE_BASEADDRESS_H
 #define NEXUS_LLP_INCLUDE_BASEADDRESS_H
 
@@ -341,7 +342,6 @@ namespace LLP
         friend bool operator==(const BaseAddress& a, const BaseAddress& b);
         friend bool operator!=(const BaseAddress& a, const BaseAddress& b);
         friend bool operator<(const BaseAddress& a,  const BaseAddress& b);
-
 
 
         /**

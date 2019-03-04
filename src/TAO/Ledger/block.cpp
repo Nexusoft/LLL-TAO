@@ -54,7 +54,7 @@ namespace TAO
         , nHeight(nHeightIn)
         , nBits(0)
         , nNonce(0)
-        , nTime(runtime::unifiedtimestamp())
+        , nTime(static_cast<uint32_t>(runtime::unifiedtimestamp()))
         , vchBlockSig()
         {
         }
@@ -178,7 +178,7 @@ namespace TAO
         /* Update the nTime of the current block. */
         void Block::UpdateTime()
         {
-            nTime = runtime::unifiedtimestamp();
+            nTime = static_cast<uint32_t>(runtime::unifiedtimestamp());
         }
 
 

@@ -195,17 +195,17 @@ namespace LLC
 
     uint32_t CBigNum::getuint32() const
     {
-        return BN_get_word(m_BN);
+        return static_cast<uint32_t>(BN_get_word(m_BN));
     }
 
 
     int32_t CBigNum::getint32() const
     {
-        unsigned long n = BN_get_word(m_BN);
+        uint32_t n = static_cast<uint32_t>(BN_get_word(m_BN));
         if (!BN_is_negative(m_BN))
-            return (n > (unsigned long)std::numeric_limits<int32_t>::max() ? std::numeric_limits<int32_t>::max() : n);
+            return (n > (uint32_t)std::numeric_limits<int32_t>::max() ? std::numeric_limits<int32_t>::max() : (int32_t)n);
         else
-            return (n > (unsigned long)std::numeric_limits<int32_t>::max() ? std::numeric_limits<int32_t>::min() : -(int32_t)n);
+            return (n > (uint32_t)std::numeric_limits<int32_t>::max() ? std::numeric_limits<int32_t>::min() : -(int32_t)n);
     }
 
     void CBigNum::setint64(int64_t n)
@@ -219,9 +219,9 @@ namespace LLC
             fNegative = true;
         }
         bool fLeadingZeroes = true;
-        for (uint32_t i = 0; i < 8; i++)
+        for (uint32_t i = 0; i < 8; ++i)
         {
-            uint8_t c = (n >> 56) & 0xff;
+            uint8_t c = static_cast<uint8_t>((n >> 56) & 0xff);
             n <<= 8;
             if (fLeadingZeroes)
             {
@@ -235,12 +235,12 @@ namespace LLC
             }
             *p++ = c;
         }
-        uint32_t nSize = p - (pch + 4);
-        pch[0] = (nSize >> 24) & 0xff;
-        pch[1] = (nSize >> 16) & 0xff;
-        pch[2] = (nSize >> 8) & 0xff;
-        pch[3] = (nSize) & 0xff;
-        BN_mpi2bn(pch, p - pch, m_BN);
+        uint32_t nSize = static_cast<uint32_t>(p - (pch + 4));
+        pch[0] = static_cast<uint8_t>((nSize >> 24) & 0xff);
+        pch[1] = static_cast<uint8_t>((nSize >> 16) & 0xff);
+        pch[2] = static_cast<uint8_t>((nSize >> 8) & 0xff);
+        pch[3] = static_cast<uint8_t>((nSize) & 0xff);
+        BN_mpi2bn(pch, static_cast<int32_t>(p - pch), m_BN);
     }
 
     void CBigNum::setuint64(uint64_t n)
@@ -250,7 +250,7 @@ namespace LLC
         bool fLeadingZeroes = true;
         for (uint32_t i = 0; i < 8; i++)
         {
-            uint8_t c = (n >> 56) & 0xff;
+            uint8_t c = static_cast<uint8_t>((n >> 56) & 0xff);
             n <<= 8;
             if (fLeadingZeroes)
             {
@@ -262,12 +262,12 @@ namespace LLC
             }
             *p++ = c;
         }
-        uint32_t nSize = p - (pch + 4);
-        pch[0] = (nSize >> 24) & 0xff;
-        pch[1] = (nSize >> 16) & 0xff;
-        pch[2] = (nSize >> 8) & 0xff;
-        pch[3] = (nSize) & 0xff;
-        BN_mpi2bn(pch, p - pch, m_BN);
+        uint32_t nSize = static_cast<uint32_t>(p - (pch + 4));
+        pch[0] = static_cast<uint8_t>((nSize >> 24) & 0xff);
+        pch[1] = static_cast<uint8_t>((nSize >> 16) & 0xff);
+        pch[2] = static_cast<uint8_t>((nSize >> 8) & 0xff);
+        pch[3] = static_cast<uint8_t>((nSize) & 0xff);
+        BN_mpi2bn(pch, static_cast<int32_t>(p - pch), m_BN);
     }
 
     uint64_t CBigNum::getuint64() const
@@ -280,7 +280,7 @@ namespace LLC
         if (vch.size() > 4)
             vch[4] &= 0x7f;
         uint64_t n = 0;
-        for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
+        for (uint64_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; ++i, --j)
             ((uint8_t*)&n)[i] = vch[j];
         return n;
     }
@@ -305,12 +305,12 @@ namespace LLC
             }
             *p++ = c;
         }
-        uint32_t nSize = p - (pch + 4);
-        pch[0] = (nSize >> 24) & 0xff;
-        pch[1] = (nSize >> 16) & 0xff;
-        pch[2] = (nSize >> 8) & 0xff;
-        pch[3] = (nSize >> 0) & 0xff;
-        BN_mpi2bn(pch, p - pch, m_BN);
+        uint32_t nSize = static_cast<uint32_t>(p - (pch + 4));
+        pch[0] = static_cast<uint8_t>((nSize >> 24) & 0xff);
+        pch[1] = static_cast<uint8_t>((nSize >> 16) & 0xff);
+        pch[2] = static_cast<uint8_t>((nSize >> 8) & 0xff);
+        pch[3] = static_cast<uint8_t>((nSize) & 0xff);
+        BN_mpi2bn(pch, static_cast<int32_t>(p - pch), m_BN);
     }
 
 
@@ -324,7 +324,7 @@ namespace LLC
         if (vch.size() > 4)
             vch[4] &= 0x7f;
         uint256_t n = 0;
-        for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
+        for (uint64_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; ++i, --j)
             ((uint8_t*)&n)[i] = vch[j];
         return n;
     }
@@ -350,12 +350,12 @@ namespace LLC
             }
             *p++ = c;
         }
-        uint32_t nSize = p - (pch + 4);
-        pch[0] = (nSize >> 24) & 0xff;
-        pch[1] = (nSize >> 16) & 0xff;
-        pch[2] = (nSize >> 8) & 0xff;
-        pch[3] = (nSize >> 0) & 0xff;
-        BN_mpi2bn(pch, p - pch, m_BN);
+        uint32_t nSize = static_cast<uint32_t>(p - (pch + 4));
+        pch[0] = static_cast<uint8_t>((nSize >> 24) & 0xff);
+        pch[1] = static_cast<uint8_t>((nSize >> 16) & 0xff);
+        pch[2] = static_cast<uint8_t>((nSize >> 8) & 0xff);
+        pch[3] = static_cast<uint8_t>((nSize) & 0xff);
+        BN_mpi2bn(pch, static_cast<int32_t>(p - pch), m_BN);
     }
 
 
@@ -369,7 +369,7 @@ namespace LLC
         if (vch.size() > 4)
             vch[4] &= 0x7f;
         uint512_t n = 0;
-        for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
+        for (uint64_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; ++i, --j)
             ((uint8_t*)&n)[i] = vch[j];
         return n;
     }
@@ -395,12 +395,12 @@ namespace LLC
             }
             *p++ = c;
         }
-        uint32_t nSize = p - (pch + 4);
-        pch[0] = (nSize >> 24) & 0xff;
-        pch[1] = (nSize >> 16) & 0xff;
-        pch[2] = (nSize >> 8) & 0xff;
-        pch[3] = (nSize >> 0) & 0xff;
-        BN_mpi2bn(pch, p - pch, m_BN);
+        uint32_t nSize = static_cast<uint32_t>(p - (pch + 4));
+        pch[0] = static_cast<uint8_t>((nSize >> 24) & 0xff);
+        pch[1] = static_cast<uint8_t>((nSize >> 16) & 0xff);
+        pch[2] = static_cast<uint8_t>((nSize >> 8) & 0xff);
+        pch[3] = static_cast<uint8_t>((nSize) & 0xff);
+        BN_mpi2bn(pch, static_cast<int32_t>(p - pch), m_BN);
     }
 
 
@@ -414,7 +414,7 @@ namespace LLC
         if (vch.size() > 4)
             vch[4] &= 0x7f;
         uint576_t n = 0;
-        for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
+        for (uint64_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; ++i, --j)
             ((uint8_t*)&n)[i] = vch[j];
         return n;
     }
@@ -440,12 +440,12 @@ namespace LLC
             }
             *p++ = c;
         }
-        uint32_t nSize = p - (pch + 4);
-        pch[0] = (nSize >> 24) & 0xff;
-        pch[1] = (nSize >> 16) & 0xff;
-        pch[2] = (nSize >> 8) & 0xff;
-        pch[3] = (nSize >> 0) & 0xff;
-        BN_mpi2bn(pch, p - pch, m_BN);
+        uint32_t nSize = static_cast<uint32_t>(p - (pch + 4));
+        pch[0] = static_cast<uint8_t>((nSize >> 24) & 0xff);
+        pch[1] = static_cast<uint8_t>((nSize >> 16) & 0xff);
+        pch[2] = static_cast<uint8_t>((nSize >> 8) & 0xff);
+        pch[3] = static_cast<uint8_t>((nSize) & 0xff);
+        BN_mpi2bn(pch, static_cast<int32_t>(p - pch), m_BN);
     }
 
 
@@ -459,7 +459,7 @@ namespace LLC
         if (vch.size() > 4)
             vch[4] &= 0x7f;
         uint1024_t n = 0;
-        for (uint32_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; i++, j--)
+        for (uint64_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; ++i, --j)
             ((uint8_t*)&n)[i] = vch[j];
         return n;
     }
@@ -468,16 +468,16 @@ namespace LLC
     void CBigNum::setvch(const std::vector<uint8_t>& vch)
     {
         std::vector<uint8_t> vch2(vch.size() + 4);
-        uint32_t nSize = vch.size();
+        uint32_t nSize = static_cast<uint32_t>(vch.size());
         // BIGNUM's byte stream format expects 4 bytes of
         // big endian size data info at the front
-        vch2[0] = (nSize >> 24) & 0xff;
-        vch2[1] = (nSize >> 16) & 0xff;
-        vch2[2] = (nSize >> 8) & 0xff;
-        vch2[3] = (nSize >> 0) & 0xff;
+        vch2[0] = static_cast<uint8_t>((nSize >> 24) & 0xff);
+        vch2[1] = static_cast<uint8_t>((nSize >> 16) & 0xff);
+        vch2[2] = static_cast<uint8_t>((nSize >> 8) & 0xff);
+        vch2[3] = static_cast<uint8_t>((nSize >> 0) & 0xff);
         // swap data to big endian
         std::reverse_copy(vch.begin(), vch.end(), vch2.begin() + 4);
-        BN_mpi2bn(&vch2[0], vch2.size(), m_BN);
+        BN_mpi2bn(&vch2[0], static_cast<int32_t>(vch2.size()), m_BN);
     }
 
 
@@ -498,11 +498,16 @@ namespace LLC
     {
         uint32_t nSize = nCompact >> 24;
         std::vector<uint8_t> vch(4 + nSize);
-        vch[3] = nSize;
-        if (nSize >= 1) vch[4] = (nCompact >> 16) & 0xff;
-        if (nSize >= 2) vch[5] = (nCompact >> 8) & 0xff;
-        if (nSize >= 3) vch[6] = (nCompact >> 0) & 0xff;
-        BN_mpi2bn(&vch[0], vch.size(), m_BN);
+        vch[3] = static_cast<uint8_t>(nSize);
+        if (nSize >= 1)
+            vch[4] = static_cast<uint8_t>((nCompact >> 16) & 0xff);
+        if (nSize >= 2)
+            vch[5] = static_cast<uint8_t>((nCompact >> 8) & 0xff);
+        if (nSize >= 3)
+            vch[6] = static_cast<uint8_t>((nCompact >> 0) & 0xff);
+
+        BN_mpi2bn(&vch[0], static_cast<int32_t>(vch.size()), m_BN);
+
         return *this;
     }
 
@@ -526,20 +531,30 @@ namespace LLC
         // skip 0x
         const char* psz = str.c_str();
         while (isspace(*psz))
-            psz++;
+            ++psz;
         bool fNegative = false;
         if (*psz == '-')
         {
             fNegative = true;
-            psz++;
+            ++psz;
         }
         if (psz[0] == '0' && tolower(psz[1]) == 'x')
             psz += 2;
         while (isspace(*psz))
-            psz++;
+            ++psz;
 
         // hex string to bignum
-        static signed char phexdigit[256] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,1,2,3,4,5,6,7,8,9,0,0,0,0,0,0, 0,0xa,0xb,0xc,0xd,0xe,0xf,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0xa,0xb,0xc,0xd,0xe,0xf,0,0,0,0,0,0,0,0,0 };
+        static signed char phexdigit[256] =
+        {
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,1,2,3,4,5,6,7,8,9,0,0,0,0,0,0,
+            0,0xa,0xb,0xc,0xd,0xe,0xf,0,0,0,0,0,0,0,0,0,
+            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+            0,0xa,0xb,0xc,0xd,0xe,0xf,0,0,0,0,0,0,0,0,0
+        };
+
         *this = 0;
         while (isxdigit(*psz))
         {
@@ -585,7 +600,7 @@ namespace LLC
     }
 
 
-    uint32_t CBigNum::GetSerializeSize(uint32_t nSerType, uint32_t nVersion) const
+    uint64_t CBigNum::GetSerializeSize(uint32_t nSerType, uint32_t nVersion) const
     {
         return ::GetSerializeSize(getvch(), nSerType, nVersion);
     }

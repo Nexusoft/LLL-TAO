@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_ACCOUNT_H
 #define NEXUS_TAO_REGISTER_INCLUDE_ACCOUNT_H
 

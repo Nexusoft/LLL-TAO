@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_TAO_OPERATION_INCLUDE_EXECUTE_H
 #define NEXUS_TAO_OPERATION_INCLUDE_EXECUTE_H
 

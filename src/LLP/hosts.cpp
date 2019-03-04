@@ -27,6 +27,107 @@ namespace
 namespace LLP
 {
 
+    /*  These addresses are the first point of contact on the P2P network
+     *  They are established and maintained by the owners of each domain. */
+    const std::vector<std::string> DNS_SeedNodes =
+    {
+        "node1.nexusearth.com",
+        "node1.mercuryminer.com",
+        "node1.nexusminingpool.com",
+        "node1.nexus2.space",
+        "node1.barbequemedia.com",
+        "node1.nxsorbitalscan.com",
+        "node1.nxs.efficienthash.com",
+        "node1.henryskinner.net",
+        "node2.nexusearth.com",
+        "node2.mercuryminer.com",
+        "node2.nexusminingpool.com",
+        "node2.nexus2.space",
+        "node2.barbequemeportParseddia.com",
+        "node2.nxsorbitalscan.com",
+        "node2.nxs.efficienthash.com",
+        "node2.henryskinner.net",
+        "node3.nexusearth.com",
+        "node3.mercuryminer.com",
+        "node3.nexusminingpool.com",
+        "node3.nexus2.space",
+        "node3.barbequemedia.com",
+        "node3.nxsorbitalscan.com",
+        "node3.nxs.efficienthash.com",
+        "node3.henryskinner.net",
+        "node4.nexusearth.com",
+        "node4.mercuryminer.com",
+        "node4.nexus2.space",
+        "node4.barbequemedia.com",
+        "node4.nxsorbitalscan.com",
+        "node4.nxs.efficienthash.com",
+        "node4.henryskinner.net",
+        "node5.nexusearth.com",
+        "node5.mercuryminer.com",
+        "node5.barbequemedia.com",
+        "node5.nxs.efficienthash.com",
+        "node5.henryskinner.net",
+        "node6.nexusearth.com",
+        "node6.mercuryminer.com",
+        "node6.barbequemedia.com",
+        "node6.nxs.efficienthash.com",
+        "node6.henryskinner.net",
+        "node7.nexusearth.com",
+        "node7.mercuryminer.com",
+        "node7.barbequemedia.com",
+        "node7.nxs.efficienthash.com",
+        "node7.henryskinner.net",
+        "node8.nexusearth.com",
+        "node8.mercuryminer.com",
+        "node8.barbequemedia.com",
+        "node8.nxs.efficienthash.com",
+        "node8.henryskinner.net",
+        "node9.nexusearth.com",
+        "node9.mercuryminer.com",
+        "node9.nxs.efficienthash.com",
+        "node10.nexusearth.com",
+        "node10.mercuryminer.com",
+        "node10.nxs.efficienthash.com",
+        "node11.nexusearth.com",
+        "node11.mercuryminer.com",
+        "node11.nxs.efficienthash.com",
+        "node12.nexusearth.com",
+        "node12.mercuryminer.com",
+        "node12.nxs.efficienthash.com",
+        "node13.nexusearth.com",
+        "node13.mercuryminer.com",
+        "node13.nxs.efficienthash.com",
+        "node14.mercuryminer.com",
+        "node15.mercuryminer.com",
+        "node16.mercuryminer.com",
+        "node17.mercuryminer.com",
+        "node18.mercuryminer.com",
+        "node19.mercuryminer.com",
+        "node20.mercuryminer.com",
+        "node21.mercuryminer.com"
+    };
+
+
+    /*  Testnet seed nodes. */
+    const std::vector<std::string> DNS_SeedNodes_Testnet =
+    {
+        "test1.nexusoft.io",
+        "lisptest1.mercuryminer.com",
+        "lisptest2.mercuryminer.com",
+        "lisptest3.mercuryminer.com",
+        "lisptest4.mercuryminer.com",
+        "lisptest5.mercuryminer.com",
+        "testlisp.nexusminingpool.com",
+        "nexus-lisp-seed.lispers.net",
+        "fe::255:255"
+        "test1.mercuryminer.com",
+        "test2.mercuryminer.com",
+        "test3.mercuryminer.com",
+        "test4.mercuryminer.com",
+        "test5.mercuryminer.com",
+        "test.nexusminingpool.com",
+    };
+
     /** The DNS Lookup Routine to find the Nodes that are set as DNS seeds. **/
     std::vector<BaseAddress> DNS_Lookup(const std::vector<std::string> &DNS_Seed)
     {
@@ -167,7 +268,7 @@ namespace LLP
         if(!LookupIntern(strName, vAddr, nMaxSolutions, fAllowLookup))
             return false;
 
-        /* Set the ports to the lookup port or default port. */
+        /* Set the ports to the default port. */
         for (uint32_t i = 0; i < vAddr.size(); ++i)
             vAddr[i].SetPort(portDefault);
 

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_TAO_API_TYPES_FUNCTION_H
 #define NEXUS_TAO_API_TYPES_FUNCTION_H
 
@@ -44,7 +45,7 @@ namespace TAO
 
         public:
 
-            
+
             /** Default Constructor. **/
             Function() { };
 

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_UTIL_TEMPLATES_STREAM_H
 #define NEXUS_UTIL_TEMPLATES_STREAM_H
 
@@ -45,7 +46,7 @@ class BaseStream
 protected:
 
     /** The current reading position. **/
-    mutable uint32_t nReadPos;
+    mutable uint64_t nReadPos;
 
 
     /** The operation data vector. **/
@@ -119,7 +120,7 @@ public:
      *  Gets a byte without chainging read pointer.
      *
      **/
-    uint8_t get(uint32_t nPos) const
+    uint8_t get(uint64_t nPos) const
     {
         if(nPos >= vchData.size())
             throw std::runtime_error(debug::safe_printstr(FUNCTION, "get out of bounds ", nPos));
@@ -133,7 +134,7 @@ public:
      *  Gets the size of the stream.
      *
      **/
-    uint32_t size() const
+    uint64_t size() const
     {
         return vchData.size();
     }
@@ -144,7 +145,7 @@ public:
      *  Seeks the read pointer to position.
      *
      **/
-    void seek(uint32_t nSeek, uint8_t nFlags = STREAM::CURSOR) const
+    void seek(uint64_t nSeek, uint8_t nFlags = STREAM::CURSOR) const
     {
         /* Seek from end of stream. */
         if(nFlags == STREAM::CURSOR)
@@ -213,7 +214,7 @@ public:
      *  @return Returns a reference to the BaseStream.
      *
      **/
-    const BaseStream& read(char* pch, int nSize) const
+    const BaseStream& read(char* pch, uint64_t nSize) const
     {
         /* Check size constraints. */
         if(nReadPos + nSize > vchData.size())
@@ -237,7 +238,7 @@ public:
      *  @param[in] nSize The total number of bytes to copy.
      *
      **/
-    BaseStream& write(const char* pch, int nSize)
+    BaseStream& write(const char* pch, uint64_t nSize)
     {
         /* Push the obj bytes into the vector. */
         vchData.insert(vchData.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);

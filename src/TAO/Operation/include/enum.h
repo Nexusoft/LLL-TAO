@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_TAO_OPERATION_INCLUDE_ENUM_H
 #define NEXUS_TAO_OPERATION_INCLUDE_ENUM_H
 
@@ -21,7 +22,7 @@ namespace TAO
     /* Operation Layer namespace. */
     namespace Operation
     {
-        
+
         //NETF - ADS - Application Development Standard - Document to define new applicaqtion programming interface calls required by developers
         //NETF - NOS - Nexus Operation Standard - Document to define operation needs, formal design, and byte slot, and NETF engineers to develop the CASE statement
         //NETF - ORS - Object Register Standard - Document to define a specific object register for purpose of ADS standards, with NOS standards being capable of supporting methods

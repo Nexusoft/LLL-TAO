@@ -64,7 +64,7 @@ namespace LLP
             Packet REQUEST;
             REQUEST.HEADER = GET_OFFSET;
             REQUEST.LENGTH = 4;
-            REQUEST.DATA = convert::uint2bytes(runtime::timestamp());
+            REQUEST.DATA = convert::uint2bytes(static_cast<uint32_t>(runtime::timestamp()));
 
             WritePacket(REQUEST);
         }
@@ -101,12 +101,14 @@ namespace LLP
 
         if(PACKET.HEADER == GET_TIME)
         {
+            uint32_t time_sample = static_cast<uint32_t>(runtime::unifiedtimestamp());
+
             Packet RESPONSE;
             RESPONSE.HEADER = TIME_DATA;
             RESPONSE.LENGTH = 4;
-            RESPONSE.DATA = convert::uint2bytes(runtime::unifiedtimestamp());
+            RESPONSE.DATA = convert::uint2bytes(time_sample);
 
-            debug::log(4, NODE, "Sent time sample ", runtime::unifiedtimestamp());
+            debug::log(4, NODE, "Sent time sample ", time_sample);
 
             WritePacket(RESPONSE);
             return true;
@@ -126,7 +128,7 @@ namespace LLP
             Packet REQUEST;
             REQUEST.HEADER = GET_OFFSET;
             REQUEST.LENGTH = 4;
-            REQUEST.DATA = convert::uint2bytes(runtime::timestamp());
+            REQUEST.DATA = convert::uint2bytes(static_cast<uint32_t>(runtime::timestamp()));
 
             /* Verbose debug output. */
             debug::log(2, NODE, "Added Sample ", nOffset, " | Seed ", GetAddress().ToStringIP());

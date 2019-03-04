@@ -27,7 +27,7 @@ namespace TAO
         {
             /* Bits are with 10^7 significant figures. */
             uint32_t nBits = 10000000;
-            nBits *= nDiff;
+            nBits = static_cast<uint32_t>(nBits * nDiff);
 
             return nBits;
         }

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_TAO_LEDGER_TYPES_SIGNATURE_CHAIN_H
 #define NEXUS_TAO_LEDGER_TYPES_SIGNATURE_CHAIN_H
 
@@ -50,7 +51,7 @@ namespace TAO
 
         public:
 
-            
+
             /** Constructor to generate Keychain
              *
              * @param[in] strUsernameIn The username to seed the signature chain

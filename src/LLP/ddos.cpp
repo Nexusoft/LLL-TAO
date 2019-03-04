@@ -74,17 +74,17 @@ namespace LLP
         if(nScore > 1)
             debug::log(3, FUNCTION, "DDOS Penalty of +", nScore);
 
-        int nTime = TIMER.Elapsed();
+        uint32_t nTime = TIMER.Elapsed();
 
         /** If the Time has been greater than Moving Average Timespan, Set to Add Score on Time Overlap. **/
         if(nTime >= SCORE.size())
         {
             Reset();
-            nTime = nTime % SCORE.size();
+            nTime = nTime % static_cast<int32_t>(SCORE.size());
         }
 
         /** Iterate as many seconds as needed, flagging that each has been iterated. **/
-        for(int i = nIterator; i <= nTime; i++)
+        for(uint32_t i = nIterator; i <= nTime; ++i)
         {
             if(!SCORE[i].first)
             {

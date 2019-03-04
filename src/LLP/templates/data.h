@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_TEMPLATES_DATA_H
 #define NEXUS_LLP_TEMPLATES_DATA_H
 
@@ -105,7 +106,7 @@ namespace LLP
          *  @return Returns true if successfully added, false otherwise.
          *
          **/
-        bool AddConnection(std::string strAddress, uint16_t nPort, DDOS_Filter* DDOS);
+        bool AddConnection(const BaseAddress &addr, DDOS_Filter* DDOS);
 
 
         /** DisconnectAll

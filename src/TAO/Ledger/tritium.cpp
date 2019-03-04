@@ -297,7 +297,7 @@ namespace TAO
             if(nHeight > 0)
             {
                 /* Create the key to check. */
-                LLC::ECKey key(NID_brainpoolP512t1, 64);
+                LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
                 key.SetPubKey(producer.vchPubKey);
 
                 /* Check the Block Signature. */

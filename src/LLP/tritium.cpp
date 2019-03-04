@@ -32,6 +32,7 @@ ________________________________________________________________________________
 
 #include <climits>
 #include <memory>
+#include <iomanip>
 
 namespace
 {
@@ -84,10 +85,10 @@ namespace LLP
             case EVENT_CONNECT:
             {
                 /* Setup the variables for this node. */
-                nLastPing    = runtime::timestamp();
+                nLastPing    = runtime::unifiedtimestamp();
 
-                /* Debut output. */
-                debug::log(1, NODE, " Connected at timestamp ", runtime::unifiedtimestamp());
+                debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
+                       " Connected at timestamp ",   runtime::unifiedtimestamp());
 
                 if(fOUTGOING)
                 {
@@ -111,19 +112,19 @@ namespace LLP
             case EVENT_GENERIC:
             {
                 /* Generic event - pings. */
-                if(runtime::timestamp() - nLastPing > 5)
+                if(nLastPing + 15 < runtime::unifiedtimestamp())
                 {
-                    /* Generate the nNonce. */
-                    uint64_t nNonce = LLC::GetRand(std::numeric_limits<uint64_t>::max());
+                    uint64_t nNonce = LLC::GetRand();
+                    nLastPing = runtime::unifiedtimestamp();
 
-                    /* Add to latency tracker. */
-                    mapLatencyTracker[nNonce] = runtime::timestamp(true);
+
+                    mapLatencyTracker.insert(std::pair<uint64_t, runtime::timer>(nNonce, runtime::timer()));
+                    mapLatencyTracker[nNonce].Start();
+
 
                     /* Push a ping request. */
                     PushMessage(DAT_PING, nNonce);
 
-                    /* Update the last ping. */
-                    nLastPing = runtime::timestamp();
                 }
 
                 /* Generic events - unified time. */
@@ -229,9 +230,9 @@ namespace LLP
                     }
                 }
 
-                /* Print disconnect and reason message */
-                debug::log(1, NODE, " Disconnected at timestamp ", runtime::unifiedtimestamp(),
-                    " (", strReason, ")");
+                /* Debug output for node disconnect. */
+                debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
+                    " Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
 
                 if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
                     TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
@@ -856,10 +857,7 @@ namespace LLP
                     /* try to establish the connection on the port the server is listening to */
                     for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
                     {
-                        if(config::mapArgs.find("-port") != config::mapArgs.end())
-                            it->SetPort(atoi(config::mapArgs["-port"].c_str()));
-                        else
-                            it->SetPort(TRITIUM_SERVER->PORT);
+                        it->SetPort(TRITIUM_SERVER->GetPort());
 
                         /* Create a base address vector from legacy addresses */
                         vAddr.push_back(*it);
@@ -877,7 +875,7 @@ namespace LLP
             case DAT_PING:
             {
                 /* Deserialize the nOnce. */
-                uint32_t nNonce;
+                uint64_t nNonce;
                 ssPacket >> nNonce;
 
                 /* Push a pong as a response. */
@@ -889,21 +887,28 @@ namespace LLP
             case DAT_PONG:
             {
                 /* Deserialize the nOnce. */
-                uint32_t nNonce;
+                uint64_t nNonce;
                 ssPacket >> nNonce;
 
-                /* Check for unsolicted pongs. */
+                /* If the nonce was not received or known from pong. */
                 if(!mapLatencyTracker.count(nNonce))
-                    return debug::error(NODE "unsolicited pong");
+                {
+                    if(DDOS)
+                        DDOS->rSCORE += 5;
 
-                uint32_t lat = runtime::timestamp(true) - mapLatencyTracker[nNonce];
+                    return true;
+                }
+
+                /* Calculate the Average Latency of the Connection. */
+                nLatency = mapLatencyTracker[nNonce].ElapsedMilliseconds();
+                mapLatencyTracker.erase(nNonce);
 
                 /* Set the latency used for address manager within server */
                 if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
-                    TRITIUM_SERVER->pAddressManager->SetLatency(lat, GetAddress());
+                    TRITIUM_SERVER->pAddressManager->SetLatency(nLatency, GetAddress());
 
                 /* Debug output for latency. */
-                debug::log(3, NODE "latency ", lat, " ms");
+                debug::log(3, NODE "latency ", nLatency, " ms");
 
                 /* Clear the latency tracker record. */
                 mapLatencyTracker.erase(nNonce);

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_UTIL_TEMPLATES_FLATDATA_H
 #define NEXUS_UTIL_TEMPLATES_FLATDATA_H
 
@@ -91,7 +92,7 @@ public:
      *  @return The number of bytes.
      *
      **/
-    uint32_t GetSerializeSize(uint32_t, uint32_t=0) const
+    uint64_t GetSerializeSize(uint32_t, uint32_t=0) const
     {
         return pend - pbegin;
     }

@@ -20,7 +20,8 @@ typedef uint8_t BitSequence;
 typedef unsigned long long DataLength;
 typedef enum { SUCCESS = 0, FAIL = 1, BAD_HASHLEN = 2 } HashReturn;
 
-typedef struct {
+typedef struct
+{
     Keccak_SpongeInstance sponge;
     uint32_t fixedOutputLength;
     uint8_t delimitedSuffix;

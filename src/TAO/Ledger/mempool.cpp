@@ -156,7 +156,7 @@ namespace TAO
                 Legacy::Transaction tx = mapLegacy[hashTx];
 
                 /* Erase the claimed inputs */
-                uint32_t s = tx.vin.size();
+                uint32_t s = static_cast<uint32_t>(tx.vin.size());
                 for (uint32_t i = 0; i < s; ++i)
                     mapInputs.erase(tx.vin[i].prevout);
 
@@ -186,7 +186,7 @@ namespace TAO
         /* Gets the size of the memory pool. */
         uint32_t Mempool::Size()
         {
-            return mapLedger.size() + mapLegacy.size();
+            return static_cast<uint32_t>(mapLedger.size() + mapLegacy.size());
         }
     }
 }

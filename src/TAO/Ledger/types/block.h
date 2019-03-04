@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 #define NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 

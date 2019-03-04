@@ -33,7 +33,7 @@ namespace LLD
     : HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
     , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
     , HASHMAP_MAX_KEY_SIZE(128)
-    , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11)
+    , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 11))
     , fInitialized(false)
     , fileCache(new TemplateLRU<uint32_t, std::fstream*>())
     , CacheThread(std::bind(&BinaryHashTree::CacheWriter, this))
@@ -48,7 +48,7 @@ namespace LLD
     , HASHMAP_TOTAL_BUCKETS(256 * 256 * 24)
     , HASHMAP_MAX_CACHE_SZIE(10 * 1024)
     , HASHMAP_MAX_KEY_SIZE(128)
-    , HASHMAP_KEY_ALLOCATION(HASHMAP_MAX_KEY_SIZE + 11)
+    , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 11))
     , fInitialized(false)
     , fileCache(new TemplateLRU<uint32_t, std::fstream *>())
     , CacheThread(std::bind(&BinaryHashTree::CacheWriter, this))
@@ -74,7 +74,7 @@ namespace LLD
         for(uint32_t i = 0; i < vKey.size() && i < 8; ++i)
             nBucket += vKey[i] << (8 * i);
 
-        return nBucket % HASHMAP_TOTAL_BUCKETS;
+        return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(HASHMAP_TOTAL_BUCKETS));
     }
 
 

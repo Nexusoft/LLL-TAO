@@ -32,9 +32,9 @@ namespace LLP
     Socket::Socket()
     : PACKET_MUTEX()
     , DATA_MUTEX()
-    , nError(0)
     , nLastSend(0)
     , nLastRecv(0)
+    , nError(0)
     , vBuffer()
     , addr()
     {
@@ -51,9 +51,9 @@ namespace LLP
     : pollfd(socket)
     , PACKET_MUTEX()
     , DATA_MUTEX()
-    , nError(socket.nError.load())
     , nLastSend(socket.nLastSend.load())
     , nLastRecv(socket.nLastRecv.load())
+    , nError(socket.nError.load())
     , vBuffer(socket.vBuffer)
     , addr(socket.addr)
     {
@@ -64,9 +64,9 @@ namespace LLP
     Socket::Socket(int32_t nSocketIn, const BaseAddress &addrIn)
     : PACKET_MUTEX()
     , DATA_MUTEX()
-    , nError(0)
     , nLastSend(0)
     , nLastRecv(0)
+    , nError(0)
     , vBuffer()
     , addr(addrIn)
     {
@@ -82,9 +82,9 @@ namespace LLP
     Socket::Socket(const BaseAddress &addrConnect)
     : PACKET_MUTEX()
     , DATA_MUTEX()
-    , nError(0)
     , nLastSend(0)
     , nLastRecv(0)
+    , nError(0)
     , vBuffer()
     , addr()
     {
@@ -301,12 +301,12 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
-        int nRead = 0;
+        int32_t nRead = 0;
 
     #ifdef WIN32
-        nRead = recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT);
+        nRead = static_cast<int32_t>(recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT));
     #else
-        nRead = recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT);
+        nRead = static_cast<int32_t>(recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT));
     #endif
 
         if (nRead < 0)
@@ -323,14 +323,14 @@ namespace LLP
     }
 
     /* Read data from the socket buffer non-blocking */
-    int Socket::Read(std::vector<int8_t> &vData, size_t nBytes)
+    int32_t Socket::Read(std::vector<int8_t> &vData, size_t nBytes)
     {
-        int nRead = 0;
+        int32_t nRead = 0;
 
     #ifdef WIN32
-        nRead = recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT);
+        nRead = static_cast<int32_t>(recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT));
     #else
-        nRead = recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT);
+        nRead = static_cast<int32_t>(recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT));
     #endif
 
         if (nRead < 0)
@@ -348,9 +348,9 @@ namespace LLP
 
 
     /* Write data into the socket buffer non-blocking */
-    int Socket::Write(const std::vector<uint8_t>& vData, size_t nBytes)
+    int32_t Socket::Write(const std::vector<uint8_t>& vData, size_t nBytes)
     {
-        int nSent = 0;
+        int32_t nSent = 0;
 
         {
             LOCK(DATA_MUTEX);
@@ -361,7 +361,7 @@ namespace LLP
                 nLastSend = runtime::timestamp();
                 vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
 
-                return nBytes;
+                return static_cast<int32_t>(nBytes);
             }
         }
 
@@ -370,9 +370,9 @@ namespace LLP
             LOCK(PACKET_MUTEX);
 
             #ifdef WIN32
-                nSent = send(fd, (char*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
+                nSent = static_cast<int32_t>(send(fd, (char*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #else
-                nSent = send(fd, (int8_t*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
+                nSent = static_cast<int32_t>(send(fd, (int8_t*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #endif
         }
 
@@ -401,9 +401,7 @@ namespace LLP
     /* Flushes data out of the overflow buffer */
     int Socket::Flush()
     {
-        int nSent = 0;
-
-
+        int32_t nSent = 0;
         uint32_t nBytes = 0;
         uint32_t nSize = 0;
 
@@ -427,9 +425,9 @@ namespace LLP
             LOCK(PACKET_MUTEX);
 
             #ifdef WIN32
-                nSent = send(fd, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
+                nSent = static_cast<int32_t>(send(fd, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #else
-                nSent = send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT);
+                nSent = static_cast<int32_t>(send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #endif
         }
 

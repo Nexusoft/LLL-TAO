@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLD_INCLUDE_REGISTER_H
 #define NEXUS_LLD_INCLUDE_REGISTER_H
 

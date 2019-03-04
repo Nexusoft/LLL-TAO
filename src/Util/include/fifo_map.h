@@ -22,13 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+#pragma once
 #ifndef NLOHMANN_FIFO_MAP_HPP
 #define NLOHMANN_FIFO_MAP_HPP
 
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
-#include <iostream>
 #include <limits>
 #include <map>
 #include <memory>

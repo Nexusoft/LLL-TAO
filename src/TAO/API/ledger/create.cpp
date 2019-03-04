@@ -38,7 +38,7 @@ namespace TAO
         /* Standard initialization function. */
         void Ledger::Initialize()
         {
-            mapFunctions["createblock"]               = Function(std::bind(&Ledger::CreateBlock,           this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["createblock"] = Function(std::bind(&Ledger::CreateBlock, this, std::placeholders::_1, std::placeholders::_2));
         }
 
 
@@ -71,7 +71,7 @@ namespace TAO
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Generate the EC Key. */
-            LLC::ECKey key(NID_brainpoolP512t1, 64);
+            LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
             if(!key.SetSecret(vchSecret, true))
                 throw APIException(-26, "Failed to set secret key");
 
@@ -85,7 +85,7 @@ namespace TAO
             /* Create the state object. */
             if(!block.Accept())
                 throw APIException(-26, "Block failed accept");
-                
+
             json::json ret;
             ret["block"] = block.GetHash().ToString();
 

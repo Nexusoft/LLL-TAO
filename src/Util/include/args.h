@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_UTIL_INCLUDE_ARGS_H
 #define NEXUS_UTIL_INCLUDE_ARGS_H
 
@@ -86,7 +87,7 @@ namespace config
      *  @return command-line argument (0 if invalid number) or default value.
      *
      **/
-    int64_t GetArg(const std::string& strArg, int64_t nDefault);
+    int64_t  GetArg(const std::string& strArg, int64_t  nDefault);
 
 
     /** GetBoolArg

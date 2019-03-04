@@ -16,6 +16,20 @@ ________________________________________________________________________________
 
 namespace LLD
 {
+    /*  Node to hold the binary data of the double linked list. */
+    struct BinaryNode
+    {
+        BinaryNode* pprev;
+        BinaryNode* pnext;
+
+        std::vector<uint8_t> vKey;
+        std::vector<uint8_t> vData;
+
+        bool fReserve;
+
+        /** Default constructor **/
+        BinaryNode(const std::vector<uint8_t>& vKeyIn, const std::vector<uint8_t>& vDataIn, bool fReserveIn);
+    };
 
     /** Default constructor **/
     BinaryNode::BinaryNode(const std::vector<uint8_t>& vKeyIn, const std::vector<uint8_t>& vDataIn, bool fReserveIn)
@@ -73,7 +87,7 @@ namespace LLD
         uint64_t nBucket;
         std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
 
-        return nBucket % MAX_CACHE_BUCKETS;
+        return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
     }
 
 
@@ -205,7 +219,7 @@ namespace LLD
             pthis->fReserve  = false;
 
             /* Reduce the current size. */
-            nCurrentSize -= (pthis->vData.size() - pthis->vKey.size());
+            nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() - pthis->vKey.size());
 
             /* Free the memory. */
             delete pthis;
@@ -222,7 +236,7 @@ namespace LLD
             MoveToFront(pthis);
 
         /* Set the new cache size. */
-        nCurrentSize += (vData.size() + vKey.size());
+        nCurrentSize += static_cast<uint32_t>(vData.size() + vKey.size());
 
         /* Remove the last node if cache too large. */
         while(nCurrentSize > MAX_CACHE_SIZE)
@@ -241,7 +255,7 @@ namespace LLD
                 /* Reduce the current cache size. */
                 if(pnode)
                 {
-                    nCurrentSize -= (pnode->vData.size() - pnode->vKey.size());
+                    nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() - pnode->vKey.size());
 
                     /* Clear the pointers. */
                     hashmap[Bucket(pnode->vKey)] = nullptr;
@@ -322,7 +336,7 @@ namespace LLD
         pthis->fReserve  = false;
 
         /* Reduce the current size. */
-        nCurrentSize -= (pthis->vData.size() - pthis->vKey.size());
+        nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() - pthis->vKey.size());
 
         /* Free the memory. */
         delete pthis;

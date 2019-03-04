@@ -108,13 +108,13 @@ namespace Legacy
             uint64_t nTotal = 0;
             for(const auto& entry : vOutputs)
             {
-                debug::log(0, entry.first.c_str(), ":", entry.second / 1000000.0);
+                debug::log(0, entry.first.c_str(), ":", static_cast<double>(entry.second) / 1000000.0);
                 nTotal += entry.second;
             }
 
-            debug::log(0, "Total Value of Coinbase = ", nTotal / 1000000.0);
-            debug::log(0, "Set Value of Coinbase = ", nMaxValue / 1000000.0);
-            debug::log(0, "PoolFee in Coinbase ", nPoolFee / 1000000.0);
+            debug::log(0, "Total Value of Coinbase = ", static_cast<double>(nTotal) / 1000000.0);
+            debug::log(0, "Set Value of Coinbase = ", static_cast<double>(nMaxValue) / 1000000.0);
+            debug::log(0, "PoolFee in Coinbase ", static_cast<double>(nPoolFee) / 1000000.0);
             debug::log(0, "\n\nIs Complete: ", IsValid() ? "TRUE" : "FALSE");
             debug::log(0, "\n\n +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ \n");
         }

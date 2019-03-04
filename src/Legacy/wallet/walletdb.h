@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LEGACY_WALLET_WALLETDB_H
 #define NEXUS_LEGACY_WALLET_WALLETDB_H
 
@@ -568,7 +569,7 @@ namespace Legacy
 
         /** @fn ThreadFlushWalletDB
          *
-         *  Signals the wallet flush thread to shut down. 
+         *  Signals the wallet flush thread to shut down.
          *
          **/
         static void ShutdownFlushThread();
@@ -605,7 +606,7 @@ namespace Legacy
          **/
         static bool BackupWallet(const Wallet& wallet, const std::string& strDest);
 
-    
+
     private:
         /** mutex to provide synchronized access on mutable methods **/
         static std::mutex cs_walletdb;

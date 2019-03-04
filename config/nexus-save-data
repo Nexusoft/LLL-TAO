@@ -1,0 +1,27 @@
+#!/bin/bash
+#
+# nexus-save-data
+#
+# Usage: nexus-save-datadir <hostOS-location>
+#
+
+DEST="/hostOS$HOSTOS_HOME/.Nexus_Core_Data_BETA"
+if [ ! -d $DEST ] ; then
+   echo "Nexus data directory $DEST does not exist"
+   exit 
+fi   
+
+#
+# debug.log could be enourmous, don't copy it. If you want it comment out line
+# below.
+#
+rm -f /root/.TAO/debug.log
+
+#
+# Do the copy.
+#
+echo -n "Copying /root/.TAO -> $DEST ... "
+cp -r /root/.TAO/* $DEST
+echo "done"
+
+

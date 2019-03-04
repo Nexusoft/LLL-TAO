@@ -1,6 +1,44 @@
 #!/bin/bash
 #
-# Launch Nexus Daemon. Start with seed node in JDC data center.
+# run-nexus
+#
+# Launch Nexus Daemon. Check to see if nexus data directory needs to be
+# copied from host OS file system.
+#
+
+#DO_COPY=""
+
+#
+# If you want to create all the state in the container. Just move nexus.conf
+# from host filesystem.
+#
+#mkdir /root/.TAO
+#cp /hostOS$HOSTOS_HOME/.Nexus_Core_Data_BETA/nexus.conf /root/.TAO/.
+
+#
+# If first innvocation of nexus daemon after container creation, then setup
+# /root/.TAO directory. Should we copy from host OS file system or link to it?
+#
+if [ ! -d "/root/.TAO" ]; then
+    SRC="/hostOS$HOSTOS_HOME/.Nexus_Core_Data_BETA"
+    if [ -v DO_COPY ]; then
+        mkdir /root/.TAO
+    fi
+    if [ -d $SRC ]; then
+        if [ -v DO_COPY ]; then
+            echo -n "Copying nexus data directory $SRC -> /root/.TAO ... "
+            cp -r $SRC/* /root/.TAO/.
+        else
+            echo -n "Symlink nexus data directory /root/.TAO -> $SRC ... "
+            ln -sf $SRC /root/.TAO
+         fi
+        echo "done"
+    fi
+fi
+
+#
+# Startup daemon.
 #
 cd /nexus
-./nexus -verbose=5 -testnet -threads=10 -private >& /nexus/nexus.log &
+./nexus -verbose=3 -fastsync -beta -server -daemon -threads=10 &
+

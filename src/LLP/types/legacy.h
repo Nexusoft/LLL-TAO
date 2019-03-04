@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_TYPES_LEGACY_H
 #define NEXUS_LLP_TYPES_LEGACY_H
 
@@ -153,7 +154,7 @@ namespace LLP
 
 
         /** Handle an average calculation of fast sync blocks. */
-        static std::atomic<uint32_t> nFastSyncAverage;
+        static std::atomic<uint64_t> nFastSyncAverage;
 
 
         /** The current node that is being used for fast sync.l **/
@@ -267,7 +268,7 @@ namespace LLP
                     if(Read(DATA, DATA.size()) == DATA.size())
                     {
                         INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                        Event(EVENT_PACKET, DATA.size());
+                        Event(EVENT_PACKET, static_cast<uint32_t>(DATA.size()));
                     }
                 }
             }

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_LLP_TEMPLATES_SERVER_H
 #define NEXUS_LLP_TEMPLATES_SERVER_H
 
@@ -57,8 +58,10 @@ namespace LLP
         std::thread          LISTEN_THREAD_V6;
         std::thread          METER_THREAD;
 
-    public:
         uint16_t PORT;
+
+    public:
+
         uint16_t MAX_THREADS;
         uint32_t DDOS_TIMESPAN;
 
@@ -90,7 +93,7 @@ namespace LLP
         Server<ProtocolType>(uint16_t nPort,
                              uint16_t nMaxThreads,
                              uint32_t nTimeout = 30,
-                             bool isDDOS = false,
+                             bool fDDOS_ = false,
                              uint32_t cScore = 0,
                              uint32_t rScore = 0,
                              uint32_t nTimespan = 60,
@@ -102,6 +105,14 @@ namespace LLP
 
         /** Default Destructor **/
         virtual ~Server<ProtocolType>();
+
+
+        /** GetPort
+         *
+         *  Returns the port number for this Server.
+         *
+         **/
+        uint16_t GetPort() const;
 
 
         /** Shutdown
@@ -120,7 +131,7 @@ namespace LLP
          *  @param[in] strPort		Port of outgoing connection
          *
          **/
-        void AddNode(std::string strAddress, uint16_t nPort);
+        void AddNode(std::string strAddress, uint16_t nPort, bool fLookup = false);
 
 
         /** AddConnection
@@ -133,7 +144,7 @@ namespace LLP
          *  @return	Returns 1 If successful, 0 if unsuccessful, -1 on errors.
          *
          **/
-        bool AddConnection(std::string strAddress, uint16_t nPort);
+        bool AddConnection(std::string strAddress, uint16_t nPort, bool fLookup = false);
 
 
         /** GetConnectionCount

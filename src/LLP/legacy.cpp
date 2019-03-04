@@ -38,6 +38,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/chainstate.h>
 
+#include <iomanip>
+
 namespace
 {
     std::atomic<uint32_t> nAsked(0);
@@ -65,7 +67,7 @@ namespace LLP
 
 
     /* The fast sync average speed. */
-    std::atomic<uint32_t> LegacyNode::nFastSyncAverage;
+    std::atomic<uint64_t> LegacyNode::nFastSyncAverage;
 
 
     /* The current node that is being used for fast sync */
@@ -119,11 +121,13 @@ namespace LLP
 
                 /* Give higher DDOS score if the Node happens to try to send multiple version messages. */
                 if (message == "version" && nCurrentVersion != 0)
-                    DDOS->rSCORE += 25;
+                    if(DDOS)
+                        DDOS->rSCORE += 25;
 
                 /* Check the Packet Sizes to Unified Time Commands. */
                 if((message == "getoffset" || message == "offset") && length != 16)
-                    DDOS->Ban(debug::safe_printstr("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH ", length));
+                    if(DDOS)
+                        DDOS->Ban(debug::safe_printstr("INVALID PACKET SIZE | OFFSET/GETOFFSET | LENGTH ", length));
             }
 
             return;
@@ -145,7 +149,8 @@ namespace LLP
                     debug::log(3, NODE, "Dropped Packet (Complete: ", INCOMING.Complete() ? "Y" : "N",
                         " - Valid: )",  INCOMING.IsValid() ? "Y" : "N");
 
-                    DDOS->rSCORE += 15;
+                    if(DDOS)
+                        DDOS->rSCORE += 15;
                 }
 
             }
@@ -168,9 +173,7 @@ namespace LLP
             /* Handle sending the pings to remote node.. */
             if(nLastPing + 15 < runtime::unifiedtimestamp())
             {
-                uint64_t nNonce = 0;
-                RAND_bytes((uint8_t*)&nNonce, sizeof(nNonce));
-
+                uint64_t nNonce = LLC::GetRand();
                 nLastPing = runtime::unifiedtimestamp();
 
 
@@ -411,7 +414,8 @@ namespace LLP
             /* Ignore Messages Received that weren't Requested. */
             if(!mapSentRequests.count(nRequestID))
             {
-                DDOS->rSCORE += 5;
+                if(DDOS)
+                    DDOS->rSCORE += 5;
 
                 debug::log(3, NODE, "Invalid Request : Message Not Requested [", nRequestID, "][", nLatency, " ms]");
 
@@ -426,7 +430,8 @@ namespace LLP
 
                 debug::log(3, NODE, "Invalid Request : Message Stale [", nRequestID, "][", nLatency, " ms]");
 
-                DDOS->rSCORE += 15;
+                if(DDOS)
+                    DDOS->rSCORE += 15;
 
                 return true;
             }
@@ -511,7 +516,9 @@ namespace LLP
             /* If the nonce was not received or known from pong. */
             if(!mapLatencyTracker.count(nonce))
             {
-                DDOS->rSCORE += 5;
+                if(DDOS)
+                    DDOS->rSCORE += 5;
+
                 return true;
             }
 
@@ -541,7 +548,8 @@ namespace LLP
             /* Don't want addr from older versions unless seeding */
             if (vLegacyAddr.size() > 2000)
             {
-                DDOS->rSCORE += 20;
+                if(DDOS)
+                    DDOS->rSCORE += 20;
 
                 return debug::error(NODE, "message addr size() = ", vLegacyAddr.size(), "... Dropping Connection");
             }
@@ -551,7 +559,7 @@ namespace LLP
                 /* Try to establish the connection on the port the server is listening to. */
                 for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
                 {
-                    it->SetPort(LEGACY_SERVER->PORT);
+                    it->SetPort(LEGACY_SERVER->GetPort());
 
                     /* Create a base address vector from legacy addresses */
                     vAddr.push_back(*it);
@@ -579,7 +587,8 @@ namespace LLP
             /* Make sure the inventory size is not too large. */
             if (vInv.size() > 10000)
             {
-                DDOS->rSCORE += 20;
+                if(DDOS)
+                    DDOS->rSCORE += 20;
 
                 return true;
             }
@@ -661,7 +670,8 @@ namespace LLP
 
             if (vInv.size() > 10000)
             {
-                DDOS->rSCORE += 20;
+                if(DDOS)
+                    DDOS->rSCORE += 20;
 
                 return true;
             }

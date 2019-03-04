@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#pragma once
 #ifndef NEXUS_UTIL_INCLUDE_CONFIG_H
 #define NEXUS_UTIL_INCLUDE_CONFIG_H
 
@@ -30,15 +31,39 @@ namespace config
 
     /** ReadConfigFile
      *
-     *  Read the Config file from the Disk.
+     *  Read the Config file from the Disk. 
      *
      *  @param[out] mapSettingsRet The map of config settings.
      *
      *  @param[out] mapMultiSettingsRet The map of multiple config settings per key.
      *
+     *  @param argc[in] Number of command line arguments
+     *
+     *  @param arv[in] Command line arguments
+     *
      **/
     void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
         std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
+
+
+    /** ReadConfigFile
+     *
+     *  Read the Config file from the Disk, loading -datadir setting if provided. 
+     *
+     *  Use this version if need to read config file before parsing command line parameters.
+     *
+     *  @param[out] mapSettingsRet The map of config settings.
+     *
+     *  @param[out] mapMultiSettingsRet The map of multiple config settings per key.
+     *
+     *  @param argc[in] Number of command line arguments
+     *
+     *  @param arv[in] Command line arguments
+     *
+     **/
+    void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
+        std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet,
+        const int argc, const char*const argv[]);
 
 
     /** CreatePidFile
