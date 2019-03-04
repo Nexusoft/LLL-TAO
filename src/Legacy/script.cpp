@@ -136,7 +136,7 @@ namespace Legacy
 
                 nSize = 0;
                 //memcpy(&nSize, &pc[0], 2);
-                std::copy((uint8_t *)&pc[0], (uint8_t *)&pc[0] + 2, &nSize);
+                std::copy((uint8_t *)&pc[0], (uint8_t *)&pc[0] + 2, (uint8_t *)&nSize);
                 pc += 2;
             }
             else if (opcode == OP_PUSHDATA4)
@@ -145,7 +145,7 @@ namespace Legacy
                     return false;
 
                 //memcpy(&nSize, &pc[0], 4);
-                std::copy((uint8_t *)&pc[0], (uint8_t *)&pc[0] + 4, &nSize);
+                std::copy((uint8_t *)&pc[0], (uint8_t *)&pc[0] + 4, (uint8_t *)&nSize);
                 pc += 4;
             }
             if (end() - pc < 0 || end() - pc < nSize)
