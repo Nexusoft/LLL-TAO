@@ -139,12 +139,26 @@ namespace LLP
     Server<ProtocolType> *Create_TAO_Server(uint16_t port)
     {
         uint16_t threads = static_cast<uint16_t>(config::GetArg(std::string("-threads"), 10));
+
+
         uint32_t timeout = static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 30));
+
+
         bool f_ddos = config::GetBoolArg(std::string("-ddos"), false);
+
+
         uint32_t c_score = static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1));
+
+
         uint32_t r_score = static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 50));
+
+
         uint32_t timespan = static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60));
+
+
         bool f_listen = config::GetBoolArg(std::string("-listen"), true);
+
+
         bool f_meter = config::GetBoolArg(std::string("-meters"), false);
 
         /* If a manual connection is specified, turn off address manager. */

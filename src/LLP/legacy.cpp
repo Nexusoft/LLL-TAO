@@ -832,7 +832,7 @@ namespace LLP
     bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
     {
         LOCK(PROCESSING_MUTEX);
-
+        
         /* Check if the block is valid. */
         uint1024_t hash = block.GetHash();
         if(!block.Check())
