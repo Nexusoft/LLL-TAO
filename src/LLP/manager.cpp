@@ -140,7 +140,11 @@ namespace LLP
                                       const uint8_t state)
     {
         for(uint32_t i = 0; i < addrs.size(); ++i)
-            AddAddress(addrs[i], state);
+        {
+            /* Don't add addresses that already exist in the address manager, as this could reset the state of existing connections */
+            if(!Has(addrs[i])) 
+                AddAddress(addrs[i], state);
+        }
     }
 
 
@@ -153,7 +157,9 @@ namespace LLP
             /* Create a DNS lookup address to resolve to IP address. */
             BaseAddress lookup_address = BaseAddress(addrs[i], nPort, true);
 
-            AddAddress(lookup_address, state);
+            /* Don't add addresses that already exist in the address manager, as this could reset the state of existing connections */
+            if(!Has(lookup_address)) 
+                AddAddress(lookup_address, state);
         }
     }
 

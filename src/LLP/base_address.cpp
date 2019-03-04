@@ -258,6 +258,12 @@ namespace LLP
         return (memory::compare(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
     }
 
+    /* Checks for LISP EID. */
+    bool BaseAddress::IsEID() const
+    {
+        return (IsIPv4() && GetByte(3) == 240) || (!IsIPv4() && (ip[0] == 0xfd || ip[0] == 0xfe));
+    }
+
 
     /* Determines if address is a local address. */
     bool BaseAddress::IsLocal() const

@@ -187,6 +187,13 @@ namespace LLP
          **/
         bool IsRFC6145() const;
 
+        /** IsEID
+         *
+         *  Checks for LISP EID
+         *
+         **/
+        bool IsEID() const;
+
 
         /** IsLocal
          *

@@ -46,6 +46,10 @@ namespace
 
 namespace LLP
 {
+    /* global map connections to session ID's to be used to prevent duplicate connections to the same 
+           sever, but via a different RLOC / EID */
+    std::map<uint64_t, TritiumNode*> TritiumNode::mapSessions;
+
     /* Static initialization of last get blocks. */
     memory::atomic<uint1024_t> TritiumNode::hashLastGetblocks;
 
@@ -90,9 +94,6 @@ namespace LLP
                     /* Send version if making the connection. */
                     PushMessage(DAT_VERSION, TritiumNode::nSessionID, GetAddress());
                 }
-
-                /* Ask the new node for their inventory*/
-                PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
                 break;
             }
@@ -235,6 +236,9 @@ namespace LLP
                 if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
                     TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
+                /* Finally remove this connection from the global map by session*/
+                mapSessions.erase(TritiumNode::nSessionID);
+
                 break;
             }
         }
@@ -270,7 +274,43 @@ namespace LLP
 
                     return false;
                 }
+                /* Check for existing connection to same node*/
+                else if( mapSessions.find(nSession) != mapSessions.end())
+                {
+                    TritiumNode* pConnection = mapSessions.at(nSession);
+                    
+                    /* If the existing connection is via LISP then we make a preference for it and disallow the 
+                       incoming connection. Otherwise if the incoming is via LISP and the existing is not we 
+                       disconnect the the existing connection in favour of the LISP route */
+                    if( !GetAddress().IsEID() || pConnection->GetAddress().IsEID() )
+                    {
+                        /* don't allow new connection */
+                        debug::log(0, FUNCTION, "duplicate connection attempt to same server prevented.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
 
+                        /* Cache self-address in the banned list of the Address Manager. */
+                        if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
+                            TRITIUM_SERVER->pAddressManager->Ban(addr);
+
+                        return false;
+                    }
+                    else
+                    {
+                        /* initiate disconnect of existing connection in favour of new one */
+                        debug::log(0, FUNCTION, "duplicate connection attempt to same server.  Switching to EID connection.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
+
+                        pConnection->Disconnect();
+                        
+                        if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
+                            TRITIUM_SERVER->pAddressManager->Ban(pConnection->GetAddress());
+                    }
+                }
+
+                /* Add this connection into the global map once we have verified the DAT_VERSION message and 
+                    are happy to allow the connection */
+                mapSessions[TritiumNode::nSessionID] = this;
+
+                /* Debug output for offsets. */
+                debug::log(3, NODE, "received session identifier ",nSessionID);
 
 
                 /* Send version message if connection is inbound. */
@@ -279,14 +319,15 @@ namespace LLP
                 else
                     PushMessage(GET_ADDRESSES);
 
-                if (fOUTGOING && nAsked == 0)
-                {
-                    ++nAsked;
-                    PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-                }
+                /* Ask the new node for their inventory*/
+                PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
-                /* Debug output for offsets. */
-                debug::log(3, NODE, "received session identifier ",nSessionID);
+                // if (fOUTGOING && nAsked == 0)
+                // {
+                //     ++nAsked;
+                //    PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                // }
+                
 
                 break;
             }
@@ -395,9 +436,10 @@ namespace LLP
                         /* Tell about latest block if hash stop is found. */
                         if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
                         {
-                            /* first add all of the transactions hashes from the block */
-                            for( const auto& tx : state.vtx)
-                                vInv.push_back(CInv(tx.second, tx.first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM)); 
+                            /* First add all of the transactions hashes from the block.
+                               Start at index 1 so that we dont' include producer, as that is sent as part of the block */
+                            for(int i=1; i > state.vtx.size(); i++)
+                                vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM)); 
 
                             /* lastly add the block hash */
                             vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), fIsLegacy ? MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM));
@@ -408,9 +450,10 @@ namespace LLP
                     }
 
                     /* Push new item to inventory. */
-                    /* first add all of the transactions hashes from the block */
-                    for( const auto& tx : state.vtx)
-                        vInv.push_back(CInv(tx.second, tx.first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
+                    /* First add all of the transactions hashes from the block.
+                        Start at index 1 so that we dont' include producer, as that is sent as part of the block */
+                    for(int i=1; i > state.vtx.size(); i++)
+                        vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
                     
                     /* lastly add the block hash */
                     vInv.push_back(CInv(state.GetHash(), fIsLegacy ? MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM));
@@ -696,9 +739,12 @@ namespace LLP
                             cacheInventory.Ban(tx.GetHash());
                         }
                     }
-
-                    /* Debug output for offsets. */
-                    debug::log(3, NODE "already have tx ", tx.GetHash().ToString().substr(0, 20));
+                    else
+                    {
+                        /* Debug output for offsets. */
+                       debug::log(3, NODE "already have tx ", tx.GetHash().ToString().substr(0, 20));
+                    }
+                    
                 }
                 else if(type == LLP::MSG_TX_LEGACY)
                 {
@@ -735,9 +781,12 @@ namespace LLP
                             cacheInventory.Ban(tx.GetHash());
                         }
                     }
-
-                    /* Debug output for offsets. */
-                    debug::log(3, NODE "already have tx ", tx.GetHash().ToString().substr(0, 20));
+                    else
+                    {
+                        /* Debug output for offsets. */
+                        debug::log(3, NODE "already have tx ", tx.GetHash().ToString().substr(0, 20));
+                    }
+                    
                 }
 
                 break;
@@ -771,7 +820,8 @@ namespace LLP
                     if(!TritiumNode::Process(block, this))
                         return false;
                 }
-                return true;
+
+                break;
             }
 
 
@@ -866,7 +916,6 @@ namespace LLP
     }
 
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
-    std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapTest;
     bool TritiumNode::Process(const TAO::Ledger::Block& block, TritiumNode* pnode)
     {
         LOCK(PROCESSING_MUTEX);

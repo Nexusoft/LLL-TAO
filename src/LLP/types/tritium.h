@@ -95,6 +95,10 @@ namespace LLP
         /** Randomly genearted session ID. **/
         static uint64_t nSessionID;
 
+        /* global map connections to session ID's to be used to prevent duplicate connections to the same 
+           sever, but via a different RLOC / EID */
+        static std::map<uint64_t, TritiumNode*> mapSessions;
+
 
         /** Flag to determine if a connection is Inbound. **/
         bool fInbound;
