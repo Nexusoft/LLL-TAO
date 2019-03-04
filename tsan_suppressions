@@ -1,0 +1,12 @@
+
+# Thread sanitizer suppressions file for Nexus
+
+# If you run with thread sanitizer enabled (compile Nexus with RACE_CHECK=1),
+# and wish to avoid a bunch of warnings from Berkeley database, then
+# add an environment variable defining TSAN_OPTIONS pointing to this file
+
+# Example (added to .bashrc file)
+# export TSAN_OPTIONS="suppressions=tsan_suppressions"
+
+# Ignore functions in Berkeley database libraries
+called_from_lib:libdb_cxx-5.3.so
