@@ -102,6 +102,27 @@ namespace LLP
     }
 
 
+    template <class ProtocolType>
+    void HandleManualConnections(Server<ProtocolType> *pServer)
+    {
+        /* -connect means try to establish a connection first. */
+        if(config::mapMultiArgs["-connect"].size() > 0)
+        {
+            /* Add connections and resolve potential DNS lookups. */
+            for(const auto& node : config::mapMultiArgs["-connect"])
+                pServer->AddConnection(node, pServer->GetPort(), true);
+        }
+
+        /* -addnode means add to address manager and let it make connections. */
+        if(config::mapMultiArgs["-addnode"].size() > 0)
+        {
+            /* Add nodes and resolve potential DNS lookups. */
+            for(const auto& node : config::mapMultiArgs["-addnode"])
+                pServer->AddNode(node, pServer->GetPort(), true);
+        }
+    }
+
+
     /** Create_TAO_Server
      *
      *  Helper for creating Legacy/Tritium Servers.
@@ -125,6 +146,8 @@ namespace LLP
         uint32_t timespan = static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60));
         bool f_listen = config::GetBoolArg(std::string("-listen"), true);
         bool f_meter = config::GetBoolArg(std::string("-meters"), false);
+
+        /* If a manual connection is specified, turn off address manager. */
         bool f_manager = config::GetBoolArg(std::string("-manager"), true);
 
         return new Server<ProtocolType>(
@@ -232,8 +255,8 @@ int main(int argc, char** argv)
     SetupSignals();
 
 
-    /* Read the configuration file. */
-    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
+    /* Read the configuration file. Pass argc and argv for possible -datadir setting */
+    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs, argc, argv);
 
 
     /* Parse out the parameters */
@@ -242,6 +265,7 @@ int main(int argc, char** argv)
 
     /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
     config::CacheArgs();
+
 
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)
@@ -259,6 +283,7 @@ int main(int argc, char** argv)
     if(!debug::init())
         printf("Unable to initalize system logging\n");
 
+
     /* Log system startup now, after branching to API/RPC where appropriate */
     debug::InitializeLog(argc, argv);
 
@@ -268,7 +293,6 @@ int main(int argc, char** argv)
     {
         Daemonize();
     }
-
 
 
     /* Create directories if they don't exist yet. */
@@ -359,19 +383,8 @@ int main(int argc, char** argv)
         /* Initialize the Tritium Server. */
         LLP::TRITIUM_SERVER = LLP::Create_TAO_Server<LLP::TritiumNode>(port);
 
-        /* -connect means  try to establish a connection */
-        if(config::mapMultiArgs["-connect"].size() > 0)
-        {
-            for(const auto& node : config::mapMultiArgs["-connect"])
-                LLP::TRITIUM_SERVER->AddConnection(node, port);
-        }
-
-        /* -addnode means add to address manager */
-        if(config::mapMultiArgs["-addnode"].size() > 0)
-        {
-            for(const auto& node : config::mapMultiArgs["-addnode"])
-                LLP::TRITIUM_SERVER->AddNode(node, port);
-        }
+        /* Handle Manual Connections from Command Line, if there are any. */
+        LLP::HandleManualConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
     }
     else
     {
@@ -381,19 +394,8 @@ int main(int argc, char** argv)
         /* Initialize the Legacy Server. */
         LLP::LEGACY_SERVER = LLP::Create_TAO_Server<LLP::LegacyNode>(port);
 
-        /* -connect means  try to establish a connection. */
-        if(config::mapMultiArgs["-connect"].size() > 0)
-        {
-            for(const auto& node : config::mapMultiArgs["-connect"])
-                LLP::LEGACY_SERVER->AddConnection(node, port);
-        }
-
-        /* -addnode means add to address manager. */
-        if(config::mapMultiArgs["-addnode"].size() > 0)
-        {
-            for(const auto& node : config::mapMultiArgs["-addnode"])
-                LLP::LEGACY_SERVER->AddNode(node, port);
-        }
+        /* Handle Manual Connections from Command Line, if there are any. */
+        LLP::HandleManualConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
     }
 
 

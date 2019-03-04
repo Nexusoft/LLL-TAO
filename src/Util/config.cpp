@@ -63,6 +63,35 @@ namespace config
     }
 
 
+    /* Read the Config file from the Disk, loading -datadir setting if provided. */
+    void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet,
+                        std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet,
+                        const int argc, const char*const argv[])
+    {
+        /* This may be called before parsing command line arguments.
+         * Check if -datadir option is present and record the setting if it is
+         */
+        for (int i = 1; i < argc; ++i)
+        {
+            const std::string argValue(argv[i]);
+            const std::string datadirSwitch("-datadir");
+            const std::string configFileSwitch("-conf");
+
+            /* Form is -datadir=path so path setting starts at location 9. 
+             * Any length <9 on argv is either a different option or datadir with no value. Ignore these.
+             */
+            if (argValue.length() > 9 && argValue.compare(0, 8, datadirSwitch) == 0)
+                mapArgs[datadirSwitch] = argValue.substr(9, std::string::npos);
+
+            /* Also need to do the same for custom config file name */
+            if (argValue.length() > 6 && argValue.compare(0, 5, configFileSwitch) == 0)
+                mapArgs[configFileSwitch] = argValue.substr(6, std::string::npos);
+        }
+
+        ReadConfigFile(mapSettingsRet, mapMultiSettingsRet);
+    }
+
+
     /* Setup PID file for Linux users. */
     void CreatePidFile(const std::string &path, pid_t pid)
     {
@@ -149,9 +178,17 @@ namespace config
     /* Get the Location of the Config File. */
     std::string GetConfigFile()
     {
+        static bool fPathLogged = false; //Used so we only log the conf file once 
+
         std::string pathConfigFile(GetDataDir(false));
 
         pathConfigFile.append(GetArg("-conf", "nexus.conf"));
+
+        if (!fPathLogged && filesystem::exists(pathConfigFile))
+        {
+            debug::log(0, "Using configuration file: ", pathConfigFile);
+            fPathLogged = true;
+        }
 
         return pathConfigFile;
     }
@@ -173,13 +210,13 @@ namespace config
     {
         static std::string pathCached[2];
         static std::mutex csPathCached;
-        static bool cachedPath[2] = {false, false};
+        static bool fCachedPath[2] = {false, false};
 
         std::string &path = pathCached[fNetSpecific];
 
         // This can be called during exceptions by debug log, so we cache the
         // value so we don't have to do memory allocations after that.
-        if (cachedPath[fNetSpecific])
+        if (fCachedPath[fNetSpecific])
             return path;
 
         LOCK(csPathCached);
@@ -188,17 +225,24 @@ namespace config
             /* get the command line argument for the data directory */
             path = mapArgs["-datadir"];
 
-            uint32_t s = static_cast<uint32_t>(path.size());
-
-            if(s == 0)
-                debug::error("No data directory specified.");
-
-            if(path[s-1] != '/')
-                path += '/';
-
-            /* build the system complete path to the data directory */
-            if(path[0] != '/')
+            if (path.length() == 0)
+            {
+                /* -datadir setting used, but no value provided */
+                debug::error(FUNCTION, "-datadir no path specified. Using default.");
+                path = GetDefaultDataDir();
+            }
+            else
+            {
+                /* build the system complete path to the data directory */
                 path = filesystem::system_complete(path);
+            }
+
+            /* Validate the resulting path length */            
+            if  (path.length() > MAX_PATH)
+            {
+                debug::error(FUNCTION, "-datadir path exceeds maximum allowed path length. Using default.");
+                path = GetDefaultDataDir();
+            }
         }
         else
             path = GetDefaultDataDir();
@@ -208,7 +252,8 @@ namespace config
 
         filesystem::create_directories(path);
 
-        cachedPath[fNetSpecific]=true;
+        pathCached[fNetSpecific] =  path;
+        fCachedPath[fNetSpecific] = true;
         return path;
     }
 }

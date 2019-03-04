@@ -109,13 +109,13 @@ namespace LLP
 
     /*  Adds a new connection to current Data Thread */
     template <class ProtocolType>
-    bool DataThread<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort, DDOS_Filter* DDOS)
+    bool DataThread<ProtocolType>::AddConnection(const BaseAddress &addr, DDOS_Filter* DDOS)
     {
         try
         {
             /* Create a new pointer on the heap. */
             ProtocolType* node = new ProtocolType(DDOS, fDDOS);
-            if(!node->Connect(strAddress, nPort))
+            if(!node->Connect(addr))
             {
                 node->Disconnect();
                 delete node;

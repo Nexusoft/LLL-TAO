@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <Util/include/base64.h>
 
 #include <LLP/types/corenode.h>
+#include <LLP/include/base_address.h>
 
 
 /* Global TAO namespace. */
@@ -58,7 +59,10 @@ namespace TAO
 
             /* Make the connection to the API server. */
             LLP::CoreNode coreNode;
-            if(!coreNode.Connect("127.0.0.1", 9090))
+
+            LLP::BaseAddress addr("127.0.0.1", 9090);
+
+            if(!coreNode.Connect(addr))
             {
                 throw APIException(-1, "Couldn't Connect to lispers.net API");
             }

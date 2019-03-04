@@ -31,6 +31,25 @@ ________________________________________________________________________________
 
 #include <sys/stat.h>
 
+#ifdef WIN32
+#include <shlwapi.h> 
+
+/* Set up defs properly before including windows.h */
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0600    //minimum Windows Vista version for winsock2, etc.
+#endif
+
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1  //prevents windows.h from including winsock.h and messing with winsock2.h definitions we use
+#endif
+
+#ifndef NOMINMAX
+#define NOMINMAX //prevents windows.h from including min/max and potentially interfering with std::min/std::max
+#endif
+
+#include <windows.h>
+#endif
+
 namespace filesystem
 {
 
@@ -168,28 +187,45 @@ namespace filesystem
     {
         char buffer[MAX_PATH] = {0};
 
-        std::string rel_path = path;
-        std::string abs_path;
+        std::string fullPath;
 
-        //get the path of the current directory and append path name to that
-        abs_path = getcwd(buffer, MAX_PATH);
-
-        if(abs_path.size() > MAX_PATH)
-        {
-            debug::error(FUNCTION, "buffer overrun.");
-            abs_path.clear();
-            return abs_path;
-        }
 
     #ifdef WIN32
-        rel_path += '\\';
-        abs_path += '\\';
+
+        /* Use Windows API for path generation. */
+        if (!PathIsRelativeA(path.c_str()))
+        {
+            /* Path is absolute */
+            fullPath = path; 
+        }
+        else
+        {
+            /* Path is relative. */
+            char *pTemp = nullptr;
+            GetFullPathNameA(path.c_str(), MAX_PATH, buffer, &pTemp);
+            fullPath = std::string(buffer);
+        }
+
+        if (fullPath.at(fullPath.length()-1) != '\\')
+            fullPath += "\\";
+
     #else
-        rel_path += '/';
-        abs_path += '/';
+
+        /* Non-Windows. If begins with / it is an absolute path, otherwise a relative path */
+        if (path.at(0) == '/')
+            fullPath = path;
+        else
+        {
+            std::string currentDir(getcwd(buffer, MAX_PATH));
+            fullPath = currentDir + "/" + path;
+        }
+
+        if (fullPath.at(fullPath.length()-1) != '/')
+            fullPath += "/";
+
     #endif
 
-        return abs_path + rel_path;
+        return fullPath;
     }
 
 

@@ -104,8 +104,7 @@ namespace LLP
 
 
     /*  Adds the address to the manager and sets it's connect state. */
-    void AddressManager::AddAddress(const BaseAddress &addr,
-                                    const uint8_t state)
+    void AddressManager::AddAddress(const BaseAddress &addr, const uint8_t state)
     {
         /* Reject adding invalid addresses. */
         if(!addr.IsValid())

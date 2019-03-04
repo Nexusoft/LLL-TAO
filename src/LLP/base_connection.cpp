@@ -142,18 +142,21 @@ namespace LLP
 
     /*  Connect Socket to a Remote Endpoint. */
     template <class PacketType>
-    bool BaseConnection<PacketType>::Connect(std::string strAddress, uint16_t nPort)
+    bool BaseConnection<PacketType>::Connect(const BaseAddress &addrConnect)
     {
+
+        std::string connectStr = addrConnect.ToStringIP();
+
         /* Check for connect to self */
-        if(addr.ToStringIP() == strAddress)
+        if(addr.ToStringIP() == connectStr)
             return debug::error(NODE, "cannot self-connect");
 
-        debug::log(1, NODE, "Connecting to ", strAddress);
+        debug::log(1, NODE, "Connecting to ", connectStr);
 
         // Connect
-        if (Attempt(BaseAddress(strAddress, nPort)))
+        if (Attempt(addrConnect))
         {
-            debug::log(1, NODE, "Connected to ", strAddress);
+            debug::log(1, NODE, "Connected to ", connectStr);
 
             fCONNECTED = true;
             fOUTGOING = true;

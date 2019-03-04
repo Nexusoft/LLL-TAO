@@ -143,6 +143,14 @@ namespace LLP
     }
 
 
+    /*  Returns the port number for this Server. */
+    template <class ProtocolType>
+    uint16_t Server<ProtocolType>::GetPort() const
+    {
+        return PORT;
+    }
+
+
      /*  Cleanup and shutdown subsystems */
     template <class ProtocolType>
     void Server<ProtocolType>::Shutdown()
@@ -155,11 +163,16 @@ namespace LLP
 
    /*  Add a node address to the internal address manager */
    template <class ProtocolType>
-   void Server<ProtocolType>::AddNode(std::string strAddress, uint16_t nPort)
+   void Server<ProtocolType>::AddNode(std::string strAddress, uint16_t nPort, bool fLookup)
    {
-       BaseAddress addr(strAddress, nPort, false);
+       /* Assemble the address from input parameters. */
+       BaseAddress addr(strAddress, nPort, fLookup);
 
-       /* Make sure manager is enabled. */
+       /* Make sure address is valid. */
+       if(!addr.IsValid())
+            return;
+
+       /* Add the address to the address manager if it exists. */
        if(pAddressManager)
           pAddressManager->AddAddress(addr, ConnectState::NEW);
    }
@@ -167,10 +180,21 @@ namespace LLP
 
    /*  Public Wraper to Add a Connection Manually. */
    template <class ProtocolType>
-   bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort)
+   bool Server<ProtocolType>::AddConnection(std::string strAddress, uint16_t nPort, bool fLookup)
    {
        /* Initialize DDOS Protection for Incoming IP Address. */
-       BaseAddress addrConnect(strAddress, nPort);
+       BaseAddress addrConnect(strAddress, nPort, fLookup);
+
+       /* Make sure address is valid. */
+       if(!addrConnect.IsValid())
+       {
+           /* Ban the address. */
+           if(pAddressManager)
+              pAddressManager->Ban(addrConnect);
+
+           return false;
+       }
+
 
        /* Create new DDOS Filter if Needed. */
        if(fDDOS.load())
@@ -183,8 +207,6 @@ namespace LLP
                return false;
        }
 
-
-
        /* Find a balanced Data Thread to Add Connection to. */
        int32_t nThread = FindThread();
        if(nThread < 0)
@@ -194,8 +216,18 @@ namespace LLP
        DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
        /* Attempt the connection. */
-       if(!dt->AddConnection(strAddress, nPort, DDOS_MAP[addrConnect]))
+       if(!dt->AddConnection(addrConnect, DDOS_MAP[addrConnect]))
+       {
+           /* Add the address to the address manager if it exists. */
+           if(pAddressManager)
+              pAddressManager->AddAddress(addrConnect, ConnectState::FAILED);
+
            return false;
+       }
+
+       /* Add the address to the address manager if it exists. */
+       if(pAddressManager)
+          pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
 
        return true;
    }
@@ -339,10 +371,7 @@ namespace LLP
                 /* Attempt the connection. */
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
 
-                if(AddConnection(addr.ToStringIP(), addr.GetPort()))
-                    pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
-                else
-                    pAddressManager->AddAddress(addr, ConnectState::FAILED);
+                AddConnection(addr.ToStringIP(), addr.GetPort());
             }
 
             debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());

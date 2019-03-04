@@ -260,7 +260,7 @@ namespace LLC
     }
 
 
-    /* Consturctor with default curve type. */
+    /* Constructor with default curve type. */
     ECKey::ECKey()
     : pkey(EC_KEY_new_by_curve_name(NID_sect571r1))
     , fSet(false)
@@ -269,17 +269,10 @@ namespace LLC
     , nKeySize(72)
     {
         /* Set the Default Curve ID as sect571r1 */
-        //nCurveID   = NID_sect571r1;
-        //nKeySize = 72;
 
-        /* Reset the Current Key. */
-        //Reset();
-
-        //fCompressedPubKey = false;
-        //pkey = EC_KEY_new_by_curve_name(nCurveID);
+        /* Check for failure. */
         if (pkey == nullptr)
             throw key_error("ECKey::ECKey() : EC_KEY_new_by_curve_name failed");
-        //fSet = false;
     }
 
 
@@ -292,29 +285,26 @@ namespace LLC
     , nKeySize(nKeySizeIn)
     {
 
+        /* Set the Curve Type. */
         switch(nID)
         {
         case SECT_571_R1:
-            pkey = EC_KEY_new_by_curve_name(NID_sect571r1);
+            nCurveID = NID_sect571r1;
             break;
         case BRAINPOOL_P512_T1:
-            pkey = EC_KEY_new_by_curve_name(NID_brainpoolP512t1);
+            nCurveID = NID_brainpoolP512t1;
             break;
         default:
             throw key_error("ECKey::ECKey() : Unrecognized EC Type");
         }
-        /* Set the Curve Type. */
-        //nCurveID   = nID;
-        //nKeySize = nKeySizeIn;
 
-        /* Reset the Current Key. */
-        //Reset();
+        /* Create a new key from the curve type. */
+        pkey = EC_KEY_new_by_curve_name(nCurveID);
 
-        //fCompressedPubKey = false;
-        //pkey = EC_KEY_new_by_curve_name(nCurveID);
+        /* Check for failure. */
         if (pkey == nullptr)
             throw key_error("ECKey::ECKey() : EC_KEY_new_by_curve_name failed");
-        //fSet = false;
+
     }
 
 

@@ -19,8 +19,8 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
-
 #include <sys/stat.h>
+#include <cmath>
 
 
 namespace Legacy

@@ -154,13 +154,12 @@ namespace LLP
          *
          *  Connect Socket to a Remote Endpoint.
          *
-         *  @param[in] strAddress The IP address string.
-         *  @param[in] nPort The port number.
+         *  @param[in] addrConnect The address to connect to.
          *
          *  @return Returns true if successful connection, false otherwise.
          *
          */
-        bool Connect(std::string strAddress, uint16_t nPort);
+        bool Connect(const BaseAddress &addrConnect);
 
 
 

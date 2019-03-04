@@ -64,8 +64,9 @@ RUN mkdir /nexus
 RUN mkdir /nexus/build
 COPY ./makefile.cli /nexus
 COPY ./src /nexus/src/
-#RUN cd /nexus; make -j 8 -f makefile.cli ENABLE_DEBUG=1
-RUN cd /nexus; make -j 8 -f makefile.cli
+
+ENV NEXUS_DEBUG 0
+RUN cd /nexus; make -j 8 -f makefile.cli ENABLE_DEBUG=$NEXUS_DEBUG
 
 #
 # Copy Nexus startup files.
