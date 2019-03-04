@@ -779,6 +779,8 @@ namespace Legacy
                 /* Check the genesis transaction. */
                 if(!trustKey.CheckGenesis(state))
                     return debug::error(FUNCTION, "invalid genesis transaction");
+
+
             }
 
             /* Handle Adding Trust Transactions. */
@@ -804,10 +806,16 @@ namespace Legacy
                 /* Double Check the Genesis Transaction. */
                 if(!trustKey.CheckGenesis(stateGenesis))
                     return debug::error(FUNCTION, "invalid genesis transaction");
-
-                /* Write trust key changes to disk. */
-                trustKey.hashLastBlock = state.GetHash();
             }
+
+            /* Write trust key changes to disk. */
+            trustKey.hashLastBlock = state.GetHash();
+
+            /* Get the last trust key time. */
+            trustKey.nLastBlockTime = state.GetBlockTime();
+
+            /* Get the stake rate. */
+            trustKey.nStakeRate     = trustKey.StakeRate(state, state.GetBlockTime());
 
             /* Write the trust key. */
             LLD::trustDB->WriteTrustKey(cKey, trustKey);

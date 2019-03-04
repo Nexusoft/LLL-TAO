@@ -39,15 +39,13 @@ namespace TAO
         {
             vchPubKey.clear();
 
-            nVersion = 1;
-
+            nVersion         = 1;
             hashGenesisBlock = 0;
-
-            hashGenesisTx = 0;
-
-            nGenesisTime = 0;
-
-            hashLastBlock = 0;
+            hashGenesisTx    = 0;
+            nGenesisTime     = 0;
+            hashLastBlock    = 0;
+            nLastBlockTime   = 0;
+            nStakeRate       = 0;
 
             return;
         }
