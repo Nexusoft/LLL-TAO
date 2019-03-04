@@ -296,9 +296,11 @@ namespace LLC
         {
         case SECT_571_R1:
             pkey = EC_KEY_new_by_curve_name(NID_sect571r1);
+            nCurveID = NID_sect571r1;
             break;
         case BRAINPOOL_P512_T1:
             pkey = EC_KEY_new_by_curve_name(NID_brainpoolP512t1);
+            nCurveID = NID_brainpoolP512t1;
             break;
         default:
             throw key_error("ECKey::ECKey() : Unrecognized EC Type");
