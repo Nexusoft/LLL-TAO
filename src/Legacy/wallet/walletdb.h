@@ -533,6 +533,16 @@ namespace Legacy
         void ListAccountCreditDebit(const std::string& strAccount, std::list<AccountingEntry>& acentries);
 
 
+        /** InitializeDatabase
+         *
+         *  Initializes WalletDB for database access to the database file.
+         *
+         *  Should be called once on initialization. Any subsequent calls will be ignored.
+         *
+         **/
+        void InitializeDatabase();
+
+
         /** LoadWallet
          *
          *  Initializes a wallet instance from the data in this wallet database.
@@ -613,10 +623,8 @@ namespace Legacy
          *
          *  This operation can be disabled by setting the startup option -flushwallet to false
          *
-         *  @param[in] strWalletFile The wallet database file to flush
-         *
          **/
-        static void ThreadFlushWalletDB(const std::string& strWalletFile);
+        static void ThreadFlushWalletDB();
 
 
         /** @fn BackupWallet

@@ -53,12 +53,8 @@ namespace Legacy
 
     private:
 
-        /** Map of BerkelyDB instances by file name **/
-        static std::map<std::string, BerkeleyDB*> mapBerkeleyInstances;
-
-
-        /* Static mutex for concurrent access to instance map **/
-        static std::mutex mapMutex;
+        /** Flag indicating whether or not the wallet instance has been initialized **/
+        static bool fDbInitialized;
 
 
         /** Mutex for thread concurrency.
@@ -504,7 +500,16 @@ namespace Legacy
          *
          *  Retrieves the BerkeleyDB instance that corresponds to a given database file.
          *
-         *  Opens the database environment for a database file the first time it is retrieved.
+         *  Database setup will be executed the first time this method is called, and
+         *  the database file name must be passed. This will initialize the database environment 
+         *  for that file. After this initialization call, the database file should not be passed.
+         *
+         *  Initial call requires a file name, and throws an error if not present.
+         *
+         *  All subsequent calls should not pass a file name. If one is, and it matches the one
+         *  currently in use, it is ignored. If a different file name is passed, it throws an error.
+         *
+         *  On the first call, this method opens the database environment for the database file.
          *  The returned instance allows all read/write operations. If the file does not 
          *  exist, it will be created the first time it is accessed.
          *
@@ -513,29 +518,7 @@ namespace Legacy
          *  @return Berkeley db reference for operating on the database file
          *
          **/
-        static BerkeleyDB& GetInstance(const std::string& strFileIn);
-
-
-        /** GetInstances
-         *
-         *  Retrieves a list of all open BerkeleyDB instances.
-         *
-         *  @return vector of pointers to BerkeleyDB instances
-         *
-         **/
-        static std::vector<BerkeleyDB*> GetInstances();
-
-
-        /** RemoveInstance
-         *
-         *  Removes a closed instance from the database environment. Call this
-         *  after calling EnvShutdown on an instance to clean up resources.
-         *
-         *  @param strFileIn[in] File name of the db instance to remove
-         *
-         **/
-        static void RemoveInstance(const std::string& strFileIn);
-
+        static BerkeleyDB& GetInstance(const std::string& strFileIn = std::string(""));
 
     };
 

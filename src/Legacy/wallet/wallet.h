@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_WALLET_H
 #define NEXUS_LEGACY_WALLET_WALLET_H
 
+#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -161,7 +162,7 @@ namespace Legacy
 
 
         /** Flag indicating whether or not the wallet instance has been initialized **/
-        static bool fWalletInitialized;
+        static std::atomic<bool> fWalletInitialized;
 
 
         /** The current wallet version: clients below this version are not able to load the wallet **/

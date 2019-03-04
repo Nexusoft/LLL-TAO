@@ -57,7 +57,7 @@ namespace Legacy
 
 
     /* Initialize static variables */
-    bool Wallet::fWalletInitialized = false;
+    std::atomic<bool> Wallet::fWalletInitialized(false);
 
 
     /** Constructor **/
@@ -93,13 +93,16 @@ namespace Legacy
     /* Initializes the wallet instance. */
     bool Wallet::InitializeWallet(const std::string& strWalletFileIn)
     {
-        if (Wallet::fWalletInitialized)
+        if (Wallet::fWalletInitialized.load())
             return false;
         else
         {
             Wallet& wallet = Wallet::GetInstance();
             wallet.strWalletFile = strWalletFileIn;
             wallet.fFileBacked = true;
+
+            WalletDB walletdb(strWalletFileIn);
+            walletdb.InitializeDatabase();
         }
 
         return true;
@@ -111,10 +114,8 @@ namespace Legacy
         /* This will create a default initialized, memory only wallet file on first call (lazy instantiation) */
         static Wallet wallet;
 
-        if (!Wallet::fWalletInitialized)
-        {
-            Wallet::fWalletInitialized = true;
-        }
+        if (!Wallet::fWalletInitialized.load())
+            Wallet::fWalletInitialized.store(true);
 
         return wallet;
     }

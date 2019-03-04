@@ -27,10 +27,7 @@ namespace Legacy
 {
 
     /* Static variable initialization */
-
-    std::map<std::string, BerkeleyDB*> BerkeleyDB::mapBerkeleyInstances;
-
-    std::mutex BerkeleyDB::mapMutex;
+    bool BerkeleyDB::fDbInitialized = false;
 
 
     /* Constructor */
@@ -708,80 +705,24 @@ namespace Legacy
     /* Retrieves the BerkeleyDB instance that corresponds to a given database file. */
     BerkeleyDB& BerkeleyDB::GetInstance(const std::string& strFileIn)
     {
-        if (strFileIn.empty())
+        if (!BerkeleyDB::fDbInitialized && strFileIn.empty())
         {
-            debug::error(FUNCTION, "Missing file name");
-            throw std::runtime_error(debug::safe_printstr(FUNCTION, "Missing file name"));
+            debug::error(FUNCTION, "Berkeley database initialization missing file name");
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, "Berkeley database initialization missing file name"));
         }
 
-        {
-            LOCK(BerkeleyDB::mapMutex);
+        /* This will create an initialized, database instance on first call to GetInstance() */
+        static BerkeleyDB dbInstance(strFileIn);
 
-            if (mapBerkeleyInstances.count(strFileIn) > 0)
-                return *mapBerkeleyInstances[strFileIn];
+        if (BerkeleyDB::fDbInitialized && !strFileIn.empty() && dbInstance.strDbFile.compare(strFileIn) != 0)
+        {
+            debug::error(FUNCTION, "Invalid attempt to change Berkeley database file name");
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, "Invalid attempt to change Berkeley database file name"));
         }
 
-        /* Initialize outside map lock, which requires a bit of backbending if another thread adds to map while we do it */
-        BerkeleyDB* pNewDb = new BerkeleyDB(strFileIn);
-        BerkeleyDB* pDbToReturn = nullptr;
-        bool fAlreadyHaveDb = false;
+        BerkeleyDB::fDbInitialized = true;
 
-        {
-            LOCK(BerkeleyDB::mapMutex);
-
-            if (mapBerkeleyInstances.count(strFileIn) > 0)
-            {
-                pDbToReturn = mapBerkeleyInstances[strFileIn];
-                fAlreadyHaveDb = true;
-            }
-            else 
-            {
-                pDbToReturn = pNewDb;
-                mapBerkeleyInstances[strFileIn] = pNewDb;
-            }
-        }
-
-        if (fAlreadyHaveDb)
-        {
-            /* Don't have to lock around these calls because nobody else could possibly be using pNewDb */
-            pNewDb->CloseHandle();
-            pNewDb->dbenv->close(0);
-            delete pNewDb;
-            pNewDb = nullptr;
-        }
-
-        return *pDbToReturn;
-    }
-
-
-    /* Retrieves a list of all open BerkeleyDB instances. */
-    std::vector<BerkeleyDB*> BerkeleyDB::GetInstances()
-    {
-        std::vector<BerkeleyDB*> vDatabases;
-
-        {
-            LOCK(BerkeleyDB::mapMutex);
-
-            for (const auto& mapEntry : mapBerkeleyInstances)
-                vDatabases.push_back(mapEntry.second);
-        }
-
-        return vDatabases;
-    }
-
-
-    /* Removes a closed instance from the database environment. */
-    void BerkeleyDB::RemoveInstance(const std::string& strFileIn)
-    {
-        LOCK(BerkeleyDB::mapMutex);
-
-        if (mapBerkeleyInstances.count(strFileIn) > 0)
-        {
-            BerkeleyDB* dbToRemove = mapBerkeleyInstances[strFileIn];
-            mapBerkeleyInstances.erase(strFileIn);
-            delete dbToRemove;
-            dbToRemove = nullptr;
-        }
+        return dbInstance;
     }
 
 }

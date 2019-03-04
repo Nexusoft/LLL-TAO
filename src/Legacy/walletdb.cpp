@@ -59,14 +59,14 @@ namespace Legacy
     bool WalletDB::WriteMasterKey(const uint32_t nMasterKeyId, const MasterKey& kMasterKey)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Write(std::make_pair(std::string("mkey"), nMasterKeyId), kMasterKey, true);
+        return BerkeleyDB::GetInstance().Write(std::make_pair(std::string("mkey"), nMasterKeyId), kMasterKey, true);
     }
 
 
     /* Reads the minimum database version supported by this wallet database. */
     bool WalletDB::ReadMinVersion(uint32_t& nVersion)
     {
-        return BerkeleyDB::GetInstance(strWalletFile).Read(std::string("minversion"), nVersion);
+        return BerkeleyDB::GetInstance().Read(std::string("minversion"), nVersion);
     }
 
 
@@ -74,7 +74,7 @@ namespace Legacy
     bool WalletDB::WriteMinVersion(const uint32_t nVersion)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Write(std::string("minversion"), nVersion, true);
+        return BerkeleyDB::GetInstance().Write(std::string("minversion"), nVersion, true);
     }
 
 
@@ -82,7 +82,7 @@ namespace Legacy
     bool WalletDB::ReadAccount(const std::string& strAccount, Account& account)
     {
         account.SetNull();
-        return BerkeleyDB::GetInstance(strWalletFile).Read(std::make_pair(std::string("acc"), strAccount), account);
+        return BerkeleyDB::GetInstance().Read(std::make_pair(std::string("acc"), strAccount), account);
     }
 
 
@@ -90,7 +90,7 @@ namespace Legacy
     bool WalletDB::WriteAccount(const std::string& strAccount, const Account& account)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Write(std::make_pair(std::string("acc"), strAccount), account);
+        return BerkeleyDB::GetInstance().Write(std::make_pair(std::string("acc"), strAccount), account);
     }
 
 
@@ -98,7 +98,7 @@ namespace Legacy
     bool WalletDB::ReadName(const std::string& strAddress, std::string& strName)
     {
         strName = "";
-        return BerkeleyDB::GetInstance(strWalletFile).Read(std::make_pair(std::string("name"), strAddress), strName);
+        return BerkeleyDB::GetInstance().Read(std::make_pair(std::string("name"), strAddress), strName);
     }
 
 
@@ -106,7 +106,7 @@ namespace Legacy
     bool WalletDB::WriteName(const std::string& strAddress, const std::string& strName)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Write(std::make_pair(std::string("name"), strAddress), strName);
+        return BerkeleyDB::GetInstance().Write(std::make_pair(std::string("name"), strAddress), strName);
     }
 
 
@@ -114,7 +114,7 @@ namespace Legacy
     bool WalletDB::EraseName(const std::string& strAddress)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Erase(std::make_pair(std::string("name"), strAddress));
+        return BerkeleyDB::GetInstance().Erase(std::make_pair(std::string("name"), strAddress));
     }
 
 
@@ -122,7 +122,7 @@ namespace Legacy
     bool WalletDB::ReadDefaultKey(std::vector<uint8_t>& vchPubKey)
     {
         vchPubKey.clear();
-        return BerkeleyDB::GetInstance(strWalletFile).Read(std::string("defaultkey"), vchPubKey);
+        return BerkeleyDB::GetInstance().Read(std::string("defaultkey"), vchPubKey);
     }
 
 
@@ -130,7 +130,7 @@ namespace Legacy
     bool WalletDB::WriteDefaultKey(const std::vector<uint8_t>& vchPubKey)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Write(std::string("defaultkey"), vchPubKey);
+        return BerkeleyDB::GetInstance().Write(std::string("defaultkey"), vchPubKey);
     }
 
 
@@ -138,7 +138,7 @@ namespace Legacy
     bool WalletDB::ReadTrustKey(std::vector<uint8_t>& vchPubKey)
     {
         vchPubKey.clear();
-        return BerkeleyDB::GetInstance(strWalletFile).Read(std::string("trustkey"), vchPubKey);
+        return BerkeleyDB::GetInstance().Read(std::string("trustkey"), vchPubKey);
     }
 
 
@@ -146,7 +146,7 @@ namespace Legacy
     bool WalletDB::WriteTrustKey(const std::vector<uint8_t>& vchPubKey)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Write(std::string("trustkey"), vchPubKey);
+        return BerkeleyDB::GetInstance().Write(std::string("trustkey"), vchPubKey);
     }
 
 
@@ -154,7 +154,7 @@ namespace Legacy
     bool WalletDB::EraseTrustKey()
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Erase(std::string("trustkey"));
+        return BerkeleyDB::GetInstance().Erase(std::string("trustkey"));
     }
 
 
@@ -162,7 +162,7 @@ namespace Legacy
     bool WalletDB::ReadKey(const std::vector<uint8_t>& vchPubKey, LLC::CPrivKey& vchPrivKey)
     {
         vchPrivKey.clear();
-        return BerkeleyDB::GetInstance(strWalletFile).Read(std::make_pair(std::string("key"), vchPubKey), vchPrivKey);
+        return BerkeleyDB::GetInstance().Read(std::make_pair(std::string("key"), vchPubKey), vchPrivKey);
     }
 
 
@@ -170,7 +170,7 @@ namespace Legacy
     bool WalletDB::WriteKey(const std::vector<uint8_t>& vchPubKey, const LLC::CPrivKey& vchPrivKey)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Write(std::make_pair(std::string("key"), vchPubKey), vchPrivKey, false);
+        return BerkeleyDB::GetInstance().Write(std::make_pair(std::string("key"), vchPubKey), vchPrivKey, false);
     }
 
 
@@ -178,7 +178,7 @@ namespace Legacy
     bool WalletDB::WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret, bool fEraseUnencryptedKey)
     {
         ++WalletDB::nWalletDBUpdated;
-        BerkeleyDB& db = BerkeleyDB::GetInstance(strWalletFile);
+        BerkeleyDB& db = BerkeleyDB::GetInstance();
 
         if (!db.Write(std::make_pair(std::string("ckey"), vchPubKey), vchCryptedSecret, false))
             return false;
@@ -195,7 +195,7 @@ namespace Legacy
     /* Reads the wallet transaction for a given transaction hash. */
     bool WalletDB::ReadTx(const uint512_t& hash, WalletTx& wtx)
     {
-        return BerkeleyDB::GetInstance(strWalletFile).Read(std::make_pair(std::string("tx"), hash), wtx);
+        return BerkeleyDB::GetInstance().Read(std::make_pair(std::string("tx"), hash), wtx);
     }
 
 
@@ -203,7 +203,7 @@ namespace Legacy
     bool WalletDB::WriteTx(const uint512_t& hash, const WalletTx& wtx)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Write(std::make_pair(std::string("tx"), hash), wtx);
+        return BerkeleyDB::GetInstance().Write(std::make_pair(std::string("tx"), hash), wtx);
     }
 
 
@@ -211,7 +211,7 @@ namespace Legacy
     bool WalletDB::EraseTx(const uint512_t& hash)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Erase(std::make_pair(std::string("tx"), hash));
+        return BerkeleyDB::GetInstance().Erase(std::make_pair(std::string("tx"), hash));
     }
 
 
@@ -219,7 +219,7 @@ namespace Legacy
     bool WalletDB::ReadScript(const uint256_t& hash, Script& redeemScript)
     {
         redeemScript.clear();
-        return BerkeleyDB::GetInstance(strWalletFile).Read(std::make_pair(std::string("cscript"), hash), redeemScript);
+        return BerkeleyDB::GetInstance().Read(std::make_pair(std::string("cscript"), hash), redeemScript);
     }
 
 
@@ -227,14 +227,14 @@ namespace Legacy
     bool WalletDB::WriteScript(const uint256_t& hash, const Script& redeemScript)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Write(std::make_pair(std::string("cscript"), hash), redeemScript, false);
+        return BerkeleyDB::GetInstance().Write(std::make_pair(std::string("cscript"), hash), redeemScript, false);
     }
 
 
     /* Reads a key pool entry from the database. */
     bool WalletDB::ReadPool(const uint64_t nPool, KeyPoolEntry& keypoolEntry)
     {
-        return BerkeleyDB::GetInstance(strWalletFile).Read(std::make_pair(std::string("pool"), nPool), keypoolEntry);
+        return BerkeleyDB::GetInstance().Read(std::make_pair(std::string("pool"), nPool), keypoolEntry);
     }
 
 
@@ -242,7 +242,7 @@ namespace Legacy
     bool WalletDB::WritePool(const uint64_t nPool, const KeyPoolEntry& keypoolEntry)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Write(std::make_pair(std::string("pool"), nPool), keypoolEntry);
+        return BerkeleyDB::GetInstance().Write(std::make_pair(std::string("pool"), nPool), keypoolEntry);
     }
 
 
@@ -250,14 +250,14 @@ namespace Legacy
     bool WalletDB::ErasePool(const uint64_t nPool)
     {
         ++WalletDB::nWalletDBUpdated;
-        return BerkeleyDB::GetInstance(strWalletFile).Erase(std::make_pair(std::string("pool"), nPool));
+        return BerkeleyDB::GetInstance().Erase(std::make_pair(std::string("pool"), nPool));
     }
 
 
     /* Stores an accounting entry in the wallet database. */
     bool WalletDB::WriteAccountingEntry(const AccountingEntry& acentry)
     {
-        return BerkeleyDB::GetInstance(strWalletFile).Write(
+        return BerkeleyDB::GetInstance().Write(
                     std::make_tuple(std::string("acentry"), acentry.strAccount, ++WalletDB::nAccountingEntryNumber), acentry);
     }
 
@@ -290,7 +290,7 @@ namespace Legacy
             expectedValue = false;
         }
 
-        BerkeleyDB& db = BerkeleyDB::GetInstance(strWalletFile);
+        BerkeleyDB& db = BerkeleyDB::GetInstance();
 
         auto pcursor = db.GetCursor();
 
@@ -350,6 +350,13 @@ namespace Legacy
     }
 
 
+    /* Initializes WalletDB for database access to the database file. */
+    void WalletDB::InitializeDatabase()
+    {
+        BerkeleyDB::GetInstance(strWalletFile);
+    }
+
+
     /* Initializes a wallet instance from the data in this wallet database. */
     uint32_t WalletDB::LoadWallet(Wallet& wallet)
     {
@@ -382,7 +389,7 @@ namespace Legacy
             expectedValue = false;
         }
 
-        BerkeleyDB& db = BerkeleyDB::GetInstance(strWalletFile);
+        BerkeleyDB& db = BerkeleyDB::GetInstance();
 
         /* Reset default key into wallet to clear any current value. (done now so it stays empty if none loaded) */
         wallet.vchDefaultKey.clear();
@@ -707,7 +714,7 @@ namespace Legacy
             expectedValue = false;
         }
 
-        BerkeleyDB& db = BerkeleyDB::GetInstance(strWalletFile);
+        BerkeleyDB& db = BerkeleyDB::GetInstance();
 
         if (db.TxnBegin())
         {
@@ -759,7 +766,7 @@ namespace Legacy
     /* Rewrites the backing database by copying all contents. */
     bool WalletDB::DBRewrite()
     {
-        return BerkeleyDB::GetInstance(strWalletFile).DBRewrite();
+        return BerkeleyDB::GetInstance().DBRewrite();
     }
 
 
@@ -774,7 +781,7 @@ namespace Legacy
 
         if (config::GetBoolArg("-flushwallet", true))
         {
-            WalletDB::flushThread = std::thread(WalletDB::ThreadFlushWalletDB, std::string(strFile));
+            WalletDB::flushThread = std::thread(WalletDB::ThreadFlushWalletDB);
             WalletDB::fFlushThreadStarted.store(true);
         }
 
@@ -794,7 +801,7 @@ namespace Legacy
 
 
     /* Function that loops until shutdown and periodically flushes a wallet db */
-    void WalletDB::ThreadFlushWalletDB(const std::string& strWalletFile)
+    void WalletDB::ThreadFlushWalletDB()
     {
         if (!config::GetBoolArg("-flushwallet", true))
             return;
@@ -845,7 +852,7 @@ namespace Legacy
                 bool desiredValue = true;
                 if (WalletDB::fDbInProgress.compare_exchange_strong(expectedValue, desiredValue))
                 {
-                    BerkeleyDB::GetInstance(strWalletFile).DBFlush();
+                    BerkeleyDB::GetInstance().DBFlush();
                     nLastFlushed = nLastSeen;
                     WalletDB::fDbInProgress.store(false);
                 }
@@ -938,7 +945,7 @@ namespace Legacy
             }
 
             /* Flush and detach the source file before we copy it */
-            BerkeleyDB::GetInstance(strSource).DBFlush();
+            BerkeleyDB::GetInstance().DBFlush();
 
             /* Copy wallet file from source to dest */
             if (filesystem::copy_file(pathSource, pathDest))
