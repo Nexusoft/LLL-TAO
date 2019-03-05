@@ -34,22 +34,26 @@ ________________________________________________________________________________
 #include <memory>
 #include <iomanip>
 
-namespace
-{
-    std::atomic<uint32_t> nAsked(0);
-
-    /* Static instantiation of orphan blocks in queue to process. */
-    std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
-
-    /* Mutex to protect checking more than one block at a time. */
-    std::mutex PROCESSING_MUTEX;
-}
-
 namespace LLP
 {
+    std::atomic<uint32_t> TritiumNode::nAsked(0);
+
+    /* Static instantiation of orphan blocks in queue to process. */
+    std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> TritiumNode::mapOrphans;
+
+    /* Mutex to protect checking more than one block at a time. */
+    std::mutex TritiumNode::PROCESSING_MUTEX;
+
+    /* Mutex to protect the legacy orphans map. */
+    std::mutex TritiumNode::ORPHAN_MUTEX;
+
+    /* Mutex to protect connected sessions. */
+    std::mutex TritiumNode::SESSIONS_MUTEX;
+
     /* global map connections to session ID's to be used to prevent duplicate connections to the same 
            sever, but via a different RLOC / EID */
-    std::map<uint64_t, TritiumNode*> TritiumNode::mapSessions;
+    std::map<uint64_t, TritiumNode*> TritiumNode::mapConnectedSessions;
+
 
     /* Static initialization of last get blocks. */
     memory::atomic<uint1024_t> TritiumNode::hashLastGetblocks;
@@ -76,6 +80,29 @@ namespace LLP
 
     /* The session identifier. */
     uint64_t TritiumNode::nSessionID = LLC::GetRand();
+
+    /* Helper function to switch the nodes on sync. */
+    void TritiumNode::SwitchNode()
+    {
+        /* Normal case of asking for a getblocks inventory message. */
+        memory::atomic_ptr<TritiumNode>& pBest = TRITIUM_SERVER->GetConnection(TritiumNode::addrFastSync.load());
+
+        /* Null check the pointer. */
+        if(pBest != nullptr)
+        {
+            try
+            {
+                /* Switch to a new node for fast sync. */
+                pBest->PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+            }
+            catch(const std::runtime_error& e)
+            {
+                debug::error(FUNCTION, e.what());
+
+                SwitchNode();
+            }
+        }
+    }
 
     /** Virtual Functions to Determine Behavior of Message LLP. **/
     void TritiumNode::Event(uint8_t EVENT, uint32_t LENGTH)
@@ -106,6 +133,30 @@ namespace LLP
 
             case EVENT_PACKET:
             {
+                /* Check a packet's validity once it is finished being read. */
+                if(fDDOS)
+                {
+
+                    /* Give higher score for Bad Packets. */
+                    if(INCOMING.Complete() && !INCOMING.IsValid())
+                    {
+
+                        debug::log(3, NODE, "Dropped Packet (Complete: ", INCOMING.Complete() ? "Y" : "N",
+                            " - Valid: )",  INCOMING.IsValid() ? "Y" : "N");
+
+                        if(DDOS)
+                            DDOS->rSCORE += 15;
+                    }
+
+                }
+
+                if(INCOMING.Complete())
+                {
+                    debug::log(4, NODE, "Received Packet (", INCOMING.LENGTH, ", ", INCOMING.GetBytes().size(), ")");
+
+                    if(config::GetArg("-verbose", 0) >= 5)
+                        PrintHex(INCOMING.GetBytes());
+                }
                 break;
             }
 
@@ -152,30 +203,12 @@ namespace LLP
                 {
                     debug::log(0, NODE, "fast sync event timeout");
 
-                    /* Normal case of asking for a getblocks inventory message. */
-                    memory::atomic_ptr<TritiumNode>& pBest = TRITIUM_SERVER->GetConnection(addrFastSync.load());
+                    /* Switch to a new node. */
+                    SwitchNode();
 
-                    /* Null pointer check. */
-                    if(pBest != nullptr)
-                    {
-                        try
-                        {
-                            /* Ask for another inventory batch. */
-                            pBest->PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
-                        }
-                        catch(const std::runtime_error& e)
-                        {
-                            debug::error(FUNCTION, e.what());
-                        }
-                    }
-                    else
-                    {
-                        debug::error(FUNCTION, "no nodes available to switch");
-
-                        nLastTimeReceived = runtime::timestamp();
-                        nLastGetBlocks    = runtime::timestamp();
-                    }
+                    /* Reset the event timeouts. */
+                    nLastTimeReceived = runtime::timestamp();
+                    nLastGetBlocks    = runtime::timestamp();
                 }
 
                 break;
@@ -209,25 +242,8 @@ namespace LLP
                 /* Detect if the fast sync node was disconnected. */
                 if(addrFastSync == GetAddress())
                 {
-                    /* Normal case of asking for a getblocks inventory message. */
-                    memory::atomic_ptr<TritiumNode>& pBest = TRITIUM_SERVER->GetConnection(addrFastSync.load());
-
-                    /* Null check the pointer. */
-                    if(pBest != nullptr)
-                    {
-                        try
-                        {
-                            /* Switch to a new node for fast sync. */
-                            pBest->PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
-                            /* Debug output. */
-                            debug::log(0, NODE, "fast sync node dropped, switching to ", addrFastSync.load().ToStringIP());
-                        }
-                        catch(const std::runtime_error& e)
-                        {
-                            debug::error(FUNCTION, e.what());
-                        }
-                    }
+                    /* Switch the node. */
+                    SwitchNode();
                 }
 
                 /* Debug output for node disconnect. */
@@ -238,7 +254,13 @@ namespace LLP
                     TRITIUM_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
                 /* Finally remove this connection from the global map by session*/
-                mapSessions.erase(TritiumNode::nSessionID);
+                {
+                    LOCK(SESSIONS_MUTEX);
+
+                    /* Free the connected session. */
+                    if(mapConnectedSessions.count(nCurrentSession))
+                        mapConnectedSessions.erase(nCurrentSession);
+                }
 
                 break;
             }
@@ -257,36 +279,18 @@ namespace LLP
             case DAT_VERSION:
             {
                 /* Deserialize the session identifier. */
-                uint64_t nSession;
-                ssPacket >> nSession;
+                ssPacket >> nCurrentSession;
 
                 /* Get your address. */
                 BaseAddress addr;
                 ssPacket >> addr;
 
                 /* Check for a connect to self. */
-                if(nSession == TritiumNode::nSessionID)
                 {
-                    debug::log(0, FUNCTION, "connected to self");
-
-                    /* Cache self-address in the banned list of the Address Manager. */
-                    if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
-                        TRITIUM_SERVER->pAddressManager->Ban(addr);
-
-                    return false;
-                }
-                /* Check for existing connection to same node*/
-                else if( mapSessions.find(nSession) != mapSessions.end())
-                {
-                    TritiumNode* pConnection = mapSessions.at(nSession);
-                    
-                    /* If the existing connection is via LISP then we make a preference for it and disallow the 
-                       incoming connection. Otherwise if the incoming is via LISP and the existing is not we 
-                       disconnect the the existing connection in favour of the LISP route */
-                    if( !GetAddress().IsEID() || pConnection->GetAddress().IsEID() )
+                    LOCK(SESSIONS_MUTEX);
+                    if(nCurrentSession == TritiumNode::nSessionID)
                     {
-                        /* don't allow new connection */
-                        debug::log(0, FUNCTION, "duplicate connection attempt to same server prevented.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
+                        debug::log(0, FUNCTION, "connected to self");
 
                         /* Cache self-address in the banned list of the Address Manager. */
                         if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
@@ -294,24 +298,45 @@ namespace LLP
 
                         return false;
                     }
-                    else
+                    /* Check for existing connection to same node*/
+                    else if( mapConnectedSessions.count(nCurrentSession) > 0)
                     {
-                        /* initiate disconnect of existing connection in favour of new one */
-                        debug::log(0, FUNCTION, "duplicate connection attempt to same server.  Switching to EID connection.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
-
-                        pConnection->Disconnect();
+                        TritiumNode* pConnection = mapConnectedSessions.at(nCurrentSession);
                         
-                        if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
-                            TRITIUM_SERVER->pAddressManager->Ban(pConnection->GetAddress());
+                        /* If the existing connection is via LISP then we make a preference for it and disallow the 
+                        incoming connection. Otherwise if the incoming is via LISP and the existing is not we 
+                        disconnect the the existing connection in favour of the LISP route */
+                        if( !GetAddress().IsEID() || pConnection->GetAddress().IsEID() )
+                        {
+                            /* don't allow new connection */
+                            debug::log(0, FUNCTION, "duplicate connection attempt to same server prevented.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
+
+                            /* Cache self-address in the banned list of the Address Manager. */
+                            if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
+                                TRITIUM_SERVER->pAddressManager->Ban(addr);
+
+                            return false;
+                        }
+                        else
+                        {
+                            /* initiate disconnect of existing connection in favour of new one */
+                            debug::log(0, FUNCTION, "duplicate connection attempt to same server.  Switching to EID connection.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
+
+                            pConnection->Disconnect();
+                            
+                            if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
+                                TRITIUM_SERVER->pAddressManager->Ban(pConnection->GetAddress());
+                        }
                     }
+                
+
+                    /* Add this connection into the global map once we have verified the DAT_VERSION message and 
+                        are happy to allow the connection */
+                    mapConnectedSessions[nCurrentSession] = this;
                 }
-
-                /* Add this connection into the global map once we have verified the DAT_VERSION message and 
-                    are happy to allow the connection */
-                mapSessions[TritiumNode::nSessionID] = this;
-
+                
                 /* Debug output for offsets. */
-                debug::log(3, NODE, "received session identifier ",nSessionID);
+                debug::log(3, NODE, "received session identifier ",nCurrentSession);
 
 
                 /* Send version message if connection is inbound. */
@@ -365,12 +390,23 @@ namespace LLP
 
                 /* Check map known requests. */
                 if(!mapSentRequests.count(nRequestID))
-                    return debug::error(NODE "offset not requested");
+                {
+                    if(DDOS)
+                        DDOS->rSCORE += 5;
+
+                    debug::log(3, NODE, "Invalid Request : Message Not Requested [", nRequestID, "][", nLatency, " ms]");
+
+                    break;
+                }
 
                 /* Check the time since request was sent. */
                 if(runtime::timestamp() - mapSentRequests[nRequestID] > 10)
                 {
-                    debug::log(0, NODE, "offset is stale.");
+                    debug::log(3, NODE, "Invalid Request : Message Stale [", nRequestID, "][", nLatency, " ms]");
+
+                    if(DDOS)
+                        DDOS->rSCORE += 15;
+                    
                     mapSentRequests.erase(nRequestID);
 
                     break;
@@ -380,8 +416,11 @@ namespace LLP
                 int32_t nOffset;
                 ssPacket >> nOffset;
 
+                /* Adjust the Offset for Latency. */
+                nOffset -= nLatency;
+
                 /* Debug output for offsets. */
-                debug::log(3, NODE, "received offset ", nOffset);
+                debug::log(3, NODE, "Received Unified Offset ", nOffset, " [", nRequestID, "][", nLatency, " ms]");
 
                 /* Remove sent requests from mpa. */
                 mapSentRequests.erase(nRequestID);
@@ -852,6 +891,15 @@ namespace LLP
                 std::vector<BaseAddress> vAddr;
                 ssPacket >> vLegacyAddr;
 
+                /* Don't want addr from older versions unless seeding */
+                if (vLegacyAddr.size() > 2000)
+                {
+                    if(DDOS)
+                        DDOS->rSCORE += 20;
+
+                    return debug::error(NODE, "message addr size() = ", vLegacyAddr.size(), "... Dropping Connection");
+                }
+
                 if(TRITIUM_SERVER)
                 {
                     /* try to establish the connection on the port the server is listening to */
@@ -908,7 +956,7 @@ namespace LLP
                     TRITIUM_SERVER->pAddressManager->SetLatency(nLatency, GetAddress());
 
                 /* Debug output for latency. */
-                debug::log(3, NODE "latency ", nLatency, " ms");
+                debug::log(3, NODE, "Latency (Nonce ", std::hex, nNonce, " - ", std::dec, nLatency, " ms)");
 
                 /* Clear the latency tracker record. */
                 mapLatencyTracker.erase(nNonce);
@@ -922,9 +970,7 @@ namespace LLP
 
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool TritiumNode::Process(const TAO::Ledger::Block& block, TritiumNode* pnode)
-    {
-        LOCK(PROCESSING_MUTEX);
-        
+    {   
         /* Check if the block is valid. */
         uint1024_t hash = block.GetHash();
         if(!block.Check())
@@ -938,24 +984,11 @@ namespace LLP
                 pnode->PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
             else if(!config::GetBoolArg("-fastsync"))
             {
-                /* Normal case of asking for a getblocks inventory message. */
-                memory::atomic_ptr<TritiumNode>& pBest = TRITIUM_SERVER->GetConnection(addrFastSync.load());
-
-                /* Null check the pointer. */
-                if(pBest != nullptr)
-                {
-                    try
-                    {
-                        /* Push a new getblocks request. */
-                        pBest->PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
-                    }
-                    catch(const std::runtime_error& e)
-                    {
-                        debug::error(FUNCTION, e.what());
-                    }
-                }
+                /* Switch to a new node. */
+                SwitchNode();
             }
+
+            LOCK(ORPHAN_MUTEX);
 
             /* Continue if already have this orphan. */
             if(mapOrphans.count(block.hashPrevBlock))
@@ -989,6 +1022,7 @@ namespace LLP
         }
 
         /* Check if valid in the chain. */
+        LOCK(PROCESSING_MUTEX);
         if(!block.Accept())
         {
             /* Increment the consecutive failures. */
@@ -1007,25 +1041,7 @@ namespace LLP
                     /* Find a new fast sync node if too many failures. */
                     if(addrFastSync == pnode->GetAddress())
                     {
-                        /* Normal case of asking for a getblocks inventory message. */
-                        memory::atomic_ptr<TritiumNode>& pBest = TRITIUM_SERVER->GetConnection(addrFastSync.load());
-
-                        /* Null check the pointer. */
-                        if(pBest != nullptr)
-                        {
-                            try
-                            {
-                                /* Switch to a new node for fast sync. */
-                                pBest->PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
-                                /* Debug output. */
-                                debug::error(FUNCTION, "fast sync node reached failure limit...");
-                            }
-                            catch(const std::runtime_error& e)
-                            {
-                                debug::error(FUNCTION, e.what());
-                            }
-                        }
+                        SwitchNode();
                     }
                 }
 
@@ -1065,6 +1081,7 @@ namespace LLP
         }
 
         /* Process orphan if found. */
+        std::unique_lock<std::mutex> lock(ORPHAN_MUTEX);
         while(mapOrphans.count(hash))
         {
             uint1024_t hashPrev = mapOrphans[hash]->GetHash();

@@ -48,6 +48,8 @@ namespace LLP
         /** Default Constructor **/
         TritiumNode()
         : BaseConnection<TritiumPacket>()
+        , nCurrentSession(0)
+        , nStartingHeight(0)
         , nLastPing(0)
         , nLastSamples(0)
         , mapLatencyTracker()
@@ -62,6 +64,8 @@ namespace LLP
         /** Constructor **/
         TritiumNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN, isDDOS )
+        , nCurrentSession(0)
+        , nStartingHeight(0)
         , nLastPing(0)
         , nLastSamples(0)
         , mapLatencyTracker()
@@ -77,6 +81,8 @@ namespace LLP
         /** Constructor **/
         TritiumNode( DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS )
+        , nCurrentSession(0)
+        , nStartingHeight(0)
         , nLastPing(0)
         , nLastSamples(0)
         , mapLatencyTracker()
@@ -96,13 +102,14 @@ namespace LLP
         /** Randomly genearted session ID. **/
         static uint64_t nSessionID;
 
-        /* global map connections to session ID's to be used to prevent duplicate connections to the same 
-           sever, but via a different RLOC / EID */
-        static std::map<uint64_t, TritiumNode*> mapSessions;
+        /** The current session ID. **/
+        uint64_t nCurrentSession;
+
+        /** The height of this node given at the version message. **/
+        uint32_t nStartingHeight;
 
         /** Counter to keep track of the last time a ping was made. **/
         std::atomic<uint64_t> nLastPing;
-
 
         /** Counter to keep track of last time sample request. */
         std::atomic<uint64_t> nLastSamples;
@@ -124,6 +131,24 @@ namespace LLP
         /* Orphans connection reset. */
         uint32_t nConsecutiveOrphans;
 
+        static std::atomic<uint32_t> nAsked;
+
+        /* Static instantiation of orphan blocks in queue to process. */
+        static std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
+
+        /* Mutex to protect checking more than one block at a time. */
+        static std::mutex PROCESSING_MUTEX;
+
+        /* Mutex to protect the legacy orphans map. */
+        static std::mutex ORPHAN_MUTEX;
+
+        /* Mutex to protect connected sessions. */
+        static std::mutex SESSIONS_MUTEX;
+
+        /* global map connections to session ID's to be used to prevent duplicate connections to the same 
+            sever, but via a different RLOC / EID */
+        static std::map<uint64_t, TritiumNode*> mapConnectedSessions;
+
         /** The last getblocks call this node has received. **/
         static memory::atomic<uint1024_t> hashLastGetblocks;
 
@@ -141,9 +166,16 @@ namespace LLP
 
         static LLD::KeyLRU cacheInventory;
 
-
         /** Flag to determine if a connection is Inbound. **/
         bool fInbound;
+
+
+        /** SwitchNode
+        *
+        *  Helper function to switch the nodes on sync.
+        *
+        **/
+        static void SwitchNode();
 
 
         /** Event
