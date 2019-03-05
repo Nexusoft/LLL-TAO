@@ -412,8 +412,17 @@ namespace TAO
                     {
                         if (fPrintTransactionDetail)
                         {
-                            txinfo.push_back(tx.ToStringShort());
-                            txinfo.push_back(convert::DateTimeStrFormat(tx.nTimestamp));
+                            json::json txdata;
+
+                            txdata["timestamp"] = convert::DateTimeStrFormat(tx.nTimestamp);
+                            txdata["type"] = tx.GetTxTypeString();
+                            
+                            txdata["hash"] = tx.GetHash().GetHex();
+                            txdata["hashNext"] = tx.hashNext.ToString().substr(0, 20);
+                            txdata["hashPrevTx"] = tx.hashPrevTx.ToString().substr(0, 20);
+                            txdata["hashGenesis"] =  tx.hashGenesis.ToString().substr(0, 20);
+
+                            txinfo.push_back(txdata);
                         }
                         else
                             txinfo.push_back(tx.GetHash().GetHex());
@@ -427,12 +436,24 @@ namespace TAO
                     {
                         if (fPrintTransactionDetail)
                         {
-                            txinfo.push_back(tx.ToStringShort());
-                            txinfo.push_back(convert::DateTimeStrFormat(tx.nTime));
+                            json::json txdata;
+
+                            txdata["timestamp"] = convert::DateTimeStrFormat(tx.nTime);
+                            txdata["type"] = tx.GetTxTypeString();
+                            txdata["hash"] = tx.GetHash().GetHex();
+
+                            json::json vin = json::json::array();
                             for(const Legacy::TxIn& txin : tx.vin)
-                                txinfo.push_back(txin.ToStringShort());
+                                vin.push_back(txin.ToStringShort());
+                            txdata["vin"] = vin;
+
+                            json::json vout = json::json::array();
                             for(const Legacy::TxOut& txout : tx.vout)
-                                txinfo.push_back(txout.ToStringShort());
+                                vout.push_back(txout.ToStringShort());
+                            txdata["vout"] = vout;
+
+                            txinfo.push_back(txdata);
+
                         }
                         else
                             txinfo.push_back(tx.GetHash().GetHex());

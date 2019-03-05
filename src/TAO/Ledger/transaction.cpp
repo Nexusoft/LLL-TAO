@@ -233,6 +233,14 @@ namespace TAO
         std::string Transaction::ToStringShort() const
         {
             std::string str;
+            std::string txtype = GetTxTypeString();
+            str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
+            return str;
+        }
+
+        /*  User readable description of the transaction type. */
+        std::string Transaction::GetTxTypeString() const
+        {
             std::string txtype = "tritium ";
             if(IsCoinbase())
                 txtype += "base";
@@ -242,8 +250,8 @@ namespace TAO
                 txtype += "genesis";
             else
                 txtype += "user";
-            str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
-            return str;
+
+            return txtype;
         }
     }
 }
