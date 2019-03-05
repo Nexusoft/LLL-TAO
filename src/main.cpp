@@ -103,7 +103,7 @@ namespace LLP
 
 
     template <class ProtocolType>
-    void HandleManualConnections(Server<ProtocolType> *pServer)
+    void MakeConnections(Server<ProtocolType> *pServer)
     {
         /* -connect means try to establish a connection first. */
         if(config::mapMultiArgs["-connect"].size() > 0)
@@ -123,7 +123,7 @@ namespace LLP
     }
 
 
-    /** Create_TAO_Server
+    /** CreateTAOServer
      *
      *  Helper for creating Legacy/Tritium Servers.
      *
@@ -136,45 +136,40 @@ namespace LLP
      *
      **/
     template <class ProtocolType>
-    Server<ProtocolType> *Create_TAO_Server(uint16_t port)
+    Server<ProtocolType>* CreateTAOServer(uint16_t port)
     {
-        uint16_t threads = static_cast<uint16_t>(config::GetArg(std::string("-threads"), 10));
-
-
-        uint32_t timeout = static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 30));
-
-
-        bool f_ddos = config::GetBoolArg(std::string("-ddos"), false);
-
-
-        uint32_t c_score = static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1));
-
-
-        uint32_t r_score = static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 50));
-
-
-        uint32_t timespan = static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60));
-
-
-        bool f_listen = config::GetBoolArg(std::string("-listen"), true);
-
-
-        bool f_meter = config::GetBoolArg(std::string("-meters"), false);
-
-        /* If a manual connection is specified, turn off address manager. */
-        bool f_manager = config::GetBoolArg(std::string("-manager"), true);
-
+        /* Create the new server object. */
         return new Server<ProtocolType>(
+
+            /* The port this server listens on. */
             port,
-            threads,
-            timeout,
-            f_ddos,
-            c_score,
-            r_score,
-            timespan,
-            f_listen,
-            f_meter,
-            f_manager);
+
+            /* The total data I/O threads. */
+            static_cast<uint16_t>(config::GetArg(std::string("-threads"), 10),
+
+            /* The timeout value (default: 30 seconds). */
+            static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 30),
+
+            /* The DDOS if enabled. */
+            config::GetBoolArg(std::string("-ddos"), false),
+
+            /* The connection score (total connections per second). */
+            static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1),
+
+            /* The request score (total packets per second.) */
+            static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 50),
+
+            /* The DDOS moving average timespan (default: 60 seconds). */
+            static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60),
+
+            /* Flag to determine if server should listen. */
+            config::GetBoolArg(std::string("-listen"), true),
+
+            /* Flag to determine if meters should be active. */
+            config::GetBoolArg(std::string("-meters"), false),
+
+            /* Flag to determine if the connection manager should try new connections. */
+            config::GetBoolArg(std::string("-manager"), true));
     }
 
 
@@ -211,7 +206,7 @@ void Daemonize()
     pid_t pid = fork();
     if (pid < 0)
     {
-        debug::error("Error: fork() returned ", pid, " errno ", errno);
+        debug::error(FUNCTION, "fork() returned ", pid, " errno ", errno);
         exit(EXIT_FAILURE);
     }
     if (pid > 0)
@@ -226,7 +221,7 @@ void Daemonize()
     pid_t sid = setsid();
     if (sid < 0)
     {
-        debug::error("Error: setsid() returned ", sid, " errno %d", errno);
+        debug::error(FUNCTION, "setsid() returned ", sid, " errno %d", errno);
         exit(EXIT_FAILURE);
     }
 
@@ -294,6 +289,7 @@ int main(int argc, char** argv)
     }
 
 
+    /* Initialize system logging. */
     if(!debug::init())
         printf("Unable to initalize system logging\n");
 
@@ -397,10 +393,10 @@ int main(int argc, char** argv)
         port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? 8888 : 9888));
 
         /* Initialize the Tritium Server. */
-        LLP::TRITIUM_SERVER = LLP::Create_TAO_Server<LLP::TritiumNode>(port);
+        LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(port);
 
         /* Handle Manual Connections from Command Line, if there are any. */
-        LLP::HandleManualConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
+        LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
     }
     else
     {
@@ -408,10 +404,10 @@ int main(int argc, char** argv)
         port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? 8323 : 9323));
 
         /* Initialize the Legacy Server. */
-        LLP::LEGACY_SERVER = LLP::Create_TAO_Server<LLP::LegacyNode>(port);
+        LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(port);
 
         /* Handle Manual Connections from Command Line, if there are any. */
-        LLP::HandleManualConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
+        LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
     }
 
 
