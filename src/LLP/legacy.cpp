@@ -40,8 +40,10 @@ ________________________________________________________________________________
 
 #include <iomanip>
 
-namespace
+
+namespace LLP
 {
+    /* Keep track of how many blocks have been asked for. */
     std::atomic<uint32_t> nAsked(0);
 
     /* Static instantiation of orphan blocks in queue to process. */
@@ -52,12 +54,14 @@ namespace
 
     /* Mutex to protect the legacy orphans map. */
     std::mutex ORPHAN_MUTEX;
-}
 
-namespace LLP
-{
+    /* Mutex to protect connected sessions. */
+    std::mutex SESSIONS_MUTEX;
 
-    /** Helper function to switch the nodes on sync. **/
+    /* Map to keep track of duplicate nonce sessions. */
+    std::map<uint64_t, bool> mapConnectedSessions;
+
+    /* Helper function to switch the nodes on sync. */
     void SwitchNode()
     {
         /* Normal case of asking for a getblocks inventory message. */
@@ -79,7 +83,7 @@ namespace LLP
             }
         }
     }
-    
+
 
     /* Static initialization of last get blocks. */
     memory::atomic<uint1024_t> LegacyNode::hashLastGetblocks;
@@ -281,6 +285,14 @@ namespace LLP
                 SwitchNode();
             }
 
+            {
+                LOCK(SESSIONS_MUTEX);
+
+                /* Free the connected session. */
+                if(mapConnectedSessions.count(nCurrentSession))
+                    mapConnectedSessions.erase(nSessionID);
+            }
+
             /* Update address manager that this connection was dropped. */
             if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
@@ -314,17 +326,16 @@ namespace LLP
             LegacyAddress addrMe;
             LegacyAddress addrFrom;
             uint64_t nServices = 0;
-            uint64_t nSession  = 0;
 
             /* Check the Protocol Versions */
             ssMessage >> nCurrentVersion;
 
             /* Deserialize the rest of the data. */
-            ssMessage >> nServices >> nTime >> addrMe >> addrFrom >> nSession >> strNodeVersion >> nStartingHeight;
+            ssMessage >> nServices >> nTime >> addrMe >> addrFrom >> nCurrentSession >> strNodeVersion >> nStartingHeight;
             debug::log(1, NODE, "version message: version ", nCurrentVersion, ", blocks=",  nStartingHeight);
 
             /* Check for a connect to self. */
-            if(nSession == LegacyNode::nSessionID)
+            if(nCurrentSession == LegacyNode::nSessionID)
             {
                 debug::log(0, FUNCTION, "connected to self");
 
@@ -334,6 +345,22 @@ namespace LLP
 
                 return false;
             }
+
+
+            /* Check for duplicate connections. */
+            {
+                LOCK(SESSIONS_MUTEX);
+                if(mapConnectedSessions.count(nCurrentSession))
+                {
+                    debug::log(0, FUNCTION, "duplicate connection");
+
+                    return false;
+                }
+
+                /* Claim this connection's session ID. */
+                mapConnectedSessions[nCurrentSession] = true;
+            }
+
 
             /* Update the block height in the Address Manager. */
             if(LEGACY_SERVER && LEGACY_SERVER->pAddressManager)
