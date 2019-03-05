@@ -536,7 +536,7 @@ namespace Legacy
                 BerkeleyDB::mapFileUseCount.erase(strFile);
             }
 
-            debug::log(0, FUNCTION, "Rewriting ", strFile.c_str(), "...");
+            debug::log(0, FUNCTION, "Rewriting ", strFile, "...");
 
             Db* pdbSource = new Db(&BerkeleyDB::dbenv, 0);
             Db* pdbCopy = new Db(&BerkeleyDB::dbenv, 0);
@@ -634,7 +634,7 @@ namespace Legacy
                     /* Error reading cursor */
                     pcursor->close();
                     fProcessSuccess = false;
-                    debug::log(0, FUNCTION, "Failure reading cursor on database file ", strFile.c_str());
+                    debug::log(0, FUNCTION, "Failure reading cursor on database file ", strFile);
                     break;
                 }
 
@@ -660,7 +660,7 @@ namespace Legacy
                 {
                     pcursor->close();
                     fProcessSuccess = false;
-                    debug::log(0, FUNCTION, "Failure writing target database file ", strFile.c_str());
+                    debug::log(0, FUNCTION, "Failure writing target database file ", strFile);
                     break;
                 }
             }
@@ -683,7 +683,7 @@ namespace Legacy
                 Db dbOld(&BerkeleyDB::dbenv, 0);
                 if (dbOld.remove(strFile.c_str(), nullptr, 0) != 0)
                 {
-                    debug::log(0, FUNCTION, "Unable to remove old database file ", strFile.c_str());
+                    debug::log(0, FUNCTION, "Unable to remove old database file ", strFile);
                     fProcessSuccess = false;
                 }
             }
@@ -694,13 +694,13 @@ namespace Legacy
                 Db dbNew(&BerkeleyDB::dbenv, 0);
                 if (dbNew.rename(strFileRewrite.c_str(), nullptr, strFile.c_str(), 0) != 0)
                 {
-                    debug::log(0, FUNCTION, "Unable to rename database file ", strFileRewrite.c_str(), " to ", strFile.c_str());
+                    debug::log(0, FUNCTION, "Unable to rename database file ", strFileRewrite, " to ", strFile);
                     fProcessSuccess = false;
                 }
             }
 
             if (!fProcessSuccess)
-                debug::log(0, FUNCTION, "Rewriting of ", strFile.c_str(), " FAILED!");
+                debug::log(0, FUNCTION, "Rewriting of ", strFile, " FAILED!");
 
         } //End lock scope
 

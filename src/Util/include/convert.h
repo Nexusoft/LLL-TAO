@@ -227,38 +227,6 @@ namespace convert
     }
 
 
-    /** ip_string
-     *
-     *  Converts a byte vector containing ip into an ip string with dots
-     *
-     *  @param[in] ip the ip address element vector
-     *
-     *  @return the ip string
-     *
-     **/
-    inline std::string ip_string(std::vector<uint8_t> ip)
-    {
-        return debug::safe_printstr(ip[0], ".", ip[1], ".", ip[2], ".", ip[3]);
-    }
-
-
-    /** parse_ip
-     *
-     *  Parse an IP Address into a Byte Vector from Std::String.
-     *
-     *  @param[in] ip The string containing the ip address
-     *
-     *  @return the byte vector containing the 4 elements of the IP address
-     *
-     **/
-    inline std::vector<uint8_t> parse_ip(std::string ip)
-    {
-        std::vector<uint8_t> bytes(4, 0);
-        sscanf(ip.c_str(), "%hhu.%hhu.%hhu.%hhu", &bytes[0], &bytes[1], &bytes[2], &bytes[3]);
-
-        return bytes;
-    }
-
 
     /** uint2bytes
      *

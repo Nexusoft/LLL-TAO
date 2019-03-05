@@ -49,10 +49,37 @@ namespace
 
     /* Mutex to protect checking more than one block at a time. */
     std::mutex PROCESSING_MUTEX;
+
+    /* Mutex to protect the legacy orphans map. */
+    std::mutex ORPHAN_MUTEX;
 }
 
 namespace LLP
 {
+
+    /** Helper function to switch the nodes on sync. **/
+    void SwitchNode()
+    {
+        /* Normal case of asking for a getblocks inventory message. */
+        memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(LegacyNode::addrFastSync.load());
+
+        /* Null check the pointer. */
+        if(pBest != nullptr)
+        {
+            try
+            {
+                /* Switch to a new node for fast sync. */
+                pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+            }
+            catch(const std::runtime_error& e)
+            {
+                debug::error(FUNCTION, e.what());
+
+                SwitchNode();
+            }
+        }
+    }
+    
 
     /* Static initialization of last get blocks. */
     memory::atomic<uint1024_t> LegacyNode::hashLastGetblocks;
@@ -197,30 +224,12 @@ namespace LLP
             {
                 debug::log(0, NODE, "fast sync event timeout");
 
-                /* Normal case of asking for a getblocks inventory message. */
-                memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
+                /* Switch to a new node. */
+                SwitchNode();
 
-                /* Null pointer check. */
-                if(pBest != nullptr)
-                {
-                    try
-                    {
-                        /* Ask for another inventory batch. */
-                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
-                    }
-                    catch(const std::runtime_error& e)
-                    {
-                        debug::error(FUNCTION, e.what());
-                    }
-                }
-                else
-                {
-                    debug::error(FUNCTION, "no nodes available to switch");
-
-                    nLastTimeReceived = runtime::timestamp();
-                    nLastGetBlocks    = runtime::timestamp();
-                }
+                /* Reset the event timeouts. */
+                nLastTimeReceived = runtime::timestamp();
+                nLastGetBlocks    = runtime::timestamp();
             }
 
             //TODO: mapRequests data, if no response given retry the request at given times
@@ -268,25 +277,8 @@ namespace LLP
             /* Detect if the fast sync node was disconnected. */
             if(addrFastSync == GetAddress())
             {
-                /* Normal case of asking for a getblocks inventory message. */
-                memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
-
-                /* Null check the pointer. */
-                if(pBest != nullptr)
-                {
-                    try
-                    {
-                        /* Switch to a new node for fast sync. */
-                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
-                        /* Debug output. */
-                        debug::log(0, NODE, "fast sync node dropped, switching to ", addrFastSync.load().ToStringIP());
-                    }
-                    catch(const std::runtime_error& e)
-                    {
-                        debug::error(FUNCTION, e.what());
-                    }
-                }
+                /* Switch the node. */
+                SwitchNode();
             }
 
             /* Update address manager that this connection was dropped. */
@@ -831,8 +823,6 @@ namespace LLP
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
     {
-        LOCK(PROCESSING_MUTEX);
-        
         /* Check if the block is valid. */
         uint1024_t hash = block.GetHash();
         if(!block.Check())
@@ -846,24 +836,11 @@ namespace LLP
                 pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
             else if(!config::GetBoolArg("-fastsync"))
             {
-                /* Normal case of asking for a getblocks inventory message. */
-                memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
-
-                /* Null check the pointer. */
-                if(pBest != nullptr)
-                {
-                    try
-                    {
-                        /* Push a new getblocks request. */
-                        pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
-                    }
-                    catch(const std::runtime_error& e)
-                    {
-                        debug::error(FUNCTION, e.what());
-                    }
-                }
+                /* Switch to a new node. */
+                SwitchNode();
             }
+
+            LOCK(ORPHAN_MUTEX);
 
             /* Continue if already have this orphan. */
             if(mapLegacyOrphans.count(block.hashPrevBlock))
@@ -896,7 +873,9 @@ namespace LLP
             return true;
         }
 
+
         /* Check if valid in the chain. */
+        LOCK(PROCESSING_MUTEX);
         if(!block.Accept())
         {
             /* Increment the consecutive failures. */
@@ -915,25 +894,7 @@ namespace LLP
                     /* Find a new fast sync node if too many failures. */
                     if(addrFastSync == pnode->GetAddress())
                     {
-                        /* Normal case of asking for a getblocks inventory message. */
-                        memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(addrFastSync.load());
 
-                        /* Null check the pointer. */
-                        if(pBest != nullptr)
-                        {
-                            try
-                            {
-                                /* Switch to a new node for fast sync. */
-                                pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
-                                /* Debug output. */
-                                debug::error(FUNCTION, "fast sync node reached failure limit...");
-                            }
-                            catch(const std::runtime_error& e)
-                            {
-                                debug::error(FUNCTION, e.what());
-                            }
-                        }
                     }
                 }
 
@@ -973,6 +934,7 @@ namespace LLP
         }
 
         /* Process orphan if found. */
+        std::unique_lock<std::mutex> lock(ORPHAN_MUTEX);
         while(mapLegacyOrphans.count(hash))
         {
             Legacy::LegacyBlock& orphan = mapLegacyOrphans[hash];
