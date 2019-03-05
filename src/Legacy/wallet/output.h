@@ -92,7 +92,7 @@ namespace Legacy
          **/
         inline void print() const
         {
-            printf("%s", ToString().c_str());
+            debug::log(0, ToString());
         }
     };
 

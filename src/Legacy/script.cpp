@@ -86,42 +86,21 @@ namespace Legacy
 
 
     /* Get the op codes from stack */
-    bool Script::GetOp(iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet)
-    {
-        // Wrapper so it can be called with either iterator or const_iterator
-        const_iterator pc2 = pc;
-        bool fRet = GetOp2(pc2, opcodeRet, &vchRet);
-        pc = begin() + (pc2 - begin());
-        return fRet;
-    }
-
-
-    /* Get the op codes from stack */
-    bool Script::GetOp(iterator& pc, opcodetype& opcodeRet)
-    {
-        const_iterator pc2 = pc;
-        bool fRet = GetOp2(pc2, opcodeRet, nullptr);
-        pc = begin() + (pc2 - begin());
-        return fRet;
-    }
-
-
-    /* Get the op codes from stack */
-    bool Script::GetOp(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet) const
+    bool Script::GetOp(std::vector<uint8_t>::const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet) const
     {
         return GetOp2(pc, opcodeRet, &vchRet);
     }
 
 
     /* Get the op codes from stack */
-    bool Script::GetOp(const_iterator& pc, opcodetype& opcodeRet) const
+    bool Script::GetOp(std::vector<uint8_t>::const_iterator& pc, opcodetype& opcodeRet) const
     {
         return GetOp2(pc, opcodeRet, nullptr);
     }
 
 
     /* Get the op codes from stack */
-    bool Script::GetOp2(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>* pvchRet) const
+    bool Script::GetOp2(std::vector<uint8_t>::const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>* pvchRet) const
     {
         opcodeRet = OP_INVALIDOPCODE;
         if (pvchRet)
@@ -132,6 +111,7 @@ namespace Legacy
         // Read instruction
         if (end() - pc < 1)
             return false;
+
         uint32_t opcode = *pc++;
 
         // Immediate operand
@@ -146,33 +126,36 @@ namespace Legacy
             {
                 if (end() - pc < 1)
                     return false;
+
                 nSize = *pc++;
             }
             else if (opcode == OP_PUSHDATA2)
             {
                 if (end() - pc < 2)
                     return false;
+
                 nSize = 0;
                 //memcpy(&nSize, &pc[0], 2);
-                std::copy((uint8_t *)&pc[0], (uint8_t *)&pc[0] + 2, &nSize);
+                std::copy((uint8_t *)&pc[0], (uint8_t *)&pc[0] + 2, (uint8_t *)&nSize);
                 pc += 2;
             }
             else if (opcode == OP_PUSHDATA4)
             {
                 if (end() - pc < 4)
                     return false;
+
                 //memcpy(&nSize, &pc[0], 4);
-                std::copy((uint8_t *)&pc[0], (uint8_t *)&pc[0] + 4, &nSize);
+                std::copy((uint8_t *)&pc[0], (uint8_t *)&pc[0] + 4, (uint8_t *)&nSize);
                 pc += 4;
             }
-            if (end() - pc < nSize)
+            if (end() - pc < 0 || end() - pc < nSize)
                 return false;
             if (pvchRet)
                 pvchRet->assign(pc, pc + nSize);
             pc += nSize;
         }
 
-        opcodeRet = (opcodetype)opcode;
+        opcodeRet = static_cast<opcodetype>(opcode);
         return true;
     }
 
@@ -203,7 +186,7 @@ namespace Legacy
         int nFound = 0;
         if (b.empty())
             return nFound;
-        iterator pc = begin();
+        std::vector<uint8_t>::const_iterator pc = begin();
         opcodetype opcode;
         do
         {
@@ -224,7 +207,7 @@ namespace Legacy
     {
         int nFound = 0;
         opcodetype opcode;
-        for (const_iterator pc = begin(); pc != end() && GetOp(pc, opcode);)
+        for (std::vector<uint8_t>::const_iterator pc = begin(); pc != end() && GetOp(pc, opcode);)
             if (opcode == op)
                 ++nFound;
         return nFound;
@@ -235,7 +218,7 @@ namespace Legacy
     uint32_t Script::GetSigOpCount(bool fAccurate) const
     {
         uint32_t n = 0;
-        const_iterator pc = begin();
+        std::vector<uint8_t>::const_iterator pc = begin();
         opcodetype lastOpcode = OP_INVALIDOPCODE;
         while (pc < end())
         {
@@ -251,7 +234,6 @@ namespace Legacy
                 else
                     n += 20;
             }
-
             lastOpcode = opcode;
         }
         return n;
@@ -267,7 +249,7 @@ namespace Legacy
         // This is a pay-to-script-hash scriptPubKey;
         // get the last item that the scriptSig
         // pushes onto the stack:
-        const_iterator pc = scriptSig.begin();
+        std::vector<uint8_t>::const_iterator pc = scriptSig.begin();
         vector<uint8_t> data;
         while (pc < scriptSig.end())
         {
@@ -298,7 +280,7 @@ namespace Legacy
     /* Determine if script is a pushdata only script */
     bool Script::IsPushOnly() const
     {
-        const_iterator pc = begin();
+        std::vector<uint8_t>::const_iterator pc = begin();
         while (pc < end())
         {
             opcodetype opcode;
@@ -364,7 +346,7 @@ namespace Legacy
         std::string str;
         opcodetype opcode;
         std::vector<uint8_t> vch;
-        const_iterator pc = begin();
+        std::vector<uint8_t>::const_iterator pc = begin();
         while (pc < end())
         {
             if (!str.empty())
@@ -386,6 +368,6 @@ namespace Legacy
     /* Dump the Hex data into std::out or console */
     void Script::print() const
     {
-        printf("%s", ToString().c_str());
+        debug::log(0, "%s", ToString());
     }
 }

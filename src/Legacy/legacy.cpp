@@ -46,7 +46,7 @@ namespace Legacy
         if(script.size() != 37)
             return debug::error(FUNCTION, "Script Size not 37 Bytes");
 
-        for(int32_t i = 0; i < 37; i++)
+        for(uint32_t i = 0; i < 37; ++i)
             if(script[i] != sig[i])
                 return false;
 
@@ -56,7 +56,7 @@ namespace Legacy
     /* Compare Two Vectors Element by Element. */
     bool VerifyAddressList(const std::vector<uint8_t> script, const std::vector<uint8_t> sigs[13])
     {
-        for(int32_t i = 0; i < 13; i++)
+        for(uint32_t i = 0; i < 13; ++i)
             if(VerifyAddress(script, sigs[i]))
                 return true;
 
@@ -143,12 +143,24 @@ namespace Legacy
 
 
         /* Make sure the Block was Created within Active Channel. */
-        if (GetChannel() > 2)
+        if (nChannel > 2)
             return debug::error(FUNCTION, "channel out of Range.");
+
+        /* Get the block time for this block. */
+        uint64_t nBlockTime = GetBlockTime();
+
+        /* Get the current unified timestamp. */
+        uint64_t nUnifiedTimeStamp = runtime::unifiedtimestamp();
+
+        /* Determine if block belongs to proof-of-stake channel. */
+        bool fIsProofOfStake = IsProofOfStake();
+
+        /* Determine if block belongs to proof-of-work channels. */
+        bool fIsProofOfWork = IsProofOfWork();
 
 
         /* Check that the time was within range. */
-        if (GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+        if (nBlockTime > nUnifiedTimeStamp + MAX_UNIFIED_DRIFT)
             return debug::error(FUNCTION, "block timestamp too far in the future");
 
 
@@ -159,40 +171,40 @@ namespace Legacy
 
 
         /* Only allow POS blocks in Version 4. */
-        if(IsProofOfStake() && nVersion < 4)
+        if(fIsProofOfStake && nVersion < 4)
             return debug::error(FUNCTION, "proof-of-stake rejected until version 4");
 
 
         /* Check the Proof of Work Claims. */
-        if (!TAO::Ledger::ChainState::Synchronizing() && IsProofOfWork() && !VerifyWork())
+        if (!TAO::Ledger::ChainState::Synchronizing() && fIsProofOfWork && !VerifyWork())
             return debug::error(FUNCTION, "invalid proof of work");
 
 
         /* Check the Network Launch Time-Lock. */
-        if (nHeight > 0 && GetBlockTime() <=
+        if (nHeight > 0 && nBlockTime <=
             (config::fTestNet ? TAO::Ledger::NEXUS_TESTNET_TIMELOCK : TAO::Ledger::NEXUS_NETWORK_TIMELOCK))
             return debug::error(FUNCTION, "block created before network time-lock");
 
 
         /* Check the Current Channel Time-Lock. */
-        if (nHeight > 0 && GetBlockTime() < (config::fTestNet ?
-            TAO::Ledger::CHANNEL_TESTNET_TIMELOCK[GetChannel()] :
-            TAO::Ledger::CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
+        if (nHeight > 0 && nBlockTime < (config::fTestNet ?
+            TAO::Ledger::CHANNEL_TESTNET_TIMELOCK[nChannel] :
+            TAO::Ledger::CHANNEL_NETWORK_TIMELOCK[nChannel]))
             return debug::error(FUNCTION, "block created before channel time-lock, please wait ",
                 (config::fTestNet ?
-                TAO::Ledger::CHANNEL_TESTNET_TIMELOCK[GetChannel()] :
-                TAO::Ledger::CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp(), " seconds");
+                TAO::Ledger::CHANNEL_TESTNET_TIMELOCK[nChannel] :
+                TAO::Ledger::CHANNEL_NETWORK_TIMELOCK[nChannel]) - nUnifiedTimeStamp, " seconds");
 
 
         /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
         if (nVersion > 1 && nVersion == (config::fTestNet ?
             TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 1 :
             TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 1) &&
-            (GetBlockTime() - 3600) > (config::fTestNet ?
+            (nBlockTime - 3600) > (config::fTestNet ?
             TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2] :
             TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 2]))
             return debug::error(FUNCTION, "version ", nVersion, " blocks have been obsolete for ",
-                (runtime::unifiedtimestamp() - (config::fTestNet ?
+                (nUnifiedTimeStamp - (config::fTestNet ?
                 TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2] :
                 TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
@@ -200,17 +212,17 @@ namespace Legacy
         /* Check the Current Version Block Time-Lock. */
         if (nVersion >= (config::fTestNet ?
             TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION :
-            TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <=
+            TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION) && nBlockTime <=
             (config::fTestNet ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2] :
             TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 2]))
             return debug::error(FUNCTION, "version ", nVersion, " blocks are not accepted for ",
-                (runtime::unifiedtimestamp() - (config::fTestNet ?
+                (nUnifiedTimeStamp - (config::fTestNet ?
                 TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2] :
                 TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
 
         /* Check the Required Mining Outputs. */
-        if (nHeight > 0 && IsProofOfWork() && nVersion >= 3)
+        if (nHeight > 0 && fIsProofOfWork && nVersion >= 3)
         {
             uint32_t nSize = vtx[0].vout.size();
 
@@ -235,34 +247,35 @@ namespace Legacy
 
 
         /* Check the Coinbase Transaction is First, with no repetitions. */
-        if (IsProofOfWork() && (vtx.empty() || !vtx[0].IsCoinBase()))
+        if (fIsProofOfWork && (vtx.empty() || !vtx[0].IsCoinBase()))
             return debug::error(FUNCTION, "first tx is not coinbase for proof of work");
 
 
         /* Check the Coinstake Transaction is First, with no repetitions. */
-        if (IsProofOfStake() && (vtx.empty() || !vtx[0].IsCoinStake()))
+        if (fIsProofOfStake && (vtx.empty() || !vtx[0].IsCoinStake()))
             return debug::error(FUNCTION, "first tx is not coinstake for proof of stake");
 
 
         /* Check for duplicate Coinbase / Coinstake Transactions. */
-        for (uint32_t i = 1; i < vtx.size(); i++)
+        uint32_t s = (uint32_t)vtx.size();
+        for (uint32_t i = 1; i < s; ++i)
             if (vtx[i].IsCoinBase() || vtx[i].IsCoinStake())
                 return debug::error(FUNCTION, "more than one coinbase / coinstake");
 
 
         /* Check coinbase/coinstake timestamp is at least 20 minutes before block time */
-        if (GetBlockTime() > (uint64_t)vtx[0].nTime + ((nVersion < 4) ? 1200 : 3600))
+        if (nBlockTime > (uint64_t)vtx[0].nTime + ((nVersion < 4) ? 1200 : 3600))
             return debug::error(FUNCTION, "coinbase/coinstake timestamp is too early");
 
         /* Ensure the Block is for Proof of Stake Only. */
-        if(IsProofOfStake())
+        if(fIsProofOfStake)
         {
             /* Check for nNonce zero. */
             if(nHeight > 2392970 && nNonce == 0)
                 return debug::error(FUNCTION, "stake cannot have nonce of 0");
 
             /* Check the Coinstake Time is before Unified Timestamp. */
-            if(vtx[0].nTime > (runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT))
+            if(vtx[0].nTime > (nUnifiedTimeStamp + MAX_UNIFIED_DRIFT))
                 return debug::error(FUNCTION, "coinstake too far in Future.");
 
             /* Make Sure Coinstake Transaction is First. */
@@ -286,19 +299,23 @@ namespace Legacy
 
         /* Get the signature operations for legacy tx's. */
         uint32_t nSigOps = 0;
+        uint512_t nTxHash;
 
 
         /* Check all the transactions. */
         for(const auto& tx : vtx)
         {
+            /* Get the tx hash. */
+            nTxHash = tx.GetHash();
+
             /* Insert txid into set to check for duplicates. */
-            uniqueTx.insert(tx.GetHash());
+            uniqueTx.insert(nTxHash);
 
             /* Push back this hash for merkle root. */
-            vHashes.push_back(tx.GetHash());
+            vHashes.push_back(nTxHash);
 
             /* Check the transaction timestamp. */
-            if(GetBlockTime() < (uint64_t) tx.nTime)
+            if(nBlockTime < (uint64_t) tx.nTime)
                 return debug::error(FUNCTION, "block timestamp earlier than transaction timestamp");
 
             /* Check the transaction for validitity. */
@@ -381,7 +398,7 @@ namespace Legacy
 
 
         /* Get the proof hash for this block. */
-        uint1024_t hash = (nVersion < 5 ? GetHash() : GetChannel() == 0 ? StakeHash() : ProofHash());
+        uint1024_t hash = (nVersion < 5 ? GetHash() : nChannel == 0 ? StakeHash() : ProofHash());
 
 
         /* Get the target hash for this block. */
@@ -393,20 +410,23 @@ namespace Legacy
 
 
         /* Channel switched output. */
-        if(GetChannel() == 1)
+        if(nChannel == 1)
             debug::log(2, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(nBits, 1));
         else
             debug::log(2, "  target: ", hashTarget.ToString().substr(0, 30));
 
 
         /* Check that the nBits match the current Difficulty. **/
-        if (nBits != TAO::Ledger::GetNextTargetRequired(statePrev, GetChannel()))
-            return debug::error(FUNCTION, "incorrect ", nBits, " proof-of-work/proof-of-stake ", TAO::Ledger::GetNextTargetRequired(statePrev, GetChannel()));
+        if (nBits != TAO::Ledger::GetNextTargetRequired(statePrev, nChannel))
+            return debug::error(FUNCTION, "incorrect ", nBits, " proof-of-work/proof-of-stake ", TAO::Ledger::GetNextTargetRequired(statePrev, nChannel));
+
+        /* Get the block time for this block. */
+        uint64_t nBlockTime = GetBlockTime();
 
 
         /* Check That Block timestamp is not before previous block. */
-        if (GetBlockTime() <= statePrev.GetBlockTime())
-            return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ", statePrev.GetBlockTime());
+        if (nBlockTime <= statePrev.GetBlockTime())
+            return debug::error(FUNCTION, "block's timestamp too early Block: ", nBlockTime, " Prev: ", statePrev.GetBlockTime());
 
 
         /* Check that Block is Descendant of Hardened Checkpoints. */
@@ -426,23 +446,23 @@ namespace Legacy
 
             /* Add up the Miner Rewards from Coinbase Tx Outputs. */
             uint64_t nMiningReward = 0;
-            for(int32_t nIndex = 0; nIndex < nSize - 2; nIndex++)
+            for(int32_t nIndex = 0; nIndex < nSize - 2; ++nIndex)
                 nMiningReward += vtx[0].vout[nIndex].nValue;
 
             /* Check that the Mining Reward Matches the Coinbase Calculations. */
-            if (nMiningReward != TAO::Ledger::GetCoinbaseReward(statePrev, GetChannel(), 0))
+            if (nMiningReward != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 0))
                 return debug::error(FUNCTION, "miner reward mismatch ",
-                    nMiningReward, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, GetChannel(), 0));
+                    nMiningReward, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 0));
 
             /* Check that the Ambassador Reward Matches the Coinbase Calculations. */
-            if (vtx[0].vout[nSize - 2].nValue != TAO::Ledger::GetCoinbaseReward(statePrev, GetChannel(), 1))
+            if (vtx[0].vout[nSize - 2].nValue != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 1))
                 return debug::error(FUNCTION, "ambassador reward mismatch ",
-                    vtx[0].vout[nSize - 2].nValue, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, GetChannel(), 1));
+                    vtx[0].vout[nSize - 2].nValue, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 1));
 
             /* Check that the Developer Reward Matches the Coinbase Calculations. */
-            if (vtx[0].vout[nSize - 1].nValue != TAO::Ledger::GetCoinbaseReward(statePrev, GetChannel(), 2))
+            if (vtx[0].vout[nSize - 1].nValue != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 2))
                 return debug::error(FUNCTION, "developer reward mismatch ",
-                    vtx[0].vout[nSize - 1].nValue, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, GetChannel(), 2));
+                    vtx[0].vout[nSize - 1].nValue, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 2));
 
         }
         else if (IsProofOfStake())
@@ -462,7 +482,7 @@ namespace Legacy
 
         /* Check that Transactions are Finalized. */
         for(const auto & tx : vtx)
-            if (!tx.IsFinal(nHeight, GetBlockTime()))
+            if (!tx.IsFinal(nHeight, nBlockTime))
                 return debug::error(FUNCTION, "contains a non-final transaction");
 
         /* Process the block state. */
@@ -475,14 +495,19 @@ namespace Legacy
         /* Accept the block state. */
         if(!state.Index())
         {
+            uint512_t nTxHash;
+
             /* Remove from the memory pool. */
             for(const auto& tx : vtx)
             {
+                /* Get the transaction hash. */
+                nTxHash = tx.GetHash();
+
                 /* Keep transactions in memory pool that aren't on disk. */
-                if(!LLD::legacyDB->HasTx(tx.GetHash()))
+                if(!LLD::legacyDB->HasTx(nTxHash))
                     continue;
 
-                TAO::Ledger::mempool.Remove(tx.GetHash());
+                TAO::Ledger::mempool.Remove(nTxHash);
             }
 
             return false;
@@ -508,6 +533,9 @@ namespace Legacy
     /* Check the proof of stake calculations. */
     bool LegacyBlock::CheckStake() const
     {
+        /* Make static const for reducing repeated computation. */
+        static const double LOG3 = log(3);
+
         /* Check the proof hash of the stake block on version 5 and above. */
         LLC::CBigNum bnTarget;
         bnTarget.SetCompact(nBits);
@@ -529,11 +557,11 @@ namespace Legacy
 
             /* Trust Weight Continues to grow the longer you have staked and higher your interest rate */
             nTrustWeight = std::min(90.0, (((44.0 * log(((2.0 * nTrustAge) /
-                (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
+                (TAO::Ledger::TRUST_WEIGHT_BASE)) + 1.0)) / LOG3)) + 1.0);
 
             /* Block Weight Reaches Maximum At Trust Key Expiration. */
             nBlockWeight = std::min(10.0, (((9.0 * log(((2.0 * nBlockAge) /
-                ((config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))) + 1.0)) / log(3))) + 1.0);
+                ((config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))) + 1.0)) / LOG3)) + 1.0);
 
         }
 
@@ -554,7 +582,7 @@ namespace Legacy
                 return debug::error(FUNCTION, "genesis age is immature");
 
             /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
-            nTrustWeight = std::min(10.0, (((9.0 * log(((2.0 * nCoinAge) / (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
+            nTrustWeight = std::min(10.0, (((9.0 * log(((2.0 * nCoinAge) / (TAO::Ledger::TRUST_WEIGHT_BASE)) + 1.0)) / LOG3)) + 1.0);
         }
 
         /* Check the energy efficiency requirements. */

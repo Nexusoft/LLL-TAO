@@ -105,7 +105,7 @@ namespace Legacy
          *  @param[in] pend The end iterator of object
          *
          **/
-        Script(const_iterator pbegin, const_iterator pend)
+        Script(std::vector<uint8_t>::const_iterator pbegin, std::vector<uint8_t>::const_iterator pend)
         : std::vector<uint8_t>(pbegin, pend)
         {
         }
@@ -138,33 +138,6 @@ namespace Legacy
          *
          *  Get the op codes from stack
          *
-         *  @param[in] pc Iterator to begin
-         *  @param[out] opcodeRet The code to be returned
-         *  @param[out] vchRet The bytes to return
-         *
-         *  @return true if successful, false otherwise
-         *
-         **/
-        bool GetOp(iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet);
-
-
-        /** GetOP
-         *
-         *  Get the op codes from stack
-         *
-         *  @param[in] pc Iterator to begin
-         *  @param[out] opcodeRet The code to be returned
-         *
-         *  @return true if successful, false otherwise
-         *
-         **/
-        bool GetOp(iterator& pc, opcodetype& opcodeRet);
-
-
-        /** GetOP
-         *
-         *  Get the op codes from stack
-         *
          *  @param[in] pc constant iterator to begin
          *  @param[out] opcodeRet The code to be returned
          *  @param[out] vchRet The bytes to return
@@ -172,7 +145,7 @@ namespace Legacy
          *  @return true if successful, false otherwise
          *
          **/
-        bool GetOp(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet) const;
+        bool GetOp(std::vector<uint8_t>::const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>& vchRet) const;
 
 
         /** GetOP
@@ -185,7 +158,7 @@ namespace Legacy
          *  @return true if successful, false otherwise
          *
          **/
-        bool GetOp(const_iterator& pc, opcodetype& opcodeRet) const;
+        bool GetOp(std::vector<uint8_t>::const_iterator& pc, opcodetype& opcodeRet) const;
 
 
         /** GetOP
@@ -199,7 +172,7 @@ namespace Legacy
          *  @return true if successful, false otherwise
          *
          **/
-        bool GetOp2(const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>* pvchRet) const;
+        bool GetOp2(std::vector<uint8_t>::const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>* pvchRet) const;
 
 
         /** DecodeOP_N

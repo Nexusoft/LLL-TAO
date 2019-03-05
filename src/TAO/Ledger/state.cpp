@@ -186,7 +186,7 @@ namespace TAO
                     //TODO: handle for the coinbase in Tritium
                 }
 
-                for(int nType = 0; nType < 3; nType++)
+                for(int nType = 0; nType < 3; ++nType)
                 {
                     /* Calculate the Reserves from the Previous Block in Channel's reserve and new Release. */
                     uint64_t nReserve  = stateLast.nReleasedReserve[nType] +
@@ -289,15 +289,18 @@ namespace TAO
             runtime::timer time;
             time.Start();
 
+            /* Get the hash. */
+            uint1024_t nHash = GetHash();
+
             /* Watch for genesis. */
             if (!ChainState::stateGenesis)
             {
                 /* Write the best chain pointer. */
-                if(!LLD::legDB->WriteBestChain(GetHash()))
+                if(!LLD::legDB->WriteBestChain(nHash))
                     return debug::error(FUNCTION, "failed to write best chain");
 
                 /* Write the block to disk. */
-                if(!LLD::legDB->WriteBlock(GetHash(), *this))
+                if(!LLD::legDB->WriteBlock(nHash, *this))
                     return debug::error(FUNCTION, "block state already exists");
 
                 /* Set the genesis block. */
@@ -356,7 +359,7 @@ namespace TAO
                         "..",  ChainState::stateBest.load().GetHash().ToString().substr(0,20));
 
                     debug::log(0, FUNCTION, "REORGANIZE: Connect ", vConnect.size(), " blocks; ", fork.GetHash().ToString().substr(0,20),
-                        "..", this->GetHash().ToString().substr(0,20));
+                        "..", nHash.ToString().substr(0,20));
                 }
 
                 /* List of transactions to resurrect. */
@@ -441,6 +444,7 @@ namespace TAO
                 /* Reverse the blocks to connect to connect in ascending height. */
                 std::reverse(vConnect.begin(), vConnect.end());
                 for(auto& state : vConnect)
+                //for(auto state = vConnect.rbegin(); state != vConnect.rend(); ++state)
                 {
                     /* Output the block state if flagged. */
                     if(config::GetBoolArg("-printstate"))
@@ -473,7 +477,7 @@ namespace TAO
 
                 /* Set the best chain variables. */
                 ChainState::stateBest          = *this;
-                ChainState::hashBestChain      = GetHash();
+                ChainState::hashBestChain      = nHash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
 
@@ -485,7 +489,7 @@ namespace TAO
 
                 /* Debug output about the best chain. */
                 debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
-                    "New Best Block hash=", GetHash().ToString().substr(0, 20),
+                    "New Best Block hash=", nHash.ToString().substr(0, 20),
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
                     " [verified in ", time.ElapsedMilliseconds(), " ms]",
@@ -561,10 +565,6 @@ namespace TAO
                     if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
                         return debug::error(FUNCTION, "transaction operation layer failed to execute");
 
-                    /* Write to disk. */
-                    if(!LLD::legDB->WriteTx(hash, tx))
-                        return debug::error(FUNCTION, "failed to write tx to disk");
-
                     /* Check for genesis. */
                     if(tx.IsGenesis())
                     {
@@ -618,10 +618,6 @@ namespace TAO
                     std::map<uint512_t, Legacy::Transaction> inputs;
                     if(!tx.FetchInputs(inputs))
                         return debug::error(FUNCTION, "failed to fetch the inputs");
-
-                    /* Write to disk. */
-                    if(!LLD::legacyDB->WriteTx(hash, tx))
-                        return debug::error(FUNCTION, "failed to write tx to disk");
 
                     /* Connect the inputs. */
                     if(!tx.Connect(inputs, *this, Legacy::FLAGS::BLOCK))
@@ -687,10 +683,6 @@ namespace TAO
                     /* Rollback the register layer. */
                     if(!TAO::Register::Rollback(tx))
                         return debug::error(FUNCTION, "transaction register layer failed to rollback");
-
-                    /* Delete the transaction. */
-                    if(!LLD::legDB->EraseTx(hash))
-                        return debug::error(FUNCTION, "could not erase transaction");
                 }
                 else if(tx.first == TYPE::LEGACY_TX)
                 {

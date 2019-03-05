@@ -19,11 +19,12 @@ ________________________________________________________________________________
 #include <thread>
 #include <chrono>
 #include <locale>
+#include <atomic>
 
 #define ARRAYLEN(array)     (sizeof(array)/sizeof((array)[0]))
 
 /** The location of the unified time seed. To enable a Unified Time System push data to this variable. **/
-static int UNIFIED_AVERAGE_OFFSET = 0;
+static std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
 
 /** The maximum time in the future clock can be. **/
 const uint32_t MAX_UNIFIED_DRIFT = 1;
@@ -60,7 +61,7 @@ namespace runtime
      **/
     inline uint64_t unifiedtimestamp(bool fMilliseconds = false)
     {
-        return fMilliseconds ? timestamp(true) + (UNIFIED_AVERAGE_OFFSET * 1000) : timestamp() + UNIFIED_AVERAGE_OFFSET;
+        return fMilliseconds ? timestamp(true) + (UNIFIED_AVERAGE_OFFSET.load() * 1000) : timestamp() + UNIFIED_AVERAGE_OFFSET.load();
     }
 
 
@@ -208,23 +209,6 @@ namespace runtime
     {
         return ::system(strCommand.c_str());
     }
-
-
-    /** ByteReverse
-     *
-     *  Take a 4 byte value and return it with the bytes reversed.
-     *
-     *  @param[in] value The word to reverse bytes on
-     *
-     *  @return The value with reversed bytes.
-     *
-     **/
-    inline uint32_t ByteReverse(uint32_t value)
-    {
-        value = ((value & 0xFF00FF00) >> 8) | ((value & 0x00FF00FF) << 8);
-        return (value<<16) | (value>>16);
-    }
-
 }
 
 #endif
