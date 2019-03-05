@@ -191,33 +191,45 @@ namespace debug
         #endif
     #endif
 
-        /* Log configuration file parameters. Need to read them into our own map copy first */
-        std::map<std::string, std::string> mapBasicConfig;  //not used
-        std::map<std::string, std::vector<std::string> > mapMultiConfig; //All values stored here whether multi or not, will use this
 
-        config::ReadConfigFile(mapBasicConfig, mapMultiConfig);
+        std::string pathConfigFile = config::GetConfigFile();
+        if (!filesystem::exists(pathConfigFile))
+            log(0, "No configuration file");
 
-        std::string confFileParams = "";
-
-        for (const auto& argItem : mapMultiConfig)
+        else
         {
-            for (int i = 0; i < argItem.second.size(); i++)
+            log(0, "Using configuration file: ", pathConfigFile);
+
+
+            /* Log configuration file parameters. Need to read them into our own map copy first */
+            std::map<std::string, std::string> mapBasicConfig;  //not used
+            std::map<std::string, std::vector<std::string> > mapMultiConfig; //All values stored here whether multi or not, will use this
+
+            config::ReadConfigFile(mapBasicConfig, mapMultiConfig);
+
+            std::string confFileParams = "";
+
+            for (const auto& argItem : mapMultiConfig)
             {
-                confFileParams += argItem.first;
+                for (int i = 0; i < argItem.second.size(); i++)
+                {
+                    confFileParams += argItem.first;
 
-                if (argItem.first.compare(0, 12, "-rpcpassword") == 0)
-                    confFileParams += "=xxxxx";
-                else if (!argItem.second[i].empty())
-                    confFileParams += "=" + argItem.second[i];
+                    if (argItem.first.compare(0, 12, "-rpcpassword") == 0)
+                        confFileParams += "=xxxxx";
+                    else if (!argItem.second[i].empty())
+                        confFileParams += "=" + argItem.second[i];
 
-                confFileParams += " ";
+                    confFileParams += " ";
+                }
             }
+
+            if (confFileParams == "")
+                confFileParams = "(none)";
+
+            log(0, "Configuration file parameters: ", confFileParams);
         }
 
-        if (confFileParams == "")
-            confFileParams = "(none)";
-
-        log(0, "Configuration file parameters: ", confFileParams);
 
         /* Log command line parameters (which can override conf file settings) */
         std::string cmdLineParms = "";

@@ -178,17 +178,9 @@ namespace config
     /* Get the Location of the Config File. */
     std::string GetConfigFile()
     {
-        static bool fPathLogged = false; //Used so we only log the conf file once 
-
         std::string pathConfigFile(GetDataDir(false));
 
         pathConfigFile.append(GetArg("-conf", "nexus.conf"));
-
-        if (!fPathLogged && filesystem::exists(pathConfigFile))
-        {
-            debug::log(0, "Using configuration file: ", pathConfigFile);
-            fPathLogged = true;
-        }
 
         return pathConfigFile;
     }
