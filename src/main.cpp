@@ -74,31 +74,43 @@ namespace LLP
      *
      **/
     template <class ProtocolType>
-    Server<ProtocolType> *CreateMiningServer()
+    Server<ProtocolType>* CreateMiningServer()
     {
-        uint16_t port = static_cast<uint16_t>(config::GetArg(std::string("-miningport"), config::fTestNet ? 8325 : 9325));
-        uint16_t threads = static_cast<uint16_t>(config::GetArg(std::string("-threads"), 10));
-        uint32_t timeout = 30;
-        bool f_ddos = false;
-        uint32_t c_score = 0;
-        uint32_t r_score = 0;
-        uint32_t timespan = 60;
-        bool f_listen = config::GetBoolArg(std::string("-listen"), true);
-        bool f_meter = false;
-        bool f_manager = false;
 
-
+        /* Create the mining server object. */
         return new Server<ProtocolType>(
-            port,
-            threads,
-            timeout,
-            f_ddos,
-            c_score,
-            r_score,
-            timespan,
-            f_listen,
-            f_meter,
-            f_manager);
+
+            /* The port this server listens on. */
+            static_cast<uint16_t>(config::GetArg(std::string("-miningport"), config::fTestNet ? 8325 : 9325)),
+
+            /* The total data I/O threads. */
+            static_cast<uint16_t>(config::GetArg(std::string("-miningthreads"), 4)),
+
+            /* The timeout value (default: 30 seconds). */
+            static_cast<uint32_t>(config::GetArg(std::string("-miningtimeout"), 30)),
+
+            /* The DDOS if enabled. */
+            config::GetBoolArg(std::string("-miningddos"), false),
+
+            /* The connection score (total connections per second). */
+            static_cast<uint32_t>(config::GetArg(std::string("-miningcscore"), 1)),
+
+            /* The request score (total packets per second.) */
+            static_cast<uint32_t>(config::GetArg(std::string("-miningrscore"), 50)),
+
+            /* The DDOS moving average timespan (default: 60 seconds). */
+            static_cast<uint32_t>(config::GetArg(std::string("-miningtimespan"), 60)),
+
+            /* Mining server should always listen */
+            true,
+
+            /* Flag to determine if meters should be active. */
+            config::GetBoolArg(std::string("-meters"), false),
+
+            /* Mining server should never make outgoing connections. */
+            false
+
+        );
     }
 
 
@@ -145,22 +157,22 @@ namespace LLP
             port,
 
             /* The total data I/O threads. */
-            static_cast<uint16_t>(config::GetArg(std::string("-threads"), 10),
+            static_cast<uint16_t>(config::GetArg(std::string("-threads"), 8)),
 
             /* The timeout value (default: 30 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 30),
+            static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 30)),
 
             /* The DDOS if enabled. */
             config::GetBoolArg(std::string("-ddos"), false),
 
             /* The connection score (total connections per second). */
-            static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1),
+            static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1)),
 
             /* The request score (total packets per second.) */
-            static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 50),
+            static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 50)),
 
             /* The DDOS moving average timespan (default: 60 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60),
+            static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60)),
 
             /* Flag to determine if server should listen. */
             config::GetBoolArg(std::string("-listen"), true),
@@ -169,7 +181,9 @@ namespace LLP
             config::GetBoolArg(std::string("-meters"), false),
 
             /* Flag to determine if the connection manager should try new connections. */
-            config::GetBoolArg(std::string("-manager"), true));
+            config::GetBoolArg(std::string("-manager"), true)
+
+        );
     }
 
 
