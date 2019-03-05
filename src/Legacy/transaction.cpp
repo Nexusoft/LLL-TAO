@@ -914,10 +914,6 @@ namespace Legacy
             }
         }
 
-        /* Erase the index. */
-        if(!LLD::legDB->EraseIndex(GetHash()))
-            return debug::error(FUNCTION, "failed to erase index");
-
         return true;
     }
 

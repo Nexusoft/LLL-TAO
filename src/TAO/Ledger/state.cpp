@@ -551,10 +551,6 @@ namespace TAO
                     if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
                         return debug::error(FUNCTION, "transaction operation layer failed to execute");
 
-                    /* Write to disk. */
-                    if(!LLD::legDB->WriteTx(hash, tx))
-                        return debug::error(FUNCTION, "failed to write tx to disk");
-
                     /* Check for genesis. */
                     if(tx.IsGenesis())
                     {
@@ -608,10 +604,6 @@ namespace TAO
                     std::map<uint512_t, Legacy::Transaction> inputs;
                     if(!tx.FetchInputs(inputs))
                         return debug::error(FUNCTION, "failed to fetch the inputs");
-
-                    /* Write to disk. */
-                    if(!LLD::legacyDB->WriteTx(hash, tx))
-                        return debug::error(FUNCTION, "failed to write tx to disk");
 
                     /* Connect the inputs. */
                     if(!tx.Connect(inputs, *this, Legacy::FLAGS::BLOCK))
@@ -677,10 +669,6 @@ namespace TAO
                     /* Rollback the register layer. */
                     if(!TAO::Register::Rollback(tx))
                         return debug::error(FUNCTION, "transaction register layer failed to rollback");
-
-                    /* Delete the transaction. */
-                    if(!LLD::legDB->EraseTx(hash))
-                        return debug::error(FUNCTION, "could not erase transaction");
                 }
                 else if(tx.first == TYPE::LEGACY_TX)
                 {
