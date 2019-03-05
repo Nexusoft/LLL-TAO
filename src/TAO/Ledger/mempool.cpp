@@ -172,7 +172,7 @@ namespace TAO
         {
             LOCK(MUTEX);
 
-            for(auto it = mapLedger.begin(); it != mapLedger.end() && nCount > 0; it++)
+            for(auto it = mapLedger.begin(); it != mapLedger.end() && nCount > 0; ++it)
             {
 
                 vHashes.push_back(it->first);

@@ -18,6 +18,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/supply.h>
@@ -175,18 +176,13 @@ namespace TAO
                 if (!LLD::trustDB->ReadTrustKey(trustKeyHash, trustKey))
                     continue;
 
-                /* Retrieve block state of last trust block for current trust key */
-                uint1024_t hashLastBlock = trustKey.hashLastBlock;
-                TAO::Ledger::BlockState blockState;
-                if (!LLD::legDB->ReadBlock(hashLastBlock, blockState))
-                    continue;
-
-                /* Ignore any pre-v5 blocks */
-                if (blockState.nTime < (config::fTestNet ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[4] : TAO::Ledger::NETWORK_VERSION_TIMELOCK[4]))
+                /* Ignore trust keys that are inactive (no blocks within timespan) */
+                if (trustKey.nLastBlockTime + (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 3 : TAO::Ledger::TRUST_KEY_TIMESPAN * 3)
+                    < TAO::Ledger::ChainState::stateBest.load().GetBlockTime())
                     continue;
 
                 /* Put trust keys into a map keyed by stake rate (sorts them by rate) */
-                double stakeRate = trustKey.StakeRate(blockState, runtime::unifiedtimestamp());
+                double stakeRate = ((uint32_t)(trustKey.nStakeRate * 10000)) / 100.0;
                 mapTrustKeys.insert (std::make_pair(stakeRate, trustKey));
             }
 

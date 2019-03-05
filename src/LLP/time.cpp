@@ -161,7 +161,7 @@ namespace LLP
                     }
 
                     /* Set the Unified Average to the Majority Seed. */
-                    UNIFIED_AVERAGE_OFFSET = UNIFIED_MAJORITY.Majority();
+                    UNIFIED_AVERAGE_OFFSET.store(UNIFIED_MAJORITY.Majority());
 
                     /* Log the debug output. */
                     debug::log(0, NODE, MAP_TIME_DATA.size(), " Total Samples | ", nSamples.Majority(), " Offset (", TOTAL_SAMPLES[nSamples.Majority()], ") | ", UNIFIED_AVERAGE_OFFSET, " Majority (", TOTAL_SAMPLES[UNIFIED_AVERAGE_OFFSET], ") | ", runtime::unifiedtimestamp());

@@ -61,6 +61,7 @@ namespace LLP
         : BaseConnection<LegacyPacket>()
         , strNodeVersion()
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
+        , nCurrentSession(0)
         , nStartingHeight(0)
         , nConsecutiveFails(0)
         , nConsecutiveOrphans(0)
@@ -79,6 +80,7 @@ namespace LLP
         : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN, isDDOS)
         , strNodeVersion()
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
+        , nCurrentSession(0)
         , nStartingHeight(0)
         , nConsecutiveFails(0)
         , nConsecutiveOrphans(0)
@@ -96,6 +98,7 @@ namespace LLP
         : BaseConnection<LegacyPacket>(DDOS_IN, isDDOS)
         , strNodeVersion()
         , nCurrentVersion(LLP::PROTOCOL_VERSION)
+        , nCurrentSession(0)
         , nStartingHeight(0)
         , nConsecutiveFails(0)
         , nConsecutiveOrphans(0)
@@ -123,6 +126,10 @@ namespace LLP
 
         /** The current Protocol Version of this Node. **/
         uint32_t nCurrentVersion;
+
+
+        /** The current session ID. **/
+        uint64_t nCurrentSession;
 
 
         /** LEGACY: The height of this node given at the version message. **/
