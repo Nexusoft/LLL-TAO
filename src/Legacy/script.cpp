@@ -368,6 +368,6 @@ namespace Legacy
     /* Dump the Hex data into std::out or console */
     void Script::print() const
     {
-        printf("%s", ToString().c_str());
+        debug::log(0, "%s", ToString());
     }
 }
