@@ -921,7 +921,8 @@ namespace LLP
                     /* Find a new fast sync node if too many failures. */
                     if(addrFastSync == pnode->GetAddress())
                     {
-
+                        /* Switch to a new node. */
+                        SwitchNode();
                     }
                 }
 
