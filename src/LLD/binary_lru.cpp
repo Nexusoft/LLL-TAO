@@ -214,6 +214,7 @@ namespace LLD
             && pthis->vData.size() == vData.size())
             {
                 /* Set the new data. */
+                std::vector<uint8_t>().swap(pthis->vData);
                 pthis->vData = vData;
 
                 /* Set proper reserved value. */
