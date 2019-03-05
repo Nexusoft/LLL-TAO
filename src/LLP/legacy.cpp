@@ -290,7 +290,7 @@ namespace LLP
 
                 /* Free the connected session. */
                 if(mapConnectedSessions.count(nCurrentSession))
-                    mapConnectedSessions.erase(nSessionID);
+                    mapConnectedSessions.erase(nCurrentSession);
             }
 
             /* Update address manager that this connection was dropped. */
