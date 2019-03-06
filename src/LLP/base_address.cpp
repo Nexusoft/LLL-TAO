@@ -174,7 +174,6 @@ namespace LLP
     /*  Determines if address is IPv4 mapped address. (::FFFF:0:0/96, 0.0.0.0/0) */
     bool BaseAddress::IsIPv4() const
     {
-        //return (memcmp(ip, pchIPv4, sizeof(pchIPv4)) == 0);
         return (memory::compare(ip, pchIPv4, sizeof(pchIPv4)) == 0);
     }
 
@@ -236,7 +235,6 @@ namespace LLP
     /* Determines if address is IPv6 autoconfig. (FE80::/64) */
     bool BaseAddress::IsRFC4862() const
     {
-        //return (memcmp(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
         return (memory::compare(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
     }
 
@@ -244,7 +242,6 @@ namespace LLP
     /* Determines if address is IPv6 well-known prefix. (64:FF9B::/96) */
     bool BaseAddress::IsRFC6052() const
     {
-        //return (memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
         return (memory::compare(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
     }
 
@@ -252,7 +249,6 @@ namespace LLP
     /* Determines if address is IPv6 IPv4-translated address. (::FFFF:0:0:0/96) */
     bool BaseAddress::IsRFC6145() const
     {
-        //return (memcmp(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
         return (memory::compare(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
     }
 
@@ -265,8 +261,6 @@ namespace LLP
             return true;
 
         // IPv6 loopback (::1/128)
-
-        //if (memcmp(ip, pchLocal, 16) == 0)
         if (memory::compare(ip, pchLocal, 16) == 0)
             return true;
 
@@ -301,7 +295,6 @@ namespace LLP
 
         // unspecified IPv6 address (::/128)
         uint8_t ipNone[16] = {};
-        //if (memcmp(ip, ipNone, 16) == 0)
         if (memory::compare(ip, ipNone, 16) == 0)
             return false;
 
@@ -313,13 +306,12 @@ namespace LLP
         {
             // INADDR_NONE
             uint32_t ip_none = INADDR_NONE;
-            //if (memcmp(ip+12, &ipNone, 4) == 0)
+
             if (memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
                 return false;
 
-            // 0
             ip_none = 0;
-            //if (memcmp(ip+12, &ipNone, 4) == 0)
+
             if (memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
                 return false;
         }
@@ -331,7 +323,7 @@ namespace LLP
     /* Determines if address is a multicast address. */
     bool BaseAddress::IsMulticast() const
     {
-        return    (IsIPv4() && (GetByte(3) & 0xF0) == 0xE0)
+        return (IsIPv4() && (GetByte(3) & 0xF0) == 0xE0)
             || (GetByte(15) == 0xFF);
     }
 
@@ -467,7 +459,7 @@ namespace LLP
     {
         if (!IsIPv4())
             return false;
-        //memcpy(pipv4Addr, ip+12, 4);
+
         std::copy((uint8_t*)&ip[0] + 12, (uint8_t*)&ip[0] + 16, (uint8_t*)pipv4Addr);
         return true;
     }
@@ -476,7 +468,6 @@ namespace LLP
     /* Gets an IPv6 address struct. */
     bool BaseAddress::GetIn6Addr(struct in6_addr* pipv6Addr) const
     {
-        //memcpy(pipv6Addr, ip, 16);
         std::copy((uint8_t*)&ip[0], (uint8_t*)&ip[0] + 16, (uint8_t*)pipv6Addr);
         return true;
     }
@@ -488,7 +479,6 @@ namespace LLP
         if (!IsIPv4() || !paddr)
             return false;
 
-        //memset(paddr, 0, sizeof(struct sockaddr_in));
         paddr->sin_family = 0;
         paddr->sin_port = 0;
         paddr->sin_addr.s_addr = 0;
@@ -509,7 +499,6 @@ namespace LLP
         if(!paddr)
             return false;
 
-        //memset(paddr, 0, sizeof(struct sockaddr_in6));
         paddr->sin6_family = 0;
         paddr->sin6_port = 0;
         paddr->sin6_flowinfo = 0;
@@ -547,7 +536,6 @@ namespace LLP
     /* Relational operator not equals */
     bool operator!=(const BaseAddress& a, const BaseAddress& b)
     {
-        //return (memcmp(a.ip, b.ip, 16) != 0);
         return (memory::compare(a.ip, b.ip, 16) != 0);
     }
 
@@ -555,7 +543,6 @@ namespace LLP
     /* Relational operator less than */
     bool operator<(const BaseAddress& a, const BaseAddress& b)
     {
-        //return (memcmp(a.ip, b.ip, 16) < 0);
         return (memory::compare(a.ip, b.ip, 16) < 0);
     }
 

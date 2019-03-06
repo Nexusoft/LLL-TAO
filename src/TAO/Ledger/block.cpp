@@ -303,7 +303,7 @@ namespace TAO
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-            ss.reserve(10000);
+            ss.reserve(256);
 
             /* Trust Key is part of stake hash if not genesis. */
             if(nHeight > 2392970 && fIsGenesis)
@@ -329,7 +329,7 @@ namespace TAO
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-            ss.reserve(10000);
+            ss.reserve(256);
 
             /* Trust Key is part of stake hash if not genesis. */
             if(nHeight > 2392970 && fIsGenesis)

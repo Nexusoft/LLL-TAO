@@ -62,7 +62,7 @@ namespace Legacy
 	    // buffer.  If this ever needs to be optimized further, make a CStaticStream
 	    // class with its buffer on the stack.
 	    DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-	    ss.reserve(10000);
+	    ss.reserve(8192);
 	    ss << *this;
 	    return LLC::SK512(ss.begin(), ss.end());
 	}
