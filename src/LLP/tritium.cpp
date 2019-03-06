@@ -652,7 +652,10 @@ namespace LLP
                         /* Read the block from disk. */
                         TAO::Ledger::BlockState state;
                         if(!LLD::legDB->ReadBlock(inv.GetHash(), state))
+                        {
+                            debug::log(3, NODE "getdata readblock failed ", inv.GetHash());
                             continue;
+                        }
 
                         /* Push the response message. */
                         if( inv.GetType() == MSG_BLOCK_TRITIUM)
