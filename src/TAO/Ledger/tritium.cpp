@@ -161,16 +161,8 @@ namespace TAO
 
 
             /* Check the producer transaction. */
-            if(nHeight > 0)
-            {
-                /* Check the coinbase if not genesis. */
-                if(GetChannel() > 0 && !producer.IsCoinbase())
-                    return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
-
-                /* Check that the producer is a valid transactions. */
-                if(!producer.IsValid())
-                    return debug::error(FUNCTION, "producer transaction is invalid");
-            }
+            if(nHeight > 0 && GetChannel() > 0 && !producer.IsCoinbase())
+                return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
 
 
             /* Check the producer transaction. */
@@ -377,6 +369,10 @@ namespace TAO
                 if (nMiningReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
                     return debug::error(FUNCTION, "miner reward mismatch ", nMiningReward, " : ",
                          GetCoinbaseReward(statePrev, GetChannel(), 0));
+
+                 /* Check that the producer is a valid transaction. */
+                 if(!producer.IsValid())
+                     return debug::error(FUNCTION, "producer transaction is invalid");
             }
             else if (IsProofOfStake())
             {
