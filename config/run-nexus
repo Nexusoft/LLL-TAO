@@ -37,8 +37,8 @@ if [ ! -d "/root/.TAO" ]; then
 fi
 
 #
-# Startup daemon.
+# Startup daemon. Check /root/.TAO/nexus.conf for daemon parameterization.
 #
 cd /nexus
-./nexus -verbose=3 -fastsync -beta -server -daemon -threads=10 &
+./nexus &
 

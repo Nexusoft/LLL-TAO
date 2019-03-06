@@ -57,7 +57,7 @@ namespace Legacy
 
 
     /* Initialize static variables */
-    bool Wallet::fWalletInitialized = false;
+    std::atomic<bool> Wallet::fWalletInitialized(false);
 
 
     /** Constructor **/
@@ -75,7 +75,6 @@ namespace Legacy
     , vchDefaultKey()
     , vchTrustKey()
     , nWalletUnlockTime(0)
-    , pWalletDbEncryption(nullptr)
     , cs_wallet()
     , mapWallet()
     , mapRequestCount()
@@ -94,13 +93,16 @@ namespace Legacy
     /* Initializes the wallet instance. */
     bool Wallet::InitializeWallet(const std::string& strWalletFileIn)
     {
-        if (Wallet::fWalletInitialized)
+        if (Wallet::fWalletInitialized.load())
             return false;
         else
         {
             Wallet& wallet = Wallet::GetInstance();
             wallet.strWalletFile = strWalletFileIn;
             wallet.fFileBacked = true;
+
+            WalletDB walletdb(strWalletFileIn);
+            walletdb.InitializeDatabase();
         }
 
         return true;
@@ -112,10 +114,8 @@ namespace Legacy
         /* This will create a default initialized, memory only wallet file on first call (lazy instantiation) */
         static Wallet wallet;
 
-        if (!Wallet::fWalletInitialized)
-        {
-            Wallet::fWalletInitialized = true;
-        }
+        if (!Wallet::fWalletInitialized.load())
+            Wallet::fWalletInitialized.store(true);
 
         return wallet;
     }
@@ -150,7 +150,6 @@ namespace Legacy
                 /* Store new version to database (overwrites old) */
                 WalletDB walletdb(strWalletFile);
                 walletdb.WriteMinVersion(nWalletVersion);
-                walletdb.Close();
             }
         }
 
@@ -187,15 +186,17 @@ namespace Legacy
 
         fFirstRunRet = false;
 
-        WalletDB walletdb(strWalletFile, "cr+");
-        uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
-        walletdb.Close();
+        WalletDB walletdb(strWalletFile);
 
-        if (nLoadWalletRet == DB_NEED_REWRITE)
-            BerkeleyDB::DBRewrite(strWalletFile);
+        {
+            /* Lock wallet so WalletDB can load all data into it */
+            //LOCK(cs_wallet);
+            
+            uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
 
-        if (nLoadWalletRet != DB_LOAD_OK)
-            return nLoadWalletRet;
+            if (nLoadWalletRet != DB_LOAD_OK)
+                return nLoadWalletRet;
+        }
 
         /* New wallet is indicated by an empty default key */
         fFirstRunRet = vchDefaultKey.empty();
@@ -207,7 +208,6 @@ namespace Legacy
             debug::log(2, FUNCTION, "Setting wallet min version to ", FEATURE_LATEST);
 
             SetMinVersion(FEATURE_LATEST);
-            SetMaxVersion(FEATURE_LATEST);
 
             std::vector<uint8_t> vchNewDefaultKey;
 
@@ -239,19 +239,14 @@ namespace Legacy
             /* Old wallets set min version but it never got recorded because constructor defaulted the value.
              * This assures older wallet files have it stored.
              */
-
-            /* Need second db declare so not in use if Rewrite required, but should just reuse already open db handle */
-            WalletDB walletdb(strWalletFile, "cr+");
             uint32_t nStoredMinVersion = 0;
 
             if (!walletdb.ReadMinVersion(nStoredMinVersion) || nStoredMinVersion == 0)
-            {
                 SetMinVersion(FEATURE_BASE);
-                SetMaxVersion(FEATURE_LATEST);
-            }
-
-            walletdb.Close();
         }
+
+        /* Max allowed version is always the current latest */
+        SetMaxVersion(FEATURE_LATEST);
 
         /* Launch background thread to periodically flush the wallet to the backing database */
         WalletDB::StartFlushThread(strWalletFile);
@@ -288,24 +283,10 @@ namespace Legacy
 
         if (fFileBacked)
         {
-            LOCK(cs_wallet);
-
             bool result = false;
 
-            if (pWalletDbEncryption != nullptr)
-            {
-                /* Adding this encrypted key as part of wallet encryption process.
-                 * Use the wallet encryption db to maintain the database transaction
-                 */
-                result = pWalletDbEncryption->WriteCryptedKey(vchPubKey, vchCryptedSecret);
-            }
-            else
-            {
-                /* This is a one-off add, so no open wallet db. Open one and use it for write */
-                WalletDB walletdb(strWalletFile);
-                result = walletdb.WriteCryptedKey(vchPubKey, vchCryptedSecret);
-                walletdb.Close();
-            }
+            WalletDB walletdb(strWalletFile);
+            result = walletdb.WriteCryptedKey(vchPubKey, vchCryptedSecret);
 
             return result;
         }
@@ -346,7 +327,6 @@ namespace Legacy
             /* Only if wallet is not encrypted */
             WalletDB walletdb(strWalletFile);
             bool result = walletdb.WriteKey(key.GetPubKey(), key.GetPrivKey());
-            walletdb.Close();
 
             return result;
         }
@@ -370,7 +350,6 @@ namespace Legacy
             {
                 WalletDB walletdb(strWalletFile);
                 bool result = walletdb.WriteScript(LLC::SK256(redeemScript), redeemScript);
-                walletdb.Close();
 
                 return result;
             }
@@ -408,7 +387,6 @@ namespace Legacy
             {
                 WalletDB walletdb(strWalletFile);
                 bool result = walletdb.WriteDefaultKey(vchPubKey);
-                walletdb.Close();
 
                 if (!result)
                     return false;
@@ -431,7 +409,6 @@ namespace Legacy
             {
                 WalletDB walletdb(strWalletFile);
                 bool result = walletdb.WriteTrustKey(vchPubKey);
-                walletdb.Close();
 
                 if (!result)
                     return false;
@@ -454,7 +431,6 @@ namespace Legacy
             {
                 WalletDB walletdb(strWalletFile);
                 bool result = walletdb.EraseTrustKey();
-                walletdb.Close();
 
                 if (!result)
                     return false;
@@ -477,11 +453,12 @@ namespace Legacy
 
         Crypter crypter;
         MasterKey kMasterKey;
+        uint32_t nNewMasterKeyId = 0;
 
         CKeyingMaterial vMasterKey;
         LLC::RandAddSeedPerfmon();
 
-        /* Stop stake minter before encrypting wallet */
+        /* If it is running, stop stake minter before encrypting wallet */
         StakeMinter::GetInstance().StopStakeMinter();
 
         /* Fill keying material (unencrypted key value) and new master key salt with random data using OpenSSL RAND_bytes */
@@ -516,64 +493,38 @@ namespace Legacy
 
         /* kMasterKey now contains the master key encrypted by the provided passphrase. Ready to perform wallet encryption. */
         {
-            /* Lock for writing master key */
+            /* Lock for writing master key and converting keys */
             LOCK(cs_wallet);
 
-            mapMasterKeys[++nMasterKeyMaxID] = kMasterKey;
+            nNewMasterKeyId = ++nMasterKeyMaxID;
+            mapMasterKeys[nNewMasterKeyId] = kMasterKey;
 
-            if (fFileBacked)
-            {
-                /* Set up the encryption database pointer for the encryption transaction */
-                pWalletDbEncryption = std::make_shared<WalletDB>(strWalletFile);
 
-                if (!pWalletDbEncryption->TxnBegin())
-                    return false;
-
-                /* Start encryption transaction by writing the master key */
-                pWalletDbEncryption->WriteMasterKey(nMasterKeyMaxID, kMasterKey);
-            }
-        } //Lock must be released before call to EncryptKeys()
-
-        /* EncryptKeys() in CryptoKeyStore will encrypt every public key/private key pair in the key store, including those that
-         * are part of the key pool. It calls CryptoKeyStore::AddCryptedKey() to add each to the key store, which will polymorphically
-         * call Wallet::AddCryptedKey and also write them to the database.
-         *
-         * See Wallet::AddKey() for more discussion on how this works
-         *
-         * When it writes the encrypted key to the database, it will also remove any unencrypted entry for the same public key
-         */
-        if (!EncryptKeys(vMasterKey))
-        {
-            if (fFileBacked)
-                pWalletDbEncryption->TxnAbort();
-
-            /* We now probably have half of our keys encrypted in memory,
-             * and half not...die to let the user reload their unencrypted wallet.
+            /* EncryptKeys() in CryptoKeyStore will encrypt every public key/private key pair in the BasicKeyStore, including those in the
+             * key pool. Then it will clear the BasickeyStore, write the encrypted keys into CryptoKeyStore, and return them in mapNewEncryptedKeys.
              */
-            config::fShutdown.store(true);
-            return debug::error(FUNCTION, "Error encrypting wallet. Shutting down.");;
-        }
-
-        if (fFileBacked)
-        {
-            if (!pWalletDbEncryption->TxnCommit())
+            CryptedKeyMap mapNewEncryptedKeys;
+            if (!EncryptKeys(vMasterKey, mapNewEncryptedKeys))
             {
-                /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
-                config::fShutdown.store(true);
-                return debug::error(FUNCTION, "Error committing encryption updates to wallet file. Shutting down.");
+                /* The encryption failed, but we have not updated the key store or the database, yet, so just return false */
+                return debug::error(FUNCTION, "Error encrypting wallet. Encryption aborted.");;
             }
 
-
-            pWalletDbEncryption->Close();
-
+            /* Update the backing database. This will store the master key and encrypted keys, and remove old unencrypted keys */
+            if (fFileBacked)
             {
-                /* Need lock on database access before close db */
-                LOCK(BerkeleyDB::cs_db);
-                BerkeleyDB::CloseDb(strWalletFile);
-            }
+                WalletDB walletdb(strWalletFile);
+                bool fDbEncryptionSuccessful = false;
 
-            /* Reset the encryption database pointer (WalletDB it pointed to before will be destroyed) */
-            pWalletDbEncryption = nullptr;
+                fDbEncryptionSuccessful = walletdb.EncryptDatabase(nNewMasterKeyId, kMasterKey, mapNewEncryptedKeys);
+
+                if (!fDbEncryptionSuccessful)
+                {
+                    /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
+                    config::fShutdown.store(true);
+                    return debug::error(FUNCTION, "Unable to complete encryption for ", strWalletFile, ". Encryption aborted. Shutting down.");
+                }
+            }
         }
 
         /* Lock wallet, then unlock with new passphrase to update key pool */
@@ -581,15 +532,28 @@ namespace Legacy
         Unlock(strWalletPassphrase);
 
         /* Replace key pool with encrypted keys */
-        keyPool.NewKeyPool();
+        {
+            LOCK(cs_wallet);
 
-        /* Lock wallet before rewrite */
+            keyPool.NewKeyPool();
+        }
+
+        /* Lock wallet again before rewrite */
         Lock();
 
         /* Need to completely rewrite the wallet file; if we don't, bdb might keep
          * bits of the unencrypted private key in slack space in the database file.
          */
-        bool rewriteResult = BerkeleyDB::DBRewrite(strWalletFile);
+        bool rewriteResult = true;
+        {
+            LOCK(cs_wallet);
+
+            if (fFileBacked)
+            {
+                WalletDB walletdb(strWalletFile);
+                rewriteResult = walletdb.DBRewrite();
+            }
+        }
 
         if (rewriteResult)
             debug::log(0, FUNCTION, "Wallet encryption completed successfully");
@@ -737,10 +701,9 @@ namespace Legacy
 
                     if (fFileBacked)
                     {
-                        /* Store new master key encryption to the wallet database (overwrites old value)*/
+                        /* Store new master key encryption to the wallet database (overwrites old value) */
                         WalletDB walletdb(strWalletFile);
                         walletdb.WriteMasterKey(pMasterKey.first, pMasterKey.second);
-                        walletdb.Close();
                     }
 
                     /* Relock file if it was locked when we started */
@@ -1174,7 +1137,6 @@ namespace Legacy
             {
                 WalletDB walletdb(strWalletFile);
                 walletdb.EraseTx(hash);
-                walletdb.Close();
             }
         }
 
@@ -1860,24 +1822,15 @@ namespace Legacy
     {
         debug::log(0, FUNCTION, wtxNew.ToString());
 
-        /* This is only to keep the database open to defeat the auto-flush for the
-         * duration of this scope.  This is the only place where this optimization
-         * maybe makes sense; please don't do it anywhere else.
-         */
-        WalletDB* pwalletdb = nullptr;
-        if (fFileBacked)
-            pwalletdb = new WalletDB(strWalletFile,"r");
-
         /* Add tx to wallet, because if it has change it's also ours, otherwise just for transaction history.
          * This will update to wallet database
          */
         AddToWallet(wtxNew);
 
-        /* If transaction used the change key, this will. Remove key pair from key pool so it won't be used again
-         * If key was previously returned, this does nothing
+        /* If transaction used the change key, this will remove key pair from key pool so it won't be used again.
+         * If key was previously returned, this does nothing.
          */
         changeKey.KeepKey();
-
 
         {
             LOCK(cs_wallet);
@@ -1891,12 +1844,6 @@ namespace Legacy
                 prevTx.MarkSpent(txin.prevout.n);
                 prevTx.WriteToDisk(); //Stores to wallet database
             }
-        }
-
-        if (fFileBacked)
-        {
-            pwalletdb->Close();
-            delete pwalletdb;
         }
 
         /* Add to tracking for how many getdata requests our transaction gets */
