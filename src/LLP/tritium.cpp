@@ -141,7 +141,7 @@ namespace LLP
                     if(INCOMING.Complete() && !INCOMING.IsValid())
                     {
 
-                        debug::log(3, NODE, "Dropped Packet (Complete: ", INCOMING.Complete() ? "Y" : "N",
+                        debug::log(3, NODE "Dropped Packet (Complete: ", INCOMING.Complete() ? "Y" : "N",
                             " - Valid: )",  INCOMING.IsValid() ? "Y" : "N");
 
                         if(DDOS)
@@ -152,7 +152,7 @@ namespace LLP
 
                 if(INCOMING.Complete())
                 {
-                    debug::log(4, NODE, "Received Packet (", INCOMING.LENGTH, ", ", INCOMING.GetBytes().size(), ")");
+                    debug::log(4, NODE "Received Packet (", INCOMING.LENGTH, ", ", INCOMING.GetBytes().size(), ")");
 
                     if(config::GetArg("-verbose", 0) >= 5)
                         PrintHex(INCOMING.GetBytes());
@@ -201,7 +201,7 @@ namespace LLP
                 && nLastTimeReceived.load() + 10 < runtime::timestamp()
                 && nLastGetBlocks.load() + 10 < runtime::timestamp())
                 {
-                    debug::log(0, NODE, "fast sync event timeout");
+                    debug::log(0, NODE "fast sync event timeout");
 
                     /* Switch to a new node. */
                     SwitchNode();
@@ -275,6 +275,19 @@ namespace LLP
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
         switch(INCOMING.MESSAGE)
         {
+            case DAT_DUPE_DISCONNECT:
+            {
+                /* The disconnect message is sent by peers when they want to gracefully close a connection
+                   when they have detected more than one connection to the same node.
+                   We send the same message in reply and then return false from ProcessPacket which will 
+                   in turn issue a FORCE_DISCONNECT event on this connection to gracefully close the 
+                   connection at our end.  By responding with a DAT_DUPE_DISCONNECT message the same will occur
+                   at the calling end to ensure both ends close gracefully. */
+                   debug::log(0, NODE "Disconnecting duplicate connection.");
+                   PushMessage(DAT_DUPE_DISCONNECT);
+                return false;
+                break;
+            }
 
             case DAT_VERSION:
             {
@@ -290,7 +303,7 @@ namespace LLP
                     LOCK(SESSIONS_MUTEX);
                     if(nCurrentSession == TritiumNode::nSessionID)
                     {
-                        debug::log(0, FUNCTION, "connected to self");
+                        debug::log(0, NODE "connected to self");
 
                         /* Cache self-address in the banned list of the Address Manager. */
                         if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
@@ -309,10 +322,11 @@ namespace LLP
                         if( !GetAddress().IsEID() || pConnection->GetAddress().IsEID() )
                         {
                             /* don't allow new connection */
-                            debug::log(0, FUNCTION, "duplicate connection attempt to same server prevented.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
+                            debug::log(0, NODE "duplicate connection attempt to same server prevented.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
 
-                            /* Cache self-address in the banned list of the Address Manager. */
-                            if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
+                            /* If we attempted to connect via a different IP to the existing connection then
+                               notify the AddressManager to ban the second IP so that we favour the existing one */
+                            if(GetAddress() != pConnection->GetAddress() && TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
                                 TRITIUM_SERVER->pAddressManager->Ban(addr);
 
                             return false;
@@ -320,10 +334,12 @@ namespace LLP
                         else
                         {
                             /* initiate disconnect of existing connection in favour of new one */
-                            debug::log(0, FUNCTION, "duplicate connection attempt to same server.  Switching to EID connection.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
+                            debug::log(0, NODE "duplicate connection attempt to same server.  Switching to EID connection.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
 
-                            pConnection->Disconnect();
+                            /* Notify the peer to disconnect the existing connection */
+                            pConnection->PushMessage(DAT_DUPE_DISCONNECT);
                             
+                            /* Notify the AddressManager to ban the underlay IP so that we favour the EID */
                             if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
                                 TRITIUM_SERVER->pAddressManager->Ban(pConnection->GetAddress());
                         }
@@ -336,7 +352,7 @@ namespace LLP
                 }
                 
                 /* Debug output for offsets. */
-                debug::log(3, NODE, "received session identifier ",nCurrentSession);
+                debug::log(3, NODE "received session identifier ",nCurrentSession);
 
 
                 /* Send version message if connection is inbound. */
@@ -373,7 +389,7 @@ namespace LLP
                 int32_t nOffset = (runtime::timestamp(true) - nTimestamp);
 
                 /* Debug output for offsets. */
-                debug::log(3, NODE, "received timestamp of ", nTimestamp, " sending offset ", nOffset);
+                debug::log(3, NODE "received timestamp of ", nTimestamp, " sending offset ", nOffset);
 
                 /* Push a timestamp in response. */
                 PushMessage(DAT_OFFSET, nRequestID, nOffset);
@@ -394,7 +410,7 @@ namespace LLP
                     if(DDOS)
                         DDOS->rSCORE += 5;
 
-                    debug::log(3, NODE, "Invalid Request : Message Not Requested [", nRequestID, "][", nLatency, " ms]");
+                    debug::log(3, NODE "Invalid Request : Message Not Requested [", nRequestID, "][", nLatency, " ms]");
 
                     break;
                 }
@@ -402,7 +418,7 @@ namespace LLP
                 /* Check the time since request was sent. */
                 if(runtime::timestamp() - mapSentRequests[nRequestID] > 10)
                 {
-                    debug::log(3, NODE, "Invalid Request : Message Stale [", nRequestID, "][", nLatency, " ms]");
+                    debug::log(3, NODE "Invalid Request : Message Stale [", nRequestID, "][", nLatency, " ms]");
 
                     if(DDOS)
                         DDOS->rSCORE += 15;
@@ -420,7 +436,7 @@ namespace LLP
                 nOffset -= nLatency;
 
                 /* Debug output for offsets. */
-                debug::log(3, NODE, "Received Unified Offset ", nOffset, " [", nRequestID, "][", nLatency, " ms]");
+                debug::log(3, NODE "Received Unified Offset ", nOffset, " [", nRequestID, "][", nLatency, " ms]");
 
                 /* Remove sent requests from mpa. */
                 mapSentRequests.erase(nRequestID);
@@ -453,7 +469,7 @@ namespace LLP
 
                 /* Set the search from search limit. */
                 int32_t nLimit = 1000;
-                debug::log(2, "getblocks ", state.nHeight, " to ", hashStop.ToString().substr(0, 20), " limit ", nLimit);
+                debug::log(2, NODE "getblocks ", state.nHeight, " to ", hashStop.ToString().substr(0, 20), " limit ", nLimit);
 
                 /* Iterate forward the blocks required. */
                 std::vector<CInv> vInv;
@@ -471,7 +487,7 @@ namespace LLP
                     /* Check for hash stop. */
                     if (state.GetHash() == hashStop)
                     {
-                        debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
+                        debug::log(3, NODE "getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
 
                         /* Tell about latest block if hash stop is found. */
                         if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
@@ -503,7 +519,7 @@ namespace LLP
                     {
                         // When this block is requested, we'll send an inv that'll make them
                         // getblocks the next batch of inventory.
-                        debug::log(3, "  getblocks stopping at limit ", state.nHeight, " to ", state.GetHash().ToString().substr(0,20));
+                        debug::log(3, NODE "getblocks stopping at limit ", state.nHeight, " to ", state.GetHash().ToString().substr(0,20));
 
                         hashContinue = state.GetHash();
                         break;
@@ -525,7 +541,7 @@ namespace LLP
                 std::vector<CInv> vInv;
                 ssPacket >> vInv;
 
-                debug::log(3, NODE, "Inventory Message of ", vInv.size(), " elements");
+                debug::log(3, NODE "Inventory Message of ", vInv.size(), " elements");
 
                 /* Make sure the inventory size is not too large. */
                 if (vInv.size() > 10000)
@@ -595,8 +611,8 @@ namespace LLP
                     vGet = vInv; /* just request data for all inventory*/ 
 
                 /* Ask your friendly neighborhood node for the data */
-                
-                PushMessage(GET_DATA, vGet);
+                if(vGet.size() > 0)
+                    PushMessage(GET_DATA, vGet);
 
                 break;
             }
@@ -614,14 +630,14 @@ namespace LLP
                     return true;
                 }
 
-                debug::log(3, FUNCTION, "received getdata of ", vInv.size(), " elements");
+                debug::log(3, NODE "received getdata of ", vInv.size(), " elements");
 
                 /* Loop the inventory and deliver messages. */
                 for(const auto& inv : vInv)
                 {
 
                     /* Log the inventory message receive. */
-                    debug::log(3, FUNCTION, "processing getdata ", inv.ToString());
+                    debug::log(3, NODE "processing getdata ", inv.ToString());
 
                     /* Handle the block message. */
                     if (inv.GetType() == MSG_BLOCK_LEGACY || inv.GetType() == MSG_BLOCK_TRITIUM)
@@ -651,9 +667,7 @@ namespace LLP
                         /* Trigger a new getblocks if hash continue is set. */
                         if (inv.GetHash() == hashContinue)
                         {
-                            bool fStateBestIsLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
-                            std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), fStateBestIsLegacy ? LLP::MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM) };
-                            PushMessage(GET_INVENTORY, vInv);
+                            PushMessage(GET_INVENTORY, TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()), uint1024_t(0));
                             hashContinue = 0;
                         }
                     }
@@ -926,6 +940,8 @@ namespace LLP
                 uint64_t nNonce;
                 ssPacket >> nNonce;
 
+                debug::log(3, NODE "Ping (Nonce ", std::hex, nNonce, ")" );
+
                 /* Push a pong as a response. */
                 PushMessage(DAT_PONG, nNonce);
 
@@ -956,7 +972,7 @@ namespace LLP
                     TRITIUM_SERVER->pAddressManager->SetLatency(nLatency, GetAddress());
 
                 /* Debug output for latency. */
-                debug::log(3, NODE, "Latency (Nonce ", std::hex, nNonce, " - ", std::dec, nLatency, " ms)");
+                debug::log(3, NODE "Latency (Nonce ", std::hex, nNonce, " - ", std::dec, nLatency, " ms)");
 
                 /* Clear the latency tracker record. */
                 mapLatencyTracker.erase(nNonce);
@@ -1098,4 +1114,39 @@ namespace LLP
         return true;
     }
 
+
+    /* Send a request to get recent inventory from remote node. */
+    void TritiumNode::PushGetInventory(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo)
+    {
+        /* Filter out duplicate requests. */
+        if(hashLastGetblocks.load() == hashBlockFrom && nLastGetBlocks.load() + 1 > runtime::timestamp())
+            return;
+
+        /* Set the fast sync address. */
+        if(addrFastSync != GetAddress())
+        {
+            /* Set the new sync address. */
+            addrFastSync = GetAddress();
+
+            /* Reset the last time received. */
+            nLastTimeReceived = runtime::timestamp();
+
+            debug::log(0, NODE, "New sync address set");
+        }
+
+        /* Calculate the fast sync average. */
+        nFastSyncAverage = std::min((uint64_t)25, (nFastSyncAverage.load() + (runtime::timestamp() - nLastGetBlocks.load())) / 2);
+
+        /* Update the last timestamp this was called. */
+        nLastGetBlocks = runtime::timestamp();
+
+        /* Update the hash that was used for last request. */
+        hashLastGetblocks = hashBlockFrom;
+
+        /* Push the request to the node. */
+        PushMessage(GET_INVENTORY, TAO::Ledger::Locator(hashBlockFrom), hashBlockTo);
+
+        /* Debug output for monitoring. */
+        debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getinventory from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
+    }
 }
