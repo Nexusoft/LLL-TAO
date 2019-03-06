@@ -370,6 +370,9 @@ namespace Legacy
     {
         LOCK(cs_db);
         
+        if (pdb == nullptr)
+            OpenHandle();
+
         /* Start a new database transaction. Need to use raw pointer with Berkeley API */
         DbTxn* pTxn = nullptr;
 

@@ -493,37 +493,37 @@ namespace Legacy
 
         /* kMasterKey now contains the master key encrypted by the provided passphrase. Ready to perform wallet encryption. */
         {
-            /* Lock for writing master key */
+            /* Lock for writing master key and converting keys */
             LOCK(cs_wallet);
 
             nNewMasterKeyId = ++nMasterKeyMaxID;
             mapMasterKeys[nNewMasterKeyId] = kMasterKey;
 
-        } //Lock released before call to EncryptKeys()
 
-        /* EncryptKeys() in CryptoKeyStore will encrypt every public key/private key pair in the BasicKeyStore, including those that
-         * are part of the key pool, and store them in mapNewEncryptedKeys.
-         */
-        CryptedKeyMap mapNewEncryptedKeys;
-        if (!EncryptKeys(vMasterKey, mapNewEncryptedKeys))
-        {
-            /* The encryption failed, but we have not updated the key store or the database, yet, so just return false */
-            return debug::error(FUNCTION, "Error encrypting wallet. Encryption aborted.");;
-        }
-
-        /* Update the backing database. This will store the master key and encrypted keys, and remove old unencrypted keys */
-        WalletDB walletdb(strWalletFile);
-        if (fFileBacked)
-        {
-            bool fDbEncryptionSuccessful = false;
-
-            fDbEncryptionSuccessful = walletdb.EncryptDatabase(nNewMasterKeyId, kMasterKey, mapNewEncryptedKeys);
-
-            if (!fDbEncryptionSuccessful)
+            /* EncryptKeys() in CryptoKeyStore will encrypt every public key/private key pair in the BasicKeyStore, including those in the
+             * key pool. Then it will clear the BasickeyStore, write the encrypted keys into CryptoKeyStore, and return them in mapNewEncryptedKeys.
+             */
+            CryptedKeyMap mapNewEncryptedKeys;
+            if (!EncryptKeys(vMasterKey, mapNewEncryptedKeys))
             {
-                /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
-                config::fShutdown.store(true);
-                return debug::error(FUNCTION, "Unable to complete encryption for ", strWalletFile, ". Encryption aborted. Shutting down.");
+                /* The encryption failed, but we have not updated the key store or the database, yet, so just return false */
+                return debug::error(FUNCTION, "Error encrypting wallet. Encryption aborted.");;
+            }
+
+            /* Update the backing database. This will store the master key and encrypted keys, and remove old unencrypted keys */
+            if (fFileBacked)
+            {
+                WalletDB walletdb(strWalletFile);
+                bool fDbEncryptionSuccessful = false;
+
+                fDbEncryptionSuccessful = walletdb.EncryptDatabase(nNewMasterKeyId, kMasterKey, mapNewEncryptedKeys);
+
+                if (!fDbEncryptionSuccessful)
+                {
+                    /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
+                    config::fShutdown.store(true);
+                    return debug::error(FUNCTION, "Unable to complete encryption for ", strWalletFile, ". Encryption aborted. Shutting down.");
+                }
             }
         }
 
@@ -532,15 +532,28 @@ namespace Legacy
         Unlock(strWalletPassphrase);
 
         /* Replace key pool with encrypted keys */
-        keyPool.NewKeyPool();
+        {
+            LOCK(cs_wallet);
 
-        /* Lock wallet before rewrite */
+            keyPool.NewKeyPool();
+        }
+
+        /* Lock wallet again before rewrite */
         Lock();
 
         /* Need to completely rewrite the wallet file; if we don't, bdb might keep
          * bits of the unencrypted private key in slack space in the database file.
          */
-        bool rewriteResult = walletdb.DBRewrite();
+        bool rewriteResult = true;
+        {
+            LOCK(cs_wallet);
+
+            if (fFileBacked)
+            {
+                WalletDB walletdb(strWalletFile);
+                rewriteResult = walletdb.DBRewrite();
+            }
+        }
 
         if (rewriteResult)
             debug::log(0, FUNCTION, "Wallet encryption completed successfully");

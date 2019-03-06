@@ -716,7 +716,7 @@ namespace Legacy
 
         BerkeleyDB& db = BerkeleyDB::GetInstance();
 
-        if (db.TxnBegin())
+        if (!db.TxnBegin())
         {
             debug::error(FUNCTION, "Unable to begin database transaction for writing encrypted keys to ", strWalletFile);
             return false;
@@ -734,7 +734,7 @@ namespace Legacy
             for (const auto& mKey : mapNewEncryptedKeys)
             {
                 const std::vector<uint8_t>& vchPubKey = mKey.second.first;
-                const std::vector<uint8_t>& vchCryptedSecret = mKey.second.first;
+                const std::vector<uint8_t>& vchCryptedSecret = mKey.second.second;
 
                 if (!WriteCryptedKey(vchPubKey, vchCryptedSecret, true))
                 {
@@ -753,7 +753,9 @@ namespace Legacy
             }
         }
 
-        if (!fSuccessful)
+        if (fSuccessful)
+            db.DBFlush();
+        else
             db.TxnAbort();
 
         /* Ok to flush again. */
@@ -874,23 +876,11 @@ namespace Legacy
             return false;
 
         /* Validate the length of strDest. This assures pathDest.size() cast to uint32_t is always valid (nobody can pass a ridiculously long string) */
-    #ifndef WIN32
-        const size_t MAX_PATH_SIZE = 4096;
-
-        if (strDest.size() > MAX_PATH_SIZE)
+        if (strDest.size() > MAX_PATH)
         {
             debug::error(FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
             return false;
         }
-    #else
-        const size_t MAX_WIN_PATH_SIZE = 260;
-
-        if (strDest.size() > MAX_WIN_PATH_SIZE)
-        {
-            debug::error(FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
-            return false;
-        }
-    #endif
 
         bool fBackupSuccessful = false;
 
@@ -929,19 +919,11 @@ namespace Legacy
                 pathDest = pathDest + strSource;
 
                 /* After appending to pathDest, need to validate again */
-    #ifndef WIN32
-                if (strDest.size() > MAX_PATH_SIZE) {
+                if (strDest.size() > MAX_PATH) {
                     debug::error(FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
                     fBackupSuccessful =  false;
                     break;
                 }
-    #else
-                if (strDest.size() > MAX_WIN_PATH_SIZE) {
-                    debug::error(FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
-                    fBackupSuccessful =  false;
-                    break;
-                }
-    #endif
             }
 
             /* Flush and detach the source file before we copy it */

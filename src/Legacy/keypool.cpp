@@ -56,8 +56,6 @@ namespace Legacy
                 {
                     debug::log(2, FUNCTION, "Erasing previous key pool entries");
 
-                    vPoolIndexList.resize(setKeyPool.size());
-
                     for(uint64_t nPoolIndex : setKeyPool)
                         vPoolIndexList.push_back(nPoolIndex);
                 }
@@ -75,9 +73,7 @@ namespace Legacy
             {
                 LOCK(cs_keyPool);
 
-                vPoolIndexList.resize(nKeys);
-
-                for (uint64_t nPoolIndex = 1; nPoolIndex <= nKeys; nPoolIndex++)
+                for (uint64_t nPoolIndex = 0; nPoolIndex < nKeys; nPoolIndex++)
                 {
                     setKeyPool.insert(nPoolIndex);
                     vPoolIndexList.push_back(nPoolIndex);
@@ -156,8 +152,6 @@ namespace Legacy
             {
                 if (!walletdb.WritePool(nPoolIndex, KeyPoolEntry(poolWallet.GenerateNewKey())))
                     throw std::runtime_error("KeyPool::NewKeyPool() : writing generated key failed");
-
-                debug::log(2, FUNCTION, "Keypool added key ", nPoolIndex);
             }
 
             if (fKeysAdded)
