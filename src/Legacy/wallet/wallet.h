@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_WALLET_H
 #define NEXUS_LEGACY_WALLET_WALLET_H
 
+#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -104,11 +105,10 @@ namespace Legacy
      **/
     class Wallet : public CryptoKeyStore
     {
-        /** WalletDB declared friend so it can use private Load methods within LoadWallet **/
+        /** WalletDB declared friend so it can use private Load methods within LoadWallet() process. **/
         friend class WalletDB;
 
     public:
-
 
         /** Constructor
          *
@@ -162,7 +162,7 @@ namespace Legacy
 
 
         /** Flag indicating whether or not the wallet instance has been initialized **/
-        static bool fWalletInitialized;
+        static std::atomic<bool> fWalletInitialized;
 
 
         /** The current wallet version: clients below this version are not able to load the wallet **/
@@ -219,16 +219,6 @@ namespace Legacy
 
         /** The timestamp that this wallet will remain unlocked until **/
         uint64_t nWalletUnlockTime;
-
-
-        /** Wallet database only used during encryption process to maintain
-         *  open database transaction across the process.
-         *
-         *  This has to be a shared_ptr in C++11 because there is no make_unique function
-         *  for assigning it when used. If we move to C++14 or higher standard that function
-         *  is added and this can be changed.
-         **/
-        std::shared_ptr<WalletDB> pWalletDbEncryption;
 
 
 

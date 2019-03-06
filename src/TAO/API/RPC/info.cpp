@@ -65,7 +65,7 @@ namespace TAO
             /* Staking metrics */
             Legacy::StakeMinter& stakeMinter = Legacy::StakeMinter::GetInstance();
 			obj["staking"] = stakeMinter.IsStarted() ? "Started" : "Not Started";
-			if (!stakeMinter.IsStarted())
+			if (stakeMinter.IsStarted())
 			{
 	            obj["stakerate"]   = stakeMinter.GetStakeRate();
 	            obj["trustweight"] = stakeMinter.GetTrustWeightPercent();

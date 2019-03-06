@@ -173,6 +173,14 @@ namespace Legacy
         	StakeMinter::fstopMinter.store(true);
             StakeMinter::minterThread.join();
 
+            if (pReservedTrustKey != nullptr)
+            {
+                /* If stop while staking for Genesis, return the key. It will reserve a new one if restarted */
+                pReservedTrustKey->ReturnKey();
+                delete pReservedTrustKey;
+                pReservedTrustKey = nullptr;
+            }
+
             StakeMinter::fisStarted.store(false);
             StakeMinter::fstopMinter.store(false);
             return true;
