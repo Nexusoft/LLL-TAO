@@ -573,12 +573,8 @@ namespace TAO
                         /* Write the Genesis to disk. */
                         if(!LLD::legDB->WriteGenesis(tx.hashGenesis, tx.GetHash()))
                             return debug::error(FUNCTION, "failed to write genesis");
-
-                        /* Write the last to disk. */
-                        if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.GetHash()))
-                            return debug::error(FUNCTION, "failed to write last hash");
                     }
-                    else
+                    else //POTENTIALLY SUPERFLUOUS CHECK, KEEP NOW FOR TESTING BUT DISPOSE BEFORE MAINNET
                     {
                         /* Check for the last hash. */
                         uint512_t hashLast;
