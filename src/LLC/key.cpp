@@ -316,13 +316,8 @@ namespace LLC
     , nCurveID(b.nCurveID)
     , nKeySize(b.nKeySize)
     {
-        //pkey = EC_KEY_dup(b.pkey);
         if (pkey == nullptr)
             throw key_error("ECKey::ECKey(const ECKey&) : EC_KEY_dup failed");
-
-        //nCurveID   = b.nCurveID;
-        //nKeySize = b.nKeySize;
-        //fSet = b.fSet;
     }
 
 

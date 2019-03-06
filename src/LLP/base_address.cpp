@@ -179,6 +179,14 @@ namespace LLP
     }
 
 
+    /*  Determines if address is a LISP EID mapped address. */
+    bool BaseAddress::IsEID() const
+    {
+        return (IsIPv4() && GetByte(3) == 240)
+        || (!IsIPv4() && (GetByte(15) == 0xfd || GetByte(15) == 0xfe));
+    }
+
+
     /* Determines if address is IPv4 private networks.
      * (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12) */
     bool BaseAddress::IsRFC1918() const

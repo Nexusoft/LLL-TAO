@@ -200,11 +200,9 @@ namespace LLP
     /*  Gets the Connect State of the address in the manager if it exists. */
     uint8_t AddressManager::GetState(const BaseAddress &addr) const
     {
-        uint8_t state = static_cast<uint8_t>(ConnectState::NEW);
-
         uint64_t hash = addr.GetHash();
+        uint8_t state = static_cast<uint8_t>(ConnectState::NEW);
         LOCK(mut);
-
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
             state = it->second.nState;
@@ -308,6 +306,7 @@ namespace LLP
             " TD=", total_count(ConnectState::DROPPED),
             " TF=", total_count(ConnectState::FAILED), " |",
             " B=",  ban_count(), " |",
+            " EID=", eid_count(), " |",
             " size=", mapTrustAddress.size());
 
         return strRet;
@@ -526,6 +525,20 @@ namespace LLP
     uint32_t AddressManager::ban_count()
     {
         return static_cast<uint32_t>(mapBanned.size());
+    }
+
+
+    /*  Returns the total number of LISP EID addresses. */
+    uint32_t AddressManager::eid_count()
+    {
+        uint32_t c = 0;
+        auto it = mapTrustAddress.begin();
+        for(; it != mapTrustAddress.end(); ++it)
+        {
+            if(it->second.IsEID())
+              ++c;
+        }
+        return c;
     }
 
 

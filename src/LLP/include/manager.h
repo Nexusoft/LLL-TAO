@@ -317,6 +317,14 @@ namespace LLP
         uint32_t ban_count();
 
 
+        /** eid_count
+         *
+         *  Returns the total number of LISP EID addresses.
+         *
+         **/
+        uint32_t eid_count();
+
+
         /** update_state
          *
          *  Updates the state of the given Trust address.
