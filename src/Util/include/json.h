@@ -9645,7 +9645,7 @@ class binary_writer
         static_assert(std::is_pod<CharType>::value, "CharType must be POD");
         CharType result;
         //std::memcpy(&result, &x, sizeof(x));
-        std::copy(&x, &x + sizeof(x), (uint8_t *)&result);
+        std::copy((uint8_t *)&x, (uint8_t *)&x + sizeof(x), (uint8_t *)&result);
         return result;
     }
 

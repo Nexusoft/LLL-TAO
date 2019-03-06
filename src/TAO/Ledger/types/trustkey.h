@@ -69,6 +69,14 @@ namespace TAO
             uint1024_t hashLastBlock;
 
 
+            /** The last block time found by key. **/
+            uint64_t nLastBlockTime;
+
+
+            /** The key's current stake rate. **/
+            double nStakeRate;
+
+
             /** Constructor
              *
              *  Initializes a null Trust Key.
@@ -81,6 +89,8 @@ namespace TAO
             , hashGenesisTx(0)
             , nGenesisTime(0)
             , hashLastBlock(0)
+            , nLastBlockTime(0)
+            , nStakeRate(0)
             {
 
             }
@@ -103,6 +113,8 @@ namespace TAO
             , hashGenesisTx(hashTxIn)
             , nGenesisTime(nTimeIn)
             , hashLastBlock(0)
+            , nLastBlockTime(0)
+            , nStakeRate(0)
             {
 
             }
@@ -117,6 +129,8 @@ namespace TAO
                 READWRITE(hashGenesisTx);
                 READWRITE(nGenesisTime);
                 READWRITE(hashLastBlock);
+                READWRITE(nLastBlockTime);
+                READWRITE(nStakeRate);
             )
 
 

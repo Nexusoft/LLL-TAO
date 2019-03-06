@@ -60,14 +60,14 @@ namespace TAO
             while(nShift > 124)
             {
                 dDiff = dDiff / 256.0;
-                nShift--;
+                --nShift;
             }
 
             /* Shift up if Position on Compact Scale is below 124. */
             while(nShift < 124)
             {
                 dDiff = dDiff * 256.0;
-                nShift++;
+                ++nShift;
             }
 
             /* Offset the number by 64 to give larger starting reference. */
@@ -83,7 +83,7 @@ namespace TAO
 
             /* Find the introductory block. */
             BlockState first = state;
-            for(int nIndex = nDepth; nIndex > 0; nIndex--)
+            for(uint32_t nIndex = nDepth; nIndex; --nIndex)
             {
                 /* Find the previous block. */
                 BlockState last = first.Prev();

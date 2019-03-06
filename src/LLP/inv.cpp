@@ -114,7 +114,7 @@ namespace LLP
 		/* Returns the hash associated with this inventory. */
 		uint1024_t CInv::GetHash() const
 		{
-				return hash;
+			return hash;
 		}
 
 

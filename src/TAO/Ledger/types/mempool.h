@@ -81,7 +81,7 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool AddUnchecked(TAO::Ledger::Transaction tx);
+            bool AddUnchecked(const TAO::Ledger::Transaction& tx);
 
 
             /** AddUnchecked
@@ -93,7 +93,7 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool AddUnchecked(Legacy::Transaction tx);
+            bool AddUnchecked(const Legacy::Transaction& tx);
 
 
             /** Accept
@@ -105,7 +105,7 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool Accept(TAO::Ledger::Transaction tx);
+            bool Accept(TAO::Ledger::Transaction& tx);
 
 
             /** Accept
@@ -117,7 +117,7 @@ namespace TAO
              *  @return true if added.
              *
              **/
-            bool Accept(Legacy::Transaction tx);
+            bool Accept(const Legacy::Transaction& tx);
 
 
             /** Get
@@ -131,7 +131,7 @@ namespace TAO
              *  @return true if pool contained transaction.
              *
              **/
-            bool Get(uint512_t hashTx, TAO::Ledger::Transaction& tx) const;
+            bool Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const;
 
 
             /** Get
@@ -145,7 +145,7 @@ namespace TAO
              *  @return true if pool contained legacy transaction.
              *
              **/
-            bool Get(uint512_t hashTx, Legacy::Transaction& tx) const;
+            bool Get(const uint512_t& hashTx, Legacy::Transaction &tx) const;
 
 
             /** Has
@@ -157,7 +157,7 @@ namespace TAO
              *  @return true if transaction in mempool.
              *
              **/
-            bool Has(uint512_t hashTx) const;
+            bool Has(const uint512_t& hashTx) const;
 
 
             /** HasLegacy
@@ -169,7 +169,7 @@ namespace TAO
              *  @return true if legacy transaction in mempool.
              *
              **/
-            bool HasLegacy(uint512_t hashTx) const;
+            bool HasLegacy(const uint512_t& hashTx) const;
 
 
             /** Remove
@@ -181,7 +181,7 @@ namespace TAO
              *  @return true if removed.
              *
              **/
-            bool Remove(uint512_t hashTx);
+            bool Remove(const uint512_t& hashTx);
 
 
             /** RemoveLegacy
@@ -193,7 +193,7 @@ namespace TAO
              *  @return true if removed.
              *
              **/
-            bool RemoveLegacy(uint512_t hashTx);
+            bool RemoveLegacy(const uint512_t& hashTx);
 
 
             /** List

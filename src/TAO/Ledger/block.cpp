@@ -149,7 +149,7 @@ namespace TAO
         uint1024_t Block::ProofHash() const
         {
             /** Hashing template for CPU miners uses nVersion to nBits **/
-            if(GetChannel() == 1)
+            if(nChannel == 1)
                 return LLC::SK1024(BEGIN(nVersion), END(nBits));
 
             /** Hashing template for GPU uses nVersion to nNonce **/
@@ -240,8 +240,6 @@ namespace TAO
         /* Verify the Proof of Work satisfies network requirements. */
         bool Block::VerifyWork() const
         {
-            uint32_t nChannel = GetChannel();
-
             /* Check the Prime Number Proof of Work for the Prime Channel. */
             if(nChannel == 1)
             {
@@ -305,7 +303,7 @@ namespace TAO
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-            ss.reserve(10000);
+            ss.reserve(256);
 
             /* Trust Key is part of stake hash if not genesis. */
             if(nHeight > 2392970 && fIsGenesis)
@@ -331,7 +329,7 @@ namespace TAO
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-            ss.reserve(10000);
+            ss.reserve(256);
 
             /* Trust Key is part of stake hash if not genesis. */
             if(nHeight > 2392970 && fIsGenesis)

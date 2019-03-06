@@ -97,15 +97,19 @@ namespace Legacy
 	/* Determine if a transaction is newer than supplied argument. */
 	bool Transaction::IsNewerThan(const Transaction& old) const
 	{
-		if (vin.size() != old.vin.size())
+        /* Get the number of inputs to the transaction. */
+        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+
+		if (nInSize != old.vin.size())
 			return false;
-		for (uint32_t i = 0; i < vin.size(); i++)
+
+		for (uint32_t i = 0; i < nInSize; ++i)
 			if (vin[i].prevout != old.vin[i].prevout)
 				return false;
 
 		bool fNewer = false;
 		uint32_t nLowest = std::numeric_limits<uint32_t>::max();
-		for (uint32_t i = 0; i < vin.size(); i++)
+		for (uint32_t i = 0; i < nInSize; ++i)
 		{
 			if (vin[i].nSequence != old.vin[i].nSequence)
 			{
@@ -148,8 +152,11 @@ namespace Legacy
 	/* Check the flags that denote a coinstake transaction. */
 	bool Transaction::IsCoinStake() const
 	{
+        /* Get the number of inputs to the transaction. */
+        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+
 		/* Must have more than one Input. */
-		if(vin.size() <= 1)
+		if(nInSize <= 1)
 			return false;
 
 		/* First Input Script Signature must Contain Fibanacci Byte Series. */
@@ -157,7 +164,7 @@ namespace Legacy
 			return false;
 
 		/* All Remaining Previous Inputs must not be Empty. */
-		for(int nIndex = 1; nIndex < vin.size(); nIndex++)
+		for(uint32_t nIndex = 1; nIndex < nInSize; ++nIndex)
 			if(vin[nIndex].prevout.IsNull())
 				return false;
 
@@ -317,8 +324,11 @@ namespace Legacy
         if(!IsCoinStake())
             return false;
 
+        /* Get the number of inputs to the transaction. */
+        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+
         /* Check the coin age of each Input. */
-        for(int nIndex = 1; nIndex < vin.size(); ++nIndex)
+        for(uint32_t nIndex = 1; nIndex < nInSize; ++nIndex)
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
@@ -332,7 +342,7 @@ namespace Legacy
             nAge += nCoinAge;
         }
 
-        nAge /= (vin.size() - 1);
+        nAge /= (nInSize - 1);
 
         return true;
     }
@@ -375,8 +385,11 @@ namespace Legacy
                 return debug::error(FUNCTION, "unable to read trust key");
         }
 
+        /* Get the number of inputs to the transaction. */
+        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+
         /** Check the coin age of each Input. **/
-        for(int nIndex = 1; nIndex < vin.size(); nIndex++)
+        for(uint32_t nIndex = 1; nIndex < nInSize; ++nIndex)
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
@@ -403,7 +416,7 @@ namespace Legacy
             nStakeReward += ((nValue * nStakeRate * nCoinAge) / nMaxTrustScore);
         }
 
-        nAverageAge /= (vin.size() - 1);
+        nAverageAge /= (nInSize - 1);
 
         return true;
     }
@@ -415,7 +428,10 @@ namespace Legacy
         if (IsCoinBase())
             return true; // Coinbases don't use vin normally
 
-        for (uint32_t i = (int) IsCoinStake(); i < vin.size(); i++)
+        /* Get the number of inputs to the transaction. */
+        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+
+        for (uint32_t i = (uint32_t) IsCoinStake(); i < nInSize; ++i)
         {
             const TxOut& prev = GetOutputFor(vin[i], mapInputs);
 
@@ -470,7 +486,7 @@ namespace Legacy
 	/* Count ECDSA signature operations the old-fashioned (pre-0.6) way */
 	uint32_t Transaction::GetLegacySigOpCount() const
     {
-        unsigned int nSigOps = 0;
+        uint32_t nSigOps = 0;
         for(const auto& txin : vin)
         {
             if(txin.IsStakeSig())
@@ -495,7 +511,11 @@ namespace Legacy
             return 0;
 
         uint32_t nSigOps = 0;
-        for (uint32_t i = (uint32_t) IsCoinStake(); i < vin.size(); i++)
+
+        /* Get the number of inputs to the transaction. */
+        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+
+        for (uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
         {
             const TxOut& prevout = GetOutputFor(vin[i], mapInputs);
             nSigOps += prevout.scriptPubKey.GetSigOpCount(vin[i].scriptSig);
@@ -526,8 +546,12 @@ namespace Legacy
         if (IsCoinBase())
             return 0;
 
-        int64_t nResult = 0;
-        for (uint32_t i = (uint32_t) IsCoinStake(); i < vin.size(); ++i)
+        uint64_t nResult = 0;
+
+        /* Get the number of inputs to the transaction. */
+        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+
+        for (uint32_t i = (uint32_t) IsCoinStake(); i < nInSize; ++i)
         {
             nResult += GetOutputFor(vin[i], mapInputs).nValue;
         }
@@ -661,16 +685,23 @@ namespace Legacy
         if (::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > TAO::Ledger::MAX_BLOCK_SIZE)
             return debug::error(FUNCTION, "size limits failed");
 
+        /* Determine if Transaction is CoinStake or CoinBase. */
+        bool fIsCoinBase = IsCoinBase();
+        bool fIsCoinStake = IsCoinStake();
+
         /* Check for negative or overflow output values */
         int64_t nValueOut = 0;
         for(const auto& txout : vout)
         {
+            /* Determine if txout is empty. */
+            bool fTxOutIsEmpty = txout.IsEmpty();
+
             /* Checkout for empty outputs. */
-            if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()))
+            if (fTxOutIsEmpty && (!fIsCoinBase && !fIsCoinStake))
                 return debug::error(FUNCTION, "txout empty for user transaction");
 
             /* Enforce minimum output amount. */
-            if ((!txout.IsEmpty()) && txout.nValue < MIN_TXOUT_AMOUNT)
+            if (!fTxOutIsEmpty && txout.nValue < MIN_TXOUT_AMOUNT)
                 return debug::error(FUNCTION, "txout.nValue below minimum");
 
             /* Enforce maximum output amount. */
@@ -694,7 +725,7 @@ namespace Legacy
         }
 
         /* Check for null previous outputs. */
-        if (!IsCoinBase() && !IsCoinStake())
+        if (!fIsCoinBase && !fIsCoinStake)
         {
             for(const auto& txin : vin)
                 if (txin.prevout.IsNull())
@@ -712,8 +743,11 @@ namespace Legacy
         if (IsCoinBase())
             return true;
 
+        /* Get the number of inputs to the transaction. */
+        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+
         /* Read all of the inputs. */
-        for (uint32_t i = IsCoinStake() ? 1 : 0; i < vin.size(); i++)
+        for (uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
         {
             /* Skip inputs that are already found. */
             OutPoint prevout = vin[i].prevout;
@@ -743,15 +777,19 @@ namespace Legacy
     /* Mark the inputs in a transaction as spent. */
     bool Transaction::Connect(const std::map<uint512_t, Transaction>& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags) const
     {
+        /* Determine if Transaction is CoinStake or CoinBase. */
+        bool fIsCoinBase = IsCoinBase();
+        bool fIsCoinStake = IsCoinStake();
+
         /* Special checks for coinbase and coinstake. */
-        if (IsCoinStake() || IsCoinBase())
+        if (fIsCoinStake || fIsCoinBase)
         {
             /* Check the input script size. */
             if(vin[0].scriptSig.size() < 2 || vin[0].scriptSig.size() > (state.nVersion < 5 ? 100 : 144))
                 return debug::error(FUNCTION, "coinbase/coinstake script invalid size ", vin[0].scriptSig.size());
 
             /* Coinbase has no inputs. */
-            if (IsCoinBase())
+            if (fIsCoinBase)
             {
                 /* Calculate the mint when on a block. */
                 if(nFlags & FLAGS::BLOCK)
@@ -804,10 +842,17 @@ namespace Legacy
                 /* Double Check the Genesis Transaction. */
                 if(!trustKey.CheckGenesis(stateGenesis))
                     return debug::error(FUNCTION, "invalid genesis transaction");
-
-                /* Write trust key changes to disk. */
-                trustKey.hashLastBlock = state.GetHash();
             }
+
+            /* Write trust key changes to disk. */
+            trustKey.hashLastBlock = state.GetHash();
+
+            /* Get the last trust key time. */
+            uint64_t nBlockTime = state.GetBlockTime();
+            trustKey.nLastBlockTime = nBlockTime;
+
+            /* Get the stake rate. */
+            trustKey.nStakeRate     = trustKey.StakeRate(state, nBlockTime);
 
             /* Write the trust key. */
             LLD::trustDB->WriteTrustKey(cKey, trustKey);
@@ -819,7 +864,11 @@ namespace Legacy
 
         /* Read all of the inputs. */
         uint64_t nValueIn = 0;
-        for (uint32_t i = IsCoinStake() ? 1 : 0; i < vin.size(); i++)
+
+        /* Get the number of inputs to the transaction. */
+        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+
+        for (uint32_t i = (uint32_t)fIsCoinStake; i < nInSize; ++i)
         {
             /* Check the inputs map to tx inputs. */
             OutPoint prevout = vin[i].prevout;
@@ -869,7 +918,7 @@ namespace Legacy
         }
 
         /* Check the coinstake transaction. */
-        if (IsCoinStake())
+        if (fIsCoinStake)
         {
             /* Get the coinstake interest. */
             uint64_t nStakeReward = 0;
@@ -897,18 +946,17 @@ namespace Legacy
         /* Coinbase has no inputs. */
         if (!IsCoinBase())
         {
+            /* Get the number of inputs to the transaction. */
+            uint32_t nInSize = static_cast<uint32_t>(vin.size());
+
             /* Read all of the inputs. */
-            for (uint32_t i = IsCoinStake() ? 1 : 0; i < vin.size(); i++)
+            for (uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
             {
                 /* Erase the spends. */
                 if(!LLD::legacyDB->EraseSpend(vin[i].prevout.hash, vin[i].prevout.n))
                     return debug::error(FUNCTION, "failed to erase spends.");
             }
         }
-
-        /* Erase the index. */
-        if(!LLD::legDB->EraseIndex(GetHash()))
-            return debug::error(FUNCTION, "failed to erase index");
 
         return true;
     }
@@ -1055,8 +1103,8 @@ namespace Legacy
         }
 
         /* Set maximum trust score to seconds passed for interest rate. */
-        if(nScore > (60 * 60 * 24 * 28 * 13))
-            nScore = (60 * 60 * 24 * 28 * 13);
+        if(nScore > TAO::Ledger::TRUST_SCORE_MAX)
+            nScore = TAO::Ledger::TRUST_SCORE_MAX;
 
         /* Debug output. */
         debug::log(2, FUNCTION,
