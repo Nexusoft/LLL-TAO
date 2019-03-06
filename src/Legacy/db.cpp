@@ -27,7 +27,7 @@ namespace Legacy
 {
 
     /* Static variable initialization */
-    bool BerkeleyDB::fDbInitialized = false;
+    std::atomic<bool> BerkeleyDB::fDbInitialized(false);
 
 
     /* Constructor */
@@ -708,7 +708,7 @@ namespace Legacy
     /* Retrieves the BerkeleyDB instance that corresponds to a given database file. */
     BerkeleyDB& BerkeleyDB::GetInstance(const std::string& strFileIn)
     {
-        if (!BerkeleyDB::fDbInitialized && strFileIn.empty())
+        if (!BerkeleyDB::fDbInitialized.load() && strFileIn.empty())
         {
             debug::error(FUNCTION, "Berkeley database initialization missing file name");
             throw std::runtime_error(debug::safe_printstr(FUNCTION, "Berkeley database initialization missing file name"));
@@ -717,13 +717,13 @@ namespace Legacy
         /* This will create an initialized, database instance on first call to GetInstance() */
         static BerkeleyDB dbInstance(strFileIn);
 
-        if (BerkeleyDB::fDbInitialized && !strFileIn.empty() && dbInstance.strDbFile.compare(strFileIn) != 0)
+        if (BerkeleyDB::fDbInitialized.load() && !strFileIn.empty() && dbInstance.strDbFile.compare(strFileIn) != 0)
         {
             debug::error(FUNCTION, "Invalid attempt to change Berkeley database file name");
             throw std::runtime_error(debug::safe_printstr(FUNCTION, "Invalid attempt to change Berkeley database file name"));
         }
 
-        BerkeleyDB::fDbInitialized = true;
+        BerkeleyDB::fDbInitialized.store(true);
 
         return dbInstance;
     }

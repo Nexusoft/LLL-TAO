@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_DB_H
 #define NEXUS_LEGACY_WALLET_DB_H
 
+#include <atomic>
 #include <map>
 #include <mutex>
 #include <string>
@@ -54,7 +55,7 @@ namespace Legacy
     private:
 
         /** Flag indicating whether or not the wallet instance has been initialized **/
-        static bool fDbInitialized;
+        static std::atomic<bool> fDbInitialized;
 
 
         /** Mutex for thread concurrency.
