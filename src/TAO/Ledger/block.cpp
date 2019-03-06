@@ -299,7 +299,7 @@ namespace TAO
 
 
         /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
-        uint1024_t Block::StakeHash(bool fIsGenesis, const uint256_t &hashGenesis) const
+        uint1024_t Block::StakeHash(bool fIsGenesis, const uint256_t& hashGenesis) const
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
