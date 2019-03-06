@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/convert.h>
+#include <Util/include/args.h>
 
 namespace LLP
 {
@@ -37,7 +38,7 @@ namespace LLP
     , pSigChain(nullptr)
     , PIN()
     {
-        pSigChain = new TAO::Ledger::SignatureChain("colin", "password");
+        pSigChain = new TAO::Ledger::SignatureChain(config::GetArg("-miner", "viz").c_str(), "password");
         PIN = "1234";
     }
 
@@ -48,7 +49,7 @@ namespace LLP
     , pSigChain(nullptr)
     , PIN()
     {
-        pSigChain = new TAO::Ledger::SignatureChain("user", "pass");
+        pSigChain = new TAO::Ledger::SignatureChain(config::GetArg("-miner", "viz").c_str(), "password");
         PIN = "1234";
     }
 
@@ -59,7 +60,7 @@ namespace LLP
     , pSigChain(nullptr)
     , PIN()
     {
-        pSigChain = new TAO::Ledger::SignatureChain("user", "pass");
+        pSigChain = new TAO::Ledger::SignatureChain(config::GetArg("-miner", "viz").c_str(), "password");
         PIN = "1234";
     }
 
