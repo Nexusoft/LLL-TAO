@@ -653,7 +653,7 @@ namespace LLP
                         TAO::Ledger::BlockState state;
                         if(!LLD::legDB->ReadBlock(inv.GetHash(), state))
                         {
-                            debug::log(3, NODE "getdata readblock failed ", inv.GetHash());
+                            debug::log(3, NODE "getdata readblock failed ", inv.GetHash().ToString().substr(0, 20));
                             continue;
                         }
 
