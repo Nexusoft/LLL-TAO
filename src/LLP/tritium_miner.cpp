@@ -37,7 +37,7 @@ namespace LLP
     , pSigChain(nullptr)
     , PIN()
     {
-        pSigChain = new TAO::Ledger::SignatureChain("user", "pass");
+        pSigChain = new TAO::Ledger::SignatureChain("colin", "password");
         PIN = "1234";
     }
 
