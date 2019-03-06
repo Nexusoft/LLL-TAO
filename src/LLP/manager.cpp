@@ -275,7 +275,7 @@ namespace LLP
         if(s == 0)
             return false;
 
-        /* Select an index with a random weighted bias toward the from of the list. */
+        /* Select an index with a random weighted bias toward the front of the list. */
         nSelect = ((std::numeric_limits<uint64_t>::max() /
             std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) % s;
 

@@ -344,11 +344,6 @@ namespace LLP
         /* Set the port. */
         pAddressManager->SetPort(PORT);
 
-
-        /* Wait for data threads to startup. */
-        while(DATA_THREADS.size() < MAX_THREADS)
-            runtime::sleep(1000);
-
         /* Loop connections. */
         while(!config::fShutdown.load())
         {
@@ -357,7 +352,8 @@ namespace LLP
                 runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
-            if(pAddressManager->StochasticSelect(addr))
+            if(GetConnectionCount() < 128
+               && pAddressManager->StochasticSelect(addr))
             {
                 /* Check for invalid address */
                 if(!addr.IsValid())
@@ -417,10 +413,6 @@ namespace LLP
         /* Bind the Listener. */
         if(!BindListenPort(hListenSocket, fIPv4))
             return;
-
-        /* Don't listen until all data threads are created. */
-        while(DATA_THREADS.size() < MAX_THREADS)
-            runtime::sleep(1000);
 
         /* Setup poll objects. */
         pollfd fds[1];

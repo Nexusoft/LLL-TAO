@@ -92,6 +92,7 @@ namespace LLP
          **/
         void GetAddresses(std::vector<TrustAddress> &vAddrInfo, const uint8_t flags = CONNECT_FLAGS_ALL);
 
+
         /** Count
          *
          *  Gets the count of addresses info in the manager
