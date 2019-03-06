@@ -257,9 +257,12 @@ namespace LLP
                 {
                     LOCK(SESSIONS_MUTEX);
 
-                    /* Free the connected session. */
-                    if(mapConnectedSessions.count(nCurrentSession))
-                        mapConnectedSessions.erase(nCurrentSession);
+                    /* Free this session, if it is this connection that we mapped. 
+                       When we disconnect a duplicate session then it will not have been added to the map, 
+                       so we need to skip removing the session ID*/
+                    if(TritiumNode::mapConnectedSessions.count(nCurrentSession) 
+                    && TritiumNode::mapConnectedSessions[nCurrentSession] == this)
+                        TritiumNode::mapConnectedSessions.erase(nCurrentSession);
                 }
 
                 break;
@@ -312,9 +315,9 @@ namespace LLP
                         return false;
                     }
                     /* Check for existing connection to same node*/
-                    else if( mapConnectedSessions.count(nCurrentSession) > 0)
+                    else if( TritiumNode::mapConnectedSessions.count(nCurrentSession) > 0)
                     {
-                        TritiumNode* pConnection = mapConnectedSessions.at(nCurrentSession);
+                        TritiumNode* pConnection = TritiumNode::mapConnectedSessions.at(nCurrentSession);
                         
                         /* If the existing connection is via LISP then we make a preference for it and disallow the 
                         incoming connection. Otherwise if the incoming is via LISP and the existing is not we 
@@ -322,7 +325,7 @@ namespace LLP
                         if( !GetAddress().IsEID() || pConnection->GetAddress().IsEID() )
                         {
                             /* don't allow new connection */
-                            debug::log(0, NODE "duplicate connection attempt to same server prevented.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
+                            debug::log(0, NODE "duplicate connection attempt to same server prevented (session ID ", nCurrentSession, ").  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
 
                             /* If we attempted to connect via a different IP to the existing connection then
                                notify the AddressManager to ban the second IP so that we favour the existing one */
@@ -334,7 +337,7 @@ namespace LLP
                         else
                         {
                             /* initiate disconnect of existing connection in favour of new one */
-                            debug::log(0, NODE "duplicate connection attempt to same server.  Switching to EID connection.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
+                            debug::log(0, NODE "duplicate connection attempt to same server (session ID ", nCurrentSession, ").  Switching to EID connection.  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
 
                             /* Notify the peer to disconnect the existing connection */
                             pConnection->PushMessage(DAT_DUPE_DISCONNECT);
@@ -348,7 +351,7 @@ namespace LLP
 
                     /* Add this connection into the global map once we have verified the DAT_VERSION message and 
                         are happy to allow the connection */
-                    mapConnectedSessions[nCurrentSession] = this;
+                    TritiumNode::mapConnectedSessions[nCurrentSession] = this;
                 }
                 
                 /* Debug output for offsets. */
