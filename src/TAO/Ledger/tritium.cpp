@@ -345,9 +345,9 @@ namespace TAO
 
 
             /* Check That Block timestamp is not before previous block. */
-            //if (GetBlockTime() <= statePrev.GetBlockTime())
-            //    return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
-            //     statePrev.GetBlockTime());
+            if (GetBlockTime() <= statePrev.GetBlockTime())
+                return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
+                statePrev.GetBlockTime());
 
 
             /* Check that Block is Descendant of Hardened Checkpoints. */
@@ -399,6 +399,17 @@ namespace TAO
 
                     if (!txCheck.IsFinal(nHeight, GetBlockTime()))
                         return debug::error(FUNCTION, "contains a non-final transaction");
+                }
+                else if(tx.first == TYPE::TRITIUM_TX)
+                {
+                    /* Check if in memory pool. */
+                    Transaction txCheck;
+                    if(!mempool.Get(tx.second, txCheck))
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
+
+                    /* Check the transaction for validity. */
+                    if (!txCheck.IsValid())
+                        return debug::error(FUNCTION, "contains an invalid transaction");
                 }
             }
 
