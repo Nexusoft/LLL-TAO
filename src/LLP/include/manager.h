@@ -92,6 +92,7 @@ namespace LLP
          **/
         void GetAddresses(std::vector<TrustAddress> &vAddrInfo, const uint8_t flags = CONNECT_FLAGS_ALL);
 
+
         /** Count
          *
          *  Gets the count of addresses info in the manager
@@ -251,6 +252,19 @@ namespace LLP
          void Ban(const BaseAddress &addr, uint32_t banTime = 0);
 
 
+         /** GetDNSName
+          *
+          *  Gets the DNS name associated with the given address.
+          *
+          *  @param[in] addr The address to determine DNS from.
+          *  @param[out] dns The DNS name, if any.
+          *
+          *  @return Returns true if the address has a DNS name.
+          *
+          **/
+         bool GetDNSName(const BaseAddress &addr, std::string &dns);
+
+
     private:
 
         /** get_addresses
@@ -317,6 +331,14 @@ namespace LLP
         uint32_t ban_count();
 
 
+        /** eid_count
+         *
+         *  Returns the total number of LISP EID addresses.
+         *
+         **/
+        uint32_t eid_count();
+
+
         /** update_state
          *
          *  Updates the state of the given Trust address.
@@ -330,6 +352,7 @@ namespace LLP
 
         std::map<uint64_t, TrustAddress> mapTrustAddress;
         std::map<uint64_t, uint32_t> mapBanned;
+        std::map<uint64_t, std::string> mapDNS;
         mutable std::mutex mut;
         LLD::AddressDB *pDatabase;
         uint16_t nPort;

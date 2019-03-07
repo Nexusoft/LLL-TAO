@@ -174,7 +174,7 @@ namespace TAO
                     uint32_t nSize = tx.vout.size();
 
                     /* Add up the Miner Rewards from Coinbase Tx Outputs. */
-                    for(int32_t nIndex = 0; nIndex < nSize - 2; nIndex++)
+                    for(int32_t nIndex = 0; nIndex < nSize - 2; ++nIndex)
                         nCoinbaseRewards[0] += tx.vout[nIndex].nValue;
 
                     /* Get the ambassador and developer coinbase. */
@@ -428,7 +428,7 @@ namespace TAO
                 if(!vConnect.empty())
                 {
                     /* Resurrect the tritium transactions. */
-                    for(const auto& tx : vTritiumResurrect)
+                    for(auto& tx : vTritiumResurrect)
                         mempool.Accept(tx);
 
                     /* Resurrect the legacy transactions. */
@@ -442,27 +442,27 @@ namespace TAO
 
 
                 /* Reverse the blocks to connect to connect in ascending height. */
-                std::reverse(vConnect.begin(), vConnect.end());
-                for(auto& state : vConnect)
-                //for(auto state = vConnect.rbegin(); state != vConnect.rend(); ++state)
+                //std::reverse(vConnect.begin(), vConnect.end());
+                //for(auto& state : vConnect)
+                for(auto state = vConnect.rbegin(); state != vConnect.rend(); ++state)
                 {
                     /* Output the block state if flagged. */
                     if(config::GetBoolArg("-printstate"))
-                        debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
+                        debug::log(0, state->ToString(debug::flags::header | debug::flags::tx));
 
                     /* Connect the block. */
-                    if(!state.Connect())
+                    if(!state->Connect())
                     {
                         /* Abort the Transaction. */
                         LLD::TxnAbort();
 
                         /* Debug errors. */
                         return debug::error(FUNCTION, "failed to connect ",
-                            state.GetHash().ToString().substr(0, 20));
+                            state->GetHash().ToString().substr(0, 20));
                     }
 
                     /* Remove transactions from memory pool. */
-                    for(const auto& tx : state.vtx)
+                    for(const auto& tx : state->vtx)
                         vDelete.push_back(tx.second);
 
                     /* Harden a checkpoint if there is any. */

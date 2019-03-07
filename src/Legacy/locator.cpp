@@ -65,7 +65,7 @@ namespace Legacy
                 break;
 
             /* Loop back the total blocks of step iterator. */
-            for (int i = 0; !state.IsNull() && i < nStep; i++)
+            for (int i = 0; !state.IsNull() && i < nStep; ++i)
                 state = state.Prev();
 
             /* After 10 blocks, start taking exponential steps back. */

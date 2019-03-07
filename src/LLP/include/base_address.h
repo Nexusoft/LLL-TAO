@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <Util/templates/serialize.h>
 #include <Util/templates/flatdata.h>
 
+#include <string>
 #include <vector>
 #include <cstdint>
 
@@ -97,6 +98,15 @@ namespace LLP
          *
          **/
         void SetIP(const BaseAddress &addr);
+
+
+
+        /** IsEID
+         *
+         *  Determines if address is a LISP EID mapped address.
+         *
+         ***/
+        bool IsEID() const;
 
 
         /** IsIPv4

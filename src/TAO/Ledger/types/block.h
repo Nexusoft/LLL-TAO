@@ -16,18 +16,12 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_TYPES_BLOCK_H
 
 #include <LLC/types/uint1024.h>
-#include <Util/include/runtime.h>
 
 //forward declerations for BigNum
 namespace LLC
 {
     class CBigNum;
     class ECKey;
-}
-
-namespace Legacy
-{
-    class LegacyBlock;
 }
 
 /* Global TAO namespace. */
@@ -37,8 +31,6 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
-        class BlockState;
 
         /** Block
          *
@@ -104,11 +96,7 @@ namespace TAO
 
 
             /** Copy constructor. **/
-            Block(const Legacy::LegacyBlock& block);
-
-
-            /** Copy constructor. **/
-            Block(const BlockState& block);
+            Block(const Block& block);
 
 
             /** Default Destructor **/
@@ -275,6 +263,27 @@ namespace TAO
              *
              **/
             bool VerifySignature(const LLC::ECKey& key) const;
+
+
+            /** Serialize
+             *
+             *  Convert the Header of a Block into a Byte Stream for
+             *  Reading and Writing Across Sockets.
+             *
+             *  @return Returns a vector of serialized byte information.
+             *
+             **/
+            std::vector<uint8_t> Serialize() const;
+
+
+            /** Deserialize
+             *
+             *  Convert Byte Stream into Block Header.
+             *
+             *  @param[in] vData The byte stream containing block info.
+             *
+             **/
+            void Deserialize(const std::vector<uint8_t>& vData);
 
         protected:
 

@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLP/include/manager.h>
 #include <LLP/include/hosts.h>
+#include <LLP/include/seeds.h>
 #include <Util/include/debug.h>
 #include <algorithm>
 #include <numeric>
@@ -30,6 +31,7 @@ namespace LLP
     AddressManager::AddressManager(uint16_t port)
     : mapTrustAddress()
     , mapBanned()
+    , mapDNS()
     , mut()
     , pDatabase(nullptr)
     , nPort(port)
@@ -158,6 +160,10 @@ namespace LLP
             BaseAddress lookup_address = BaseAddress(addrs[i], nPort, true);
 
             AddAddress(lookup_address, state);
+
+            LOCK(mut);
+            /* Associate a DNS name with an address. */
+            mapDNS[lookup_address.GetHash()] = addrs[i];
         }
     }
 
@@ -200,11 +206,9 @@ namespace LLP
     /*  Gets the Connect State of the address in the manager if it exists. */
     uint8_t AddressManager::GetState(const BaseAddress &addr) const
     {
-        uint8_t state = static_cast<uint8_t>(ConnectState::NEW);
-
         uint64_t hash = addr.GetHash();
+        uint8_t state = static_cast<uint8_t>(ConnectState::NEW);
         LOCK(mut);
-
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
             state = it->second.nState;
@@ -277,7 +281,7 @@ namespace LLP
         if(s == 0)
             return false;
 
-        /* Select an index with a random weighted bias toward the from of the list. */
+        /* Select an index with a random weighted bias toward the front of the list. */
         nSelect = ((std::numeric_limits<uint64_t>::max() /
             std::max((uint64_t)std::pow(nHash, 1.95) + 1, (uint64_t)1)) - 3) % s;
 
@@ -308,6 +312,7 @@ namespace LLP
             " TD=", total_count(ConnectState::DROPPED),
             " TF=", total_count(ConnectState::FAILED), " |",
             " B=",  ban_count(), " |",
+            " EID=", eid_count(), " |",
             " size=", mapTrustAddress.size());
 
         return strRet;
@@ -338,6 +343,23 @@ namespace LLP
 
         /* Remove the address from the map of addresses */
         remove_address(addr);
+    }
+
+    bool AddressManager::GetDNSName(const BaseAddress &addr, std::string &dns)
+    {
+        uint64_t hash = addr.GetHash();
+        LOCK(mut);
+
+        /* Attempt to find the DNS string. */
+        auto it = mapDNS.find(hash);
+
+        /* Return if name not found. */
+        if(it == mapDNS.end())
+            return false;
+
+        /* Set the dns lookup name. */
+        dns = it->second;
+        return true;
     }
 
 
@@ -526,6 +548,20 @@ namespace LLP
     uint32_t AddressManager::ban_count()
     {
         return static_cast<uint32_t>(mapBanned.size());
+    }
+
+
+    /*  Returns the total number of LISP EID addresses. */
+    uint32_t AddressManager::eid_count()
+    {
+        uint32_t c = 0;
+        auto it = mapTrustAddress.begin();
+        for(; it != mapTrustAddress.end(); ++it)
+        {
+            if(it->second.IsEID())
+              ++c;
+        }
+        return c;
     }
 
 

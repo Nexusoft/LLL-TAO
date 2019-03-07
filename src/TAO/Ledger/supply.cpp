@@ -41,9 +41,9 @@ namespace TAO
             nInterval += nMinutes;
 
             /* Compound all the minutes of the interval and types. */
-            for(uint32_t nMinute = nMinutes; nMinute < nInterval; nMinute++)
+            for(uint32_t nMinute = nMinutes; nMinute < nInterval; ++nMinute)
             {
-                for(uint32_t nType = 0; nType < 3; nType++)
+                for(uint32_t nType = 0; nType < 3; ++nType)
                 {
                     nMoneySupply += (GetSubsidy(nMinute, nType) * 2);
                 }
@@ -57,9 +57,9 @@ namespace TAO
         uint64_t CompoundSubsidy(int32_t nMinutes, uint8_t nTypes)
         {
             uint64_t nMoneySupply = 0;
-            for(int nMinute = 1; nMinute <= nMinutes; nMinute++)
+            for(int nMinute = 1; nMinute <= nMinutes; ++nMinute)
             {
-                for(int nType = (nTypes == 3 ? 0 : nTypes); nType < (nTypes == 3 ? 4 : nTypes + 1); nType++)
+                for(int nType = (nTypes == 3 ? 0 : nTypes); nType < (nTypes == 3 ? 4 : nTypes + 1); ++nType)
                 {
                     nMoneySupply += (GetSubsidy(nMinute, nType) * 2);
                 }
@@ -91,7 +91,7 @@ namespace TAO
             double nRemainder   = nFraction - nInterval;
 
             uint64_t nSubsidy = 0;
-            for(int nMinute = 0; nMinute < nInterval; nMinute++)
+            for(int nMinute = 0; nMinute < nInterval; ++nMinute)
                 nSubsidy += GetSubsidy(nMinutes + nMinute, nType);
 
             return nSubsidy + (GetSubsidy(nMinutes + nInterval, nType) * nRemainder);
@@ -152,7 +152,7 @@ namespace TAO
         uint64_t ReleaseRewards(uint32_t nTimespan, uint32_t nStart, uint8_t nType)
         {
             uint64_t nSubsidy = 0;
-            for(int nMinutes = nStart; nMinutes < (nStart + nTimespan); nMinutes++)
+            for(int nMinutes = nStart; nMinutes < (nStart + nTimespan); ++nMinutes)
             {
                 nSubsidy += GetSubsidy(nMinutes, nType);
             }

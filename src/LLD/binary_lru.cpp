@@ -209,6 +209,24 @@ namespace LLD
             /* Get the object we are working on. */
             BinaryNode* pthis = hashmap[nBucket];
 
+            /* Replace the data on the heap if is a duplicate. */
+            if(pthis->vKey == vKey
+            && pthis->vData.size() == vData.size())
+            {
+                /* Set the new data. */
+                std::vector<uint8_t>().swap(pthis->vData);
+                pthis->vData = vData;
+
+                /* Set proper reserved value. */
+                pthis->fReserve = fReserve;
+
+                /* Move to the front of the list. */
+                if(!pthis->fReserve)
+                    MoveToFront(pthis);
+
+                return;
+            }
+
             /* Remove from the linked list. */
             RemoveNode(pthis);
 
@@ -239,7 +257,7 @@ namespace LLD
         nCurrentSize += static_cast<uint32_t>(vData.size() + vKey.size());
 
         /* Remove the last node if cache too large. */
-        while(nCurrentSize > MAX_CACHE_SIZE)
+        if(nCurrentSize > MAX_CACHE_SIZE)
         {
             /* Get the last key. */
             if(plast && plast->pprev)
@@ -248,7 +266,6 @@ namespace LLD
 
                 /* Relink in memory. */
                 plast = plast->pprev;
-
                 if(plast && plast->pnext)
                     plast->pnext = nullptr;
 
@@ -269,11 +286,7 @@ namespace LLD
                 }
 
                 pnode = nullptr;
-
-                continue;
             }
-
-            break;
         }
     }
 
