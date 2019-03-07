@@ -325,7 +325,7 @@ namespace LLP
          *  Prints information about this address.
          *
          **/
-        virtual void Print(); //can't be const, for Windows compile,  because calls ToString which calls ToStringIP
+        virtual void Print() const; 
 
 
         /**

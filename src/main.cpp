@@ -290,6 +290,11 @@ int main(int argc, char** argv)
     config::CacheArgs();
 
 
+    /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
+    if (!LLP::NetworkStartup())
+        debug::error("Failed initializing network resources");
+
+
     /* Handle Commandline switch */
     for (int i = 1; i < argc; ++i)
     {
@@ -376,11 +381,6 @@ int main(int argc, char** argv)
     /** Handle Rescanning. **/
     if(config::GetBoolArg(std::string("-rescan")))
         Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
-
-
-    /** Initialize network resources. **/
-    if (!LLP::NetworkStartup())
-        debug::error("Failed initializing network resources");
 
 
     /** Startup the time server. **/

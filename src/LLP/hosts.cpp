@@ -159,13 +159,9 @@ namespace LLP
 
         aiHint.ai_socktype = SOCK_STREAM;
         aiHint.ai_protocol = IPPROTO_TCP;
-#ifdef WIN32
-        aiHint.ai_family = AF_UNSPEC;
-        aiHint.ai_flags = fAllowLookup ? 0 : AI_NUMERICHOST;
-#else
+
         aiHint.ai_family = AF_UNSPEC;
         aiHint.ai_flags = AI_ADDRCONFIG | (fAllowLookup ? 0 : AI_NUMERICHOST);
-#endif
 
         struct addrinfo *aiRes = nullptr;
         std::unique_lock<std::mutex> lk(::LOOKUP_MUTEX);

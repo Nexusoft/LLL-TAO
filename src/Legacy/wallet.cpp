@@ -48,6 +48,7 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+#include <Util/include/signals.h>
 
 namespace Legacy
 {
@@ -522,6 +523,7 @@ namespace Legacy
                 {
                     /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
                     config::fShutdown.store(true);
+                    SHUTDOWN.notify_all();
                     return debug::error(FUNCTION, "Unable to complete encryption for ", strWalletFile, ". Encryption aborted. Shutting down.");
                 }
             }
