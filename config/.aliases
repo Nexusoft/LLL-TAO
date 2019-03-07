@@ -45,6 +45,7 @@ alias ns          'netstat -an'
 alias ping-seed4  'ping 240.0.255.255'
 alias ping-seed6  'ping fe::255:255'
 alias td          'tcpdump -i any -n'
+alias whoarepeers 'python /nexus/whoarepeers.py'    
 
 #
 # LISP handy aliases.
@@ -61,4 +62,5 @@ alias rate-loop    'echo "while 1 \n rate | sort -bu \n echo \n sleep 1 \n end \
 alias lisp-log-packets '/lispers.net/log-packets -9090'
 alias lig1         'python -O lisp-lig.pyo "[200]\!*" to node1.nexusoft.io'
 alias lig2         'python -O lisp-lig.pyo "[200]\!*" to node2.nexusoft.io'
+alias ltr          'python -O ltr.pyo'
     
