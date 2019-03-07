@@ -55,7 +55,6 @@ namespace TAO
         , producer(block.producer)
         , vtx(block.vtx)
         {
-
         }
 
 

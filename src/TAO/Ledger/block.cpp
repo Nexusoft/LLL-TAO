@@ -23,12 +23,9 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 
 #include <TAO/Ledger/types/block.h>
-#include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
-
-#include <Legacy/types/legacy.h>
 
 #include <ios>
 #include <iomanip>
@@ -62,22 +59,7 @@ namespace TAO
 
 
         /** Copy constructor. **/
-        Block::Block(const Legacy::LegacyBlock& block)
-        : nVersion(block.nVersion)
-        , hashPrevBlock(block.hashPrevBlock)
-        , hashMerkleRoot(block.hashMerkleRoot)
-        , nChannel(block.nChannel)
-        , nHeight(block.nHeight)
-        , nBits(block.nBits)
-        , nNonce(block.nNonce)
-        , nTime(block.nTime)
-        , vchBlockSig(block.vchBlockSig.begin(), block.vchBlockSig.end())
-        {
-        }
-
-
-        /** Copy constructor. **/
-        Block::Block(const BlockState& block)
+        Block::Block(const Block& block)
         : nVersion(block.nVersion)
         , hashPrevBlock(block.hashPrevBlock)
         , hashMerkleRoot(block.hashMerkleRoot)
@@ -311,31 +293,31 @@ namespace TAO
             std::vector<uint8_t> BITS     = convert::uint2bytes(nBits);
             std::vector<uint8_t> NONCE    = convert::uint2bytes64(nNonce);
 
-            std::vector<uint8_t> DATA;
-            DATA.insert(DATA.end(), VERSION.begin(),   VERSION.end());
-            DATA.insert(DATA.end(), PREVIOUS.begin(), PREVIOUS.end());
-            DATA.insert(DATA.end(), MERKLE.begin(),     MERKLE.end());
-            DATA.insert(DATA.end(), CHANNEL.begin(),   CHANNEL.end());
-            DATA.insert(DATA.end(), HEIGHT.begin(),     HEIGHT.end());
-            DATA.insert(DATA.end(), BITS.begin(),         BITS.end());
-            DATA.insert(DATA.end(), NONCE.begin(),       NONCE.end());
+            std::vector<uint8_t> vData;
+            vData.insert(vData.end(), VERSION.begin(),   VERSION.end());
+            vData.insert(vData.end(), PREVIOUS.begin(), PREVIOUS.end());
+            vData.insert(vData.end(), MERKLE.begin(),     MERKLE.end());
+            vData.insert(vData.end(), CHANNEL.begin(),   CHANNEL.end());
+            vData.insert(vData.end(), HEIGHT.begin(),     HEIGHT.end());
+            vData.insert(vData.end(), BITS.begin(),         BITS.end());
+            vData.insert(vData.end(), NONCE.begin(),       NONCE.end());
 
-            return DATA;
+            return vData;
         }
 
 
         /*  Convert Byte Stream into Block Header. */
-        void Block::Deserialize(const std::vector<uint8_t> &DATA)
+        void Block::Deserialize(const std::vector<uint8_t>& vData)
         {
-            nVersion = convert::bytes2uint(std::vector<uint8_t>(DATA.begin(), DATA.begin() + 4));
+            nVersion = convert::bytes2uint(std::vector<uint8_t>(vData.begin(), vData.begin() + 4));
 
-            hashPrevBlock.SetBytes (std::vector<uint8_t>(DATA.begin() + 4, DATA.begin() + 132));
-            hashMerkleRoot.SetBytes(std::vector<uint8_t>(DATA.begin() + 132, DATA.end() - 20));
+            hashPrevBlock.SetBytes (std::vector<uint8_t>(vData.begin() + 4, vData.begin() + 132));
+            hashMerkleRoot.SetBytes(std::vector<uint8_t>(vData.begin() + 132, vData.end() - 20));
 
-            nChannel = convert::bytes2uint(std::vector<uint8_t>(  DATA.end() - 20, DATA.end() - 16));
-            nHeight  = convert::bytes2uint(std::vector<uint8_t>(  DATA.end() - 16, DATA.end() - 12));
-            nBits    = convert::bytes2uint(std::vector<uint8_t>(  DATA.end() - 12, DATA.end() - 8));
-            nNonce   = convert::bytes2uint64(std::vector<uint8_t>(DATA.end() -  8, DATA.end()));
+            nChannel = convert::bytes2uint(std::vector<uint8_t>(  vData.end() - 20, vData.end() - 16));
+            nHeight  = convert::bytes2uint(std::vector<uint8_t>(  vData.end() - 16, vData.end() - 12));
+            nBits    = convert::bytes2uint(std::vector<uint8_t>(  vData.end() - 12, vData.end() - 8));
+            nNonce   = convert::bytes2uint64(std::vector<uint8_t>(vData.end() -  8, vData.end()));
         }
 
 
