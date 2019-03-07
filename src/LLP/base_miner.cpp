@@ -189,7 +189,7 @@ namespace LLP
 
 
                             /* Serialize the block data */
-                            data = SerializeBlock(*pBlock);
+                            data = pBlock->Serialize();
                             len = static_cast<uint32_t>(data.size());
 
                             /* Get the block hash for display purposes */
@@ -465,7 +465,7 @@ namespace LLP
                     mapBlocks[pBlock->hashMerkleRoot] = pBlock;
 
                     /* Serialize the block data */
-                    data = SerializeBlock(*pBlock);
+                    data = pBlock->Serialize();
                     len = static_cast<uint32_t>(data.size());
                 }
 
@@ -490,13 +490,13 @@ namespace LLP
                 bool rejected = true;
 
                 {
-                  LOCK(MUTEX);
+                    LOCK(MUTEX);
 
-                  /* Find, sign, and validate the submitted block in order to
-                     not be rejected. */
-                  rejected = !find_block(hashMerkleRoot)
-                          || !sign_block(nonce, hashMerkleRoot)
-                          || !validate_block(hashMerkleRoot);
+                    /* Find, sign, and validate the submitted block in order to
+                       not be rejected. */
+                    rejected = !find_block(hashMerkleRoot)
+                            || !sign_block(nonce, hashMerkleRoot)
+                            || !validate_block(hashMerkleRoot);
                 }
 
 
@@ -548,31 +548,6 @@ namespace LLP
         }
 
         return false;
-    }
-
-
-    /*  Convert the Header of a Block into a Byte Stream for
-     *  Reading and Writing Across Sockets. */
-    std::vector<uint8_t> BaseMiner::SerializeBlock(const TAO::Ledger::Block &BLOCK)
-    {
-        std::vector<uint8_t> VERSION  = convert::uint2bytes(BLOCK.nVersion);
-        std::vector<uint8_t> PREVIOUS = BLOCK.hashPrevBlock.GetBytes();
-        std::vector<uint8_t> MERKLE   = BLOCK.hashMerkleRoot.GetBytes();
-        std::vector<uint8_t> CHANNEL  = convert::uint2bytes(BLOCK.nChannel);
-        std::vector<uint8_t> HEIGHT   = convert::uint2bytes(BLOCK.nHeight);
-        std::vector<uint8_t> BITS     = convert::uint2bytes(BLOCK.nBits);
-        std::vector<uint8_t> NONCE    = convert::uint2bytes64(BLOCK.nNonce);
-
-        std::vector<uint8_t> DATA;
-        DATA.insert(DATA.end(), VERSION.begin(),   VERSION.end());
-        DATA.insert(DATA.end(), PREVIOUS.begin(), PREVIOUS.end());
-        DATA.insert(DATA.end(), MERKLE.begin(),     MERKLE.end());
-        DATA.insert(DATA.end(), CHANNEL.begin(),   CHANNEL.end());
-        DATA.insert(DATA.end(), HEIGHT.begin(),     HEIGHT.end());
-        DATA.insert(DATA.end(), BITS.begin(),         BITS.end());
-        DATA.insert(DATA.end(), NONCE.begin(),       NONCE.end());
-
-        return DATA;
     }
 
 

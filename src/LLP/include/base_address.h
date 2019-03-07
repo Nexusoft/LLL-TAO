@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <Util/templates/serialize.h>
 #include <Util/templates/flatdata.h>
 
+#include <string>
 #include <vector>
 #include <cstdint>
 

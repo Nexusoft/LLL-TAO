@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLP/include/manager.h>
 #include <LLP/include/hosts.h>
+#include <LLP/include/seeds.h>
 #include <Util/include/debug.h>
 #include <algorithm>
 #include <numeric>

@@ -276,6 +276,27 @@ namespace TAO
              **/
             bool VerifySignature(const LLC::ECKey& key) const;
 
+
+            /** Serialize
+             *
+             *  Convert the Header of a Block into a Byte Stream for
+             *  Reading and Writing Across Sockets.
+             *
+             *  @return Returns a vector of serialized byte information.
+             *
+             **/
+            std::vector<uint8_t> Serialize() const;
+
+
+            /** Deserialize
+             *
+             *  Convert Byte Stream into Block Header.
+             *
+             *  @param[in] data The byte stream containing block info.
+             *
+             **/
+            void Deserialize(const std::vector<uint8_t> &data);
+
         protected:
 
 

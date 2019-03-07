@@ -366,11 +366,11 @@ namespace LLP
 
                 /* Attempt the connection. */
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
-
                 if(AddConnection(addr.ToStringIP(), addr.GetPort()))
                 {
-                    std::string dns_name;
 
+                    /* If address is DNS, log message on connection. */
+                    std::string dns_name;
                     if(pAddressManager->GetDNSName(addr, dns_name))
                         debug::log(3, FUNCTION, "Connected to DNS Address: ", dns_name);
                 }

@@ -21,7 +21,8 @@ ________________________________________________________________________________
 
 #include <vector>
 #include <cstdint>
-
+#include <mutex>
+#include <atomic>
 
 namespace LLP
 {

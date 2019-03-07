@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <Util/templates/datastream.h>
 #include <Util/include/hex.h>
 #include <Util/include/args.h>
+#include <Util/include/convert.h>
 #include <Util/include/runtime.h>
 
 #include <TAO/Ledger/types/block.h>
@@ -295,6 +296,46 @@ namespace TAO
                 return false;
 
             return key.Verify((nVersion == 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);
+        }
+
+
+        /*  Convert the Header of a Block into a Byte Stream for
+         *  Reading and Writing Across Sockets. */
+        std::vector<uint8_t> Block::Serialize() const
+        {
+            std::vector<uint8_t> VERSION  = convert::uint2bytes(nVersion);
+            std::vector<uint8_t> PREVIOUS = hashPrevBlock.GetBytes();
+            std::vector<uint8_t> MERKLE   = hashMerkleRoot.GetBytes();
+            std::vector<uint8_t> CHANNEL  = convert::uint2bytes(nChannel);
+            std::vector<uint8_t> HEIGHT   = convert::uint2bytes(nHeight);
+            std::vector<uint8_t> BITS     = convert::uint2bytes(nBits);
+            std::vector<uint8_t> NONCE    = convert::uint2bytes64(nNonce);
+
+            std::vector<uint8_t> DATA;
+            DATA.insert(DATA.end(), VERSION.begin(),   VERSION.end());
+            DATA.insert(DATA.end(), PREVIOUS.begin(), PREVIOUS.end());
+            DATA.insert(DATA.end(), MERKLE.begin(),     MERKLE.end());
+            DATA.insert(DATA.end(), CHANNEL.begin(),   CHANNEL.end());
+            DATA.insert(DATA.end(), HEIGHT.begin(),     HEIGHT.end());
+            DATA.insert(DATA.end(), BITS.begin(),         BITS.end());
+            DATA.insert(DATA.end(), NONCE.begin(),       NONCE.end());
+
+            return DATA;
+        }
+
+
+        /*  Convert Byte Stream into Block Header. */
+        void Block::Deserialize(const std::vector<uint8_t> &DATA)
+        {
+            nVersion = convert::bytes2uint(std::vector<uint8_t>(DATA.begin(), DATA.begin() + 4));
+
+            hashPrevBlock.SetBytes (std::vector<uint8_t>(DATA.begin() + 4, DATA.begin() + 132));
+            hashMerkleRoot.SetBytes(std::vector<uint8_t>(DATA.begin() + 132, DATA.end() - 20));
+
+            nChannel = convert::bytes2uint(std::vector<uint8_t>(  DATA.end() - 20, DATA.end() - 16));
+            nHeight  = convert::bytes2uint(std::vector<uint8_t>(  DATA.end() - 16, DATA.end() - 12));
+            nBits    = convert::bytes2uint(std::vector<uint8_t>(  DATA.end() - 12, DATA.end() - 8));
+            nNonce   = convert::bytes2uint64(std::vector<uint8_t>(DATA.end() -  8, DATA.end()));
         }
 
 
