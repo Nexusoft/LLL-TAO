@@ -344,6 +344,9 @@ namespace LLP
         /* Set the port. */
         pAddressManager->SetPort(PORT);
 
+        /* Get the max connections. Default is 16 if maxconnections isn't specified. */
+        uint32_t nMaxConnections = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 16));
+
         /* Loop connections. */
         while(!config::fShutdown.load())
         {
@@ -352,7 +355,7 @@ namespace LLP
                 runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
-            if(GetConnectionCount() < 128
+            if(GetConnectionCount() < nMaxConnections
                && pAddressManager->StochasticSelect(addr))
             {
                 /* Check for invalid address */
