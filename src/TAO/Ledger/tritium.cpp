@@ -345,9 +345,9 @@ namespace TAO
 
 
             /* Check That Block timestamp is not before previous block. */
-            if (GetBlockTime() <= statePrev.GetBlockTime())
-                return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
-                statePrev.GetBlockTime());
+            //if (GetBlockTime() <= statePrev.GetBlockTime())
+            //    return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
+            //    statePrev.GetBlockTime());
 
 
             /* Check that Block is Descendant of Hardened Checkpoints. */
@@ -421,7 +421,10 @@ namespace TAO
 
             /* Accept the block state. */
             if(!state.Index())
+            {
+                TAO::Ledger::mempool.Remove(producer.GetHash());
                 return false;
+            }
 
             return true;
         }
