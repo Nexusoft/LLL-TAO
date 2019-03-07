@@ -125,6 +125,9 @@ namespace TAO
         /* Trust Retargeting: Modulate Difficulty based on production rate. */
         uint32_t RetargetTrust(const BlockState& state, bool fDebug)
         {
+            /* Handle for regression testing blocks. */
+            if(config::GetBoolArg("-regtest"))
+                return bnProofOfWorkLimit[0].GetCompact();
 
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
@@ -223,6 +226,10 @@ namespace TAO
         /* Prime Retargeting: Modulate Difficulty based on production rate. */
         uint32_t RetargetPrime(const BlockState& state, bool fDebug)
         {
+
+            /* Handle for regression testing blocks. */
+            if(config::GetBoolArg("-regtest"))
+                return bnProofOfWorkLimit[1].getuint32();
 
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
@@ -368,6 +375,9 @@ namespace TAO
         /* Trust Retargeting: Modulate Difficulty based on production rate. */
         uint32_t RetargetHash(const BlockState& state, bool fDebug)
         {
+            /* Handle for regression testing blocks. */
+            if(config::GetBoolArg("-regtest"))
+                return bnProofOfWorkLimit[2].GetCompact();
 
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;

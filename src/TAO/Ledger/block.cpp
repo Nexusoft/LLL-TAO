@@ -178,7 +178,7 @@ namespace TAO
         /* Update the nTime of the current block. */
         void Block::UpdateTime()
         {
-            nTime = static_cast<uint32_t>(runtime::unifiedtimestamp());
+            nTime = static_cast<uint32_t>(runtime::unifiedtimestamp()) + 1;
         }
 
 
