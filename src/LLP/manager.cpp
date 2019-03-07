@@ -30,6 +30,7 @@ namespace LLP
     AddressManager::AddressManager(uint16_t port)
     : mapTrustAddress()
     , mapBanned()
+    , mapDNS()
     , mut()
     , pDatabase(nullptr)
     , nPort(port)
@@ -158,6 +159,10 @@ namespace LLP
             BaseAddress lookup_address = BaseAddress(addrs[i], nPort, true);
 
             AddAddress(lookup_address, state);
+
+            LOCK(mut);
+            /* Associate a DNS name with an address. */
+            mapDNS[lookup_address.GetHash()] = addrs[i];
         }
     }
 
@@ -337,6 +342,23 @@ namespace LLP
 
         /* Remove the address from the map of addresses */
         remove_address(addr);
+    }
+
+    bool AddressManager::GetDNSName(const BaseAddress &addr, std::string &dns)
+    {
+        uint64_t hash = addr.GetHash();
+        LOCK(mut);
+
+        /* Attempt to find the DNS string. */
+        auto it = mapDNS.find(hash);
+
+        /* Return if name not found. */
+        if(it == mapDNS.end())
+            return false;
+
+        /* Set the dns lookup name. */
+        dns = it->second;
+        return true;
     }
 
 
