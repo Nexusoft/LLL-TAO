@@ -560,9 +560,9 @@ namespace LLP
     if(setsockopt(hListenSocket, IPPROTO_TCP /*SOL_SOCKET*/, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
     {
         debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
-        closesocket(hListenSocket);
+        //closesocket(hListenSocket);
 
-        return false;
+        //return false;
     }
 #endif
 

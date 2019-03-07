@@ -159,9 +159,9 @@ namespace LLP
         if(setsockopt(nFile, IPPROTO_TCP /*SOL_SOCKET*/, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
         {
             debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
-            closesocket(nFile);
+            //closesocket(nFile);
 
-            return false;
+            //return false;
         }
 #endif
 
