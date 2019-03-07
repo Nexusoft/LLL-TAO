@@ -530,7 +530,7 @@ namespace LLP
 
 
     /* Prints information about this address. */
-    void BaseAddress::Print()
+    void BaseAddress::Print() const
     {
         debug::log(0, "BaseAddress(", ToString(), ")");
     }
