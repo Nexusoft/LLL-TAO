@@ -53,33 +53,26 @@ namespace Legacy
     }
 
 
-    /*  Convert the key store from unencrypted to encrypted. */
-    bool CryptoKeyStore::EncryptKeys(const CKeyingMaterial& vMasterKeyIn)
+    /* Convert the key store keys from unencrypted to encrypted and return the encrypted keys. */
+    bool CryptoKeyStore::EncryptKeys(const CKeyingMaterial& vMasterKeyIn, CryptedKeyMap& mapNewEncryptedKeys)
     {
 
         /* Check whether key store already encrypted */
-        if (!mapCryptedKeys.empty() || IsCrypted())
+        if (IsCrypted() || !mapCryptedKeys.empty())
             return false;
 
-        /* Set key store as encrypted */
-        fUseCrypto = true;
-
-        /* Need basic keystore lock for iterating mapKeys, but will also need it within AddCryptedKey.
-         * Thus, can't keep it. To ensure a good mapKeys, make a copy while have hold of lock
-         */
+        /* Make a copy of the unencrypted key store. */
         KeyMap mapKeysToEncrypt;
         {
             LOCK(cs_basicKeyStore);
 
-            for(const auto mKey : mapKeys)
-            {
-                NexusAddress keyAddress = mKey.first;
+            for(const auto& mKey : mapKeys)
+                mapKeysToEncrypt[mKey.first] = mKey.second;
+        } 
 
-                mapKeysToEncrypt[keyAddress] = mKey.second;
-            }
-        } //Now can let go of basic keystore lock
-
-        /* Convert unencrypted keys from mapKeys to encrypted keys in mapCryptedKeys
+        mapNewEncryptedKeys.clear();
+        
+        /* Convert unencrypted keys from mapKeys to encrypted keys in the output map
          * mKey will have pair for each map entry
          * mKey.first = base 58 address (map key)
          * mKey.second = std::pair<LLC::CSecret, bool> where bool indicates key compressed true/false
@@ -100,16 +93,27 @@ namespace Legacy
             if (!EncryptSecret(vMasterKeyIn, key.GetSecret(fCompressed), LLC::SK576(vchPubKey.begin(), vchPubKey.end()), vchCryptedSecret))
                 return false;
 
-            /* Also need crypto keystore lock to add key. AddCryptedKey() obtains this */
-            /* During wallet encryption, this will call this->AddCryptedKey() which is actually Wallet::AddCryptedKey() */
-            if (!AddCryptedKey(vchPubKey, vchCryptedSecret))
-                return false;
+            mapNewEncryptedKeys[NexusAddress(vchPubKey)] = make_pair(vchPubKey, vchCryptedSecret);
         }
 
+        /* Update the key store with newly encrypted keys */
         {
-            /* Need to obtain lock again to clear mapKeys */
+            LOCK(cs_cryptoKeyStore);
+
+            mapCryptedKeys.clear();
+
+            /* Copy the newly encrypted keys into the keystore */
+            for (const auto& mKey : mapNewEncryptedKeys)
+                mapCryptedKeys[mKey.first] = mKey.second;
+
+            fUseCrypto = true;
+        }
+
+        /* Remove unencrypted keys from the key store */
+        {
             LOCK(cs_basicKeyStore);
 
+            /* Remove the unencrypted keys */
             mapKeys.clear();
         }
 

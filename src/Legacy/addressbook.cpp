@@ -32,20 +32,20 @@ namespace Legacy
     /* Adds an address book entry for a given Nexus address and address label. */
     bool AddressBook::SetAddressBookName(const NexusAddress& address, const std::string& strName)
     {
+        if (addressBookWallet.IsFileBacked())
+        {
+            WalletDB walletdb(addressBookWallet.GetWalletFile());
+
+            if (!walletdb.WriteName(address.ToString(), strName))
+                return debug::error(FUNCTION, "Failed writing address book entry");
+        }
+
+        /* Add to internal map after successful database add */
         {
             LOCK(AddressBook::cs_addressBook);
 
             mapAddressBook[address] = strName;
 
-            if (addressBookWallet.IsFileBacked())
-            {
-                WalletDB walletdb(addressBookWallet.GetWalletFile());
-
-                if (!walletdb.WriteName(address.ToString(), strName))
-                    return debug::error(FUNCTION, "Failed writing address book entry");
-
-                walletdb.Close();
-            }
         }
 
         return true;
@@ -59,16 +59,14 @@ namespace Legacy
             LOCK(AddressBook::cs_addressBook);
 
             mapAddressBook.erase(address);
+        }
 
-            if (addressBookWallet.IsFileBacked())
-            {
-                WalletDB walletdb(addressBookWallet.GetWalletFile());
+        if (addressBookWallet.IsFileBacked())
+        {
+            WalletDB walletdb(addressBookWallet.GetWalletFile());
 
-                if (!walletdb.EraseName(address.ToString()))
-                    throw std::runtime_error("AddressBook::DelAddressBookName() : removing address book entry failed");
-
-                walletdb.Close();
-            }
+            if (!walletdb.EraseName(address.ToString()))
+                throw std::runtime_error("AddressBook::DelAddressBookName() : removing address book entry failed");
         }
 
         return true;

@@ -34,6 +34,8 @@ namespace LLP
         GET_OFFSET      = 1,
         DAT_OFFSET      = 2,
 
+        DAT_DUPE_DISCONNECT = 5,
+
         DAT_HAS_TX      = 10,
         GET_TRANSACTION = 11,
 

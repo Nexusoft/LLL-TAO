@@ -59,7 +59,7 @@ namespace LLP
     std::mutex SESSIONS_MUTEX;
 
     /* Map to keep track of duplicate nonce sessions. */
-    std::map<uint64_t, bool> mapConnectedSessions;
+    std::map<uint64_t, LegacyNode*> mapConnectedSessions;
 
     /* Helper function to switch the nodes on sync. */
     void SwitchNode()
@@ -288,8 +288,11 @@ namespace LLP
             {
                 LOCK(SESSIONS_MUTEX);
 
-                /* Free the connected session. */
-                if(mapConnectedSessions.count(nCurrentSession))
+                /** Free this session, if it is this connection that we mapped. 
+                    When we disconnect a duplicate session then it will not have been added to the map, 
+                    so we need to skip removing the session ID **/
+                if(mapConnectedSessions.count(nCurrentSession)
+                && mapConnectedSessions[nCurrentSession] == this)
                     mapConnectedSessions.erase(nCurrentSession);
             }
 
@@ -358,7 +361,7 @@ namespace LLP
                 }
 
                 /* Claim this connection's session ID. */
-                mapConnectedSessions[nCurrentSession] = true;
+                mapConnectedSessions[nCurrentSession] = this;
             }
 
 
