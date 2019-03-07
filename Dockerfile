@@ -74,6 +74,7 @@ RUN cd /nexus; make -j 8 -f makefile.cli ENABLE_DEBUG=$NEXUS_DEBUG
 COPY config/run-nexus /nexus/run-nexus
 COPY config/curl-nexus /nexus/curl-nexus
 COPY config/nexus-save-data /nexus/nexus-save-data
+COPY lisp/whoarepeers.py /nexus/whoarepeers.py
 
 #
 # Copy LISP startup config.
