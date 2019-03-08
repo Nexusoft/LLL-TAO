@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium_miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
+#include <LLP/types/tritium.h>
 
 #include <LLD/include/global.h>
 
@@ -143,19 +144,8 @@ namespace LLP
         /* Create the pointer to the heap. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[merkle_root]);
 
-        /* Verify the block object. */
-        if(!pBlock->Check())
-        {
-            debug::log(2, "***** Mining LLP: Invalid Work for Tritium Block ", merkle_root.ToString().substr(0, 20));
-            return false;
-        }
-
-        /* Create the state object. */
-        if(!pBlock->Accept())
-        {
-            debug::log(2, "***** Mining LLP: Tritium Block not accepted ", merkle_root.ToString().substr(0, 20));
-            return false;
-        }
+        /* Validate the block through the process method. */
+        TritiumNode::Process(*pBlock, nullptr);
 
         return true;
     }
