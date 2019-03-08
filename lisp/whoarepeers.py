@@ -22,7 +22,7 @@ for peer in peers:
     pp = (p + " ...").ljust(25)
     print "Found peer {}".format(pp),
 
-    if (peer[0:4] == "240." or peer[0:4] == "fe::"):
+    if (pp[0:4] == "240." or pp[0:4] == "fe::"):
         out = commands.getoutput(lig.format(p))
         out = out.split()
         print out[-1]
