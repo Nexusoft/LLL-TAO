@@ -238,13 +238,17 @@ namespace TAO
                     uint512_t hash = tx.second;
 
                     /* Check the memory pool. */
-                    TAO::Ledger::Transaction tx;
-                    if(!mempool.Get(hash, tx))
-                        return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from missing transactions
+                    TAO::Ledger::Transaction txFrom;
+                    if(!mempool.Get(hash, txFrom))
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
-                    if(!LLD::legDB->WriteTx(hash, tx))
+                    if(!LLD::legDB->WriteTx(hash, txFrom))
                         return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Remove the coinbase or coinstake. */
+                    if(txFrom.IsCoinbase() || txFrom.IsTrust())
+                        mempool.Remove(hash);
 
                 }
                 else if(tx.first == TYPE::LEGACY_TX)
@@ -253,13 +257,17 @@ namespace TAO
                     uint512_t hash = tx.second;
 
                     /* Check if in memory pool. */
-                    Legacy::Transaction tx;
-                    if(!mempool.Get(hash, tx))
-                        return debug::error(FUNCTION, "transaction is not in memory pool");  //TODO: recover from missing transactions
+                    Legacy::Transaction txFrom;
+                    if(!mempool.Get(hash, txFrom))
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
-                    if(!LLD::legacyDB->WriteTx(hash, tx))
+                    if(!LLD::legacyDB->WriteTx(hash, txFrom))
                         return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Remove the coinbase or coinstake. */
+                    if(txFrom.IsCoinBase() || txFrom.IsCoinStake())
+                        mempool.Remove(hash);
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
