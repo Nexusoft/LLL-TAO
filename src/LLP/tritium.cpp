@@ -509,7 +509,7 @@ namespace LLP
                         {
                             /* First add all of the transactions hashes from the block.
                                Start at index 1 so that we dont' include producer, as that is sent as part of the block */
-                            for(int i=0; i > state.vtx.size(); i++)
+                            for(int i=1; i < state.vtx.size(); i++)
                                 vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
 
                             /* lastly add the block hash */
@@ -523,7 +523,7 @@ namespace LLP
                     /* Push new item to inventory. */
                     /* First add all of the transactions hashes from the block.
                         Start at index 1 so that we dont' include producer, as that is sent as part of the block */
-                    for(int i=0; i > state.vtx.size(); i++)
+                    for(int i=1; i < state.vtx.size(); i++)
                         vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
 
                     /* lastly add the block hash */
@@ -693,10 +693,7 @@ namespace LLP
                     {
                         TAO::Ledger::Transaction tx;
                         if(!TAO::Ledger::mempool.Get(inv.GetHash().getuint512(), tx) && !LLD::legDB->ReadTx(inv.GetHash().getuint512(), tx))
-                        {
-                            if(!LLD::legDB->ReadTx(inv.GetHash().getuint512(), tx))
-                                continue;
-                        }
+                            continue;
 
                         PushMessage(DAT_TRANSACTION, (uint8_t)LLP::MSG_TX_TRITIUM, tx);
                     }
@@ -1068,7 +1065,7 @@ namespace LLP
 
             /* Check for failure limit on node. */
             if(pnode
-            && pnode->nConsecutiveFails >= 500)
+            && pnode->nConsecutiveFails > 1000)
             {
 
                 /* Fast Sync node switch. */
