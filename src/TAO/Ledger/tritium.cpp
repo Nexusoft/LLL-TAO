@@ -121,7 +121,7 @@ namespace TAO
 
 
             /* Check that the time was within range. */
-            if (GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+            if (GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
 

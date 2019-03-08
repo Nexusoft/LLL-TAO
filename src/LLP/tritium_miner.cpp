@@ -99,7 +99,7 @@ namespace LLP
              We need to drop into this for loop at least once to set the unique hash, but we will iterate
              indefinitely for the prime channel until the generated hash meets the min prime origins
              and is less than 1024 bits*/
-         for(uint32_t i = s; ; ++i)
+         for(uint64_t i = s; ; ++i)
          {
              //pBlock->vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)((i+1) * 513513512151));
 
