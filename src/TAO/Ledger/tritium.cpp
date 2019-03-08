@@ -17,6 +17,10 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/packets/tritium.h>
+#include <LLP/include/global.h>
+#include <LLP/include/inv.h>
+
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -197,7 +201,7 @@ namespace TAO
 
 
             /* Missing transactions. */
-            std::vector<uint512_t> missingTx;
+            std::vector< std::pair<uint8_t, uint512_t> > missingTx;
 
 
             /* Get the hashes for the merkle root. */
@@ -230,7 +234,7 @@ namespace TAO
                     Legacy::Transaction txMem;
                     if(!mempool.Get(tx.second, txMem))
                     {
-                        missingTx.push_back(tx.second);
+                        missingTx.push_back(tx);
                         continue;
                     }
 
@@ -250,7 +254,7 @@ namespace TAO
                     TAO::Ledger::Transaction txMem;
                     if(!mempool.Has(tx.second))
                     {
-                        missingTx.push_back(tx.second);
+                        missingTx.push_back(tx);
                         continue;
                     }
                 }
@@ -261,6 +265,14 @@ namespace TAO
             /* Fail and ask for response of missing transctions. */
             if(missingTx.size() > 0 && nHeight > 0)
             {
+                std::vector<LLP::CInv> vInv;
+                for(const auto& tx : missingTx)
+                    vInv.push_back(LLP::CInv(tx.second, tx.first == TYPE::TRITIUM_TX ? LLP::MSG_TX_TRITIUM : LLP::MSG_TX_LEGACY));
+
+                vInv.push_back(LLP::CInv(GetHash(), LLP::MSG_BLOCK_TRITIUM));
+                if(LLP::TRITIUM_SERVER)
+                    LLP::TRITIUM_SERVER->Relay(LLP::GET_DATA, vInv);
+
                 //NodeType* pnode;
                 //pnode->PushMessage("GetInv("....")");
                 //send pnode as a template for this method.

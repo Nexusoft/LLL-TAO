@@ -22,13 +22,14 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/templates/events.h>
 #include <LLP/include/manager.h>
+#include <LLP/include/inv.h>
 
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
-#include <LLP/include/inv.h>
+
 
 #include <climits>
 #include <memory>
@@ -38,19 +39,23 @@ namespace LLP
 {
     std::atomic<uint32_t> TritiumNode::nAsked(0);
 
+
     /* Static instantiation of orphan blocks in queue to process. */
     std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> TritiumNode::mapOrphans;
+
 
     /* Mutex to protect checking more than one block at a time. */
     std::mutex TritiumNode::PROCESSING_MUTEX;
 
+
     /* Mutex to protect the legacy orphans map. */
     std::mutex TritiumNode::ORPHAN_MUTEX;
+
 
     /* Mutex to protect connected sessions. */
     std::mutex TritiumNode::SESSIONS_MUTEX;
 
-    /* global map connections to session ID's to be used to prevent duplicate connections to the same 
+    /* global map connections to session ID's to be used to prevent duplicate connections to the same
            sever, but via a different RLOC / EID */
     std::map<uint64_t, TritiumNode*> TritiumNode::mapConnectedSessions;
 
@@ -62,6 +67,7 @@ namespace LLP
     /* The time since last getblocks. */
     std::atomic<uint64_t> TritiumNode::nLastGetBlocks;
 
+
     /* The fast sync average speed. */
     std::atomic<uint32_t> TritiumNode::nFastSyncAverage;
 
@@ -69,17 +75,22 @@ namespace LLP
     /* The current node that is being used for fast sync */
     memory::atomic<BaseAddress> TritiumNode::addrFastSync;
 
-        /* The last time a block was received. */
+
+    /* The last time a block was received. */
     std::atomic<uint64_t> TritiumNode::nLastTimeReceived;
+
 
     /* Timer for sync metrics. */
     static uint64_t nTimer = runtime::timestamp(true);
 
+
     /* The local relay inventory cache. */
     LLD::KeyLRU TritiumNode::cacheInventory = LLD::KeyLRU(1024 * 1024);
 
+
     /* The session identifier. */
     uint64_t TritiumNode::nSessionID = LLC::GetRand();
+
 
     /* Helper function to switch the nodes on sync. */
     void TritiumNode::SwitchNode()
@@ -257,10 +268,10 @@ namespace LLP
                 {
                     LOCK(SESSIONS_MUTEX);
 
-                    /* Free this session, if it is this connection that we mapped. 
-                       When we disconnect a duplicate session then it will not have been added to the map, 
+                    /* Free this session, if it is this connection that we mapped.
+                       When we disconnect a duplicate session then it will not have been added to the map,
                        so we need to skip removing the session ID*/
-                    if(TritiumNode::mapConnectedSessions.count(nCurrentSession) 
+                    if(TritiumNode::mapConnectedSessions.count(nCurrentSession)
                     && TritiumNode::mapConnectedSessions[nCurrentSession] == this)
                         TritiumNode::mapConnectedSessions.erase(nCurrentSession);
                 }
@@ -282,8 +293,8 @@ namespace LLP
             {
                 /* The disconnect message is sent by peers when they want to gracefully close a connection
                    when they have detected more than one connection to the same node.
-                   We send the same message in reply and then return false from ProcessPacket which will 
-                   in turn issue a FORCE_DISCONNECT event on this connection to gracefully close the 
+                   We send the same message in reply and then return false from ProcessPacket which will
+                   in turn issue a FORCE_DISCONNECT event on this connection to gracefully close the
                    connection at our end.  By responding with a DAT_DUPE_DISCONNECT message the same will occur
                    at the calling end to ensure both ends close gracefully. */
                    debug::log(0, NODE "Disconnecting duplicate connection.");
@@ -291,6 +302,7 @@ namespace LLP
                 return false;
                 break;
             }
+
 
             case DAT_VERSION:
             {
@@ -318,9 +330,9 @@ namespace LLP
                     else if( TritiumNode::mapConnectedSessions.count(nCurrentSession) > 0)
                     {
                         TritiumNode* pConnection = TritiumNode::mapConnectedSessions.at(nCurrentSession);
-                        
-                        /* If the existing connection is via LISP then we make a preference for it and disallow the 
-                        incoming connection. Otherwise if the incoming is via LISP and the existing is not we 
+
+                        /* If the existing connection is via LISP then we make a preference for it and disallow the
+                        incoming connection. Otherwise if the incoming is via LISP and the existing is not we
                         disconnect the the existing connection in favour of the LISP route */
                         if( !GetAddress().IsEID() || pConnection->GetAddress().IsEID() )
                         {
@@ -341,19 +353,19 @@ namespace LLP
 
                             /* Notify the peer to disconnect the existing connection */
                             pConnection->PushMessage(DAT_DUPE_DISCONNECT);
-                            
+
                             /* Notify the AddressManager to ban the underlay IP so that we favour the EID */
                             if(TRITIUM_SERVER && TRITIUM_SERVER->pAddressManager)
                                 TRITIUM_SERVER->pAddressManager->Ban(pConnection->GetAddress());
                         }
                     }
-                
 
-                    /* Add this connection into the global map once we have verified the DAT_VERSION message and 
+
+                    /* Add this connection into the global map once we have verified the DAT_VERSION message and
                         are happy to allow the connection */
                     TritiumNode::mapConnectedSessions[nCurrentSession] = this;
                 }
-                
+
                 /* Debug output for offsets. */
                 debug::log(3, NODE "received session identifier ",nCurrentSession);
 
@@ -372,7 +384,7 @@ namespace LLP
                 //     ++nAsked;
                 //    PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
                 // }
-                
+
 
                 break;
             }
@@ -425,7 +437,7 @@ namespace LLP
 
                     if(DDOS)
                         DDOS->rSCORE += 15;
-                    
+
                     mapSentRequests.erase(nRequestID);
 
                     break;
@@ -497,13 +509,13 @@ namespace LLP
                         {
                             /* First add all of the transactions hashes from the block.
                                Start at index 1 so that we dont' include producer, as that is sent as part of the block */
-                            for(int i=1; i > state.vtx.size(); i++)
-                                vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM)); 
+                            //for(int i=0; i > state.vtx.size(); i++)
+                            //    vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
 
                             /* lastly add the block hash */
                             vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), fIsLegacy ? MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM));
                         }
-                            
+
 
                         break;
                     }
@@ -511,9 +523,9 @@ namespace LLP
                     /* Push new item to inventory. */
                     /* First add all of the transactions hashes from the block.
                         Start at index 1 so that we dont' include producer, as that is sent as part of the block */
-                    for(int i=1; i > state.vtx.size(); i++)
-                        vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
-                    
+                    //for(int i=0; i > state.vtx.size(); i++)
+                    //    vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
+
                     /* lastly add the block hash */
                     vInv.push_back(CInv(state.GetHash(), fIsLegacy ? MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM));
 
@@ -611,7 +623,7 @@ namespace LLP
 
                 }
                 else
-                    vGet = vInv; /* just request data for all inventory*/ 
+                    vGet = vInv; /* just request data for all inventory*/
 
                 /* Ask your friendly neighborhood node for the data */
                 if(vGet.size() > 0)
@@ -668,7 +680,7 @@ namespace LLP
                             Legacy::LegacyBlock block(state);
                             PushMessage(DAT_BLOCK, (uint8_t)MSG_BLOCK_LEGACY, block);
                         }
-                        
+
 
                         /* Trigger a new getblocks if hash continue is set. */
                         if (inv.GetHash() == hashContinue)
@@ -681,7 +693,10 @@ namespace LLP
                     {
                         TAO::Ledger::Transaction tx;
                         if(!TAO::Ledger::mempool.Get(inv.GetHash().getuint512(), tx) && !LLD::legDB->ReadTx(inv.GetHash().getuint512(), tx))
-                            continue;
+                        {
+                            if(!LLD::legDB->ReadTx(inv.GetHash().getuint512(), tx))
+                                continue;
+                        }
 
                         PushMessage(DAT_TRANSACTION, (uint8_t)LLP::MSG_TX_TRITIUM, tx);
                     }
@@ -771,7 +786,7 @@ namespace LLP
                 {
                     TAO::Ledger::Transaction tx;
                     ssPacket >> tx;
-                
+
 
                     /* Check if we have it. */
                     if(!LLD::legDB->HasTx(tx.GetHash()))
@@ -804,13 +819,13 @@ namespace LLP
                         /* Debug output for offsets. */
                        debug::log(3, NODE "already have tx ", tx.GetHash().ToString().substr(0, 20));
                     }
-                    
+
                 }
                 else if(type == LLP::MSG_TX_LEGACY)
                 {
                     Legacy::Transaction tx;
                     ssPacket >> tx;
-                
+
 
                     /* Check if we have it. */
                     if(!LLD::legacyDB->HasTx(tx.GetHash()))
@@ -846,7 +861,7 @@ namespace LLP
                         /* Debug output for offsets. */
                         debug::log(3, NODE "already have tx ", tx.GetHash().ToString().substr(0, 20));
                     }
-                    
+
                 }
 
                 break;
@@ -992,7 +1007,7 @@ namespace LLP
 
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool TritiumNode::Process(const TAO::Ledger::Block& block, TritiumNode* pnode)
-    {   
+    {
         /* Check if the block is valid. */
         uint1024_t hash = block.GetHash();
         if(!block.Check())

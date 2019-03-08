@@ -11,6 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLP/packets/tritium.h>
+#include <LLP/include/global.h>
+#include <LLP/include/inv.h>
+
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/verify.h>
@@ -99,6 +103,11 @@ namespace TAO
 
             /* Debug output. */
             debug::log(2, FUNCTION, "tx ", hash.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
+
+            /* Relay the transaction. */
+            std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_TRITIUM) };
+            if(LLP::TRITIUM_SERVER)
+                LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
 
             /* Notify private to produce block if valid. */
             if(config::GetBoolArg("-private"))

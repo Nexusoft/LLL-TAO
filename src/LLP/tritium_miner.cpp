@@ -140,7 +140,7 @@ namespace LLP
 
 
     /** validates the block for the derived miner class. **/
-    bool TritiumMiner::validate_block(const uint512_t &merkle_root)
+    bool TritiumMiner::validate_block(const uint512_t& merkle_root)
     {
         /* Create the pointer to the heap. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[merkle_root]);

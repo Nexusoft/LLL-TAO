@@ -21,6 +21,8 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 
+#include <LLP/include/version.h>
+
 #include <Util/templates/datastream.h>
 #include <Util/include/debug.h>
 
@@ -46,7 +48,7 @@ namespace LLP
         DAT_INVENTORY   = 15,
 
         GET_DATA        = 16,
-        
+
         GET_ADDRESSES   = 20,
         DAT_ADDRESSES   = 21,
 
