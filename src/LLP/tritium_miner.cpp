@@ -111,7 +111,7 @@ namespace LLP
              //pBlock->hashMerkleRoot = pBlock->BuildMerkleTree(vMerkleTree);
 
              //TODO:
-             if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *pBlock))
+             if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *pBlock, i))
                  debug::error(FUNCTION, "Failed to create a new Tritium Block.");
 
              /* Update the time. */
