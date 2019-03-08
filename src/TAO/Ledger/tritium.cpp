@@ -397,6 +397,7 @@ namespace TAO
                     if(!mempool.Get(tx.second, txCheck))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
+                    /* Check legacy transaction for finality. */
                     if (!txCheck.IsFinal(nHeight, GetBlockTime()))
                         return debug::error(FUNCTION, "contains a non-final transaction");
                 }
@@ -422,7 +423,9 @@ namespace TAO
             /* Accept the block state. */
             if(!state.Index())
             {
+                /* Remove producer from temporary mempool. */
                 TAO::Ledger::mempool.Remove(producer.GetHash());
+
                 return false;
             }
 
