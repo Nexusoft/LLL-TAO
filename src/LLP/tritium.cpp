@@ -509,8 +509,8 @@ namespace LLP
                         {
                             /* First add all of the transactions hashes from the block.
                                Start at index 1 so that we dont' include producer, as that is sent as part of the block */
-                            //for(int i=0; i > state.vtx.size(); i++)
-                            //    vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
+                            for(int i=0; i > state.vtx.size(); i++)
+                                vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
 
                             /* lastly add the block hash */
                             vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), fIsLegacy ? MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM));
@@ -523,8 +523,8 @@ namespace LLP
                     /* Push new item to inventory. */
                     /* First add all of the transactions hashes from the block.
                         Start at index 1 so that we dont' include producer, as that is sent as part of the block */
-                    //for(int i=0; i > state.vtx.size(); i++)
-                    //    vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
+                    for(int i=0; i > state.vtx.size(); i++)
+                        vInv.push_back(CInv(state.vtx[i].second, state.vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? MSG_TX_LEGACY : MSG_TX_TRITIUM));
 
                     /* lastly add the block hash */
                     vInv.push_back(CInv(state.GetHash(), fIsLegacy ? MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM));
