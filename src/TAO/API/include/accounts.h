@@ -40,13 +40,23 @@ namespace TAO
             mutable std::map<uint64_t, TAO::Ledger::SignatureChain*> mapSessions;
 
 
+            /** The unlocked pins for mining. **/
+            mutable std::pair<uint64_t, SecureString> pairUnlocked;
+
+
             /** The mutex for locking. **/
             mutable std::mutex MUTEX;
 
         public:
 
             /** Default Constructor. **/
-            Accounts() { Initialize(); }
+            Accounts()
+            : mapSessions()
+            , pairUnlocked(std::make_pair(0, ""))
+            , MUTEX()
+            {
+                Initialize();
+            }
 
 
             /** Initialize.
@@ -55,6 +65,14 @@ namespace TAO
              *
              **/
             void Initialize() final;
+
+
+            /** Locked Function
+             *
+             *  Determine if the accounts are locked.
+             *
+             **/
+            bool Locked(uint64_t& nSession, SecureString& strSecret) const;
 
 
             /** GetKey
@@ -116,6 +134,32 @@ namespace TAO
              *
              **/
             json::json Login(const json::json& params, bool fHelp);
+
+
+            /** Unlock
+             *
+             *  Unlock an account for mining (TODO: make this much more secure)
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Unlock(const json::json& params, bool fHelp);
+
+
+            /** Lock
+             *
+             *  Lock an account for mining (TODO: make this much more secure)
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Lock(const json::json& params, bool fHelp);
 
 
             /** Logout

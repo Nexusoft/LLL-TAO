@@ -27,6 +27,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
 
+#include <TAO/API/include/accounts.h>
+
 #include <Util/include/convert.h>
 #include <Util/include/args.h>
 
@@ -36,41 +38,27 @@ namespace LLP
     /** Default Constructor **/
     TritiumMiner::TritiumMiner()
     : BaseMiner()
-    , pSigChain(nullptr)
-    , PIN()
     {
-        pSigChain = new TAO::Ledger::SignatureChain(config::GetArg("-miner", "viz").c_str(), "password");
-        PIN = "1234";
     }
 
 
     /** Constructor **/
     TritiumMiner::TritiumMiner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseMiner(SOCKET_IN, DDOS_IN, isDDOS)
-    , pSigChain(nullptr)
-    , PIN()
     {
-        pSigChain = new TAO::Ledger::SignatureChain(config::GetArg("-miner", "viz").c_str(), "password");
-        PIN = "1234";
     }
 
 
     /** Constructor **/
     TritiumMiner::TritiumMiner(DDOS_Filter* DDOS_IN, bool isDDOS)
     : BaseMiner(DDOS_IN, isDDOS)
-    , pSigChain(nullptr)
-    , PIN()
     {
-        pSigChain = new TAO::Ledger::SignatureChain(config::GetArg("-miner", "viz").c_str(), "password");
-        PIN = "1234";
     }
 
 
     /** Default Destructor **/
     TritiumMiner::~TritiumMiner()
     {
-        if(pSigChain)
-            delete pSigChain;
     }
 
 
@@ -90,6 +78,19 @@ namespace LLP
 
          /* Set it to a null state */
          pBlock->SetNull();
+
+         /* Get the sigchain and the PIN. */
+         uint64_t nSession;
+         SecureString PIN;
+
+         /* Attempt to unlock the account. */
+         if(!TAO::API::accounts.Locked(nSession, PIN))
+            debug::error(FUNCTION, "No unlocked account available");
+
+         /* Ateempt to get the sigchain. */
+         TAO::Ledger::SignatureChain* pSigChain;
+         if(!TAO::API::accounts.GetAccount(nSession, pSigChain))
+            debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
 
          /* We need to make the block hash unique for each subsribed miner so that they are not
@@ -130,7 +131,7 @@ namespace LLP
                  break;
          }
 
-         debug::log(2, FUNCTION, "***** Mining LLP: Created new Tritium Block ",
+         debug::log(2, FUNCTION, "Created new Tritium Block ",
              pBlock->hashMerkleRoot.ToString().substr(0, 20));
 
          /* Return a pointer to the heap memory */
@@ -160,6 +161,19 @@ namespace LLP
          pBlock->UpdateTime();
          pBlock->print();
 
+         /* Get the sigchain and the PIN. */
+         uint64_t nSession;
+         SecureString PIN;
+
+         /* Attempt to unlock the account. */
+         if(!TAO::API::accounts.Locked(nSession, PIN))
+            return debug::error(FUNCTION, "No unlocked account available");
+
+         /* Ateempt to get the sigchain. */
+         TAO::Ledger::SignatureChain* pSigChain;
+         if(!TAO::API::accounts.GetAccount(nSession, pSigChain))
+            return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
+
          /* Sign the submitted block */
          std::vector<uint8_t> vBytes = pSigChain->Generate(pBlock->producer.nSequence, PIN).GetBytes();
          LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
@@ -169,7 +183,7 @@ namespace LLP
          if(!key.SetSecret(vchSecret, true)
          || !pBlock->GenerateSignature(key))
          {
-             debug::log(2, "***** Mining LLP: Unable to Sign Tritium Block ", merkle_root.ToString().substr(0, 20));
+             debug::log(2, "Unable to Sign Tritium Block ", merkle_root.ToString().substr(0, 20));
              return false;
          }
 
@@ -180,16 +194,12 @@ namespace LLP
      /*  Determines if the mining wallet is unlocked. */
      bool TritiumMiner::is_locked()
      {
-         //TODO: add more relevant checks here
+         /* Get the sigchain and the PIN. */
+         uint64_t nSession;
+         SecureString PIN;
 
-         /* No mining when user is not logged in */
-         if(PIN == "")
-         {
-             debug::error(FUNCTION, Name(), " Cannot mine while user is not logged in.");
-             return true;
-         }
-
-        return false;
+         /* Attempt to unlock the account. */
+         return !TAO::API::accounts.Locked(nSession, PIN);
      }
 
 }

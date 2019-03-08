@@ -36,9 +36,24 @@ namespace TAO
         void Accounts::Initialize()
         {
             mapFunctions["login"]               = Function(std::bind(&Accounts::Login,           this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["unlock"]              = Function(std::bind(&Accounts::Unlock,          this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["lock"]                = Function(std::bind(&Accounts::Lock,            this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["logout"]              = Function(std::bind(&Accounts::Logout,          this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["create"]              = Function(std::bind(&Accounts::CreateAccount,   this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["transactions"]        = Function(std::bind(&Accounts::GetTransactions, this, std::placeholders::_1, std::placeholders::_2));
+        }
+
+
+        /* Determine if the accounts are locked. */
+        bool Accounts::Locked(uint64_t& nSession, SecureString& strSecret) const
+        {
+            if(pairUnlocked.first == 0)
+                return false;
+
+            nSession  = pairUnlocked.first;
+            strSecret = pairUnlocked.second;
+
+            return true;
         }
 
 
