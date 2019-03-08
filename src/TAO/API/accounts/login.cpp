@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/hex.h>
 
@@ -56,10 +57,14 @@ namespace TAO
             TAO::Ledger::Transaction tx;
             if(!LLD::legDB->HasGenesis(hashGenesis))
             {
-                delete user;
-                user = nullptr;
+                /* Check the memory pool (TODO: Paul maybe you can think of a more efficient way to solve this chicken and egg). */
+                if(!TAO::Ledger::mempool.Has(hashGenesis))
+                {
+                    delete user;
+                    user = nullptr;
 
-                throw APIException(-26, "Account doesn't exists");
+                    throw APIException(-26, "Account doesn't exists");
+                }
             }
 
             /* Check the sessions. */

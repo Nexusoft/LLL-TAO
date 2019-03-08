@@ -160,6 +160,18 @@ namespace TAO
             bool Has(uint512_t hashTx) const;
 
 
+            /** Has
+             *
+             *  Checks if a genesis exists.
+             *
+             *  @param[in] hashGenesis Hash of genesis to check.
+             *
+             *  @return true if transaction in mempool.
+             *
+             **/
+            bool Has(uint256_t hashGenesis) const;
+
+
             /** HasLegacy
              *
              *  Checks if a legacy transaction exists.
