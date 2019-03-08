@@ -345,9 +345,9 @@ namespace TAO
 
 
             /* Check That Block timestamp is not before previous block. */
-            //if (GetBlockTime() <= statePrev.GetBlockTime())
-            //    return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
-            //    statePrev.GetBlockTime());
+            if (GetBlockTime() <= statePrev.GetBlockTime())
+                return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
+                statePrev.GetBlockTime());
 
 
             /* Check that Block is Descendant of Hardened Checkpoints. */
@@ -356,7 +356,7 @@ namespace TAO
 
 
             /* Check the block proof of work rewards. */
-            if(IsProofOfWork() && nVersion >= 3)
+            if(IsProofOfWork())
             {
                 /* Get the stream from coinbase. */
                 producer.ssOperation.seek(1, STREAM::BEGIN); //set the read position to where reward will be.

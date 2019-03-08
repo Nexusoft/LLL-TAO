@@ -199,7 +199,7 @@ namespace TAO
             block.nHeight        = ChainState::stateBest.load().nHeight + 1;
             block.nBits          = GetNextTargetRequired(ChainState::stateBest.load(), nChannel, false);
             block.nNonce         = 1;
-            block.nTime          = static_cast<uint32_t>(runtime::unifiedtimestamp());
+            block.nTime          = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
 
             return true;
         }

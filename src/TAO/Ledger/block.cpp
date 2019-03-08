@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/include/prime.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
 
@@ -178,7 +179,7 @@ namespace TAO
         /* Update the nTime of the current block. */
         void Block::UpdateTime()
         {
-            nTime = static_cast<uint32_t>(runtime::unifiedtimestamp()) + 1;
+            nTime = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
         }
 
 
