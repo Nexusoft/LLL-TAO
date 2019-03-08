@@ -51,9 +51,7 @@ namespace TAO
                 /* Get previous transaction */
                 TAO::Ledger::Transaction txPrev;
                 if(!LLD::legDB->ReadTx(hashLast, txPrev))
-                {
                     return debug::error(FUNCTION, "no prev tx ", hashLast.ToString(), " in ledger db");
-                }
 
                 /* Build new transaction object. */
                 tx.nSequence   = txPrev.nSequence + 1;
@@ -73,7 +71,7 @@ namespace TAO
 
 
         /* Create a new block object from the chain.*/
-        bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block)
+        bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block, uint64_t nExtraNonce)
         {
             /* Set the block to null. */
             block.SetNull();
@@ -162,6 +160,8 @@ namespace TAO
                 uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
                 block.producer << nCredit;
 
+                /* The extra nonce to coinbase. */
+                block.producer << nExtraNonce;
             }
 
             /* Sign the producer transaction. */

@@ -55,9 +55,10 @@ namespace TAO
          *  @param[in] pin The pin number to generate with.
          *  @param[in] nChannel The channel to create block for.
          *  @param[out] block The block object being created.
+         *  @param[in] nExtraNonce An extra nonce to use for double iterating.
          *
          **/
-        bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block);
+        bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block, uint64_t nExtraNonce = 0);
 
 
         /** CreateGenesis

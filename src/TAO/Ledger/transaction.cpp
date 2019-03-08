@@ -64,8 +64,8 @@ namespace TAO
             if(IsCoinbase())
             {
                 /* Check the coinbase size. */
-                //if(ssOperation.size() != 41)
-                //    return debug::error(FUNCTION, "operation data too large for coinbase ", ssOperation.size());
+                if(ssOperation.size() != 17)
+                    return debug::error(FUNCTION, "operation data inconsistent with fixed size rules ", ssOperation.size());
             }
 
             /* Check for genesis valid numbers. */
