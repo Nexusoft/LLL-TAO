@@ -138,16 +138,6 @@ namespace LLP
         bool ProcessPacket() final;
 
 
-        /** SerializeBlock
-         *
-         *  Convert the Header of a Block into a Byte Stream for
-         *  Reading and Writing Across Sockets.
-         *
-         *  @param[in] BLOCK A block to serialize.
-         *
-         **/
-        std::vector<uint8_t> SerializeBlock(const TAO::Ledger::Block &BLOCK);
-
     private:
 
         /** respond

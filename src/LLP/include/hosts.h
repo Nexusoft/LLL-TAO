@@ -23,23 +23,6 @@ namespace LLP
     class BaseAddress;
 
 
-    /** DNS_SeedNodes
-     *
-     *  These addresses are the first point of contact on the P2P network
-     *  They are established and maintained by the owners of each domain.
-     *
-     **/
-    extern const std::vector<std::string> DNS_SeedNodes;
-
-
-    /** DNS_SeedNodes_Testnet
-     *
-     *  Testnet seed nodes.
-     *
-     **/
-    extern const std::vector<std::string> DNS_SeedNodes_Testnet;
-
-
     /** DNS_Lookup
      *
      *  The DNS Lookup Routine to find the Nodes that are set as DNS seeds.

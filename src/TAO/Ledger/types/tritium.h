@@ -28,6 +28,8 @@ namespace TAO
     namespace Ledger
     {
 
+        class BlockState;
+
         /** Defines the types of transaction hash stored in the TritiumBlock vtx **/
         enum TYPE
         {

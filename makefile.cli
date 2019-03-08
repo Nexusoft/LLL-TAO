@@ -191,6 +191,7 @@ OBJS= \
     build/LLP_data.o \
     build/LLP_ddos.o \
 	build/LLP_hosts.o \
+	build/LLP_seeds.o \
 	build/LLP_inv.o \
 	build/LLP_legacy.o \
 	build/LLP_legacy_address.o \

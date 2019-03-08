@@ -71,7 +71,7 @@ namespace config
 
             uint16_t len = static_cast<uint16_t>(std::strlen(argv[i]));
             len = std::min(len, static_cast<uint16_t>(10000));
-            std::copy((uint8_t *)argv[i], (uint8_t *)argv[i] + len, psz);
+            std::copy((uint8_t *)argv[i], (uint8_t *)argv[i] + len, (uint8_t *)psz);
 
             char* pszValue = (char*)"";
             if (strchr(psz, '='))

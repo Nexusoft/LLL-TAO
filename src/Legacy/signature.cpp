@@ -60,7 +60,7 @@ namespace Legacy
             address.SetPubKey(pubkey);
             if (Sign1(address, keystore, hash, nHashType, scriptSigRet))
             {
-                nSigned ++;
+                ++nSigned;
                 if (nSigned == nRequired) break;
             }
         }
@@ -80,12 +80,15 @@ namespace Legacy
 
         Transaction txTmp(txTo);
 
+        /* Precompute the input count. */
+        uint32_t nTxInSize = static_cast<uint32_t>(txTmp.vin.size());
+
         // In case concatenating two scripts ends up with two codeseparators,
         // or an extra one at the end, this prevents all those possible incompatibilities.
         scriptCode.FindAndDelete(Script(OP_CODESEPARATOR));
 
         // Blank out other inputs' signatures
-        for (uint32_t i = 0; i < txTmp.vin.size(); i++)
+        for (uint32_t i = 0; i < nTxInSize; ++i)
             txTmp.vin[i].scriptSig = Script();
 
         txTmp.vin[nIn].scriptSig = scriptCode;
@@ -97,7 +100,7 @@ namespace Legacy
             txTmp.vout.clear();
 
             // Let the others update at will
-            for (uint32_t i = 0; i < txTmp.vin.size(); i++)
+            for (uint32_t i = 0; i < nTxInSize; ++i)
                 if (i != nIn)
                     txTmp.vin[i].nSequence = 0;
         }
@@ -111,11 +114,11 @@ namespace Legacy
                 return 1;
             }
             txTmp.vout.resize(nOut+1);
-            for (uint32_t i = 0; i < nOut; i++)
+            for (uint32_t i = 0; i < nOut; ++i)
                 txTmp.vout[i].SetNull();
 
             // Let the others update at will
-            for (uint32_t i = 0; i < txTmp.vin.size(); i++)
+            for (uint32_t i = 0; i < nTxInSize; ++i)
                 if (i != nIn)
                     txTmp.vin[i].nSequence = 0;
         }
@@ -129,7 +132,7 @@ namespace Legacy
 
         // Serialize and hash
         DataStream ss(SER_GETHASH, 0);
-        ss.reserve(10000);
+        ss.reserve(8192);
         ss << txTmp << nHashType;
 
         return LLC::SK256(ss.begin(), ss.end());

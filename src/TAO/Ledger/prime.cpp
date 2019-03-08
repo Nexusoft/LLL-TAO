@@ -22,6 +22,8 @@ namespace TAO
     namespace Ledger
     {
 
+        static const LLC::CBigNum bnPrimes[11] = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31 };
+
         /* Convert Double to unsigned int Representative. */
         uint32_t SetBits(double nDiff)
         {
@@ -54,7 +56,7 @@ namespace TAO
                 if(PrimeCheck(bnNext, nChecks))
                 {
                     bnLast = bnNext;
-                    nClusterSize ++;
+                    ++nClusterSize;
                 }
             }
 
@@ -85,7 +87,6 @@ namespace TAO
         bool PrimeCheck(const LLC::CBigNum& bnTest, uint32_t nChecks)
         {
             /* Check A: Small Prime Divisor Tests */
-            LLC::CBigNum bnPrimes[11] = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31 };
             for(const auto& bnPrime : bnPrimes)
                 if(bnTest % bnPrime == 0)
                     return false;
@@ -95,7 +96,7 @@ namespace TAO
                 return false;
 
             /* Check C: Fermat Tests */
-            for(LLC::CBigNum bnBase = 2; bnBase < 2 + nChecks; bnBase++)
+            for(LLC::CBigNum bnBase = 2; bnBase < 2 + nChecks; ++bnBase)
                 if(FermatTest(bnTest, bnBase) != 1)
                     return false;
 

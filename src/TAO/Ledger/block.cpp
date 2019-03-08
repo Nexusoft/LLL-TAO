@@ -19,15 +19,13 @@ ________________________________________________________________________________
 #include <Util/templates/datastream.h>
 #include <Util/include/hex.h>
 #include <Util/include/args.h>
+#include <Util/include/convert.h>
 #include <Util/include/runtime.h>
 
 #include <TAO/Ledger/types/block.h>
-#include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
-
-#include <Legacy/types/legacy.h>
 
 #include <ios>
 #include <iomanip>
@@ -61,22 +59,7 @@ namespace TAO
 
 
         /** Copy constructor. **/
-        Block::Block(const Legacy::LegacyBlock& block)
-        : nVersion(block.nVersion)
-        , hashPrevBlock(block.hashPrevBlock)
-        , hashMerkleRoot(block.hashMerkleRoot)
-        , nChannel(block.nChannel)
-        , nHeight(block.nHeight)
-        , nBits(block.nBits)
-        , nNonce(block.nNonce)
-        , nTime(block.nTime)
-        , vchBlockSig(block.vchBlockSig.begin(), block.vchBlockSig.end())
-        {
-        }
-
-
-        /** Copy constructor. **/
-        Block::Block(const BlockState& block)
+        Block::Block(const Block& block)
         : nVersion(block.nVersion)
         , hashPrevBlock(block.hashPrevBlock)
         , hashMerkleRoot(block.hashMerkleRoot)
@@ -298,12 +281,52 @@ namespace TAO
         }
 
 
+        /*  Convert the Header of a Block into a Byte Stream for
+         *  Reading and Writing Across Sockets. */
+        std::vector<uint8_t> Block::Serialize() const
+        {
+            std::vector<uint8_t> VERSION  = convert::uint2bytes(nVersion);
+            std::vector<uint8_t> PREVIOUS = hashPrevBlock.GetBytes();
+            std::vector<uint8_t> MERKLE   = hashMerkleRoot.GetBytes();
+            std::vector<uint8_t> CHANNEL  = convert::uint2bytes(nChannel);
+            std::vector<uint8_t> HEIGHT   = convert::uint2bytes(nHeight);
+            std::vector<uint8_t> BITS     = convert::uint2bytes(nBits);
+            std::vector<uint8_t> NONCE    = convert::uint2bytes64(nNonce);
+
+            std::vector<uint8_t> vData;
+            vData.insert(vData.end(), VERSION.begin(),   VERSION.end());
+            vData.insert(vData.end(), PREVIOUS.begin(), PREVIOUS.end());
+            vData.insert(vData.end(), MERKLE.begin(),     MERKLE.end());
+            vData.insert(vData.end(), CHANNEL.begin(),   CHANNEL.end());
+            vData.insert(vData.end(), HEIGHT.begin(),     HEIGHT.end());
+            vData.insert(vData.end(), BITS.begin(),         BITS.end());
+            vData.insert(vData.end(), NONCE.begin(),       NONCE.end());
+
+            return vData;
+        }
+
+
+        /*  Convert Byte Stream into Block Header. */
+        void Block::Deserialize(const std::vector<uint8_t>& vData)
+        {
+            nVersion = convert::bytes2uint(std::vector<uint8_t>(vData.begin(), vData.begin() + 4));
+
+            hashPrevBlock.SetBytes (std::vector<uint8_t>(vData.begin() + 4, vData.begin() + 132));
+            hashMerkleRoot.SetBytes(std::vector<uint8_t>(vData.begin() + 132, vData.end() - 20));
+
+            nChannel = convert::bytes2uint(std::vector<uint8_t>(  vData.end() - 20, vData.end() - 16));
+            nHeight  = convert::bytes2uint(std::vector<uint8_t>(  vData.end() - 16, vData.end() - 12));
+            nBits    = convert::bytes2uint(std::vector<uint8_t>(  vData.end() - 12, vData.end() - 8));
+            nNonce   = convert::bytes2uint64(std::vector<uint8_t>(vData.end() -  8, vData.end()));
+        }
+
+
         /* Generates the StakeHash for this block from a uint256_t hashGenesis*/
-        uint1024_t Block::StakeHash(bool fIsGenesis, const uint256_t &hashGenesis) const
+        uint1024_t Block::StakeHash(bool fIsGenesis, const uint256_t& hashGenesis) const
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-            ss.reserve(10000);
+            ss.reserve(256);
 
             /* Trust Key is part of stake hash if not genesis. */
             if(nHeight > 2392970 && fIsGenesis)
@@ -329,7 +352,7 @@ namespace TAO
         {
             /* Create a data stream to get the hash. */
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
-            ss.reserve(10000);
+            ss.reserve(256);
 
             /* Trust Key is part of stake hash if not genesis. */
             if(nHeight > 2392970 && fIsGenesis)

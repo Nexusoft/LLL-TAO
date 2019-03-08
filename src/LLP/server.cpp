@@ -344,10 +344,8 @@ namespace LLP
         /* Set the port. */
         pAddressManager->SetPort(PORT);
 
-
-        /* Wait for data threads to startup. */
-        while(DATA_THREADS.size() < MAX_THREADS)
-            runtime::sleep(1000);
+        /* Get the max connections. Default is 16 if maxconnections isn't specified. */
+        uint32_t nMaxConnections = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 16));
 
         /* Loop connections. */
         while(!config::fShutdown.load())
@@ -357,7 +355,8 @@ namespace LLP
                 runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
-            if(pAddressManager->StochasticSelect(addr))
+            if(GetConnectionCount() < nMaxConnections
+               && pAddressManager->StochasticSelect(addr))
             {
                 /* Check for invalid address */
                 if(!addr.IsValid())
@@ -370,8 +369,14 @@ namespace LLP
 
                 /* Attempt the connection. */
                 debug::log(3, FUNCTION, ProtocolType::Name(), " Attempting Connection ", addr.ToString());
+                if(AddConnection(addr.ToStringIP(), addr.GetPort()))
+                {
 
-                AddConnection(addr.ToStringIP(), addr.GetPort());
+                    /* If address is DNS, log message on connection. */
+                    std::string dns_name;
+                    if(pAddressManager->GetDNSName(addr, dns_name))
+                        debug::log(3, FUNCTION, "Connected to DNS Address: ", dns_name);
+                }
             }
 
             debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
@@ -417,10 +422,6 @@ namespace LLP
         /* Bind the Listener. */
         if(!BindListenPort(hListenSocket, fIPv4))
             return;
-
-        /* Don't listen until all data threads are created. */
-        while(DATA_THREADS.size() < MAX_THREADS)
-            runtime::sleep(1000);
 
         /* Setup poll objects. */
         pollfd fds[1];

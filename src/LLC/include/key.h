@@ -147,7 +147,7 @@ namespace LLC
          *  @param[in] vchSecret the secret phrase in byte code in secure allocator.
          *  @param[in] fCompressed flag whether key is compressed or not.
          *
-         *  @return True if the key was successfully created
+         *  @return True if the key was successfully created.
          *
          **/
         bool SetSecret(const CSecret& vchSecret, bool fCompressed = false);
@@ -191,9 +191,9 @@ namespace LLC
 
         /** GetPubKey
          *
-         *  Returns the Public key in a byte vector
+         *  Returns the Public key in a byte vector.
          *
-         *  @return The bytes of the public key in this keypair
+         *  @return The bytes of the public key in this keypair.
          *
          **/
         std::vector<uint8_t> GetPubKey() const;
@@ -219,9 +219,9 @@ namespace LLC
          *
          *  Use strict encoding for easy handling of ledger level scripts.
          *
-         *  @param[in] vchSig The DER encoded signature to check
+         *  @param[in] vchSig The DER encoded signature to check.
          *
-         *  @return true if encoding check passed.
+         *  @return True if encoding check passed.
          *
          **/
         bool Encoding(const std::vector<uint8_t>& vchSig) const;
@@ -231,12 +231,12 @@ namespace LLC
          *
          *  Tritium Signing Function.
          *
-         *  Based on standard set of byte data as input of any length. Checks for DER encoding
+         *  Based on standard set of byte data as input of any length. Checks for DER encoding.
          *
-         *  @param[in] vchData The input data to sign in bytes
-         *  @param[out] vchSig The output data of the signature
+         *  @param[in] vchData The input data to sign in bytes.
+         *  @param[out] vchSig The output data of the signature.
          *
-         *  @return True if the Signature was created successfully
+         *  @return True if the Signature was created successfully.
          *
          **/
         bool Sign(const std::vector<uint8_t>& vchData, std::vector<uint8_t>& vchSig) const;
@@ -246,10 +246,10 @@ namespace LLC
          *
          *  Tritium Signature Verification Function
          *
-         *  Based on standard set of byte data as input of any length. Checks for DER encoding
+         *  Based on standard set of byte data as input of any length. Checks for DER encoding.
          *
-         *  @param[in] vchData The input data to sign in bytes
-         *  @param[in] vchSig The signature to check
+         *  @param[in] vchData The input data to sign in bytes.
+         *  @param[in] vchSig The signature to check.
          *
          *  @return True if the Signature was Verified as Valid
          *
@@ -261,13 +261,13 @@ namespace LLC
          *
          *  Legacy Signing Function
          *
-         *  Based on a 1024 bit hash and internal output length passed through type
+         *  Based on a 1024 bit hash and internal output length passed through type.
          *
-         *  @param[in] hash The input hash to be signed
-         *  @param[out] vchSig The output signature data
-         *  @param[in] nBits The total bits to use from param hash
+         *  @param[in] hash The input hash to be signed.
+         *  @param[out] vchSig The output signature data.
+         *  @param[in] nBits The total bits to use from param hash.
          *
-         *  @return True if the Signature was created successfully
+         *  @return True if the Signature was created successfully.
          *
          **/
         bool Sign(const uint1024_t& hash, std::vector<uint8_t>& vchSig, const uint32_t nBits) const;
@@ -282,7 +282,7 @@ namespace LLC
          *                   0x1D = second key with even y, 0x1E = second key with odd
          *
          *  @param[in] hash The input hash to be signed.
-         *  @param[out] vchSig The output signature data
+         *  @param[out] vchSig The output signature data.
          *
          *  @return True if the Signature was created successfully.
          *
@@ -292,13 +292,13 @@ namespace LLC
 
         /** SetCompactSignature
          *
-         *  reconstruct public key from a compact signature
+         *  Reconstruct public key from a compact signature.
          *  This is only slightly more CPU intensive than just verifying it.
          *  If this function succeeds, the recovered public key is guaranteed to be valid
          *  (the signature is a valid signature of the given data for that key).
          *
-         *  @param[in] hash The input compact signature hash
-         *  @param[out] vchSig The output public key data
+         *  @param[in] hash The input compact signature hash.
+         *  @param[out] vchSig The output public key data.
          *
          *  @return True if the Signature was set.
          *
@@ -310,13 +310,13 @@ namespace LLC
          *
          *  Legacy Verifying Function.
          *
-         *  Based on a 1024 bit hash and internal output length passed through type
+         *  Based on a 1024 bit hash and internal output length passed through type.
          *
-         *  @param[in] hash The input hash to be signed
-         *  @param[in] vchSig The output signature data
-         *  @param[in] nBits The total bits to use from param hash
+         *  @param[in] hash The input hash to be signed.
+         *  @param[in] vchSig The output signature data.
+         *  @param[in] nBits The total bits to use from param hash.
          *
-         *  @return True if the Signature was verified successfully
+         *  @return True if the Signature was verified successfully.
          *
          **/
         bool Verify(const uint1024_t& hash, const std::vector<uint8_t>& vchSig, const uint32_t nBits) const;
@@ -324,9 +324,9 @@ namespace LLC
 
         /** IsValid
          *
-         *  Check if a Key is valid based on a few parameters
+         *  Check if a Key is valid based on a few parameters.
          *
-         *  @return True if the Key is in a valid state
+         *  @return True if the Key is in a valid state.
          *
          **/
         bool IsValid() const;
