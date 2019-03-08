@@ -1034,7 +1034,7 @@ namespace LLP
 
             /* Detect large orphan chains and ask for new blocks from origin again. */
             if(pnode
-            && pnode->nConsecutiveOrphans >= 500)
+            && pnode->nConsecutiveOrphans > 1000)
             {
                 debug::log(0, FUNCTION, "node reached orphan limit... closing");
 
