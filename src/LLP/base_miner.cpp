@@ -383,15 +383,17 @@ namespace LLP
             /* Respond to the miner with the new height. */
             case GET_HEIGHT:
             {
+                {
+                    /* Check the best height before responding. */
+                    LOCK(MUTEX);
+                    check_best_height();
+                }
+
                 /* Create the response packet and write. */
                 respond(BLOCK_HEIGHT, 4, convert::uint2bytes(nBestHeight + 1));
 
                 /* Prevent mining clients from spamming with GET_HEIGHT messages*/
                 runtime::sleep(500);
-
-                LOCK(MUTEX);
-
-                check_best_height();
 
                 return true;
             }
