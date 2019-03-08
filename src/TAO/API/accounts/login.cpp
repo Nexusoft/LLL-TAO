@@ -138,7 +138,9 @@ namespace TAO
                 throw APIException(-1, "Session not found");
 
             /* Delete the sigchan. */
-            pairUnlocked = std::make_pair(nSession, "");
+            LOCK(MUTEX);
+
+            pairUnlocked = std::make_pair(0, "");
 
             return true;
         }
