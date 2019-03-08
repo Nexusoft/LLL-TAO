@@ -71,49 +71,49 @@ namespace LLP
      *  Adds a new block to the map.
      *
      **/
-     TAO::Ledger::Block *LegacyMiner::new_block()
-     {
-         /*  make a copy of the base block before making the hash  unique for this requst*/
-         uint1024_t proof_hash;
-         uint32_t s = static_cast<uint32_t>(mapBlocks.size());
+    TAO::Ledger::Block *LegacyMiner::new_block()
+    {
+        /*  make a copy of the base block before making the hash  unique for this requst*/
+        uint1024_t proof_hash;
+        uint32_t s = static_cast<uint32_t>(mapBlocks.size()) + 1;
 
-         /* Create a new Legacy Block. */
-         Legacy::LegacyBlock *pBlock = new Legacy::LegacyBlock();
+        /* Create a new Legacy Block. */
+        Legacy::LegacyBlock *pBlock = new Legacy::LegacyBlock();
 
-         /* Set it to a null state */
-         pBlock->SetNull();
+        /* Set it to a null state */
+        pBlock->SetNull();
 
-         /* We need to make the block hash unique for each subsribed miner so that they are not
-             duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
-             the scriptSig to be unique for each subscriber, before rebuilding the merkle tree.
+        /* We need to make the block hash unique for each subsribed miner so that they are not
+         duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
+         the scriptSig to be unique for each subscriber, before rebuilding the merkle tree.
 
-             We need to drop into this for loop at least once to set the unique hash, but we will iterate
-             indefinitely for the prime channel until the generated hash meets the min prime origins
-             and is less than 1024 bits*/
-         for(uint32_t i = s; ; ++i)
-         {
-             if(!Legacy::CreateLegacyBlock(*pMiningKey, CoinbaseTx, nChannel, i, *pBlock))
-                 debug::error(FUNCTION, "Failed to create a new Legacy Block.");
+         We need to drop into this for loop at least once to set the unique hash, but we will iterate
+         indefinitely for the prime channel until the generated hash meets the min prime origins
+         and is less than 1024 bits*/
+        for(uint32_t i = s; ; ++i)
+        {
+            if(!Legacy::CreateLegacyBlock(*pMiningKey, CoinbaseTx, nChannel, i, *pBlock))
+                debug::error(FUNCTION, "Failed to create a new Legacy Block.");
 
-             /* skip if not prime channel or version less than 5 */
-             if(nChannel != 1 || pBlock->nVersion >= 5)
-                 break;
+            /* skip if not prime channel or version less than 5 */
+            if(nChannel != 1 || pBlock->nVersion >= 5)
+                break;
 
-             proof_hash = pBlock->ProofHash();
+            proof_hash = pBlock->ProofHash();
 
-             /* exit loop when the block is above minimum prime origins and less than
-                 1024-bit hashes */
-             if(proof_hash > TAO::Ledger::bnPrimeMinOrigins.getuint1024()
-             && !proof_hash.high_bits(0x80000000))
-                 break;
-         }
+            /* exit loop when the block is above minimum prime origins and less than
+             1024-bit hashes */
+            if(proof_hash > TAO::Ledger::bnPrimeMinOrigins.getuint1024()
+            && !proof_hash.high_bits(0x80000000))
+                break;
+        }
 
-         debug::log(2, FUNCTION, "***** Mining LLP: Created new Legacy Block ",
-             pBlock->hashMerkleRoot.ToString().substr(0, 20));
+        debug::log(2, FUNCTION, "***** Mining LLP: Created new Legacy Block ",
+            pBlock->hashMerkleRoot.ToString().substr(0, 20));
 
-         /* Return a pointer to the heap memory */
-         return pBlock;
-     }
+        /* Return a pointer to the heap memory */
+        return pBlock;
+    }
 
 
     /** validates the block for the derived miner class. **/
@@ -125,6 +125,32 @@ namespace LLP
         if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
         {
             debug::log(2, "***** Mining LLP: Invalid Work for Legacy Block ", merkle_root.ToString().substr(0, 20));
+
+            /* Block not valid - Return the key (will reserve a new one if start a new block) */
+            pMiningKey->ReturnKey();
+
+            return false;
+        }
+
+        /* Block is valid - Tell the wallet to keep this key */
+        pMiningKey->KeepKey();
+
+        return true;
+    }
+
+
+    /** validates the block for the derived miner class. **/
+    bool LegacyMiner::sign_block(uint64_t nonce, const uint512_t &merkle_root)
+    {
+        Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[merkle_root]);
+
+        pBlock->nNonce = nonce;
+        pBlock->UpdateTime();
+        pBlock->print(); // print pre-signed block to log, will print signed block in Accept()
+
+        if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
+        {
+            debug::log(2, "***** Mining LLP: Unable to Sign Legacy Block ", merkle_root.ToString().substr(0, 20));
             return false;
         }
 
@@ -132,33 +158,11 @@ namespace LLP
     }
 
 
-     /** validates the block for the derived miner class. **/
-     bool LegacyMiner::sign_block(uint64_t nonce, const uint512_t &merkle_root)
-     {
-         Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[merkle_root]);
-
-         pBlock->nNonce = nonce;
-         pBlock->UpdateTime();
-         pBlock->print();
-
-         if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
-         {
-             debug::log(2, "***** Mining LLP: Unable to Sign Legacy Block ", merkle_root.ToString().substr(0, 20));
-             return false;
-         }
-
-         /* Tell the wallet to keep this key */
-         pMiningKey->KeepKey();
-
-         return true;
-     }
-
-
-     /*  Determines if the mining wallet is unlocked. */
-     bool LegacyMiner::is_locked()
-     {
-         return Legacy::Wallet::GetInstance().IsLocked();
-     }
+    /*  Determines if the mining wallet is unlocked. */
+    bool LegacyMiner::is_locked()
+    {
+        return Legacy::Wallet::GetInstance().IsLocked();
+    }
 
 
 }

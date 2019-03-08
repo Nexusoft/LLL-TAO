@@ -97,7 +97,7 @@ namespace Legacy
 
             /* Add transactions from mempool */
             AddTransactions(newBlock.vtx);
-        }
+       }
 
 
         /* Populate the Block Data. */
@@ -153,6 +153,8 @@ namespace Legacy
     {
         /* Previous block state is current best state on chain */
         TAO::Ledger::BlockState prevBlockState = TAO::Ledger::ChainState::stateBest.load();
+
+        /* Output type 0 is minting of miner reward */
         int64_t nBlockReward = TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 0);
 
         /* Initialize vin */
@@ -165,7 +167,7 @@ namespace Legacy
         /* calculate the reward for this wallet */
         int64_t nReward = 0;
         if(coinbaseRecipients.IsNull())
-            nReward = nBlockReward; // Output type 0 is minting of miner reward
+            nReward = nBlockReward; 
         else
             nReward = coinbaseRecipients.nPoolFee;
 
@@ -198,8 +200,6 @@ namespace Legacy
             if(nMiningReward != nBlockReward)
                 return false;
         }
-
-
 
 
         /* Make coinbase counter mod 13 of height. */
@@ -515,7 +515,7 @@ namespace Legacy
             wallet.mapRequestCount[block.GetHash()] = 0;
         }
 
-        /* Print the newly found block. */
+        /* Print the newly found block. Accept() prints a duplicate if verbose >= 2 because it prints all blocks, not just mined ones */
         block.print();
 
         /* Process the Block and relay to network if it gets Accepted into Blockchain. */

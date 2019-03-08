@@ -146,11 +146,20 @@ namespace Legacy
     	if ((!config::fServer && !config::GetBoolArg("-stake", true)) || (config::fServer && !config::GetBoolArg("-stake", false)))
     	{
     		debug::log(2, "Stake Minter not configured. Startup cancelled.");
+
     		return false;
     	}
 
 		if (pStakingWallet == nullptr)
 			pStakingWallet = &(Wallet::GetInstance());
+
+        /* Wallet should be unlocked. */
+        if(pStakingWallet->IsLocked())
+        {
+            debug::error(FUNCTION, "Cannot start stake minter for locked wallet.");
+
+            return false;
+        }
 
 		/* Ensure stop flag is reset or thread will immediately exit */
 		StakeMinter::fstopMinter.store(false);
