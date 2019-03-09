@@ -233,7 +233,10 @@ OBJS= \
 	build/API_cmd.o \
 	build/API_accounts_accounts.o \
 	build/API_accounts_create.o \
+	build/API_accounts_lock.o \
 	build/API_accounts_login.o \
+	build/API_accounts_logout.o \
+	build/API_accounts_unlock.o \
 	build/API_assets_initialize.o \
 	build/API_assets_create.o \
 	build/API_assets_get.o \

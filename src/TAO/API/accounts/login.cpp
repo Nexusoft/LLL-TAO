@@ -17,11 +17,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/accounts.h>
 
-#include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/mempool.h>
-
-#include <Util/include/hex.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -89,89 +86,6 @@ namespace TAO
 
             /* Setup the account. */
             mapSessions[nSession] = user;
-
-            return ret;
-        }
-
-
-        /* Unlock an account for mining (TODO: make this much more secure) */
-        json::json Accounts::Unlock(const json::json& params, bool fHelp)
-        {
-            /* Check for username parameter. */
-            if(params.find("session") == params.end())
-                throw APIException(-23, "Missing Session");
-
-            /* Check for password parameter. */
-            if(params.find("pin") == params.end())
-                throw APIException(-24, "Missing Pin");
-
-            /* Check if already unlocked. */
-            if(pairUnlocked.first != 0)
-                throw APIException(-26, "Account already unlocked");
-
-            /* Extract the session. */
-            uint64_t nSession = std::stoull(params["session"].get<std::string>());
-
-            /* Extract the PIN. */
-            pairUnlocked = std::make_pair(nSession, params["pin"].get<std::string>().c_str());
-
-            return true;
-        }
-
-
-        /* Lock an account for mining (TODO: make this much more secure) */
-        json::json Accounts::Lock(const json::json& params, bool fHelp)
-        {
-            /* Check for username parameter. */
-            if(params.find("session") == params.end())
-                throw APIException(-23, "Missing Session");
-
-            /* Check if already unlocked. */
-            if(pairUnlocked.first == 0)
-                throw APIException(-26, "Account already locked");
-
-            /* Extract the session. */
-            uint64_t nSession = std::stoull(params["session"].get<std::string>());
-
-            /* Check for session. */
-            if(!mapSessions.count(nSession))
-                throw APIException(-1, "Session not found");
-
-            /* Delete the sigchan. */
-            LOCK(MUTEX);
-
-            pairUnlocked = std::make_pair(0, "");
-
-            return true;
-        }
-
-
-        /* Login to a user account. */
-        json::json Accounts::Logout(const json::json& params, bool fHelp)
-        {
-            /* JSON return value. */
-            json::json ret;
-
-            /* Check for username parameter. */
-            if(params.find("session") == params.end())
-                throw APIException(-23, "Missing Session ID");
-
-            /* Generate the signature chain. */
-            uint64_t nSession = std::stoull(params["session"].get<std::string>());
-            if(!mapSessions.count(nSession))
-                throw APIException(-1, "Already logged out");
-
-            /* Set the return value. */
-            ret["genesis"] = GetGenesis(nSession).ToString();
-
-            /* Delete the sigchan. */
-            TAO::Ledger::SignatureChain* user = mapSessions[nSession];
-
-            delete user;
-            user = nullptr;
-
-            /* Erase the session. */
-            mapSessions.erase(nSession);
 
             return ret;
         }
