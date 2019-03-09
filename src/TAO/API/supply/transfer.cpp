@@ -55,10 +55,25 @@ namespace TAO
                 throw APIException(-25, "Missing Destination");
 
             /* Watch for destination genesis. */
-            uint256_t hashTo;
-            hashTo.SetHex(params["destination"].get<std::string>());
-            if(!LLD::legDB->HasGenesis(hashTo))
-                throw APIException(-25, "Destination doesn't exist");
+            uint256_t hashTo = 0;
+            if(params.find("destination") != params.end())
+            {
+                hashTo.SetHex(params["destination"].get<std::string>());
+            }
+            else if(params.find("username") != params.end())
+            {
+                /* Generate the Secret Phrase */
+                SecureString strUsername = params["username"].get<std::string>().c_str();
+                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
+
+                /* Generate the Hashes */
+                uint1024_t hashSecret = LLC::SK1024(vSecret);
+
+                /* Generate the Final Root Hash. */
+                hashTo = LLC::SK256(hashSecret.GetBytes());
+            }
+            else
+                throw APIException(-25, "Missing Destination");
 
             /* Get the session. */
             uint64_t nSession = std::stoull(params["session"].get<std::string>());
