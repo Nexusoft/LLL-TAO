@@ -172,10 +172,11 @@ namespace TAO
             vHashes.push_back(block.producer.GetHash());
 
             /* Check the memory pool. */
-            mempool.List(vHashes);
+            std::vector<uint512_t> vMempool;
+            mempool.List(vMempool);
 
             /* Add each transaction. */
-            for(const auto& hash : vHashes)
+            for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
                 if (::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 193 >= MAX_BLOCK_SIZE)
@@ -196,10 +197,11 @@ namespace TAO
 
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
-            }
 
-            /* Erase the remaining hashes that didn't get onto a block. */
-            vHashes.erase(vHashes.begin() + block.vtx.size() + 1, vHashes.end());
+
+                /* Add to the hashes for merkle root. */
+                vHashes.push_back(hash);
+            }
 
             /** Populate the Block Data. **/
             block.hashPrevBlock   = ChainState::stateBest.load().GetHash();

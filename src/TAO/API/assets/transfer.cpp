@@ -54,7 +54,7 @@ namespace TAO
             else if(params.find("username") != params.end())
             {
                 /* Generate the Secret Phrase */
-                SecureString strUsername = params["destination"].get<std::string>().c_str();
+                SecureString strUsername = params["username"].get<std::string>().c_str();
                 std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
 
                 /* Generate the Hashes */
