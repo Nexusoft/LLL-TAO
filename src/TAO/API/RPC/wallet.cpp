@@ -64,7 +64,7 @@ namespace TAO
             if (Legacy::Wallet::GetInstance().IsLocked())
                 throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-            Legacy::Wallet::GetInstance().GetKeyPool().TopUpKeyPool();
+            Legacy::Wallet::GetInstance().GetKeyPool().TopUpKeyPool(true);
 
             if (Legacy::Wallet::GetInstance().GetKeyPool().GetKeyPoolSize() < config::GetArg("-keypool", 100))
                 throw APIException(-4, "Error refreshing keypool.");

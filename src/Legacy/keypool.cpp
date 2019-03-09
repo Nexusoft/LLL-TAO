@@ -95,7 +95,7 @@ namespace Legacy
 
 
     /* Adds keys to key pool to top up the number of entries. */
-    bool KeyPool::TopUpKeyPool()
+    bool KeyPool::TopUpKeyPool(bool fForceRefill)
     {
     	bool fKeysAdded = false;
 
@@ -119,7 +119,7 @@ namespace Legacy
             {
                 LOCK(cs_keyPool);
 
-                if (nStartingSize >= nMinimumSize)
+                if (nStartingSize > nMinimumSize && !fForceRefill)
                 	return true; // Pool does not need refill until it falls to minimum size
 
                 debug::log(2, FUNCTION, "Topping up Keypool, current size = ", nStartingSize, " target size = ",  nTargetSize);
