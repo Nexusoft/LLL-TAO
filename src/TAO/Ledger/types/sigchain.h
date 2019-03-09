@@ -75,7 +75,6 @@ namespace TAO
             {
                 /* Generate the Secret Phrase */
                 std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
-                vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
 
                 /* Generate the Hashes */
                 uint1024_t hashSecret = LLC::SK1024(vSecret);
