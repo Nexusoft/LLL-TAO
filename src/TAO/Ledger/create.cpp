@@ -185,6 +185,15 @@ namespace TAO
                 if(hash == block.producer.GetHash())
                     continue;
 
+                /* Get the transaction from the memory pool. */
+                TAO::Ledger::Transaction tx;
+                if(!mempool.Get(hash, tx))
+                    continue;
+
+                /* Don't add transactions with the same genesis ID as producer. */
+                if(tx.hashGenesis == block.producer.hashGenesis)
+                    continue;
+
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
             }
