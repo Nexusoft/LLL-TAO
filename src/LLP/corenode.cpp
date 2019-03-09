@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/exception.h>
 #include <TAO/API/include/accounts.h>
+#include <TAO/API/include/assets.h>
 #include <TAO/API/include/supply.h>
 #include <TAO/API/include/ledger.h>
 #include <TAO/API/include/lisp.h>
@@ -117,6 +118,8 @@ namespace LLP
                 ret = { {"result", TAO::API::supply.Execute(METHOD, params) } };
             else if(strAPI == "accounts")
                 ret = { {"result", TAO::API::accounts.Execute(METHOD, params) } };
+            else if(strAPI == "assets")
+                ret = { {"result", TAO::API::assets.Execute(METHOD, params) } };
             else if(strAPI == "ledger")
                 ret = { {"result", TAO::API::ledger.Execute(METHOD, params) } };
             else if(strAPI == "lisp")

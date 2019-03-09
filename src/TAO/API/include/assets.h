@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_API_INCLUDE_SUPPLY_H
-#define NEXUS_TAO_API_INCLUDE_SUPPLY_H
+#ifndef NEXUS_TAO_API_INCLUDE_ASSETS_H
+#define NEXUS_TAO_API_INCLUDE_ASSETS_H
 
 #include <TAO/API/types/base.h>
 
