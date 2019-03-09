@@ -195,6 +195,10 @@ namespace TAO
                 if(tx.hashGenesis == block.producer.hashGenesis)
                     continue;
 
+                /* Don't add transactions that are coinbase or coinstake. */
+                if(tx.IsCoinbase() || tx.IsTrust())
+                    continue;
+
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
 
