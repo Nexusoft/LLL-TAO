@@ -100,7 +100,7 @@ namespace TAO
             uint256_t hashGenesis = uint256_t(params["genesis"].get<std::string>());
 
             /* Get the last transaction. */
-            uint512_t hashLast;
+            uint512_t hashLast = 0;
             if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
                 throw APIException(-28, "No transactions found");
 
