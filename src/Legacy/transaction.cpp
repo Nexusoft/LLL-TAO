@@ -754,6 +754,10 @@ namespace Legacy
             if (inputs.count(prevout.hash))
                 continue;
 
+            /* Check for existing indexes. */
+            if(!LLD::legDB->HasIndex(prevout.hash))
+                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), "not connected");
+
             /* Read the previous transaction. */
             Transaction txPrev;
             if(!LLD::legacyDB->ReadTx(prevout.hash, txPrev))

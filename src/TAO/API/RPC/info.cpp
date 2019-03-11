@@ -67,7 +67,7 @@ namespace TAO
 			obj["staking"] = stakeMinter.IsStarted() ? "Started" : "Not Started";
 			if (stakeMinter.IsStarted())
 			{
-	            obj["stakerate"]   = stakeMinter.GetStakeRate();
+	            obj["stakerate"]   = 100.0 * stakeMinter.GetStakeRate();
 	            obj["trustweight"] = stakeMinter.GetTrustWeightPercent();
 	            obj["blockweight"] = stakeMinter.GetBlockWeightPercent();
 	            obj["stakeweight"] = stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight(); // These total to 100, so can use as a %
@@ -243,7 +243,7 @@ namespace TAO
                     blockState = TAO::Ledger::ChainState::stateGenesis;
                     nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
                 }
-                
+
 
 
                 // Hash
