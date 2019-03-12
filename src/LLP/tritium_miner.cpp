@@ -67,11 +67,10 @@ namespace LLP
      *  Adds a new block to the map.
      *
      **/
-     TAO::Ledger::Block *TritiumMiner::new_block()
+     TAO::Ledger::Block* TritiumMiner::new_block()
      {
          /*  make a copy of the base block before making the hash  unique for this requst*/
-         uint1024_t proof_hash;
-         uint32_t s = static_cast<uint32_t>(mapBlocks.size());
+         uint1024_t hashProof = 0;
 
          /* Create a new Tritium Block. */
          TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
@@ -100,7 +99,7 @@ namespace LLP
              We need to drop into this for loop at least once to set the unique hash, but we will iterate
              indefinitely for the prime channel until the generated hash meets the min prime origins
              and is less than 1024 bits*/
-         for(uint64_t i = s; ; ++i)
+         for(uint64_t i = static_cast<uint32_t>(mapBlocks.size()); ; ++i)
          {
              //pBlock->vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)((i+1) * 513513512151));
 
@@ -122,12 +121,12 @@ namespace LLP
              if(nChannel != 1 || pBlock->nVersion >= 5)
                  break;
 
-             proof_hash = pBlock->ProofHash();
+             hashProof = pBlock->ProofHash();
 
              /* exit loop when the block is above minimum prime origins and less than
                  1024-bit hashes */
-             if(proof_hash > TAO::Ledger::bnPrimeMinOrigins.getuint1024()
-             && !proof_hash.high_bits(0x80000000))
+             if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024()
+             && !hashProof.high_bits(0x80000000))
                  break;
          }
 
@@ -140,10 +139,10 @@ namespace LLP
 
 
     /** validates the block for the derived miner class. **/
-    bool TritiumMiner::validate_block(const uint512_t& merkle_root)
+    bool TritiumMiner::validate_block(const uint512_t& hashMerkleRoot)
     {
         /* Create the pointer to the heap. */
-        TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[merkle_root]);
+        TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
 
         /* Validate the block through the process method. */
         TritiumNode::Process(*pBlock, nullptr);
@@ -153,11 +152,11 @@ namespace LLP
 
 
      /** validates the block for the derived miner class. **/
-     bool TritiumMiner::sign_block(uint64_t nonce, const uint512_t &merkle_root)
+     bool TritiumMiner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
      {
          /* Create the pointer to the heap. */
-         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[merkle_root]);
-         pBlock->nNonce = nonce;
+         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
+         pBlock->nNonce = nNonce;
          pBlock->UpdateTime();
          pBlock->print();
 
@@ -183,7 +182,7 @@ namespace LLP
          if(!key.SetSecret(vchSecret, true)
          || !pBlock->GenerateSignature(key))
          {
-             debug::log(2, "Unable to Sign Tritium Block ", merkle_root.ToString().substr(0, 20));
+             debug::log(2, "Unable to Sign Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
              return false;
          }
 

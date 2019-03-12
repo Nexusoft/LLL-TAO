@@ -117,14 +117,14 @@ namespace LLP
 
 
     /** validates the block for the derived miner class. **/
-    bool LegacyMiner::validate_block(const uint512_t &merkle_root)
+    bool LegacyMiner::validate_block(const uint512_t& hashMerkleRoot)
     {
-        Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[merkle_root]);
+        Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[hashMerkleRoot]);
 
         /* Check the Proof of Work for submitted block. */
         if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
         {
-            debug::log(2, "***** Mining LLP: Invalid Work for Legacy Block ", merkle_root.ToString().substr(0, 20));
+            debug::log(2, "***** Mining LLP: Invalid Work for Legacy Block ", hashMerkleRoot.ToString().substr(0, 20));
 
             /* Block not valid - Return the key (will reserve a new one if start a new block) */
             pMiningKey->ReturnKey();
@@ -140,17 +140,17 @@ namespace LLP
 
 
     /** validates the block for the derived miner class. **/
-    bool LegacyMiner::sign_block(uint64_t nonce, const uint512_t &merkle_root)
+    bool LegacyMiner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
     {
-        Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[merkle_root]);
+        Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[hashMerkleRoot]);
 
-        pBlock->nNonce = nonce;
+        pBlock->nNonce = nNonce;
         pBlock->UpdateTime();
         pBlock->print(); // print pre-signed block to log, will print signed block in Accept()
 
         if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
         {
-            debug::log(2, "***** Mining LLP: Unable to Sign Legacy Block ", merkle_root.ToString().substr(0, 20));
+            debug::log(2, "***** Mining LLP: Unable to Sign Legacy Block ", hashMerkleRoot.ToString().substr(0, 20));
             return false;
         }
 

@@ -170,10 +170,10 @@ namespace LLP
                     /* Alert workers of new round. */
                     respond(NEW_ROUND);
 
-                    uint1024_t block_hash;
-                    std::vector<uint8_t> data;
+                    uint1024_t hashBlock;
+                    std::vector<uint8_t> vData;
                     TAO::Ledger::Block *pBlock = nullptr;
-                    uint32_t nSize = 0;
+
                     for(uint16_t i = 0; i < nSubscribed.load(); ++i)
                     {
                         {
@@ -189,20 +189,19 @@ namespace LLP
                                 return;
                             }
 
-                            /* Serialize the block data */
-                            data = pBlock->Serialize();
-                            nSize = static_cast<uint32_t>(data.size());
+                            /* Serialize the block vData */
+                            vData = pBlock->Serialize();
 
                             /* Get the block hash for display purposes */
-                            block_hash = pBlock->GetHash();
+                            hashBlock = pBlock->GetHash();
                         }
 
                         /* Create and send a packet response */
-                        respond(BLOCK_DATA, nSize, data);
+                        respond(BLOCK_DATA, vData);
 
 
                         debug::log(2, FUNCTION, "Sent Block ",
-                            block_hash.ToString().substr(0, 20), " to Worker.");
+                            hashBlock.ToString().substr(0, 20), " to Worker.");
                     }
 
 
@@ -391,7 +390,7 @@ namespace LLP
                 }
 
                 /* Create the response packet and write. */
-                respond(BLOCK_HEIGHT, 4, convert::uint2bytes(nBestHeight + 1));
+                respond(BLOCK_HEIGHT, convert::uint2bytes(nBestHeight + 1));
 
                 return true;
             }
@@ -400,11 +399,12 @@ namespace LLP
             case GET_ROUND:
             {
 
-              bool fNewRound = false;
-              {
-                LOCK(MUTEX);
-                fNewRound = check_best_height();
-              }
+                /* Check for a new round. */
+                bool fNewRound = false;
+                {
+                    LOCK(MUTEX);
+                    fNewRound = check_best_height();
+                }
 
                 /* If height was outdated, respond with old round, otherwise
                  * respond with a new round */
@@ -416,16 +416,18 @@ namespace LLP
                 return true;
             }
 
+
             case GET_REWARD:
             {
                 uint64_t nCoinbaseReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
 
-                respond(BLOCK_REWARD, 8, convert::uint2bytes64(nCoinbaseReward));
+                respond(BLOCK_REWARD, convert::uint2bytes64(nCoinbaseReward));
 
                 debug::log(2, "***** Mining LLP: Sent Coinbase Reward of ", nCoinbaseReward);
 
                 return true;
             }
+
 
             case SUBSCRIBE:
             {
@@ -439,40 +441,44 @@ namespace LLP
 
                 return true;
             }
+
+
             /* Get a new block for the miner. */
             case GET_BLOCK:
             {
                 TAO::Ledger::Block *pBlock = nullptr;
-                std::vector<uint8_t> data;
-                uint32_t nSize = 0;
 
+                /* Prepare the data to serialize on request. */
+                std::vector<uint8_t> vData;
                 {
                     LOCK(MUTEX);
 
+                    /* Check for the best block height. */
                     check_best_height();
 
                     /* Create a new block */
                     pBlock = new_block();
 
+                    /* Handle if the block failed to be created. */
                     if(!pBlock)
                     {
-                      debug::log(2, FUNCTION, "Failed to create block.");
-                      return true;
+                        debug::log(2, FUNCTION, "Failed to create block.");
+                        return true;
                     }
 
                     /* Store the new block in the memory map of recent blocks being worked on. */
                     mapBlocks[pBlock->hashMerkleRoot] = pBlock;
 
-                    /* Serialize the block data */
-                    data = pBlock->Serialize();
-                    nSize = static_cast<uint32_t>(data.size());
+                    /* Serialize the block vData */
+                    vData = pBlock->Serialize();
                 }
 
                 /* Create and write the response packet. */
-                respond(BLOCK_DATA, nSize, data);
+                respond(BLOCK_DATA, vData);
 
                 return true;
             }
+
 
             /* Submit a block using the merkle root as the key. */
             case SUBMIT_BLOCK:
@@ -519,6 +525,7 @@ namespace LLP
 
             }
 
+
             /** Check Block Command: Allows Client to Check if a Block is part of the Main Chain. **/
             case CHECK_BLOCK:
             {
@@ -531,16 +538,16 @@ namespace LLP
                 /* Read the block state from disk. */
                 if(LLD::legDB->ReadBlock(hashBlock, state))
                 {
-                    /*If the block state is in the main chain send a good response. */
+                    /* If the block state is in the main chain send a good response. */
                     if(state.IsInMainChain())
                     {
-                        respond(GOOD_BLOCK, PACKET.LENGTH, PACKET.DATA);
+                        respond(GOOD_BLOCK, PACKET.DATA);
                         return true;
                     }
                 }
 
                 /* Block state is not in the main chain, send an orphan response */
-                respond(ORPHAN_BLOCK, PACKET.LENGTH, PACKET.DATA);
+                respond(ORPHAN_BLOCK, PACKET.DATA);
                 return true;
             }
         }
@@ -549,13 +556,13 @@ namespace LLP
     }
 
 
-    void BaseMiner::respond(uint8_t header_response, uint32_t nSizegth, const std::vector<uint8_t> &data)
+    void BaseMiner::respond(uint8_t nHeader, const std::vector<uint8_t>& vData)
     {
         Packet RESPONSE;
 
-        RESPONSE.HEADER = header_response;
-        RESPONSE.LENGTH = nSizegth;
-        RESPONSE.DATA = data;
+        RESPONSE.HEADER = nHeader;
+        RESPONSE.LENGTH = vData.size();
+        RESPONSE.DATA   = vData;
 
         this->WritePacket(RESPONSE);
     }
@@ -597,12 +604,12 @@ namespace LLP
 
 
     /*  Determines if the block exists. */
-    bool BaseMiner::find_block(const uint512_t &merkle_root)
+    bool BaseMiner::find_block(const uint512_t& hashMerkleRoot)
     {
         /* Check that the block exists. */
-        if(!mapBlocks.count(merkle_root))
+        if(!mapBlocks.count(hashMerkleRoot))
         {
-            debug::log(2, FUNCTION, "Block Not Found ", merkle_root.ToString().substr(0, 20));
+            debug::log(2, FUNCTION, "Block Not Found ", hashMerkleRoot.ToString().substr(0, 20));
 
             return false;
         }
