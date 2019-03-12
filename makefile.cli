@@ -175,6 +175,13 @@ OBJS= \
     build/LLC_bignum.o \
 	build/LLC_key.o \
 	build/LLC_random.o \
+	build/LLC_falcon-enc.o \
+	build/LLC_falcon-fft.o \
+	build/LLC_falcon-keygen.o \
+	build/LLC_falcon-sign.o \
+	build/LLC_falcon-vrfy.o \
+	build/LLC_frng.o \
+	build/LLC_shake.o \
 	build/LLD_global.o \
     build/LLD_filemap.o \
     build/LLD_hashmap.o \
@@ -359,6 +366,9 @@ build/LLC_%.o: ./src/LLC/hash/SK/%.cpp $(HEADERS)
 build/LLC_%.o: ./src/LLC/hash/SK/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
+build/LLC_%.o: ./src/LLC/falcon/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
 build/LLD_%.o: ./src/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
@@ -469,6 +479,13 @@ build/LLC_%.o: src/LLC/hash/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/LLC_%.o: src/LLC/hash/SK/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/falcon/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -656,6 +673,13 @@ build/LLC_%.o: src/LLC/hash/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/LLC_%.o: src/LLC/hash/SK/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/falcon/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
