@@ -41,6 +41,7 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 #include <Util/include/signals.h>
 #include <Util/include/version.h>
+#include <Util/include/daemon.h>
 
 #include <Legacy/include/ambassador.h>
 #include <Legacy/types/minter.h>
@@ -51,65 +52,6 @@ ________________________________________________________________________________
 #include <cstdint>
 #include <string>
 #include <vector>
-
-#if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
-#include <sys/types.h>
-#include <sys/stat.h>
-#endif
-
-
-/** Daemonize
- *
- *  Daemonize by forking the parent process
- *
- **/
-void Daemonize()
-{
- #if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
-
-
-    pid_t pid = fork();
-    if (pid < 0)
-    {
-        debug::error(FUNCTION, "fork() returned ", pid, " errno ", errno);
-        exit(EXIT_FAILURE);
-    }
-    if (pid > 0)
-    {
-        /* generate a pid file so that we can keep track of the forked process */
-        filesystem::CreatePidFile(filesystem::GetPidFile(), pid);
-
-        /* Success: Let the parent terminate */
-        exit(EXIT_SUCCESS);
-    }
-
-    pid_t sid = setsid();
-    if (sid < 0)
-    {
-        debug::error(FUNCTION, "setsid() returned ", sid, " errno %d", errno);
-        exit(EXIT_FAILURE);
-    }
-
-    debug::log(0, "Nexus server starting");
-
-    /* Set new file permissions */
-    umask(0);
-
-    /* close stdin, stderr, stdout so that the tty no longer receives output */
-    if (int fdnull = open("/dev/null", O_RDWR))
-    {
-        dup2 (fdnull, STDIN_FILENO);
-        dup2 (fdnull, STDOUT_FILENO);
-        dup2 (fdnull, STDERR_FILENO);
-        close(fdnull);
-    }
-    else
-    {
-        debug::error(FUNCTION, "Failed to open /dev/null");
-        exit(EXIT_FAILURE);
-    }
-#endif
-}
 
 
 int main(int argc, char** argv)
@@ -166,6 +108,7 @@ int main(int argc, char** argv)
     /** Run the process as Daemon RPC/LLP Server if Flagged. **/
     if (config::fDaemon)
     {
+        debug::log(0, FUNCTION, "-daemon flag enabled. Running in background");
         Daemonize();
     }
 
