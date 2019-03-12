@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TYPES_LEGACY_H
 
 #include <Legacy/types/legacy.h>
-#include <Legacy/types/locator.h>
+#include <TAO/Ledger/types/locator.h>
 
 #include <LLP/include/legacy_address.h>
 #include <LLP/include/network.h>
@@ -318,7 +318,7 @@ namespace LLP
             hashLastGetblocks = hashBlockFrom;
 
             /* Push the request to the node. */
-            PushMessage("getblocks", Legacy::Locator(hashBlockFrom), hashBlockTo);
+            PushMessage("getblocks", TAO::Ledger::Locator(hashBlockFrom), hashBlockTo);
 
             /* Debug output for monitoring. */
             debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getblocks from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));

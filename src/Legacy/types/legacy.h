@@ -66,6 +66,18 @@ namespace Legacy
         /** Copy Constructor. **/
         LegacyBlock(const LegacyBlock& block);
 
+        /** Clone
+        *
+        *  Allows polymorphic copying of blocks
+        *  Overridden to return an instance of the LegacyBlock class.
+        *  Return-type covariance allows us to return the more derived type whilst 
+        *  still overriding the virtual base-class method
+        *
+        *  @return A pointer to a copy of this LegacyBlock.
+        *
+        **/
+        virtual LegacyBlock* Clone() const override {return new LegacyBlock(*this);};
+
 
         /** Copy Constructor. **/
         LegacyBlock(const TAO::Ledger::BlockState& state);
@@ -88,7 +100,7 @@ namespace Legacy
          *  Check a legacy block for consistency.
          *
          **/
-        bool Check() const;
+        bool Check() const override;
 
 
         /** Accept
@@ -96,7 +108,7 @@ namespace Legacy
          *  Accept a legacy block with chain state parameters.
          *
          **/
-        bool Accept() const;
+        bool Accept() const override;
 
 
         /** Verify Stake
@@ -146,15 +158,9 @@ namespace Legacy
          *  For debugging Purposes seeing block state data dump
          *
          **/
-        std::string ToString() const;
+        std::string ToString() const override;
 
 
-        /** print
-         *
-         *  For debugging purposes, printing the block to stdout
-         *
-         **/
-        virtual void print() const;
     };
 }
 

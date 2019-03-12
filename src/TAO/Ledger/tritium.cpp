@@ -17,6 +17,10 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/packets/tritium.h>
+#include <LLP/include/global.h>
+#include <LLP/include/inv.h>
+
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -91,7 +95,7 @@ namespace TAO
         /* For debugging Purposes seeing block state data dump */
         std::string TritiumBlock::ToString() const
         {
-            return debug::safe_printstr("Block("
+            return debug::safe_printstr("Tritium Block("
                 VALUE("hash")     " = ", GetHash().ToString().substr(0, 20), " ",
                 VALUE("nVersion") " = ", nVersion, ", ",
                 VALUE("hashPrevBlock") " = ", hashPrevBlock.ToString().substr(0, 20), ", ",
@@ -103,13 +107,6 @@ namespace TAO
                 VALUE("nTime") " = ", nTime, ", ",
                 VALUE("vchBlockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ", ",
                 VALUE("vtx.size()") " = ", vtx.size(), ")");
-        }
-
-
-        /* For debugging purposes, printing the block to stdout */
-        void TritiumBlock::print() const
-        {
-            debug::log(0, ToString());
         }
 
 
@@ -127,7 +124,7 @@ namespace TAO
 
 
             /* Check that the time was within range. */
-            if (GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+            if (GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
 
@@ -167,16 +164,8 @@ namespace TAO
 
 
             /* Check the producer transaction. */
-            if(nHeight > 0)
-            {
-                /* Check the coinbase if not genesis. */
-                if(GetChannel() > 0 && !producer.IsCoinbase())
-                    return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
-
-                /* Check that the producer is a valid transactions. */
-                if(!producer.IsValid())
-                    return debug::error(FUNCTION, "producer transaction is invalid");
-            }
+            if(nHeight > 0 && GetChannel() > 0 && !producer.IsCoinbase())
+                return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
 
 
             /* Check the producer transaction. */
@@ -211,7 +200,7 @@ namespace TAO
 
 
             /* Missing transactions. */
-            std::vector<uint512_t> missingTx;
+            std::vector< std::pair<uint8_t, uint512_t> > missingTx;
 
 
             /* Get the hashes for the merkle root. */
@@ -244,7 +233,7 @@ namespace TAO
                     Legacy::Transaction txMem;
                     if(!mempool.Get(tx.second, txMem))
                     {
-                        missingTx.push_back(tx.second);
+                        missingTx.push_back(tx);
                         continue;
                     }
 
@@ -264,7 +253,7 @@ namespace TAO
                     TAO::Ledger::Transaction txMem;
                     if(!mempool.Has(tx.second))
                     {
-                        missingTx.push_back(tx.second);
+                        missingTx.push_back(tx);
                         continue;
                     }
                 }
@@ -275,6 +264,14 @@ namespace TAO
             /* Fail and ask for response of missing transctions. */
             if(missingTx.size() > 0 && nHeight > 0)
             {
+                std::vector<LLP::CInv> vInv;
+                for(const auto& tx : missingTx)
+                    vInv.push_back(LLP::CInv(tx.second, tx.first == TYPE::TRITIUM_TX ? LLP::MSG_TX_TRITIUM : LLP::MSG_TX_LEGACY));
+
+                vInv.push_back(LLP::CInv(GetHash(), LLP::MSG_BLOCK_TRITIUM));
+                if(LLP::TRITIUM_SERVER)
+                    LLP::TRITIUM_SERVER->Relay(LLP::GET_DATA, vInv);
+
                 //NodeType* pnode;
                 //pnode->PushMessage("GetInv("....")");
                 //send pnode as a template for this method.
@@ -316,7 +313,7 @@ namespace TAO
 
 
         /** Accept a tritium block. **/
-        bool TritiumBlock::Accept()
+        bool TritiumBlock::Accept() const
         {
             /* Read leger DB for duplicate block. */
             if(LLD::legDB->HasBlock(GetHash()))
@@ -359,9 +356,9 @@ namespace TAO
 
 
             /* Check That Block timestamp is not before previous block. */
-            //if (GetBlockTime() <= statePrev.GetBlockTime())
-            //    return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
-            //     statePrev.GetBlockTime());
+            if (GetBlockTime() <= statePrev.GetBlockTime())
+                return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
+                statePrev.GetBlockTime());
 
 
             /* Check that Block is Descendant of Hardened Checkpoints. */
@@ -370,7 +367,7 @@ namespace TAO
 
 
             /* Check the block proof of work rewards. */
-            if(IsProofOfWork() && nVersion >= 3)
+            if(IsProofOfWork())
             {
                 /* Get the stream from coinbase. */
                 producer.ssOperation.seek(1, STREAM::BEGIN); //set the read position to where reward will be.
@@ -383,6 +380,10 @@ namespace TAO
                 if (nMiningReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
                     return debug::error(FUNCTION, "miner reward mismatch ", nMiningReward, " : ",
                          GetCoinbaseReward(statePrev, GetChannel(), 0));
+
+                 /* Check that the producer is a valid transaction. */
+                 if(!producer.IsValid())
+                     return debug::error(FUNCTION, "producer transaction is invalid");
             }
             else if (IsProofOfStake())
             {
@@ -407,17 +408,37 @@ namespace TAO
                     if(!mempool.Get(tx.second, txCheck))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
+                    /* Check legacy transaction for finality. */
                     if (!txCheck.IsFinal(nHeight, GetBlockTime()))
                         return debug::error(FUNCTION, "contains a non-final transaction");
+                }
+                else if(tx.first == TYPE::TRITIUM_TX)
+                {
+                    /* Check if in memory pool. */
+                    Transaction txCheck;
+                    if(!mempool.Get(tx.second, txCheck))
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
+
+                    /* Check the transaction for validity. */
+                    if (!txCheck.IsValid())
+                        return debug::error(FUNCTION, "contains an invalid transaction");
                 }
             }
 
             /* Process the block state. */
             TAO::Ledger::BlockState state(*this);
 
+            /* Add the producer transaction */
+            TAO::Ledger::mempool.AddUnchecked(producer);
+
             /* Accept the block state. */
             if(!state.Index())
+            {
+                /* Remove producer from temporary mempool. */
+                TAO::Ledger::mempool.Remove(producer.GetHash());
+
                 return false;
+            }
 
             return true;
         }

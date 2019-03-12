@@ -349,6 +349,8 @@ namespace LLP
                     disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                 }
             }
+
+            runtime::sleep(10);
         }
     }
 

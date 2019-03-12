@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <Legacy/types/transaction.h>
-#include <Legacy/types/locator.h>
+#include <TAO/Ledger/types/locator.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <LLP/include/hosts.h>
@@ -291,8 +291,8 @@ namespace LLP
             {
                 LOCK(SESSIONS_MUTEX);
 
-                /** Free this session, if it is this connection that we mapped. 
-                    When we disconnect a duplicate session then it will not have been added to the map, 
+                /** Free this session, if it is this connection that we mapped.
+                    When we disconnect a duplicate session then it will not have been added to the map,
                     so we need to skip removing the session ID **/
                 if(mapConnectedSessions.count(nCurrentSession)
                 && mapConnectedSessions[nCurrentSession] == this)
@@ -497,7 +497,7 @@ namespace LLP
             {
                 Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
 
-                std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX) };
+                std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX_LEGACY) };
                 LEGACY_SERVER->Relay("inv", vInv);
             }
             else
@@ -625,8 +625,8 @@ namespace LLP
             if(config::GetBoolArg("-fastsync")
             && addrFastSync == GetAddress()
             && TAO::Ledger::ChainState::Synchronizing()
-            && vInv.back().GetType() == MSG_BLOCK
-            && nInvSize > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
+            && vInv.back().GetType() == MSG_BLOCK_LEGACY
+            && vInv.size() > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
             {
                 /* Normal case of asking for a getblocks inventory message. */
                 PushGetBlocks(vInv.back().GetHash(), uint1024_t(0));
@@ -639,30 +639,30 @@ namespace LLP
                 std::vector<CInv> vGet;
 
                 /* Precompute values for inventory. */
-                uint1024_t nInvHash;
-                uint512_t nInvHash512;
+                uint1024_t hashBlock;
+                uint512_t hashTx;
 
                 /* Reverse iterate for blocks in inventory. */
                 //std::reverse(vInv.begin(), vInv.end());
                 //for(const auto& inv : vInv)
                 for(auto inv = vInv.rbegin(); inv != vInv.rend(); ++inv)
                 {
-                    /* Get the inventory hash. */
-                    nInvHash = inv->GetHash();
-                    nInvHash512 = nInvHash.getuint512();
 
                     /* If this is a block type, only request if not in database. */
-                    if(inv->GetType() == MSG_BLOCK)
+                    if(inv->GetType() == MSG_BLOCK_LEGACY)
                     {
+                        /* Get the inventory hash. */
+                        hashBlock = inv->GetHash();
+
                         /* Check the LLD for block. */
-                        if(!cacheInventory.Has(nInvHash)
-                        && !LLD::legDB->HasBlock(nInvHash))
+                        if(!cacheInventory.Has(hashBlock)
+                        && !LLD::legDB->HasBlock(hashBlock))
                         {
                             /* Add this item to request queue. */
                             vGet.push_back(*inv);
 
                             /* Add this item to cached relay inventory (key only). */
-                            cacheInventory.Add(nInvHash);
+                            cacheInventory.Add(hashBlock);
                         }
                         else
                             break; //break since iterating backwards (searching newest to oldest)
@@ -670,14 +670,21 @@ namespace LLP
                     }
 
                     /* Check the memory pool for transactions being relayed. */
-                    else if(!cacheInventory.Has(nInvHash512)
-                         && !TAO::Ledger::mempool.Has(nInvHash512))
+                    else
                     {
-                        /* Add this item to request queue. */
-                        vGet.push_back(*inv);
+                        /* Get the inventory hash. */
+                        hashTx    = hashBlock.getuint512();
 
-                        /* Add this item to cached relay inventory (key only). */
-                        cacheInventory.Add(nInvHash512);
+                        /* Check for transaction. */
+                        if(!cacheInventory.Has(hashTx)
+                        && !TAO::Ledger::mempool.Has(hashTx))
+                        {
+                            /* Add this item to request queue. */
+                            vGet.push_back(*inv);
+
+                            /* Add this item to cached relay inventory (key only). */
+                            cacheInventory.Add(hashTx);
+                        }
                     }
                 }
 
@@ -714,9 +721,9 @@ namespace LLP
             }
 
             /* Precompute values for inventory. */
-            uint1024_t nInvHash;
-            uint512_t nInvHash512;
-            int32_t nInvType;
+            uint1024_t hashBlock;
+            uint512_t  hashTx;
+            uint8_t    nInvType;
 
             /* Loop the inventory and deliver messages. */
             for(const auto& inv : vInv)
@@ -725,21 +732,21 @@ namespace LLP
                 nInvType = inv.GetType();
 
                 /* Get the inventory hash. */
-                nInvHash = inv.GetHash();
+                hashBlock = inv.GetHash();
 
                 /* Log the inventory message receive. */
                 debug::log(3, FUNCTION, "received getdata ", inv.ToString());
 
                 /* Handle the block message. */
-                if (nInvType == LLP::MSG_BLOCK)
+                if (inv.GetType() == LLP::MSG_BLOCK_LEGACY)
                 {
                     /* Don't send genesis if asked for. */
-                    if(nInvHash == TAO::Ledger::ChainState::Genesis())
+                    if(hashBlock == TAO::Ledger::ChainState::Genesis())
                         continue;
 
                     /* Read the block from disk. */
                     TAO::Ledger::BlockState state;
-                    if(!LLD::legDB->ReadBlock(nInvHash, state))
+                    if(!LLD::legDB->ReadBlock(hashBlock, state))
                         continue;
 
                     /* Scan each transaction in the block and process those related to this wallet */
@@ -748,7 +755,7 @@ namespace LLP
                     /* Check that all transactions were included. */
                     if(block.vtx.size() != state.vtx.size())
                     {
-                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK) };
+                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK_LEGACY) };
                         PushMessage("inv", vInv);
                         hashContinue = 0;
 
@@ -759,19 +766,19 @@ namespace LLP
                     PushMessage("block", block);
 
                     /* Trigger a new getblocks if hash continue is set. */
-                    if (nInvHash == hashContinue)
+                    if (hashBlock == hashContinue)
                     {
-                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK) };
+                        std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK_LEGACY) };
                         PushMessage("inv", vInv);
                         hashContinue = 0;
                     }
                 }
-                else if (nInvType == LLP::MSG_TX)
+                else if (inv.GetType() == LLP::MSG_TX_LEGACY)
                 {
-                    nInvHash512 = nInvHash.getuint512();
+                    hashTx = hashBlock.getuint512();
 
                     Legacy::Transaction tx;
-                    if(!TAO::Ledger::mempool.Get(nInvHash512, tx) && !LLD::legacyDB->ReadTx(nInvHash512, tx))
+                    if(!TAO::Ledger::mempool.Get(hashTx, tx) && !LLD::legacyDB->ReadTx(hashTx, tx))
                         continue;
 
                     PushMessage("tx", tx);
@@ -783,7 +790,7 @@ namespace LLP
         /* Handle a Request to get a list of Blocks from a Node. */
         else if (message == "getblocks")
         {
-            Legacy::Locator locator;
+            TAO::Ledger::Locator locator;
             uint1024_t hashStop;
             ssMessage >> locator >> hashStop;
 
@@ -813,8 +820,11 @@ namespace LLP
             uint1024_t nStateHash;
             while(!config::fShutdown.load())
             {
-                /* Iterate to next state. */
+                /* Iterate to next state, if there is one */
                 state = state.Next();
+
+                if(!state)
+                    break;
 
                 /* Get the state hash. */
                 nStateHash = state.GetHash();
@@ -826,13 +836,13 @@ namespace LLP
 
                     /* Tell about latest block if hash stop is found. */
                     if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
-                        vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK));
+                        vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK_LEGACY));
 
                     break;
                 }
 
                 /* Push new item to inventory. */
-                vInv.push_back(CInv(nStateHash, MSG_BLOCK));
+                vInv.push_back(CInv(nStateHash, MSG_BLOCK_LEGACY));
 
                 /* Stop at limits. */
                 if (--nLimit <= 0)

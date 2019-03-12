@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/include/prime.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
 
@@ -161,7 +162,7 @@ namespace TAO
         /* Update the nTime of the current block. */
         void Block::UpdateTime()
         {
-            nTime = static_cast<uint32_t>(runtime::unifiedtimestamp());
+            nTime = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
         }
 
 
@@ -203,10 +204,10 @@ namespace TAO
         }
 
 
-        /* Dump the Block data to Console / Debug.log. */
-        void Block::print() const
+        /* For debugging Purposes seeing block state data dump */
+        std::string Block::ToString() const
         {
-            debug::log(0,
+            return debug::safe_printstr(
                 "Block(hash=", GetHash().ToString().substr(0,20),
                 ", ver=", nVersion,
                 ", hashPrevBlock=", hashPrevBlock.ToString().substr(0,20),
@@ -217,6 +218,12 @@ namespace TAO
                 ", nHeight= ", nHeight,
                 ", nNonce=",  nNonce,
                 ", vchBlockSig=", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ")");
+        }
+
+        /* Dump the Block data to Console / Debug.log. */
+        void Block::print() const
+        {
+            debug::log(0, ToString());
         }
 
 

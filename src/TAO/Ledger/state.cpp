@@ -238,13 +238,17 @@ namespace TAO
                     uint512_t hash = tx.second;
 
                     /* Check the memory pool. */
-                    TAO::Ledger::Transaction tx;
-                    if(!mempool.Get(hash, tx))
-                        return debug::error(FUNCTION, "transaction is not in memory pool"); //TODO: recover from missing transactions
+                    TAO::Ledger::Transaction txFrom;
+                    if(!mempool.Get(hash, txFrom))
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
-                    if(!LLD::legDB->WriteTx(hash, tx))
+                    if(!LLD::legDB->WriteTx(hash, txFrom))
                         return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Remove the coinbase or coinstake. */
+                    if(txFrom.IsCoinbase() || txFrom.IsTrust())
+                        mempool.Remove(hash);
 
                 }
                 else if(tx.first == TYPE::LEGACY_TX)
@@ -253,13 +257,17 @@ namespace TAO
                     uint512_t hash = tx.second;
 
                     /* Check if in memory pool. */
-                    Legacy::Transaction tx;
-                    if(!mempool.Get(hash, tx))
-                        return debug::error(FUNCTION, "transaction is not in memory pool");  //TODO: recover from missing transactions
+                    Legacy::Transaction txFrom;
+                    if(!mempool.Get(hash, txFrom))
+                        return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
-                    if(!LLD::legacyDB->WriteTx(hash, tx))
+                    if(!LLD::legacyDB->WriteTx(hash, txFrom))
                         return debug::error(FUNCTION, "failed to write tx to disk");
+
+                    /* Remove the coinbase or coinstake. */
+                    if(txFrom.IsCoinBase() || txFrom.IsCoinStake())
+                        mempool.Remove(hash);
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
@@ -509,11 +517,25 @@ namespace TAO
                     }
 
                     /* Create the inventory object. */
-                    std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain.load(), LLP::MSG_BLOCK) };
+                    bool fStateBestIsLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
+                    std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain.load(), fStateBestIsLegacy ? LLP::MSG_BLOCK_LEGACY : LLP::MSG_BLOCK_TRITIUM) };
 
                     /* Relay the new block to all connected nodes. */
                     if(LLP::LEGACY_SERVER)
                         LLP::LEGACY_SERVER->Relay("inv", vInv);
+
+                    /* If using Tritium server then we need to include the blocks transactions in the inventory before the block*/
+                    if(LLP::TRITIUM_SERVER)
+                    {
+                        /* start at index 1 so that we dont' include producer, as that is sent as part of the block*/
+                        for(int i=1; i > ChainState::stateBest.load().vtx.size(); i++)
+                            vInv.push_back(LLP::CInv(ChainState::stateBest.load().vtx[i].second, ChainState::stateBest.load().vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? LLP::MSG_TX_LEGACY : LLP::MSG_TX_TRITIUM));
+
+                        /* We want the block at the end of the inventory so that the transactions are requested first.
+                           Therefore we rotate the vInv so that the block at the front is moved to the back*/
+                        std::rotate(vInv.begin(), vInv.begin() +1, vInv.end());
+                        LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
+                    }
                 }
             }
 
@@ -559,12 +581,8 @@ namespace TAO
                         /* Write the Genesis to disk. */
                         if(!LLD::legDB->WriteGenesis(tx.hashGenesis, tx.GetHash()))
                             return debug::error(FUNCTION, "failed to write genesis");
-
-                        /* Write the last to disk. */
-                        if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.GetHash()))
-                            return debug::error(FUNCTION, "failed to write last hash");
                     }
-                    else
+                    else //POTENTIALLY SUPERFLUOUS CHECK, KEEP NOW FOR TESTING BUT DISPOSE BEFORE MAINNET
                     {
                         /* Check for the last hash. */
                         uint512_t hashLast;
@@ -576,11 +594,11 @@ namespace TAO
                             return debug::error(FUNCTION,
                                 "previous transaction ", tx.hashPrevTx.ToString().substr(0, 20),
                                 " and last hash mismatch ", hashLast.ToString().substr(0, 20));
-
-                        /* Write the last to disk. */
-                        if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.GetHash()))
-                            return debug::error(FUNCTION, "failed to write last hash");
                     }
+
+                    /* Write the last to disk. */
+                    if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.GetHash()))
+                        return debug::error(FUNCTION, "failed to write last hash");
                 }
                 else if(tx.first == TYPE::LEGACY_TX)
                 {
@@ -669,6 +687,10 @@ namespace TAO
                     /* Rollback the register layer. */
                     if(!TAO::Register::Rollback(tx))
                         return debug::error(FUNCTION, "transaction register layer failed to rollback");
+
+                    /* Set the last hash to previous transaciton in sigchain. */
+                    if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.hashPrevTx))
+                        return debug::error(FUNCTION, "failed to write last hash");
                 }
                 else if(tx.first == TYPE::LEGACY_TX)
                 {

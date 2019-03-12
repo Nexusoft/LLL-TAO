@@ -116,7 +116,7 @@ namespace Legacy
     /* For debugging Purposes seeing block state data dump */
     std::string LegacyBlock::ToString() const
     {
-        return debug::safe_printstr("Block("
+        return debug::safe_printstr("Legacy Block("
             VALUE("hash")     " = ", GetHash().ToString().substr(0, 20), " ",
             VALUE("nVersion") " = ", nVersion, ", ",
             VALUE("hashPrevBlock") " = ", hashPrevBlock.ToString().substr(0, 20), ", ",
@@ -131,12 +131,6 @@ namespace Legacy
         );
     }
 
-
-    /* For debugging purposes, printing the block to stdout */
-    void LegacyBlock::print() const
-    {
-        debug::log(0, ToString());
-    }
 
 
     /* Checks if a block is valid if not connected to chain. */

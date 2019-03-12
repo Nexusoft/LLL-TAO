@@ -22,8 +22,10 @@ namespace LLP
 		static const char* ppszTypeName[] =
 		{
 			  "ERROR",
-			  "tx",
-			  "block",
+			  "legacy tx",
+			  "legacy block",
+			  "tritium tx",
+			  "tritium block",
 		};
 
 		static const uint32_t len = ARRAYLEN(ppszTypeName);
@@ -94,10 +96,10 @@ namespace LLP
 		/* Returns data about this inventory as a string object. */
 		std::string CInv::ToString() const
 		{
-				if(GetCommand() == std::string("tx"))
+				if(type == MSG_TX_LEGACY || type == MSG_TX_TRITIUM)
 				{
 						std::string invHash = hash.ToString();
-						return debug::safe_printstr("tx ", invHash.substr(invHash.length() - 20, invHash.length()));
+						return debug::safe_printstr(GetCommand(), " ", invHash.substr(invHash.length() - 20, invHash.length()));
 				}
 
 				return debug::safe_printstr(GetCommand(), " ", hash.ToString().substr(0,20));

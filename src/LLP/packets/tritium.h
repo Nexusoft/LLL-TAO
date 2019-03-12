@@ -21,6 +21,8 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 
+#include <LLP/include/version.h>
+
 #include <Util/templates/datastream.h>
 #include <Util/include/debug.h>
 
@@ -34,11 +36,18 @@ namespace LLP
         GET_OFFSET      = 1,
         DAT_OFFSET      = 2,
 
+        DAT_DUPE_DISCONNECT = 5,
+
         DAT_HAS_TX      = 10,
         GET_TRANSACTION = 11,
 
         DAT_HAS_BLOCK   = 12,
         GET_BLOCK       = 13,
+
+        GET_INVENTORY   = 14,
+        DAT_INVENTORY   = 15,
+
+        GET_DATA        = 16,
 
         GET_ADDRESSES   = 20,
         DAT_ADDRESSES   = 21,

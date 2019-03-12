@@ -33,13 +33,6 @@ namespace LLP
      **/
     class TritiumMiner : public BaseMiner
     {
-    private:
-
-        /** the sig chain to receive block rewards **/
-        TAO::Ledger::SignatureChain *pSigChain;
-        SecureString PIN;
-
-
     public:
 
         /** Name

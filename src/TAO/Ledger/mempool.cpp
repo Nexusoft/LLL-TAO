@@ -11,6 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLP/packets/tritium.h>
+#include <LLP/include/global.h>
+#include <LLP/include/inv.h>
+
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/verify.h>
@@ -35,16 +39,16 @@ namespace TAO
         bool Mempool::AddUnchecked(const TAO::Ledger::Transaction& tx)
         {
             /* Get the transaction hash. */
-            uint512_t nTxHash = tx.GetHash();
+            uint512_t hashTx = tx.GetHash();
 
             LOCK(MUTEX);
 
             /* Check the mempool. */
-            if(mapLedger.count(nTxHash))
+            if(mapLedger.count(hashTx))
                 return false;
 
             /* Add to the map. */
-            mapLedger[nTxHash] = tx;
+            mapLedger[hashTx] = tx;
 
             return true;
         }
@@ -54,7 +58,7 @@ namespace TAO
         bool Mempool::Accept(TAO::Ledger::Transaction& tx)
         {
             /* Get the transaction hash. */
-            uint512_t nTxHash = tx.GetHash();
+            uint512_t hashTx = tx.GetHash();
 
             LOCK(MUTEX);
 
@@ -63,7 +67,7 @@ namespace TAO
             time.Start();
 
             /* Check the mempool. */
-            if(mapLedger.count(nTxHash))
+            if(mapLedger.count(hashTx))
                 return false;
 
             /* The next hash that is being claimed. */
@@ -73,34 +77,39 @@ namespace TAO
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.IsCoinbase())
-                return debug::error(FUNCTION, "coinbase ", nTxHash.ToString().substr(0, 20), " not accepted in pool");
+                return debug::error(FUNCTION, "coinbase ", hashTx.ToString().substr(0, 20), " not accepted in pool");
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.IsTrust())
-                return debug::error(FUNCTION, "trust ", nTxHash.ToString().substr(0, 20), " not accepted in pool");
+                return debug::error(FUNCTION, "trust ", hashTx.ToString().substr(0, 20), " not accepted in pool");
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
-                return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " too far in the future");
+                return debug::error(FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " too far in the future");
 
             /* Check that the transaction is in a valid state. */
             if(!tx.IsValid())
-                return debug::error(FUNCTION, nTxHash.ToString().substr(0, 20), " is invalid");
+                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " is invalid");
 
             /* Verify the Ledger Pre-States. */
             if(!TAO::Register::Verify(tx))
-                return debug::error(FUNCTION, nTxHash.ToString().substr(0, 20), " register verification failed");
+                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " register verification failed");
 
             /* Calculate the future potential states. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, nTxHash.ToString().substr(0, 20), " operations execution failed");
+                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
 
             /* Add to the map. */
-            mapLedger[nTxHash] = tx;
-            mapPrevHashes[hashClaim] = nTxHash;
+            mapLedger[hashTx] = tx;
+            mapPrevHashes[hashClaim] = hashTx;
 
             /* Debug output. */
-            debug::log(2, FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
+            debug::log(2, FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
+
+            /* Relay the transaction. */
+            std::vector<LLP::CInv> vInv = { LLP::CInv(hashTx, LLP::MSG_TX_TRITIUM) };
+            if(LLP::TRITIUM_SERVER)
+                LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
 
             /* Notify private to produce block if valid. */
             if(config::GetBoolArg("-private"))
@@ -132,6 +141,20 @@ namespace TAO
             LOCK(MUTEX);
 
             return mapLedger.count(hashTx);
+        }
+
+
+        /* Checks if a genesis exists. */
+        bool Mempool::Has(uint256_t hashGenesis) const
+        {
+            LOCK(MUTEX);
+
+            /* Check through the ledger map for the genesis. */
+            for(const auto& tx : mapLedger)
+                if(tx.second.hashGenesis == hashGenesis)
+                    return true;
+
+            return false;
         }
 
 

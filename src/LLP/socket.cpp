@@ -153,6 +153,18 @@ namespace LLP
         fcntl(nFile, F_SETFL, O_NONBLOCK);
     #endif
 
+#ifndef WIN32
+        /* Set the MSS to a lower than default value to support the increased bytes required for LISP */
+        int nMaxSeg = 1300;
+        if(setsockopt(nFile, IPPROTO_TCP /*SOL_SOCKET*/, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
+        {
+            debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
+            //closesocket(nFile);
+
+            //return false;
+        }
+#endif
+
         /* Open the socket connection for IPv4 / IPv6. */
         if(addrDest.IsIPv4())
         {
@@ -388,11 +400,11 @@ namespace LLP
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent != vData.size())
         {
-            nLastSend = runtime::timestamp();
-
             LOCK(DATA_MUTEX);
             vBuffer.insert(vBuffer.end(), vData.begin() + nSent, vData.end());
         }
+
+        nLastSend = runtime::timestamp();
 
         return nSent;
     }
@@ -442,11 +454,11 @@ namespace LLP
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent > 0)
         {
-            nLastSend = runtime::timestamp();
-
             LOCK(DATA_MUTEX);
             vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
         }
+
+        nLastSend = runtime::timestamp();
 
         return nSent;
     }
@@ -455,8 +467,8 @@ namespace LLP
     /*  Determines if nTime seconds have elapsed since last Read / Write. */
     bool Socket::Timeout(uint32_t nTime) const
     {
-        return (runtime::timestamp() > nLastSend + nTime &&
-                runtime::timestamp() > nLastRecv + nTime);
+        return (runtime::timestamp() > (uint64_t)(nLastSend + nTime) &&
+                runtime::timestamp() > (uint64_t)(nLastRecv + nTime));
     }
 
 

@@ -20,6 +20,11 @@ ________________________________________________________________________________
 #include <LLP/packets/tritium.h>
 #include <LLP/templates/base_connection.h>
 #include <LLP/templates/events.h>
+#include <LLD/cache/binary_key.h>
+#include <TAO/Ledger/types/locator.h>
+#include <Util/include/memory.h>
+#include <LLP/templates/ddos.h>
+#include <TAO/Ledger/types/tritium.h>
 
 namespace LLP
 {
@@ -43,10 +48,15 @@ namespace LLP
         /** Default Constructor **/
         TritiumNode()
         : BaseConnection<TritiumPacket>()
+        , nCurrentSession(0)
+        , nStartingHeight(0)
         , nLastPing(0)
         , nLastSamples(0)
         , mapLatencyTracker()
         , mapSentRequests()
+        , hashContinue(0)
+        , nConsecutiveFails(0)
+        , nConsecutiveOrphans(0)
         , fInbound(false)
         {
         }
@@ -54,10 +64,15 @@ namespace LLP
         /** Constructor **/
         TritiumNode( Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<TritiumPacket>( SOCKET_IN, DDOS_IN, isDDOS )
+        , nCurrentSession(0)
+        , nStartingHeight(0)
         , nLastPing(0)
         , nLastSamples(0)
         , mapLatencyTracker()
         , mapSentRequests()
+        , hashContinue(0)
+        , nConsecutiveFails(0)
+        , nConsecutiveOrphans(0)
         , fInbound(false)
         {
         }
@@ -66,10 +81,15 @@ namespace LLP
         /** Constructor **/
         TritiumNode( DDOS_Filter* DDOS_IN, bool isDDOS = false )
         : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS )
+        , nCurrentSession(0)
+        , nStartingHeight(0)
         , nLastPing(0)
         , nLastSamples(0)
         , mapLatencyTracker()
         , mapSentRequests()
+        , hashContinue(0)
+        , nConsecutiveFails(0)
+        , nConsecutiveOrphans(0)
         , fInbound(false)
         {
         }
@@ -82,25 +102,80 @@ namespace LLP
         /** Randomly genearted session ID. **/
         static uint64_t nSessionID;
 
+        /** The current session ID. **/
+        uint64_t nCurrentSession;
+
+        /** The height of this node given at the version message. **/
+        uint32_t nStartingHeight;
 
         /** Counter to keep track of the last time a ping was made. **/
-        uint64_t nLastPing;
-
+        std::atomic<uint64_t> nLastPing;
 
         /** Counter to keep track of last time sample request. */
-        uint64_t nLastSamples;
+        std::atomic<uint64_t> nLastSamples;
 
 
         /** timer object to keep track of ping latency. **/
-        std::map<uint64_t, uint64_t> mapLatencyTracker;
+        std::map<uint64_t, runtime::timer> mapLatencyTracker;
 
 
         /** Map to keep track of sent request ID's while witing for them to return. **/
         std::map<uint64_t, uint64_t> mapSentRequests;
 
+        /** The trigger hash to send a continue inv message to remote node. **/
+        uint1024_t hashContinue;
+
+        /* Duplicates connection reset. */
+        uint32_t nConsecutiveFails;
+
+        /* Orphans connection reset. */
+        uint32_t nConsecutiveOrphans;
+
+        static std::atomic<uint32_t> nAsked;
+
+        /* Static instantiation of orphan blocks in queue to process. */
+        static std::map<uint1024_t, std::unique_ptr<TAO::Ledger::Block>> mapOrphans;
+
+        /* Mutex to protect checking more than one block at a time. */
+        static std::mutex PROCESSING_MUTEX;
+
+        /* Mutex to protect the legacy orphans map. */
+        static std::mutex ORPHAN_MUTEX;
+
+        /* Mutex to protect connected sessions. */
+        static std::mutex SESSIONS_MUTEX;
+
+        /* global map connections to session ID's to be used to prevent duplicate connections to the same 
+            sever, but via a different RLOC / EID */
+        static std::map<uint64_t, TritiumNode*> mapConnectedSessions;
+
+        /** The last getblocks call this node has received. **/
+        static memory::atomic<uint1024_t> hashLastGetblocks;
+
+        /** The time since last getblocks call. **/
+        static std::atomic<uint64_t> nLastGetBlocks;
+
+        /** Handle an average calculation of fast sync blocks. */
+        static std::atomic<uint32_t> nFastSyncAverage;
+
+        /** The current node that is being used for fast sync.l **/
+        static memory::atomic<BaseAddress> addrFastSync;
+
+        /** The last time a block was accepted. **/
+        static std::atomic<uint64_t> nLastTimeReceived;
+
+        static LLD::KeyLRU cacheInventory;
 
         /** Flag to determine if a connection is Inbound. **/
         bool fInbound;
+
+
+        /** SwitchNode
+        *
+        *  Helper function to switch the nodes on sync.
+        *
+        **/
+        static void SwitchNode();
 
 
         /** Event
@@ -182,6 +257,25 @@ namespace LLP
                 }
             }
         }
+
+        /** PushGetInventory
+         *
+         *  Send a request to get recent inventory from remote node.
+         *
+         *  @param[in] hashBlockFrom The block to start from
+         *  @param[in] hashBlockTo The block to search to
+         *
+         **/
+        void PushGetInventory(const uint1024_t& hashBlockFrom, const uint1024_t& hashBlockTo);
+
+        /** Process
+         *
+         *  Verify a block and accept it into the block chain
+         *
+         *  @return True is no errors, false otherwise.
+         *
+         **/
+        static bool Process(const TAO::Ledger::Block& block, TritiumNode* pnode);
 
 
         /** NewMessage

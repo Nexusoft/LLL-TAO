@@ -141,7 +141,7 @@ namespace TAO
                         /* Coinbase operation. Creates an account if none exists. */
                         case TAO::Operation::OP::COINBASE:
                         {
-                            tx.ssOperation.seek(8);
+                            tx.ssOperation.seek(16);
 
                             break;
                         }

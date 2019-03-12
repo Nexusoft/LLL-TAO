@@ -376,6 +376,15 @@ namespace Legacy
 		 **/
 		std::string ToStringShort() const;
 
+		/** GetTxTypeString
+		 *
+		 *  User readable description of the transaction type.
+		 *
+		 *  @return User readable description of the transaction type;
+		 *
+		 **/
+		std::string GetTxTypeString() const;
+
 
 		/** To String
 		 *

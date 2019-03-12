@@ -24,9 +24,11 @@ namespace LLP
     /* Inventory Block Messages Switch. */
     enum
     {
-        MSG_TX = 1,
-        MSG_BLOCK,
-    };
+        MSG_TX_LEGACY = 1,
+        MSG_BLOCK_LEGACY,
+        MSG_TX_TRITIUM,
+        MSG_BLOCK_TRITIUM
+    } ;
 
 
     /** CInv

@@ -146,7 +146,11 @@ namespace LLP
                                       const uint8_t state)
     {
         for(uint32_t i = 0; i < addrs.size(); ++i)
-            AddAddress(addrs[i], state);
+        {
+            /* Don't add addresses that already exist in the address manager, as this could reset the state of existing connections */
+            if(!Has(addrs[i]))
+                AddAddress(addrs[i], state);
+        }
     }
 
 
@@ -162,6 +166,7 @@ namespace LLP
             AddAddress(lookup_address, state);
 
             LOCK(mut);
+
             /* Associate a DNS name with an address. */
             mapDNS[lookup_address.GetHash()] = addrs[i];
         }

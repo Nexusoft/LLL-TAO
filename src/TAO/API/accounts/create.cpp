@@ -92,24 +92,50 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
-            /* Check for username parameter. */
+            /* Check for genesis parameter. */
             if(params.find("genesis") == params.end())
                 throw APIException(-25, "Missing Genesis ID");
+
+            /* Check for paged parameter. */
+            uint32_t nPage = 0;
+            if(params.find("page") != params.end())
+                nPage = atoi(params["page"].get<std::string>().c_str());
+
+            /* Check for username parameter. */
+            uint32_t nLimit = 100;
+            if(params.find("limit") != params.end())
+                nLimit = atoi(params["limit"].get<std::string>().c_str());
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = uint256_t(params["genesis"].get<std::string>());
 
             /* Get the last transaction. */
-            uint512_t hashLast;
+            uint512_t hashLast = 0;
             if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
                 throw APIException(-28, "No transactions found");
 
             /* Loop until genesis. */
+            uint32_t nTotal = 0;
             while(hashLast != 0)
             {
+                /* Get the current page. */
+                uint32_t nCurrentPage = nTotal / nLimit;
+
+                /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::legDB->ReadTx(hashLast, tx))
                     throw APIException(-28, "Failed to read transaction");
+
+                /* Set the next last. */
+                hashLast = tx.hashPrevTx;
+                ++nTotal;
+
+                /* Check the paged data. */
+                if(nCurrentPage < nPage)
+                    continue;
+
+                if(nCurrentPage > nPage)
+                    break;
 
                 json::json obj;
                 obj["version"]   = tx.nVersion;
@@ -123,8 +149,6 @@ namespace TAO
                 obj["hash"]      = tx.GetHash().ToString();
 
                 ret.push_back(obj);
-
-                hashLast = tx.hashPrevTx;
             }
 
             return ret;

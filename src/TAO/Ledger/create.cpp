@@ -51,9 +51,7 @@ namespace TAO
                 /* Get previous transaction */
                 TAO::Ledger::Transaction txPrev;
                 if(!LLD::legDB->ReadTx(hashLast, txPrev))
-                {
                     return debug::error(FUNCTION, "no prev tx ", hashLast.ToString(), " in ledger db");
-                }
 
                 /* Build new transaction object. */
                 tx.nSequence   = txPrev.nSequence + 1;
@@ -73,7 +71,7 @@ namespace TAO
 
 
         /* Create a new block object from the chain.*/
-        bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block)
+        bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block, uint64_t nExtraNonce)
         {
             /* Set the block to null. */
             block.SetNull();
@@ -162,6 +160,8 @@ namespace TAO
                 uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
                 block.producer << nCredit;
 
+                /* The extra nonce to coinbase. */
+                block.producer << nExtraNonce;
             }
 
             /* Sign the producer transaction. */
@@ -172,10 +172,11 @@ namespace TAO
             vHashes.push_back(block.producer.GetHash());
 
             /* Check the memory pool. */
-            mempool.List(vHashes);
+            std::vector<uint512_t> vMempool;
+            mempool.List(vMempool);
 
             /* Add each transaction. */
-            for(const auto& hash : vHashes)
+            for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
                 if (::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 193 >= MAX_BLOCK_SIZE)
@@ -185,12 +186,26 @@ namespace TAO
                 if(hash == block.producer.GetHash())
                     continue;
 
+                /* Get the transaction from the memory pool. */
+                TAO::Ledger::Transaction tx;
+                if(!mempool.Get(hash, tx))
+                    continue;
+
+                /* Don't add transactions with the same genesis ID as producer. */
+                if(tx.hashGenesis == block.producer.hashGenesis)
+                    continue;
+
+                /* Don't add transactions that are coinbase or coinstake. */
+                if(tx.IsCoinbase() || tx.IsTrust())
+                    continue;
+
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
-            }
 
-            /* Erase the remaining hashes that didn't get onto a block. */
-            vHashes.erase(vHashes.begin() + block.vtx.size() + 1, vHashes.end());
+
+                /* Add to the hashes for merkle root. */
+                vHashes.push_back(hash);
+            }
 
             /** Populate the Block Data. **/
             block.hashPrevBlock   = ChainState::stateBest.load().GetHash();
@@ -199,7 +214,7 @@ namespace TAO
             block.nHeight        = ChainState::stateBest.load().nHeight + 1;
             block.nBits          = GetNextTargetRequired(ChainState::stateBest.load(), nChannel, false);
             block.nNonce         = 1;
-            block.nTime          = static_cast<uint32_t>(runtime::unifiedtimestamp());
+            block.nTime          = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
 
             return true;
         }

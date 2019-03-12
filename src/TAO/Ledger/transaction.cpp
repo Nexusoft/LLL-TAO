@@ -64,8 +64,8 @@ namespace TAO
             if(IsCoinbase())
             {
                 /* Check the coinbase size. */
-                //if(ssOperation.size() != 41)
-                //    return debug::error(FUNCTION, "operation data too large for coinbase ", ssOperation.size());
+                if(ssOperation.size() != 17)
+                    return debug::error(FUNCTION, "operation data inconsistent with fixed size rules ", ssOperation.size());
             }
 
             /* Check for genesis valid numbers. */
@@ -233,6 +233,14 @@ namespace TAO
         std::string Transaction::ToStringShort() const
         {
             std::string str;
+            std::string txtype = GetTxTypeString();
+            str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
+            return str;
+        }
+
+        /*  User readable description of the transaction type. */
+        std::string Transaction::GetTxTypeString() const
+        {
             std::string txtype = "tritium ";
             if(IsCoinbase())
                 txtype += "base";
@@ -242,8 +250,8 @@ namespace TAO
                 txtype += "genesis";
             else
                 txtype += "user";
-            str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
-            return str;
+
+            return txtype;
         }
     }
 }

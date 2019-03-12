@@ -17,10 +17,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/accounts.h>
 
-#include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
-
-#include <Util/include/hex.h>
+#include <TAO/Ledger/types/mempool.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -56,10 +54,14 @@ namespace TAO
             TAO::Ledger::Transaction tx;
             if(!LLD::legDB->HasGenesis(hashGenesis))
             {
-                delete user;
-                user = nullptr;
+                /* Check the memory pool (TODO: Paul maybe you can think of a more efficient way to solve this chicken and egg). */
+                if(!TAO::Ledger::mempool.Has(hashGenesis))
+                {
+                    delete user;
+                    user = nullptr;
 
-                throw APIException(-26, "Account doesn't exists");
+                    throw APIException(-26, "Account doesn't exists");
+                }
             }
 
             /* Check the sessions. */
@@ -84,37 +86,6 @@ namespace TAO
 
             /* Setup the account. */
             mapSessions[nSession] = user;
-
-            return ret;
-        }
-
-
-        /* Login to a user account. */
-        json::json Accounts::Logout(const json::json& params, bool fHelp)
-        {
-            /* JSON return value. */
-            json::json ret;
-
-            /* Check for username parameter. */
-            if(params.find("session") == params.end())
-                throw APIException(-23, "Missing Session ID");
-
-            /* Generate the signature chain. */
-            uint64_t nSession = std::stoull(params["session"].get<std::string>());
-            if(!mapSessions.count(nSession))
-                throw APIException(-1, "Already logged out");
-
-            /* Set the return value. */
-            ret["genesis"] = GetGenesis(nSession).ToString();
-
-            /* Delete the sigchan. */
-            TAO::Ledger::SignatureChain* user = mapSessions[nSession];
-
-            delete user;
-            user = nullptr;
-
-            /* Erase the session. */
-            mapSessions.erase(nSession);
 
             return ret;
         }

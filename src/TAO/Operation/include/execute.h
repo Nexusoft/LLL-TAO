@@ -212,6 +212,10 @@ namespace TAO
                             uint64_t  nCredit;
                             tx.ssOperation >> nCredit;
 
+                            /* The extra nNonce available in script. */
+                            uint64_t  nExtraNonce;
+                            tx.ssOperation >> nExtraNonce;
+
                             /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
                             if(!tx.ssOperation.end())
                                 return debug::error(FUNCTION, "coinbase can't have extra data");

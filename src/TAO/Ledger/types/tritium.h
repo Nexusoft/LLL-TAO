@@ -99,6 +99,18 @@ namespace TAO
             /** Default Destructor **/
             virtual ~TritiumBlock();
 
+            /** Clone
+            *
+            *  Allows polymorphic copying of blocks
+            *  Overridden to return an instance of the TritiumBlock class.
+            *  Return-type covariance allows us to return the more derived type whilst 
+            *  still overriding the virtual base-class method
+            *
+            *  @return A pointer to a copy of this TritiumBlock.
+            *
+            **/
+            virtual TritiumBlock* Clone() const override {return new TritiumBlock(*this);};
+
 
             /** SetNull
              *
@@ -113,7 +125,7 @@ namespace TAO
              *  Check a tritium block for consistency.
              *
              **/
-            bool Check() const;
+            bool Check() const override;
 
 
             /** Accept
@@ -121,7 +133,7 @@ namespace TAO
              *  Accept a tritium block with chain state parameters.
              *
              **/
-            bool Accept();
+            bool Accept() const override;
 
 
             /** CheckStake
@@ -171,15 +183,9 @@ namespace TAO
              *  For debugging Purposes seeing block state data dump
              *
              **/
-            std::string ToString() const;
+            std::string ToString() const override;
 
 
-            /** print
-             *
-             *  For debugging purposes, printing the block to stdout
-             *
-             **/
-            virtual void print() const;
         };
     }
 }

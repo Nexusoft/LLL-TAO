@@ -102,6 +102,16 @@ namespace TAO
             /** Default Destructor **/
             virtual ~Block();
 
+            /** Clone
+            *
+            *  Allows polymorphic copying of blocks
+            *  Derived classes should override this and return an instance of the derived type.
+            *
+            *  @return A pointer to a copy of this Block.
+            *
+            **/
+            virtual Block* Clone() const {return new Block(*this);};
+
 
             /** SetNull
              *
@@ -109,6 +119,21 @@ namespace TAO
              *
              **/
             virtual void SetNull();
+
+            /** Check
+             *
+             *  Check a block for consistency.
+             *
+             **/
+            virtual bool Check() const { /* no implementation in base class*/ return true;}
+
+
+            /** Accept
+             *
+             *  Accept a block with chain state parameters.
+             *
+             **/
+            virtual bool Accept() const { /* no implementation in base class*/ return true;}
 
 
             /** SetChannel
@@ -224,6 +249,13 @@ namespace TAO
              **/
             uint512_t BuildMerkleTree(std::vector<uint512_t> vMerkleTree) const;
 
+
+            /** ToString
+             *
+             *  For debugging Purposes seeing block state data dump
+             *
+             **/
+            virtual std::string ToString() const ;
 
             /** print
              *

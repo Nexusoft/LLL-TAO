@@ -199,6 +199,11 @@ namespace TAO
                 bnNew = bnProofOfWorkLimit[0];
 
 
+            /* Handle for regression testing blocks. */
+            if(config::GetBoolArg("-regtest"))
+                bnNew = bnProofOfWorkLimit[0];
+
+
             /* Debug output. */
             if(fDebug)
             {
@@ -338,6 +343,11 @@ namespace TAO
 
             /* Check for minimum value. */
             if (nBits < bnProofOfWorkLimit[1].getuint32())
+                nBits = bnProofOfWorkLimit[1].getuint32();
+
+
+            /* Handle for regression testing blocks. */
+            if(config::GetBoolArg("-regtest"))
                 nBits = bnProofOfWorkLimit[1].getuint32();
 
 
@@ -481,6 +491,9 @@ namespace TAO
             if (bnNew > bnProofOfWorkLimit[2])
                 bnNew = bnProofOfWorkLimit[2];
 
+            /* Handle for regression testing blocks. */
+            if(config::GetBoolArg("-regtest"))
+                bnNew = bnProofOfWorkLimit[2];
 
             /* Debug output. */
             if(fDebug)
