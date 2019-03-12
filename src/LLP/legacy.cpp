@@ -738,7 +738,7 @@ namespace LLP
                 debug::log(3, FUNCTION, "received getdata ", inv.ToString());
 
                 /* Handle the block message. */
-                if (inv.GetType() == LLP::MSG_BLOCK_LEGACY)
+                if (nInvType == LLP::MSG_BLOCK_LEGACY)
                 {
                     /* Don't send genesis if asked for. */
                     if(hashBlock == TAO::Ledger::ChainState::Genesis())
@@ -773,7 +773,7 @@ namespace LLP
                         hashContinue = 0;
                     }
                 }
-                else if (inv.GetType() == LLP::MSG_TX_LEGACY)
+                else if (nInvType == LLP::MSG_TX_LEGACY)
                 {
                     hashTx = hashBlock.getuint512();
 
