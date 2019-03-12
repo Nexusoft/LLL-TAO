@@ -10,16 +10,18 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
-#ifndef NEXUS_UNIT_LLP_INCLUDE_MANAGER_H
-#define NEXUS_UNIT_LLP_INCLUDE_MANAGER_H
 
-#include <src/LLP/include/base_address.h>
-#include <src/LLP/include/trust_address.h>
-#include <src/LLP/include/manager.h>
+#include <LLP/include/global.h>
 
-namespace unit
+namespace LLP
 {
-    void test_address_manager();
-}
+    /* Declare the Global LLP Instances. */
+    Server<TritiumNode>* TRITIUM_SERVER;
+    Server<LegacyNode> * LEGACY_SERVER;
+    Server<TimeNode>   * TIME_SERVER;
 
-#endif
+    Server<CoreNode>*     CORE_SERVER;
+    Server<RPCNode>*      RPC_SERVER;
+    Server<LegacyMiner>*  LEGACY_MINING_SERVER;
+    Server<TritiumMiner>* TRITIUM_MINING_SERVER;
+}

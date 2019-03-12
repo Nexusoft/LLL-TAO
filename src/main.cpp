@@ -58,155 +58,6 @@ ________________________________________________________________________________
 #endif
 
 
-namespace LLP
-{
-    /* Declare the Global LLP Instances. */
-    Server<TritiumNode>* TRITIUM_SERVER;
-    Server<LegacyNode> * LEGACY_SERVER;
-    Server<TimeNode>   * TIME_SERVER;
-
-
-    /** CreateMiningServer
-     *
-     *  Helper for creating Mining Servers.
-     *
-     *  @return Returns a templated mining server.
-     *
-     **/
-    template <class ProtocolType>
-    Server<ProtocolType>* CreateMiningServer()
-    {
-
-        /* Create the mining server object. */
-        return new Server<ProtocolType>(
-
-            /* The port this server listens on. */
-            static_cast<uint16_t>(config::GetArg(std::string("-miningport"), config::fTestNet ? 8325 : 9325)),
-
-            /* The total data I/O threads. */
-            static_cast<uint16_t>(config::GetArg(std::string("-miningthreads"), 4)),
-
-            /* The timeout value (default: 30 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-miningtimeout"), 30)),
-
-            /* The DDOS if enabled. */
-            config::GetBoolArg(std::string("-miningddos"), false),
-
-            /* The connection score (total connections per second). */
-            static_cast<uint32_t>(config::GetArg(std::string("-miningcscore"), 1)),
-
-            /* The request score (total packets per second.) */
-            static_cast<uint32_t>(config::GetArg(std::string("-miningrscore"), 50)),
-
-            /* The DDOS moving average timespan (default: 60 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-miningtimespan"), 60)),
-
-            /* Mining server should always listen */
-            true,
-
-            /* Flag to determine if meters should be active. */
-            config::GetBoolArg(std::string("-meters"), false),
-
-            /* Mining server should never make outgoing connections. */
-            false
-
-        );
-    }
-
-
-    template <class ProtocolType>
-    void MakeConnections(Server<ProtocolType> *pServer)
-    {
-        /* -connect means try to establish a connection first. */
-        if(config::mapMultiArgs["-connect"].size() > 0)
-        {
-            /* Add connections and resolve potential DNS lookups. */
-            for(const auto& node : config::mapMultiArgs["-connect"])
-                pServer->AddConnection(node, pServer->GetPort(), true);
-        }
-
-        /* -addnode means add to address manager and let it make connections. */
-        if(config::mapMultiArgs["-addnode"].size() > 0)
-        {
-            /* Add nodes and resolve potential DNS lookups. */
-            for(const auto& node : config::mapMultiArgs["-addnode"])
-                pServer->AddNode(node, pServer->GetPort(), true);
-        }
-    }
-
-
-    /** CreateTAOServer
-     *
-     *  Helper for creating Legacy/Tritium Servers.
-     *
-     *  we can change the name of this if we want since Legacy is not a part of
-     *  the TAO framework. I just think it's a future proof name :)
-     *
-     *  @param[in] port The unique port for the server type
-     *
-     *  @return Returns a templated server.
-     *
-     **/
-    template <class ProtocolType>
-    Server<ProtocolType>* CreateTAOServer(uint16_t port)
-    {
-        /* Create the new server object. */
-        return new Server<ProtocolType>(
-
-            /* The port this server listens on. */
-            port,
-
-            /* The total data I/O threads. */
-            static_cast<uint16_t>(config::GetArg(std::string("-threads"), 8)),
-
-            /* The timeout value (default: 30 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 30)),
-
-            /* The DDOS if enabled. */
-            config::GetBoolArg(std::string("-ddos"), false),
-
-            /* The connection score (total connections per second). */
-            static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1)),
-
-            /* The request score (total packets per second.) */
-            static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 50)),
-
-            /* The DDOS moving average timespan (default: 60 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 60)),
-
-            /* Flag to determine if server should listen. */
-            config::GetBoolArg(std::string("-listen"), true),
-
-            /* Flag to determine if meters should be active. */
-            config::GetBoolArg(std::string("-meters"), false),
-
-            /* Flag to determine if the connection manager should try new connections. */
-            config::GetBoolArg(std::string("-manager"), true)
-
-        );
-    }
-
-
-    /** ShutdownServer
-     *
-     *  Performs a shutdown and cleanup of resources on a server if it exists.
-     *
-     *  pServer The potential server.
-     *
-     **/
-    template <class ProtocolType>
-    void ShutdownServer(Server<ProtocolType> *pServer)
-    {
-        if(pServer)
-        {
-            pServer->Shutdown();
-            delete pServer;
-
-            debug::log(0, FUNCTION, ProtocolType::Name());
-        }
-    }
-}
-
 /** Daemonize
  *
  *  Daemonize by forking the parent process
@@ -263,11 +114,6 @@ void Daemonize()
 
 int main(int argc, char** argv)
 {
-    LLP::Server<LLP::CoreNode>* CORE_SERVER = nullptr;
-    LLP::Server<LLP::RPCNode>* RPC_SERVER = nullptr;
-    LLP::Server<LLP::LegacyMiner>*  LEGACY_MINING_SERVER = nullptr;
-    LLP::Server<LLP::TritiumMiner>* TRITIUM_MINING_SERVER = nullptr;
-
     uint16_t port = 0;
 
     /* Setup the timer timer. */
@@ -427,7 +273,7 @@ int main(int argc, char** argv)
     port = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), 8080));
 
     /* Create the Core API Server. */
-    CORE_SERVER = new LLP::Server<LLP::CoreNode>(
+    LLP::CORE_SERVER = new LLP::Server<LLP::CoreNode>(
         port,
         10,
         30,
@@ -444,7 +290,7 @@ int main(int argc, char** argv)
     port = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet? 8336 : 9336));
 
     /* Set up RPC server */
-    RPC_SERVER = new LLP::Server<LLP::RPCNode>(
+    LLP::RPC_SERVER = new LLP::Server<LLP::RPCNode>(
         port,
         static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 1)),
         30,
@@ -461,9 +307,9 @@ int main(int argc, char** argv)
     if(config::GetBoolArg(std::string("-mining")))
     {
       if(config::GetBoolArg(std::string("-beta")))
-          LEGACY_MINING_SERVER  = LLP::CreateMiningServer<LLP::LegacyMiner>();
+          LLP::LEGACY_MINING_SERVER  = LLP::CreateMiningServer<LLP::LegacyMiner>();
       else
-          TRITIUM_MINING_SERVER = LLP::CreateMiningServer<LLP::TritiumMiner>();
+          LLP::TRITIUM_MINING_SERVER = LLP::CreateMiningServer<LLP::TritiumMiner>();
     }
 
 
@@ -527,16 +373,16 @@ int main(int argc, char** argv)
     LLP::ShutdownServer<LLP::LegacyNode>(LLP::LEGACY_SERVER);
 
     /* Shutdown the core API server and its subsystems. */
-    LLP::ShutdownServer<LLP::CoreNode>(CORE_SERVER);
+    LLP::ShutdownServer<LLP::CoreNode>(LLP::CORE_SERVER);
 
     /* Shutdown the RPC server and its subsystems. */
-    LLP::ShutdownServer<LLP::RPCNode>(RPC_SERVER);
+    LLP::ShutdownServer<LLP::RPCNode>(LLP::RPC_SERVER);
 
     /* Shutdown the legacy mining server and its subsystems. */
-    LLP::ShutdownServer<LLP::LegacyMiner>(LEGACY_MINING_SERVER);
+    LLP::ShutdownServer<LLP::LegacyMiner>(LLP::LEGACY_MINING_SERVER);
 
     /* Shutdown the tritium mining server and its subsystems. */
-    LLP::ShutdownServer<LLP::TritiumMiner>(TRITIUM_MINING_SERVER);
+    LLP::ShutdownServer<LLP::TritiumMiner>(LLP::TRITIUM_MINING_SERVER);
 
     /** After all servers shut down, clean up underlying networking resources **/
     LLP::NetworkShutdown();

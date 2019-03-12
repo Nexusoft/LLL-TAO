@@ -1,9 +1,8 @@
-#include <unit/LLP/include/manager.h>
+#include <Util/include/debug.h>
 
 int main(int argc, char **argv)
 {
-
-    unit::test_address_manager();
+    debug::log(0, FUNCTION, "Running live tests");
 
     return 0;
 }
