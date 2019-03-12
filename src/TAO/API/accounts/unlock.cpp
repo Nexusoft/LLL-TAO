@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/accounts.h>
+#include <Util/include/convert.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -27,6 +28,7 @@ namespace TAO
             /* Check for username parameter. */
             if(params.find("session") == params.end())
                 throw APIException(-23, "Missing Session");
+            
 
             /* Check for password parameter. */
             if(params.find("pin") == params.end())
@@ -38,6 +40,10 @@ namespace TAO
 
             /* Extract the session. */
             uint64_t nSession = std::stoull(params["session"].get<std::string>());
+
+            /* Check for session. */
+            if(!mapSessions.count(nSession))
+                throw APIException(-1, "Session not found");
 
             /* Extract the PIN. */
             pairUnlocked = std::make_pair(nSession, params["pin"].get<std::string>().c_str());
