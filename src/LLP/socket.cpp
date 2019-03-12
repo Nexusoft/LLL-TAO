@@ -156,9 +156,9 @@ namespace LLP
 #ifndef WIN32
         /* Set the MSS to a lower than default value to support the increased bytes required for LISP */
         int nMaxSeg = 1300;
-        if(setsockopt(nFile, IPPROTO_TCP /*SOL_SOCKET*/, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
-        {
-            debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
+        if(setsockopt(nFile, IPPROTO_TCP, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
+        { //TODO: this fails on OSX systems. Need to find out why
+            //debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
             //closesocket(nFile);
 
             //return false;
