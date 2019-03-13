@@ -52,6 +52,16 @@ namespace TAO
         public:
 
 
+            /** Default Constructor 
+             *
+             **/
+            SignatureChain()
+            : strUsername("")
+            , strPassword("")
+            {
+
+            }
+
             /** Constructor to generate Keychain
              *
              * @param[in] strUsernameIn The username to seed the signature chain
@@ -67,11 +77,22 @@ namespace TAO
 
             /** Genesis
              *
-             *  This function is responsible for generating the genesis ID.
+             *  This function is responsible for generating the genesis ID for this sig chain.
              *
              *  @return The 512 bit hash of this key in the series.
              **/
             uint256_t Genesis()
+            {
+                return SignatureChain::GetGenesis(strUsername);
+            }
+
+            /** Genesis
+             *
+             *  Generates a sig chain genesis ID for the given username.
+             *
+             *  @return The 512 bit hash of this key in the series.
+             **/
+            static uint256_t GetGenesis(const SecureString& strUsername)
             {
                 /* Generate the Secret Phrase */
                 std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());

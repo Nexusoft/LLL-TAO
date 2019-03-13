@@ -20,6 +20,8 @@ ________________________________________________________________________________
 
 #include <Util/include/hex.h>
 
+#include <Util/include/args.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -44,16 +46,21 @@ namespace TAO
         }
 
 
-        /* Determine if the accounts are locked. */
-        bool Accounts::Locked(uint64_t& nSession, SecureString& strSecret) const
+        /* Determine if a sessionless user is logged in. */
+        bool Accounts::LoggedIn() const
         {
-            if(pairUnlocked.first == 0)
-                return false;
+            return !config::fAPISessions && mapSessions.count(0); 
+        }
 
-            nSession  = pairUnlocked.first;
-            strSecret = pairUnlocked.second;
 
-            return true;
+        /* Determine if the accounts are locked. */
+        bool Accounts::Locked(SecureString& strSecret) const
+        {
+            if(config::fAPISessions || strActivePIN.empty())
+                return true;
+
+            strSecret = strActivePIN;
+            return false;
         }
 
 
@@ -62,11 +69,18 @@ namespace TAO
         {
             LOCK(MUTEX);
 
-            /* Check if you are logged in. */
-            if(!mapSessions.count(nSession))
-                throw APIException(-1, debug::safe_printstr("session ", nSession, " doesn't exist"));
+            /* For sessionless API use the active sig chain which is stored in session 0 */
+            uint64_t nSessionToUse = config::fAPISessions ? nSession : 0;
 
-            return mapSessions[nSession]->Generate(nKey, strSecret);
+            if(!mapSessions.count(nSessionToUse))
+            {
+                if( config::fAPISessions)
+                    throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
+                else
+                    throw APIException(-1, "User not logged in.");
+            }
+
+            return mapSessions[nSessionToUse].Generate(nKey, strSecret);
         }
 
 
@@ -75,24 +89,34 @@ namespace TAO
         {
             LOCK(MUTEX);
 
-            /* Check if you are logged in. */
-            if(!mapSessions.count(nSession))
-                throw APIException(-1, debug::safe_printstr("session ", nSession, " doesn't exist"));
+            /* For sessionless API use the active sig chain which is stored in session 0 */
+            uint64_t nSessionToUse = config::fAPISessions ? nSession : 0;
 
-            return mapSessions[nSession]->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
+            if(!mapSessions.count(nSessionToUse))
+            {
+                if( config::fAPISessions)
+                    throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
+                else
+                    throw APIException(-1, "User not logged in.");
+            }
+
+            return mapSessions[nSessionToUse].Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
         }
 
 
         /* Returns the sigchain the account logged in. */
-        bool Accounts::GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain* &user) const
+        bool Accounts::GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain &user) const
         {
             LOCK(MUTEX);
 
+            /* For sessionless API use the active sig chain which is stored in session 0 */
+            uint64_t nSessionToUse = config::fAPISessions ? nSession : 0;
+            
             /* Check if you are logged in. */
-            if(!mapSessions.count(nSession))
+            if(!mapSessions.count(nSessionToUse))
                 return false;
 
-            user = mapSessions[nSession];
+            user = mapSessions[nSessionToUse];
 
             return true;
         }

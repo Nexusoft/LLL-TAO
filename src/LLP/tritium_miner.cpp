@@ -79,16 +79,15 @@ namespace LLP
          pBlock->SetNull();
 
          /* Get the sigchain and the PIN. */
-         uint64_t nSession;
          SecureString PIN;
 
          /* Attempt to unlock the account. */
-         if(!TAO::API::accounts.Locked(nSession, PIN))
+         if(TAO::API::accounts.Locked(PIN))
             debug::error(FUNCTION, "No unlocked account available");
 
          /* Ateempt to get the sigchain. */
-         TAO::Ledger::SignatureChain* pSigChain;
-         if(!TAO::API::accounts.GetAccount(nSession, pSigChain))
+         TAO::Ledger::SignatureChain pSigChain;
+         if(!TAO::API::accounts.GetAccount(0, pSigChain))
             debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
 
@@ -111,7 +110,7 @@ namespace LLP
              //pBlock->hashMerkleRoot = pBlock->BuildMerkleTree(vMerkleTree);
 
              //TODO:
-             if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *pBlock, i))
+             if(!TAO::Ledger::CreateBlock(&pSigChain, PIN, nChannel, *pBlock, i))
                  debug::error(FUNCTION, "Failed to create a new Tritium Block.");
 
              /* Update the time. */
@@ -161,20 +160,19 @@ namespace LLP
          pBlock->print();
 
          /* Get the sigchain and the PIN. */
-         uint64_t nSession;
          SecureString PIN;
 
          /* Attempt to unlock the account. */
-         if(!TAO::API::accounts.Locked(nSession, PIN))
+         if(TAO::API::accounts.Locked(PIN))
             return debug::error(FUNCTION, "No unlocked account available");
 
          /* Ateempt to get the sigchain. */
-         TAO::Ledger::SignatureChain* pSigChain;
-         if(!TAO::API::accounts.GetAccount(nSession, pSigChain))
+         TAO::Ledger::SignatureChain pSigChain;
+         if(!TAO::API::accounts.GetAccount(0, pSigChain))
             return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
          /* Sign the submitted block */
-         std::vector<uint8_t> vBytes = pSigChain->Generate(pBlock->producer.nSequence, PIN).GetBytes();
+         std::vector<uint8_t> vBytes = pSigChain.Generate(pBlock->producer.nSequence, PIN).GetBytes();
          LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
          /* Generate the EC Key and new block signature. */
@@ -194,11 +192,10 @@ namespace LLP
      bool TritiumMiner::is_locked()
      {
          /* Get the sigchain and the PIN. */
-         uint64_t nSession;
          SecureString PIN;
 
          /* Attempt to unlock the account. */
-         return !TAO::API::accounts.Locked(nSession, PIN);
+         return TAO::API::accounts.Locked(PIN);
      }
 
 }

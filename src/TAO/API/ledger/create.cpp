@@ -45,29 +45,36 @@ namespace TAO
         /* Creates a register with given RAW state. */
         json::json Ledger::CreateBlock(const json::json& params, bool fHelp)
         {
-            /* Check for username parameter. */
-            if(params.find("session") == params.end())
-                throw APIException(-25, "Missing Session ID");
-
             /* Check for pin parameter. */
-            if(params.find("pin") == params.end())
-                throw APIException(-25, "Missing PIN");
+            SecureString strPIN;
+            bool fNeedPin = accounts.Locked(strPIN);
 
-            /* Get the session. */
-            uint64_t nSession = std::stoull(params["session"].get<std::string>());
+            if( fNeedPin && params.find("pin") == params.end() )
+                throw APIException(-25, "Missing PIN");
+            else if( fNeedPin)
+                strPIN = params["pin"].get<std::string>().c_str();
+
+            /* Check for session parameter. */
+            uint64_t nSession = 0;
+            bool fNeedSession = !accounts.LoggedIn();
+
+            if(fNeedSession && params.find("session") == params.end())
+                throw APIException(-25, "Missing Session ID");
+            else if(fNeedSession)
+                nSession = std::stoull(params["session"].get<std::string>());
 
             /* Get the account. */
-            TAO::Ledger::SignatureChain* user;
+            TAO::Ledger::SignatureChain user;
             if(!accounts.GetAccount(nSession, user))
                 throw APIException(-25, "Invalid session ID");
 
             /* Create the block object. */
             TAO::Ledger::TritiumBlock block;
-            if(!TAO::Ledger::CreateBlock(user, params["pin"].get<std::string>().c_str(), 2, block))
+            if(!TAO::Ledger::CreateBlock(&user, strPIN, 2, block))
                 throw APIException(-26, "Failed to create block");
 
             /* Get the secret from new key. */
-            std::vector<uint8_t> vBytes = accounts.GetKey(block.producer.nSequence, params["pin"].get<std::string>().c_str(), nSession).GetBytes();
+            std::vector<uint8_t> vBytes = accounts.GetKey(block.producer.nSequence, strPIN, nSession).GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Generate the EC Key. */

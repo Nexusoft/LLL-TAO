@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/accounts.h>
+#include <Util/include/args.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -24,23 +25,23 @@ namespace TAO
         /* Unlock an account for mining (TODO: make this much more secure) */
         json::json Accounts::Unlock(const json::json& params, bool fHelp)
         {
-            /* Check for username parameter. */
-            if(params.find("session") == params.end())
-                throw APIException(-23, "Missing Session");
+            /* Restrict Unlock to sessionless API */
+            if(config::fAPISessions)
+                throw APIException(-23, "Unlock not supported for session-based API");
 
-            /* Check for password parameter. */
+            if(!mapSessions.count(0))
+                throw APIException(-1, "User not logged in.");
+
+            /* Check for pin parameter. */
             if(params.find("pin") == params.end())
                 throw APIException(-24, "Missing Pin");
 
             /* Check if already unlocked. */
-            if(pairUnlocked.first != 0)
+            if(!strActivePIN.empty())
                 throw APIException(-26, "Account already unlocked");
 
-            /* Extract the session. */
-            uint64_t nSession = std::stoull(params["session"].get<std::string>());
-
             /* Extract the PIN. */
-            pairUnlocked = std::make_pair(nSession, params["pin"].get<std::string>().c_str());
+            strActivePIN =  params["pin"].get<std::string>().c_str();
 
             return true;
         }

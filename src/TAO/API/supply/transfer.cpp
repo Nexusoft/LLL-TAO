@@ -39,12 +39,22 @@ namespace TAO
             json::json ret;
 
             /* Check for pin parameter. */
-            if(params.find("pin") == params.end())
-                throw APIException(-25, "Missing PIN");
+            SecureString strPIN;
+            bool fNeedPin = accounts.Locked(strPIN);
 
-            /* Check for username parameter. */
-            if(params.find("session") == params.end())
+            if( fNeedPin && params.find("pin") == params.end() )
+                throw APIException(-25, "Missing PIN");
+            else if( fNeedPin)
+                strPIN = params["pin"].get<std::string>().c_str();
+
+            /* Check for session parameter. */
+            uint64_t nSession = 0;
+            bool fNeedSession = !accounts.LoggedIn();
+
+            if(fNeedSession && params.find("session") == params.end())
                 throw APIException(-25, "Missing Session ID");
+            else if(fNeedSession)
+                nSession = std::stoull(params["session"].get<std::string>());
 
             /* Check for id parameter. */
             if(params.find("address") == params.end())
@@ -64,28 +74,21 @@ namespace TAO
             {
                 /* Generate the Secret Phrase */
                 SecureString strUsername = params["username"].get<std::string>().c_str();
-                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
-
-                /* Generate the Hashes */
-                uint1024_t hashSecret = LLC::SK1024(vSecret);
-
+                
                 /* Generate the Final Root Hash. */
-                hashTo = LLC::SK256(hashSecret.GetBytes());
+                hashTo = TAO::Ledger::SignatureChain::GetGenesis(strUsername);
             }
             else
                 throw APIException(-25, "Missing Destination");
 
-            /* Get the session. */
-            uint64_t nSession = std::stoull(params["session"].get<std::string>());
-
             /* Get the account. */
-            TAO::Ledger::SignatureChain* user;
+            TAO::Ledger::SignatureChain user;
             if(!accounts.GetAccount(nSession, user))
                 throw APIException(-25, "Invalid session ID");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!TAO::Ledger::CreateTransaction(user, params["pin"].get<std::string>().c_str(), tx))
+            if(!TAO::Ledger::CreateTransaction(&user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction");
 
             /* Submit the transaction payload. */
@@ -100,7 +103,7 @@ namespace TAO
                 throw APIException(-26, "Operations failed to execute");
 
             /* Sign the transaction. */
-            if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
+            if(!tx.Sign(accounts.GetKey(tx.nSequence, strPIN, nSession)))
                 throw APIException(-26, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

@@ -25,8 +25,10 @@ Input parameter descritpion:
     The granularity of fungibility of a single token in decimal places.
 <session-id>:
      The value returned from the accounts/login API call.
+     Only required for session-based API (configured with apisessions=1)
 <pin-number>:
      The input value used on the accounts/create API call.
+     Only required for session-based API (configured with apisessions=1)
 ```
     
 Return value JSON object:
@@ -134,8 +136,10 @@ Input parameter descritpion:
     parameter or <receive-name> is used.
 <session-id>:
      The value returned from the accounts/login API call.
+     Only required for session-based API (configured with apisessions=1)
 <pin-number>:
      The input value used on the accounts/create API call.
+     Only required for session-based API (configured with apisessions=1)
 ```
 
 Return value JSON object:
@@ -185,8 +189,10 @@ Input parameter descritpion:
     parameter or <send-name> is used.
 <session-id>:
      The value returned from the accounts/login API call.
+     Only required for session-based API (configured with apisessions=1)
 <pin-number>:
      The input value used on the accounts/create API call.
+     Only required for session-based API (configured with apisessions=1)
 
 ```
 

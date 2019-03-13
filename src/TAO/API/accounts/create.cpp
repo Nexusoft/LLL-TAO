@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/hex.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -92,9 +93,13 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
-            /* Check for genesis parameter. */
-            if(params.find("genesis") == params.end())
-                throw APIException(-25, "Missing Genesis ID");
+            /* Check for genesis or username parameter, or active sig chain if neither are provided */
+            if(params.find("genesis") == params.end() 
+                && params.find("username") == params.end()
+                && (config::fAPISessions || mapSessions.count(0) == 0) )
+            {
+                throw APIException(-25, "Missing Genesis ID or Username");
+            }
 
             /* Check for paged parameter. */
             uint32_t nPage = 0;
@@ -102,12 +107,23 @@ namespace TAO
                 nPage = atoi(params["page"].get<std::string>().c_str());
 
             /* Check for username parameter. */
-            uint32_t nLimit = 100;
+            uint32_t nLimit = 50;
             if(params.find("limit") != params.end())
                 nLimit = atoi(params["limit"].get<std::string>().c_str());
 
             /* Get the Genesis ID. */
-            uint256_t hashGenesis = uint256_t(params["genesis"].get<std::string>());
+            uint256_t hashGenesis = 0;
+            if(params.find("genesis") != params.end() )
+                hashGenesis = uint256_t(params["genesis"].get<std::string>());
+            else if(params.find("username") != params.end() )
+                hashGenesis = TAO::Ledger::SignatureChain::GetGenesis( SecureString(params["username"].get<std::string>().c_str()));
+            else if(!config::fAPISessions && mapSessions.count(0))
+            {
+                /* If no specific genesis or username have been provided then fall back to the active sig chain */
+                hashGenesis = mapSessions[0].Genesis();
+            }
+            
+
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;

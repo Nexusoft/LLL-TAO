@@ -38,25 +38,21 @@ namespace TAO
             json::json ret;
 
             /* Check for username parameter. */
-            if(params.find("session") == params.end())
+            if(config::fAPISessions && params.find("session") == params.end())
                 throw APIException(-23, "Missing Session ID");
 
-            /* Generate the signature chain. */
-            uint64_t nSession = std::stoull(params["session"].get<std::string>());
+            /* For sessionless API use the active sig chain which is stored in session 0 */
+            uint64_t nSession = config::fAPISessions ? std::stoull(params["session"].get<std::string>()) : 0;
+
             if(!mapSessions.count(nSession))
                 throw APIException(-1, "Already logged out");
 
             /* Set the return value. */
             ret["genesis"] = GetGenesis(nSession).ToString();
 
-            /* Delete the sigchan. */
-            TAO::Ledger::SignatureChain* user = mapSessions[nSession];
-
-            delete user;
-            user = nullptr;
-
             /* Erase the session. */
             mapSessions.erase(nSession);
+            strActivePIN = "";
 
             return ret;
         }

@@ -40,6 +40,7 @@ namespace config
     bool fUseProxy = false;
     bool fAllowDNS = false;
     bool fLogTimestamps = false;
+    bool fAPISessions = false;
 
     std::mutex ARGS_MUTEX;
 
@@ -181,6 +182,7 @@ namespace config
         //fUseProxy               = GetBoolArg("-proxy")
         fAllowDNS               = GetBoolArg("-allowdns", true);
         fLogTimestamps          = GetBoolArg("-logtimestamps", false);
+        fAPISessions            = GetBoolArg("-apisessions", false);
 
 
         /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/

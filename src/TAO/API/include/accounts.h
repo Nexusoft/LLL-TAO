@@ -36,12 +36,12 @@ namespace TAO
          **/
         class Accounts : public Base
         {
-            /** The signature chain for login and logout. */
-            mutable std::map<uint64_t, TAO::Ledger::SignatureChain*> mapSessions;
+            /** Map of sessions to signature chain for session-based API use. */
+            mutable std::map<uint64_t, TAO::Ledger::SignatureChain> mapSessions;
 
 
-            /** The unlocked pins for mining. **/
-            mutable std::pair<uint64_t, SecureString> pairUnlocked;
+            /** The active pin for sessionless API use **/
+            SecureString strActivePIN;
 
 
             /** The mutex for locking. **/
@@ -52,7 +52,7 @@ namespace TAO
             /** Default Constructor. **/
             Accounts()
             : mapSessions()
-            , pairUnlocked(std::make_pair(0, ""))
+            , strActivePIN("")
             , MUTEX()
             {
                 Initialize();
@@ -67,12 +67,20 @@ namespace TAO
             void Initialize() final;
 
 
-            /** Locked Function
+            /** LoggedIn Function
              *
-             *  Determine if the accounts are locked.
+             *  Determine if a sessionless user is logged in.
              *
              **/
-            bool Locked(uint64_t& nSession, SecureString& strSecret) const;
+            bool LoggedIn() const;
+
+
+            /** Locked Function
+             *
+             *  Determine if the currently active sig chain is locked.
+             *
+             **/
+            bool Locked(SecureString& strSecret) const;
 
 
             /** GetKey
@@ -109,7 +117,7 @@ namespace TAO
               *  @return The genesis ID if logged in.
               *
               **/
-             bool GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain* &user) const;
+             bool GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain &user) const;
 
 
             /** GetName

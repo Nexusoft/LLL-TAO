@@ -36,6 +36,8 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
+            /* For sessionless API use the active sig chain which is stored in session 0 */
+
             /* Check for username parameter. */
             if(params.find("username") == params.end())
                 throw APIException(-23, "Missing Username");
@@ -45,10 +47,10 @@ namespace TAO
                 throw APIException(-24, "Missing Password");
 
             /* Create the sigchain. */
-            TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
+            TAO::Ledger::SignatureChain user(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
 
             /* Get the genesis ID. */
-            uint256_t hashGenesis = user->Genesis();
+            uint256_t hashGenesis = user.Genesis();
 
             /* Check for duplicates in ledger db. */
             TAO::Ledger::Transaction tx;
@@ -57,9 +59,6 @@ namespace TAO
                 /* Check the memory pool (TODO: Paul maybe you can think of a more efficient way to solve this chicken and egg). */
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
                 {
-                    delete user;
-                    user = nullptr;
-
                     throw APIException(-26, "Account doesn't exists");
                 }
             }
@@ -67,25 +66,23 @@ namespace TAO
             /* Check the sessions. */
             for(auto session = mapSessions.begin(); session != mapSessions.end(); ++ session)
             {
-                if(hashGenesis == session->second->Genesis())
+                if(hashGenesis == session->second.Genesis())
                 {
-                    delete user;
-                    user = nullptr;
-
-                    ret["genesis"] = hashGenesis.ToString();
-                    ret["session"] = session->first;
-
-                    return ret;
+                    /* already logged in */
+                    throw APIException(-26, "User already logged in");
                 }
             }
 
             /* Set the return value. */
-            uint64_t nSession = LLC::GetRand();
+            /* For sessionless API use the active sig chain which is stored in session 0 */
+            uint64_t nSession = config::fAPISessions ? LLC::GetRand() : 0;
             ret["genesis"] = hashGenesis.ToString();
-            ret["session"] = nSession;
+            if( config::fAPISessions)
+                ret["session"] = nSession;
 
             /* Setup the account. */
             mapSessions[nSession] = user;
+            strActivePIN = "";
 
             return ret;
         }

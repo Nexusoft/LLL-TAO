@@ -54,7 +54,7 @@ Return value JSON object:
 
 ```
 
-This is your genesis ID, or the identification number of your specific account. The session is what is required to submit for every command thereafter, to allow the managing of multiple login sessions.
+This is your genesis ID, or the identification number of your specific account. For session-based API (configured with apisessions=1), an additional session value is returned and must be supplied in subsequent API calls, to allow the managing of multiple login sessions.
 
 ### Logout
 
@@ -75,12 +75,13 @@ Return value JSON object:
 }
 ```
 
-Session is required to identify what session you are logging out of.
+For session-based API (configured with apisessions=1) the session is required to identify what session you are logging out of.
+For sessionless API the session should not be supplied
 
 ### Transactions
 
-This will list off all of the transactions created by the logged in account.
-You DO NOT need to be logged in to use this command.s
+This will list off all of the transactions for the requested genesis or username (either can be used). 
+You DO NOT need to be logged in to use this command.
 
 ```
 <method>:
@@ -88,6 +89,7 @@ You DO NOT need to be logged in to use this command.s
 
 <key>=<value> parameter pairs:
   genesis=27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1
+  username=testuser
 ```
 
 Return value JSON object:
@@ -105,4 +107,5 @@ Return value JSON object:
 },
 ```
 
- Note that genesis ID is required to identify transactions.
+ Note that for session-based API (configured with apisessions=1) either genesis hash or username is required to identify the signature chain's transactions.  If neither are supplied and the API is configured for sessionless use (apisessions=0) then the transactions
+ will be returned for the currently logged in user
