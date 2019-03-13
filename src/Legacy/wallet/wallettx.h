@@ -78,7 +78,7 @@ namespace Legacy
 
     public:
         /** Previous transactions that contain outputs spent by inputs to this transaction **/
-        std::vector<WalletTx> vtxPrev;
+        std::vector<MerkleTx> vtxPrev;
 
 
         /** Used by serialization to store/retrieve vfSpent and other settings.
