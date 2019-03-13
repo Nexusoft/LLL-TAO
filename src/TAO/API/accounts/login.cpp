@@ -73,6 +73,13 @@ namespace TAO
                 }
             }
 
+            /* Extract the PIN, if supplied. */
+            if( !config::fAPISessions && params.find("pin") != params.end() )
+                strActivePIN = params["pin"].get<std::string>().c_str();
+            else
+                strActivePIN = "";
+            
+
             /* Set the return value. */
             /* For sessionless API use the active sig chain which is stored in session 0 */
             uint64_t nSession = config::fAPISessions ? LLC::GetRand() : 0;
@@ -82,7 +89,6 @@ namespace TAO
 
             /* Setup the account. */
             mapSessions[nSession] = user;
-            strActivePIN = "";
 
             return ret;
         }

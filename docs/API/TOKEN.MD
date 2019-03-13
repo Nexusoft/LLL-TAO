@@ -16,7 +16,7 @@ amount-pieces=<supply-count-divisor>
 session=<session-id>
 pin=<pin-number>
 
-Input parameter descritpion:
+Input parameter description:
 <name>:
     Is an API caller's selected name for the object register.
 <supply-count>:
@@ -37,7 +37,7 @@ Return value JSON object:
     "address" : "<register-address>"
 }    
 
-Output parameter descritpion:
+Output parameter description:
 <register-address>:
     The address used for the register. Any address references in other token
     API calls use this address.    
@@ -54,7 +54,7 @@ Get a previous created object register address by name.
 <key>=<value> parameter pairs:
 name=<name>
 
-Input parameter descritpion:
+Input parameter description:
 <name>:
     A token name supplied on the token/create API call.        
 ```
@@ -65,7 +65,7 @@ Return value JSON object:
     "address": "<register-address>"
 }
 
-Output parameter descritpion:    
+Output parameter description:    
 <register-address>:
     The address used for the register. Any address references in other token
     API calls use this address.    
@@ -85,7 +85,7 @@ name=<name>
 address=<address>
 txid=<txid>
 
-Input parameter descritpion:
+Input parameter description:
 <name>:
     A token name supplied on the token/create API call.        
 <address>:
@@ -122,7 +122,7 @@ to-name=<receive-name> or to-address=<receive-address>
 session=<session-id>
 pin=<pin-number>
 
-Input parameter descritpion:
+Input parameter description:
 <name>:
     A token name supplied on the token/create API call.        
 <address>:
@@ -149,7 +149,7 @@ Return value JSON object:
     "txid" : "<txid>"
 }
 
-Output parameter descritpion:
+Output parameter description:
 <new-amount>:
     The new amount after decrement of the object register.
 <txid>:
@@ -175,7 +175,7 @@ txid=<txid>
 session=<session-id>
 pin=<pin-number>
 
-Input parameter descritpion:
+Input parameter description:
 <name>:
     A token name supplied on the token/create API call.        
 <address>:
@@ -203,7 +203,7 @@ Return value JSON object:
     "txid" : "<txid>"
 }            
 
-Output parameter descritpion:
+Output parameter description:
 <new-amount>:
     The new amount after increment of the object register.
 <txid>:
@@ -222,7 +222,7 @@ Return a history of recent token-based transactions that have occurred.
 count=<number-of-recent-txids>
 start=<optional-start-offset>
 
-Input parameter descritpion:
+Input parameter description:
 <number-of-recent-txids>:
     The number or recent transactions the history API call should return.
 <optional-start-offset>:
@@ -237,7 +237,7 @@ Return value JSON object:
     <list-of-token-txids>
 ]
 
-Output parameter descritpion:
+Output parameter description:
 <list-of-token-txids>:
     A dictionary array of values equal to what is returned from the supply/
     history API call.

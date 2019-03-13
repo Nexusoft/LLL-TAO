@@ -43,7 +43,12 @@ This will log you into this specific API instance for the building of new transa
 <key>=<value> parameter pairs:
   username=XXXX
   password=XXXX
+  pin=xxxx
 ```
+
+The username and password fields are mandatory for login.  
+The pin is optional and, if supplied, allows the signature chain to be immediately used for mining and staking.  
+If it is not supplied then you must provide it in all subsequent API calls that use this signature chain.
 
 Return value JSON object:    
 ```
