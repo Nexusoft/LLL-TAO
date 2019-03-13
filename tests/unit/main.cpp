@@ -26,7 +26,7 @@ public:
     : vchPubKey()
     , vchPrivKey()
     , nLog(9)
-    , nSigSize()
+    , nSigSize(0)
     {
         if(nLog == 9)
             nSigSize = 1025;
@@ -91,15 +91,19 @@ public:
 
         falcon_sign_update(fs, &vchData[0], vchData.size());
 
-        if(falcon_sign_generate(fs, &vchSignature[0], vchSignature.size(), 0) != vchSignature.size())
-        {
-            falcon_sign_free(fs);
-            return false;
-        }
+        nSigSize = falcon_sign_generate(fs, &vchSignature[0], vchSignature.size(), FALCON_COMP_STATIC);
+
+        //debug::log(0, HexStr(vchSignature.begin(), vchSignature.end()));
+        vchSignature.resize(nSigSize);
+        //debug::log(0, HexStr(vchSignature.begin(), vchSignature.end()));
+
+        //debug::log(0, "SigSize ", nSigSize);
 
         vchSignature.insert(vchSignature.end(), nonce.begin(), nonce.end());
 
         falcon_sign_free(fs);
+
+
 
         return true;
     }
@@ -111,17 +115,19 @@ public:
         if(falcon_vrfy_set_public_key(fv, &vchPubKey[0], vchPubKey.size()) != 1)
         {
             falcon_vrfy_free(fv);
-            return false;
+            return debug::error(FUNCTION, "failed to et pukey");
         }
 
+        nSigSize = vchSignature.size() - 40;
         falcon_vrfy_start(fv, &vchSignature[nSigSize], 40);
 
         falcon_vrfy_update(fv, &vchData[0], vchData.size());
 
-        if(falcon_vrfy_verify(fv, &vchSignature[0], nSigSize) != 1)
+        int nResult = falcon_vrfy_verify(fv, &vchSignature[0], nSigSize);
+        if(nResult != 1)
         {
             falcon_vrfy_free(fv);
-            return false;
+            return debug::error(FUNCTION, "invalid signature ", nResult);
         }
 
         return true;
@@ -177,21 +183,12 @@ int main(int argc, char **argv)
 
     vchPubKey = key.GetPubKey();
 
-    std::thread t1 = std::thread(Verifier);
-    std::thread t2 = std::thread(Verifier);
-    std::thread t3 = std::thread(Verifier);
-    std::thread t4 = std::thread(Verifier);
-    std::thread t5 = std::thread(Verifier);
-    std::thread t6 = std::thread(Verifier);
+    debug::log(0, "PubSize ", vchPubKey.size());
 
-    while(true)
-    {
-        runtime::sleep(1000);
-
-        debug::log(0, "LLC Verified ", nVerified.load(), " signatures per second");
-
-        nVerified = 0;
-    }
+    FLKey key2;
+    key2.SetPubKey(vchPubKey);
+    if(!key2.Verify(vchMessage, vchSignature))
+        debug::error(FUNCTION, "failed to verify");
 
     debug::log(0, FUNCTION, "Passed (", vchPubKey.size() + vchSignature.size(), " bytes)");
 
