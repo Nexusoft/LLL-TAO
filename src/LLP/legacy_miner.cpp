@@ -96,7 +96,7 @@ namespace LLP
                 debug::error(FUNCTION, "Failed to create a new Legacy Block.");
 
             /* skip if not prime channel or version less than 5 */
-            if(nChannel != 1 || pBlock->nVersion >= 5)
+            if(nChannel != 1 || pBlock->nVersion < 5)
                 break;
 
             proof_hash = pBlock->ProofHash();
@@ -139,7 +139,7 @@ namespace LLP
     }
 
 
-    /** validates the block for the derived miner class. **/
+    /* Validates the block for the derived miner class. */
     bool LegacyMiner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
     {
         Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[hashMerkleRoot]);

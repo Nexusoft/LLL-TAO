@@ -101,29 +101,22 @@ namespace LLP
              and is less than 1024 bits*/
          for(uint64_t i = static_cast<uint32_t>(mapBlocks.size()); ; ++i)
          {
-             //pBlock->vtx[0].vin[0].scriptSig = (Legacy::Script() <<  (uint64_t)((i+1) * 513513512151));
 
-             /* Rebuild the merkle tree. */
-             //std::vector<uint512_t> vMerkleTree;
-             //for(const auto& tx : pBlock->vtx)
-             //    vMerkleTree.push_back(tx.GetHash());
-
-             //pBlock->hashMerkleRoot = pBlock->BuildMerkleTree(vMerkleTree);
-
-             //TODO:
+             /* Create the Tritium block with the corresponding sigchain and pin. */
              if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *pBlock, i))
                  debug::error(FUNCTION, "Failed to create a new Tritium Block.");
 
              /* Update the time. */
              pBlock->UpdateTime();
 
-             /* skip if not prime channel or version less than 5 */
-             if(nChannel != 1 || pBlock->nVersion >= 5)
+             /* Skip if not prime channel or version less than 5. */
+             if(nChannel != 1 || pBlock->nVersion < 5)
                  break;
 
+            /* Get the proof hash. */
              hashProof = pBlock->ProofHash();
 
-             /* exit loop when the block is above minimum prime origins and less than
+             /* Exit loop when the block is above minimum prime origins and less than
                  1024-bit hashes */
              if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024()
              && !hashProof.high_bits(0x80000000))
@@ -138,11 +131,19 @@ namespace LLP
      }
 
 
-    /** validates the block for the derived miner class. **/
+    /* Validates the block for the derived miner class. */
     bool TritiumMiner::validate_block(const uint512_t& hashMerkleRoot)
     {
         /* Create the pointer to the heap. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
+
+        /* Check block for inconsistencies. */
+        if(!pBlock->Check())
+            return false;
+
+        /* Check block for proof of work requirements. */
+        if(!pBlock->VerifyWork())
+            return false;
 
         /* Validate the block through the process method. */
         TritiumNode::Process(*pBlock, nullptr);

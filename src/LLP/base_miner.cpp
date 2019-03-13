@@ -492,32 +492,32 @@ namespace LLP
                 /* Get the nonce */
                 nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
 
-                bool fRejected = true;
-                {
-                    LOCK(MUTEX);
+                LOCK(MUTEX);
 
-                    /* Find, sign, and validate the submitted block in order to
-                       not be rejected. */
-                    fRejected = !find_block(hashMerkleRoot)
-                             || !sign_block(nonce, hashMerkleRoot)
-                             || !validate_block(hashMerkleRoot);
-                }
-
-
-                /* Generate a Rejected response. */
-                if(fRejected)
+                /* Make sure the block was created by this mining server. */
+                if(!find_block(hashMerkleRoot))
                 {
                     respond(BLOCK_REJECTED);
                     return true;
                 }
 
+                /* Make sure there is no inconsistencies in signing block. */
+                if(!sign_block(nonce, hashMerkleRoot))
                 {
-                    LOCK(MUTEX);
-
-                    /* Clear map on new block found. */
-                    clear_map();
-                    CoinbaseTx.SetNull();
+                    respond(BLOCK_REJECTED);
+                    return true;
                 }
+
+                /* Make sure there is no inconsistencies in validating block. */
+                if(!validate_block(hashMerkleRoot))
+                {
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                /* Clear map on new block found. */
+                clear_map();
+                CoinbaseTx.SetNull();
 
                 /* Generate an Accepted response. */
                 respond(BLOCK_ACCEPTED);
