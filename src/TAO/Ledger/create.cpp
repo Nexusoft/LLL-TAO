@@ -73,9 +73,6 @@ namespace TAO
         /* Gets a list of transactions from memory pool for current block. */
         void AddTransactions(TAO::Ledger::TritiumBlock& block)
         {
-            /* Counter for the max block size. */
-            uint32_t nSerSize = 200;
-
             /* Add each transaction. */
             std::map<uint256_t, uint512_t> mapUniqueGenesis;
 
@@ -94,7 +91,7 @@ namespace TAO
             for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
-                if (nSerSize + 33 >= MAX_BLOCK_SIZE)
+                if (::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 193 >= MAX_BLOCK_SIZE)
                     break;
 
                 /* Get the transaction from the memory pool. */
@@ -122,9 +119,6 @@ namespace TAO
 
                 /* Add the unique genesis to the map. */
                 mapUniqueGenesis[tx.hashGenesis] = hash;
-
-                /* Increase the serialization size. */
-                nSerSize += 33;
             }
 
             /* Build the block's merkle root. */
