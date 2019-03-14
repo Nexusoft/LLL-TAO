@@ -110,6 +110,10 @@ namespace TAO
                 if(mapUniqueGenesis.count(tx.hashGenesis))
                     continue;
 
+                /* Check for timestamp violations. */
+                if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+                    continue;
+
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
 
