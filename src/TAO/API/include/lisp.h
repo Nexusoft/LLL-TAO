@@ -55,18 +55,8 @@ namespace TAO
                 return "Lisp";
             }
 
-            /** LispersAPIRequest
-            *
-            *  Makes a request to the lispers.net API for the desired endpoint
-            *
-            *  @param[in] strEndPoint The API endpoint to query
-            *
-            *  @return The response string from the lispers.net API.
-            *
-            **/
-            std::string LispersAPIRequest(std::string strEndPoint);
-
-            /** MyEIDs
+     
+            /** EIDs
              *
              *  Queries the lisp api and returns the EID's for this node
              *
@@ -76,31 +66,9 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json MyEIDs(const json::json& params, bool fHelp);
+            json::json EIDs(const json::json& params, bool fHelp);
 
-            /** MyRLOCs
-             *
-             *  Queries the lisp api and returns the RLOC's for this node
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json MyRLOCs(const json::json& params, bool fHelp);
-
-            /** DatabaseMappings
-             *
-             *  Queries the lisp api and returns the database mapping for this node
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json DatabaseMapping(const json::json& params, bool fHelp);
+            
 
         };
 

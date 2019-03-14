@@ -25,6 +25,7 @@ namespace LLP
     extern Server<LegacyNode>*   LEGACY_SERVER;
     extern Server<TritiumNode>* TRITIUM_SERVER;
     extern Server<TimeNode>*     TIME_SERVER;
+
 }
 
 #endif
