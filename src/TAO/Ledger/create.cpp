@@ -176,6 +176,7 @@ namespace TAO
             mempool.List(vMempool);
 
             /* Add each transaction. */
+            std::map<uint256_t, bool> mapUniqueGenesis;
             for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
@@ -199,12 +200,18 @@ namespace TAO
                 if(tx.IsCoinbase() || tx.IsTrust())
                     continue;
 
+                /* Check for a unique genesis hash. */
+                if(mapUniqueGenesis.count(tx.hashGenesis))
+                    continue;
+
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
 
-
                 /* Add to the hashes for merkle root. */
                 vHashes.push_back(hash);
+
+                /* Add the unique genesis to the map. */
+                mapUniqueGenesis[tx.hashGenesis] = true;
             }
 
             /** Populate the Block Data. **/
