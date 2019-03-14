@@ -47,6 +47,16 @@ namespace TAO
         bool CreateTransaction(TAO::Ledger::SignatureChain* user, SecureString pin, TAO::Ledger::Transaction& tx);
 
 
+        /** Add Transactions
+         *
+         *  Gets a list of transactions from memory pool for current block.
+         *
+         *  @param[out] block The block to add the transactions to.
+         *
+         **/
+        void AddTransactions(TAO::Ledger::TritiumBlock& block);
+
+
         /** CreateBlock
          *
          *  Create a new block object from the chain.
