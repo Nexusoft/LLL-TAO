@@ -207,6 +207,7 @@ OBJS+=  build/LLC_skein.o \
 		build/LLP_seeds.o \
 		build/LLP_inv.o \
 		build/LLP_legacy.o \
+		build/LLP_lisp.o \
 		build/LLP_legacy_address.o \
 	    build/LLP_manager.o \
 	    build/LLP_base_miner.o \
