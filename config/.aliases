@@ -44,6 +44,8 @@ alias height             'getinfo | egrep blocks'
 alias ns          'netstat -an'
 alias ping-seed4  'ping 240.0.255.255'
 alias ping-seed6  'ping fe00::255:255'
+alias ltr-seed4   'ltr 240.0.255.255'
+alias ltr-seed6   'ltr fe00::255:255'
 alias td          'tcpdump -i any -n'
 alias whoarepeers 'python /nexus/whoarepeers.py'    
 
