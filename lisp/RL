@@ -20,7 +20,7 @@
 # pick your interface where your default route points to. Run the following
 # to find out: "ip route | egrep default".
 #
-set device = "eth0"
+set device = "wlan0"
 
 #
 # If caller does a "setenv EID4 <ipv4-eid>" and "setenv EID6 <ipv6-eid>", the

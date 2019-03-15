@@ -140,7 +140,7 @@ namespace TAO
 
             /* Get the Block Time and Target Spacing. */
             uint64_t nBlockTime   = GetWeightedTimes(first, 5);
-            uint64_t nBlockTarget = STAKE_TARGET_SPACING;
+            uint64_t nBlockTarget = config::fTestNet ? TESTNET_STAKE_TARGET_SPACING : STAKE_TARGET_SPACING;
 
 
             /* The Upper and Lower Bound Adjusters. */
@@ -244,7 +244,7 @@ namespace TAO
             /* Standard Time Proportions */
             uint64_t nBlockTime = ((state.nVersion >= 4) ?
             GetWeightedTimes(first, 5) : std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t)1));
-            uint64_t nBlockTarget = nTargetTimespan;
+            uint64_t nBlockTarget = config::fTestNet ? TESTNET_MINING_TARGET_SPACING : MINING_TARGET_SPACING;
 
 
             /* Chain Mod: Is a proportion to reflect outstanding released funds. Version 1 Deflates difficulty slightly
@@ -397,7 +397,7 @@ namespace TAO
 
 
             /* Set the block target timespan. */
-            uint64_t nBlockTarget = nTargetTimespan;
+            uint64_t nBlockTarget = config::fTestNet ? TESTNET_MINING_TARGET_SPACING : MINING_TARGET_SPACING;
 
 
             /* Get the Chain Modular from Reserves. */

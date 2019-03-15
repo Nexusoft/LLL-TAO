@@ -29,11 +29,19 @@ namespace TAO
 
 
         /* Target Timespan of 300 Seconds. */
-        const uint32_t nTargetTimespan = 300;
+        const uint32_t MINING_TARGET_SPACING = 300;
 
 
         /* Target Timespan of 150 seconds. */
         const uint32_t STAKE_TARGET_SPACING = 150;
+
+
+        /* Target Timespan of 300 Seconds. */
+        const uint32_t TESTNET_MINING_TARGET_SPACING = 30;
+
+
+        /* Target Timespan of 150 seconds. */
+        const uint32_t TESTNET_STAKE_TARGET_SPACING = 15;
 
 
         /** GetDifficulty
