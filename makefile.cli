@@ -178,7 +178,8 @@ OBJS+=  build/LLC_skein.o \
 		build/LLC_Keccak-compact64.o \
 		build/LLC_KeccakHash.o \
 	    build/LLC_bignum.o \
-		build/LLC_key.o \
+		build/LLC_eckey.o \
+		build/LLC_flkey.o \
 		build/LLC_random.o \
 		build/LLC_falcon-enc.o \
 		build/LLC_falcon-fft.o \

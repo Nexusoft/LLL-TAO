@@ -12,14 +12,14 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLC_INCLUDE_KEY_H
-#define NEXUS_LLC_INCLUDE_KEY_H
+#ifndef NEXUS_LLC_INCLUDE_ECKEY_H
+#define NEXUS_LLC_INCLUDE_ECKEY_H
 
 #include <stdexcept>
 #include <vector>
 
 #include <LLC/types/uint1024.h>
-#include <Util/include/allocators.h>
+#include <LLC/types/typedef.h>
 
 typedef struct ec_key_st EC_KEY;
 
