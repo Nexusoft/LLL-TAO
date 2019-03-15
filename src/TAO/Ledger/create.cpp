@@ -70,6 +70,62 @@ namespace TAO
         }
 
 
+        /* Gets a list of transactions from memory pool for current block. */
+        void AddTransactions(TAO::Ledger::TritiumBlock& block)
+        {
+            /* Add each transaction. */
+            std::map<uint256_t, uint512_t> mapUniqueGenesis;
+
+            /* Add the transactions. */
+            std::vector<uint512_t> vHashes;
+            vHashes.push_back(block.producer.GetHash());
+
+            /* Add the producer to unique genesis. */
+            mapUniqueGenesis[block.producer.hashGenesis] = block.producer.GetHash();
+
+            /* Check the memory pool. */
+            std::vector<uint512_t> vMempool;
+            mempool.List(vMempool);
+
+            /* Loop through the list of transactions. */
+            for(const auto& hash : vMempool)
+            {
+                /* Check the Size limits of the Current Block. */
+                if (::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 193 >= MAX_BLOCK_SIZE)
+                    break;
+
+                /* Get the transaction from the memory pool. */
+                TAO::Ledger::Transaction tx;
+                if(!mempool.Get(hash, tx))
+                    continue;
+
+                /* Don't add transactions that are coinbase or coinstake. */
+                if(tx.IsCoinbase() || tx.IsTrust())
+                    continue;
+
+                /* Check for a unique genesis hash. */
+                if(mapUniqueGenesis.count(tx.hashGenesis))
+                    continue;
+
+                /* Check for timestamp violations. */
+                if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+                    continue;
+
+                /* Add the transaction to the block. */
+                block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
+
+                /* Add to the hashes for merkle root. */
+                vHashes.push_back(hash);
+
+                /* Add the unique genesis to the map. */
+                mapUniqueGenesis[tx.hashGenesis] = hash;
+            }
+
+            /* Build the block's merkle root. */
+            block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
+        }
+
+
         /* Create a new block object from the chain.*/
         bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block, uint64_t nExtraNonce)
         {
@@ -167,49 +223,11 @@ namespace TAO
             /* Sign the producer transaction. */
             block.producer.Sign(user->Generate(block.producer.nSequence, pin));
 
-            /* Add the transactions. */
-            std::vector<uint512_t> vHashes;
-            vHashes.push_back(block.producer.GetHash());
-
-            /* Check the memory pool. */
-            std::vector<uint512_t> vMempool;
-            mempool.List(vMempool);
-
-            /* Add each transaction. */
-            for(const auto& hash : vMempool)
-            {
-                /* Check the Size limits of the Current Block. */
-                if (::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 193 >= MAX_BLOCK_SIZE)
-                    break;
-
-                /* Skip the producer hash if included. */
-                if(hash == block.producer.GetHash())
-                    continue;
-
-                /* Get the transaction from the memory pool. */
-                TAO::Ledger::Transaction tx;
-                if(!mempool.Get(hash, tx))
-                    continue;
-
-                /* Don't add transactions with the same genesis ID as producer. */
-                if(tx.hashGenesis == block.producer.hashGenesis)
-                    continue;
-
-                /* Don't add transactions that are coinbase or coinstake. */
-                if(tx.IsCoinbase() || tx.IsTrust())
-                    continue;
-
-                /* Add the transaction to the block. */
-                block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
-
-
-                /* Add to the hashes for merkle root. */
-                vHashes.push_back(hash);
-            }
+            /* Add the transactions to the block. */
+            AddTransactions(block);
 
             /** Populate the Block Data. **/
             block.hashPrevBlock   = ChainState::stateBest.load().GetHash();
-            block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
             block.nChannel       = nChannel;
             block.nHeight        = ChainState::stateBest.load().nHeight + 1;
             block.nBits          = GetNextTargetRequired(ChainState::stateBest.load(), nChannel, false);

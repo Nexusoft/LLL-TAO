@@ -28,14 +28,14 @@ import time
 #
 # allocate_eids
 #
-# Allocate random EIDs in the IPv4 240/8 range and fe::/8 range. Right now
+# Allocate random EIDs in the IPv4 240/8 range and fe00::/8 range. Right now
 # we are provisioning for testnet only. It runs in LISP instance-ID 200.
 #
 def allocate_eids():
     rn = random.randint(0, 0xffffff)
     b2, b1, b0 = (rn >> 16) & 0xff, (rn >> 8) & 0xff, rn & 0xff
     eid4 = "240.{}.{}.{}".format(b2, b1, b0)
-    eid6 = "fe::{}:{}:{}".format(b2, b1, b0)
+    eid6 = "fe00::{}:{}:{}".format(b2, b1, b0)
     return(eid4, eid6)
 #enddef
 

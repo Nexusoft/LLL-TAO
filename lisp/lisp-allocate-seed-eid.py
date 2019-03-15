@@ -2,7 +2,7 @@
 #
 # lisp-allocate-seed-eid.py
 #
-# Use this script to allocate a random EID in the 240.0.x.x/16 and fe::x:x/8
+# Use this script to allocate a random EID in the 240.0.x.x/16 and fe00::x:x/8
 # address space.
 #
 # This script should NOT be used for client nodes.
@@ -23,7 +23,7 @@ dns_seeds = [
         "lisptest5.mercuryminer.com",
         "testlisp.nexusminingpool.com",
         "nexus-lisp-seed.lispers.net",
-        "fe::255:255"
+        "fe00::255:255"
         "test1.mercuryminer.com",
         "test2.mercuryminer.com",
         "test3.mercuryminer.com",
@@ -37,7 +37,7 @@ def allocate():
     byte1 = (rand >> 8) & 0xff
     byte0 = rand & 0xff
     v4_eid = "240.0.{}.{}".format(byte1, byte0)
-    v6_eid = "fe::{}:{}".format(byte1, byte0)
+    v6_eid = "fe00::{}:{}".format(byte1, byte0)
     print "Allocate EIDs {}, {}".format(v4_eid, v6_eid)
     return(v4_eid, v6_eid)
 #enddef

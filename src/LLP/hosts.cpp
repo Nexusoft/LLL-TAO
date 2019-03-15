@@ -120,7 +120,7 @@ namespace LLP
         "lisptest5.mercuryminer.com",
         "testlisp.nexusminingpool.com",
         "nexus-lisp-seed.lispers.net",
-        "fe::255:255"
+        "fe00::255:255"
         "test1.mercuryminer.com",
         "test2.mercuryminer.com",
         "test3.mercuryminer.com",
