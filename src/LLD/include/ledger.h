@@ -414,6 +414,30 @@ namespace LLD
         }
 
 
+        /** EraseEvent
+         *
+         *  Erase an event from the ledger database
+         *
+         *  @param[in] hashAddress The event address to write.
+         *
+         *  @return True if the write was successful.
+         *
+         **/
+        bool EraseEvent(const uint256_t& hashAddress)
+        {
+            /* Get the current sequence number. */
+            uint32_t nSequence = 0;
+            if(!ReadSequence(hashAddress, nSequence))
+                return false;
+
+            /* Write the new sequence number iterated by one. */
+            if(!WriteSequence(hashAddress, nSequence - 1))
+                return false;
+
+            return Erase(std::make_pair(hashAddress, nSequence));
+        }
+
+
         /** ReadEvent
          *
          *  Reads a new event to the ledger database of foreign index.
