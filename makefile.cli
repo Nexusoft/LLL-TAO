@@ -206,6 +206,7 @@ OBJS= \
 	build/LLP_time.o \
 	build/LLP_tritium.o \
 	build/LLP_trust_address.o \
+	build/LLP_lisp.o \
 	build/Ledger_block.o \
 	build/Ledger_chainstate.o \
 	build/Ledger_checkpoints.o \

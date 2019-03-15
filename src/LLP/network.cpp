@@ -73,4 +73,12 @@ namespace LLP
         return true;
     }
 
+
+    /* Asynchronously invokes the lispers.net API to cache the EIDs and RLOCs used by this node 
+    *  and caches them for future use */
+    void CacheEIDsAndRLOCs()
+    {
+
+    }
+
 }
