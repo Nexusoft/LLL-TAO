@@ -178,7 +178,11 @@ namespace LLP
          LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
          /* Generate the EC Key and new block signature. */
-         LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
+         #if defined USE_FALCON
+         LLC::FLKey key;
+         #else
+         LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+         #endif
          if(!key.SetSecret(vchSecret, true)
          || !pBlock->GenerateSignature(key))
          {

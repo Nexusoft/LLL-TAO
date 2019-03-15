@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/state.h>
 
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 
 #include <Util/include/hex.h>
 
@@ -71,7 +71,11 @@ namespace TAO
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Generate the EC Key. */
-            LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
+            #if defined USE_FALCON
+            LLC::FLKey key;
+            #else
+            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+            #endif
             if(!key.SetSecret(vchSecret, true))
                 throw APIException(-26, "Failed to set secret key");
 

@@ -46,10 +46,6 @@ namespace TAO
             if(params.find("session") == params.end())
                 throw APIException(-25, "Missing Session ID");
 
-            /* Check for txid parameter. */
-            if(params.find("account") == params.end())
-                throw APIException(-25, "Missing Account");
-
             /* Check for credit parameter. */
             if(params.find("amount") == params.end())
                 throw APIException(-25, "Missing Amount");
@@ -68,36 +64,49 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction");
 
             /* Submit the transaction payload. */
-            uint256_t hashAddress = 0;
+            uint256_t hashTo = 0;
 
             /* Check for data parameter. */
-            if(params.find("name") != params.end())
+            if(params.find("name_to") != params.end())
             {
                 /* Get the address from the name. */
-                std::string strName = GetName() + ":" + params["name"].get<std::string>();
+                std::string strName = GetName() + ":" + params["name_to"].get<std::string>();
 
                 /* Build the address from an SK256 hash of API:NAME. */
-                hashAddress = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+                hashTo = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
             }
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("address") != params.end())
-                hashAddress.SetHex(params["address"].get<std::string>());
+            else if(params.find("address_to") != params.end())
+                hashTo.SetHex(params["address_to"].get<std::string>());
+            else
+                throw APIException(-22, "Missing to recipient");
 
-            /* Get the optional proof (for joint credits). */
-            uint256_t hashProof = 0;
-            if(params.find("proof") != params.end())
-                hashProof.SetHex(params["proof"].get<std::string>());
 
             /* Get the transaction id. */
-            uint256_t hashAccount;
-            hashAccount.SetHex(params["account"].get<std::string>());
+            uint256_t hashFrom = 0;
+
+            /* Check for data parameter. */
+            if(params.find("name_from") != params.end())
+            {
+                /* Get the address from the name. */
+                std::string strName = GetName() + ":" + params["name_from"].get<std::string>();
+
+                /* Build the address from an SK256 hash of API:NAME. */
+                hashFrom = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+            }
+
+            /* Otherwise try to find the raw hex encoded address. */
+            else if(params.find("address_from") != params.end())
+                hashFrom.SetHex(params["address_from"].get<std::string>());
+            else
+                throw APIException(-22, "Missing from recipient");
 
             /* Get the credit. */
             uint64_t nAmount = std::stoull(params["amount"].get<std::string>());
 
             /* Submit the payload object. */
-            tx << (uint8_t)TAO::Operation::OP::DEBIT << hashAccount << hashAddress << nAmount;
+            tx << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
@@ -113,7 +122,6 @@ namespace TAO
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();
-            ret["address"] = hashAccount.ToString();
 
             return ret;
         }

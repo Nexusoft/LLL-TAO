@@ -114,6 +114,10 @@ LIBS+=-ldb_cxx \
 endif
 DEFS+=  -D$(BUILD_ARCH)
 
+ifdef USE_FALCON
+	DEFS+= -DUSE_FALCON
+endif
+
 #Display Warnings while compiling
 ifdef ENABLE_WARNINGS
 	CXXFLAGS+= -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security -pedantic

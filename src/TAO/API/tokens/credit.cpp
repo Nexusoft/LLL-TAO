@@ -68,21 +68,23 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction");
 
             /* Submit the transaction payload. */
-            uint256_t hashAccount = 0;
+            uint256_t hashTo = 0;
 
             /* Check for data parameter. */
-            if(params.find("name") != params.end())
+            if(params.find("name_to") != params.end())
             {
                 /* Get the address from the name. */
-                std::string strName = GetName() + ":" + params["name"].get<std::string>();
+                std::string strName = GetName() + ":" + params["name_to"].get<std::string>();
 
                 /* Build the address from an SK256 hash of API:NAME. */
-                hashAccount = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+                hashTo = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
             }
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("address") != params.end())
-                hashAccount.SetHex(params["address"].get<std::string>());
+            else if(params.find("address_to") != params.end())
+                hashTo.SetHex(params["address_to"].get<std::string>());
+            else
+                throw APIException(-22, "Missing to account");
 
             /* Get the optional proof (for joint credits). */
             uint256_t hashProof = user->Genesis();
@@ -97,7 +99,7 @@ namespace TAO
             uint64_t nAmount = std::stoull(params["amount"].get<std::string>());
 
             /* Submit the payload object. */
-            tx << (uint8_t)TAO::Operation::OP::CREDIT << hashTx << hashProof << hashAccount << nAmount;
+            tx << (uint8_t)TAO::Operation::OP::CREDIT << hashTx << hashProof << hashTo << nAmount;
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
@@ -113,7 +115,6 @@ namespace TAO
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();
-            ret["address"] = hashAccount.ToString();
 
             return ret;
         }

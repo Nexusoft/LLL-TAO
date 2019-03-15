@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <set>
 #include <vector>
 
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <LLC/types/uint1024.h>
 
 namespace Legacy

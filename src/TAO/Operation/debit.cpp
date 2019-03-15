@@ -136,7 +136,7 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to write new state");
 
                 /* Write the notification foreign index. */
-                if(nFlags & TAO::Register::FLAGS::WRITE) //TODO: possibly add some checks for invalid stateTo (wrong token ID)
+                if((nFlags & TAO::Register::FLAGS::WRITE) || (nFlags & TAO::Register::FLAGS::MEMPOOL)) //TODO: possibly add some checks for invalid stateTo (wrong token ID)
                 {
                     /* Read the register from the database. */
                     TAO::Register::State stateTo;
@@ -144,7 +144,7 @@ namespace TAO
                         return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
 
                     /* Write the event to the ledger database. */
-                    if(!LLD::legDB->WriteEvent(stateTo.hashOwner, tx.GetHash()))
+                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteEvent(stateTo.hashOwner, tx.GetHash()))
                         return debug::error(FUNCTION, "failed to rollback event to register DB");
                 }
             }
