@@ -99,11 +99,11 @@ namespace LLP
              We need to drop into this for loop at least once to set the unique hash, but we will iterate
              indefinitely for the prime channel until the generated hash meets the min prime origins
              and is less than 1024 bits*/
-         for(uint64_t i = static_cast<uint32_t>(mapBlocks.size()); ; ++i)
+         for(;;)
          {
 
              /* Create the Tritium block with the corresponding sigchain and pin. */
-             if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *pBlock, i))
+             if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *pBlock, ++nBlockIterator))
                  debug::error(FUNCTION, "Failed to create a new Tritium Block.");
 
              /* Update the time. */
@@ -124,7 +124,7 @@ namespace LLP
          }
 
          debug::log(2, FUNCTION, "Created new Tritium Block ",
-             pBlock->hashMerkleRoot.ToString().substr(0, 20));
+             hashProof.ToString().substr(0, 20), " nVersion=", pBlock->nVersion);
 
          /* Return a pointer to the heap memory */
          return pBlock;

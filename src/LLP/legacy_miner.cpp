@@ -75,7 +75,6 @@ namespace LLP
     {
         /*  make a copy of the base block before making the hash  unique for this requst*/
         uint1024_t proof_hash;
-        uint32_t s = static_cast<uint32_t>(mapBlocks.size()) + 1;
 
         /* Create a new Legacy Block. */
         Legacy::LegacyBlock *pBlock = new Legacy::LegacyBlock();
@@ -90,9 +89,9 @@ namespace LLP
          We need to drop into this for loop at least once to set the unique hash, but we will iterate
          indefinitely for the prime channel until the generated hash meets the min prime origins
          and is less than 1024 bits*/
-        for(uint32_t i = s; ; ++i)
+        for(;;)
         {
-            if(!Legacy::CreateLegacyBlock(*pMiningKey, CoinbaseTx, nChannel, i, *pBlock))
+            if(!Legacy::CreateLegacyBlock(*pMiningKey, CoinbaseTx, nChannel, ++nBlockIterator, *pBlock))
                 debug::error(FUNCTION, "Failed to create a new Legacy Block.");
 
             /* skip if not prime channel or version less than 5 */
@@ -109,7 +108,7 @@ namespace LLP
         }
 
         debug::log(2, FUNCTION, "***** Mining LLP: Created new Legacy Block ",
-            pBlock->hashMerkleRoot.ToString().substr(0, 20));
+            proof_hash.ToString().substr(0, 20), " nVersion=", pBlock->nVersion);
 
         /* Return a pointer to the heap memory */
         return pBlock;
@@ -139,7 +138,7 @@ namespace LLP
     }
 
 
-    /* Validates the block for the derived miner class. */
+    /** validates the block for the derived miner class. **/
     bool LegacyMiner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
     {
         Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[hashMerkleRoot]);

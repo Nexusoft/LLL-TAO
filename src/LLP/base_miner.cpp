@@ -40,6 +40,7 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
+    , nBlockIterator(0)
     {
     }
 
@@ -53,6 +54,7 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
+    , nBlockIterator(0)
     {
     }
 
@@ -66,6 +68,7 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
+    , nBlockIterator(0)
     {
     }
 
@@ -592,12 +595,16 @@ namespace LLP
     /*  Clear the blocks map. */
     void BaseMiner::clear_map()
     {
+        /* Delete the dynamically allocated blocks in the map. */
         for(auto it = mapBlocks.begin(); it != mapBlocks.end(); ++it)
         {
             if(it->second)
                 delete it->second;
         }
         mapBlocks.clear();
+
+        /* Set the block iterator back to zero so we can iterate new blocks next round. */
+        nBlockIterator = 0;
 
         debug::log(2, FUNCTION, "Cleared map of blocks");
     }

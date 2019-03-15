@@ -98,6 +98,9 @@ namespace LLP
             CLOSE    = 254
         };
 
+        /* Used as an ID iterator for generating unique hashes from same block transactions. */
+        uint32_t nBlockIterator;
+
 
     public:
 
