@@ -19,7 +19,7 @@ Return value JSON object:
         "eids": 
         [
             "240.231.221.134/32",
-            "fe00::231:221:134/128"
+            "fe::231:221:134/128"
         ]
     }
 }
@@ -75,7 +75,7 @@ Return value JSON object:
             {
                 "prefix":
                 {
-                    "eid-prefix":"fe00::139:76:244/128",
+                    "eid-prefix":"fe::139:76:244/128",
                     "instance-id":"200"
                 }
             },
