@@ -58,22 +58,9 @@ namespace TAO
             }
 
 
-            /** CreateToken
+            /** Create
              *
-             *  Create an token object register
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json CreateToken(const json::json& params, bool fHelp);
-
-
-            /** CreateAccount
-             *
-             *  Create an account object register
+             *  Create an account or token object register
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
@@ -81,12 +68,12 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json CreateToken(const json::json& params, bool fHelp);
+            json::json Create(const json::json& params, bool fHelp);
 
 
-            /** GetAccount
+            /** Get
              *
-             *  Get the account object register
+             *  Get an account or token object register
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
@@ -94,20 +81,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json GetAccount(const json::json& params, bool fHelp);
-
-
-            /** GetToken
-             *
-             *  Get the token object register
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json GetAccount(const json::json& params, bool fHelp);
+            json::json Get(const json::json& params, bool fHelp);
 
 
             /** Debit
@@ -133,13 +107,13 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json Debit(const json::json& params, bool fHelp);
+            json::json Credit(const json::json& params, bool fHelp);
 
 
 
         };
 
-        extern Assets assets;
+        extern Tokens tokens;
     }
 }
 

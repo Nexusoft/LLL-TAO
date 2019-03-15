@@ -274,6 +274,11 @@ OBJS+=  build/LLC_skein.o \
 		build/API_supply_history.o \
 		build/API_supply_transfer.o \
 		build/API_supply_updateitem.o \
+		build/API_tokens_initialize.o \
+		build/API_tokens_create.o \
+		build/API_tokens_credit.o \
+		build/API_tokens_debit.o \
+		build/API_tokens_get.o \
 		build/Legacy_address.o \
 		build/Legacy_addressbook.o \
 		build/Legacy_ambassador.o \
@@ -394,6 +399,9 @@ build/API_assets_%.o: ./src/TAO/API/assets/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_supply_%.o: ./src/TAO/API/supply/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_tokens_%.o: ./src/TAO/API/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_ledger_%.o: ./src/TAO/API/ledger/%.cpp $(HEADERS)
@@ -547,6 +555,13 @@ build/API_assets_%.o: src/TAO/API/assets/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_supply_%.o: src/TAO/API/supply/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_tokens_%.o: src/TAO/API/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -748,6 +763,13 @@ build/API_assets_%.o: src/TAO/API/assets/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_supply_%.o: src/TAO/API/supply/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_tokens_%.o: src/TAO/API/tokens/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

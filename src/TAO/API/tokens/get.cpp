@@ -13,7 +13,10 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/include/assets.h>
+#include <TAO/API/include/tokens.h>
+
+#include <TAO/Register/objects/account.h>
+#include <TAO/Register/objects/token.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -24,9 +27,13 @@ namespace TAO
     {
 
         /* Get the data from a digital asset */
-        json::json Assets::Get(const json::json& params, bool fHelp)
+        json::json Tokens::Get(const json::json& params, bool fHelp)
         {
             json::json ret;
+
+            /* Check for identifier parameter. */
+            if(params.find("type") == params.end())
+                throw APIException(-25, "Missing Type");
 
             /* Get the Register ID. */
             uint256_t hashRegister = 0;
@@ -55,14 +62,39 @@ namespace TAO
                 throw APIException(-24, "No state found");
 
             /* Build the response JSON. */
-            ret["timestamp"]  = state.nTimestamp;
-            ret["owner"]      = state.hashOwner.ToString();
+            if(params["type"].get<std::string>() == "account")
+            {
+                /* Create a token object. */
+                TAO::Register::Account account;
 
-            /* If the data type is string. */
-            std::string data;
-            state >> data;
+                /* De-Serialie the account.. */
+                state >> account;
 
-            ret["metadata"] = data;
+                /* Build response. */
+                ret["version"]    = account.nVersion;
+                ret["identifier"] = account.nIdentifier;
+                ret["balance"]    = account.nBalance;
+            }
+            else if(params["type"].get<std::string>() == "token")
+            {
+                /* Check for supply parameter. */
+                if(params.find("supply") == params.end())
+                    throw APIException(-25, "Missing Supply");
+
+                /* Create a token object. */
+                TAO::Register::Token token;
+
+                /* De-Serialie the token. */
+                state >> token;
+
+                /* Build response. */
+                ret["version"]          = token.nVersion;
+                ret["identifier"]       = token.nIdentifier;
+                ret["maxsupply"]        = token.nMaxSupply;
+                ret["currentsupply"]    = token.nCurrentSupply;
+            }
+            else
+                throw APIException(-27, "Unknown object register");
 
             return ret;
         }
