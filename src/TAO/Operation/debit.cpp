@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/state.h>
 #include <TAO/Register/objects/account.h>
+#include <TAO/Register/objects/token.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -61,25 +62,47 @@ namespace TAO
             if(state.hashOwner != hashCaller)
                 return debug::error(FUNCTION, hashCaller.ToString(), " caller not authorized to debit from register");
 
-            /* Skip all non account registers for now. */
-            if(state.nType != TAO::Register::OBJECT::ACCOUNT)
-                return debug::error(FUNCTION, hashFrom.ToString(), " is not an account object");
+            /* Check for account object register. */
+            if(state.nType == TAO::Register::OBJECT::ACCOUNT)
+            {
+                /* Get the account object from register. */
+                TAO::Register::Account account;
+                state >> account;
 
-            /* Get the account object from register. */
-            TAO::Register::Account account;
-            state >> account;
+                /* Check the balance of the from account. */
+                if(nAmount > account.nBalance)
+                    return debug::error(FUNCTION, hashFrom.ToString(), " account doesn't have sufficient balance");
 
-            /* Check the balance of the from account. */
-            if(nAmount > account.nBalance)
-                return debug::error(FUNCTION, hashFrom.ToString(), " doesn't have sufficient balance");
+                /* Change the state of account register. */
+                account.nBalance -= nAmount;
 
-            /* Change the state of account register. */
-            account.nBalance -= nAmount;
+                /* Clear the state of register. */
+                state.ClearState();
+                state.nTimestamp = tx.nTimestamp;
+                state << account;
+            }
 
-            /* Clear the state of register. */
-            state.ClearState();
-            state.nTimestamp = tx.nTimestamp;
-            state << account;
+            /* Check for token object register. */
+            else if(state.nType == TAO::Register::OBJECT::TOKEN)
+            {
+                /* Get the account object from register. */
+                TAO::Register::Token token;
+                state >> token;
+
+                /* Check the balance of the from account. */
+                if(nAmount > token.nCurrentSupply)
+                    return debug::error(FUNCTION, hashFrom.ToString(), " token doesn't have sufficient balance");
+
+                /* Change the state of token register. */
+                token.nCurrentSupply -= nAmount;
+
+                /* Clear the state of register. */
+                state.ClearState();
+                state.nTimestamp = tx.nTimestamp;
+                state << token;
+            }
+            else
+                return debug::error(FUNCTION, hashFrom.ToString(), " is not a valid object register");
 
             /* Check that the register is in a valid state. */
             if(!state.IsValid())
