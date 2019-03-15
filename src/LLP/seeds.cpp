@@ -106,6 +106,6 @@ namespace LLP
           "test4.mercuryminer.com",
           "test5.mercuryminer.com",
           "nexus-lisp-seed.lispers.net",
-          "fe::255:255"
+          "fe00::255:255"
       };
 }
