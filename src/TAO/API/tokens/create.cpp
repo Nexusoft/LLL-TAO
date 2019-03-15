@@ -49,7 +49,7 @@ namespace TAO
                 throw APIException(-25, "Missing Session ID");
 
             /* Check for identifier parameter. */
-            if(params.find("indentifer") == params.end())
+            if(params.find("identifier") == params.end())
                 throw APIException(-25, "Missing Identifier");
 
             /* Check for identifier parameter. */
