@@ -198,7 +198,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json GetTransactions(const json::json& params, bool fHelp);
+            json::json Transactions(const json::json& params, bool fHelp);
 
 
             /** Notifications

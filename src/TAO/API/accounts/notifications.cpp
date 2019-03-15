@@ -34,9 +34,28 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
-            /* Check for genesis parameter. */
-            if(params.find("genesis") == params.end())
-                throw APIException(-25, "Missing Genesis ID");
+            /* Get the Genesis ID. */
+            uint256_t hashGenesis = 0;
+
+            /* Watch for destination genesis. */
+            if(params.find("genesis") != params.end())
+            {
+                hashGenesis.SetHex(params["genesis"].get<std::string>());
+            }
+            else if(params.find("username") != params.end())
+            {
+                /* Generate the Secret Phrase */
+                SecureString strUsername = params["username"].get<std::string>().c_str();
+                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
+
+                /* Generate the Hashes */
+                uint1024_t hashSecret = LLC::SK1024(vSecret);
+
+                /* Generate the Final Root Hash. */
+                hashGenesis = LLC::SK256(hashSecret.GetBytes());
+            }
+            else
+                throw APIException(-25, "Missing Genesis or Username");
 
             /* Check for paged parameter. */
             uint32_t nPage = 0;
@@ -48,8 +67,7 @@ namespace TAO
             if(params.find("limit") != params.end())
                 nLimit = atoi(params["limit"].get<std::string>().c_str());
 
-            /* Get the Genesis ID. */
-            uint256_t hashGenesis = uint256_t(params["genesis"].get<std::string>());
+
 
             /* Start with sequence 0 (chronological order). */
             uint32_t nSequence = 0;
