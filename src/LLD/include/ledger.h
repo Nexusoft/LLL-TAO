@@ -181,6 +181,7 @@ namespace LLD
             return Index(std::make_pair(std::string("index"), hashTransaction), hashBlock);
         }
 
+
         /** IndexBlock
          *
          *  Index a block height to a block in keychain.
@@ -353,6 +354,81 @@ namespace LLD
         bool HasTx(const uint512_t& hashTransaction)
         {
             return Exists(hashTransaction);
+        }
+
+
+        /** WriteSequence
+         *
+         *  Writes a new sequence event to the ledger database.
+         *
+         *  @param[in] hashAddress The event address to write.
+         *  @param[in] nSequence The sequence to write.
+         *
+         *  @return True if the write was successful.
+         *
+         **/
+        bool WriteSequence(const uint256_t& hashAddress, const uint32_t nSequence)
+        {
+            return Write(std::make_pair(std::string("sequence"), hashAddress), nSequence);
+        }
+
+
+        /** ReadSequence
+         *
+         *  Reads a new sequence from the ledger database
+         *
+         *  @param[in] hashAddress The event address to write.
+         *  @param[in] nSequence The sequence to write.
+         *
+         *  @return True if the write was successful.
+         *
+         **/
+        bool ReadSequence(const uint256_t& hashAddress, uint32_t& nSequence)
+        {
+            return Read(std::make_pair(std::string("sequence"), hashAddress), nSequence);
+        }
+
+
+        /** WriteEvent
+         *
+         *  Write a new event to the ledger database of current txid.
+         *
+         *  @param[in] hashAddress The event address to write.
+         *  @param[in] hashTx The transaction event is triggering.
+         *
+         *  @return True if the write was successful.
+         *
+         **/
+        bool WriteEvent(const uint256_t& hashAddress, const uint512_t& hashTx)
+        {
+            /* Get the current sequence number. */
+            uint32_t nSequence = 0;
+            if(!ReadSequence(hashAddress, nSequence))
+                return false;
+
+            /* Write the new sequence number iterated by one. */
+            if(!WriteSequence(hashAddress, nSequence + 1))
+                return false;
+
+            return Index(std::make_pair(hashAddress, nSequence), hashTx);
+        }
+
+
+        /** ReadEvent
+         *
+         *  Reads a new event to the ledger database of foreign index.
+         *  This is responsible for knowing foreign sigchain events that correlate to your own.
+         *
+         *  @param[in] hashAddress The event address to write.
+         *  @param[in] nSequence The sequence number to read from event.
+         *  @param[out] tx The transaction to read event from.
+         *
+         *  @return True if the write was successful.
+         *
+         **/
+        bool ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, TAO::Ledger::Transaction& tx)
+        {
+            return Read(std::make_pair(hashAddress, nSequence), tx);
         }
 
 

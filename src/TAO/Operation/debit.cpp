@@ -59,7 +59,7 @@ namespace TAO
 
             /* Check ownership of register. */
             if(state.hashOwner != hashCaller)
-                return debug::error(FUNCTION, hashCaller.ToString()," caller not authorized to debit from register");
+                return debug::error(FUNCTION, hashCaller.ToString(), " caller not authorized to debit from register");
 
             /* Skip all non account registers for now. */
             if(state.nType != TAO::Register::OBJECT::ACCOUNT)
@@ -111,6 +111,19 @@ namespace TAO
                 /* Write the register to the database. */
                 if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashFrom, state))
                     return debug::error(FUNCTION, "failed to write new state");
+
+                /* Write the notification foreign index. */
+                if(nFlags & TAO::Register::FLAGS::WRITE) //TODO: possibly add some checks for invalid stateTo (wrong token ID)
+                {
+                    /* Read the register from the database. */
+                    TAO::Register::State stateTo;
+                    if(!LLD::regDB->ReadState(hashTo, stateTo))
+                        return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
+
+                    /* Write the event to the ledger database. */
+                    if(!LLD::legDB->WriteEvent(stateTo.hashOwner, tx.GetHash()))
+                        return debug::error(FUNCTION, "failed to commit event to register DB");
+                }
             }
 
             return true;

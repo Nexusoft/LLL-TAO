@@ -162,7 +162,7 @@ namespace TAO
             if(IsProofOfWork())
             {
                 /* Calculate the coinbase rewards from the coinbase transaction. */
-                uint64_t nCoinbaseRewards[3] = {0, 0, 0};
+                uint64_t nCoinbaseRewards[3] = { 0, 0, 0 };
                 if(vtx[0].first == TYPE::LEGACY_TX)
                 {
                     /* Get the coinbase from the memory pool. */
