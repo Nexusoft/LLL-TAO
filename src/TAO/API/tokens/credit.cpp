@@ -85,7 +85,7 @@ namespace TAO
                 hashAccount.SetHex(params["address"].get<std::string>());
 
             /* Get the optional proof (for joint credits). */
-            uint256_t hashProof = 0;
+            uint256_t hashProof = user->Genesis();
             if(params.find("proof") != params.end())
                 hashProof.SetHex(params["proof"].get<std::string>());
 

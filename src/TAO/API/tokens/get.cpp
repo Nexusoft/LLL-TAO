@@ -77,10 +77,6 @@ namespace TAO
             }
             else if(params["type"].get<std::string>() == "token")
             {
-                /* Check for supply parameter. */
-                if(params.find("supply") == params.end())
-                    throw APIException(-25, "Missing Supply");
-
                 /* Create a token object. */
                 TAO::Register::Token token;
 
