@@ -81,7 +81,7 @@ namespace TAO
                 {
                     /* Write the event to the ledger database. */
                     if(!LLD::legDB->WriteEvent(hashTransfer, tx.GetHash()))
-                        return debug::error(FUNCTION, "failed to commit event to register DB");
+                        return debug::error(FUNCTION, "failed to commit event to ledger DB");
                 }
             }
 

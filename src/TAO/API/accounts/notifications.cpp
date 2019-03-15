@@ -67,10 +67,8 @@ namespace TAO
             if(params.find("limit") != params.end())
                 nLimit = atoi(params["limit"].get<std::string>().c_str());
 
-
-
-            /* Start with sequence 0 (chronological order). */
-            uint32_t nSequence = 0;
+            /* Start with sequence 1 (chronological order). */
+            uint32_t nSequence = 1;
 
             /* Loop until genesis. */
             uint32_t nTotal = 0;

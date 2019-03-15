@@ -122,7 +122,7 @@ namespace TAO
 
                     /* Write the event to the ledger database. */
                     if(!LLD::legDB->WriteEvent(stateTo.hashOwner, tx.GetHash()))
-                        return debug::error(FUNCTION, "failed to commit event to register DB");
+                        return debug::error(FUNCTION, "failed to rollback event to register DB");
                 }
             }
 

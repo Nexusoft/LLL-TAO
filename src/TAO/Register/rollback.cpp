@@ -211,7 +211,7 @@ namespace TAO
 
                             /* Write the event to the ledger database. */
                             if(!LLD::legDB->EraseEvent(stateTo.hashOwner))
-                                return debug::error(FUNCTION, "failed to commit event to register DB");
+                                return debug::error(FUNCTION, "failed to rollback event");
 
                             /* Seek to the next operation. */
                             tx.ssOperation.seek(8);
