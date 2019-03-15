@@ -199,6 +199,19 @@ namespace TAO
              *
              **/
             json::json GetTransactions(const json::json& params, bool fHelp);
+
+
+            /** Notifications
+             *
+             *  Get notifications for an account
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Notifications(const json::json& params, bool fHelp);
         };
 
         extern Accounts accounts;
