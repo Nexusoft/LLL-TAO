@@ -102,46 +102,51 @@ namespace LLP
         {
             EIDS.clear();
             
-            std::string strResponse = LispersAPIRequest( "data/database-mapping");
-
-            if( strResponse.length() > 0 )
+            try 
             {
-                json::json jsonLispResponse = json::json::parse(strResponse);
+                std::string strResponse = LispersAPIRequest( "data/database-mapping");
 
-                json::json jsonEIDs = json::json::array();
-
-                for(auto& el : jsonLispResponse.items())
+                if( strResponse.length() > 0 )
                 {
-                    LLP::EID EID;
-                    std::string strEIDPrefix = el.value()["eid-prefix"];
-                    std::string::size_type nFindStart = strEIDPrefix.find("[") +1;
-                    std::string::size_type nFindEnd = strEIDPrefix.find("]") ;
+                    json::json jsonLispResponse = json::json::parse(strResponse);
 
-                    EID.strInstanceID = strEIDPrefix.substr(nFindStart, nFindEnd - nFindStart);
-                    nFindStart = nFindEnd +1;
-                    nFindEnd = strEIDPrefix.find("/");
-                    EID.strAddress = strEIDPrefix.substr(nFindStart, nFindEnd - nFindStart);
+                    json::json jsonEIDs = json::json::array();
 
-                    json::json jsonRLOCs = el.value()["rlocs"];
-
-                    for(const auto& rloc : jsonRLOCs.items())
+                    for(auto& el : jsonLispResponse.items())
                     {
-                        if( rloc.value().find("interface") != rloc.value().end())
-                        {
-                            LLP::RLOC RLOC;
-                            RLOC.strInterface = rloc.value()["interface"];
-                            RLOC.strRLOCName = rloc.value()["rloc-name"];
-                            RLOC.strTranslatedRLOC = rloc.value()["translated-rloc"];
-                            EID.vRLOCs.push_back(RLOC);
-                        }
-                    }
+                        LLP::EID EID;
+                        std::string strEIDPrefix = el.value()["eid-prefix"];
+                        std::string::size_type nFindStart = strEIDPrefix.find("[") +1;
+                        std::string::size_type nFindEnd = strEIDPrefix.find("]") ;
 
-                    EIDS[EID.strAddress] = EID;
+                        EID.strInstanceID = strEIDPrefix.substr(nFindStart, nFindEnd - nFindStart);
+                        nFindStart = nFindEnd +1;
+                        nFindEnd = strEIDPrefix.find("/");
+                        EID.strAddress = strEIDPrefix.substr(nFindStart, nFindEnd - nFindStart);
+
+                        json::json jsonRLOCs = el.value()["rlocs"];
+
+                        for(const auto& rloc : jsonRLOCs.items())
+                        {
+                            if( rloc.value().find("interface") != rloc.value().end())
+                            {
+                                LLP::RLOC RLOC;
+                                RLOC.strInterface = rloc.value()["interface"];
+                                RLOC.strRLOCName = rloc.value()["rloc-name"];
+                                RLOC.strTranslatedRLOC = rloc.value()["translated-rloc"];
+                                EID.vRLOCs.push_back(RLOC);
+                            }
+                        }
+
+                        EIDS[EID.strAddress] = EID;
+                    }
                 }
             }
-            else
+            catch( TAO::API::APIException& e )
             {
-                throw TAO::API::APIException(-1, "Communications error with lispers.net API");
+                /* we want to absorb an API exception here as the lispers.net API might not be available or 
+                   LISP might not be running.  In which case there are no EIDs to cache, so just log the error and move on. */
+                debug::log(3, FUNCTION, e.what());
             }
         }).detach();
 
