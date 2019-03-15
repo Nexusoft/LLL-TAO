@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/accounts.h>
 
+#include <TAO/Operation/include/output.h>
+
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -105,6 +107,7 @@ namespace TAO
                 obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                 obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                 obj["hash"]      = tx.GetHash().ToString();
+                obj["contract"]  = TAO::Operation::Output(tx);
 
                 ret.push_back(obj);
             }

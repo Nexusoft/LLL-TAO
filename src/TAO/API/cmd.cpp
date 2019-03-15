@@ -145,7 +145,7 @@ namespace TAO
 
                 /* Read the response packet. */
                 apiNode.ReadPacket();
-                runtime::sleep(10);
+                //runtime::sleep(10);
             }
 
             /* Parse response JSON. */

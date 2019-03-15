@@ -237,7 +237,7 @@ int main(int argc, char** argv)
     LLP::RPC_SERVER = new LLP::Server<LLP::RPCNode>(
         port,
         static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 1)),
-        30,
+        10,
         false,
         0,
         0,
