@@ -66,7 +66,7 @@ namespace LLC
         FLKey(const FLKey& b);
         ~FLKey()
         {
-            
+
         }
 
 
@@ -168,7 +168,7 @@ namespace LLC
          *  @return True if the key was set properly.
          *
          **/
-        bool SetPubKey(const std::vector<uint8_t>& vchPubKey);
+        bool SetPubKey(const std::vector<uint8_t>& vchPubKeyIn);
 
 
         /** GetPubKey
