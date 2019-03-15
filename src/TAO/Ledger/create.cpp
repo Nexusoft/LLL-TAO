@@ -348,15 +348,16 @@ namespace TAO
                 LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
                 /* Generate the EC Key. */
-                LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
+                #if defined USE_FALCON
+                LLC::FLKey key;
+                #else
+                LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+                #endif
                 if(!key.SetSecret(vchSecret, true))
                     continue;
 
                 /* Generate new block signature. */
                 block.GenerateSignature(key);
-
-                /* Add the producer into the memory pool. */
-                mempool.AddUnchecked(block.producer);
 
                 /* Verify the block object. */
                 if(!block.Check())

@@ -34,47 +34,47 @@ namespace TAO
 
 namespace Legacy
 {
-	    /** @class MerkleTx
-	     *
-	     * A transaction with a merkle branch linking it to the block chain.
-	     *
-	     **/
-		class MerkleTx : public Transaction
-		{
-		private:
+    /** @class MerkleTx
+     *
+     * A transaction with a merkle branch linking it to the block chain.
+     *
+     **/
+	class MerkleTx : public Transaction
+	{
+	private:
 
         /** Init
          *
          *  Initializes an empty merkle transaction
          *
          **/
-				void Init()
-				{
-						hashBlock = 0;
-						nIndex = -1;
-				}
+		void Init()
+		{
+				hashBlock = 0;
+				nIndex = -1;
+		}
 
 
-		public:
+	public:
 
-				/** The block hash of the block containing this transaction **/
-				uint1024_t hashBlock;
-
-
-				/** The merkle branch for this transaction
-		         *
-		         *  @deprecated - no longer used, maintained to support deserializing from existing wallet.dat files
-		         *
-		         **/
-				std::vector<uint512_t> vMerkleBranch;
+		/** The block hash of the block containing this transaction **/
+		uint1024_t hashBlock;
 
 
-				/** Index of transaction within containing block
+		/** The merkle branch for this transaction
          *
          *  @deprecated - no longer used, maintained to support deserializing from existing wallet.dat files
          *
          **/
-				int32_t nIndex;
+		std::vector<uint512_t> vMerkleBranch;
+
+
+		/** Index of transaction within containing block
+         *
+         *  @deprecated - no longer used, maintained to support deserializing from existing wallet.dat files
+         *
+         **/
+		int32_t nIndex;
 
 
         /** Constructor
@@ -82,10 +82,10 @@ namespace Legacy
          *  Initializes an empty merkle transaction
          *
          **/
-				MerkleTx()
-				{
-						Init();
-				}
+		MerkleTx()
+		{
+				Init();
+		}
 
 
         /** Constructor
@@ -97,30 +97,30 @@ namespace Legacy
          *  @param[in] txIn Transaction data to copy into this merkle transaction
          *
          **/
-				MerkleTx(const Transaction& txIn)
-				: Transaction(txIn)
-				{
-						Init();
-				}
+		MerkleTx(const Transaction& txIn)
+		: Transaction(txIn)
+		{
+				Init();
+		}
 
 
-				/** Destructor **/
-				virtual ~MerkleTx()
-				{
-				}
+		/** Destructor **/
+		virtual ~MerkleTx()
+		{
+		}
 
 
-				/* Implement serialization/deserializaiton for MerkleTx, first by serializing/deserializing
-				 * base class data then processing local data
-				 */
-				IMPLEMENT_SERIALIZE
-				(
-						nSerSize += SerReadWrite(s, *(Transaction*)this, nSerType, nSerVersion, ser_action);
-						nSerVersion = this->nVersion;
-						READWRITE(hashBlock);
-						READWRITE(vMerkleBranch);
-						READWRITE(nIndex);
-				)
+		/* Implement serialization/deserializaiton for MerkleTx, first by serializing/deserializing
+		 * base class data then processing local data
+		 */
+		IMPLEMENT_SERIALIZE
+		(
+				nSerSize += SerReadWrite(s, *(Transaction*)this, nSerType, nSerVersion, ser_action);
+				nSerVersion = this->nVersion;
+				READWRITE(hashBlock);
+				READWRITE(vMerkleBranch);
+				READWRITE(nIndex);
+		)
 
 
         /** GetDepthInMainChain
@@ -130,7 +130,7 @@ namespace Legacy
          *  @return Depth in chain, 0 if not in main chain
          *
          **/
-				uint32_t GetDepthInMainChain() const;
+		uint32_t GetDepthInMainChain() const;
 
 
         /** IsInMainChain
@@ -140,10 +140,10 @@ namespace Legacy
          *  @return true if block containing this transaction is in main chain
          *
          **/
-				inline bool IsInMainChain() const
-				{
-						return GetDepthInMainChain() > 0;
-				}
+		inline bool IsInMainChain() const
+		{
+				return GetDepthInMainChain() > 0;
+		}
 
 
         /** GetBlocksToMaturity
@@ -154,9 +154,9 @@ namespace Legacy
          *          0 if not Coinbase or Coinstake transaction (spendable immediately upon confirm)
          *
          **/
-				uint32_t GetBlocksToMaturity() const;
+		uint32_t GetBlocksToMaturity() const;
 
-		};
+	};
 }
 
 #endif

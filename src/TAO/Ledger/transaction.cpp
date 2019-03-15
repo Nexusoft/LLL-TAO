@@ -14,7 +14,12 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
-#include <LLC/include/key.h>
+
+#if defined USE_FALCON
+#include <LLC/include/flkey.h>
+#else
+#include <LLC/include/eckey.h>
+#endif
 
 #include <LLD/include/global.h>
 
@@ -81,9 +86,14 @@ namespace TAO
                 return debug::error(FUNCTION, "ledger data outside of maximum size constraints");
 
             /* Check the more expensive ECDSA verification. */
-            LLC::ECKey ecPub(LLC::BRAINPOOL_P512_T1, 64);
-            ecPub.SetPubKey(vchPubKey);
-            if(!ecPub.Verify(GetHash().GetBytes(), vchSig))
+            #if defined USE_FALCON
+            LLC::FLKey key;
+            #else
+            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+            #endif
+
+            key.SetPubKey(vchPubKey);
+            if(!key.Verify(GetHash().GetBytes(), vchSig))
                 return debug::error(FUNCTION, "invalid transaction signature");
 
             return true;
@@ -173,7 +183,11 @@ namespace TAO
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Generate the EC Key. */
-            LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
+            #if defined USE_FALCON
+            LLC::FLKey key;
+            #else
+            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+            #endif
             if(!key.SetSecret(vchSecret, true))
                 return;
 
@@ -197,7 +211,11 @@ namespace TAO
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Generate the EC Key. */
-            LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
+            #if defined USE_FALCON
+            LLC::FLKey key;
+            #else
+            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+            #endif
             if(!key.SetSecret(vchSecret, true))
                 return false;
 

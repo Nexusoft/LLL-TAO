@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_SECRET_H
 #define NEXUS_LEGACY_TYPES_SECRET_H
 
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <Util/include/base58.h>
 
 namespace Legacy

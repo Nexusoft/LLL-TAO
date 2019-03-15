@@ -43,7 +43,7 @@ namespace TAO
 
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
-                hashRegister.SetHex(params["address"]);
+                hashRegister.SetHex(params["address"].get<std::string>());
 
             /* Fail if no required parameters supplied. */
             else

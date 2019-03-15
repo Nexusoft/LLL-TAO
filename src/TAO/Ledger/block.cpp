@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <LLC/types/bignum.h>
 
 #include <Util/templates/datastream.h>

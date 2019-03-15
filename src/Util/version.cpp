@@ -29,6 +29,7 @@ namespace version
     const std::string CLIENT_NAME("Tritium");
     const std::string CLIENT_TYPE("Beta");
     const std::string CLIENT_DATE(__DATE__ " " __TIME__);
+
     /* The version number */
     const std::string CLIENT_VERSION_STRING = debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH, ".", CLIENT_BUILD);
 
@@ -53,12 +54,20 @@ namespace version
     #endif
 
 
+    /* The Cryptography Type */
+    #if defined USE_FALCON
+        const std::string CRYPTO_TYPE = "[FALCON]";
+    #else
+        const std::string CRYPTO_TYPE = "[ECC]";
+    #endif
+
+
     /* The Architecture (32-Bit or 64-Bit) */
-    #ifdef x64
+    #if defined x64
         const std::string BUILD_ARCH = "[x64]";
     #else
         const std::string BUILD_ARCH = "[x86]";
     #endif
 
-    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + " " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH +" " +CLIENT_TYPE);
+    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + " " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + CRYPTO_TYPE + BUILD_ARCH +" " +CLIENT_TYPE);
 }

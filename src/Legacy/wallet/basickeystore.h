@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <set>
 #include <utility>
 
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <LLC/types/uint1024.h>
 
 #include <Legacy/types/address.h>

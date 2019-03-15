@@ -127,7 +127,7 @@ namespace TAO
             void SetNull()
             {
                 nVersion       = 0;
-                nIdentifier = 0;
+                nIdentifier    = 0;
                 nMaxSupply     = 0;
                 nCoinDigits    = 0;
             }

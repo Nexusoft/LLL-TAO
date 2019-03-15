@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <Legacy/include/money.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <Legacy/types/secret.h>
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <Util/include/runtime.h>
 
 /* Global TAO namespace. */

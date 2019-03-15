@@ -75,6 +75,14 @@ namespace TAO
                 /* Write the register to the database. */
                 if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
                     return debug::error(FUNCTION, "failed to write new state");
+
+                /* Write the notification foreign index. */
+                if(nFlags & TAO::Register::FLAGS::WRITE) //TODO: possibly add some checks for invalid stateTo (wrong token ID)
+                {
+                    /* Write the event to the ledger database. */
+                    if(!LLD::legDB->WriteEvent(hashTransfer, tx.GetHash()))
+                        return debug::error(FUNCTION, "failed to commit event to ledger DB");
+                }
             }
 
             return true;

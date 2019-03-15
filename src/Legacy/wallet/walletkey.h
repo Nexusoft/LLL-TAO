@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_WALLETKEY_H
 #define NEXUS_LEGACY_WALLET_WALLETKEY_H
 
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 
 #include <Util/include/runtime.h>
 #include <Util/templates/serialize.h>

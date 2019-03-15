@@ -13,8 +13,6 @@ ________________________________________________________________________________
 
 #include <cmath>
 
-#include <LLC/include/key.h>
-
 #include <LLD/include/global.h>
 
 #include <LLP/packets/tritium.h>
@@ -300,7 +298,11 @@ namespace TAO
             if(nHeight > 0)
             {
                 /* Create the key to check. */
-                LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
+                #if defined USE_FALCON
+                LLC::FLKey key;
+                #else
+                LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+                #endif
                 key.SetPubKey(producer.vchPubKey);
 
                 /* Check the Block Signature. */
@@ -693,6 +695,26 @@ namespace TAO
 
             return true;
         }
+
+        /* Sign the block with the key that found the block. */
+        #if defined USE_FALCON
+        bool TritiumBlock::GenerateSignature(const LLC::FLKey& key)
+        {
+            return key.Sign(GetHash().GetBytes(), vchBlockSig);
+        }
+        #endif
+
+
+        /* Check that the block signature is a valid signature. */
+        #if defined USE_FALCON
+        bool TritiumBlock::VerifySignature(const LLC::FLKey& key) const
+        {
+            if (vchBlockSig.empty())
+                return false;
+
+            return key.Verify(GetHash().GetBytes(), vchBlockSig);
+        }
+        #endif
 
 
         /* Get the score of the current trust block. */

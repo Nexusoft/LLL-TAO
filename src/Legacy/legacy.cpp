@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <cmath>
 
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/types/script.h>

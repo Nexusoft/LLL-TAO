@@ -93,64 +93,85 @@ namespace LLP
     }
 
 
-    /* Asynchronously invokes the lispers.net API to obtain the EIDs and RLOCs used by this node 
+    /* Asynchronously invokes the lispers.net API to obtain the EIDs and RLOCs used by this node
     *  and caches them for future use */
     void CacheEIDs()
     {
         /* use a lambda here to cache the EIDs asynchronously*/
         std::thread([=]()
         {
+            /* Empty the current EID's. */
             EIDS.clear();
-            
-            try 
+
+            try
             {
+                /* Attempt to contact the LISP API. */
                 std::string strResponse = LispersAPIRequest( "data/database-mapping");
 
-                if( strResponse.length() > 0 )
+                /* Parse items if it succeeded. */
+                if(strResponse.length() > 0)
                 {
+                    /* Parse out the response. */
                     json::json jsonLispResponse = json::json::parse(strResponse);
 
-                    json::json jsonEIDs = json::json::array();
-
+                    /* Loop the response items. */
                     for(auto& el : jsonLispResponse.items())
                     {
+                        /* Declare the LLP-EID object. */
                         LLP::EID EID;
+
+                        /* Grab the prefix from parsed JSON. */
                         std::string strEIDPrefix = el.value()["eid-prefix"];
+
+                        /* Parse the beginning and end to find instance ID. */
                         std::string::size_type nFindStart = strEIDPrefix.find("[") +1;
                         std::string::size_type nFindEnd = strEIDPrefix.find("]") ;
 
+                        /* Assign the instance ID to the parsed substring. */
                         EID.strInstanceID = strEIDPrefix.substr(nFindStart, nFindEnd - nFindStart);
+
+                        /* Iterate to the next position for finding address. */
                         nFindStart = nFindEnd +1;
                         nFindEnd = strEIDPrefix.find("/");
+
+                        /* Assign the address from the substring. */
                         EID.strAddress = strEIDPrefix.substr(nFindStart, nFindEnd - nFindStart);
 
+                        /* Grab the rlocs from parsed JSON. */
                         json::json jsonRLOCs = el.value()["rlocs"];
 
+                        /* Iterate the list of RLOC's. */
                         for(const auto& rloc : jsonRLOCs.items())
                         {
-                            if( rloc.value().find("interface") != rloc.value().end())
+                            /* Search for 'interface' keyword. */
+                            if(rloc.value().find("interface") != rloc.value().end())
                             {
+                                /* Declare the RLOC object. */
                                 LLP::RLOC RLOC;
                                 RLOC.strInterface = rloc.value()["interface"];
                                 RLOC.strRLOCName = rloc.value()["rloc-name"];
                                 RLOC.strTranslatedRLOC = rloc.value()["translated-rloc"];
+
+                                /* Add to the cached data. */
                                 EID.vRLOCs.push_back(RLOC);
                             }
                         }
 
+                        /* Assign the address to the cached map. */
                         EIDS[EID.strAddress] = EID;
                     }
                 }
             }
+
+            /* We want to absorb an API exception here as the lispers.net API might not be available or
+               LISP might not be running.  In which case there are no EIDs to cache, so just log the error and move on. */
             catch( TAO::API::APIException& e )
             {
-                /* we want to absorb an API exception here as the lispers.net API might not be available or 
-                   LISP might not be running.  In which case there are no EIDs to cache, so just log the error and move on. */
                 debug::log(3, FUNCTION, e.what());
             }
         }).detach();
 
     }
 
-    
+
 }

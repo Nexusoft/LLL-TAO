@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/hash/SK.h>
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 
 #include <Legacy/types/address.h>
 
