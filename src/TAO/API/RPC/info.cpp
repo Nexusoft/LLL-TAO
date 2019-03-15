@@ -30,6 +30,7 @@ ________________________________________________________________________________
 #include <Legacy/include/money.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/API/include/lisp.h>
+#include <LLP/include/lisp.h>
 
 #include <vector>
 #include <new> //std::bad_alloc
@@ -96,20 +97,16 @@ namespace TAO
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
 
             // get the EID's if using LISP
-            try
+            if( LLP::EIDS.size() > 0)
             {
-                json::json jsonEIDs = TAO::API::lisp.MyEIDs(json::json(), false);
-                if( jsonEIDs.is_object() && jsonEIDs["eids"].is_array())
-                    obj["eids"] = jsonEIDs["eids"];
+                json::json jsonEIDs = json::json::array();
+                for(const auto& eid : LLP::EIDS)
+                {
+                    jsonEIDs.push_back( eid.first);
+                }
+                obj["eids"] = jsonEIDs;
             }
-            catch(const std::bad_alloc &e)
-            {
-                debug::error(FUNCTION, "Memory allocation failed ", e.what());
-            }
-            catch(const APIException& e)
-            {
-                /* This is a no-op because the MyEIDs API call will throw an exception if lisp is not running */
-            }
+            
 
 
 

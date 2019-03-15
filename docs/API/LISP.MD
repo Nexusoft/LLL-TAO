@@ -1,13 +1,13 @@
 The LISP API Interface Definition
 -----------------------------------
 
-### MyEIDs
+### EIDs
 
 This will return the Lisp Endpoint Indentifers (EID's) currently configured for this node.
 
 ```
 <method>:
-/lisp/myeids
+/lisp/eids
 
 ```
 
@@ -16,82 +16,34 @@ Return value JSON object:
 {
     "result":
     {
-        "eids": 
-        [
-            "240.231.221.134/32",
-            "fe::231:221:134/128"
-        ]
-    }
-}
-```
-
-### MyRLOCs
-
-This will return the Lisp Routing Locators (RLOC's) currently configured for this node.
-
-```
-<method>:
-/lisp/myrlocs
-
-```
-
-Return value JSON object:
-```
-{
-    "result":
-    {
-        "rlocs": 
-        [
-            "192.168.0.52"
-        ]
-    }
-}
-```
-
-### DatabaseMapping
-
-This will return the Lisp EID and RLOC mappings for this node.
-
-```
-<method>:
-/lisp/databasemapping
-
-```
-
-Return value JSON object:
-```
-{
-    "result":
-    {
-        "database-mapping":
+        "eids":
         [
             {
-                "prefix":
-                {
-                    "eid-prefix":"240.139.76.244/32",
-                    "instance-id":"200"
-                }
+                "instance-id":"200",
+                "eid":"240.139.76.244",
+                "rlocs":
+                [
+                    {
+                        "interface":"eth0",
+                        "rloc-name":"mypc",
+                        "rloc":"101.123.45.67"
+                    }
+                ]
             },
             {
-                "prefix":
-                {
-                    "eid-prefix":"fe::139:76:244/128",
-                    "instance-id":"200"
-                }
-            },
-            {
-                "rloc":
-                {
-                    "interface":"wlp59s0"
-                }
-            },
-            {
-                "rloc":
-                {
-                    "address":"192.168.0.52"
-                }
+                "instance-id":"200",
+                "eid":"fe::139:76:244",
+                "rlocs":
+                [
+                    {
+                        "interface":"eth0",
+                        "rloc-name":"mypc",
+                        "rloc":"101.123.45.67"
+                    }
+                ]
             }
         ]
     }
 }
 ```
+
