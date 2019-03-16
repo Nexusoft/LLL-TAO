@@ -516,8 +516,7 @@ namespace LLP
             ssMessage >> block;
 
             /* Process the block. */
-            if(!LegacyNode::Process(block, this))
-                return false;
+            LegacyNode::Process(block, this);
 
             return true;
         }
@@ -894,9 +893,8 @@ namespace LLP
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
     {
-
         if(!block.Check())
-            return true;
+            return false;
 
         /* Check if the block is valid. */
         uint1024_t hash = block.GetHash();

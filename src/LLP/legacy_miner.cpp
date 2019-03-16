@@ -12,6 +12,7 @@ ________________________________________________________________________________
 
 
 #include <LLP/types/legacy_miner.h>
+#include <LLP/types/legacy.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
 
@@ -116,6 +117,25 @@ namespace LLP
 
 
     /** validates the block for the derived miner class. **/
+    bool LegacyMiner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
+    {
+        Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[hashMerkleRoot]);
+
+        pBlock->nNonce = nNonce;
+        pBlock->UpdateTime();
+        pBlock->print(); // print pre-signed block to log, will print signed block in Accept()
+
+        if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
+        {
+            debug::log(2, "***** Mining LLP: Unable to Sign Legacy Block ", hashMerkleRoot.ToString().substr(0, 20));
+            return false;
+        }
+
+        return true;
+    }
+
+
+    /** validates the block for the derived miner class. **/
     bool LegacyMiner::validate_block(const uint512_t& hashMerkleRoot)
     {
         Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[hashMerkleRoot]);
@@ -133,25 +153,6 @@ namespace LLP
 
         /* Block is valid - Tell the wallet to keep this key */
         pMiningKey->KeepKey();
-
-        return true;
-    }
-
-
-    /** validates the block for the derived miner class. **/
-    bool LegacyMiner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
-    {
-        Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[hashMerkleRoot]);
-
-        pBlock->nNonce = nNonce;
-        pBlock->UpdateTime();
-        pBlock->print(); // print pre-signed block to log, will print signed block in Accept()
-
-        if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
-        {
-            debug::log(2, "***** Mining LLP: Unable to Sign Legacy Block ", hashMerkleRoot.ToString().substr(0, 20));
-            return false;
-        }
 
         return true;
     }

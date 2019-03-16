@@ -131,27 +131,6 @@ namespace LLP
      }
 
 
-    /* Validates the block for the derived miner class. */
-    bool TritiumMiner::validate_block(const uint512_t& hashMerkleRoot)
-    {
-        /* Create the pointer to the heap. */
-        TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
-
-        /* Check block for inconsistencies. */
-        if(!pBlock->Check())
-            return false;
-
-        /* Check block for proof of work requirements. */
-        if(!pBlock->VerifyWork())
-            return false;
-
-        /* Validate the block through the process method. */
-        TritiumNode::Process(*pBlock, nullptr);
-
-        return true;
-    }
-
-
      /** validates the block for the derived miner class. **/
      bool TritiumMiner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
      {
@@ -169,7 +148,7 @@ namespace LLP
          if(!TAO::API::accounts.Locked(nSession, PIN))
             return debug::error(FUNCTION, "No unlocked account available");
 
-         /* Ateempt to get the sigchain. */
+         /* Attempt to get the sigchain. */
          TAO::Ledger::SignatureChain* pSigChain;
          if(!TAO::API::accounts.GetAccount(nSession, pSigChain))
             return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
@@ -179,11 +158,7 @@ namespace LLP
          LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
          /* Generate the EC Key and new block signature. */
-         #if defined USE_FALCON
-         LLC::FLKey key;
-         #else
-         LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-         #endif
+         LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
          if(!key.SetSecret(vchSecret, true)
          || !pBlock->GenerateSignature(key))
          {
@@ -193,6 +168,27 @@ namespace LLP
 
          return true;
      }
+
+
+    /* Validates the block for the derived miner class. */
+    bool TritiumMiner::validate_block(const uint512_t& hashMerkleRoot)
+    {
+        /* Create the pointer to the heap. */
+        TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
+
+        /* Check block for inconsistencies. */
+        if(!pBlock->Check())
+            return false;
+
+        /* Check block for proof of work requirements. */
+        if(!pBlock->VerifyWork())
+            return false;
+
+        /* Process the block and relay to network if it gets accepted into main chain. */
+        TritiumNode::Process(*pBlock, nullptr);
+
+        return true;
+    }
 
 
      /*  Determines if the mining wallet is unlocked. */

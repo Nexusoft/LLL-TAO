@@ -541,16 +541,16 @@ namespace LLP
                 /* Read the block state from disk. */
                 if(LLD::legDB->ReadBlock(hashBlock, state))
                 {
-                    /* If the block state is in the main chain send a good response. */
-                    if(state.IsInMainChain())
+                    /* If the block state is not in main chain, send a orphan response. */
+                    if(!state.IsInMainChain())
                     {
-                        respond(GOOD_BLOCK, PACKET.DATA);
+                        respond(ORPHAN_BLOCK, PACKET.DATA);
                         return true;
                     }
                 }
 
-                /* Block state is not in the main chain, send an orphan response */
-                respond(ORPHAN_BLOCK, PACKET.DATA);
+                /* Block state is in the main chain, send a good response */
+                respond(GOOD_BLOCK, PACKET.DATA);
                 return true;
             }
         }
