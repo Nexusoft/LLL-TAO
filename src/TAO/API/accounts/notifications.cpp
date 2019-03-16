@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/accounts.h>
 
+#include <TAO/Operation/include/output.h>
+
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -67,6 +69,11 @@ namespace TAO
             if(params.find("limit") != params.end())
                 nLimit = atoi(params["limit"].get<std::string>().c_str());
 
+            /* Get verbose levels. */
+            uint32_t nVerbose = 0;
+            if(params.find("verbose") != params.end())
+                nVerbose = atoi(params["verbose"].get<std::string>().c_str());
+
             /* Start with sequence 0 (chronological order). */
             uint32_t nSequence = 0;
 
@@ -93,12 +100,23 @@ namespace TAO
                 obj["version"]   = tx.nVersion;
                 obj["sequence"]  = tx.nSequence;
                 obj["timestamp"] = tx.nTimestamp;
-                obj["genesis"]   = tx.hashGenesis.ToString();
-                obj["nexthash"]  = tx.hashNext.ToString();
-                obj["prevhash"]  = tx.hashPrevTx.ToString();
-                obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
-                obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
+
+                /* Genesis and hashes are verbose 1 and up. */
+                if(nVerbose >= 1)
+                {
+                    obj["genesis"]   = tx.hashGenesis.ToString();
+                    obj["nexthash"]  = tx.hashNext.ToString();
+                    obj["prevhash"]  = tx.hashPrevTx.ToString();
+                }
+
+                /* Signatures and public keys are verbose level 2 and up. */
+                if(nVerbose >= 2)
+                {
+                    obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
+                    obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
+                }
                 obj["hash"]      = tx.GetHash().ToString();
+                obj["operation"]  = TAO::Operation::Output(tx);
 
                 ret.push_back(obj);
 

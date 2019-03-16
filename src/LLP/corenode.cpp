@@ -146,10 +146,6 @@ namespace LLP
         /* Push a response. */
         PushResponse(200, ret.dump());
 
-        /* Handle a connection close header. */
-        if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "close")
-            return false;
-
         return true;
     }
 
