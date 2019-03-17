@@ -37,6 +37,12 @@ int main(int argc, char **argv)
     TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("colin", "passing");
     uint512_t hashGenerate = user->Generate(0, "1234");
 
+    debug::log(0, hashGenerate.ToString());
+
+    uint512_t hashGenerate2 = user->Generate(0, "1234");
+
+    debug::log(0, hashGenerate2.ToString());
+
     runtime::timer timer;
     timer.Start();
     LLC::FLKey key;

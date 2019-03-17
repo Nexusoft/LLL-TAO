@@ -17,9 +17,7 @@ ________________________________________________________________________________
 
 #include <string>
 
-#include <LLC/hash/SK.h>
-#include <LLC/hash/macro.h>
-#include <LLC/hash/argon2.h>
+#include <LLC/types/uint1024.h>
 
 #include <Util/include/allocators.h>
 
@@ -50,8 +48,8 @@ namespace TAO
             /** Secure allocater to represent the password of this signature chain. **/
             SecureString strPassword;
 
-        public:
 
+        public:
 
             /** Constructor to generate Keychain
              *
@@ -72,65 +70,7 @@ namespace TAO
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            uint256_t Genesis()
-            {
-                /* Generate the Secret Phrase */
-                std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
-
-                // low-level API
-                std::vector<uint8_t> vHash(32);
-                std::vector<uint8_t> vSalt(16); //TODO: possibly make this your birthday (required in API)
-
-                /* Create the hash context. */
-                argon2_context context =
-                {
-                    /* Hash Return Value. */
-                    &vHash[0],
-                    32,
-
-                    /* Password input data. */
-                    &vUsername[0],
-                    vUsername.size(),
-
-                    /* The salt for usernames */
-                    &vSalt[0],
-                    vSalt.size(),
-
-                    /* Optional secret data */
-                    NULL, 0,
-
-                    /* Optional associated data */
-                    NULL, 0,
-
-                    /* Computational Cost. */
-                    9,
-
-                    /* Memory Cost (64 MB). */
-                    (1 << 16),
-
-                    /* The number of threads and lanes */
-                    1, 1,
-
-                    /* Algorithm Version */
-                    ARGON2_VERSION_13,
-
-                    /* Custom memory allocation / deallocation functions. */
-                    NULL, NULL,
-
-                    /* By default only internal memory is cleared (pwd is not wiped) */
-                    ARGON2_DEFAULT_FLAGS
-                };
-
-                /* Run the argon2 computation. */
-                if(argon2i_ctx(&context) != ARGON2_OK)
-                    return 0;
-
-                /* Set the bytes for the key. */
-                uint256_t hashKey;
-                hashKey.SetBytes(vHash);
-
-                return hashKey;
-            }
+            uint256_t Genesis();
 
 
             /** Genesis
@@ -139,65 +79,7 @@ namespace TAO
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            static uint256_t Genesis(const SecureString strUsername)
-            {
-                /* Generate the Secret Phrase */
-                std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
-
-                // low-level API
-                std::vector<uint8_t> vHash(32);
-                std::vector<uint8_t> vSalt(16); //TODO: possibly make this your birthday (required in API)
-
-                /* Create the hash context. */
-                argon2_context context =
-                {
-                    /* Hash Return Value. */
-                    &vHash[0],
-                    32,
-
-                    /* Password input data. */
-                    &vUsername[0],
-                    vUsername.size(),
-
-                    /* The salt for usernames */
-                    &vSalt[0],
-                    vSalt.size(),
-
-                    /* Optional secret data */
-                    NULL, 0,
-
-                    /* Optional associated data */
-                    NULL, 0,
-
-                    /* Computational Cost. */
-                    9,
-
-                    /* Memory Cost (64 MB). */
-                    (1 << 16),
-
-                    /* The number of threads and lanes */
-                    1, 1,
-
-                    /* Algorithm Version */
-                    ARGON2_VERSION_13,
-
-                    /* Custom memory allocation / deallocation functions. */
-                    NULL, NULL,
-
-                    /* By default only internal memory is cleared (pwd is not wiped) */
-                    ARGON2_DEFAULT_FLAGS
-                };
-
-                /* Run the argon2 computation. */
-                if(argon2i_ctx(&context) != ARGON2_OK)
-                    return 0;
-
-                /* Set the bytes for the key. */
-                uint256_t hashKey;
-                hashKey.SetBytes(vHash);
-
-                return hashKey;
-            }
+            static uint256_t Genesis(const SecureString strUsername);
 
 
             /** Generate
@@ -210,69 +92,7 @@ namespace TAO
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            uint512_t Generate(uint32_t nKeyID, SecureString strSecret)
-            {
-                /* Generate the Secret Phrase */
-                std::vector<uint8_t> vPassword(strPassword.begin(), strPassword.end());
-                vPassword.insert(vPassword.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
-
-                /* Generate the secret data. */
-                std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
-                vSecret.insert(vSecret.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
-
-                // low-level API
-                std::vector<uint8_t> hash(64);
-
-                /* Create the hash context. */
-                argon2_context context =
-                {
-                    /* Hash Return Value. */
-                    &hash[0],
-                    64,
-
-                    /* Password input data. */
-                    &vPassword[0],
-                    vPassword.size(),
-
-                    /* The secret phrase (PIN) as the salt. */
-                    &vSecret[0],
-                    vSecret.size(),
-
-                    /* Optional secret data */
-                    NULL, 0,
-
-                    /* Optional associated data */
-                    NULL, 0,
-
-                    /* Computational Cost. */
-                    9,
-
-                    /* Memory Cost (64 MB). */
-                    (1 << 16),
-
-                    /* The number of threads and lanes */
-                    1, 1,
-
-                    /* Algorithm Version */
-                    ARGON2_VERSION_13,
-
-                    /* Custom memory allocation / deallocation functions. */
-                    NULL, NULL,
-
-                    /* By default only internal memory is cleared (pwd is not wiped) */
-                    ARGON2_DEFAULT_FLAGS
-                };
-
-                /* Run the argon2 computation. */
-                if(argon2i_ctx(&context) != ARGON2_OK)
-                    return 0;
-
-                /* Set the bytes for the key. */
-                uint512_t hashKey;
-                hashKey.SetBytes(hash);
-
-                return hashKey;
-            }
+            uint512_t Generate(uint32_t nKeyID, SecureString strSecret);
         };
     }
 }

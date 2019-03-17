@@ -11,7 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <TAO/API/include/accounts.h>
+
+#include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -38,6 +43,32 @@ namespace TAO
 
             /* Extract the session. */
             uint64_t nSession = std::stoull(params["session"].get<std::string>());
+            if(!mapSessions.count(nSession))
+                throw APIException(-26, "Session not found");
+
+            /* Get the sigchain from map of users. */
+            TAO::Ledger::SignatureChain* user = mapSessions[nSession];
+
+            /* Get the genesis ID. */
+            uint256_t hashGenesis = user->Genesis();
+
+            /* Get the last transaction. */
+            uint512_t hashLast;
+            if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+                throw APIException(-27, "No previous transaction found");
+
+            /* Get previous transaction */
+            TAO::Ledger::Transaction txPrev;
+            if(!LLD::legDB->ReadTx(hashLast, txPrev))
+                throw APIException(-27, "No previous transaction found");
+
+            /* Genesis Transaction. */
+            TAO::Ledger::Transaction tx;
+            tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str()));
+
+            /* Check for consistency. */
+            if(txPrev.hashNext != tx.hashNext)
+                throw APIException(-28, "Invalid PIN");
 
             /* Extract the PIN. */
             pairUnlocked = std::make_pair(nSession, params["pin"].get<std::string>().c_str());

@@ -238,6 +238,7 @@ OBJS+=  build/LLC_skein.o \
 		build/Ledger_difficulty.o \
 		build/Ledger_mempool.o \
 		build/Ledger_prime.o \
+		build/Ledger_sigchain.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \
 		build/Ledger_transaction.o \

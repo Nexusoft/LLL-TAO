@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/include/create.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -44,6 +45,10 @@ namespace TAO
             if(params.find("password") == params.end())
                 throw APIException(-24, "Missing Password");
 
+            /* Check for pin parameter. */
+            if(params.find("pin") == params.end())
+                throw APIException(-24, "Missing PIN");
+
             /* Create the sigchain. */
             TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
 
@@ -51,7 +56,6 @@ namespace TAO
             uint256_t hashGenesis = user->Genesis();
 
             /* Check for duplicates in ledger db. */
-            TAO::Ledger::Transaction tx;
             if(!LLD::legDB->HasGenesis(hashGenesis))
             {
                 /* Check the memory pool (TODO: Paul maybe you can think of a more efficient way to solve this chicken and egg). */
@@ -62,6 +66,26 @@ namespace TAO
 
                     throw APIException(-26, "Account doesn't exists");
                 }
+            }
+            else
+            {
+                /* Get the last transaction. */
+                uint512_t hashLast;
+                if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+                    throw APIException(-27, "No previous transaction found");
+
+                /* Get previous transaction */
+                TAO::Ledger::Transaction txPrev;
+                if(!LLD::legDB->ReadTx(hashLast, txPrev))
+                    throw APIException(-27, "No previous transaction found");
+
+                /* Genesis Transaction. */
+                TAO::Ledger::Transaction tx;
+                tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str()));
+
+                /* Check for consistency. */
+                if(txPrev.hashNext != tx.hashNext)
+                    throw APIException(-28, "Invalid credentials");
             }
 
             /* Check the sessions. */
