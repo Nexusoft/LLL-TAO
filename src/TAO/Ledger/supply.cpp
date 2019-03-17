@@ -35,13 +35,13 @@ namespace TAO
 
 
         /* Calculate the Compounded amount of NXS to be released over the (nInterval) minutes. */
-        uint64_t SubsidyInterval(const uint32_t nMinutes, uint32_t nInterval)
+        uint64_t SubsidyInterval(const uint32_t nMinutes, const uint32_t nInterval)
         {
+            /* Tally of total money supply. */
             uint64_t nMoneySupply = 0;
-            nInterval += nMinutes;
 
             /* Compound all the minutes of the interval and types. */
-            for(uint32_t nMinute = nMinutes; nMinute < nInterval; ++nMinute)
+            for(uint32_t nMinute = nMinutes; nMinute < (nInterval + nMinutes); ++nMinute)
             {
                 for(uint32_t nType = 0; nType < 3; ++nType)
                 {

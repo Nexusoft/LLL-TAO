@@ -65,7 +65,7 @@ namespace TAO
          *  @return The subisdy for given interval.
          *
          **/
-        uint64_t SubsidyInterval(const uint32_t nMinutes, uint32_t nInterval);
+        uint64_t SubsidyInterval(const uint32_t nMinutes, const uint32_t nInterval);
 
 
         /** CompoundSubsidy
