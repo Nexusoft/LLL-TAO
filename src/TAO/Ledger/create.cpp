@@ -127,18 +127,17 @@ namespace TAO
 
 
         /* Create a new block object from the chain.*/
-        static TAO::Ledger::TritiumBlock blockCache;
+        static TAO::Ledger::TritiumBlock blockCache[3];
         bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block, uint64_t nExtraNonce)
         {
             /* Set the block to null. */
             block.SetNull();
 
             /* Handle if the block is cached. */
-            if(ChainState::stateBest.load().GetHash() == blockCache.hashPrevBlock
-            && nChannel == blockCache.nChannel)
+            if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].hashPrevBlock)
             {
                 /* Set the block to cached block. */
-                block = blockCache;
+                block = blockCache[nChannel];
 
                 /* Use the extra nonce if block is coinbase. */
                 if(nChannel != 0)
@@ -268,7 +267,7 @@ namespace TAO
                 block.nTime          = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
 
                 /* Store the cached block. */
-                blockCache = block;
+                blockCache[nChannel] = block;
 
             }
 
