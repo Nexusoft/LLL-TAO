@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <Util/include/allocators.h>
+#include <Util/include/mutex.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -42,15 +43,18 @@ namespace TAO
         {
 
             /** Secure allocator to represent the username of this signature chain. **/
-            SecureString strUsername;
+            const SecureString strUsername;
 
 
             /** Secure allocater to represent the password of this signature chain. **/
-            SecureString strPassword;
+            const SecureString strPassword;
 
+
+            /* Internal mutex for caches. */
+            mutable std::mutex MUTEX;
 
             /** Internal sigchain cache (to not exhaust ourselves regenerating the same key). **/
-            std::pair<uint32_t, SecureString> pairCache;
+            mutable std::pair<uint32_t, SecureString> pairCache;
 
         public:
 
@@ -59,9 +63,10 @@ namespace TAO
              * @param[in] strUsernameIn The username to seed the signature chain
              * @param[in] strPasswordIn The password to seed the signature chain
              **/
-            SignatureChain(SecureString strUsernameIn, SecureString strPasswordIn)
+            SignatureChain(const SecureString& strUsernameIn, const SecureString& strPasswordIn)
             : strUsername(strUsernameIn.c_str())
             , strPassword(strPasswordIn.c_str())
+            , MUTEX()
             , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
             {
 
@@ -74,7 +79,7 @@ namespace TAO
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            uint256_t Genesis();
+            uint256_t Genesis() const;
 
 
             /** Genesis
@@ -83,7 +88,7 @@ namespace TAO
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            static uint256_t Genesis(const SecureString strUsername);
+            static uint256_t Genesis(const SecureString& strUsername);
 
 
             /** Generate
@@ -97,7 +102,7 @@ namespace TAO
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            uint512_t Generate(uint32_t nKeyID, SecureString strSecret, bool fCache = true);
+            uint512_t Generate(const uint32_t nKeyID, const SecureString& strSecret, bool fCache = true) const;
         };
     }
 }

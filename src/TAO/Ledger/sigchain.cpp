@@ -28,7 +28,7 @@ namespace TAO
     {
 
         /* This function is responsible for generating the genesis ID.*/
-        uint256_t SignatureChain::Genesis()
+        uint256_t SignatureChain::Genesis() const
         {
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
@@ -90,7 +90,7 @@ namespace TAO
 
 
         /* This function is responsible for generating the genesis ID.*/
-        uint256_t SignatureChain::Genesis(const SecureString strUsername)
+        uint256_t SignatureChain::Genesis(const SecureString& strUsername)
         {
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
@@ -155,21 +155,24 @@ namespace TAO
          *  This function is responsible for genearting the private key in the keychain of a specific account.
          *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
          */
-        uint512_t SignatureChain::Generate(uint32_t nKeyID, SecureString strSecret, bool fCache)
+        uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strSecret, bool fCache) const
         {
-            /* Handle cache to stop exhaustive hash key generation. */
-            if(fCache && nKeyID == pairCache.first)
-            {
-                /* Create the hash key object. */
-                uint512_t hashKey;
+            { LOCK(MUTEX);
 
-                /* Get the bytes from secure allocator. */
-                std::vector<uint8_t> vBytes(pairCache.second.begin(), pairCache.second.end());
+                /* Handle cache to stop exhaustive hash key generation. */
+                if(fCache && nKeyID == pairCache.first)
+                {
+                    /* Create the hash key object. */
+                    uint512_t hashKey;
 
-                /* Set the bytes of return value. */
-                hashKey.SetBytes(vBytes);
+                    /* Get the bytes from secure allocator. */
+                    std::vector<uint8_t> vBytes(pairCache.second.begin(), pairCache.second.end());
 
-                return hashKey;
+                    /* Set the bytes of return value. */
+                    hashKey.SetBytes(vBytes);
+
+                    return hashKey;
+                }
             }
 
             /* Generate the Secret Phrase */
@@ -228,10 +231,12 @@ namespace TAO
                 return 0;
 
             /* Set the cache items. */
-            if(fCache)
-            {
-                pairCache.first  = nKeyID;
-                pairCache.second = SecureString(hash.begin(), hash.end());
+            { LOCK(MUTEX);
+                if(fCache)
+                {
+                    pairCache.first  = nKeyID;
+                    pairCache.second = SecureString(hash.begin(), hash.end());
+                }
             }
 
             /* Set the bytes for the key. */

@@ -42,10 +42,11 @@ namespace TAO
 
 
         /* Create a new transaction object from signature chain. */
-        bool CreateTransaction(TAO::Ledger::SignatureChain* user, SecureString pin, TAO::Ledger::Transaction& tx)
+        bool CreateTransaction(const TAO::Ledger::SignatureChain* user, const SecureString& pin, TAO::Ledger::Transaction& tx)
         {
+
             /* Get the last transaction. */
-            uint512_t hashLast;
+            uint512_t hashLast = 0;
             if(LLD::legDB->ReadLast(user->Genesis(), hashLast))
             {
                 /* Get previous transaction */
@@ -127,17 +128,17 @@ namespace TAO
 
 
         /* Create a new block object from the chain.*/
-        static TAO::Ledger::TritiumBlock blockCache[3];
-        bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block, uint64_t nExtraNonce)
+        static memory::atomic<TAO::Ledger::TritiumBlock> blockCache[3];
+        bool CreateBlock(const TAO::Ledger::SignatureChain* user, const SecureString& pin, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce)
         {
             /* Set the block to null. */
             block.SetNull();
 
             /* Handle if the block is cached. */
-            if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].hashPrevBlock)
+            if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].load().hashPrevBlock)
             {
                 /* Set the block to cached block. */
-                block = blockCache[nChannel];
+                block = blockCache[nChannel].load();
 
                 /* Use the extra nonce if block is coinbase. */
                 if(nChannel != 0)
@@ -162,9 +163,16 @@ namespace TAO
 
                 /* Add the transactions to the block. */
                 AddTransactions(block);
+
+                /* Calculate the new bits. */
+                block.nChannel       = nChannel;
+                block.nBits          = GetNextTargetRequired(ChainState::stateBest.load(), nChannel, false);
             }
             else
             {
+                /* Cache the best chain before processing. */
+                const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
+
                 /* Modulate the Block Versions if they correspond to their proper time stamp */
                 if(runtime::unifiedtimestamp() >= (config::fTestNet ?
                     TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] :
@@ -245,7 +253,7 @@ namespace TAO
                     block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
 
                     /* The total to be credited. */
-                    uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
+                    uint64_t  nCredit = GetCoinbaseReward(stateBest, nChannel, 0);
                     block.producer << nCredit;
 
                     /* The extra nonce to coinbase. */
@@ -259,16 +267,15 @@ namespace TAO
                 AddTransactions(block);
 
                 /** Populate the Block Data. **/
-                block.hashPrevBlock   = ChainState::stateBest.load().GetHash();
-                block.nChannel       = nChannel;
-                block.nHeight        = ChainState::stateBest.load().nHeight + 1;
-                block.nBits          = GetNextTargetRequired(ChainState::stateBest.load(), nChannel, false);
-                block.nNonce         = 1;
-                block.nTime          = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
+                block.hashPrevBlock   = stateBest.GetHash();
+                block.nChannel        = nChannel;
+                block.nHeight         = stateBest.nHeight + 1;
+                block.nBits           = GetNextTargetRequired(stateBest, nChannel, false);
+                block.nNonce          = 1;
+                block.nTime           = static_cast<uint32_t>(std::max(stateBest.GetBlockTime() + 1, runtime::unifiedtimestamp()));
 
                 /* Store the cached block. */
-                blockCache[nChannel] = block;
-
+                blockCache[nChannel].store(block);
             }
 
             return true;

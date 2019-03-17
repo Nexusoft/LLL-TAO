@@ -215,43 +215,43 @@ namespace TAO
 
 
             /* Check all the transactions. */
-            for(const auto& tx : vtx)
+            for(const auto& proof : vtx)
             {
 
                 /* Insert txid into set to check for duplicates. */
-                uniqueTx.insert(tx.second);
+                uniqueTx.insert(proof.second);
 
                 /* Push back this hash for merkle root. */
-                vHashes.push_back(tx.second);
+                vHashes.push_back(proof.second);
 
                 /* Basic checks for legacy transactions. */
-                if(tx.first == TYPE::LEGACY_TX)
+                if(proof.first == TYPE::LEGACY_TX)
                 {
                     /* Check the memory pool. */
-                    Legacy::Transaction txMem;
-                    if(!mempool.Get(tx.second, txMem))
+                    Legacy::Transaction tx;
+                    if(!mempool.Get(proof.second, tx))
                     {
-                        missingTx.push_back(tx);
+                        missingTx.push_back(proof);
                         continue;
                     }
 
                     /* Check the transaction timestamp. */
-                    if(GetBlockTime() < (uint64_t) txMem.nTime)
+                    if(GetBlockTime() < (uint64_t) tx.nTime)
                         return debug::error(FUNCTION, "block timestamp earlier than transaction timestamp");
 
                     /* Check the transaction for validitity. */
-                    if(!txMem.CheckTransaction())
+                    if(!tx.CheckTransaction())
                         return debug::error(FUNCTION, "check transaction failed.");
                 }
 
                 /* Basic checks for tritium transactions. */
-                else if(tx.first == TYPE::TRITIUM_TX)
+                else if(proof.first == TYPE::TRITIUM_TX)
                 {
                     /* Check the memory pool. */
-                    TAO::Ledger::Transaction txMem;
-                    if(!mempool.Has(tx.second))
+                    TAO::Ledger::Transaction tx;
+                    if(!mempool.Has(proof.second))
                     {
-                        missingTx.push_back(tx);
+                        missingTx.push_back(proof);
                         continue;
                     }
                 }
