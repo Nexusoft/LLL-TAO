@@ -29,6 +29,7 @@ void Verifier()
     }
 }
 
+
 int main(int argc, char **argv)
 {
     debug::log(0, FUNCTION, "Running live tests");
@@ -61,12 +62,15 @@ int main(int argc, char **argv)
 
     vchPubKey = key.GetPubKey();
 
-    debug::log(0, "PubSize ", vchPubKey.size());
+
 
     LLC::FLKey key2;
     key2.SetPubKey(vchPubKey);
     if(!key2.Verify(vchMessage, vchSignature))
         debug::error(FUNCTION, "failed to verify");
+
+    nElapsed = timer.ElapsedMicroseconds();
+    debug::log(0, FUNCTION, "Verified in ", nElapsed, " microseconds");
 
     debug::log(0, FUNCTION, "Passed (", vchPubKey.size() + vchSignature.size(), " bytes)");
 

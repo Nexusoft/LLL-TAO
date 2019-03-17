@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
+#include <LLC/hash/argon2.h>
 
 #include <Util/include/allocators.h>
 
@@ -74,13 +75,128 @@ namespace TAO
             uint256_t Genesis()
             {
                 /* Generate the Secret Phrase */
-                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
+                std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
 
-                /* Generate the Hashes */
-                uint1024_t hashSecret = LLC::SK1024(vSecret);
+                // low-level API
+                std::vector<uint8_t> vHash(32);
+                std::vector<uint8_t> vSalt(16); //TODO: possibly make this your birthday (required in API)
 
-                /* Generate the Final Root Hash. */
-                return LLC::SK256(hashSecret.GetBytes());
+                /* Create the hash context. */
+                argon2_context context =
+                {
+                    /* Hash Return Value. */
+                    &vHash[0],
+                    32,
+
+                    /* Password input data. */
+                    &vUsername[0],
+                    vUsername.size(),
+
+                    /* The salt for usernames */
+                    &vSalt[0],
+                    vSalt.size(),
+
+                    /* Optional secret data */
+                    NULL, 0,
+
+                    /* Optional associated data */
+                    NULL, 0,
+
+                    /* Computational Cost. */
+                    9,
+
+                    /* Memory Cost (64 MB). */
+                    (1 << 16),
+
+                    /* The number of threads and lanes */
+                    1, 1,
+
+                    /* Algorithm Version */
+                    ARGON2_VERSION_13,
+
+                    /* Custom memory allocation / deallocation functions. */
+                    NULL, NULL,
+
+                    /* By default only internal memory is cleared (pwd is not wiped) */
+                    ARGON2_DEFAULT_FLAGS
+                };
+
+                /* Run the argon2 computation. */
+                if(argon2i_ctx(&context) != ARGON2_OK)
+                    return 0;
+
+                /* Set the bytes for the key. */
+                uint256_t hashKey;
+                hashKey.SetBytes(vHash);
+
+                return hashKey;
+            }
+
+
+            /** Genesis
+             *
+             *  This function is responsible for generating the genesis ID.
+             *
+             *  @return The 512 bit hash of this key in the series.
+             **/
+            static uint256_t Genesis(const SecureString strUsername)
+            {
+                /* Generate the Secret Phrase */
+                std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
+
+                // low-level API
+                std::vector<uint8_t> vHash(32);
+                std::vector<uint8_t> vSalt(16); //TODO: possibly make this your birthday (required in API)
+
+                /* Create the hash context. */
+                argon2_context context =
+                {
+                    /* Hash Return Value. */
+                    &vHash[0],
+                    32,
+
+                    /* Password input data. */
+                    &vUsername[0],
+                    vUsername.size(),
+
+                    /* The salt for usernames */
+                    &vSalt[0],
+                    vSalt.size(),
+
+                    /* Optional secret data */
+                    NULL, 0,
+
+                    /* Optional associated data */
+                    NULL, 0,
+
+                    /* Computational Cost. */
+                    9,
+
+                    /* Memory Cost (64 MB). */
+                    (1 << 16),
+
+                    /* The number of threads and lanes */
+                    1, 1,
+
+                    /* Algorithm Version */
+                    ARGON2_VERSION_13,
+
+                    /* Custom memory allocation / deallocation functions. */
+                    NULL, NULL,
+
+                    /* By default only internal memory is cleared (pwd is not wiped) */
+                    ARGON2_DEFAULT_FLAGS
+                };
+
+                /* Run the argon2 computation. */
+                if(argon2i_ctx(&context) != ARGON2_OK)
+                    return 0;
+
+                /* Set the bytes for the key. */
+                uint256_t hashKey;
+                hashKey.SetBytes(vHash);
+
+                return hashKey;
             }
 
 
@@ -96,28 +212,66 @@ namespace TAO
              **/
             uint512_t Generate(uint32_t nKeyID, SecureString strSecret)
             {
-                /* Serialize the Key ID (Big Endian). */
-                std::vector<uint8_t> vKeyID((uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
-
                 /* Generate the Secret Phrase */
-                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
-                vSecret.insert(vSecret.end(), vKeyID.begin(), vKeyID.end());
-                vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
+                std::vector<uint8_t> vPassword(strPassword.begin(), strPassword.end());
+                vPassword.insert(vPassword.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
                 /* Generate the secret data. */
-                std::vector<uint8_t> vPin(strSecret.begin(), strSecret.end());
-                vPin.insert(vPin.end(), vKeyID.begin(), vKeyID.end());
+                std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
+                vSecret.insert(vSecret.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
-                /* Generate the Hashes */
-                uint1024_t hashSecret = LLC::SK1024(vSecret);
-                uint1024_t hashPIN    = LLC::SK1024(vPin);
+                // low-level API
+                std::vector<uint8_t> hash(64);
 
-                std::vector<uint8_t> vFinal;
-                vFinal.insert(vFinal.end(), (uint8_t*)&hashSecret, (uint8_t*)&hashSecret + 128);
-                vFinal.insert(vFinal.end(), (uint8_t*)&hashPIN, (uint8_t*)&hashPIN + 128);
+                /* Create the hash context. */
+                argon2_context context =
+                {
+                    /* Hash Return Value. */
+                    &hash[0],
+                    64,
 
-                /* Generate the Final Root Hash. */
-                return LLC::SK512(vFinal);
+                    /* Password input data. */
+                    &vPassword[0],
+                    vPassword.size(),
+
+                    /* The secret phrase (PIN) as the salt. */
+                    &vSecret[0],
+                    vSecret.size(),
+
+                    /* Optional secret data */
+                    NULL, 0,
+
+                    /* Optional associated data */
+                    NULL, 0,
+
+                    /* Computational Cost. */
+                    9,
+
+                    /* Memory Cost (64 MB). */
+                    (1 << 16),
+
+                    /* The number of threads and lanes */
+                    1, 1,
+
+                    /* Algorithm Version */
+                    ARGON2_VERSION_13,
+
+                    /* Custom memory allocation / deallocation functions. */
+                    NULL, NULL,
+
+                    /* By default only internal memory is cleared (pwd is not wiped) */
+                    ARGON2_DEFAULT_FLAGS
+                };
+
+                /* Run the argon2 computation. */
+                if(argon2i_ctx(&context) != ARGON2_OK)
+                    return 0;
+
+                /* Set the bytes for the key. */
+                uint512_t hashKey;
+                hashKey.SetBytes(hash);
+
+                return hashKey;
             }
         };
     }
