@@ -163,10 +163,6 @@ namespace TAO
 
                 /* Add the transactions to the block. */
                 AddTransactions(block);
-
-                /* Calculate the new bits. */
-                block.nChannel       = nChannel;
-                block.nBits          = GetNextTargetRequired(ChainState::stateBest.load(), nChannel, false);
             }
             else
             {
