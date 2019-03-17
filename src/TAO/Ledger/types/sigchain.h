@@ -53,8 +53,13 @@ namespace TAO
             /* Internal mutex for caches. */
             mutable std::mutex MUTEX;
 
+
             /** Internal sigchain cache (to not exhaust ourselves regenerating the same key). **/
             mutable std::pair<uint32_t, SecureString> pairCache;
+
+
+            /** Internal genesis hash. **/
+            const uint256_t hashGenesis;
 
         public:
 
@@ -68,8 +73,8 @@ namespace TAO
             , strPassword(strPasswordIn.c_str())
             , MUTEX()
             , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+            , hashGenesis(SignatureChain::Genesis(strUsernameIn))
             {
-
             }
 
 

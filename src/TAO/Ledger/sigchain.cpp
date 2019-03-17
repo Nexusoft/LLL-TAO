@@ -27,65 +27,10 @@ namespace TAO
     namespace Ledger
     {
 
-        /* This function is responsible for generating the genesis ID.*/
+        /* This function is responsible for returning the genesis ID.*/
         uint256_t SignatureChain::Genesis() const
         {
-            /* Generate the Secret Phrase */
-            std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
-
-            // low-level API
-            std::vector<uint8_t> vHash(32);
-            std::vector<uint8_t> vSalt(16); //TODO: possibly make this your birthday (required in API)
-
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &vHash[0],
-                32,
-
-                /* Password input data. */
-                &vUsername[0],
-                vUsername.size(),
-
-                /* The salt for usernames */
-                &vSalt[0],
-                vSalt.size(),
-
-                /* Optional secret data */
-                NULL, 0,
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                3,
-
-                /* Memory Cost (64 MB). */
-                (1 << 16),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            if(argon2i_ctx(&context) != ARGON2_OK)
-                return 0;
-
-            /* Set the bytes for the key. */
-            uint256_t hashKey;
-            hashKey.SetBytes(vHash);
-
-            return hashKey;
+            return hashGenesis;
         }
 
 
@@ -121,10 +66,10 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                3,
+                11,
 
-                /* Memory Cost (64 MB). */
-                (1 << 16),
+                /* Memory Cost (256 MB). */
+                (1 << 18),
 
                 /* The number of threads and lanes */
                 1, 1,
