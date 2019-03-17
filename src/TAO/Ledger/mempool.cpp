@@ -134,6 +134,25 @@ namespace TAO
             return true;
         }
 
+        /* Get by genesis. */
+        bool Mempool::Get(uint256_t hashGenesis, TAO::Ledger::Transaction& tx) const
+        {
+            LOCK(MUTEX);
+
+            /* Check through the ledger map for the genesis. */
+            for(const auto& txMap : mapLedger)
+            {
+                if(txMap.second.hashGenesis == hashGenesis)
+                {
+                    tx = txMap.second;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+
 
         /* Checks if a transaction exists. */
         bool Mempool::Has(const uint512_t& hashTx) const

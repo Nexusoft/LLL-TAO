@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/mempool.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -52,15 +53,30 @@ namespace TAO
             /* Get the genesis ID. */
             uint256_t hashGenesis = user->Genesis();
 
-            /* Get the last transaction. */
-            uint512_t hashLast;
-            if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
-                throw APIException(-27, "No previous transaction found");
-
-            /* Get previous transaction */
+            /* Check for duplicates in ledger db. */
             TAO::Ledger::Transaction txPrev;
-            if(!LLD::legDB->ReadTx(hashLast, txPrev))
-                throw APIException(-27, "No previous transaction found");
+            if(!LLD::legDB->HasGenesis(hashGenesis))
+            {
+                /* Check the memory pool and compare hashes. */
+                if(!TAO::Ledger::mempool.Has(hashGenesis))
+                    throw APIException(-26, "Account doesn't exists");
+
+                /* Get the memory pool tranasction. */
+                if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
+                    throw APIException(-26, "Couldn't get transaction");
+            }
+            else
+            {
+                /* Get the last transaction. */
+                uint512_t hashLast;
+                if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+                    throw APIException(-27, "No previous transaction found");
+
+                /* Get previous transaction */
+                TAO::Ledger::Transaction txPrev;
+                if(!LLD::legDB->ReadTx(hashLast, txPrev))
+                    throw APIException(-27, "No previous transaction found");
+            }
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;

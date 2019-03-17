@@ -56,9 +56,10 @@ namespace TAO
             uint256_t hashGenesis = user->Genesis();
 
             /* Check for duplicates in ledger db. */
+            TAO::Ledger::Transaction txPrev;
             if(!LLD::legDB->HasGenesis(hashGenesis))
             {
-                /* Check the memory pool (TODO: Paul maybe you can think of a more efficient way to solve this chicken and egg). */
+                /* Check the memory pool and compare hashes. */
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
                 {
                     delete user;
@@ -66,6 +67,10 @@ namespace TAO
 
                     throw APIException(-26, "Account doesn't exists");
                 }
+
+                /* Get the memory pool tranasction. */
+                if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
+                    throw APIException(-26, "Couldn't get transaction");
             }
             else
             {
@@ -78,15 +83,15 @@ namespace TAO
                 TAO::Ledger::Transaction txPrev;
                 if(!LLD::legDB->ReadTx(hashLast, txPrev))
                     throw APIException(-27, "No previous transaction found");
-
-                /* Genesis Transaction. */
-                TAO::Ledger::Transaction tx;
-                tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str()));
-
-                /* Check for consistency. */
-                if(txPrev.hashNext != tx.hashNext)
-                    throw APIException(-28, "Invalid credentials");
             }
+
+            /* Genesis Transaction. */
+            TAO::Ledger::Transaction tx;
+            tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str()));
+
+            /* Check for consistency. */
+            if(txPrev.hashNext != tx.hashNext)
+                throw APIException(-28, "Invalid credentials");
 
             /* Check the sessions. */
             for(auto session = mapSessions.begin(); session != mapSessions.end(); ++ session)
