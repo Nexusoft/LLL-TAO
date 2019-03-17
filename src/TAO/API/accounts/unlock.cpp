@@ -73,7 +73,6 @@ namespace TAO
                     throw APIException(-27, "No previous transaction found");
 
                 /* Get previous transaction */
-                TAO::Ledger::Transaction txPrev;
                 if(!LLD::legDB->ReadTx(hashLast, txPrev))
                     throw APIException(-27, "No previous transaction found");
             }
