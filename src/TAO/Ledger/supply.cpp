@@ -27,7 +27,7 @@ namespace TAO
     {
 
         /* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
-        uint64_t GetSubsidy(uint32_t nMinutes, uint32_t nType)
+        uint64_t GetSubsidy(const uint32_t nMinutes, const uint32_t nType)
         {
             return (((decay[nType][0] * exp(decay[nType][1] * nMinutes))
                 + decay[nType][2]) * (Legacy::COIN / 2.0));
@@ -35,7 +35,7 @@ namespace TAO
 
 
         /* Calculate the Compounded amount of NXS to be released over the (nInterval) minutes. */
-        uint64_t SubsidyInterval(uint32_t nMinutes, uint32_t nInterval)
+        uint64_t SubsidyInterval(const uint32_t nMinutes, uint32_t nInterval)
         {
             uint64_t nMoneySupply = 0;
             nInterval += nMinutes;
@@ -54,7 +54,7 @@ namespace TAO
 
 
         /* Calculate the Compounded amount of NXS that should "ideally" have been created to this minute. */
-        uint64_t CompoundSubsidy(int32_t nMinutes, uint8_t nTypes)
+        uint64_t CompoundSubsidy(const int32_t nMinutes, const uint8_t nTypes)
         {
             uint64_t nMoneySupply = 0;
             for(int nMinute = 1; nMinute <= nMinutes; ++nMinute)
@@ -70,14 +70,14 @@ namespace TAO
 
 
         /* Get the total supply of NXS in the chain from the state. */
-        uint64_t GetMoneySupply(BlockState state)
+        uint64_t GetMoneySupply(const BlockState& state)
         {
             return state.nMoneySupply;
         }
 
 
         /* Get the age of the Nexus blockchain in seconds. */
-        uint32_t GetChainAge(uint64_t nTime)
+        uint32_t GetChainAge(const uint64_t nTime)
         {
             return floor((nTime - (uint64_t)(config::fTestNet ?
                 NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK)) / 60.0);
@@ -85,7 +85,7 @@ namespace TAO
 
 
         /* Get a fractional reward based on time. */
-        uint64_t GetFractionalSubsidy(uint32_t nMinutes, uint8_t nType, double nFraction)
+        uint64_t GetFractionalSubsidy(const uint32_t nMinutes, const uint8_t nType, const double nFraction)
         {
             int nInterval = floor(nFraction);
             double nRemainder   = nFraction - nInterval;
@@ -99,7 +99,7 @@ namespace TAO
 
 
         /* Get the Coinbase Rewards based on the Reserve Balances to keep the Coinbase rewards under the Reserve Production Rates. */
-        uint64_t GetCoinbaseReward(const BlockState& state, uint32_t nChannel, uint8_t nType)
+        uint64_t GetCoinbaseReward(const BlockState& state, const uint32_t nChannel, const uint8_t nType)
         {
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
@@ -149,7 +149,7 @@ namespace TAO
 
 
         /* Release a certain amount of Nexus into the Reserve System at a given Minute of time. */
-        uint64_t ReleaseRewards(uint32_t nTimespan, uint32_t nStart, uint8_t nType)
+        uint64_t ReleaseRewards(const uint32_t nTimespan, const uint32_t nStart, const uint8_t nType)
         {
             uint64_t nSubsidy = 0;
             for(int nMinutes = nStart; nMinutes < (nStart + nTimespan); ++nMinutes)
@@ -162,7 +162,7 @@ namespace TAO
 
 
         /* Get the total amount released into this given reserve by this point in time in the block state */
-        uint64_t GetReleasedReserve(const BlockState& state, uint32_t nChannel, uint8_t nType)
+        uint64_t GetReleasedReserve(const BlockState& state, const uint32_t nChannel, const uint8_t nType)
         {
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
@@ -181,20 +181,6 @@ namespace TAO
                 return 0;
 
             return ReleaseRewards((nMinutes - nLastMinutes), nLastMinutes, nType);
-        }
-
-
-        /* TODO: DEPRECATE THIS METHOD
-         * If the Reserves are Depleted, this Tells a miner if there is a new Time Interval with their Previous Block which would signal new release into reserve.
-         * If for some reason this is a false flag, the block will be rejected by the network for attempting to deplete the reserves past 0 */
-        bool ReleaseAvailable(const BlockState& state, int nChannel)
-        {
-            /* Get Last Block Index [1st block back in Channel]. **/
-            BlockState last = state;
-            if (!GetLastState(last, nChannel))
-                return true;
-
-            return !(GetChainAge(runtime::unifiedtimestamp()) == GetChainAge(last.GetBlockTime()));
         }
     }
 }

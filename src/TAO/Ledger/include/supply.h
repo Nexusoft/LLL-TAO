@@ -52,7 +52,7 @@ namespace TAO
          *  @return The total reward for interval.
          *
          **/
-        uint64_t GetSubsidy(uint32_t nMinutes, uint32_t nType);
+        uint64_t GetSubsidy(const uint32_t nMinutes, const uint32_t nType);
 
 
         /** SubsidyInterval
@@ -65,7 +65,7 @@ namespace TAO
          *  @return The subisdy for given interval.
          *
          **/
-        uint64_t SubsidyInterval(uint32_t nMinutes, uint32_t nInterval);
+        uint64_t SubsidyInterval(const uint32_t nMinutes, uint32_t nInterval);
 
 
         /** CompoundSubsidy
@@ -78,7 +78,7 @@ namespace TAO
          *  @return The total reward compounded over minutes.
          *
          **/
-        uint64_t CompoundSubsidy(int32_t nMinutes, uint8_t nTypes = 3);
+        uint64_t CompoundSubsidy(const int32_t nMinutes, const uint8_t nTypes = 3);
 
 
         /** GetMoneySupply
@@ -91,7 +91,7 @@ namespace TAO
          *  @return The total reward compounded over minutes.
          *
          **/
-        uint64_t GetMoneySupply(BlockState state);
+        uint64_t GetMoneySupply(const BlockState& state);
 
 
         /** GetChainAge
@@ -103,7 +103,7 @@ namespace TAO
          *  @return The seconds since network time-lock
          *
          **/
-        uint32_t GetChainAge(uint64_t nTime);
+        uint32_t GetChainAge(const uint64_t nTime);
 
 
         /** GetFractionalSubsidy
@@ -117,7 +117,7 @@ namespace TAO
          *  @return The subsidy reward at a fractional amount.
          *
          **/
-        uint64_t GetFractionalSubsidy(uint32_t nMinutes, uint8_t nType, double nFraction);
+        uint64_t GetFractionalSubsidy(const uint32_t nMinutes, const uint8_t nType, const double nFraction);
 
 
         /** GetCoinbaseReward
@@ -132,7 +132,7 @@ namespace TAO
          *  @return The subsidy reward.
          *
          **/
-        uint64_t GetCoinbaseReward(const BlockState& state, uint32_t nChannel, uint8_t nType);
+        uint64_t GetCoinbaseReward(const BlockState& state, const uint32_t nChannel, const uint8_t nType);
 
 
         /** ReleaseRewards
@@ -146,7 +146,7 @@ namespace TAO
          *  @return The total released to reserves.
          *
          **/
-        uint64_t ReleaseRewards(uint32_t nTimespan, uint32_t nStart, uint8_t nType);
+        uint64_t ReleaseRewards(const uint32_t nTimespan, const uint32_t nStart, const uint8_t nType);
 
 
         /** GetReleasedReserve
@@ -160,7 +160,7 @@ namespace TAO
          *  @return The released reserves.
          *
          **/
-        uint64_t GetReleasedReserve(const BlockState& state, uint32_t nChannel, uint8_t nType);
+        uint64_t GetReleasedReserve(const BlockState& state, const uint32_t nChannel, const uint8_t nType);
     }
 }
 

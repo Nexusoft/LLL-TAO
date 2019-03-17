@@ -81,7 +81,7 @@ namespace TAO
          *  @return the new weighted time.
          *
          **/
-        uint64_t GetWeightedTimes(const BlockState state, uint32_t nDepth);
+        uint64_t GetWeightedTimes(const BlockState& state, uint32_t nDepth);
 
 
         /** GetNextTargetRequired
