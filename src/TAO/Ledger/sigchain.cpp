@@ -59,13 +59,13 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                5,
+                1,
 
                 /* Memory Cost (64 MB). */
                 (1 << 16),
 
                 /* The number of threads and lanes */
-                1, 1,
+                4, 4,
 
                 /* Algorithm Version */
                 ARGON2_VERSION_13,
@@ -121,13 +121,13 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                5,
+                1,
 
                 /* Memory Cost (64 MB). */
                 (1 << 16),
 
                 /* The number of threads and lanes */
-                1, 1,
+                4, 4,
 
                 /* Algorithm Version */
                 ARGON2_VERSION_13,
@@ -190,13 +190,13 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                5,
+                1,
 
                 /* Memory Cost (64 MB). */
                 (1 << 16),
 
                 /* The number of threads and lanes */
-                1, 1,
+                4, 4,
 
                 /* Algorithm Version */
                 ARGON2_VERSION_13,
