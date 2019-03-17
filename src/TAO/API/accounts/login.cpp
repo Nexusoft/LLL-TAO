@@ -86,7 +86,7 @@ namespace TAO
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
-            tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str()));
+            tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str(), false));
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)

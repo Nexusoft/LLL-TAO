@@ -59,13 +59,13 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                1,
+                5,
 
                 /* Memory Cost (64 MB). */
                 (1 << 16),
 
                 /* The number of threads and lanes */
-                4, 4,
+                1, 1,
 
                 /* Algorithm Version */
                 ARGON2_VERSION_13,
@@ -121,13 +121,13 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                1,
+                5,
 
                 /* Memory Cost (64 MB). */
                 (1 << 16),
 
                 /* The number of threads and lanes */
-                4, 4,
+                1, 1,
 
                 /* Algorithm Version */
                 ARGON2_VERSION_13,
@@ -155,8 +155,23 @@ namespace TAO
          *  This function is responsible for genearting the private key in the keychain of a specific account.
          *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
          */
-        uint512_t SignatureChain::Generate(uint32_t nKeyID, SecureString strSecret)
+        uint512_t SignatureChain::Generate(uint32_t nKeyID, SecureString strSecret, bool fCache)
         {
+            /* Handle cache to stop exhaustive hash key generation. */
+            if(fCache && nKeyID == pairCache.first)
+            {
+                /* Create the hash key object. */
+                uint512_t hashKey;
+
+                /* Get the bytes from secure allocator. */
+                std::vector<uint8_t> vBytes(pairCache.second.begin(), pairCache.second.end());
+
+                /* Set the bytes of return value. */
+                hashKey.SetBytes(vBytes);
+
+                return hashKey;
+            }
+
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vPassword(strPassword.begin(), strPassword.end());
             vPassword.insert(vPassword.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
@@ -190,13 +205,13 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                1,
+                5,
 
                 /* Memory Cost (64 MB). */
                 (1 << 16),
 
                 /* The number of threads and lanes */
-                4, 4,
+                1, 1,
 
                 /* Algorithm Version */
                 ARGON2_VERSION_13,
@@ -211,6 +226,13 @@ namespace TAO
             /* Run the argon2 computation. */
             if(argon2i_ctx(&context) != ARGON2_OK)
                 return 0;
+
+            /* Set the cache items. */
+            if(fCache)
+            {
+                pairCache.first  = nKeyID;
+                pairCache.second = SecureString(hash.begin(), hash.end());
+            }
 
             /* Set the bytes for the key. */
             uint512_t hashKey;

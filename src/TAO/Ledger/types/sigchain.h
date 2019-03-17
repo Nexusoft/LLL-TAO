@@ -49,6 +49,9 @@ namespace TAO
             SecureString strPassword;
 
 
+            /** Internal sigchain cache (to not exhaust ourselves regenerating the same key). **/
+            std::pair<uint32_t, SecureString> pairCache;
+
         public:
 
             /** Constructor to generate Keychain
@@ -59,6 +62,7 @@ namespace TAO
             SignatureChain(SecureString strUsernameIn, SecureString strPasswordIn)
             : strUsername(strUsernameIn.c_str())
             , strPassword(strPasswordIn.c_str())
+            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
             {
 
             }
@@ -88,11 +92,12 @@ namespace TAO
              *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
              *
              *  @param[in] nKeyID The key number in the keychian
-             *  @param[in] strSecret The secret phrase to use (Never Cached)
+             *  @param[in] strSecret The secret phrase to use
+             *  @param[in] fCache Use the cache on hand for keys.
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            uint512_t Generate(uint32_t nKeyID, SecureString strSecret);
+            uint512_t Generate(uint32_t nKeyID, SecureString strSecret, bool fCache = true);
         };
     }
 }

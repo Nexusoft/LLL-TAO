@@ -127,112 +127,150 @@ namespace TAO
 
 
         /* Create a new block object from the chain.*/
+        static TAO::Ledger::TritiumBlock blockCache;
         bool CreateBlock(TAO::Ledger::SignatureChain* user, SecureString pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block, uint64_t nExtraNonce)
         {
             /* Set the block to null. */
             block.SetNull();
 
-
-            /* Modulate the Block Versions if they correspond to their proper time stamp */
-            if(runtime::unifiedtimestamp() >= (config::fTestNet ?
-                TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] :
-                NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-                block.nVersion = config::fTestNet ?
-                TESTNET_BLOCK_CURRENT_VERSION :
-                NETWORK_BLOCK_CURRENT_VERSION; // --> New Block Versin Activation Switch
-            else
-                block.nVersion = config::fTestNet ?
-                TESTNET_BLOCK_CURRENT_VERSION - 1 :
-                NETWORK_BLOCK_CURRENT_VERSION - 1;
-
-
-            /* Setup the producer transaction. */
-            if(!CreateTransaction(user, pin, block.producer))
-                return debug::error(FUNCTION, "failed to create producer transactions");
-
-
-            /* Handle the coinstake */
-            if (nChannel == 0)
+            /* Handle if the block is cached. */
+            if(ChainState::stateBest.load().GetHash() == blockCache.hashPrevBlock
+            && nChannel == blockCache.nChannel)
             {
-                if(block.producer.IsGenesis())
+                /* Set the block to cached block. */
+                block = blockCache;
+
+                /* Use the extra nonce if block is coinbase. */
+                if(nChannel != 0)
                 {
-                    /* Create trust transaction. */
-                    block.producer << (uint8_t) TAO::Operation::OP::TRUST;
+                    /* Create coinbase transaction. */
+                    block.producer.ssOperation.SetNull();
+                    block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
 
-                    /* The account that is being staked. */
-                    uint256_t hashAccount;
-                    block.producer << hashAccount;
+                    /* The total to be credited. */
+                    uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
+                    block.producer << nCredit;
 
-                    /* The previous trust block. */
-                    uint1024_t hashLastTrust = 0;
-                    block.producer << hashLastTrust;
-
-                    /* Previous trust sequence number. */
-                    uint32_t nSequence = 0;
-                    block.producer << nSequence;
-
-                    /* The previous trust calculated. */
-                    uint64_t nLastTrust = 0;
-                    block.producer << nLastTrust;
-
-                    /* The total to be staked. */
-                    uint64_t  nStake = 0; //account balance
-                    block.producer << nStake;
+                    /* The extra nonce to coinbase. */
+                    block.producer << nExtraNonce;
                 }
+
+                /* Sign the producer transaction. */
+                block.producer.Sign(user->Generate(block.producer.nSequence, pin));
+
+                /* Clear the transactions. */
+                block.vtx.clear();
+
+                /* Add the transactions to the block. */
+                AddTransactions(block);
+            }
+            else
+            {
+                /* Modulate the Block Versions if they correspond to their proper time stamp */
+                if(runtime::unifiedtimestamp() >= (config::fTestNet ?
+                    TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] :
+                    NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
+                    block.nVersion = config::fTestNet ?
+                    TESTNET_BLOCK_CURRENT_VERSION :
+                    NETWORK_BLOCK_CURRENT_VERSION; // --> New Block Versin Activation Switch
+                else
+                    block.nVersion = config::fTestNet ?
+                    TESTNET_BLOCK_CURRENT_VERSION - 1 :
+                    NETWORK_BLOCK_CURRENT_VERSION - 1;
+
+
+                /* Setup the producer transaction. */
+                if(!CreateTransaction(user, pin, block.producer))
+                    return debug::error(FUNCTION, "failed to create producer transactions");
+
+
+                /* Handle the coinstake */
+                if (nChannel == 0)
+                {
+                    if(block.producer.IsGenesis())
+                    {
+                        /* Create trust transaction. */
+                        block.producer << (uint8_t) TAO::Operation::OP::TRUST;
+
+                        /* The account that is being staked. */
+                        uint256_t hashAccount;
+                        block.producer << hashAccount;
+
+                        /* The previous trust block. */
+                        uint1024_t hashLastTrust = 0;
+                        block.producer << hashLastTrust;
+
+                        /* Previous trust sequence number. */
+                        uint32_t nSequence = 0;
+                        block.producer << nSequence;
+
+                        /* The previous trust calculated. */
+                        uint64_t nLastTrust = 0;
+                        block.producer << nLastTrust;
+
+                        /* The total to be staked. */
+                        uint64_t  nStake = 0; //account balance
+                        block.producer << nStake;
+                    }
+                    else
+                    {
+                        /* Create trust transaction. */
+                        block.producer << (uint8_t) TAO::Operation::OP::TRUST;
+
+                        /* The account that is being staked. */
+                        uint256_t hashAccount;
+                        block.producer << hashAccount;
+
+                        /* The previous trust block. */
+                        uint1024_t hashLastTrust = 0; //GET LAST TRUST BLOCK FROM LOCAL DB
+                        block.producer << hashLastTrust;
+
+                        /* Previous trust sequence number. */
+                        uint32_t nSequence = 0; //GET LAST SEQUENCE FROM LOCAL DB
+                        block.producer << nSequence;
+
+                        /* The previous trust calculated. */
+                        uint64_t nLastTrust = 0; //GET LAST TRUST FROM LOCAL DB
+                        block.producer << nLastTrust;
+
+                        /* The total to be staked. */
+                        uint64_t  nStake = 0; //BALANCE IS PREVIOUS BALANCE + INTEREST RATE
+                        block.producer << nStake;
+                    }
+                }
+
+                /* Create the Coinbase Transaction if the Channel specifies. */
                 else
                 {
-                    /* Create trust transaction. */
-                    block.producer << (uint8_t) TAO::Operation::OP::TRUST;
+                    /* Create coinbase transaction. */
+                    block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
 
-                    /* The account that is being staked. */
-                    uint256_t hashAccount;
-                    block.producer << hashAccount;
+                    /* The total to be credited. */
+                    uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
+                    block.producer << nCredit;
 
-                    /* The previous trust block. */
-                    uint1024_t hashLastTrust = 0; //GET LAST TRUST BLOCK FROM LOCAL DB
-                    block.producer << hashLastTrust;
-
-                    /* Previous trust sequence number. */
-                    uint32_t nSequence = 0; //GET LAST SEQUENCE FROM LOCAL DB
-                    block.producer << nSequence;
-
-                    /* The previous trust calculated. */
-                    uint64_t nLastTrust = 0; //GET LAST TRUST FROM LOCAL DB
-                    block.producer << nLastTrust;
-
-                    /* The total to be staked. */
-                    uint64_t  nStake = 0; //BALANCE IS PREVIOUS BALANCE + INTEREST RATE
-                    block.producer << nStake;
+                    /* The extra nonce to coinbase. */
+                    block.producer << nExtraNonce;
                 }
+
+                /* Sign the producer transaction. */
+                block.producer.Sign(user->Generate(block.producer.nSequence, pin));
+
+                /* Add the transactions to the block. */
+                AddTransactions(block);
+
+                /** Populate the Block Data. **/
+                block.hashPrevBlock   = ChainState::stateBest.load().GetHash();
+                block.nChannel       = nChannel;
+                block.nHeight        = ChainState::stateBest.load().nHeight + 1;
+                block.nBits          = GetNextTargetRequired(ChainState::stateBest.load(), nChannel, false);
+                block.nNonce         = 1;
+                block.nTime          = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
+
+                /* Store the cached block. */
+                blockCache = block;
+
             }
-
-            /* Create the Coinbase Transaction if the Channel specifies. */
-            else
-            {
-                /* Create coinbase transaction. */
-                block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
-
-                /* The total to be credited. */
-                uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
-                block.producer << nCredit;
-
-                /* The extra nonce to coinbase. */
-                block.producer << nExtraNonce;
-            }
-
-            /* Sign the producer transaction. */
-            block.producer.Sign(user->Generate(block.producer.nSequence, pin));
-
-            /* Add the transactions to the block. */
-            AddTransactions(block);
-
-            /** Populate the Block Data. **/
-            block.hashPrevBlock   = ChainState::stateBest.load().GetHash();
-            block.nChannel       = nChannel;
-            block.nHeight        = ChainState::stateBest.load().nHeight + 1;
-            block.nBits          = GetNextTargetRequired(ChainState::stateBest.load(), nChannel, false);
-            block.nNonce         = 1;
-            block.nTime          = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
 
             return true;
         }
