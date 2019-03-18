@@ -32,7 +32,9 @@ ________________________________________________________________________________
 #define NOMINMAX //prevents windows.h from including min/max and potentially interfering with std::min/std::max
 #endif
 
+#include <winsock2.h> //ensure winsock2 included before windows even if not needed in this file 
 #include <windows.h>
+
 /** This is used to attempt to keep keying material out of swap
  *  Note that VirtualLock does not provide this as a guarantee on Windows,
  *  but, in practice, memory that has been VirtualLock'd almost never gets written to

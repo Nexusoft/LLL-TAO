@@ -30,8 +30,8 @@ ________________________________________________________________________________
 #define NOMINMAX //prevents windows.h from including min/max and potentially interfering with std::min/std::max
 #endif
 
-#include <windows.h>
 #include <winsock2.h>
+#include <windows.h>
 #include <mswsock.h>
 #include <ws2tcpip.h>
 
