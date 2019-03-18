@@ -2,43 +2,31 @@
 #
 # run-nexus
 #
-# Launch Nexus Daemon. Check to see if nexus data directory needs to be
-# copied from host OS file system.
+# Launch Nexus Daemon. Check to see if nexus data directory /root/.TAO needs
+# to be created and point to the host OS file system.
 #
 
-#DO_COPY=""
+DATA_DIR="/hostOS$HOSTOS_HOME/.Nexus_Core_Data_BETA"
 
 #
-# If you want to create all the state in the container. Just move nexus.conf
-# from host filesystem.
+# If this is first innvocation of the nexus daemon after container creation,
+# then setup /root/.TAO directory. Point to host OS file system. If that
+# directory does not exist, create it and copy a default nexus.conf to it.
 #
-#mkdir /root/.TAO
-#cp /hostOS$HOSTOS_HOME/.Nexus_Core_Data_BETA/nexus.conf /root/.TAO/.
-
-#
-# If first innvocation of nexus daemon after container creation, then setup
-# /root/.TAO directory. Should we copy from host OS file system or link to it?
-#
+cd /nexus
 if [ ! -d "/root/.TAO" ]; then
-    SRC="/hostOS$HOSTOS_HOME/.Nexus_Core_Data_BETA"
-    if [ -v DO_COPY ]; then
-        mkdir /root/.TAO
-    fi
-    if [ -d $SRC ]; then
-        if [ -v DO_COPY ]; then
-            echo -n "Copying nexus data directory $SRC -> /root/.TAO ... "
-            cp -r $SRC/* /root/.TAO/.
-        else
-            echo -n "Symlink nexus data directory /root/.TAO -> $SRC ... "
-            ln -sf $SRC /root/.TAO
-         fi
+    if [ ! -d $DATA_DIR ]; then
+        echo -n "Create nexus data directory $DATA_DIR ... "
+        mkdir $DATA_DIR
+        cp /nexus/nexus.conf.default $DATA_DIR/nexus.conf
         echo "done"
     fi
+    echo -n "Symlink nexus data directory /root/.TAO -> $DATA_DIR ... "
+    ln -sf $DATA_DIR /root/.TAO
+    echo "done"
 fi
 
 #
 # Startup daemon. Check /root/.TAO/nexus.conf for daemon parameterization.
 #
-cd /nexus
 ./nexus &
-
