@@ -68,8 +68,8 @@ namespace TAO
                 /* Computational Cost. */
                 11,
 
-                /* Memory Cost (256 MB). */
-                (1 << 18),
+                /* Memory Cost (64 MB). */
+                (1 << 16),
 
                 /* The number of threads and lanes */
                 1, 1,
@@ -85,7 +85,7 @@ namespace TAO
             };
 
             /* Run the argon2 computation. */
-            if(argon2i_ctx(&context) != ARGON2_OK)
+            if(argon2id_ctx(&context) != ARGON2_OK)
                 return 0;
 
             /* Set the bytes for the key. */
@@ -172,7 +172,7 @@ namespace TAO
             };
 
             /* Run the argon2 computation. */
-            if(argon2i_ctx(&context) != ARGON2_OK)
+            if(argon2id_ctx(&context) != ARGON2_OK)
                 return 0;
 
             /* Set the cache items. */

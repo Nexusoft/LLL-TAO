@@ -517,8 +517,8 @@ namespace TAO
                     }
 
                     /* Create the inventory object. */
-                    bool fStateBestIsLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
-                    std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain.load(), fStateBestIsLegacy ? LLP::MSG_BLOCK_LEGACY : LLP::MSG_BLOCK_TRITIUM) };
+                    bool fLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
+                    std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain.load(), fLegacy ? LLP::MSG_BLOCK_LEGACY : LLP::MSG_BLOCK_TRITIUM) };
 
                     /* Relay the new block to all connected nodes. */
                     if(LLP::LEGACY_SERVER)
