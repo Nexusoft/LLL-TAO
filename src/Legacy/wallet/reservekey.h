@@ -15,12 +15,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_RESERVEKEY_H
 #define NEXUS_LEGACY_WALLET_RESERVEKEY_H
 
-#include <vector>
-
 #include <Legacy/wallet/keypool.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <Util/include/args.h>
+
+#include <vector>
+
 
 namespace Legacy
 {

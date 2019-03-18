@@ -15,13 +15,14 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_TXIN_H
 #define NEXUS_LEGACY_TYPES_TXIN_H
 
-#include <climits>
-#include <cstdint>
+#include <Legacy/types/outpoint.h>
+#include <Legacy/types/script.h>
 
 #include <Util/templates/serialize.h>
 
-#include <Legacy/types/outpoint.h>
-#include <Legacy/types/script.h>
+#include <climits>
+#include <cstdint>
+
 
 namespace Legacy
 {

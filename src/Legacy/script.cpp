@@ -14,18 +14,18 @@ ________________________________________________________________________________
 #include <LLC/include/key.h>
 #include <LLC/hash/SK.h>
 
+#include <Legacy/include/enum.h>
+#include <Legacy/types/address.h>
+#include <Legacy/types/script.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/memory.h>
 
-#include <Legacy/include/enum.h>
-#include <Legacy/types/address.h>
-#include <Legacy/types/script.h>
-
+#include <algorithm>
 #include <cstring>
 #include <vector>
-#include <algorithm>
+
 
 namespace Legacy
 {

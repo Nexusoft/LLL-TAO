@@ -11,12 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <exception>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <utility>
-
 #include <LLD/include/version.h>
 
 #include <Legacy/types/script.h>
@@ -34,6 +28,12 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/runtime.h>
+
+#include <exception>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <utility>
 
 
 namespace Legacy

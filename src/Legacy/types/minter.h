@@ -15,10 +15,6 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_MINTER_H
 #define NEXUS_LEGACY_TYPES_MINTER_H
 
-
-#include <atomic>
-#include <thread>
-
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/reservekey.h>
 #include <Legacy/wallet/wallet.h>
@@ -28,6 +24,9 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/trustkey.h>
 
 #include <Util/include/mutex.h>
+
+#include <atomic>
+#include <thread>
 
 
 namespace Legacy

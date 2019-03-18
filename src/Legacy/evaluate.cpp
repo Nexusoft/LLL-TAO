@@ -24,13 +24,13 @@ ________________________________________________________________________________
 
 #include <Legacy/types/script.h>
 
+#include <openssl/bn.h>
+
 #include <string>
 #include <vector>
 #include <algorithm>
 #include <new> //std::bad_alloc
 #include <stdexcept>
-
-#include <openssl/bn.h>
 
 namespace Legacy
 {

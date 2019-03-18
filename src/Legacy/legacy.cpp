@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <cmath>
-
 #include <LLC/include/key.h>
 
 #include <Legacy/types/legacy.h>
@@ -36,7 +34,9 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 
-/* Global TAO namespace. */
+#include <cmath>
+
+
 namespace Legacy
 {
 

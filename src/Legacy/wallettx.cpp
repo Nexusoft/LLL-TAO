@@ -11,10 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <exception>
-#include <set>
-#include <utility>
-
 #include <LLC/types/uint1024.h>
 
 #include <LLD/include/legacy.h>
@@ -33,6 +29,11 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/args.h>
+
+#include <exception>
+#include <set>
+#include <utility>
+
 
 namespace Legacy
 {

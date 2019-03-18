@@ -15,12 +15,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_CRYPTER_H
 #define NEXUS_LEGACY_WALLET_CRYPTER_H
 
-#include <vector>
-
 #include <LLC/include/key.h>
 #include <LLC/types/uint1024.h>
 
 #include <Util/include/allocators.h>
+
+#include <vector>
+
 
 namespace Legacy
 {

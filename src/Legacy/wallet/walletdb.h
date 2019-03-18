@@ -15,18 +15,18 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_WALLETDB_H
 #define NEXUS_LEGACY_WALLET_WALLETDB_H
 
+#include <LLC/include/key.h>
+#include <LLC/types/uint1024.h>
+
+#include <Legacy/wallet/cryptokeystore.h> //for CryptedKeyMap typedef
+#include <Legacy/wallet/db.h>
+
 #include <atomic>
 #include <list>
 #include <memory>
 #include <string>
 #include <thread>
 #include <vector>
-
-#include <LLC/include/key.h>
-#include <LLC/types/uint1024.h>
-
-#include <Legacy/wallet/cryptokeystore.h> //for CryptedKeyMap typedef
-#include <Legacy/wallet/db.h>
 
 
 namespace Legacy

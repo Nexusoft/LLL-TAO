@@ -13,14 +13,14 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 
-
-#include <Util/templates/datastream.h>
 #include <LLP/include/version.h>
 
-#include <Util/include/string.h>
-
-#include <Legacy/types/txout.h>
 #include <Legacy/types/script.h>
+#include <Legacy/types/txout.h>
+
+#include <Util/include/string.h>
+#include <Util/templates/datastream.h>
+
 
 namespace Legacy
 {

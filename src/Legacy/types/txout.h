@@ -15,11 +15,12 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_TXOUT_H
 #define NEXUS_LEGACY_TYPES_TXOUT_H
 
+#include <Util/templates/serialize.h>
+#include <Legacy/types/script.h>
+
 #include <cstdint>
 #include <cstring>
 
-#include <Util/templates/serialize.h>
-#include <Legacy/types/script.h>
 
 namespace Legacy
 {

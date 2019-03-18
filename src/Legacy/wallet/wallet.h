@@ -15,15 +15,6 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_WALLET_H
 #define NEXUS_LEGACY_WALLET_WALLET_H
 
-#include <atomic>
-#include <map>
-#include <memory>
-#include <mutex>
-#include <set>
-#include <string>
-#include <vector>
-#include <utility>
-
 #include <LLC/include/key.h>
 #include <LLC/types/uint1024.h>
 
@@ -36,6 +27,15 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallettx.h>
 
 #include <Util/include/allocators.h> /* for SecureString */
+
+#include <atomic>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <set>
+#include <string>
+#include <vector>
+#include <utility>
 
 
 /* Global TAO namespace. */

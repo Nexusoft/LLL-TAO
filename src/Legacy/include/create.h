@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/reservekey.h>
 #include <Legacy/wallet/wallet.h>
 
+
 namespace Legacy
 {
 

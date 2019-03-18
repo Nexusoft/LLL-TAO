@@ -11,12 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <openssl/rand.h>   // For RAND_bytes
-
-#include <algorithm>
-#include <thread>
-#include <utility>
-
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 
@@ -49,6 +43,12 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <Util/include/signals.h>
+
+#include <openssl/rand.h>   // For RAND_bytes
+
+#include <algorithm>
+#include <thread>
+#include <utility>
 
 namespace Legacy
 {

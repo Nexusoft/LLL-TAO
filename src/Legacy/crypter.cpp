@@ -11,12 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <openssl/aes.h>
-#include <openssl/evp.h>
-
-#include <vector>
-#include <string>
-
 #ifdef WIN32
 
 #ifndef _WIN32_WINNT
@@ -36,7 +30,12 @@ ________________________________________________________________________________
 
 #include <Legacy/wallet/crypter.h>
 
+#include <openssl/aes.h>
+#include <openssl/evp.h>
+
 #include <algorithm>
+#include <string>
+#include <vector>
 
 
 namespace Legacy

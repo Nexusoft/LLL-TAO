@@ -11,13 +11,13 @@
 
 ____________________________________________________________________________________________*/
 
-#include <assert.h>
-
 #include <Legacy/types/address.h>
 #include <Legacy/include/enum.h>
 
 #include <LLC/hash/SK.h>
 #include <Util/include/args.h>
+
+#include <assert.h>
 
 
 namespace Legacy

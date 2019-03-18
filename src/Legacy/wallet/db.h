@@ -15,6 +15,12 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_DB_H
 #define NEXUS_LEGACY_WALLET_DB_H
 
+#include <LLD/include/version.h>
+
+#include <Util/templates/datastream.h>
+
+#include <db_cxx.h> /* Berkeley DB header */
+
 #include <atomic>
 #include <map>
 #include <mutex>
@@ -22,11 +28,6 @@ ________________________________________________________________________________
 #include <vector>
 #include <new> //std::bad_alloc
 
-#include <db_cxx.h> /* Berkeley DB header */
-
-#include <LLD/include/version.h>
-
-#include <Util/templates/datastream.h>
 
 namespace Legacy
 {

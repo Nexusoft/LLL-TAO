@@ -15,11 +15,12 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_KEYSTORE_H
 #define NEXUS_LEGACY_WALLET_KEYSTORE_H
 
+#include <LLC/include/key.h>
+#include <LLC/types/uint1024.h>
+
 #include <set>
 #include <vector>
 
-#include <LLC/include/key.h>
-#include <LLC/types/uint1024.h>
 
 namespace Legacy
 {

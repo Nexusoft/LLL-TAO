@@ -17,12 +17,13 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
-#include <Legacy/types/transaction.h>
-#include <Legacy/include/money.h>
-#include <Legacy/types/script.h>
-#include <Legacy/types/legacy.h>
-#include <Legacy/include/signature.h>
 #include <Legacy/include/evaluate.h>
+#include <Legacy/include/money.h>
+#include <Legacy/include/signature.h>
+
+#include <Legacy/types/legacy.h>
+#include <Legacy/types/transaction.h>
+#include <Legacy/types/script.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
