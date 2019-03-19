@@ -37,11 +37,11 @@ namespace TAO
 
 
         /* Target Timespan of 300 Seconds. */
-        const uint32_t TESTNET_MINING_TARGET_SPACING = 30;
+        const uint32_t TESTNET_MINING_TARGET_SPACING = 40;
 
 
         /* Target Timespan of 150 seconds. */
-        const uint32_t TESTNET_STAKE_TARGET_SPACING = 15;
+        const uint32_t TESTNET_STAKE_TARGET_SPACING = 20;
 
 
         /** GetDifficulty
@@ -81,7 +81,7 @@ namespace TAO
          *  @return the new weighted time.
          *
          **/
-        uint64_t GetWeightedTimes(const BlockState state, uint32_t nDepth);
+        uint64_t GetWeightedTimes(const BlockState& state, uint32_t nDepth);
 
 
         /** GetNextTargetRequired

@@ -229,44 +229,44 @@ namespace TAO
 
 
             /* Write the transactions. */
-            for(const auto& tx : vtx)
+            for(const auto& proof : vtx)
             {
                 /* Only work on tritium transactions for now. */
-                if(tx.first == TYPE::TRITIUM_TX)
+                if(proof.first == TYPE::TRITIUM_TX)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = tx.second;
+                    uint512_t hash = proof.second;
 
                     /* Check the memory pool. */
-                    TAO::Ledger::Transaction txFrom;
-                    if(!mempool.Get(hash, txFrom))
+                    TAO::Ledger::Transaction tx;
+                    if(!mempool.Get(hash, tx))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
-                    if(!LLD::legDB->WriteTx(hash, txFrom))
+                    if(!LLD::legDB->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
                     /* Remove the coinbase or coinstake. */
-                    if(txFrom.IsCoinbase() || txFrom.IsTrust())
+                    if(tx.IsCoinbase() || tx.IsTrust())
                         mempool.Remove(hash);
 
                 }
-                else if(tx.first == TYPE::LEGACY_TX)
+                else if(proof.first == TYPE::LEGACY_TX)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = tx.second;
+                    uint512_t hash = proof.second;
 
                     /* Check if in memory pool. */
-                    Legacy::Transaction txFrom;
-                    if(!mempool.Get(hash, txFrom))
+                    Legacy::Transaction tx;
+                    if(!mempool.Get(hash, tx))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
-                    if(!LLD::legacyDB->WriteTx(hash, txFrom))
+                    if(!LLD::legacyDB->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
                     /* Remove the coinbase or coinstake. */
-                    if(txFrom.IsCoinBase() || txFrom.IsCoinStake())
+                    if(tx.IsCoinBase() || tx.IsCoinStake())
                         mempool.Remove(hash);
                 }
                 else
@@ -385,24 +385,24 @@ namespace TAO
                     /* Add transactions into memory pool. */
                     if(!vConnect.empty())
                     {
-                        for(const auto& txAdd : state.vtx)
+                        for(const auto& proof : state.vtx)
                         {
-                            if(txAdd.first == TYPE::TRITIUM_TX)
+                            if(proof.first == TYPE::TRITIUM_TX)
                             {
                                 /* Check if in memory pool. */
                                 TAO::Ledger::Transaction tx;
-                                if(!LLD::legDB->ReadTx(txAdd.second, tx))
+                                if(!LLD::legDB->ReadTx(proof.second, tx))
                                     return debug::error(FUNCTION, "transaction is not on disk");
 
                                 /* Resurrect. */
                                 if(!tx.IsCoinbase() && !tx.IsTrust())
                                     vTritiumResurrect.push_back(tx);
                             }
-                            else if(txAdd.first == TYPE::LEGACY_TX)
+                            else if(proof.first == TYPE::LEGACY_TX)
                             {
                                 /* Check if in memory pool. */
                                 Legacy::Transaction tx;
-                                if(!LLD::legacyDB->ReadTx(txAdd.second, tx))
+                                if(!LLD::legacyDB->ReadTx(proof.second, tx))
                                     return debug::error(FUNCTION, "transaction is not on disk");
 
                                 /* Resurrect */
@@ -470,8 +470,8 @@ namespace TAO
                     }
 
                     /* Remove transactions from memory pool. */
-                    for(const auto& tx : state->vtx)
-                        vDelete.push_back(tx.second);
+                    for(const auto& proof : state->vtx)
+                        vDelete.push_back(proof.second);
 
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
@@ -479,8 +479,8 @@ namespace TAO
 
 
                 /* Remove transactions from memory pool. */
-                for(const auto& hashTx : vDelete)
-                    mempool.Remove(hashTx);
+                for(const auto& hash : vDelete)
+                    mempool.Remove(hash);
 
 
                 /* Set the best chain variables. */
@@ -517,8 +517,8 @@ namespace TAO
                     }
 
                     /* Create the inventory object. */
-                    bool fStateBestIsLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
-                    std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain.load(), fStateBestIsLegacy ? LLP::MSG_BLOCK_LEGACY : LLP::MSG_BLOCK_TRITIUM) };
+                    bool fLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
+                    std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain.load(), fLegacy ? LLP::MSG_BLOCK_LEGACY : LLP::MSG_BLOCK_TRITIUM) };
 
                     /* Relay the new block to all connected nodes. */
                     if(LLP::LEGACY_SERVER)
@@ -548,13 +548,13 @@ namespace TAO
         {
 
             /* Check through all the transactions. */
-            for(const auto& tx : vtx)
+            for(const auto& proof : vtx)
             {
                 /* Only work on tritium transactions for now. */
-                if(tx.first == TYPE::TRITIUM_TX)
+                if(proof.first == TYPE::TRITIUM_TX)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = tx.second;
+                    uint512_t hash = proof.second;
 
                     /* Make sure the transaction is on disk. */
                     TAO::Ledger::Transaction tx;
@@ -600,10 +600,10 @@ namespace TAO
                     if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.GetHash()))
                         return debug::error(FUNCTION, "failed to write last hash");
                 }
-                else if(tx.first == TYPE::LEGACY_TX)
+                else if(proof.first == TYPE::LEGACY_TX)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = tx.second;
+                    uint512_t hash = proof.second;
 
                     /* Make sure the transaction isn't on disk. */
                     Legacy::Transaction tx;
@@ -613,10 +613,6 @@ namespace TAO
                     /* Check for existing indexes. */
                     if(LLD::legDB->HasIndex(hash))
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
-
-                    /* Check for coinbase or coinstake. */
-                    if(hash == vtx[0].second && !tx.IsCoinBase() && !tx.IsCoinStake())
-                        return debug::error(FUNCTION, "first transction not coinbase/coinstake");
 
                     /* Fetch the inputs. */
                     std::map<uint512_t, Legacy::Transaction> inputs;
@@ -635,7 +631,7 @@ namespace TAO
                     return debug::error(FUNCTION, "using an unknown transaction type");
 
                 /* Write the indexing entries. */
-                LLD::legDB->IndexBlock(tx.second, GetHash());
+                LLD::legDB->IndexBlock(proof.second, GetHash());
             }
 
             /* Update the previous state's next pointer. */
@@ -671,13 +667,13 @@ namespace TAO
         bool BlockState::Disconnect()
         {
             /* Check through all the transactions. */
-            for(const auto& tx : vtx)
+            for(const auto& proof : vtx)
             {
                 /* Only work on tritium transactions for now. */
-                if(tx.first == TYPE::TRITIUM_TX)
+                if(proof.first == TYPE::TRITIUM_TX)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = tx.second;
+                    uint512_t hash = proof.second;
 
                     /* Check if in memory pool. */
                     TAO::Ledger::Transaction tx;
@@ -692,10 +688,10 @@ namespace TAO
                     if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.hashPrevTx))
                         return debug::error(FUNCTION, "failed to write last hash");
                 }
-                else if(tx.first == TYPE::LEGACY_TX)
+                else if(proof.first == TYPE::LEGACY_TX)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = tx.second;
+                    uint512_t hash = proof.second;
 
                     /* Check if in memory pool. */
                     Legacy::Transaction tx;
@@ -712,7 +708,7 @@ namespace TAO
                 }
 
                 /* Write the indexing entries. */
-                LLD::legDB->EraseIndex(tx.second);
+                LLD::legDB->EraseIndex(proof.second);
             }
 
             /* Erase the index for block by height. */

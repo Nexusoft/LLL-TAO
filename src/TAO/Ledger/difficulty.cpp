@@ -77,7 +77,7 @@ namespace TAO
 
 
         /* Gets a block time from a weighted average at given depth. */
-        uint64_t GetWeightedTimes(const BlockState state, uint32_t nDepth)
+        uint64_t GetWeightedTimes(const BlockState& state, uint32_t nDepth)
         {
             uint32_t nIterator = 0, nWeightedAverage = 0;
 
