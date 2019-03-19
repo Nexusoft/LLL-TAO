@@ -414,9 +414,9 @@ namespace memory
         }
 
 
-        /** reset
+        /** free
          *
-         *  Reset the internal memory of the atomic pointer.
+         *  Free the internal memory of the encrypted pointer.
          *
          **/
         void free()
@@ -744,9 +744,9 @@ namespace memory
         }
 
 
-        /** reset
+        /** free
          *
-         *  Reset the internal memory of the atomic pointer.
+         *  Reset the internal memory of the encrypted pointer.
          *
          **/
         void free()
