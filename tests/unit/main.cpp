@@ -66,7 +66,7 @@ template <class TypeName>
 class decrypted_proxy
 {
     /** Reference of the mutex. **/
-    std::mutex& MUTEX;
+    std::recursive_mutex& MUTEX;
 
 
     /** The pointer being locked. **/
@@ -85,19 +85,17 @@ public:
      *  @param[in] MUTEX_IN The mutex reference
      *
      **/
-    decrypted_proxy(TypeName* pData, std::mutex& MUTEX_IN, std::atomic<int>& nRefsIn)
+    decrypted_proxy(TypeName* pData, std::recursive_mutex& MUTEX_IN, std::atomic<int>& nRefsIn)
     : MUTEX(MUTEX_IN)
     , data(pData)
     , nRefs(nRefsIn)
     {
+        MUTEX.lock();
+
         ++nRefs;
 
         if(nRefs == 1)
-        {
-            MUTEX.lock();
-
             crypt(data);
-        }
 
         debug::log(0, "Refs ", nRefs.load());
     }
@@ -113,10 +111,9 @@ public:
         --nRefs;
 
         if(nRefs == 0)
-        {
             crypt(data);
-            MUTEX.unlock();
-        }
+
+        MUTEX.unlock();
     }
 
 
@@ -146,7 +143,7 @@ template<class TypeName>
 class encrypted_ptr
 {
     /** The internal locking mutex. **/
-    mutable std::mutex MUTEX;
+    mutable std::recursive_mutex MUTEX;
 
 
     /** The internal raw poitner. **/
@@ -199,7 +196,7 @@ public:
      **/
     bool operator==(const TypeName& dataIn) const
     {
-        LOCK(MUTEX);
+        RLOCK(MUTEX);
 
         /* Throw an exception on nullptr. */
         if(data == nullptr)
@@ -220,7 +217,7 @@ public:
      **/
     bool operator!(void)
     {
-        LOCK(MUTEX);
+        RLOCK(MUTEX);
 
         return data == nullptr;
     }
@@ -244,7 +241,7 @@ public:
      **/
     TypeName operator*() const
     {
-        LOCK(MUTEX);
+        RLOCK(MUTEX);
 
         /* Throw an exception on nullptr. */
         if(data == nullptr)
@@ -274,7 +271,7 @@ public:
      **/
     void store(TypeName* dataIn)
     {
-        LOCK(MUTEX);
+        RLOCK(MUTEX);
 
         if(data)
             delete data;
@@ -292,7 +289,7 @@ public:
      **/
     void free()
     {
-        LOCK(MUTEX);
+        RLOCK(MUTEX);
 
         if(data)
             delete data;
