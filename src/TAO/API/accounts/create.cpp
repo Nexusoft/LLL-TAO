@@ -29,7 +29,7 @@ namespace TAO
     {
 
         /* Create's a user account. */
-        json::json Accounts::CreateAccount(const json::json& params, bool fHelp)
+        json::json Accounts::Create(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

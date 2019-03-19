@@ -25,10 +25,10 @@ namespace TAO
         /* Standard initialization function. */
         void Tokens::Initialize()
         {
-            mapFunctions["get"]           = Function(std::bind(&Tokens::Get,            this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["debit"]         = Function(std::bind(&Tokens::Debit,          this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["create"]        = Function(std::bind(&Tokens::Create,         this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["credit"]        = Function(std::bind(&Tokens::Credit,         this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["debit"]         = Function(std::bind(&Tokens::Debit,          this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get"]           = Function(std::bind(&Tokens::Get,            this, std::placeholders::_1, std::placeholders::_2));
         }
     }
 }

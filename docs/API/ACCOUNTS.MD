@@ -1,7 +1,7 @@
 The Accounts API Interface Definition
 -------------------------------------
 
-### CreateAccount
+### Create
 
 This will create a new account for use on the network.
 
@@ -12,7 +12,7 @@ This will create a new account for use on the network.
 <key>=<value> parameter pairs:
   username=<user>
   password=<password>
-  pin=<pin-number>
+  pin=<pin>
 ```
 
 Return value JSON object:
@@ -43,7 +43,7 @@ This will log you into this specific API instance for the building of new transa
 <key>=<value> parameter pairs:
   username=<username>
   password=<password>
-  pin=<pin-number>
+  pin=<pin>
 ```
 
 Return value JSON object:    
@@ -55,11 +55,15 @@ Return value JSON object:
 
 ```
 
-This is your genesis ID, or the identification number of your specific account. The session is what is required to submit for every command thereafter, to allow the managing of multiple login sessions. Your PIN is required for authentication, which this version uses to validate your credentials.
+This is your genesis ID, or the identification number of your specific account.
+The session is what is required to submit for every command thereafter, to allow
+the managing of multiple login sessions. Your PIN is required for authentication,
+which this version uses to validate your credentials.
 
 ### Logout
 
-This will log you out of this specific API, and delete your credentials stored in a Secure Allocator.
+This will log you out of this specific API, and delete your credentials stored
+in a secure allocator.
 
 ```
 <method>:
@@ -76,17 +80,19 @@ Return value JSON object:
 }
 ```
 
-### Unlock
+This is your genesis ID, or the identification number of your specific account.
 
-This will unlock your signature chain for use in mining. It takes a session and your pin, and caches it in a secure allocator.
+### Lock
+
+This will lock your signature chain, making it unavailable for use in mining.
+It takes a session and will check if the sig-chain has already been locked.
 
 ```
 <method>:
-  /accounts/unlock
+  /accounts/lock
 
 <key>=<value> parameter pairs:
   session=<session-id>
-  pin=<pin-number>
 ```
 
 Return value JSON object:
@@ -96,12 +102,36 @@ Return value JSON object:
 }
 ```
 
-Session is required to identify what session you are logging out of.
+Session is required to identify what session you are locking wallet from.
+
+### Unlock
+
+This will unlock your signature chain for use in mining. It takes a session
+and your pin, and caches it in a secure allocator.
+
+```
+<method>:
+  /accounts/unlock
+
+<key>=<value> parameter pairs:
+  session=<session-id>
+  pin=<pin>
+```
+
+Return value JSON object:
+```
+{
+    true
+}
+```
+
+Session is required to identify what session you are unlocking wallet from.
+The PIN credential is also required for wallet unlock.
 
 ### Transactions
 
 This will list off all of the transactions created by the logged in account.
-You DO NOT need to be logged in to use this command.s
+You DO NOT need to be logged in to use this command.
 
 ```
 <method>:
@@ -119,7 +149,10 @@ You DO NOT need to be logged in to use this command.s
   verbose<verbose-level>
 ```
 
-Only the genesis or the username are required to fulfill this command. If the genesis is supplied first, it will supersede the username. We recommend you to only use one of the parameters, as typing in both genesis and username will only resolve the genesis.
+Only the genesis or the username are required to fulfill this command. If the
+genesis is supplied first, it will supersede the username. We recommend you to
+only use one of the parameters, as typing in both genesis and username will
+only resolve the genesis.
 
 The verbose parameter defines how much you receive in return.
 
@@ -143,12 +176,16 @@ Return value JSON object:
 },
 ```
 
-NOTE: if you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+NOTE: if you use the username parameter, it will take slightly longer to
+      calculate the username genesis with our brute-force protected hashing
+      algorithm. For higher performance, use the genesis parameter.
 
 
 ### Notifications
 
-This will list off all of the transactions sent to a particular genesis or username. It is useful for identifying transactions that you need to accept such as credits.
+This will list off all of the transactions sent to a particular genesis or
+username. It is useful for identifying transactions that you need to accept
+such as credits.
 
 ```
 <method>:
@@ -166,7 +203,10 @@ This will list off all of the transactions sent to a particular genesis or usern
   verbose<verbose-level>
 ```
 
-Only the genesis or the username are required to fulfill this command. If the genesis is supplied first, it will supersede the username. We recommend you to only use one of the parameters, as typing in both genesis and username will only resolve the genesis.
+Only the genesis or the username are required to fulfill this command. If the
+genesis is supplied first, it will supersede the username. We recommend you to
+only use one of the parameters, as typing in both genesis and username will
+only resolve the genesis.
 
 The verbose parameter defines how much you receive in return.
 
@@ -190,4 +230,6 @@ Return value JSON object:
 },
 ```
 
-NOTE: if you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+NOTE: If you use the username parameter, it will take slightly longer to
+      calculate the username genesis with our brute-force protected hashing
+      algorithm. For higher performance, use the genesis parameter.

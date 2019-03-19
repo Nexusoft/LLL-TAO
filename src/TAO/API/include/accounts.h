@@ -185,7 +185,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json CreateAccount(const json::json& params, bool fHelp);
+            json::json Create(const json::json& params, bool fHelp);
 
 
             /** GetTransactions

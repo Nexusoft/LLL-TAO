@@ -35,13 +35,13 @@ namespace TAO
         /* Standard initialization function. */
         void Accounts::Initialize()
         {
+            mapFunctions["create"]              = Function(std::bind(&Accounts::Create,          this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["login"]               = Function(std::bind(&Accounts::Login,           this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["unlock"]              = Function(std::bind(&Accounts::Unlock,          this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["lock"]                = Function(std::bind(&Accounts::Lock,            this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["logout"]              = Function(std::bind(&Accounts::Logout,          this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["create"]              = Function(std::bind(&Accounts::CreateAccount,   this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["lock"]                = Function(std::bind(&Accounts::Lock,            this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["unlock"]              = Function(std::bind(&Accounts::Unlock,          this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["transactions"]        = Function(std::bind(&Accounts::Transactions, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["notifications"]        = Function(std::bind(&Accounts::Notifications, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["notifications"]       = Function(std::bind(&Accounts::Notifications, this, std::placeholders::_1, std::placeholders::_2));
         }
 
 
