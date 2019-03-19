@@ -63,6 +63,17 @@ namespace TAO
 
         public:
 
+            /** Default constructor. **/
+            SignatureChain()
+            : strUsername()
+            , strPassword()
+            , MUTEX()
+            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+            , hashGenesis()
+            {
+
+            }
+
             /** Constructor to generate Keychain
              *
              * @param[in] strUsernameIn The username to seed the signature chain
@@ -74,6 +85,37 @@ namespace TAO
             , MUTEX()
             , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
             , hashGenesis(SignatureChain::Genesis(strUsernameIn))
+            {
+            }
+
+
+            /** Copy constructor **/
+            SignatureChain(const SignatureChain& chain)
+            : strUsername(chain.strUsername)
+            , strPassword(chain.strPassword)
+            , MUTEX()
+            , pairCache(chain.pairCache)
+            , hashGenesis(chain.hashGenesis)
+            {
+            }
+
+            /** Move constructor
+             *
+             * @param[in] strUsernameIn The username to seed the signature chain
+             * @param[in] strPasswordIn The password to seed the signature chain
+             **/
+            SignatureChain(const SignatureChain&& chain)
+            : strUsername(chain.strUsername)
+            , strPassword(chain.strPassword)
+            , MUTEX()
+            , pairCache(chain.pairCache)
+            , hashGenesis(chain.hashGenesis)
+            {
+            }
+
+
+            /** Destructor. **/
+            ~SignatureChain()
             {
             }
 
