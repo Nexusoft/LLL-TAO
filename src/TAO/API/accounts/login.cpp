@@ -101,7 +101,7 @@ namespace TAO
                     user = nullptr;
 
                     ret["genesis"] = hashGenesis.ToString();
-                    ret["session"] = session->first;
+                    ret["session"] = debug::safe_printstr(std::dec, session->first);
 
                     return ret;
                 }
@@ -110,7 +110,7 @@ namespace TAO
             /* Set the return value. */
             uint64_t nSession = LLC::GetRand();
             ret["genesis"] = hashGenesis.ToString();
-            ret["session"] = nSession;
+            ret["session"] = debug::safe_printstr(std::dec, nSession);
 
             /* Setup the account. */
             mapSessions[nSession] = user;
