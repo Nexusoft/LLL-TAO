@@ -29,12 +29,19 @@ void Verifier()
     }
 }
 
+
 int main(int argc, char **argv)
 {
     debug::log(0, FUNCTION, "Running live tests");
 
     TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("colin", "passing");
     uint512_t hashGenerate = user->Generate(0, "1234");
+
+    debug::log(0, hashGenerate.ToString());
+
+    uint512_t hashGenerate2 = user->Generate(0, "1234");
+
+    debug::log(0, hashGenerate2.ToString());
 
     runtime::timer timer;
     timer.Start();
@@ -61,12 +68,15 @@ int main(int argc, char **argv)
 
     vchPubKey = key.GetPubKey();
 
-    debug::log(0, "PubSize ", vchPubKey.size());
+
 
     LLC::FLKey key2;
     key2.SetPubKey(vchPubKey);
     if(!key2.Verify(vchMessage, vchSignature))
         debug::error(FUNCTION, "failed to verify");
+
+    nElapsed = timer.ElapsedMicroseconds();
+    debug::log(0, FUNCTION, "Verified in ", nElapsed, " microseconds");
 
     debug::log(0, FUNCTION, "Passed (", vchPubKey.size() + vchSignature.size(), " bytes)");
 

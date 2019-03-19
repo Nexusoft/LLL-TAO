@@ -41,21 +41,9 @@ namespace TAO
 
             /* Watch for destination genesis. */
             if(params.find("genesis") != params.end())
-            {
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
-            }
             else if(params.find("username") != params.end())
-            {
-                /* Generate the Secret Phrase */
-                SecureString strUsername = params["username"].get<std::string>().c_str();
-                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
-
-                /* Generate the Hashes */
-                uint1024_t hashSecret = LLC::SK1024(vSecret);
-
-                /* Generate the Final Root Hash. */
-                hashGenesis = LLC::SK256(hashSecret.GetBytes());
-            }
+                hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else
                 throw APIException(-25, "Missing Genesis or Username");
 
