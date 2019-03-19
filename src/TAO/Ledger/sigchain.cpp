@@ -11,7 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#pragma once
 
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
@@ -53,11 +52,11 @@ namespace TAO
 
                 /* Password input data. */
                 &vUsername[0],
-                vUsername.size(),
+                static_cast<uint32_t>(vUsername.size()),
 
                 /* The salt for usernames */
                 &vSalt[0],
-                vSalt.size(),
+                static_cast<uint32_t>(vSalt.size()),
 
                 /* Optional secret data */
                 NULL, 0,
@@ -140,11 +139,11 @@ namespace TAO
 
                 /* Password input data. */
                 &vPassword[0],
-                vPassword.size(),
+                static_cast<uint32_t>(vPassword.size()),
 
                 /* The secret phrase (PIN) as the salt. */
                 &vSecret[0],
-                vSecret.size(),
+                static_cast<uint32_t>(vSecret.size()),
 
                 /* Optional secret data */
                 NULL, 0,

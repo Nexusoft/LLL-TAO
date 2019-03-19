@@ -7,40 +7,47 @@ Create a token object register.
 
 ```
 <method>:
-/token/create
+    /token/create
 
 <key>=<value> parameter pairs:
-name=<name>
-amount=<supply-count>
-amount-pieces=<supply-count-divisor>
-session=<session-id>
-pin=<pin-number>
+    session=<session-id>
+    pin=<pin-number>
+    identifier=<token-id>
+    type=<account/token>
+    name=<selected-name>
 
-Input parameter descritpion:
+If token type specified:
+    supply=<total-supply>
+
+Input parameter description:
 <name>:
     Is an API caller's selected name for the object register.
-<supply-count>:
+<supply>:
     The initial token supply count.
-<supply-count-divisor>:
-    The granularity of fungibility of a single token in decimal places.
-<session-id>:
+<session>:
      The value returned from the accounts/login API call.
-<pin-number>:
+<pin>:
      The input value used on the accounts/create API call.
+<type>:
+     account or token. Token will create a token object register, account will create an account to receive that token identifier.
 ```
-    
+
 Return value JSON object:
 ```    
 {
+    "txid"    : "<transaction-id>"
     "address" : "<register-address>"
 }    
 
-Output parameter descritpion:
-<register-address>:
+Output parameter description:
+<address>:
     The address used for the register. Any address references in other token
-    API calls use this address.    
+    API calls use this address.
+
+<txid>:
+    The transaction ID that create was executed on.
 ```
-    
+
 ### Get Address
 
 Get a previous created object register address by name.
@@ -203,7 +210,7 @@ Output parameter descritpion:
 <txid>:
     The transaction-id associated with this credit operation.            
 ```
-                
+
 ### History
 
 Return a history of recent token-based transactions that have occurred.
@@ -236,4 +243,3 @@ Output parameter descritpion:
     A dictionary array of values equal to what is returned from the supply/
     history API call.
 ```
-    
