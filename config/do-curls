@@ -1,0 +1,30 @@
+#!/bin/tcsh -f
+#
+# do-curls
+#
+# Sequentially do a bunch of curl-nexus calls. Note that the output from some APIs
+# are input to subsequent APIs. So you will manually need to modify the contents
+# of this file. Note the intent of this file is a cut-and-paste source.    
+#            
+alias cn "./curl-nexus"
+
+cn "accounts/create?username=dino&password=dino-pw&pin=1234"
+cn "accounts/login?pin=1234&username=dino&password=dino-pw"
+
+cn "assets/create?pin=1234&session=7135204592580772485&data=dino-data&name=dino-asset"
+cn "assets/get?pin=1234&name=dino-asset"
+cn "assets/tokensize?size=100"
+cn "assets/history?&name=dino-asset"
+    
+cn "tokens/create?pin=1234&session=7135204592580772485&type=token&identifier=dino-token&supply=1000"
+cn "tokens/get?name=dino-token&type=token"
+cn "tokens/debit?pin=1234&session=XXXX&amount=10&name_from=dino&name_to=nancy"
+cn "tokens/credit?pin=1234&session=XXXX&&txid=XXX&amount=10&address_to=XXXXX&proof=XXXXX"
+
+cn "supply/createitem?pin=1234&data=dino-item-data&session=7135204592580772485"
+cn "supply/getitem?address=<addr>"
+cn "supply/updateitem?pin=1234&data=<data>&session=<ses-id>&address=<addr>"    
+cn "supply/transfer?pin=1234&session=<ses-id>&address=<addr>&destincation=bar
+cn "supply/history?address=<addr>"
+
+    
