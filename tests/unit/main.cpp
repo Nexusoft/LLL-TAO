@@ -13,6 +13,8 @@
 
 #include <openssl/rand.h>
 
+#include <LLC/aes/aes.h>
+
 
 std::atomic<uint64_t> nVerified;
 
@@ -37,20 +39,49 @@ void Verifier()
 
 
 
-static std::vector<uint8_t> vKey(32);
+static std::vector<uint8_t> vKey(16);
 
 template<class TypeName>
-void crypt(TypeName* data)
+void encrypt(TypeName* data)
 {
     size_t nSize = sizeof(*data);
-    std::vector<uint8_t> vData(nSize);
+    std::vector<uint8_t> vData((uint8_t*)data, (uint8_t*)data + nSize);
 
-    std::copy((uint8_t*)data, (uint8_t*)data + nSize, (uint8_t*)&vData[0]);
-    for(int i = 0; i < sizeof(*data); i++)
-    {
-        int index = i % vKey.size();
-        vData[i] ^= vKey[index];
-    }
+    uint32_t nMod = nSize % 16;
+
+    debug::log(0, "Extra bytes ", nMod);
+    std::vector<uint8_t> vBlank(nMod);
+
+    vData.insert(vData.end(), vBlank.begin(), vBlank.end());
+
+    struct AES_ctx ctx;
+    AES_init_ctx(&ctx, &vKey[0]);
+
+    for(uint32_t i = 0; i < vData.size(); i += 16)
+        AES_ECB_encrypt(&ctx, &vData[0] + i);
+
+    std::copy((uint8_t*)&vData[0], (uint8_t*)&vData[0] + nSize, (uint8_t*)data);
+}
+
+
+template<class TypeName>
+void decrypt(TypeName* data)
+{
+    size_t nSize = sizeof(*data);
+    std::vector<uint8_t> vData((uint8_t*)data, (uint8_t*)data + nSize);
+
+    uint32_t nMod = nSize % 16;
+
+    debug::log(0, "Extra bytes ", nMod);
+    std::vector<uint8_t> vBlank(nMod);
+
+    vData.insert(vData.end(), vBlank.begin(), vBlank.end());
+
+    struct AES_ctx ctx;
+    AES_init_ctx(&ctx, &vKey[0]);
+
+    for(uint32_t i = 0; i < vData.size(); i+= 16)
+        AES_ECB_decrypt(&ctx, &vData[0] + i);
 
     std::copy((uint8_t*)&vData[0], (uint8_t*)&vData[0] + nSize, (uint8_t*)data);
 }
@@ -95,7 +126,7 @@ public:
         ++nRefs;
 
         if(nRefs == 1)
-            crypt(data);
+            decrypt(data);
 
         debug::log(0, "Refs ", nRefs.load());
     }
@@ -111,7 +142,7 @@ public:
         --nRefs;
 
         if(nRefs == 0)
-            crypt(data);
+            encrypt(data);
 
         MUTEX.unlock();
     }
@@ -202,9 +233,9 @@ public:
         if(data == nullptr)
             return false;
 
-        crypt(data);
+        decrypt(data);
         bool fEquals = (*data == dataIn);
-        crypt(data);
+        encrypt(data);
 
         return fEquals;
     }
@@ -247,13 +278,13 @@ public:
         if(data == nullptr)
             throw std::runtime_error(debug::safe_printstr(FUNCTION, "dereferencing a nullptr"));
 
-        crypt(data);
+        decrypt(data);
         size_t nSize = sizeof(*data);
         std::vector<uint8_t> vchData(nSize);
 
         std::copy((uint8_t*)data, (uint8_t*)data + nSize, (uint8_t*)&vchData[0]);
 
-        crypt(data);
+        encrypt(data);
 
         TypeName type;
         std::copy((uint8_t*)&vchData[0], (uint8_t*)&vchData[0] + nSize, (uint8_t*)&type);
@@ -278,7 +309,7 @@ public:
 
         data = dataIn;
 
-        crypt(data);
+        encrypt(data);
     }
 
 
@@ -310,32 +341,10 @@ struct Test
 
 int main(int argc, char **argv)
 {
-    Test test;
 
-    RAND_bytes((uint8_t*)&vKey[0], vKey.size());
+    encrypted_ptr<TAO::Ledger::SignatureChain> user;
+    user.store(new TAO::Ledger::SignatureChain("colin", "passing"));
 
-    debug::log(0, FUNCTION, "Symmetric Key is ", HexStr(vKey.begin(), vKey.end()));
-    debug::log(0, FUNCTION, "Running live tests");
-
-    test.a    = 55;
-    test.b    = 77;
-    test.c    = 66;
-
-    test.hash = LLC::GetRand256();
-
-    debug::log(0, "A ", test.a, " B ", test.b, " C ", test.c, " Hash ", test.hash.ToString());
-
-    encrypted_ptr<Test> ptr;
-    ptr.store(&test);
-
-    debug::log(0, "A ", test.a, " B ", test.b, " C ", test.c, " Hash ", test.hash.ToString());
-
-    debug::log(0, "A ", ptr->a, " B ", ptr->b, " C ", ptr->c, " Hash ", ptr->hash.ToString());
-
-
-    return 0;
-
-    TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("colin", "passing");
     uint512_t hashGenerate = user->Generate(0, "1234");
 
     debug::log(0, hashGenerate.ToString());

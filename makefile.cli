@@ -187,6 +187,7 @@ OBJS+=  build/LLC_skein.o \
 		build/LLC_encoding.o \
 		build/LLC_ref.o \
 		build/LLC_thread.o \
+		build/LLC_aes.o \
 		build/LLC_falcon-enc.o \
 		build/LLC_falcon-fft.o \
 		build/LLC_falcon-keygen.o \
@@ -398,6 +399,9 @@ build/LLC_%.o: ./src/LLC/hash/argon2/%.c $(HEADERS)
 build/LLC_%.o: ./src/LLC/hash/argon2/blake2/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
+build/LLC_%.o: ./src/LLC/aes/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
 build/LLC_%.o: ./src/LLC/falcon/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
@@ -531,6 +535,13 @@ build/LLC_%.o: src/LLC/hash/argon2/%.c $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/LLC_%.o: src/LLC/hash/argon2/blake2/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/aes/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -753,6 +764,13 @@ build/LLC_%.o: src/LLC/hash/argon2/blake2/%.c $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/LLC_%.o: src/LLC/hash/SK/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/aes/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
