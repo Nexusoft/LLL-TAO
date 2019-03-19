@@ -48,7 +48,7 @@ void crypt(TypeName* data)
     std::copy((uint8_t*)data, (uint8_t*)data + nSize, (uint8_t*)&vData[0]);
     for(int i = 0; i < sizeof(*data); i++)
     {
-        int index = i % 256;
+        int index = i % vKey.size();
         vData[i] ^= vKey[index];
     }
 
@@ -327,6 +327,8 @@ int main(int argc, char **argv)
 
     encrypted_ptr<Test> ptr;
     ptr.store(&test);
+
+    debug::log(0, "A ", test.a, " B ", test.b, " C ", test.c, " Hash ", test.hash.ToString());
 
     debug::log(0, "A ", ptr->a, " B ", ptr->b, " C ", ptr->c, " Hash ", ptr->hash.ToString());
 

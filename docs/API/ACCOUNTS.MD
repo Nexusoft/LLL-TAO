@@ -76,6 +76,29 @@ Return value JSON object:
 }
 ```
 
+
+### Lock
+
+This will lock your signature chain again if it is already unlocked.
+
+```
+<method>:
+  /accounts/lock
+
+<key>=<value> parameter pairs:
+  session=<session-id>
+  pin=<pin-number>
+```
+
+Return value JSON object:
+```
+{
+    true
+}
+```
+
+Session is required to identify what session you are logging out of.
+
 ### Unlock
 
 This will unlock your signature chain for use in mining. It takes a session and your pin, and caches it in a secure allocator.
@@ -123,9 +146,9 @@ Only the genesis or the username are required to fulfill this command. If the ge
 
 The verbose parameter defines how much you receive in return.
 
-Verbose 0: version, sequence, timestamp, hash, and operation.
-Verbose 1: genesis, nexthash, and prevhash.
-Verbose 2: pubkey and signature.
+* Verbose 0: version, sequence, timestamp, hash, and operation.
+* Verbose 1: genesis, nexthash, and prevhash.
+* Verbose 2: pubkey and signature.
 
 Return value JSON object:
 ```
@@ -170,9 +193,9 @@ Only the genesis or the username are required to fulfill this command. If the ge
 
 The verbose parameter defines how much you receive in return.
 
-Verbose 0: version, sequence, timestamp, hash, and operation.
-Verbose 1: genesis, nexthash, and prevhash.
-Verbose 2: pubkey and signature.
+* Verbose 0: version, sequence, timestamp, hash, and operation.
+* Verbose 1: genesis, nexthash, and prevhash.
+* Verbose 2: pubkey and signature.
 
 Return value JSON object:
 ```
