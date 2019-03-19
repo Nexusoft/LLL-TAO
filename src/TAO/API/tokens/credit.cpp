@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/include/random.h>
+#include <LLC/hash/SK.h>
 
 #include <TAO/API/include/accounts.h>
 #include <TAO/API/include/tokens.h>
