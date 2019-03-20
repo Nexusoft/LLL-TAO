@@ -635,6 +635,8 @@ namespace memory
         {
             data  = pdata.data;
             nRefs = pdata.nRefs.load();
+
+            return *this;
         }
 
 
@@ -642,6 +644,8 @@ namespace memory
         encrypted_ptr& operator=(TypeName* dataIn)
         {
             store(dataIn);
+
+            return *this;
         }
 
 
