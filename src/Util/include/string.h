@@ -109,7 +109,7 @@ inline std::string FormatMoney(int64_t n, bool fPlus = false, int64_t COIN_SIZE 
     int64_t quotient = n_abs / COIN_SIZE;
     int64_t remainder = n_abs % COIN_SIZE;
 
-    std::string str = debug::strprintf("%" PRI64d ".%06" PRI64d "", quotient, remainder);
+    std::string str = debug::safe_printstr(quotient, ".", std::setfill('0'), std::setw(6), remainder);
 
     // Right-trim excess 0's before the decimal point:
     uint64_t nTrim = 0;

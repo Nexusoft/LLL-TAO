@@ -20,28 +20,12 @@ ________________________________________________________________________________
 #include <iosfwd>
 #include <sstream>
 #include <fstream>
+#include <iomanip>
 
 #include <Util/include/args.h>
 #include <Util/include/config.h>
 #include <Util/include/runtime.h>
 #include <Util/include/mutex.h>
-
-#ifdef snprintf
-#undef snprintf
-#endif
-//#define snprintf my_snprintf
-
-#ifndef PRI64d
-#if defined(_MSC_VER) || defined(__MSVCRT__)
-#define PRI64d  "I64d"
-#define PRI64u  "I64u"
-#define PRI64x  "I64x"
-#else
-#define PRI64d  "lld"
-#define PRI64u  "llu"
-#define PRI64x  "llx"
-#endif
-#endif
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -239,21 +223,6 @@ namespace debug
      *
      **/
     std::string rfc1123Time();
-
-
-    /** real_strprintf
-     *
-     *  Prints output into a string that is returned.
-     *
-     *  @param[in] format The format string specifier.
-     *  @param[in] ... The variable argument list to supply to each format
-     *                 specifier in the format string.
-     *
-     *  @return the output string of the printed message
-     *
-     **/
-    std::string real_strprintf(const char* format, ...);
-    #define strprintf(format, ...) real_strprintf(format, __VA_ARGS__)
 
 
     /** InitializeLog

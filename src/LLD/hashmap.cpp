@@ -151,7 +151,7 @@ namespace LLD
             debug::log(0, FUNCTION, "Generated Path ", strBaseLocation);
 
         /* Build the hashmap indexes. */
-        std::string index = debug::strprintf("%s_hashmap.index", strBaseLocation.c_str());
+        std::string index = debug::safe_printstr(strBaseLocation, "_hashmap.index");
         if(!filesystem::exists(index))
         {
             /* Generate empty space for new file. */
@@ -191,7 +191,7 @@ namespace LLD
         }
 
         /* Build the first hashmap index file if it doesn't exist. */
-        std::string file = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), 0u).c_str();
+        std::string file = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), 0u);
         if(!filesystem::exists(file))
         {
             /* Build a vector with empty bytes to flush to disk. */
@@ -241,7 +241,7 @@ namespace LLD
             if(!fileCache->Get(i, pstream))
             {
                 /* Set the new stream pointer. */
-                std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+                std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
 
                 pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
@@ -314,7 +314,7 @@ namespace LLD
             std::fstream* pstream;
             if(!fileCache->Get(i, pstream))
             {
-                std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+                std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
 
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
@@ -395,7 +395,7 @@ namespace LLD
                 std::fstream* pstream;
                 if(!fileCache->Get(i, pstream))
                 {
-                    std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+                    std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
 
                     /* Set the new stream pointer. */
                     pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
@@ -433,7 +433,7 @@ namespace LLD
                     std::fstream* pstream;
                     if(!fileCache->Get(i, pstream))
                     {
-                        std::string filename = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i);
+                        std::string filename = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i);
 
                         /* Set the new stream pointer. */
                         pstream = new std::fstream(filename, std::ios::in | std::ios::out | std::ios::binary);
@@ -472,7 +472,7 @@ namespace LLD
         }
 
         /* Create a new disk hashmap object in linked list if it doesn't exist. */
-        std::string file = debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), hashmap[nBucket]);
+        std::string file = debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), hashmap[nBucket]);
         if(!filesystem::exists(file))
         {
             /* Blank vector to write empty space in new disk file. */
@@ -574,7 +574,7 @@ namespace LLD
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(
-                  debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i),
+                  debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i),
                   std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If file not found add to LRU cache. */
@@ -647,7 +647,7 @@ namespace LLD
             {
                 /* Set the new stream pointer. */
                 pstream = new std::fstream(
-                  debug::strprintf("%s_hashmap.%05u", strBaseLocation.c_str(), i),
+                  debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i),
                   std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If file not found add to LRU cache. */

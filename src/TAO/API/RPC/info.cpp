@@ -106,7 +106,7 @@ namespace TAO
                 }
                 obj["eids"] = jsonEIDs;
             }
-            
+
 
 
 
@@ -182,7 +182,7 @@ namespace TAO
                 obj["addr"]     = addr.ToString();
                 obj["type"]     = std::string("Tritium");
                 obj["height"]   = addr.nHeight;
-                obj["latency"]  = debug::strprintf("%u ms", addr.nLatency);
+                obj["latency"]  = debug::safe_printstr(addr.nLatency, " ms");
                 obj["lastseen"] = addr.nLastSeen;
                 obj["connects"] = addr.nConnected;
                 obj["drops"]    = addr.nDropped;
