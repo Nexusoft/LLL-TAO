@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/chainstate.h>

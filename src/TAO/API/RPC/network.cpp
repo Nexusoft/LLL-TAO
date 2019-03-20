@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/tritium.h>
@@ -412,7 +413,7 @@ namespace TAO
 
                             txdata["timestamp"] = convert::DateTimeStrFormat(tx.nTimestamp);
                             txdata["type"] = tx.GetTxTypeString();
-                            
+
                             txdata["hash"] = tx.GetHash().GetHex();
                             txdata["hashNext"] = tx.hashNext.ToString().substr(0, 20);
                             txdata["hashPrevTx"] = tx.hashPrevTx.ToString().substr(0, 20);

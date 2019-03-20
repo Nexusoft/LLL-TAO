@@ -238,6 +238,7 @@ OBJS+=  build/LLC_skein.o \
 		build/Ledger_checkpoints.o \
 		build/Ledger_create.o \
 		build/Ledger_difficulty.o \
+        build/Ledger_retarget.o \
 		build/Ledger_mempool.o \
 		build/Ledger_prime.o \
 		build/Ledger_sigchain.o \
