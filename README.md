@@ -1,6 +1,6 @@
 # Lower Level Library / TAO Framework
 
-Series of Templates for developing Crypto, Database, or Protocol. Base templates for the TAO framework, which will inherit these templates and create higher level functionality. This TAO framework is the foundation to Nexus as an integrated series of core upgrades for a live blockchain to upgrade into a multi-dimensional chain. This is named the acronym TAO standing for Tritium, Amine, and Obsidian.
+Series of Templates for developing Crypto, Database, or Protocol. Base templates for the TAO framework, which will inherit these templates and create higher level functionality.
 
 
 ## TAO Framework
@@ -11,7 +11,7 @@ The core base upgrades utilizing the LLL as base templates for Tritium, Amine, a
 
 The first of the three updates in the TAO Framework. Tritium will include the following feature sets:
 
-* Tritium Transactions / Signature Chains (Key Suites)
+* Tritium Transactions / Signature Chains
 * Advanced Contracts (Phase 1)
 * LISP Integration (Optional)
 * L1 Locking Groups (LISP IP Multicast)
@@ -62,11 +62,10 @@ Set of Operations for handling Crypto including:
 Currently Implemented:
 
 * SK Hashing (Skein and Keccak)
+* Argon2 Password hashing
+* AES Standard (Symmetric)
+* FALCON (Quantum Resistant Lattice Signatures)
 * OpenSSL wrapping functions (EC_KEY, BIGNUM)
-
-To Implement:
-
-* Experimental Lattice Based Signature Schemes
 
 
 ### Lower Level Database
