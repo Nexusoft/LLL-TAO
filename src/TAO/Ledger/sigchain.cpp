@@ -120,6 +120,10 @@ namespace TAO
             }
 
             /* Generate the Secret Phrase */
+            std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
+            vUsername.insert(vUsername.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
+
+            /* Generate the Secret Phrase */
             std::vector<uint8_t> vPassword(strPassword.begin(), strPassword.end());
             vPassword.insert(vPassword.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
@@ -141,12 +145,13 @@ namespace TAO
                 &vPassword[0],
                 static_cast<uint32_t>(vPassword.size()),
 
-                /* The secret phrase (PIN) as the salt. */
+                /* Username and key ID as the salt. */
+                &vUsername[0],
+                static_cast<uint32_t>(vUsername.size()),
+
+                /* The secret phrase as secret data. */
                 &vSecret[0],
                 static_cast<uint32_t>(vSecret.size()),
-
-                /* Optional secret data */
-                NULL, 0,
 
                 /* Optional associated data */
                 NULL, 0,
