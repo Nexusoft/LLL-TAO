@@ -437,13 +437,13 @@ namespace memory
     static bool fKeySet = false;
 
 
-    /** crypt memory
+    /** encrypt memory
      *
      *  Encrypt or Decrypt a pointer.
      *
      **/
     template<class TypeName>
-    void crypt(TypeName* data, bool fEncrypt)
+    void encrypt(TypeName* data, bool fEncrypt)
     {
         /* Set the encryption key if not set. */
         if(!fKeySet)
@@ -516,7 +516,7 @@ namespace memory
 
             /* Decrypt memory on first proxy. */
             if(nRefs == 0)
-                crypt(data, false);
+                encrypt(data, false);
 
             /* Increment the reference count. */
             ++nRefs;
@@ -535,7 +535,7 @@ namespace memory
 
             /* Encrypt memory again when ref count is 0. */
             if(nRefs == 0)
-                crypt(data, true);
+                encrypt(data, true);
 
             /* Unlock the mutex. */
             MUTEX.unlock();
@@ -663,13 +663,13 @@ namespace memory
                 return false;
 
             /* Decrypt the pointer. */
-            crypt(data, false);
+            encrypt(data, false);
 
             /* Check equivilence. */
             bool fEquals = (*data == dataIn);
 
             /* Encrypt the poitner. */
-            crypt(data, true);
+            encrypt(data, true);
 
             return fEquals;
         }
@@ -689,13 +689,13 @@ namespace memory
                 return false;
 
             /* Decrypt the pointer. */
-            crypt(data, false);
+            encrypt(data, false);
 
             /* Check equivilence. */
             bool fNotEquals = (*data != dataIn);
 
             /* Encrypt the poitner. */
-            crypt(data, true);
+            encrypt(data, true);
 
             return fNotEquals;
         }
@@ -744,7 +744,7 @@ namespace memory
             data = pdata;
 
             /* Encrypt the memory. */
-            crypt(data, true);
+            encrypt(data, true);
         }
 
 
@@ -760,7 +760,7 @@ namespace memory
             /* Free the memory. */
             if(data)
             {
-                crypt(data, false);
+                encrypt(data, false);
                 delete data;
             }
 
