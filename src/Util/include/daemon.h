@@ -55,7 +55,7 @@ void Daemonize()
     debug::log(0, "Nexus server starting");
 
     /* Set new file permissions */
-    umask(0);
+    umask(077);
 
     /* close stdin, stderr, stdout so that the tty no longer receives output */
     if (int fdnull = open("/dev/null", O_RDWR))
