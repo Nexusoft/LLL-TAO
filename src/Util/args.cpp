@@ -175,8 +175,7 @@ namespace config
         fPrintToConsole         = GetBoolArg("-printtoconsole", false);
         fDaemon                 = GetBoolArg("-daemon", false);
         fServer                 = fDaemon || GetBoolArg("-server", false);
-        fTestNet                = GetBoolArg("-testnet", false) ||
-                                  GetBoolArg("-lispnet", false);
+        fTestNet                = (GetArg("-testnet", 0) > 0);
         fListen                 = GetBoolArg("-listen", true);
         //fUseProxy               = GetBoolArg("-proxy")
         fAllowDNS               = GetBoolArg("-allowdns", true);
