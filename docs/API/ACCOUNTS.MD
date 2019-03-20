@@ -63,7 +63,7 @@ which this version uses to validate your credentials.
 ### Logout
 
 This will log you out of this specific API, and delete your credentials stored
-in a secure allocator.
+in encrypted memory.
 
 ```
 <method>:
@@ -107,7 +107,7 @@ Session is required to identify what session you are locking wallet from.
 ### Unlock
 
 This will unlock your signature chain for use in mining. It takes a session
-and your pin, and caches it in a secure allocator.
+and your pin, and caches it encrypted memory.
 
 ```
 <method>:
