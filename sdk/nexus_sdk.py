@@ -63,7 +63,8 @@ class sdk_init():
 
         pw = self.password.replace("&", "%26")
         pw = urllib.quote_plus(pw)
-        parms = "?username={}&password={}".format(self.username, pw)
+        parms = "?username={}&password={}&pin={}".format(self.username, pw,
+            self.pin)
         url = accounts_url.format("login") + parms
         json_data = self.__get(url)
         if (json_data.has_key("error")): return(json_data)
