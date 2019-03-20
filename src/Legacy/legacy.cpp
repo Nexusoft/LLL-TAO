@@ -542,6 +542,11 @@ namespace Legacy
         /* Make static const for reducing repeated computation. */
         static const double LOG3 = log(3);
 
+        /* Use appropriate settings for Testnet or Mainnet */
+        static const uint32_t nTrustWeightBase = config::fTestNet ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
+        static const uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
+        static const uint32_t nMinimumCoinAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
+
         /* Check the proof hash of the stake block on version 5 and above. */
         LLC::CBigNum bnTarget;
         bnTarget.SetCompact(nBits);
@@ -549,12 +554,15 @@ namespace Legacy
             return debug::error(FUNCTION, "proof of stake hash not meeting target");
 
         /* Weight for Trust transactions combine block weight and stake weight. */
-        double nTrustWeight = 0.0, nBlockWeight = 0.0;
-        uint32_t nTrustAge = 0, nBlockAge = 0;
+        double nTrustWeight = 0.0;
+        double nBlockWeight = 0.0;
+        uint32_t nTrustScore = 0;
+        uint32_t nBlockAge = 0;
+
         if(vtx[0].IsTrust())
         {
             /* Get the score and make sure it all checks out. */
-            if(!TrustScore(nTrustAge))
+            if(!TrustScore(nTrustScore))
                 return debug::error(FUNCTION, "failed to get trust score");
 
             /* Get the weights with the block age. */
@@ -562,16 +570,16 @@ namespace Legacy
                 return debug::error(FUNCTION, "failed to get block age");
 
             /* Trust Weight Continues to grow the longer you have staked and higher your interest rate */
-            nTrustWeight = std::min(90.0, (((44.0 * log(((2.0 * nTrustAge) /
-                (TAO::Ledger::TRUST_WEIGHT_BASE)) + 1.0)) / LOG3)) + 1.0);
+            double nTrustWeightRatio = (double)nTrustScore / (double)nTrustWeightBase;
+            nTrustWeight = std::min(90.0, (44.0 * log((2.0 * nTrustWeightRatio) + 1.0) / LOG3) + 1.0);
 
             /* Block Weight Reaches Maximum At Trust Key Expiration. */
-            nBlockWeight = std::min(10.0, (((9.0 * log(((2.0 * nBlockAge) /
-                ((config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))) + 1.0)) / LOG3)) + 1.0);
+            double nBlockAgeRatio = (double)nBlockAge / (double)nMaxBlockAge;
+            nBlockWeight = std::min(10.0, (9.0 * log((2.0 * nBlockAgeRatio) + 1.0) / LOG3) + 1.0);
 
         }
 
-        /* Weight for Gensis transactions are based on your coin age. */
+        /* Weight for Genesis transactions are based on your coin age. */
         else
         {
             /* Genesis transaction can't have any transactions. */
@@ -584,16 +592,21 @@ namespace Legacy
                 return debug::error(FUNCTION, "failed to get coinstake age");
 
             /* Genesis has to wait for one full trust key timespan. */
-            if(nCoinAge < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+            if(nCoinAge < nMinimumCoinAge)
                 return debug::error(FUNCTION, "genesis age is immature");
 
             /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
-            nTrustWeight = std::min(10.0, (((9.0 * log(((2.0 * nCoinAge) / (TAO::Ledger::TRUST_WEIGHT_BASE)) + 1.0)) / LOG3)) + 1.0);
+            double nGenesisTrustRatio = (double)nCoinAge / (double)nTrustWeightBase;
+            nTrustWeight = std::min(10.0, (9.0 * log((2.0 * nGenesisTrustRatio) + 1.0) / LOG3) + 1.0);
+
+            /* Block Weight remains zero while staking for Genesis */
+            nBlockWeight = 0.0;
         }
 
         /* Check the energy efficiency requirements. */
-        double nThreshold = ((nTime - vtx[0].nTime) * 100.0) / nNonce;
         double nRequired  = ((108.0 - nTrustWeight - nBlockWeight) * TAO::Ledger::MAX_STAKE_WEIGHT) / vtx[0].vout[0].nValue;
+        double nThreshold = ((nTime - vtx[0].nTime) * 100.0) / nNonce;
+
         if(nThreshold < nRequired)
             return debug::error(FUNCTION, "energy threshold too low ", nThreshold, " required ", nRequired);
 
@@ -601,7 +614,7 @@ namespace Legacy
         debug::log(2, FUNCTION,
             "hash=", StakeHash().ToString().substr(0, 20), ", ",
             "target=", bnTarget.getuint1024().ToString().substr(0, 20), ", ",
-            "trustscore=", nTrustAge, ", ",
+            "trustscore=", nTrustScore, ", ",
             "blockage=", nBlockAge, ", ",
             "trustweight=", nTrustWeight, ", ",
             "blockweight=", nBlockWeight, ", ",
