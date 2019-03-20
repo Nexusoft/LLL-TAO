@@ -39,7 +39,7 @@ namespace TAO
                 throw APIException(-24, "Missing Pin");
 
             /* Check if already unlocked. */
-            if(pairUnlocked.first != 0)
+            if(pairUnlocked->first != 0)
                 throw APIException(-26, "Account already unlocked");
 
             /* Extract the session. */
@@ -48,7 +48,7 @@ namespace TAO
                 throw APIException(-26, "Session not found");
 
             /* Get the sigchain from map of users. */
-            TAO::Ledger::SignatureChain* user = mapSessions[nSession];
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[nSession];
 
             /* Get the genesis ID. */
             uint256_t hashGenesis = user->Genesis();
@@ -86,7 +86,8 @@ namespace TAO
                 throw APIException(-28, "Invalid PIN");
 
             /* Extract the PIN. */
-            pairUnlocked = std::make_pair(nSession, params["pin"].get<std::string>().c_str());
+            pairUnlocked->first = nSession;
+            pairUnlocked->second = params["pin"].get<std::string>().c_str();
 
             return true;
         }

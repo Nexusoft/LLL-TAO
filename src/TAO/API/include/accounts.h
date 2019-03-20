@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/include/mutex.h>
+#include <Util/include/memory.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -37,11 +38,11 @@ namespace TAO
         class Accounts : public Base
         {
             /** The signature chain for login and logout. */
-            mutable std::map<uint64_t, TAO::Ledger::SignatureChain*> mapSessions;
+            mutable std::map<uint64_t, memory::encrypted_ptr<TAO::Ledger::SignatureChain>> mapSessions;
 
 
             /** The unlocked pins for mining. **/
-            mutable std::pair<uint64_t, SecureString> pairUnlocked;
+            mutable memory::encrypted_ptr<std::pair<uint64_t, SecureString>> pairUnlocked;
 
 
             /** The mutex for locking. **/
@@ -104,12 +105,11 @@ namespace TAO
               *  Returns the sigchain the account logged in.
               *
               *  @param[in] nSession The session identifier.
-              *  @param[out] user The user's account.
               *
-              *  @return The genesis ID if logged in.
+              *  @return the signature chain.
               *
               **/
-             bool GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain* &user) const;
+             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& GetAccount(uint64_t nSession) const;
 
 
             /** GetName

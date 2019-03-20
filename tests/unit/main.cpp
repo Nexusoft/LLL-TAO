@@ -7,6 +7,14 @@
 
 #include <TAO/Ledger/types/sigchain.h>
 
+#include <Util/include/memory.h>
+
+#include <LLC/include/random.h>
+
+#include <openssl/rand.h>
+
+#include <LLC/aes/aes.h>
+
 
 std::atomic<uint64_t> nVerified;
 
@@ -30,11 +38,20 @@ void Verifier()
 }
 
 
+struct Test
+{
+    uint32_t a;
+    uint32_t b;
+    uint32_t c;
+
+    uint256_t hash;
+};
+
+
 int main(int argc, char **argv)
 {
-    debug::log(0, FUNCTION, "Running live tests");
+    memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain("colin", "passing");
 
-    TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("colin", "passing");
     uint512_t hashGenerate = user->Generate(0, "1234");
 
     debug::log(0, hashGenerate.ToString());
@@ -42,6 +59,9 @@ int main(int argc, char **argv)
     uint512_t hashGenerate2 = user->Generate(0, "1234");
 
     debug::log(0, hashGenerate2.ToString());
+
+    user.free();
+
 
     runtime::timer timer;
     timer.Start();
@@ -79,6 +99,8 @@ int main(int argc, char **argv)
     debug::log(0, FUNCTION, "Verified in ", nElapsed, " microseconds");
 
     debug::log(0, FUNCTION, "Passed (", vchPubKey.size() + vchSignature.size(), " bytes)");
+
+
 
     return 0;
 }

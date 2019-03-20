@@ -44,7 +44,7 @@ namespace TAO
          *  @param[out] tx The traansaction object being created
          *
          **/
-        bool CreateTransaction(const TAO::Ledger::SignatureChain* user, const SecureString& pin, TAO::Ledger::Transaction& tx);
+        bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin, TAO::Ledger::Transaction& tx);
 
 
         /** Add Transactions
@@ -68,7 +68,7 @@ namespace TAO
          *  @param[in] nExtraNonce An extra nonce to use for double iterating.
          *
          **/
-        bool CreateBlock(const TAO::Ledger::SignatureChain* user, const SecureString& pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block, uint64_t nExtraNonce = 0);
+        bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin, uint32_t nChannel, TAO::Ledger::TritiumBlock& block, uint64_t nExtraNonce = 0);
 
 
         /** CreateGenesis

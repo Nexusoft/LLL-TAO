@@ -156,9 +156,9 @@ only resolve the genesis.
 
 The verbose parameter defines how much you receive in return.
 
-Verbose 0: version, sequence, timestamp, hash, and operation.
-Verbose 1: genesis, nexthash, and prevhash.
-Verbose 2: pubkey and signature.
+* Verbose 0: version, sequence, timestamp, hash, and operation.
+* Verbose 1: genesis, nexthash, and prevhash.
+* Verbose 2: pubkey and signature.
 
 Return value JSON object:
 ```
@@ -210,9 +210,9 @@ only resolve the genesis.
 
 The verbose parameter defines how much you receive in return.
 
-Verbose 0: version, sequence, timestamp, hash, and operation.
-Verbose 1: genesis, nexthash, and prevhash.
-Verbose 2: pubkey and signature.
+* Verbose 0: version, sequence, timestamp, hash, and operation.
+* Verbose 1: genesis, nexthash, and prevhash.
+* Verbose 2: pubkey and signature.
 
 Return value JSON object:
 ```

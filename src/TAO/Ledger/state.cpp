@@ -237,8 +237,12 @@ namespace TAO
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
 
-                    /* Check the memory pool. */
+                    /* Check the database. */
                     TAO::Ledger::Transaction tx;
+                    if(LLD::legDB->ReadTx(hash, tx))
+                        continue;
+
+                    /* Check the memory pool. */
                     if(!mempool.Get(hash, tx))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
@@ -256,8 +260,12 @@ namespace TAO
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
 
-                    /* Check if in memory pool. */
+                    /* Check the database. */
                     Legacy::Transaction tx;
+                    if(LLD::legacyDB->ReadTx(hash, tx))
+                        continue;
+
+                    /* Check if in memory pool. */
                     if(!mempool.Get(hash, tx))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 

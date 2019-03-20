@@ -50,7 +50,7 @@ namespace TAO
                 throw APIException(-24, "Missing PIN");
 
             /* Create the sigchain. */
-            TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
 
             /* Get the genesis ID. */
             uint256_t hashGenesis = user->Genesis();
@@ -62,8 +62,7 @@ namespace TAO
                 /* Check the memory pool and compare hashes. */
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
                 {
-                    delete user;
-                    user = nullptr;
+                    user.free();
 
                     throw APIException(-26, "Account doesn't exists");
                 }
@@ -97,8 +96,7 @@ namespace TAO
             {
                 if(hashGenesis == session->second->Genesis())
                 {
-                    delete user;
-                    user = nullptr;
+                    user.free();
 
                     ret["genesis"] = hashGenesis.ToString();
                     ret["session"] = debug::safe_printstr(std::dec, session->first);
@@ -113,7 +111,7 @@ namespace TAO
             ret["session"] = debug::safe_printstr(std::dec, nSession);
 
             /* Setup the account. */
-            mapSessions[nSession] = user;
+            mapSessions.emplace(nSession, std::move(user));
 
             return ret;
         }

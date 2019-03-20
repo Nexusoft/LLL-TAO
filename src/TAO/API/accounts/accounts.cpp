@@ -48,11 +48,11 @@ namespace TAO
         /* Determine if the accounts are locked. */
         bool Accounts::Locked(uint64_t& nSession, SecureString& strSecret) const
         {
-            if(pairUnlocked.first == 0)
+            if(pairUnlocked->first == 0)
                 return false;
 
-            nSession  = pairUnlocked.first;
-            strSecret = pairUnlocked.second;
+            nSession  = pairUnlocked->first;
+            strSecret = pairUnlocked->second;
 
             return true;
         }
@@ -85,17 +85,16 @@ namespace TAO
 
 
         /* Returns the sigchain the account logged in. */
-        bool Accounts::GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain* &user) const
+        static memory::encrypted_ptr<TAO::Ledger::SignatureChain> null_ptr;
+        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Accounts::GetAccount(uint64_t nSession) const
         {
             LOCK(MUTEX);
 
             /* Check if you are logged in. */
             if(!mapSessions.count(nSession))
-                return false;
+                return null_ptr;
 
-            user = mapSessions[nSession];
-
-            return true;
+            return mapSessions[nSession];
         }
     }
 }

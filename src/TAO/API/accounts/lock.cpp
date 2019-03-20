@@ -29,7 +29,7 @@ namespace TAO
                 throw APIException(-23, "Missing Session");
 
             /* Check if already unlocked. */
-            if(pairUnlocked.first == 0)
+            if(pairUnlocked->first == 9)
                 throw APIException(-26, "Account already locked");
 
             /* Extract the session. */
@@ -39,10 +39,8 @@ namespace TAO
             if(!mapSessions.count(nSession))
                 throw APIException(-1, "Session not found");
 
-            /* Delete the sigchan. */
-            LOCK(MUTEX);
-
-            pairUnlocked = std::make_pair(0, "");
+            pairUnlocked->first = 0;
+            pairUnlocked->second = "";
 
             return true;
         }
