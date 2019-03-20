@@ -22,7 +22,7 @@ cn "tokens/debit?pin=1234&session=$SES&amount=10&name_from=dino&name_to=nancy"
 cn "tokens/credit?pin=1234&session=$SES&&txid=$TXIDX&amount=10&address_to=$ADDR&proof=$PROOF"
 
 cn "supply/createitem?pin=1234&data=dino-item-data&session=$SES"
-cn "supply/getitem?address=$ADDR
+cn "supply/getitem?address=$ADDR"
 cn "supply/updateitem?pin=1234&data=item-data&session=$SES&address=$ADDR"
 cn "supply/transfer?pin=1234&session=$SES&address=$ADDR&destination=$NEW_ADDR"
-cn "supply/history?address=$ADDR
+cn "supply/history?address=$ADDR"
