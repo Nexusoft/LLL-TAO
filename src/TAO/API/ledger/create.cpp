@@ -57,8 +57,8 @@ namespace TAO
             uint64_t nSession = std::stoull(params["session"].get<std::string>());
 
             /* Get the account. */
-            TAO::Ledger::SignatureChain* user;
-            if(!accounts.GetAccount(nSession, user))
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
+            if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Create the block object. */

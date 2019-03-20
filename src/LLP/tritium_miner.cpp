@@ -87,8 +87,8 @@ namespace LLP
             debug::error(FUNCTION, "No unlocked account available");
 
          /* Ateempt to get the sigchain. */
-         TAO::Ledger::SignatureChain* pSigChain;
-         if(!TAO::API::accounts.GetAccount(nSession, pSigChain))
+         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::accounts.GetAccount(nSession);
+         if(!pSigChain)
             debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
 
@@ -169,8 +169,8 @@ namespace LLP
             return debug::error(FUNCTION, "No unlocked account available");
 
          /* Ateempt to get the sigchain. */
-         TAO::Ledger::SignatureChain* pSigChain;
-         if(!TAO::API::accounts.GetAccount(nSession, pSigChain))
+         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::accounts.GetAccount(nSession);
+         if(!pSigChain)
             return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
          /* Sign the submitted block */
