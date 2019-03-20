@@ -91,13 +91,14 @@ namespace TAO
 
             /** Copy constructor **/
             SignatureChain(const SignatureChain& chain)
-            : strUsername(chain.strUsername.c_str())
-            , strPassword(chain.strPassword.c_str())
+            : strUsername(chain.strUsername)
+            , strPassword(chain.strPassword)
             , MUTEX()
             , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
             , hashGenesis(chain.hashGenesis)
             {
             }
+
 
             /** Move constructor
              *
@@ -105,8 +106,8 @@ namespace TAO
              * @param[in] strPasswordIn The password to seed the signature chain
              **/
             SignatureChain(const SignatureChain&& chain)
-            : strUsername(chain.strUsername.c_str())
-            , strPassword(chain.strPassword.c_str())
+            : strUsername(chain.strUsername)
+            , strPassword(chain.strPassword)
             , MUTEX()
             , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
             , hashGenesis(chain.hashGenesis)

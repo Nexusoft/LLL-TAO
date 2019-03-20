@@ -118,13 +118,6 @@ ifdef USE_FALCON
 	DEFS+= -DUSE_FALCON
 endif
 
-#Display Warnings while compiling
-ifdef ENABLE_WARNINGS
-	CXXFLAGS+= -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security -pedantic
-else
-	CXXFLAGS+= -w
-endif
-
 #Fail on warnings
 ifdef WARNINGS_FAIL
 	CXXFLAGS+= -Werror
@@ -162,6 +155,14 @@ ifdef ENABLE_DEBUG
 else
 	DEBUG+=-s
 	OPTIMIZATION+=-O3
+endif
+
+#Display Warnings while compiling
+ifdef ENABLE_WARNINGS
+	CXXWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security -pedantic
+	CWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wformat -Wformat-security -pedantic
+else
+	CXXFLAGS+= -w
 endif
 
 
@@ -371,9 +372,14 @@ CXXFLAGS+= -mthreads \
 	$(DEFS) \
 	$(INCLUDEPATHS)
 
-#set -std=c++ for all but c compiling
+#Set CFLAGS and Warnings
 CFLAGS:= $(CXXFLAGS)
+CFLAGS+= $(CWARNINGS)
+
+#set -std=c++ for all but c compiling
 CXXFLAGS+=-std=c++11
+CXXFLAGS+= $(CXXWARNINGS)
+
 
 #OS Specific Targets and instructions
 all: release/nexus.exe
@@ -492,9 +498,13 @@ CXXFLAGS+= -mmacosx-version-min=10.13 \
 	$(DEBUG) \
 	$(INCLUDEPATHS)
 
-#set -std=c++ for all but c compiling
+#Set CFLAGS and Warnings
 CFLAGS:= $(CXXFLAGS)
+CFLAGS+= $(CWARNINGS)
+
+#set -std=c++ for all but c compiling
 CXXFLAGS+=-std=c++11
+CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
 all: nexus
@@ -721,9 +731,14 @@ CXXFLAGS+= -pthread \
 	$(DEFS) \
 	$(INCLUDEPATHS)
 
-#set -std=c++ for all but c compiling
+
+#Set CFLAGS and Warnings
 CFLAGS:= $(CXXFLAGS)
+CFLAGS+= $(CWARNINGS)
+
+#set -std=c++ for all but c compiling
 CXXFLAGS+=-std=c++11
+CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
 all: nexus
