@@ -538,59 +538,20 @@ int main(int argc, char **argv)
     stream << (uint8_t)OP::UINT32_T << 5u << (uint8_t) OP::MUL << (uint8_t) OP::UINT32_T << 5u << (uint8_t)OP::EQUALS << (uint8_t)OP::UINT32_T << 25u;
     assert(Validate(stream));
 
+
     stream.SetNull();
     stream << (uint8_t)OP::UINT32_T << 5u << (uint8_t) OP::EXP << (uint8_t) OP::UINT32_T << 3u << (uint8_t)OP::EQUALS << (uint8_t)OP::UINT32_T << 125u;
     assert(Validate(stream));
 
-    memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain("colin", "passing");
 
-    uint512_t hashGenerate = user->Generate(0, "1234");
-
-    debug::log(0, hashGenerate.ToString());
-
-    uint512_t hashGenerate2 = user->Generate(0, "1234");
-
-    debug::log(0, hashGenerate2.ToString());
-
-    user.free();
+    stream.SetNull();
+    stream << (uint8_t)OP::UINT32_T << 9837u << (uint8_t) OP::ADD << (uint8_t) OP::UINT32_T << 7878u << (uint8_t)OP::EQUALS << (uint8_t)OP::UINT32_T << 17715u;
+    assert(Validate(stream));
 
 
-    runtime::timer timer;
-    timer.Start();
-    LLC::FLKey key;
-
-    /* Get the secret from new key. */
-    std::vector<uint8_t> vBytes = hashGenerate.GetBytes();
-    LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
-
-    key.SetSecret(vchSecret, true);
-    uint64_t nElapsed = timer.ElapsedMicroseconds();
-    debug::log(0, FUNCTION, "Generated in ", nElapsed, " microseconds");
-    timer.Reset();
-
-    uint256_t hashRandom = 55;
-    vchMessage = hashRandom.GetBytes();
-
-    if(!key.Sign(vchMessage, vchSignature))
-        return debug::error(FUNCTION, "failed to sign");
-
-    nElapsed = timer.ElapsedMicroseconds();
-    debug::log(0, FUNCTION, "Signed in ", nElapsed, " microseconds");
-    timer.Reset();
-
-    vchPubKey = key.GetPubKey();
-
-
-
-    LLC::FLKey key2;
-    key2.SetPubKey(vchPubKey);
-    if(!key2.Verify(vchMessage, vchSignature))
-        debug::error(FUNCTION, "failed to verify");
-
-    nElapsed = timer.ElapsedMicroseconds();
-    debug::log(0, FUNCTION, "Verified in ", nElapsed, " microseconds");
-
-    debug::log(0, FUNCTION, "Passed (", vchPubKey.size() + vchSignature.size(), " bytes)");
+    stream.SetNull();
+    stream << (uint8_t)OP::UINT32_T << 9837u << (uint8_t) OP::ADD << (uint8_t) OP::UINT32_T << 7878u << (uint8_t)OP::LESSTHAN << (uint8_t)OP::UINT32_T << 17716u;
+    assert(Validate(stream));
 
 
 
