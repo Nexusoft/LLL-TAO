@@ -89,7 +89,7 @@ namespace Legacy
     /* Retrieves the current block weight metric as a percentage of maximum. */
     double StakeMinter::GetBlockWeightPercent() const
     {
-        return (nBlockWeight.load() / 10.0);
+        return (nBlockWeight.load() * 100.0 / 10.0);
     }
 
 
@@ -103,7 +103,7 @@ namespace Legacy
     /* Retrieves the current trust weight metric as a percentage of maximum. */
     double StakeMinter::GetTrustWeightPercent() const
     {
-        return (nTrustWeight.load() / 90.0);
+        return (nTrustWeight.load() * 100.0 / 90.0);
     }
 
 
@@ -111,6 +111,13 @@ namespace Legacy
     double StakeMinter::GetStakeRate() const
     {
         return nStakeRate.load();
+    }
+
+
+    /* Retrieves the current staking reward rate as an annual percentage */
+    double StakeMinter::GetStakeRatePercent() const
+    {
+        return nStakeRate.load() * 100.0;
     }
 
 
@@ -359,11 +366,20 @@ namespace Legacy
             if (!TAO::Ledger::GetLastTrust(trustKey, prevBlockState))
                 return debug::error(FUNCTION, "Failed to get last trust for trust key");
 
-            /* Enforce the minimum staking transaction interval. */
-            if ((candidateBlock.nHeight - prevBlockState.nHeight) < nMinimumInterval)
+            /* Enforce the minimum staking transaction interval. (current height is candidate height - 1) */
+            uint32_t nCurrentInterval = candidateBlock.nHeight - 1 - prevBlockState.nHeight;
+            if (nCurrentInterval < nMinimumInterval)
             {
                 /* Below minimum interval for generating stake blocks. Increase sleep time until can continue normally. */
                 nSleepTime = 5000; //5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown)
+
+                /* Update log every 60 iterations (5 minutes) */
+                if ((nWaitCounter % 60) == 0)
+                    debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ", 
+                               (nMinimumInterval - nCurrentInterval), " blocks remaining until staking available.");
+
+                ++nWaitCounter;
+
                 return false;
             }
 
@@ -459,14 +475,14 @@ namespace Legacy
 
             /* Update log every 60 iterations (5 minutes) */
             if ((nWaitCounter % 60) == 0)
-                debug::log(0, FUNCTION, "Wallet has no balance or no spendable inputs available.");
+                debug::log(0, FUNCTION, "Stake Minter: Wallet has no balance or no spendable inputs available.");
 
             ++nWaitCounter;
 
             return false;
         }
         else if (nSleepTime == 5000) {
-            /* Reset sleep time after inputs become available. */
+            /* Normal stake operation now available. Reset sleep time and wait counter. */
             nSleepTime = 1000;
             nWaitCounter = 0;
         }
@@ -488,7 +504,7 @@ namespace Legacy
         /* Use appropriate settings for Testnet or Mainnet */
         static const uint32_t nTrustWeightBase = config::fTestNet ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
         static const uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
-        static const uint32_t nMinimumCoinAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
+        static const uint32_t nMinimumCoinAge = config::fTestNet ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE;
 
         /* Use local variables for calculations, then set instance variables with a lock scope at the end */
         double nCurrentTrustWeight = 0.0;
@@ -555,7 +571,8 @@ namespace Legacy
                 {
 					uint32_t nRemainingWaitTime = (nMinimumCoinAge - nCoinAge) / 60; //minutes
 
-					debug::log(0, FUNCTION, "Average coin age is immature. ", nRemainingWaitTime, " minutes remaining until staking available.");
+					debug::log(0, FUNCTION, "Stake Minter: Average coin age is immature. ", 
+                               nRemainingWaitTime, " minutes remaining until staking available.");
                 }
 
                 ++nWaitCounter;
@@ -686,7 +703,8 @@ namespace Legacy
             return debug::error(FUNCTION, "Check state failed");
 
         /* Check the stake. */
-        if (!candidateBlock.vtx[0].CheckTrust(TAO::Ledger::ChainState::stateBest.load()))
+        TAO::Ledger::BlockState candidateBlockStake(candidateBlock);
+        if (!candidateBlock.vtx[0].CheckTrust(candidateBlockStake))
             return debug::error(FUNCTION, "Check trust failed");
 
         /* Check the work for the block.

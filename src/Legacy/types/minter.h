@@ -134,6 +134,16 @@ namespace Legacy
         double GetStakeRate() const;
 
 
+        /** GetStakeRatePercent
+          *
+          * Retrieves the current staking reward rate as an annual percentage.
+          *
+          * @return the current stake rate percentage
+          *
+          */
+        double GetStakeRatePercent() const;
+
+
         /** IsWaitPeriod
           *
           * Checks whether the stake minter is waiting for average coin

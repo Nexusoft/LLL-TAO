@@ -68,7 +68,7 @@ namespace TAO
 			obj["staking"] = stakeMinter.IsStarted() ? "Started" : "Not Started";
 			if (stakeMinter.IsStarted())
 			{
-	            obj["stakerate"]   = 100.0 * stakeMinter.GetStakeRate();
+	            obj["stakerate"]   = stakeMinter.GetStakeRatePercent();
 	            obj["trustweight"] = stakeMinter.GetTrustWeightPercent();
 	            obj["blockweight"] = stakeMinter.GetBlockWeightPercent();
 	            obj["stakeweight"] = stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight(); // These total to 100, so can use as a %
