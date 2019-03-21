@@ -67,6 +67,9 @@ struct OP
         DIV         = 0x22,
         MUL         = 0x23,
         MOD         = 0x24,
+        INC         = 0x25,
+        DEC         = 0x26,
+        EXP         = 0x27,
 
 
         //RESERVED to 0x2f
@@ -87,10 +90,10 @@ struct OP
 
 static std::vector<uint8_t> binaryadd(const std::vector<uint8_t>& x, const std::vector<uint8_t>& y)
 {
-    std::vector<uint8_t> ret(0, std::min(x.size(), y.size()));
+    std::vector<uint8_t> ret(x.size(), 0);
 
     uint16_t carry = 0;
-    for (int i = 0; i < ret.size(); ++i)
+    for (int i = 0; i < std::min(x.size(), y.size()); ++i)
     {
         uint16_t n = carry + x[i] + y[i];
         ret[i] = (n & 0xff);
@@ -100,28 +103,43 @@ static std::vector<uint8_t> binaryadd(const std::vector<uint8_t>& x, const std::
     return ret;
 }
 
-uint8_t binarysub(uint8_t x, uint8_t y)
+static std::vector<uint8_t> binarysub(const std::vector<uint8_t>& x, const std::vector<uint8_t>& y)
 {
-    // Iterate till there
-    // is no carry
-    while (y != 0)
+    std::vector<uint8_t> ret(x.size(), 0);
+
+    std::vector<uint8_t> sub(y.size(), 0);
+
+
+
+    uint16_t carry = 0;
+    for (int i = 0; i < std::min(x.size(), y.size()); ++i)
     {
-        // borrow contains common
-        // set bits of y and unset
-        // bits of x
-        uint8_t borrow = (~x) & y;
+        sub[i] = ~y[i];
+        if(i == 0)
+            sub[0] += 1;
 
-        // Subtraction of bits of x
-        // and y where at least one
-        // of the bits is not set
-        x = x ^ y;
-
-        // Borrow is shifted by one
-        // so that subtracting it from
-        // x gives the required sum
-        y = borrow << 1;
+        uint16_t n = carry + x[i] + sub[i];
+        ret[i] = (n & 0xff);
+        carry =  (n >> 8);
     }
-    return x;
+
+    return ret;
+}
+
+
+/**  Compares two byte arrays and determines their signed equivalence byte for
+ *   byte.
+ **/
+static int32_t compare(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b)
+{
+    for(int64_t i = std::min(a.size(), b.size()) - 1; i >= 0; --i)
+    {
+        //debug::log(0, "I ", i, " Byte ", std::hex, (uint32_t)a[i], " vs Bytes ", std::hex, (uint32_t)b[i]);
+        if(a[i] != b[i])
+            return a[i] - b[i];
+
+    }
+    return 0;
 }
 
 
@@ -267,41 +285,151 @@ std::vector<uint8_t> GetValue(const TAO::Operation::Stream& stream)
 
                 ret.SetNull();
 
-                for(int i = 0; i < std::min(lvalue.size(), rvalue.size()); ++i)
-                    ret << binarysub(lvalue[i], rvalue[i]);
+                std::vector<uint8_t> sub = binarysub(lvalue, rvalue);
+
+                PrintHex(sub.begin(), sub.end());
+
+                for(int i = 0; i < sub.size(); ++i)
+                    ret << sub[i];
+
 
                 break;
             }
+
+
+            case OP::INC:
+            {
+                std::vector<uint8_t> lvalue = ret.Bytes();
+                std::vector<uint8_t> rvalue(1);
+
+                PrintHex(lvalue.begin(), lvalue.end());
+                PrintHex(rvalue.begin(), rvalue.end());
+
+                ret.SetNull();
+
+                std::vector<uint8_t> sum = binaryadd(lvalue, rvalue);
+
+                PrintHex(sum.begin(), sum.end());
+
+                for(int i = 0; i < sum.size(); ++i)
+                    ret << sum[i];
+
+                break;
+            }
+
+
+            case OP::DEC:
+            {
+                std::vector<uint8_t> lvalue = ret.Bytes();
+                std::vector<uint8_t> rvalue(1);
+
+                PrintHex(lvalue.begin(), lvalue.end());
+                PrintHex(rvalue.begin(), rvalue.end());
+
+                ret.SetNull();
+
+                std::vector<uint8_t> sub = binarysub(lvalue, rvalue);
+
+                PrintHex(sub.begin(), sub.end());
+
+                for(int i = 0; i < sub.size(); ++i)
+                    ret << sub[i];
+
+                break;
+            }
+
 
             case OP::DIV:
             {
-                break;
-            }
-
-            case OP::MUL:
-            {
-                break;
-            }
-
-            case OP::MOD:
-            {
                 std::vector<uint8_t> lvalue = ret.Bytes();
-                std::vector<uint8_t> rvalue = GetValue(stream);
+                const std::vector<uint8_t> rvalue = GetValue(stream);
 
-                uint8_t result = 0; // Just in case, to prevent overflow
-                for(int i = 0; i < lvalue.size(); i++)
+                uint32_t nTotal = 0;
+                while(compare(lvalue, rvalue) >= 0)
                 {
-                    result *= (256 % rvalue[0]);
-                    result %= rvalue[0];
-                    result += (lvalue[i] % rvalue[0]);
-                    result %= rvalue[0];
+                    lvalue = binarysub(lvalue, rvalue);
+
+                    ++nTotal;
                 }
 
                 ret.SetNull();
 
-                ret << result;
+                ret << nTotal;
 
-                debug::log(0, "MOD ", (uint32_t)result);
+                break;
+            }
+
+
+            case OP::MUL:
+            {
+                std::vector<uint8_t> lvalue = ret.Bytes();
+                const std::vector<uint8_t> mul    = lvalue;
+
+                std::vector<uint8_t> rvalue = GetValue(stream);
+                std::vector<uint8_t> rdec(1, 1);
+
+                std::vector<uint8_t> cmp(rvalue.size(), 0);
+
+                while(compare(rvalue, cmp) != 1)
+                {
+                    lvalue = binaryadd(lvalue, mul);
+
+                    rvalue = binarysub(rvalue, rdec);
+                }
+
+                ret.Set(lvalue);
+
+                break;
+            }
+
+
+            case OP::EXP:
+            {
+                std::vector<uint8_t> lvalue             = ret.Bytes();
+                const std::vector<uint8_t> base         = lvalue;
+
+                std::vector<uint8_t> mul = lvalue;
+
+                std::vector<uint8_t> rexp = GetValue(stream);
+                std::vector<uint8_t> rdec(1, 1);
+
+                std::vector<uint8_t> rvalue = lvalue;
+
+                std::vector<uint8_t> cmp(std::min(rexp.size(), rvalue.size()), 0);
+
+
+                std::vector<uint8_t> send(lvalue.size(), 0);
+                while(compare(rexp , cmp) != 1)
+                {
+                    while(compare(rvalue, cmp) != 1)
+                    {
+                        lvalue = binaryadd(lvalue, mul);
+
+                        rvalue = binarysub(rvalue, rdec);
+                    }
+
+                    rexp = binarysub(rexp, rdec);
+
+                    mul    = lvalue;
+
+                    rvalue = base;
+                }
+
+                ret.Set(lvalue);
+
+                break;
+            }
+
+
+            case OP::MOD:
+            {
+                std::vector<uint8_t> lvalue = ret.Bytes();
+                const std::vector<uint8_t> rvalue = GetValue(stream);
+
+                while(compare(lvalue, rvalue) >= 0)
+                    lvalue = binarysub(lvalue, rvalue);
+
+                ret.Set(lvalue);
 
                 break;
             }
@@ -340,25 +468,25 @@ bool Validate(const TAO::Operation::Stream& stream)
                 PrintHex(lvalue.begin(), lvalue.end());
                 PrintHex(rvalue.begin(), rvalue.end());
 
-                return memory::compare(&lvalue[0], &rvalue[0], std::min(lvalue.size(), rvalue.size())) == 0;
+                return compare(lvalue, rvalue) == 0;
             }
 
             case OP::LESSTHAN:
             {
                 std::vector<uint8_t> rvalue = GetValue(stream);
-                return memory::compare(&lvalue[0], &rvalue[0], std::min(lvalue.size(), rvalue.size())) < 0;
+                return compare(lvalue, rvalue) < 0;
             }
 
             case OP::GREATERTHAN:
             {
                 std::vector<uint8_t> rvalue = GetValue(stream);
-                return memory::compare(&lvalue[0], &rvalue[0], std::min(lvalue.size(), rvalue.size())) > 0;
+                return compare(lvalue, rvalue) > 0;
             }
 
             case OP::NOTEQUALS:
             {
                 std::vector<uint8_t> rvalue = GetValue(stream);
-                return memory::compare(&lvalue[0], &rvalue[0], std::min(lvalue.size(), rvalue.size())) != 0;
+                return compare(lvalue, rvalue) != 0;
             }
 
 
@@ -383,9 +511,36 @@ int main(int argc, char **argv)
 {
     TAO::Operation::Stream stream;
 
-    uint64_t n = 726;
-    stream << (uint8_t)OP::UINT32_T << 526u << (uint8_t) OP::ADD << (uint8_t)OP::UINT32_T << 200u << (uint8_t)OP::EQUALS << (uint8_t)OP::UINT32_T << n;
-    debug::log(0, "Validate: ", Validate(stream) ? "True" : "False");
+    stream << (uint8_t)OP::UINT32_T << 900u << (uint8_t) OP::SUB << (uint8_t) OP::UINT32_T << 30u << (uint8_t)OP::EQUALS << (uint8_t)OP::UINT32_T << 870u;
+    assert(Validate(stream));
+
+
+    stream.SetNull();
+    stream << (uint8_t)OP::UINT32_T << 555u << (uint8_t) OP::SUB << (uint8_t) OP::UINT32_T << 333u << (uint8_t)OP::EQUALS << (uint8_t)OP::UINT32_T << 222u;
+    assert(Validate(stream));
+
+
+    stream.SetNull();
+    stream << (uint8_t)OP::UINT32_T << 9234837u << (uint8_t) OP::SUB << (uint8_t) OP::UINT32_T << 384728u << (uint8_t)OP::EQUALS << (uint8_t)OP::UINT32_T << 8850109u;
+    assert(Validate(stream));
+
+    stream.SetNull();
+    stream << (uint8_t)OP::UINT32_T << 905u << (uint8_t) OP::MOD << (uint8_t) OP::UINT32_T << 30u << (uint8_t)OP::EQUALS << (uint8_t)OP::UINT32_T << 5u;
+    assert(Validate(stream));
+
+
+    stream.SetNull();
+    stream << (uint8_t)OP::UINT32_T << 900u << (uint8_t) OP::DIV << (uint8_t) OP::UINT32_T << 30u << (uint8_t)OP::EQUALS << (uint8_t)OP::UINT32_T << 30u;
+    assert(Validate(stream));
+
+
+    stream.SetNull();
+    stream << (uint8_t)OP::UINT32_T << 5u << (uint8_t) OP::MUL << (uint8_t) OP::UINT32_T << 5u << (uint8_t)OP::EQUALS << (uint8_t)OP::UINT32_T << 25u;
+    assert(Validate(stream));
+
+    stream.SetNull();
+    stream << (uint8_t)OP::UINT32_T << 5u << (uint8_t) OP::EXP << (uint8_t) OP::UINT32_T << 3u << (uint8_t)OP::EQUALS << (uint8_t)OP::UINT32_T << 125u;
+    assert(Validate(stream));
 
     memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain("colin", "passing");
 

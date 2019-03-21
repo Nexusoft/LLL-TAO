@@ -114,9 +114,19 @@ public:
         nReadPos = 0;
     }
 
+
+
     std::vector<uint8_t> Bytes()
     {
         return vchData;
+    }
+
+
+    void Set(const std::vector<uint8_t> vBytes)
+    {
+        SetNull();
+
+        vchData = vBytes;
     }
 
 
