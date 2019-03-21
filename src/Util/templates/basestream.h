@@ -114,6 +114,11 @@ public:
         nReadPos = 0;
     }
 
+    std::vector<uint8_t> Bytes()
+    {
+        return vchData;
+    }
+
 
     /** get
      *
@@ -145,7 +150,7 @@ public:
      *  Seeks the read pointer to position.
      *
      **/
-    void seek(uint64_t nSeek, uint8_t nFlags = STREAM::CURSOR) const
+    void seek(int64_t nSeek, uint8_t nFlags = STREAM::CURSOR) const
     {
         /* Seek from end of stream. */
         if(nFlags == STREAM::CURSOR)
