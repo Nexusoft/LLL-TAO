@@ -6,7 +6,19 @@
 # to be created and point to the host OS file system.
 #
 
+#
+# Default to creating a symlink.
+#
 DATA_DIR="/hostOS$HOSTOS_HOME/.Nexus_Core_Data_BETA"
+
+#
+# If no HOSTOS_HOME env variable, then create the directory and run locally
+# out of it. That is, no connection to host OS file system. User must move
+# nexus.conif into /root/.TAO.
+#
+if [ -z "$HOSTOS_HOME" ]; then
+    mkdir /root/.TAO
+fi
 
 #
 # If this is first innvocation of the nexus daemon after container creation,
