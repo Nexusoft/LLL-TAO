@@ -22,9 +22,9 @@ if [ -z "$HOST" ] && [ -z "$COMMAND" ] ; then
     echo "-------------           -----------        -----------       -----------"
     echo "accounts/create         supply/createitem  assets/create     tokens/create"
     echo "accounts/login          supply/getitem     assets/get        tokens/get"
-    echo "accounts/logout         supply/transfer    assets/transfer   tokens/debit"
-    echo "accounts/transactions   supply/history     assets/tokenize   tokens/credit"
-    echo "accounts/lock                              assets/history"
+    echo "accounts/logout         supply/udpateitem  assets/transfer   tokens/debit"
+    echo "accounts/transactions   supply/transfer    assets/tokenize   tokens/credit"
+    echo "accounts/lock           supply/history     assets/history"
     echo "accounts/unlock"
     echo "accounts/notifications"
     echo ""
@@ -93,6 +93,11 @@ fi
 if [ "$COMMAND" = "supply/getitem" ] ; then
     echo "Supply parameters:"
     echo "suppply/getitem?address=<register-address>"
+    exit
+fi
+if [ "$COMMAND" = "supply/updateitem" ] ; then
+    echo "Supply parameters:"
+    echo "suppply/updateitem?pin=<pin>&session=<session-id>&address=<register-address>&data=<data>"
     exit
 fi
 if [ "$COMMAND" = "supply/transfer" ] ; then
