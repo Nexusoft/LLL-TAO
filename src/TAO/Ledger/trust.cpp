@@ -36,8 +36,7 @@ namespace TAO
             std::vector<uint8_t> vTrustKey;
             while(vTrustKey != trustKey.vchPubKey)
             {
-                /* Get the last state. */
-                state = state.Prev();
+                /* Get the last state which corresponds to a stake block (channel 0). */
                 if(!GetLastState(state, 0))
                     return debug::error(FUNCTION, "couldn't find previous block");
 
@@ -57,6 +56,14 @@ namespace TAO
                 /* Extract the trust key from coinstake. */
                 if(!tx.TrustKey(vTrustKey))
                     return debug::error(FUNCTION, "couldn't extract trust key");
+
+                /* Check trust key for current state. If not the desired trust key, begin next iteration with state previous to current
+                 * (or GetLastState will just find the same one again). If it does match desired key, current state is one we want
+                 * so don't assign previous.
+                 * This is placed at end of loop to assure we initially check the block state passed as a parameter.
+                 */
+                if (vTrustKey != trustKey.vchPubKey)
+                	state = state.Prev();
             }
 
             return true;
