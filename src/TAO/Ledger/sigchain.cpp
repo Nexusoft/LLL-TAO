@@ -104,8 +104,6 @@ namespace TAO
          */
         uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strSecret, bool fCache) const
         {
-            debug::log(0, "GENERATE!!!!");
-
             { LOCK(MUTEX);
 
                 /* Handle cache to stop exhaustive hash key generation. */
@@ -120,16 +118,17 @@ namespace TAO
                     /* Set the bytes of return value. */
                     hashKey.SetBytes(vBytes);
 
-                    debug::log(0, hashKey.ToString());
-
                     return hashKey;
                 }
             }
 
             /* Generate the Secret Phrase */
-            std::vector<uint8_t> vUsername(16);
-            vUsername.insert(vUsername.end(), strUsername.begin(), strUsername.end());
+            std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
             vUsername.insert(vUsername.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
+
+            /* Set to minimum salt limits. */
+            if(vUsername.size() < 8)
+                vUsername.resize(8);
 
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vPassword(strPassword.begin(), strPassword.end());
@@ -200,8 +199,6 @@ namespace TAO
             /* Set the bytes for the key. */
             uint512_t hashKey;
             hashKey.SetBytes(hash);
-
-            debug::log(0, hashKey.ToString());
 
             return hashKey;
         }
