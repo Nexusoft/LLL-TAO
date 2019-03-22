@@ -378,6 +378,11 @@ public:
         return (uint8_t*)&pn[WIDTH];
     }
 
+    uint32_t get(int n)
+    {
+        return pn[n];
+    }
+
     uint32_t size()
     {
         return sizeof(pn);
