@@ -113,13 +113,16 @@ static std::vector<uint8_t> binarysub(const std::vector<uint8_t>& x, const std::
 
     std::vector<uint8_t> sub(y.size(), 0);
 
+    for(int i = 0; i < sub.size(); i++)
+        sub[i] = ~y[i];
+
+    int i = 0;
+    while (++sub[i] == 0 && i < sub.size())
+        ++i;
+
     uint16_t carry = 0;
     for (int i = 0; i < std::min(x.size(), y.size()); ++i)
     {
-        sub[i] = ~y[i];
-        if(i == 0)
-            sub[0] += 1;
-
         uint16_t n = carry + x[i] + sub[i];
         ret[i] = (n & 0xff);
         carry =  (n >> 8);
