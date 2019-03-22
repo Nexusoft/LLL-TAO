@@ -18,6 +18,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/sigchain.h>
 
+#include <Util/include/debug.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -84,8 +86,9 @@ namespace TAO
             };
 
             /* Run the argon2 computation. */
-            if(argon2id_ctx(&context) != ARGON2_OK)
-                return 0;
+            int32_t nRet = argon2id_ctx(&context);
+            if(nRet != ARGON2_OK)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
 
             /* Set the bytes for the key. */
             uint256_t hashKey;
@@ -101,6 +104,8 @@ namespace TAO
          */
         uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strSecret, bool fCache) const
         {
+            debug::log(0, "GENERATE!!!!");
+
             { LOCK(MUTEX);
 
                 /* Handle cache to stop exhaustive hash key generation. */
@@ -115,12 +120,15 @@ namespace TAO
                     /* Set the bytes of return value. */
                     hashKey.SetBytes(vBytes);
 
+                    debug::log(0, hashKey.ToString());
+
                     return hashKey;
                 }
             }
 
             /* Generate the Secret Phrase */
-            std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
+            std::vector<uint8_t> vUsername(16);
+            vUsername.insert(vUsername.end(), strUsername.begin(), strUsername.end());
             vUsername.insert(vUsername.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
             /* Generate the Secret Phrase */
@@ -176,8 +184,9 @@ namespace TAO
             };
 
             /* Run the argon2 computation. */
-            if(argon2id_ctx(&context) != ARGON2_OK)
-                return 0;
+            int nRet = argon2id_ctx(&context);
+            if(nRet != ARGON2_OK)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
 
             /* Set the cache items. */
             { LOCK(MUTEX);
@@ -191,6 +200,8 @@ namespace TAO
             /* Set the bytes for the key. */
             uint512_t hashKey;
             hashKey.SetBytes(hash);
+
+            debug::log(0, hashKey.ToString());
 
             return hashKey;
         }
