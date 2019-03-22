@@ -176,185 +176,257 @@ inline int32_t x86_compare(const std::vector<uint32_t>& a, const std::vector<uin
 
 
 
+/** Get Value
+ *
+ *  Extracts a value from an operation stream for use in the boolean validation scripts.
+ *
+ **/
 inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint32_t>& ret, int32_t &nLimit)
 {
+
+    /* Iterate until end of stream. */
     while(!stream.end())
     {
+
+        /* Extract the operation byte. */
         uint8_t OPERATION;
         stream >> OPERATION;
 
+
+        /* Switch based on the operation. */
         switch(OPERATION)
         {
-            //RVALUES
+
+            /* Extract an uint8_t from the stream. */
             case OP::TYPES::UINT8_T:
             {
-                nLimit -= 1;
-
+                /* Extract the byte. */
                 uint8_t n;
                 stream >> n;
 
+                /* Push onto the return value. */
                 ret.push_back(n);
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 1;
 
                 break;
             }
 
+
+            /* Extract an uint16_t from the stream. */
             case OP::TYPES::UINT16_T:
             {
-                nLimit -= 2;
-
+                /* Extract the short. */
                 uint16_t n;
                 stream >> n;
 
+                /* Push onto the return value. */
                 ret.push_back(n);
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 2;
 
                 break;
             }
 
+
+            /* Extract an uint32_t from the stream. */
             case OP::TYPES::UINT32_T:
             {
-                nLimit -= 4;
-
+                /* Extract the integer. */
                 uint32_t n;
                 stream >> n;
 
+                /* Push onto the return value. */
                 ret.push_back(n);
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 4;
 
                 break;
             }
 
+
+            /* Extract an uint64_t from the stream. */
             case OP::TYPES::UINT64_T:
             {
-                nLimit -= 8;
-
+                /* Extract the integer. */
                 uint64_t n;
                 stream >> n;
 
+                /* Push onto the return value. */
                 ret.push_back(n);
                 ret.push_back(n >> 32);
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 8;
 
                 break;
             }
 
+
+            /* Extract an uint256_t from the stream. */
             case OP::TYPES::UINT256_T:
             {
-                nLimit -= 32;
-
+                /* Extract the integer. */
                 uint256_t n;
                 stream >> n;
 
+                /* Push each internal 32-bit integer on return value. */
                 for(int i = 0; i < 8; i++)
                     ret.push_back(n.get(i));
 
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 32;
+
                 break;
+
             }
 
+
+            /* Extract an uint512_t from the stream. */
             case OP::TYPES::UINT512_T:
             {
-                nLimit -= 64;
-
+                /* Extract the integer. */
                 uint512_t n;
                 stream >> n;
 
+                /* Push each internal 32-bit integer on return value. */
                 for(int i = 0; i < 16; i++)
                     ret.push_back(n.get(i));
 
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 64;
+
                 break;
             }
 
+
+            /* Extract an uint1024_t from the stream. */
             case OP::TYPES::UINT1024_T:
             {
-                nLimit -= 128;
-
+                /* Extract the integer. */
                 uint1024_t n;
                 stream >> n;
 
+                /* Push each internal 32-bit integer on return value. */
                 for(int i = 0; i < 32; i++)
                     ret.push_back(n.get(i));
 
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 128;
+
                 break;
             }
 
 
-            //LVALUES
+            /* Get a unified timestamp and push to return value. */
             case OP::CHAIN::UNIFIED:
             {
-                nLimit -= 8;
+                /* Get the current unified timestamp. */
+                uint64_t n = runtime::unified_timestamp();
 
-                uint64_t n = runtime::timestamp();
+                /* Push the timestamp onto the return value. */
                 ret.push_back(n);
                 ret.push_back(n >> 32);
 
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 8;
+
                 break;
             }
 
 
+            /* Get a register's timestamp and push to the return value. */
             case OP::REGISTER::TIMESTAMP:
             {
-                nLimit -= 40;
-
+                /* Read the register address. */
                 uint256_t hashRegister;
                 stream >> hashRegister;
 
+                /* Read the register states. */
                 TAO::Register::State state;
                 if(!LLD::regDB->Read(hashRegister, state))
                     return false;
 
+                /* Push the timestamp onto the return value. */
                 ret.push_back(state.nTimestamp);
                 ret.push_back(state.nTimestamp >> 32);
 
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 40;
+
                 break;
             }
 
 
+            /* Get a register's owner and push to the return value. */
             case OP::REGISTER::OWNER:
             {
-                nLimit -= 64;
-
+                /* Read the register address. */
                 uint256_t hashRegister;
                 stream >> hashRegister;
 
+                /* Read the register states. */
                 TAO::Register::State state;
                 if(!LLD::regDB->Read(hashRegister, state))
                     return false;
 
+                /* Push each internal 32-bit integer on return value. */
                 for(int i = 0; i < 8; i++)
                     ret.push_back(state.hashOwner.get(i));
 
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 64;
+
                 break;
             }
 
 
+            /* Get a register's type and push to the return value. */
             case OP::REGISTER::TYPE:
             {
-                nLimit -= 33;
-
+                /* Read the register address. */
                 uint256_t hashRegister;
                 stream >> hashRegister;
 
+                /* Read the register states. */
                 TAO::Register::State state;
                 if(!LLD::regDB->Read(hashRegister, state))
                     return false;
 
+                /* Push the type onto the return value. */
                 ret.push_back(state.nType);
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 33;
 
                 break;
             }
 
 
+            /* Get a register's state and push to the return value. */
             case OP::REGISTER::STATE:
             {
-                nLimit -= 128;
-
+                /* Read the register address. */
                 uint256_t hashRegister;
                 stream >> hashRegister;
 
+                /* Read the register states. */
                 TAO::Register::State state;
                 if(!LLD::regDB->Read(hashRegister, state))
                     return false;
 
+                /* Get the register's internal states. */
                 std::vector<uint8_t> vchState = state.GetState();
 
+
                 //TODO: add binary data into 32-bit VM form
+
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 128;
 
                 break;
             }
@@ -371,6 +443,7 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
                 x86_add(ret, rvalue, ret);
 
+                /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= ((ret.size() + rvalue.size()) * 4);
 
                 break;
