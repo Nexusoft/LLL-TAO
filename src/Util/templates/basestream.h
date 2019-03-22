@@ -115,21 +115,6 @@ public:
     }
 
 
-
-    std::vector<uint8_t> Bytes()
-    {
-        return vchData;
-    }
-
-
-    void Set(const std::vector<uint8_t> vBytes)
-    {
-        SetNull();
-
-        vchData = vBytes;
-    }
-
-
     /** get
      *
      *  Gets a byte without chainging read pointer.
