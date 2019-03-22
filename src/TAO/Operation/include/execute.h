@@ -26,7 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/hex.h>
-#include <new> //std::bad_alloc
+#include <new> /* std::bad_alloc */
 
 /* Global TAO namespace. */
 namespace TAO
