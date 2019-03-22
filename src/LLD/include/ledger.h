@@ -237,7 +237,7 @@ namespace LLD
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool RepairIndex(const uint512_t& hashTransaction, TAO::Ledger::BlockState state)
+        bool RepairIndex(const uint512_t& hashTransaction, TAO::Ledger::BlockState& state)
         {
             debug::log(0, FUNCTION, "repairing index for ", hashTransaction.ToString().substr(0, 20));
 
