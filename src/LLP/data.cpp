@@ -223,7 +223,7 @@ namespace LLP
                 try
                 {
                     /* Set the proper POLLIN flags. */
-                    POLLFDS.at(nIndex).events = POLLIN;
+                    POLLFDS.at(nIndex).events = POLLIN | POLLRDHUP;
 
                     /* Set to invalid socket if connection is inactive. */
                     if(!CONNECTIONS->at(nIndex))
@@ -244,9 +244,9 @@ namespace LLP
 
             /* Poll the sockets. */
 #ifdef WIN32
-            WSAPoll((pollfd*)&POLLFDS[0], nSize, 10);
+            WSAPoll((pollfd*)&POLLFDS[0], nSize, 100);
 #else
-            poll((pollfd*)&POLLFDS[0], nSize, 10);
+            poll((pollfd*)&POLLFDS[0], nSize, 100);
 #endif
 
 
@@ -265,6 +265,7 @@ namespace LLP
                     /* Disconnect if there was a polling error */
                     if((POLLFDS.at(nIndex).revents & POLLERR)
                     || (POLLFDS.at(nIndex).revents & POLLNVAL)
+                    || (POLLFDS.at(nIndex).revents & POLLRDHUP)
                     || (POLLFDS.at(nIndex).revents & POLLHUP))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
@@ -349,8 +350,6 @@ namespace LLP
                     disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                 }
             }
-
-            runtime::sleep(10);
         }
     }
 

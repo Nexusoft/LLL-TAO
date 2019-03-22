@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/include/create.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -36,8 +37,6 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
-            /* For sessionless API use the active sig chain which is stored in session 0 */
-
             /* Check for username parameter. */
             if(params.find("username") == params.end())
                 throw APIException(-23, "Missing Username");
@@ -47,37 +46,69 @@ namespace TAO
                 throw APIException(-24, "Missing Password");
 
             /* Create the sigchain. */
-            TAO::Ledger::SignatureChain user(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
 
             /* Get the genesis ID. */
-            uint256_t hashGenesis = user.Genesis();
+            uint256_t hashGenesis = user->Genesis();
 
             /* Check for duplicates in ledger db. */
-            TAO::Ledger::Transaction tx;
+            TAO::Ledger::Transaction txPrev;
             if(!LLD::legDB->HasGenesis(hashGenesis))
             {
-                /* Check the memory pool (TODO: Paul maybe you can think of a more efficient way to solve this chicken and egg). */
+                /* Check the memory pool and compare hashes. */
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
                 {
+                    user.free();
+
                     throw APIException(-26, "Account doesn't exists");
                 }
+
+                /* Get the memory pool tranasction. */
+                if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
+                    throw APIException(-26, "Couldn't get transaction");
             }
+            else
+            {
+                /* Get the last transaction. */
+                uint512_t hashLast;
+                if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+                    throw APIException(-27, "No previous transaction found");
+
+                /* Get previous transaction */
+                if(!LLD::legDB->ReadTx(hashLast, txPrev))
+                    throw APIException(-27, "No previous transaction found");
+            }
+
+            /* Genesis Transaction. */
+            TAO::Ledger::Transaction tx;
+            tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str(), false));
+
+            /* Check for consistency. */
+            if(txPrev.hashNext != tx.hashNext)
+                throw APIException(-28, "Invalid credentials");
 
             /* Check the sessions. */
             for(auto session = mapSessions.begin(); session != mapSessions.end(); ++ session)
             {
-                if(hashGenesis == session->second.Genesis())
+                if(hashGenesis == session->second->Genesis())
                 {
-                    /* already logged in */
-                    throw APIException(-26, "User already logged in");
+                    user.free();
+
+                    ret["genesis"] = hashGenesis.ToString();
+                    if( config::fAPISessions)
+                        ret["session"] = debug::safe_printstr(std::dec, session->first);
+
+                    return ret;
                 }
             }
 
             /* Extract the PIN, if supplied. */
             if( !config::fAPISessions && params.find("pin") != params.end() )
-                strActivePIN = params["pin"].get<std::string>().c_str();
-            else
-                strActivePIN = "";
+            {
+                if( !strActivePIN.IsNull())
+                    strActivePIN.free();
+                strActivePIN = new SecureString(params["pin"].get<std::string>().c_str());
+            }
             
 
             /* Set the return value. */
@@ -85,10 +116,10 @@ namespace TAO
             uint64_t nSession = config::fAPISessions ? LLC::GetRand() : 0;
             ret["genesis"] = hashGenesis.ToString();
             if( config::fAPISessions)
-                ret["session"] = nSession;
+                ret["session"] = debug::safe_printstr(std::dec, nSession);
 
             /* Setup the account. */
-            mapSessions[nSession] = user;
+            mapSessions.emplace(nSession, std::move(user));
 
             return ret;
         }

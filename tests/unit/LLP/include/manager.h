@@ -13,8 +13,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_UNIT_LLP_INCLUDE_MANAGER_H
 #define NEXUS_UNIT_LLP_INCLUDE_MANAGER_H
 
-#include <src/LLP/include/baseaddress.h>
-#include <src/LLP/include/trustaddress.h>
+#include <src/LLP/include/base_address.h>
+#include <src/LLP/include/trust_address.h>
 #include <src/LLP/include/manager.h>
 
 namespace unit

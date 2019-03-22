@@ -11,8 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <TAO/API/include/accounts.h>
 #include <Util/include/args.h>
+
+#include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/mempool.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -37,11 +43,51 @@ namespace TAO
                 throw APIException(-24, "Missing Pin");
 
             /* Check if already unlocked. */
-            if(!strActivePIN.empty())
+            if(!Locked())
                 throw APIException(-26, "Account already unlocked");
 
+            /* Get the sigchain from map of users. */
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[0];
+
+            /* Get the genesis ID. */
+            uint256_t hashGenesis = user->Genesis();
+
+            /* Check for duplicates in ledger db. */
+            TAO::Ledger::Transaction txPrev;
+            if(!LLD::legDB->HasGenesis(hashGenesis))
+            {
+                /* Check the memory pool and compare hashes. */
+                if(!TAO::Ledger::mempool.Has(hashGenesis))
+                    throw APIException(-26, "Account doesn't exists");
+
+                /* Get the memory pool tranasction. */
+                if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
+                    throw APIException(-26, "Couldn't get transaction");
+            }
+            else
+            {
+                /* Get the last transaction. */
+                uint512_t hashLast;
+                if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+                    throw APIException(-27, "No previous transaction found");
+
+                /* Get previous transaction */
+                if(!LLD::legDB->ReadTx(hashLast, txPrev))
+                    throw APIException(-27, "No previous transaction found");
+            }
+
+            /* Genesis Transaction. */
+            TAO::Ledger::Transaction tx;
+            tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str(), false));
+
+            /* Check for consistency. */
+            if(txPrev.hashNext != tx.hashNext)
+                throw APIException(-28, "Invalid PIN");
+
             /* Extract the PIN. */
-            strActivePIN =  params["pin"].get<std::string>().c_str();
+            if( !strActivePIN.IsNull())
+                    strActivePIN.free();
+            strActivePIN = new SecureString( params["pin"].get<std::string>().c_str());
 
             return true;
         }

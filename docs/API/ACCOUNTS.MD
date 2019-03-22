@@ -1,7 +1,7 @@
 The Accounts API Interface Definition
 -------------------------------------
 
-### CreateAccount
+### Create
 
 This will create a new account for use on the network.
 
@@ -12,7 +12,7 @@ This will create a new account for use on the network.
 <key>=<value> parameter pairs:
   username=<user>
   password=<password>
-  pin=<pin-number>
+  pin=<pin>
 ```
 
 Return value JSON object:
@@ -41,36 +41,40 @@ This will log you into this specific API instance for the building of new transa
   /accounts/login
 
 <key>=<value> parameter pairs:
-  username=XXXX
-  password=XXXX
-  pin=xxxx
+  username=<username>
+  password=<password>
+  pin=<pin>
 ```
 
 The username and password fields are mandatory for login.  
-The pin is optional and, if supplied, allows the signature chain to be immediately used for mining and staking.  
-If it is not supplied then you must provide it in all subsequent API calls that use this signature chain.
+The pin is optional and, if supplied, allows the signature chain to be immediately used 
+for mining and staking.  If it is not supplied then you must provide it in all subsequent 
+API calls that use this signature chain.
 
 Return value JSON object:    
 ```
 {
     "genesis": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1",
-    "session": 16953804956473956578
+    "session": "16953804956473956578"
 }
 
 ```
 
-This is your genesis ID, or the identification number of your specific account. For session-based API (configured with apisessions=1), an additional session value is returned and must be supplied in subsequent API calls, to allow the managing of multiple login sessions.
+This is your genesis ID, or the identification number of your specific account. 
+For session-based API (configured with apisessions=1), an additional session value is returned 
+and must be supplied in subsequent API calls, to allow the managing of multiple login sessions.
 
 ### Logout
 
-This will log you out of this specific API, and delete your credentials stored in a Secure Allocator.
+This will log you out of this specific API, and delete your credentials stored
+in encrypted memory.
 
 ```
 <method>:
   /accounts/logout
 
 <key>=<value> parameter pairs:
-  session=23894738473847
+   session=<session-id>
 ```
 
 Return value JSON object:
@@ -80,13 +84,60 @@ Return value JSON object:
 }
 ```
 
-For session-based API (configured with apisessions=1) the session is required to identify what session you are logging out of.
-For sessionless API the session should not be supplied
+For session-based API (configured with apisessions=1) the session is required to identify 
+which session you are logging out of. For sessionless API the session should not be supplied
+
+### Lock
+
+This will lock your signature chain, making it unavailable for use in mining.
+It takes a session and will check if the sig-chain has already been locked.
+
+```
+<method>:
+  /accounts/lock
+
+<key>=<value> parameter pairs:
+  session=<session-id>
+```
+
+Return value JSON object:
+```
+{
+    true
+}
+```
+
+Session is required to identify what session you are locking wallet from.
+
+### Unlock
+
+This will unlock your signature chain for use in mining. It takes a session
+and your pin, and caches it encrypted memory.
+
+```
+<method>:
+  /accounts/unlock
+
+<key>=<value> parameter pairs:
+  session=<session-id>
+  pin=<pin>
+```
+
+Return value JSON object:
+```
+{
+    true
+}
+```
+
+Session is required to identify what session you are unlocking wallet from.
+The PIN credential is also required for wallet unlock.
 
 ### Transactions
 
 This will list off all of the transactions for the requested genesis or username (either can be used). 
-You DO NOT need to be logged in to use this command.
+You DO NOT need to be logged in to use this command.  If you are using sessionless API and are logged in
+then neither username or genesis are required and it will return transactions for the currently logged in user.
 
 ```
 <method>:
@@ -94,8 +145,26 @@ You DO NOT need to be logged in to use this command.
 
 <key>=<value> parameter pairs:
   genesis=27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1
-  username=testuser
+
+  or
+
+  username=<my-account>
+
+  page=<page-number>
+  limit=<records-per-page>
+  verbose<verbose-level>
 ```
+
+Only the genesis or the username are required to fulfill this command. If the
+genesis is supplied first, it will supersede the username. We recommend you to
+only use one of the parameters, as typing in both genesis and username will
+only resolve the genesis.
+
+The verbose parameter defines how much you receive in return.
+
+* Verbose 0: version, sequence, timestamp, hash, and operation.
+* Verbose 1: genesis, nexthash, and prevhash.
+* Verbose 2: pubkey and signature.
 
 Return value JSON object:
 ```
@@ -109,8 +178,68 @@ Return value JSON object:
     "signature": "30818402405f1b486b556912edc1b87139c822409e4be7e1aae73a92aadf4ad36f46c90d3c4190ee9bff04e6e79fe27fad4557670ea04533d1ccdb4581de252f04403e36b402401734b064192c106ff070d922349a11eec82c57942824a8b92e44fcb6f5702fa31f190946f9b3bb98815be12f98649cdf7b7204942d1437557635060fb91095c0",
     "timestamp": 1545445264,
     "version": 1
+    "operation", "Coinbase(nAmount=55)"
 },
 ```
 
- Note that for session-based API (configured with apisessions=1) either genesis hash or username is required to identify the signature chain's transactions.  If neither are supplied and the API is configured for sessionless use (apisessions=0) then the transactions
- will be returned for the currently logged in user
+NOTE: for session-based API (configured with apisessions=1) either genesis hash or username 
+      is required to identify the signature chain's transactions.  If neither are supplied 
+      and the API is configured for sessionless use (apisessions=0) then the transactions 
+      will be returned for the currently logged in user
+NOTE: if you use the username parameter, it will take slightly longer to
+      calculate the username genesis with our brute-force protected hashing
+      algorithm. For higher performance, use the genesis parameter.
+
+
+### Notifications
+
+This will list off all of the transactions sent to a particular genesis or
+username. It is useful for identifying transactions that you need to accept
+such as credits.
+
+```
+<method>:
+  /accounts/notifications
+
+<key>=<value> parameter pairs:
+  genesis=27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1
+
+  or
+
+  username=<my-account>
+
+  page=<page-number>
+  limit=<records-per-page>
+  verbose<verbose-level>
+```
+
+Only the genesis or the username are required to fulfill this command. If the
+genesis is supplied first, it will supersede the username. We recommend you to
+only use one of the parameters, as typing in both genesis and username will
+only resolve the genesis.
+
+The verbose parameter defines how much you receive in return.
+
+* Verbose 0: version, sequence, timestamp, hash, and operation.
+* Verbose 1: genesis, nexthash, and prevhash.
+* Verbose 2: pubkey and signature.
+
+Return value JSON object:
+```
+{
+    "genesis": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
+    "hash": "f92fd92b7671d8358b82633fdf147e82a95ced60b54ceb4465fb34410345534bff3e9a3224032af08e01cb3b2c1dd4f6dcbb2a600e4b8b3c1109ea11b59ae7b8",
+    "nexthash": "943aaa1f98c14852ff301c743bf25b962aaf5bc04912dd3e6fb925f1f7d8147e",
+    "prevhash": "ef2cde465647953604d7bd49a76b5dde26b55eab8de88661451164f6a8d242f4282b3af9b1893e73a635b51c062a5c8f99217384bf05abbddbf55e1a0e86ffd5",
+    "pubkey": "0338a2acd3dde1a845ac9b959797f891556747a317f6f71caea39977eb2f4d5b15d6cad37aa3a3acc61ed7306b06631a038f6fcd6b585c7fb1d55cd96acc82db7b",
+    "sequence": 6,
+    "signature": "30818402405f1b486b556912edc1b87139c822409e4be7e1aae73a92aadf4ad36f46c90d3c4190ee9bff04e6e79fe27fad4557670ea04533d1ccdb4581de252f04403e36b402401734b064192c106ff070d922349a11eec82c57942824a8b92e44fcb6f5702fa31f190946f9b3bb98815be12f98649cdf7b7204942d1437557635060fb91095c0",
+    "timestamp": 1545445264,
+    "version": 1
+    "operation", "Coinbase(nAmount=55)"
+},
+```
+
+NOTE: If you use the username parameter, it will take slightly longer to
+      calculate the username genesis with our brute-force protected hashing
+      algorithm. For higher performance, use the genesis parameter.

@@ -37,12 +37,13 @@ namespace TAO
         /* Standard initialization function. */
         void Accounts::Initialize()
         {
+            mapFunctions["create"]              = Function(std::bind(&Accounts::Create,          this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["login"]               = Function(std::bind(&Accounts::Login,           this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["unlock"]              = Function(std::bind(&Accounts::Unlock,          this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["lock"]                = Function(std::bind(&Accounts::Lock,            this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["logout"]              = Function(std::bind(&Accounts::Logout,          this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["create"]              = Function(std::bind(&Accounts::CreateAccount,   this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["transactions"]        = Function(std::bind(&Accounts::GetTransactions, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["lock"]                = Function(std::bind(&Accounts::Lock,            this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["unlock"]              = Function(std::bind(&Accounts::Unlock,          this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["transactions"]        = Function(std::bind(&Accounts::Transactions, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["notifications"]       = Function(std::bind(&Accounts::Notifications, this, std::placeholders::_1, std::placeholders::_2));
         }
 
 
@@ -54,12 +55,11 @@ namespace TAO
 
 
         /* Determine if the accounts are locked. */
-        bool Accounts::Locked(SecureString& strSecret) const
+        bool Accounts::Locked() const
         {
-            if(config::fAPISessions || strActivePIN.empty())
+            if(config::fAPISessions || strActivePIN->empty())
                 return true;
 
-            strSecret = strActivePIN;
             return false;
         }
 
@@ -80,7 +80,7 @@ namespace TAO
                     throw APIException(-1, "User not logged in.");
             }
 
-            return mapSessions[nSessionToUse].Generate(nKey, strSecret);
+            return mapSessions[nSessionToUse]->Generate(nKey, strSecret);
         }
 
 
@@ -100,12 +100,13 @@ namespace TAO
                     throw APIException(-1, "User not logged in.");
             }
 
-            return mapSessions[nSessionToUse].Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
+            return mapSessions[nSessionToUse]->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
         }
 
 
         /* Returns the sigchain the account logged in. */
-        bool Accounts::GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain &user) const
+        static memory::encrypted_ptr<TAO::Ledger::SignatureChain> null_ptr;
+        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Accounts::GetAccount(uint64_t nSession) const
         {
             LOCK(MUTEX);
 
@@ -114,11 +115,15 @@ namespace TAO
             
             /* Check if you are logged in. */
             if(!mapSessions.count(nSessionToUse))
-                return false;
+                return null_ptr;
 
-            user = mapSessions[nSessionToUse];
+            return mapSessions[nSessionToUse];
+        }
 
-            return true;
+        /* Returns the pin number for the currently logged in account. */
+        SecureString Accounts::GetActivePin() const
+        {
+            return SecureString(strActivePIN->c_str());
         }
     }
 }

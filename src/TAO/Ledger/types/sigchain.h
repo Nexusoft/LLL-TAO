@@ -17,10 +17,10 @@ ________________________________________________________________________________
 
 #include <string>
 
-#include <LLC/hash/SK.h>
-#include <LLC/hash/macro.h>
+#include <LLC/types/uint1024.h>
 
 #include <Util/include/allocators.h>
+#include <Util/include/mutex.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -43,21 +43,33 @@ namespace TAO
         {
 
             /** Secure allocator to represent the username of this signature chain. **/
-            SecureString strUsername;
+            const SecureString strUsername;
 
 
             /** Secure allocater to represent the password of this signature chain. **/
-            SecureString strPassword;
+            const SecureString strPassword;
+
+
+            /* Internal mutex for caches. */
+            mutable std::mutex MUTEX;
+
+
+            /** Internal sigchain cache (to not exhaust ourselves regenerating the same key). **/
+            mutable std::pair<uint32_t, SecureString> pairCache;
+
+
+            /** Internal genesis hash. **/
+            const uint256_t hashGenesis;
 
         public:
 
-
-            /** Default Constructor 
-             *
-             **/
+            /** Default constructor. **/
             SignatureChain()
-            : strUsername("")
-            , strPassword("")
+            : strUsername()
+            , strPassword()
+            , MUTEX()
+            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+            , hashGenesis()
             {
 
             }
@@ -67,11 +79,45 @@ namespace TAO
              * @param[in] strUsernameIn The username to seed the signature chain
              * @param[in] strPasswordIn The password to seed the signature chain
              **/
-            SignatureChain(SecureString strUsernameIn, SecureString strPasswordIn)
+            SignatureChain(const SecureString& strUsernameIn, const SecureString& strPasswordIn)
             : strUsername(strUsernameIn.c_str())
             , strPassword(strPasswordIn.c_str())
+            , MUTEX()
+            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+            , hashGenesis(SignatureChain::Genesis(strUsernameIn))
             {
+            }
 
+
+            /** Copy constructor **/
+            SignatureChain(const SignatureChain& chain)
+            : strUsername(chain.strUsername)
+            , strPassword(chain.strPassword)
+            , MUTEX()
+            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+            , hashGenesis(chain.hashGenesis)
+            {
+            }
+
+
+            /** Move constructor
+             *
+             * @param[in] strUsernameIn The username to seed the signature chain
+             * @param[in] strPasswordIn The password to seed the signature chain
+             **/
+            SignatureChain(const SignatureChain&& chain)
+            : strUsername(chain.strUsername)
+            , strPassword(chain.strPassword)
+            , MUTEX()
+            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+            , hashGenesis(chain.hashGenesis)
+            {
+            }
+
+
+            /** Destructor. **/
+            ~SignatureChain()
+            {
             }
 
 
@@ -81,28 +127,16 @@ namespace TAO
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            uint256_t Genesis()
-            {
-                return SignatureChain::GetGenesis(strUsername);
-            }
+            uint256_t Genesis() const;
+
 
             /** Genesis
              *
-             *  Generates a sig chain genesis ID for the given username.
+             *  This function is responsible for generating the genesis ID.
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            static uint256_t GetGenesis(const SecureString& strUsername)
-            {
-                /* Generate the Secret Phrase */
-                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
-
-                /* Generate the Hashes */
-                uint1024_t hashSecret = LLC::SK1024(vSecret);
-
-                /* Generate the Final Root Hash. */
-                return LLC::SK256(hashSecret.GetBytes());
-            }
+            static uint256_t Genesis(const SecureString& strUsername);
 
 
             /** Generate
@@ -111,35 +145,12 @@ namespace TAO
              *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
              *
              *  @param[in] nKeyID The key number in the keychian
-             *  @param[in] strSecret The secret phrase to use (Never Cached)
+             *  @param[in] strSecret The secret phrase to use
+             *  @param[in] fCache Use the cache on hand for keys.
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            uint512_t Generate(uint32_t nKeyID, SecureString strSecret)
-            {
-                /* Serialize the Key ID (Big Endian). */
-                std::vector<uint8_t> vKeyID((uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
-
-                /* Generate the Secret Phrase */
-                std::vector<uint8_t> vSecret(strUsername.begin(), strUsername.end());
-                vSecret.insert(vSecret.end(), vKeyID.begin(), vKeyID.end());
-                vSecret.insert(vSecret.end(), strPassword.begin(), strPassword.end());
-
-                /* Generate the secret data. */
-                std::vector<uint8_t> vPin(strSecret.begin(), strSecret.end());
-                vPin.insert(vPin.end(), vKeyID.begin(), vKeyID.end());
-
-                /* Generate the Hashes */
-                uint1024_t hashSecret = LLC::SK1024(vSecret);
-                uint1024_t hashPIN    = LLC::SK1024(vPin);
-
-                std::vector<uint8_t> vFinal;
-                vFinal.insert(vFinal.end(), (uint8_t*)&hashSecret, (uint8_t*)&hashSecret + 128);
-                vFinal.insert(vFinal.end(), (uint8_t*)&hashPIN, (uint8_t*)&hashPIN + 128);
-
-                /* Generate the Final Root Hash. */
-                return LLC::SK512(vFinal);
-            }
+            uint512_t Generate(const uint32_t nKeyID, const SecureString& strSecret, bool fCache = true) const;
         };
     }
 }

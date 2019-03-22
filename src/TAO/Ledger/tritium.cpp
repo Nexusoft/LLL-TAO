@@ -13,8 +13,6 @@ ________________________________________________________________________________
 
 #include <cmath>
 
-#include <LLC/include/key.h>
-
 #include <LLD/include/global.h>
 
 #include <LLP/packets/tritium.h>
@@ -139,7 +137,7 @@ namespace TAO
 
 
             /* Check the Proof of Work Claims. */
-            if (IsProofOfWork() && !VerifyWork())
+            if (!config::GetBoolArg("-private") && IsProofOfWork() && !VerifyWork())
                return debug::error(FUNCTION, "invalid proof of work");
 
 
@@ -217,43 +215,43 @@ namespace TAO
 
 
             /* Check all the transactions. */
-            for(const auto& tx : vtx)
+            for(const auto& proof : vtx)
             {
 
                 /* Insert txid into set to check for duplicates. */
-                uniqueTx.insert(tx.second);
+                uniqueTx.insert(proof.second);
 
                 /* Push back this hash for merkle root. */
-                vHashes.push_back(tx.second);
+                vHashes.push_back(proof.second);
 
                 /* Basic checks for legacy transactions. */
-                if(tx.first == TYPE::LEGACY_TX)
+                if(proof.first == TYPE::LEGACY_TX)
                 {
                     /* Check the memory pool. */
-                    Legacy::Transaction txMem;
-                    if(!mempool.Get(tx.second, txMem))
+                    Legacy::Transaction tx;
+                    if(!mempool.Get(proof.second, tx) && !LLD::legacyDB->ReadTx(proof.second, tx))
                     {
-                        missingTx.push_back(tx);
+                        missingTx.push_back(proof);
                         continue;
                     }
 
                     /* Check the transaction timestamp. */
-                    if(GetBlockTime() < (uint64_t) txMem.nTime)
+                    if(GetBlockTime() < (uint64_t) tx.nTime)
                         return debug::error(FUNCTION, "block timestamp earlier than transaction timestamp");
 
                     /* Check the transaction for validitity. */
-                    if(!txMem.CheckTransaction())
+                    if(!tx.CheckTransaction())
                         return debug::error(FUNCTION, "check transaction failed.");
                 }
 
                 /* Basic checks for tritium transactions. */
-                else if(tx.first == TYPE::TRITIUM_TX)
+                else if(proof.first == TYPE::TRITIUM_TX)
                 {
                     /* Check the memory pool. */
-                    TAO::Ledger::Transaction txMem;
-                    if(!mempool.Has(tx.second))
+                    TAO::Ledger::Transaction tx;
+                    if(!mempool.Has(proof.second) && !LLD::legDB->ReadTx(proof.second, tx))
                     {
-                        missingTx.push_back(tx);
+                        missingTx.push_back(proof);
                         continue;
                     }
                 }
@@ -300,7 +298,11 @@ namespace TAO
             if(nHeight > 0)
             {
                 /* Create the key to check. */
-                LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
+                #if defined USE_FALCON
+                LLC::FLKey key;
+                #else
+                LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+                #endif
                 key.SetPubKey(producer.vchPubKey);
 
                 /* Check the Block Signature. */
@@ -693,6 +695,26 @@ namespace TAO
 
             return true;
         }
+
+        /* Sign the block with the key that found the block. */
+        #if defined USE_FALCON
+        bool TritiumBlock::GenerateSignature(const LLC::FLKey& key)
+        {
+            return key.Sign(GetHash().GetBytes(), vchBlockSig);
+        }
+        #endif
+
+
+        /* Check that the block signature is a valid signature. */
+        #if defined USE_FALCON
+        bool TritiumBlock::VerifySignature(const LLC::FLKey& key) const
+        {
+            if (vchBlockSig.empty())
+                return false;
+
+            return key.Verify(GetHash().GetBytes(), vchBlockSig);
+        }
+        #endif
 
 
         /* Get the score of the current trust block. */

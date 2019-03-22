@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/assets.h>
 #include <TAO/API/include/supply.h>
 #include <TAO/API/include/ledger.h>
+#include <TAO/API/include/tokens.h>
 #include <TAO/API/include/lisp.h>
 
 #include <Util/include/urlencode.h>
@@ -124,6 +125,8 @@ namespace LLP
                 ret = { {"result", TAO::API::ledger.Execute(METHOD, params) } };
             else if(strAPI == "lisp")
                 ret = { {"result", TAO::API::lisp.Execute(METHOD, params) } };
+            else if(strAPI == "tokens")
+                ret = { {"result", TAO::API::tokens.Execute(METHOD, params) } };
             else
                 throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
         }
@@ -142,10 +145,6 @@ namespace LLP
 
         /* Push a response. */
         PushResponse(200, ret.dump());
-
-        /* Handle a connection close header. */
-        if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "close")
-            return false;
 
         return true;
     }

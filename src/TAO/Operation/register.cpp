@@ -91,16 +91,21 @@ namespace TAO
                         return debug::error(FUNCTION, "unexpected token version ", token.nVersion);
 
                     /* Check that token identifier hasn't been claimed. */
-                    if(token.nIdentifier == 0 || LLD::regDB->HasIdentifier(token.nIdentifier, nFlags))
-                        return debug::error(FUNCTION, "token can't be created with reserved identifier ", token.nIdentifier);
+                    if((nFlags & TAO::Register::FLAGS::WRITE) || (nFlags & TAO::Register::FLAGS::MEMPOOL))
+                    {
+                        /* Check the claimed register address to identifier. */
+                        uint256_t hashClaimed = 0;
+                        if(token.nIdentifier == 0 || (LLD::regDB->ReadIdentifier(token.nIdentifier, hashClaimed, nFlags) && hashClaimed != hashAddress))
+                            return debug::error(FUNCTION, "token can't be created with reserved identifier ", token.nIdentifier);
+
+                        /* Write the new identifier to database. */
+                        if(!LLD::regDB->WriteIdentifier(token.nIdentifier, hashAddress, nFlags))
+                            return debug::error(FUNCTION, "failed to commit token register identifier to disk");
+                    }
 
                     /* Check that the current supply and max supply are the same. */
                     if(token.nMaxSupply != token.nCurrentSupply)
                         return debug::error(FUNCTION, "token current supply and max supply can't mismatch");
-
-                    /* Write the new identifier to database. */
-                    if(!LLD::regDB->WriteIdentifier(token.nIdentifier, hashAddress, nFlags))
-                        return debug::error(FUNCTION, "failed to commit token register identifier to disk");
 
                     break;
                 }

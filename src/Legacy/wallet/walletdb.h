@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <thread>
 #include <vector>
 
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <LLC/types/uint1024.h>
 
 #include <Legacy/wallet/cryptokeystore.h> //for CryptedKeyMap typedef

@@ -122,6 +122,10 @@ namespace TAO
                             if(!LLD::regDB->ReadState(hashAddress, dbstate))
                                 return debug::error(FUNCTION, "register pre-state doesn't exist");
 
+                            /* Rollback the event. */
+                            if(!LLD::legDB->EraseEvent(dbstate.hashOwner))
+                                return debug::error(FUNCTION, "failed to rollback event");
+
                             /* Set the previous owner to this sigchain. */
                             dbstate.hashOwner = tx.hashGenesis;
 
@@ -196,8 +200,21 @@ namespace TAO
                             if(!LLD::regDB->WriteState(hashAddress, prestate))
                                 return debug::error(FUNCTION, "failed to rollback to pre-state");
 
+                            /* Get the address to. */
+                            uint256_t hashTo;
+                            tx.ssOperation >> hashTo;
+
+                            /* Read the register from the database. */
+                            TAO::Register::State stateTo;
+                            if(!LLD::regDB->ReadState(hashTo, stateTo))
+                                return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
+
+                            /* Write the event to the ledger database. */
+                            if(!LLD::legDB->EraseEvent(stateTo.hashOwner))
+                                return debug::error(FUNCTION, "failed to rollback event");
+
                             /* Seek to the next operation. */
-                            tx.ssOperation.seek(40);
+                            tx.ssOperation.seek(8);
 
                             /* Seek register past the post state */
                             tx.ssRegister.seek(9);

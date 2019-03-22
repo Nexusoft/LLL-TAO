@@ -109,7 +109,7 @@ namespace LLD
          *  @return True if write was successful, false otherwise.
          *
          **/
-        bool WriteIdentifier(uint32_t nIdentifier, const uint256_t& hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        bool WriteIdentifier(const uint32_t nIdentifier, const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
             if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -144,7 +144,7 @@ namespace LLD
          *  @return True if read was successful, false otherwise.
          *
          **/
-        bool ReadIdentifier(uint32_t nIdentifier, uint256_t& hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        bool ReadIdentifier(const uint32_t nIdentifier, uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
             if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -174,7 +174,7 @@ namespace LLD
          *  @return True if it exists, false otherwise.
          *
          **/
-        bool HasIdentifier(uint32_t nIdentifier, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        bool HasIdentifier(const uint32_t nIdentifier, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
             if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -200,7 +200,7 @@ namespace LLD
          *  @return True if it exists, false otherwise.
          *
          **/
-        bool HasState(const uint256_t& hashRegister, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        bool HasState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             return Exists(std::make_pair(std::string("state"), hashRegister));
         }

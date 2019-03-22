@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <Legacy/include/enum.h>
 
 #include <LLC/types/bignum.h>
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <Util/include/base58.h>
 
 #include <string>

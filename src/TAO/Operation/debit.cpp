@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/state.h>
 #include <TAO/Register/objects/account.h>
+#include <TAO/Register/objects/token.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -59,27 +60,49 @@ namespace TAO
 
             /* Check ownership of register. */
             if(state.hashOwner != hashCaller)
-                return debug::error(FUNCTION, hashCaller.ToString()," caller not authorized to debit from register");
+                return debug::error(FUNCTION, hashCaller.ToString(), " caller not authorized to debit from register");
 
-            /* Skip all non account registers for now. */
-            if(state.nType != TAO::Register::OBJECT::ACCOUNT)
-                return debug::error(FUNCTION, hashFrom.ToString(), " is not an account object");
+            /* Check for account object register. */
+            if(state.nType == TAO::Register::OBJECT::ACCOUNT)
+            {
+                /* Get the account object from register. */
+                TAO::Register::Account account;
+                state >> account;
 
-            /* Get the account object from register. */
-            TAO::Register::Account account;
-            state >> account;
+                /* Check the balance of the from account. */
+                if(nAmount > account.nBalance)
+                    return debug::error(FUNCTION, hashFrom.ToString(), " account doesn't have sufficient balance");
 
-            /* Check the balance of the from account. */
-            if(nAmount > account.nBalance)
-                return debug::error(FUNCTION, hashFrom.ToString(), " doesn't have sufficient balance");
+                /* Change the state of account register. */
+                account.nBalance -= nAmount;
 
-            /* Change the state of account register. */
-            account.nBalance -= nAmount;
+                /* Clear the state of register. */
+                state.ClearState();
+                state.nTimestamp = tx.nTimestamp;
+                state << account;
+            }
 
-            /* Clear the state of register. */
-            state.ClearState();
-            state.nTimestamp = tx.nTimestamp;
-            state << account;
+            /* Check for token object register. */
+            else if(state.nType == TAO::Register::OBJECT::TOKEN)
+            {
+                /* Get the account object from register. */
+                TAO::Register::Token token;
+                state >> token;
+
+                /* Check the balance of the from account. */
+                if(nAmount > token.nCurrentSupply)
+                    return debug::error(FUNCTION, hashFrom.ToString(), " token doesn't have sufficient balance");
+
+                /* Change the state of token register. */
+                token.nCurrentSupply -= nAmount;
+
+                /* Clear the state of register. */
+                state.ClearState();
+                state.nTimestamp = tx.nTimestamp;
+                state << token;
+            }
+            else
+                return debug::error(FUNCTION, hashFrom.ToString(), " is not a valid object register");
 
             /* Check that the register is in a valid state. */
             if(!state.IsValid())
@@ -111,6 +134,19 @@ namespace TAO
                 /* Write the register to the database. */
                 if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashFrom, state))
                     return debug::error(FUNCTION, "failed to write new state");
+
+                /* Write the notification foreign index. */
+                if((nFlags & TAO::Register::FLAGS::WRITE) || (nFlags & TAO::Register::FLAGS::MEMPOOL)) //TODO: possibly add some checks for invalid stateTo (wrong token ID)
+                {
+                    /* Read the register from the database. */
+                    TAO::Register::State stateTo;
+                    if(!LLD::regDB->ReadState(hashTo, stateTo))
+                        return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
+
+                    /* Write the event to the ledger database. */
+                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteEvent(stateTo.hashOwner, tx.GetHash()))
+                        return debug::error(FUNCTION, "failed to rollback event to register DB");
+                }
             }
 
             return true;

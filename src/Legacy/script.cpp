@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <LLC/hash/SK.h>
 
 

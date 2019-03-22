@@ -101,7 +101,8 @@ namespace LLD
 
             /* TODO: Make a worker or thread to check sizes of files and automatically create new file.
                 Keep independent of reads and writes for efficiency. */
-            std::fstream fIncoming(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::in | std::ios::binary);
+
+            std::fstream fIncoming(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::binary);
             if(!fIncoming)
             {
 
@@ -111,7 +112,7 @@ namespace LLD
                 else
                 {
                     /* Create a new file if it doesn't exist. */
-                    std::ofstream cStream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::binary | std::ios::out | std::ios::trunc);
+                    std::ofstream cStream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::binary | std::ios::out | std::ios::trunc);
                     cStream.close();
                 }
 
@@ -165,7 +166,7 @@ namespace LLD
                 if(!fileCache->Get(cKey.nSectorFile, pstream))
                 {
                     /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                    pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream->is_open())
                     {
                         delete pstream;
@@ -215,7 +216,7 @@ namespace LLD
             if(!fileCache->Get(cKey.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
                     delete pstream;
@@ -267,7 +268,7 @@ namespace LLD
             if(!fileCache->Get(key.nSectorFile, pstream))
             {
                 /* Set the new stream pointer. */
-                pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
                 if(!pstream->is_open())
                 {
                     delete pstream;
@@ -313,7 +314,7 @@ namespace LLD
                     ++ nCurrentFile;
                     nCurrentFileSize = 0;
 
-                    std::ofstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
+                    std::ofstream stream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary);
                     stream.close();
                 }
 
@@ -325,7 +326,7 @@ namespace LLD
                 if(!fileCache->Get(nCurrentFile, pstream))
                 {
                     /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                    pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
                     if(!pstream->is_open())
                     {
                         delete pstream;
@@ -443,7 +444,7 @@ namespace LLD
                 nCurrentFileSize = 0;
 
                 /* Create a new file for next writes. */
-                std::fstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
+                std::fstream stream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
                 stream.close();
             }
 

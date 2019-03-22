@@ -40,12 +40,14 @@ namespace TAO
 
             /* Check for pin parameter. */
             SecureString strPIN;
-            bool fNeedPin = accounts.Locked(strPIN);
+            bool fNeedPin = accounts.Locked();
 
             if( fNeedPin && params.find("pin") == params.end() )
                 throw APIException(-25, "Missing PIN");
             else if( fNeedPin)
                 strPIN = params["pin"].get<std::string>().c_str();
+            else
+                strPIN = accounts.GetActivePin();
 
             /* Check for session parameter. */
             uint64_t nSession = 0;
@@ -67,28 +69,20 @@ namespace TAO
             /* Watch for destination genesis. */
             uint256_t hashTo = 0;
             if(params.find("destination") != params.end())
-            {
                 hashTo.SetHex(params["destination"].get<std::string>());
-            }
             else if(params.find("username") != params.end())
-            {
-                /* Generate the Secret Phrase */
-                SecureString strUsername = params["username"].get<std::string>().c_str();
-                
-                /* Generate the Final Root Hash. */
-                hashTo = TAO::Ledger::SignatureChain::GetGenesis(strUsername);
-            }
+                hashTo = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else
                 throw APIException(-25, "Missing Destination");
 
             /* Get the account. */
-            TAO::Ledger::SignatureChain user;
-            if(!accounts.GetAccount(nSession, user))
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
+            if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!TAO::Ledger::CreateTransaction(&user, strPIN, tx))
+            if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction");
 
             /* Submit the transaction payload. */

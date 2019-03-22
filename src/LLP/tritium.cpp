@@ -877,8 +877,7 @@ namespace LLP
                     debug::log(3, NODE "Received legacy block data ", block.GetHash().ToString().substr(0, 20));
 
                     /* Process the block. */
-                    if(!LegacyNode::Process(block, nullptr))
-                        return false;
+                    LegacyNode::Process(block, nullptr);
                 }
                 else if(type == MSG_BLOCK_TRITIUM)
                 {
@@ -889,8 +888,7 @@ namespace LLP
                     debug::log(3, NODE "Received tritium block data ", block.GetHash().ToString().substr(0, 20));
 
                     /* Process the block. */
-                    if(!TritiumNode::Process(block, this))
-                        return false;
+                    TritiumNode::Process(block, this);
                 }
 
                 break;
@@ -1008,7 +1006,7 @@ namespace LLP
         /* Check if the block is valid. */
         uint1024_t hash = block.GetHash();
         if(!block.Check())
-            return true;
+            return false;
 
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))

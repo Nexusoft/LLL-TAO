@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/include/random.h>
+#include <LLC/hash/SK.h>
 
 #include <TAO/API/include/accounts.h>
 #include <TAO/API/include/assets.h>
@@ -40,12 +41,14 @@ namespace TAO
 
             /* Check for pin parameter. */
             SecureString strPIN;
-            bool fNeedPin = accounts.Locked(strPIN);
+            bool fNeedPin = accounts.Locked();
 
             if( fNeedPin && params.find("pin") == params.end() )
                 throw APIException(-25, "Missing PIN");
             else if( fNeedPin)
                 strPIN = params["pin"].get<std::string>().c_str();
+            else
+                strPIN = accounts.GetActivePin();
 
             /* Check for session parameter. */
             uint64_t nSession = 0;
@@ -61,13 +64,13 @@ namespace TAO
                 throw APIException(-25, "Missing data");
 
             /* Get the account. */
-            TAO::Ledger::SignatureChain user;
-            if(!accounts.GetAccount(nSession, user))
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
+            if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!TAO::Ledger::CreateTransaction(&user, strPIN, tx))
+            if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction");
 
             /* Submit the transaction payload. */

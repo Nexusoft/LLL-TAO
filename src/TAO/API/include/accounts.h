@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/include/mutex.h>
+#include <Util/include/memory.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -36,12 +37,12 @@ namespace TAO
          **/
         class Accounts : public Base
         {
-            /** Map of sessions to signature chain for session-based API use. */
-            mutable std::map<uint64_t, TAO::Ledger::SignatureChain> mapSessions;
+            /** The signature chain for login and logout. */
+            mutable std::map<uint64_t, memory::encrypted_ptr<TAO::Ledger::SignatureChain>> mapSessions;
 
 
             /** The active pin for sessionless API use **/
-            SecureString strActivePIN;
+            mutable memory::encrypted_ptr<SecureString> strActivePIN;
 
 
             /** The mutex for locking. **/
@@ -52,10 +53,28 @@ namespace TAO
             /** Default Constructor. **/
             Accounts()
             : mapSessions()
-            , strActivePIN("")
+            , strActivePIN()
             , MUTEX()
             {
                 Initialize();
+            }
+
+
+            /** Destructor. **/
+            ~Accounts()
+            {
+                /* Iterate through the sessions map and delete any sig chains that are still active */
+                for( auto& session : mapSessions)
+                {
+                    /* Check that is hasn't already been destroyed before freeing it*/
+                    if( !session.second.IsNull())
+                        session.second.free();
+                }
+                /* Clear the sessions map of all entries */
+                mapSessions.clear();
+
+                if( !strActivePIN.IsNull())
+                    strActivePIN.free();
             }
 
 
@@ -80,7 +99,7 @@ namespace TAO
              *  Determine if the currently active sig chain is locked.
              *
              **/
-            bool Locked(SecureString& strSecret) const;
+            bool Locked() const;
 
 
             /** GetKey
@@ -112,12 +131,20 @@ namespace TAO
               *  Returns the sigchain the account logged in.
               *
               *  @param[in] nSession The session identifier.
-              *  @param[out] user The user's account.
               *
-              *  @return The genesis ID if logged in.
+              *  @return the signature chain.
               *
               **/
-             bool GetAccount(uint64_t nSession, TAO::Ledger::SignatureChain &user) const;
+             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& GetAccount(uint64_t nSession) const;
+
+             /** GetActivePin
+              *
+              *  Returns the pin number for the currently logged in account.
+              
+              *  @return the pin.
+              *
+              **/
+             SecureString GetActivePin() const;
 
 
             /** GetName
@@ -193,7 +220,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json CreateAccount(const json::json& params, bool fHelp);
+            json::json Create(const json::json& params, bool fHelp);
 
 
             /** GetTransactions
@@ -206,7 +233,20 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json GetTransactions(const json::json& params, bool fHelp);
+            json::json Transactions(const json::json& params, bool fHelp);
+
+
+            /** Notifications
+             *
+             *  Get notifications for an account
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Notifications(const json::json& params, bool fHelp);
         };
 
         extern Accounts accounts;

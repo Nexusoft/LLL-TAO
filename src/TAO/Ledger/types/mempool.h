@@ -136,6 +136,20 @@ namespace TAO
 
             /** Get
              *
+             *  Gets a transaction by genesis.
+             *
+             *  @param[in] hashTx Hash of transaction to get.
+             *
+             *  @param[out] tx The retrieved transaction
+             *
+             *  @return true if pool contained transaction.
+             *
+             **/
+            bool Get(uint256_t hashGenesis, TAO::Ledger::Transaction& tx) const;
+
+
+            /** Get
+             *
              *  Gets a legacy transaction from mempool
              *
              *  @param[in] hashTx Hash of legacy transaction to get.

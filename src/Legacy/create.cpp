@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <Legacy/types/txin.h>
 
 #include <LLC/hash/SK.h>
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 #include <LLC/types/bignum.h>
 
 #include <LLD/include/global.h>

@@ -96,12 +96,12 @@ endif
 
 #Configure Build Environment
 ifneq ($(detected_OS),Windows)
-INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src )\
+INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/tests )\
 	-I$(BDB_INCLUDE_PATH) \
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
 ifeq ($(detected_OS),Windows)
-INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" \
+INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" -I"$(CURDIR)/tests" \
 	-I$(BDB_INCLUDE_PATH) \
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
@@ -114,11 +114,8 @@ LIBS+=-ldb_cxx \
 endif
 DEFS+=  -D$(BUILD_ARCH)
 
-#Display Warnings while compiling
-ifdef ENABLE_WARNINGS
-	CXXFLAGS+= -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security -pedantic
-else
-	CXXFLAGS+= -w
+ifdef USE_FALCON
+	DEFS+= -DUSE_FALCON
 endif
 
 #Fail on warnings
@@ -160,142 +157,180 @@ else
 	OPTIMIZATION+=-O3
 endif
 
+#Display Warnings while compiling
+ifdef ENABLE_WARNINGS
+	CXXWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security -pedantic
+	CWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wformat -Wformat-security -pedantic
+else
+	CXXFLAGS+= -w
+endif
+
 
 
 #Source File List
 HEADERS= $(wildcard *.h)
-OBJS= \
-	build/main.o \
-	build/LLC_skein.o \
-	build/LLC_skein_block.o \
-	build/LLC_KeccakDuplex.o \
-	build/LLC_KeccakSponge.o \
-	build/LLC_Keccak-compact64.o \
-	build/LLC_KeccakHash.o \
-    build/LLC_bignum.o \
-	build/LLC_key.o \
-	build/LLC_random.o \
-	build/LLD_global.o \
-    build/LLD_filemap.o \
-    build/LLD_hashmap.o \
-    build/LLD_hashtree.o \
-    build/LLD_key.o \
-    build/LLD_transaction.o \
-    build/LLD_binary_lru.o \
-	build/LLD_binary_key.o \
-    build/LLD_sector.o \
-	build/LLP_base_address.o \
-    build/LLP_base_connection.o \
-    build/LLP_connection.o \
-	build/LLP_corenode.o \
-    build/LLP_data.o \
-    build/LLP_ddos.o \
-	build/LLP_hosts.o \
-	build/LLP_seeds.o \
-	build/LLP_inv.o \
-	build/LLP_legacy.o \
-	build/LLP_legacy_address.o \
-    build/LLP_manager.o \
-    build/LLP_base_miner.o \
-	build/LLP_legacy_miner.o \
-	build/LLP_tritium_miner.o \
-	build/LLP_network.o \
-	build/LLP_rpcnode.o \
-    build/LLP_server.o \
-	build/LLP_socket.o \
-	build/LLP_time.o \
-	build/LLP_tritium.o \
-	build/LLP_trust_address.o \
-	build/Ledger_block.o \
-	build/Ledger_chainstate.o \
-	build/Ledger_checkpoints.o \
-	build/Ledger_create.o \
-	build/Ledger_difficulty.o \
-	build/Ledger_mempool.o \
-	build/Ledger_prime.o \
-	build/Ledger_state.o \
-	build/Ledger_supply.o \
-	build/Ledger_transaction.o \
-	build/Ledger_tritium.o \
-	build/Ledger_trust.o \
-	build/Ledger_trustkey.o \
-	build/Ledger_locator.o \
-	build/Register_rollback.o \
-	build/Register_verify.o \
-	build/Operation_append.o \
-	build/Operation_authorize.o \
-	build/Operation_coinbase.o \
-	build/Operation_credit.o \
-	build/Operation_debit.o \
-	build/Operation_register.o \
-	build/Operation_transfer.o \
-	build/Operation_trust.o \
-	build/Operation_write.o \
-	build/API_cmd.o \
-	build/API_accounts_accounts.o \
-	build/API_accounts_create.o \
-	build/API_accounts_lock.o \
-	build/API_accounts_login.o \
-	build/API_accounts_logout.o \
-	build/API_accounts_unlock.o \
-	build/API_assets_initialize.o \
-	build/API_assets_create.o \
-	build/API_assets_get.o \
-	build/API_assets_history.o \
-	build/API_assets_tokenize.o \
-	build/API_assets_transfer.o \
-	build/API_ledger_create.o \
-	build/API_lisp_lisp.o \
-	build/API_RPC_account.o \
-	build/API_RPC_daemon.o \
-	build/API_RPC_info.o \
-	build/API_RPC_network.o \
-	build/API_RPC_rpc.o \
-	build/API_RPC_wallet.o \
-	build/API_supply_initialize.o \
-	build/API_supply_createitem.o \
-	build/API_supply_getitem.o \
-	build/API_supply_history.o \
-	build/API_supply_transfer.o \
-	build/API_supply_updateitem.o \
-	build/Legacy_address.o \
-	build/Legacy_addressbook.o \
-	build/Legacy_ambassador.o \
-	build/Legacy_basickeystore.o \
-	build/Legacy_create.o \
-	build/Legacy_crypted.o \
-	build/Legacy_crypter.o \
-	build/Legacy_cryptokeystore.o \
-	build/Legacy_db.o \
-	build/Legacy_enum.o \
-	build/Legacy_evaluate.o \
-	build/Legacy_keypool.o \
-	build/Legacy_keystore.o \
-	build/Legacy_legacy.o \
-	build/Legacy_mempool.o \
-	build/Legacy_merkle.o \
-	build/Legacy_minter.o \
-	build/Legacy_outpoint.o \
-	build/Legacy_reservekey.o \
-	build/Legacy_script.o \
-	build/Legacy_secret.o \
-	build/Legacy_signature.o \
-	build/Legacy_transaction.o \
-	build/Legacy_txin.o \
-	build/Legacy_txout.o \
-	build/Legacy_wallet.o \
-	build/Legacy_walletdb.o \
-	build/Legacy_wallettx.o \
-	build/Util_args.o \
-	build/Util_base58.o \
-	build/Util_base64.o \
-	build/Util_config.o \
-	build/Util_debug.o \
-    build/Util_datastream.o \
-	build/Util_filesystem.o \
-    build/Util_memory.o \
-	build/Util_signals.o \
-	build/Util_version.o
+
+ifdef LIVE_TESTS
+	OBJS = build/Tests_main.o
+else
+	OBJS = build/main.o
+endif
+
+OBJS+=  build/LLC_skein.o \
+		build/LLC_skein_block.o \
+		build/LLC_KeccakDuplex.o \
+		build/LLC_KeccakSponge.o \
+		build/LLC_Keccak-compact64.o \
+		build/LLC_KeccakHash.o \
+		build/LLC_blake2b.o \
+		build/LLC_argon2.o \
+		build/LLC_core.o \
+		build/LLC_encoding.o \
+		build/LLC_ref.o \
+		build/LLC_thread.o \
+		build/LLC_aes.o \
+		build/LLC_falcon-enc.o \
+		build/LLC_falcon-fft.o \
+		build/LLC_falcon-keygen.o \
+		build/LLC_falcon-sign.o \
+		build/LLC_falcon-vrfy.o \
+		build/LLC_frng.o \
+		build/LLC_shake.o \
+		build/LLC_bignum.o \
+		build/LLC_eckey.o \
+		build/LLC_flkey.o \
+		build/LLC_random.o \
+		build/LLD_global.o \
+	    build/LLD_filemap.o \
+	    build/LLD_hashmap.o \
+	    build/LLD_hashtree.o \
+	    build/LLD_key.o \
+	    build/LLD_transaction.o \
+	    build/LLD_binary_lru.o \
+		build/LLD_binary_key.o \
+	    build/LLD_sector.o \
+		build/LLP_base_address.o \
+	    build/LLP_base_connection.o \
+	    build/LLP_connection.o \
+		build/LLP_corenode.o \
+	    build/LLP_data.o \
+	    build/LLP_ddos.o \
+		build/LLP_global.o \
+		build/LLP_hosts.o \
+		build/LLP_seeds.o \
+		build/LLP_inv.o \
+		build/LLP_legacy.o \
+		build/LLP_lisp.o \
+		build/LLP_legacy_address.o \
+	    build/LLP_manager.o \
+	    build/LLP_base_miner.o \
+		build/LLP_legacy_miner.o \
+		build/LLP_tritium_miner.o \
+		build/LLP_network.o \
+		build/LLP_rpcnode.o \
+	    build/LLP_server.o \
+		build/LLP_socket.o \
+		build/LLP_time.o \
+		build/LLP_tritium.o \
+		build/LLP_trust_address.o \
+		build/Ledger_block.o \
+		build/Ledger_chainstate.o \
+		build/Ledger_checkpoints.o \
+		build/Ledger_create.o \
+		build/Ledger_difficulty.o \
+		build/Ledger_mempool.o \
+		build/Ledger_prime.o \
+		build/Ledger_sigchain.o \
+		build/Ledger_state.o \
+		build/Ledger_supply.o \
+		build/Ledger_transaction.o \
+		build/Ledger_tritium.o \
+		build/Ledger_trust.o \
+		build/Ledger_trustkey.o \
+		build/Ledger_locator.o \
+		build/Register_rollback.o \
+		build/Register_verify.o \
+		build/Operation_append.o \
+		build/Operation_authorize.o \
+		build/Operation_coinbase.o \
+		build/Operation_credit.o \
+		build/Operation_debit.o \
+		build/Operation_register.o \
+		build/Operation_transfer.o \
+		build/Operation_trust.o \
+		build/Operation_write.o \
+		build/API_cmd.o \
+		build/API_accounts_accounts.o \
+		build/API_accounts_create.o \
+		build/API_accounts_lock.o \
+		build/API_accounts_login.o \
+		build/API_accounts_logout.o \
+		build/API_accounts_notifications.o \
+		build/API_accounts_transactions.o \
+		build/API_accounts_unlock.o \
+		build/API_assets_initialize.o \
+		build/API_assets_create.o \
+		build/API_assets_get.o \
+		build/API_assets_history.o \
+		build/API_assets_tokenize.o \
+		build/API_assets_transfer.o \
+		build/API_ledger_create.o \
+		build/API_lisp_lisp.o \
+		build/API_RPC_account.o \
+		build/API_RPC_daemon.o \
+		build/API_RPC_info.o \
+		build/API_RPC_network.o \
+		build/API_RPC_rpc.o \
+		build/API_RPC_wallet.o \
+		build/API_supply_initialize.o \
+		build/API_supply_createitem.o \
+		build/API_supply_getitem.o \
+		build/API_supply_history.o \
+		build/API_supply_transfer.o \
+		build/API_supply_updateitem.o \
+		build/API_tokens_initialize.o \
+		build/API_tokens_create.o \
+		build/API_tokens_credit.o \
+		build/API_tokens_debit.o \
+		build/API_tokens_get.o \
+		build/Legacy_address.o \
+		build/Legacy_addressbook.o \
+		build/Legacy_ambassador.o \
+		build/Legacy_basickeystore.o \
+		build/Legacy_create.o \
+		build/Legacy_crypted.o \
+		build/Legacy_crypter.o \
+		build/Legacy_cryptokeystore.o \
+		build/Legacy_db.o \
+		build/Legacy_enum.o \
+		build/Legacy_evaluate.o \
+		build/Legacy_keypool.o \
+		build/Legacy_keystore.o \
+		build/Legacy_legacy.o \
+		build/Legacy_mempool.o \
+		build/Legacy_merkle.o \
+		build/Legacy_minter.o \
+		build/Legacy_outpoint.o \
+		build/Legacy_reservekey.o \
+		build/Legacy_script.o \
+		build/Legacy_secret.o \
+		build/Legacy_signature.o \
+		build/Legacy_transaction.o \
+		build/Legacy_txin.o \
+		build/Legacy_txout.o \
+		build/Legacy_wallet.o \
+		build/Legacy_walletdb.o \
+		build/Legacy_wallettx.o \
+		build/Util_args.o \
+		build/Util_base58.o \
+		build/Util_base64.o \
+		build/Util_config.o \
+		build/Util_debug.o \
+	    build/Util_datastream.o \
+		build/Util_filesystem.o \
+	    build/Util_memory.o \
+		build/Util_signals.o \
+		build/Util_version.o
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)
@@ -337,9 +372,14 @@ CXXFLAGS+= -mthreads \
 	$(DEFS) \
 	$(INCLUDEPATHS)
 
-#set -std=c++ for all but c compiling
+#Set CFLAGS and Warnings
 CFLAGS:= $(CXXFLAGS)
+CFLAGS+= $(CWARNINGS)
+
+#set -std=c++ for all but c compiling
 CXXFLAGS+=-std=c++11
+CXXFLAGS+= $(CXXWARNINGS)
+
 
 #OS Specific Targets and instructions
 all: release/nexus.exe
@@ -359,6 +399,18 @@ build/LLC_%.o: ./src/LLC/hash/SK/%.cpp $(HEADERS)
 build/LLC_%.o: ./src/LLC/hash/SK/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
+build/LLC_%.o: ./src/LLC/hash/argon2/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
+build/LLC_%.o: ./src/LLC/hash/argon2/blake2/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
+build/LLC_%.o: ./src/LLC/aes/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
+build/LLC_%.o: ./src/LLC/falcon/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
 build/LLD_%.o: ./src/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
@@ -375,6 +427,9 @@ build/API_assets_%.o: ./src/TAO/API/assets/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_supply_%.o: ./src/TAO/API/supply/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_tokens_%.o: ./src/TAO/API/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_ledger_%.o: ./src/TAO/API/ledger/%.cpp $(HEADERS)
@@ -399,6 +454,9 @@ build/Register_%.o: ./src/TAO/Register/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Util_%.o: ./src/Util/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/Tests_%.o: ./tests/unit/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 release/nexus.exe: $(OBJS:build/%=build/%)
@@ -440,9 +498,13 @@ CXXFLAGS+= -mmacosx-version-min=10.13 \
 	$(DEBUG) \
 	$(INCLUDEPATHS)
 
-#set -std=c++ for all but c compiling
+#Set CFLAGS and Warnings
 CFLAGS:= $(CXXFLAGS)
+CFLAGS+= $(CWARNINGS)
+
+#set -std=c++ for all but c compiling
 CXXFLAGS+=-std=c++11
+CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
 all: nexus
@@ -469,6 +531,34 @@ build/LLC_%.o: src/LLC/hash/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/LLC_%.o: src/LLC/hash/SK/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/hash/argon2/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/hash/argon2/blake2/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/aes/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/falcon/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -518,6 +608,13 @@ build/API_assets_%.o: src/TAO/API/assets/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_supply_%.o: src/TAO/API/supply/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_tokens_%.o: src/TAO/API/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -580,6 +677,13 @@ build/Util_%.o: src/Util/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
+build/Tests_%.o: tests/unit/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
 nexus: $(OBJS:build/%=build/%)
 	$(CXX) $(CXXFLAGS) -dead_strip -o $@ $(LIBPATHS) $^ $(LIBS)
 	@echo ' '
@@ -627,9 +731,14 @@ CXXFLAGS+= -pthread \
 	$(DEFS) \
 	$(INCLUDEPATHS)
 
-#set -std=c++ for all but c compiling
+
+#Set CFLAGS and Warnings
 CFLAGS:= $(CXXFLAGS)
+CFLAGS+= $(CWARNINGS)
+
+#set -std=c++ for all but c compiling
 CXXFLAGS+=-std=c++11
+CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
 all: nexus
@@ -655,7 +764,35 @@ build/LLC_%.o: src/LLC/hash/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
+build/LLC_%.o: src/LLC/hash/argon2/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/hash/argon2/blake2/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
 build/LLC_%.o: src/LLC/hash/SK/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/aes/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_%.o: src/LLC/falcon/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -705,6 +842,13 @@ build/API_assets_%.o: src/TAO/API/assets/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_supply_%.o: src/TAO/API/supply/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_tokens_%.o: src/TAO/API/tokens/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -767,6 +911,12 @@ build/Util_%.o: src/Util/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
+build/Tests_%.o: tests/unit/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
 
 #build the final executable
 nexus: $(OBJS:obj/%=build/%)

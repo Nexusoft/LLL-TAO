@@ -40,6 +40,7 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
+    , nBlockIterator(0)
     {
     }
 
@@ -53,6 +54,7 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
+    , nBlockIterator(0)
     {
     }
 
@@ -66,6 +68,7 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
+    , nBlockIterator(0)
     {
     }
 
@@ -492,32 +495,32 @@ namespace LLP
                 /* Get the nonce */
                 nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
 
-                bool fRejected = true;
-                {
-                    LOCK(MUTEX);
+                LOCK(MUTEX);
 
-                    /* Find, sign, and validate the submitted block in order to
-                       not be rejected. */
-                    fRejected = !find_block(hashMerkleRoot)
-                             || !sign_block(nonce, hashMerkleRoot)
-                             || !validate_block(hashMerkleRoot);
-                }
-
-
-                /* Generate a Rejected response. */
-                if(fRejected)
+                /* Make sure the block was created by this mining server. */
+                if(!find_block(hashMerkleRoot))
                 {
                     respond(BLOCK_REJECTED);
                     return true;
                 }
 
+                /* Make sure there is no inconsistencies in signing block. */
+                if(!sign_block(nonce, hashMerkleRoot))
                 {
-                    LOCK(MUTEX);
-
-                    /* Clear map on new block found. */
-                    clear_map();
-                    CoinbaseTx.SetNull();
+                    respond(BLOCK_REJECTED);
+                    return true;
                 }
+
+                /* Make sure there is no inconsistencies in validating block. */
+                if(!validate_block(hashMerkleRoot))
+                {
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                /* Clear map on new block found. */
+                clear_map();
+                CoinbaseTx.SetNull();
 
                 /* Generate an Accepted response. */
                 respond(BLOCK_ACCEPTED);
@@ -538,16 +541,16 @@ namespace LLP
                 /* Read the block state from disk. */
                 if(LLD::legDB->ReadBlock(hashBlock, state))
                 {
-                    /* If the block state is in the main chain send a good response. */
-                    if(state.IsInMainChain())
+                    /* If the block state is not in main chain, send a orphan response. */
+                    if(!state.IsInMainChain())
                     {
-                        respond(GOOD_BLOCK, PACKET.DATA);
+                        respond(ORPHAN_BLOCK, PACKET.DATA);
                         return true;
                     }
                 }
 
-                /* Block state is not in the main chain, send an orphan response */
-                respond(ORPHAN_BLOCK, PACKET.DATA);
+                /* Block state is in the main chain, send a good response */
+                respond(GOOD_BLOCK, PACKET.DATA);
                 return true;
             }
         }
@@ -592,12 +595,16 @@ namespace LLP
     /*  Clear the blocks map. */
     void BaseMiner::clear_map()
     {
+        /* Delete the dynamically allocated blocks in the map. */
         for(auto it = mapBlocks.begin(); it != mapBlocks.end(); ++it)
         {
             if(it->second)
                 delete it->second;
         }
         mapBlocks.clear();
+
+        /* Set the block iterator back to zero so we can iterate new blocks next round. */
+        nBlockIterator = 0;
 
         debug::log(2, FUNCTION, "Cleared map of blocks");
     }

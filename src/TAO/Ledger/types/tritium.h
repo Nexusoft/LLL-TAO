@@ -15,6 +15,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
 #define NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
 
+#if defined USE_FALCON
+#include <LLC/include/flkey.h>
+#endif
+
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/transaction.h>
 
@@ -103,7 +107,7 @@ namespace TAO
             *
             *  Allows polymorphic copying of blocks
             *  Overridden to return an instance of the TritiumBlock class.
-            *  Return-type covariance allows us to return the more derived type whilst 
+            *  Return-type covariance allows us to return the more derived type whilst
             *  still overriding the virtual base-class method
             *
             *  @return A pointer to a copy of this TritiumBlock.
@@ -166,6 +170,28 @@ namespace TAO
              *
              **/
             bool TrustScore(uint32_t& nScore) const;
+
+
+            #if defined USE_FALCON
+            /** Generate Signature
+             *
+             *  Sign the block with the key that found the block.
+             *
+             */
+            bool GenerateSignature(const LLC::FLKey& key);
+
+            #endif
+
+
+            #if defined USE_FALCON
+            /** Verify Signature
+             *
+             *  Check that the block signature is a valid signature.
+             *
+             **/
+            bool VerifySignature(const LLC::FLKey& key) const;
+
+            #endif
 
 
             /** StakeHash

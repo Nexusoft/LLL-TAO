@@ -30,7 +30,7 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        
+
         /* Login to a user account. */
         json::json Accounts::Logout(const json::json& params, bool fHelp)
         {
@@ -50,9 +50,14 @@ namespace TAO
             /* Set the return value. */
             ret["genesis"] = GetGenesis(nSession).ToString();
 
+            /* Delete the sigchan. */
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[nSession];
+            user.free();
+
             /* Erase the session. */
             mapSessions.erase(nSession);
-            strActivePIN = "";
+            if( !strActivePIN.IsNull())
+                    strActivePIN.free();
 
             return ret;
         }

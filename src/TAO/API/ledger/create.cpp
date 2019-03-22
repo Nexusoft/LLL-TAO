@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/state.h>
 
-#include <LLC/include/key.h>
+#include <LLC/include/eckey.h>
 
 #include <Util/include/hex.h>
 
@@ -47,12 +47,14 @@ namespace TAO
         {
             /* Check for pin parameter. */
             SecureString strPIN;
-            bool fNeedPin = accounts.Locked(strPIN);
+            bool fNeedPin = accounts.Locked();
 
             if( fNeedPin && params.find("pin") == params.end() )
                 throw APIException(-25, "Missing PIN");
             else if( fNeedPin)
                 strPIN = params["pin"].get<std::string>().c_str();
+            else
+                strPIN = accounts.GetActivePin();
 
             /* Check for session parameter. */
             uint64_t nSession = 0;
@@ -64,13 +66,13 @@ namespace TAO
                 nSession = std::stoull(params["session"].get<std::string>());
 
             /* Get the account. */
-            TAO::Ledger::SignatureChain user;
-            if(!accounts.GetAccount(nSession, user))
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
+            if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Create the block object. */
             TAO::Ledger::TritiumBlock block;
-            if(!TAO::Ledger::CreateBlock(&user, strPIN, 2, block))
+            if(!TAO::Ledger::CreateBlock(user, strPIN, 2, block))
                 throw APIException(-26, "Failed to create block");
 
             /* Get the secret from new key. */
@@ -78,7 +80,11 @@ namespace TAO
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Generate the EC Key. */
-            LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
+            #if defined USE_FALCON
+            LLC::FLKey key;
+            #else
+            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+            #endif
             if(!key.SetSecret(vchSecret, true))
                 throw APIException(-26, "Failed to set secret key");
 

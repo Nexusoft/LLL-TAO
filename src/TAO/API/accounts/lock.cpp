@@ -29,14 +29,14 @@ namespace TAO
                 throw APIException(-23, "Lock not supported for session-based API");
             
             /* Check if already unlocked. */
-            if(strActivePIN == "")
+            if(!strActivePIN.IsNull() && strActivePIN == "")
                 throw APIException(-26, "Account already locked");
 
 
             /* Clear the pin */
             LOCK(MUTEX);
 
-            strActivePIN = "";
+            strActivePIN.free() ;
 
             return true;
         }
