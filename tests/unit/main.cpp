@@ -462,10 +462,9 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
             case OP::EXP:
             {
-                std::vector<uint32_t> lvalue             = ret;
-                const std::vector<uint32_t> base         = lvalue;
+                const std::vector<uint32_t> base = ret;
 
-                std::vector<uint32_t> mul = lvalue;
+                std::vector<uint32_t> mul = base;
 
                 std::vector<uint32_t> rexp;
                 if(!x86_GetValue(stream, rexp, nLimit))
@@ -473,27 +472,23 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
                 std::vector<uint32_t> rdec(1, 1);
 
-                std::vector<uint32_t> rvalue = lvalue;
+                std::vector<uint32_t> rvalue = ret;
 
                 std::vector<uint32_t> cmp(std::min(rexp.size(), rvalue.size()), 0);
-                std::vector<uint32_t> send(lvalue.size(), 0);
                 while(x86_compare(rexp , cmp) != 1)
                 {
                     while(x86_compare(rvalue, cmp) != 1)
                     {
-                        x86_add(lvalue, mul, lvalue);
+                        x86_add(ret, mul, ret);
 
                         x86_sub(rvalue, rdec, rvalue);
                     }
 
                     x86_sub(rexp, rdec, rexp);
 
-                    mul    = lvalue;
-
+                    mul    = ret;
                     rvalue = base;
                 }
-
-                ret = lvalue;
 
 
                 nLimit -= ((ret.size() + base.size()) * 64);
