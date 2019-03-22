@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <cmath>
 
 #include <Legacy/types/legacy.h>
+#include <Legacy/types/transaction.h>
 
 #include <LLD/include/global.h>
 
@@ -110,63 +111,51 @@ namespace TAO
         }
 
 
-        /* Retrieves the staking rate (ie, minting rate or interest rate) of the trust key for a given PoS legacy block. */
+        /* Retrieves the legacy staking rate for the trust score defined within a given Proof of Stake legacy block. */
         double TrustKey::StakeRate(const Legacy::LegacyBlock& block, const uint32_t nTime) const
         {
-            static const double LOG10 = log(10); // Constant for use in calculations
+            return StakeRate(block.vtx[0], block.nVersion, nTime);
+        }
 
-            /* Use appropriate settings for Testnet or Mainnet */
-            static const uint32_t nMaxTrustScore = config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
 
-            /* Get the previous coinstake transaction. */
-            if(!block.vtx[0].IsCoinStake())
-                return debug::error(FUNCTION, "Invalid coinstake transaction");
+        /* Retrieves the legacy staking rate for the trust score defined within a given Proof of Stake block state. */
+        double TrustKey::StakeRate(const TAO::Ledger::BlockState& block, const uint32_t nTime) const
+        {
+            /* Retrieve the coinstake transaction for the block state. */
+            Legacy::Transaction coinstakeTx;
+            if(!LLD::legacyDB->ReadTx(block.vtx[0].second, coinstakeTx))
+                return debug::error(FUNCTION, "Failed to read coinstake from legacy DB");
 
-            /* Genesis interest rate is 0.5% */
-            if(block.vtx[0].IsGenesis())
-                return 0.005;
-
-            /* Block version 4 is the age of key from timestamp. */
-            uint32_t nTrustScore;
-            if(block.nVersion == 4)
-                nTrustScore = (nTime - nGenesisTime);
-
-            /* Block version 5+ is the trust score of the key. */
-            else if(!block.vtx[0].TrustScore(nTrustScore))
-                return 0.0; //this will trigger an interest rate failure
-
-            double nTrustScoreRatio = (double)nTrustScore / (double)nMaxTrustScore;
-            return std::min(0.03, (0.025 * log((9.0 * nTrustScoreRatio) + 1.0) / LOG10) + 0.005);
+            return StakeRate(coinstakeTx, block.nVersion, nTime);
         }
 
 
         /* Retrieves the staking rate (ie, minting rate or interest rate) of the trust key for a given PoS block state. */
-        double TrustKey::StakeRate(const TAO::Ledger::BlockState& block, const uint32_t nTime) const
+        double TrustKey::StakeRate(const Legacy::Transaction& coinstakeTx, const uint32_t nVersion, const uint32_t nTime) const
         {
             static const double LOG10 = log(10); // Constant for use in calculations
 
             /* Use appropriate settings for Testnet or Mainnet */
             static const uint32_t nMaxTrustScore = config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
 
-            /* Get the previous coinstake transaction. */
-            Legacy::Transaction tx;
-            if(!LLD::legacyDB->ReadTx(block.vtx[0].second, tx))
-                return debug::error(FUNCTION, "Failed to read coinstake from legacy DB");
-
-            if(!tx.IsCoinStake())
+            if(!coinstakeTx.IsCoinStake())
                 return debug::error(FUNCTION, "Invalid coinstake transaction for block state");
 
             /* Genesis interest rate is 0.5% */
-            if(tx.IsGenesis())
+            if(coinstakeTx.IsGenesis())
                 return 0.005;
 
-            /* Block version 4 is the age of key from timestamp. */
-            uint32_t nTrustScore;
-            if(block.nVersion == 4)
+            if(nVersion < 4)
+                return debug::error(FUNCTION, "Invalid Proof of Stake block version ", nVersion);
+
+            uint32_t nTrustScore = 0;
+
+            /* Block version 4 trust score is age of trust key */
+            if(nVersion == 4)
                 nTrustScore = (nTime - nGenesisTime);
 
-            /* Block version 5+ is the trust score of the key. */
-            else if(!tx.TrustScore(nTrustScore))
+            /* Block version 5+ is the trust score of the key encoded within the coinstakeTx */
+            else if(!coinstakeTx.TrustScore(nTrustScore))
                 return 0.0; //this will trigger an interest rate failure
 
             double nTrustScoreRatio = (double)nTrustScore / (double)nMaxTrustScore;

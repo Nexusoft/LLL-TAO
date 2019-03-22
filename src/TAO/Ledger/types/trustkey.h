@@ -26,6 +26,7 @@ ________________________________________________________________________________
 namespace Legacy
 {
     class LegacyBlock;
+    class Transaction;
 }
 
 /* Global TAO namespace. */
@@ -216,11 +217,15 @@ namespace TAO
 
             /** StakeRate
              *
-             *  Retrieves the staking rate (ie, minting rate or interest rate) of the trust key for a given PoS legacy block.
+             *  Retrieves the legacy staking rate for the trust score defined within a given Proof of Stake legacy block.
              *
              *  For version v5+ blocks, the trust score is extracted from the block and used
              *  to calculate stake rate. For v4 blocks, the difference between nTime
              *  and the nGenesisTime of the trust key is used (age of trust key).
+             *
+             *  This version of the method takes a LegacyBlock that contains the coinstake transaction. It does not require that 
+             *  the coinstake transaction be contained within the ledger database. Use this when stake rate is needed while 
+             *  creating a candidate block for minting.
              *
              *  @param[in] block The block to check against. Does not need to be available in LLD, can be new candidate block.
              *  @param[in] nTime The time to check against. Ignored for v5+ blocks
@@ -228,16 +233,19 @@ namespace TAO
              *  @return the stake rate of the trust key at the time the block was generated
              *
              **/
-            double StakeRate(const Legacy::LegacyBlock& block, uint32_t nTime) const;
+            double StakeRate(const Legacy::LegacyBlock& block, const uint32_t nTime) const;
 
 
             /** StakeRate
              *
-             *  Retrieves the staking rate (ie, minting rate or interest rate) of the trust key for a given PoS block state.
+             *  Retrieves the legacy staking rate for the trust score defined within a given Proof of Stake block state.
              *
              *  For version v5+ blocks, the trust score is extracted from the block and used
              *  to calculate stake rate. For v4 blocks, the difference between nTime
              *  and the nGenesisTime of the trust key is used (age of trust key).
+             *
+             *  This version of the method takes a BlockState, which requires that the ledger database contain the coinstake 
+             *  transaction. Use this to validate blocks. 
              *
              *  @param[in] block The block state to check against. Must be previously connected block stored in LLD.
              *  @param[in] nTime The time to check against. Ignored for v5+ blocks
@@ -245,7 +253,25 @@ namespace TAO
              *  @return the stake rate of the trust key at the time the block was generated
              *
              **/
-            double StakeRate(const TAO::Ledger::BlockState& block, uint32_t nTime) const;
+            double StakeRate(const TAO::Ledger::BlockState& block, const uint32_t nTime) const;
+
+
+            /** StakeRate
+             *
+             *  Retrieves the legacy staking rate for the trust score defined within a given coinstake transction.
+             *
+             *  This version of the method takes a legacy Transaction, which must be a coinstake transaction. The
+             *  other two versions of this method retrieve the coinstake and call this one to perform calculations.
+             *  It may also be called directly. 
+             *
+             *  @param[in] coinstakeTx Legacy coinstake transaction
+             *  @param[in] nVersion The block version of the Proof of Stake block containing this transaction
+             *  @param[in] nTime The time to check against. Ignored for v5+ blocks
+             *
+             *  @return the stake rate of the trust key at the time the block was generated
+             *
+             **/
+            double StakeRate(const Legacy::Transaction& coinstakeTx, const uint32_t nVersion, const uint32_t nTime) const;
 
 
             /** ToString

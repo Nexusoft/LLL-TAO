@@ -531,7 +531,9 @@ namespace Legacy
 
         /* Lock wallet, then unlock with new passphrase to update key pool */
         Lock();
-        Unlock(strWalletPassphrase);
+
+        /* Unlock wallet only to replace key pool. Don't start stake minter for this unlock */
+        Unlock(strWalletPassphrase, 0, false); 
 
         /* Replace key pool with encrypted keys */
         {
@@ -581,13 +583,14 @@ namespace Legacy
 
 
     /* Attempt to unlock an encrypted wallet using the passphrase provided. */
-    bool Wallet::Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds)
+    bool Wallet::Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds, const bool fStartStake)
     {
         if (!IsLocked())
             return false;
 
         Crypter crypter;
         CKeyingMaterial vMasterKey;
+        bool fUnlockSuccessful = false;
 
         {
             LOCK(cs_wallet);
@@ -600,11 +603,17 @@ namespace Legacy
             {
                 /* Set the encryption context using the passphrase provided */
                 if(!crypter.SetKeyFromPassphrase(strWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
-                    return false;
+                {
+                    debug::error(FUNCTION, "Error setting encryption context from passphrase");
+                    break;
+                }
 
                 /* Attempt to decrypt the master key using the passphrase crypter */
                 if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, vMasterKey))
-                    return false;
+                {
+                    debug::error(FUNCTION, "Error unlocking key with passphrase");
+                    break;
+                }
 
                 /* Attempt to unlock the wallet using the decrypted value for the master key */
                 if (CryptoKeyStore::Unlock(vMasterKey))
@@ -629,15 +638,20 @@ namespace Legacy
 
                     }
 
-                    /* Whether unlocked fully or for minting only, start the stake minter if configured */
-                    StakeMinter::GetInstance().StartStakeMinter();
 
-                    return true;
+                    fUnlockSuccessful = true;
+                    break;
                 }
             }
         }
 
-        return false;
+        if (fUnlockSuccessful && fStartStake)
+        {
+            /* Whether unlocked fully or for minting only, start the stake minter if configured */
+            StakeMinter::GetInstance().StartStakeMinter();
+        }
+
+        return fUnlockSuccessful;
     }
 
 
@@ -853,7 +867,8 @@ namespace Legacy
             {
                 const WalletTx& walletTx = item.second;
 
-                if (walletTx.IsCoinStake() && walletTx.GetBlocksToMaturity() > 0 && walletTx.GetDepthInMainChain() > 1)
+                /* Amount currently being staked is that amount in a coinstake tx that is not yet mature but has been added to chain */
+                if (walletTx.IsCoinStake() && walletTx.GetBlocksToMaturity() > 0 && walletTx.GetDepthInMainChain() > 0)
                     nTotalStake += GetCredit(walletTx);
             }
         }

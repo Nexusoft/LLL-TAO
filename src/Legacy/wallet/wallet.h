@@ -558,10 +558,12 @@ namespace Legacy
          *  @param[in] nUnlockSeconds The number of seconds to remain unlocked, 0 to unlock indefinitely
          *                            This setting is ignored if fWalletUnlockMintOnly=true (always unlocks indefinitely)
          *
+         *  @param[in] fStartStake By default, Unlock will activate the stake minter. Set false if do not want stake minter to run.
+         *
          *  @return true if wallet was locked, passphrase matches the one used to encrypt it, and unlock is successful
          *
          */
-        bool Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds = 0);
+        bool Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds = 0, const bool fStartStake = true);
 
 
         /** ChangeWalletPassphrase

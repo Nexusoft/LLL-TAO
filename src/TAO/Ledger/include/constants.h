@@ -73,7 +73,11 @@ namespace TAO
 
 
         /** Mainnet maturity for blocks. */
-        const uint32_t NEXUS_MATURITY_BLOCKS   = 100;
+        const uint32_t NEXUS_MATURITY_BLOCKS = 100;
+
+
+        /** Stake reward rate is annual. Define one year (364 days) of time for reward calculations **/
+        const uint32_t ONE_YEAR = 60 * 60 * 24 * 28 * 13;
 
 
         /** nVersion 4 and earlier trust keys expire after 24 hours. **/
