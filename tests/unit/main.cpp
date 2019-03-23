@@ -133,8 +133,7 @@ struct OP
         enum
         {
             SK256        = 0xd0,
-            SK512        = 0xd1,
-            SK1024       = 0xd2
+            SK512        = 0xd1
         };
     };
 };
@@ -160,34 +159,200 @@ inline int64_t compare(const std::vector<uint64_t>& a, const std::vector<uint64_
 
 /** Get Value
  *
- *  Extracts a value from an operation stream for use in the boolean validation scripts.
+ *  Extracts a value from an operation ssOperation for use in the boolean validation scripts.
  *
  **/
-inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>& ret, int32_t &nLimit)
+inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint64_t> &vRet, int32_t &nLimit)
 {
 
-    /* Iterate until end of stream. */
-    while(!stream.end())
+    /* Iterate until end of ssOperation. */
+    while(!ssOperation.end())
     {
 
         /* Extract the operation byte. */
         uint8_t OPERATION;
-        stream >> OPERATION;
+        ssOperation >> OPERATION;
 
 
         /* Switch based on the operation. */
         switch(OPERATION)
         {
 
+            /* Add two 64-bit numbers. */
+            case OP::ADD:
+            {
+                /* Get the add from r-value. */
+                std::vector<uint64_t> vAdd;
+                if(!GetValue(ssOperation, vAdd, nLimit))
+                    return false;
+
+                /* Check computational bounds. */
+                if(vAdd.size() > 1 || vRet.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::ADD computation greater than 64-bits"));
+
+                /* Compute the return value. */
+                vRet[0] += vAdd[0];
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 64;
+
+                break;
+            }
+
+
+            /* Subtract one number from another. */
+            case OP::SUB:
+            {
+                /* Get the sub from r-value. */
+                std::vector<uint64_t> vSub;
+                if(!GetValue(ssOperation, vSub, nLimit))
+                    return false;
+
+                /* Check computational bounds. */
+                if(vSub.size() > 1 || vRet.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::SUB computation greater than 64-bits"));
+
+                /* Compute the return value. */
+                vRet[0] -= vSub[0];
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 64;
+
+                break;
+            }
+
+
+            /* Increment a number by an order of 1. */
+            case OP::INC:
+            {
+                /* Check computational bounds. */
+                if(vRet.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::INC computation greater than 64-bits"));
+
+                /* Increment the return value. */
+                ++vRet[0];
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 64;
+
+                break;
+            }
+
+
+            /* De-increment a number by an order of 1. */
+            case OP::DEC:
+            {
+                /* Check computational bounds. */
+                if(vRet.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::DEC computation greater than 64-bits"));
+
+                /* Deincrement the return value. */
+                --vRet[0];
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 64;
+
+                break;
+            }
+
+
+            /* Divide a number by another. */
+            case OP::DIV:
+            {
+                /* Get the divisor from r-value. */
+                std::vector<uint64_t> vDiv;
+                if(!GetValue(ssOperation, vDiv, nLimit))
+                    return false;
+
+                /* Check computational bounds. */
+                if(vDiv.size() > 1 || vRet.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::DIV computation greater than 64-bits"));
+
+                /* Compute the return value. */
+                vRet[0] /= vDiv[0];
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 128;
+
+                break;
+            }
+
+
+            /* Multiply a number by another. */
+            case OP::MUL:
+            {
+                /* Get the multiplier from r-value. */
+                std::vector<uint64_t> vMul;
+                if(!GetValue(ssOperation, vMul, nLimit))
+                    return false;
+
+                /* Check computational bounds. */
+                if(vMul.size() > 1 || vRet.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::MUL computation greater than 64-bits"));
+
+                /* Compute the return value. */
+                vRet[0] *= vMul[0];
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 128;
+
+                break;
+            }
+
+
+            /* Raise a number by the power of another. */
+            case OP::EXP:
+            {
+                /* Get the exponent from r-value. */
+                std::vector<uint64_t> vExp;
+                if(!GetValue(ssOperation, vExp, nLimit))
+                    return false;
+
+                /* Check computational bounds. */
+                if(vExp.size() > 1 || vRet.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::EXP computation greater than 64-bits"));
+
+                /* Compute the return value. */
+                vRet[0] = pow(vRet[0], vExp[0]);
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 256;
+
+                break;
+            }
+
+
+            /* Get the remainder after a division. */
+            case OP::MOD:
+            {
+                /* Get the modulus from r-value. */
+                std::vector<uint64_t> vMod;
+                if(!GetValue(ssOperation, vMod, nLimit))
+                    return false;
+
+                /* Check computational bounds. */
+                if(vMod.size() > 1 || vRet.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::MOD computation greater than 64-bits"));
+
+                /* Compute the return value. */
+                vRet[0] %= vMod[0];
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 128;
+
+                break;
+            }
+
+
             /* Extract an uint8_t from the stream. */
             case OP::TYPES::UINT8_T:
             {
                 /* Extract the byte. */
                 uint8_t n;
-                stream >> n;
+                ssOperation >> n;
 
                 /* Push onto the return value. */
-                ret.push_back(n);
+                vRet.push_back(n);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 1;
@@ -201,10 +366,10 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
             {
                 /* Extract the short. */
                 uint16_t n;
-                stream >> n;
+                ssOperation >> n;
 
                 /* Push onto the return value. */
-                ret.push_back(n);
+                vRet.push_back(n);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 2;
@@ -218,10 +383,10 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
             {
                 /* Extract the integer. */
                 uint32_t n;
-                stream >> n;
+                ssOperation >> n;
 
                 /* Push onto the return value. */
-                ret.push_back(n);
+                vRet.push_back(n);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 4;
@@ -235,10 +400,10 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
             {
                 /* Extract the integer. */
                 uint64_t n;
-                stream >> n;
+                ssOperation >> n;
 
                 /* Push onto the return value. */
-                ret.push_back(n);
+                vRet.push_back(n);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 8;
@@ -252,11 +417,11 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
             {
                 /* Extract the integer. */
                 uint256_t n;
-                stream >> n;
+                ssOperation >> n;
 
                 /* Push each internal 32-bit integer on return value. */
-                ret.resize(4);
-                std::copy((uint8_t*)&n, (uint8_t*)&n + 32, (uint8_t*)&ret[0]);
+                vRet.resize(4);
+                std::copy((uint8_t*)&n, (uint8_t*)&n + 32, (uint8_t*)&vRet[0]);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 32;
@@ -271,11 +436,11 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
             {
                 /* Extract the integer. */
                 uint512_t n;
-                stream >> n;
+                ssOperation >> n;
 
                 /* Push each internal 32-bit integer on return value. */
-                ret.resize(8);
-                std::copy((uint8_t*)&n, (uint8_t*)&n + 64, (uint8_t*)&ret[0]);
+                vRet.resize(8);
+                std::copy((uint8_t*)&n, (uint8_t*)&n + 64, (uint8_t*)&vRet[0]);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 64;
@@ -289,11 +454,11 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
             {
                 /* Extract the integer. */
                 uint1024_t n;
-                stream >> n;
+                ssOperation >> n;
 
                 /* Push each internal 32-bit integer on return value. */
-                ret.resize(16);
-                std::copy((uint8_t*)&n, (uint8_t*)&n + 128, (uint8_t*)&ret[0]);
+                vRet.resize(16);
+                std::copy((uint8_t*)&n, (uint8_t*)&n + 128, (uint8_t*)&vRet[0]);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 128;
@@ -307,11 +472,11 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
             {
                 /* Extract the string. */
                 std::string str;
-                stream >> str;
+                ssOperation >> str;
 
                 /* Push each internal 32-bit integer on return value. */
-                ret.resize(str.size() / 8);
-                std::copy((uint8_t*)&str[0], (uint8_t*)&str[0] + str.size(), (uint8_t*)&ret[0]);
+                vRet.resize(str.size() / 8);
+                std::copy((uint8_t*)&str[0], (uint8_t*)&str[0] + str.size(), (uint8_t*)&vRet[0]);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= str.size();
@@ -327,7 +492,7 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
                 uint64_t n = runtime::unifiedtimestamp();
 
                 /* Push the timestamp onto the return value. */
-                ret.push_back(n);
+                vRet.push_back(n);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 8;
@@ -339,9 +504,9 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
             /* Get a register's timestamp and push to the return value. */
             case OP::REGISTER::TIMESTAMP:
             {
-                /* Read the register address. */
+                /* Read the register vAddress. */
                 uint256_t hashRegister;
-                stream >> hashRegister;
+                ssOperation >> hashRegister;
 
                 /* Read the register states. */
                 TAO::Register::State state;
@@ -349,7 +514,7 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
                     return false;
 
                 /* Push the timestamp onto the return value. */
-                ret.push_back(state.nTimestamp);
+                vRet.push_back(state.nTimestamp);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 40;
@@ -361,9 +526,9 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
             /* Get a register's owner and push to the return value. */
             case OP::REGISTER::OWNER:
             {
-                /* Read the register address. */
+                /* Read the register vAddress. */
                 uint256_t hashRegister;
-                stream >> hashRegister;
+                ssOperation >> hashRegister;
 
                 /* Read the register states. */
                 TAO::Register::State state;
@@ -371,8 +536,8 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
                     return false;
 
                 /* Push each internal 32-bit integer on return value. */
-                ret.resize(4);
-                std::copy((uint8_t*)&state.hashOwner, (uint8_t*)&state.hashOwner + 32, (uint8_t*)&ret[0]);
+                vRet.resize(4);
+                std::copy((uint8_t*)&state.hashOwner, (uint8_t*)&state.hashOwner + 32, (uint8_t*)&vRet[0]);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 64;
@@ -384,9 +549,9 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
             /* Get a register's type and push to the return value. */
             case OP::REGISTER::TYPE:
             {
-                /* Read the register address. */
+                /* Read the register vAddress. */
                 uint256_t hashRegister;
-                stream >> hashRegister;
+                ssOperation >> hashRegister;
 
                 /* Read the register states. */
                 TAO::Register::State state;
@@ -394,7 +559,7 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
                     return false;
 
                 /* Push the type onto the return value. */
-                ret.push_back(state.nType);
+                vRet.push_back(state.nType);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 33;
@@ -406,9 +571,9 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
             /* Get a register's state and push to the return value. */
             case OP::REGISTER::STATE:
             {
-                /* Read the register address. */
+                /* Read the register vAddress. */
                 uint256_t hashRegister;
-                stream >> hashRegister;
+                ssOperation >> hashRegister;
 
                 /* Read the register states. */
                 TAO::Register::State state;
@@ -416,145 +581,13 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
                     return false;
 
                 /* Get the register's internal states. */
-                std::vector<uint8_t> vchState = state.GetState();
+                std::vector<uint8_t> vState = state.GetState();
 
-                /* Add binary data to ret. */
-                ret.resize(vchState.size() / 8);
-                std::copy((uint8_t*)&vchState[0], (uint8_t*)&vchState[0] + vchState.size(), (uint8_t*)&ret[0]);
-
-                /* Reduce the limits to prevent operation exhuastive attacks. */
-                nLimit -= 128;
-
-                break;
-            }
-
-
-
-
-            //COMPUTATION
-            case OP::ADD:
-            {
-                std::vector<uint64_t> add;
-                if(!GetValue(stream, add, nLimit))
-                    return false;
-
-                if(add.size() > 1 || ret.size() > 1)
-                    throw std::runtime_error(debug::safe_printstr("OP::ADD computation greater than 64-bits"));
-
-                ret[0] += add[0];
+                /* Add binary vData to vRet. */
+                vRet.resize(vState.size() / 8);
+                std::copy((uint8_t*)&vState[0], (uint8_t*)&vState[0] + vState.size(), (uint8_t*)&vRet[0]);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
-                nLimit -= 64;
-
-                break;
-            }
-
-
-            case OP::SUB:
-            {
-                std::vector<uint64_t> sub;
-                if(!GetValue(stream, sub, nLimit))
-                    return false;
-
-                if(sub.size() > 1 || ret.size() > 1)
-                    throw std::runtime_error(debug::safe_printstr("OP::SUB computation greater than 64-bits"));
-
-                ret[0] -= sub[0];
-
-                nLimit -= 64;
-
-                break;
-            }
-
-
-            case OP::INC:
-            {
-                if(ret.size() > 1)
-                    throw std::runtime_error(debug::safe_printstr("OP::INC computation greater than 64-bits"));
-
-                ++ret[0];
-
-                nLimit -= 64;
-
-                break;
-            }
-
-
-            case OP::DEC:
-            {
-                if(ret.size() > 1)
-                    throw std::runtime_error(debug::safe_printstr("OP::DEC computation greater than 64-bits"));
-
-                --ret[0];
-
-                nLimit -= 64;
-
-                break;
-            }
-
-
-            case OP::DIV:
-            {
-                std::vector<uint64_t> div;
-                if(!GetValue(stream, div, nLimit))
-                    return false;
-
-                if(div.size() > 1 || ret.size() > 1)
-                    throw std::runtime_error(debug::safe_printstr("OP::DIV computation greater than 64-bits"));
-
-                ret[0] /= div[0];
-
-                nLimit -= 128;
-
-                break;
-            }
-
-
-            case OP::MUL:
-            {
-                std::vector<uint64_t> mul;
-                if(!GetValue(stream, mul, nLimit))
-                    return false;
-
-                if(mul.size() > 1 || ret.size() > 1)
-                    throw std::runtime_error(debug::safe_printstr("OP::MUL computation greater than 64-bits"));
-
-                ret[0] *= mul[0];
-
-                nLimit -= 128;
-
-                break;
-            }
-
-
-            case OP::EXP:
-            {
-                std::vector<uint64_t> exp;
-                if(!GetValue(stream, exp, nLimit))
-                    return false;
-
-                if(exp.size() > 1 || ret.size() > 1)
-                    throw std::runtime_error(debug::safe_printstr("OP::EXP computation greater than 64-bits"));
-
-                ret[0] = pow(ret[0], exp[0]);
-
-                nLimit -= 256;
-
-                break;
-            }
-
-
-            case OP::MOD:
-            {
-                std::vector<uint64_t> mod;
-                if(!GetValue(stream, mod, nLimit))
-                    return false;
-
-                if(mod.size() > 1 || ret.size() > 1)
-                    throw std::runtime_error(debug::safe_printstr("OP::MOD computation greater than 64-bits"));
-
-                ret[0] %= mod[0];
-
                 nLimit -= 128;
 
                 break;
@@ -562,19 +595,34 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
 
 
 
+            /* Compute an SK256 hash of current return value. */
             case OP::CRYPTO::SK256:
             {
-                std::vector<uint8_t> data(ret.size() * 8);
-                std::copy((uint8_t*)&ret[0], (uint8_t*)&ret[0] + 32, (uint8_t*)&data[0]);
+                /* Compute the return hash. */
+                uint256_t hash = LLC::SK256((uint8_t*)&vRet[0], (uint8_t*)&vRet[0] + vRet.size() * 8);
 
-                uint256_t n = LLC::SK256(data);
+                /* Copy new hash into return value. */
+                vRet.resize(4);
+                std::copy((uint8_t*)&hash, (uint8_t*)&hash + 32, (uint8_t*)&vRet[0]);
 
-                debug::log(0, n.ToString());
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= 512;
 
-                ret.resize(4);
-                std::copy((uint8_t*)&n, (uint8_t*)&n + 32, (uint8_t*)&ret[0]);
+                break;
+            }
 
 
+            /* Compute an SK512 hash of current return value. */
+            case OP::CRYPTO::SK512:
+            {
+                /* Compute the return hash. */
+                uint512_t hash = LLC::SK512((uint8_t*)&vRet[0], (uint8_t*)&vRet[0] + vRet.size() * 8);
+
+                /* Copy new hash into return value. */
+                vRet.resize(8);
+                std::copy((uint8_t*)&hash, (uint8_t*)&hash + 64, (uint8_t*)&vRet[0]);
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 1024;
 
                 break;
@@ -583,7 +631,8 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
 
             default:
             {
-                stream.seek(-1);
+                /* If no applicable instruction found, rewind and return. */
+                ssOperation.seek(-1);
                 if(nLimit < 0)
                     debug::error(FUNCTION, "out of computational limits ", nLimit);
 
@@ -592,6 +641,7 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
         }
     }
 
+    /* Log if computational limits expired. */
     if(nLimit < 0)
         debug::error(FUNCTION, "out of computational limits ", nLimit);
 
@@ -599,29 +649,33 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
 }
 
 
+static uint64_t time_a = 0;
+static uint64_t time_b = 0;
+static uint64_t time_c = 0;
+static uint64_t time_d = 0;
 
-
-bool Validate(const TAO::Operation::Stream& stream)
+bool Validate(const TAO::Operation::Stream& ssOperation)
 {
     int32_t nLimit = 2048;
 
     bool fRet = false;
 
     std::vector<uint64_t> lvalue;
-    while(!stream.end())
+    while(!ssOperation.end())
     {
-        if(!GetValue(stream, lvalue, nLimit))
+
+        if(!GetValue(ssOperation, lvalue, nLimit))
             return false;
 
         uint8_t OPERATION;
-        stream >> OPERATION;
+        ssOperation >> OPERATION;
 
         switch(OPERATION)
         {
             case OP::EQUALS:
             {
                 std::vector<uint64_t> rvalue;
-                if(!GetValue(stream, rvalue, nLimit))
+                if(!GetValue(ssOperation, rvalue, nLimit))
                     return false;
 
                 fRet = (compare(lvalue, rvalue) == 0);
@@ -632,7 +686,7 @@ bool Validate(const TAO::Operation::Stream& stream)
             case OP::LESSTHAN:
             {
                 std::vector<uint64_t> rvalue;
-                if(!GetValue(stream, rvalue, nLimit))
+                if(!GetValue(ssOperation, rvalue, nLimit))
                     return false;
 
                 fRet = (compare(lvalue, rvalue) < 0);
@@ -643,7 +697,7 @@ bool Validate(const TAO::Operation::Stream& stream)
             case OP::GREATERTHAN:
             {
                 std::vector<uint64_t> rvalue;
-                if(!GetValue(stream, rvalue, nLimit))
+                if(!GetValue(ssOperation, rvalue, nLimit))
                     return false;
 
                 fRet = (compare(lvalue, rvalue) > 0);
@@ -654,7 +708,7 @@ bool Validate(const TAO::Operation::Stream& stream)
             case OP::NOTEQUALS:
             {
                 std::vector<uint64_t> rvalue;
-                if(!GetValue(stream, rvalue, nLimit))
+                if(!GetValue(ssOperation, rvalue, nLimit))
                     return false;
 
                 fRet = (compare(lvalue, rvalue) != 0);
@@ -664,7 +718,7 @@ bool Validate(const TAO::Operation::Stream& stream)
 
             case OP::AND:
             {
-                return fRet && Validate(stream);
+                return fRet && Validate(ssOperation);
             }
 
             case OP::OR:
@@ -672,7 +726,7 @@ bool Validate(const TAO::Operation::Stream& stream)
                 if(fRet)
                     return true;
 
-                return Validate(stream);
+                return Validate(ssOperation);
             }
 
             default:
@@ -688,29 +742,44 @@ bool Validate(const TAO::Operation::Stream& stream)
 
 bool Validate2(uint64_t a, uint64_t b)
 {
-    uint64_t ret;
-    ret = pow(a, b);
+    uint64_t vRet;
+    vRet = pow(a, b);
 
-    return (ret == 25);
+    return (vRet == 25);
 }
 
 
 
 int main(int argc, char **argv)
 {
-    TAO::Operation::Stream stream;
+    TAO::Operation::Stream ssOperation;
 
-    stream << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)5u << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT32_T << (uint32_t)2u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)25u;
+    ssOperation << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)7u << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT32_T << (uint32_t)2u << (uint8_t) OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)49u;
 
     runtime::timer bench;
-    bench.Start();
-    for(int i = 0; i < 1; ++i)
+    bench.Reset();
+
+    runtime::timer func;
+    func.Reset();
+
+    uint64_t time_e = 0;
+    for(int t = 0; t < 1000000; ++t)
     {
-        assert(Validate(stream));
-        stream.reset();
+        //func.Reset();
+        //assert(Validate(ssOperation));
+        Validate(ssOperation);
+        ssOperation.reset();
+        //time_e += func.ElapsedMicroseconds();
     }
+    time_e = func.ElapsedMicroseconds();
 
     uint64_t nTime = bench.ElapsedMicroseconds();
+
+    debug::log(0, "A ", time_a);
+    debug::log(0, "B ", time_b);
+    debug::log(0, "C ", time_c);
+    debug::log(0, "D ", time_d);
+    debug::log(0, "E ", time_e);
 
     debug::log(0, "Operations ", nTime);
 
@@ -718,10 +787,10 @@ int main(int argc, char **argv)
     uint64_t nB = 2;
 
     bench.Reset();
-    for(uint64_t i = 0; i <= 1; ++i)
+    for(uint64_t i = 0; i <= 1000000; ++i)
     {
         assert(Validate2(nA, nB));
-        stream.reset();
+        ssOperation.reset();
     }
 
     nTime = bench.ElapsedMicroseconds();
@@ -741,117 +810,120 @@ int main(int argc, char **argv)
     assert(LLD::regDB->Write(hash, state));
 
 
-    std::string strName = "colin!!!";
+    std::string strName = "colasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfin!!!";
     uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
 
 
-    debug::log(0, hashRegister.ToString());
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::STRING << strName << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::STRING << strName;
+    assert(Validate(ssOperation));
 
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::STRING << strName << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::STRING << strName;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::STRING << strName << (uint8_t)OP::CRYPTO::SK256 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT256_T << hashRegister;
+    assert(Validate(ssOperation));
 
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::STRING << strName << (uint8_t)OP::CRYPTO::SK256 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT256_T << hashRegister;
-    assert(Validate(stream));
+    uint512_t hashRegister2 = LLC::SK512(strName.begin(), strName.end());
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::STRING << strName << (uint8_t)OP::CRYPTO::SK512 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT512_T << hashRegister2;
+    assert(Validate(ssOperation));
 
 
 
     //////////////COMPARISONS
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT256_T << hash;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT256_T << hash;
+    assert(Validate(ssOperation));
 
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::LESSTHAN << (uint8_t)OP::TYPES::UINT256_T << hash;
-    assert(!Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::LESSTHAN << (uint8_t)OP::TYPES::UINT256_T << hash;
+    assert(!Validate(ssOperation));
 
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::GREATERTHAN << (uint8_t)OP::TYPES::UINT256_T << hash;
-    assert(!Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::GREATERTHAN << (uint8_t)OP::TYPES::UINT256_T << hash;
+    assert(!Validate(ssOperation));
 
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::NOTEQUALS << (uint8_t)OP::TYPES::UINT256_T << hash;
-    assert(!Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::NOTEQUALS << (uint8_t)OP::TYPES::UINT256_T << hash;
+    assert(!Validate(ssOperation));
 
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::NOTEQUALS << (uint8_t)OP::TYPES::UINT256_T << hash + 1;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::NOTEQUALS << (uint8_t)OP::TYPES::UINT256_T << hash + 1;
+    assert(Validate(ssOperation));
 
 
-
-
+    runtime::sleep(3500);
 
     /////REGISTERS
-    stream.SetNull();
-    stream << (uint8_t)OP::REGISTER::STATE << hash << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT256_T << hash2;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::REGISTER::STATE << hash << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT256_T << hash2;
+    assert(Validate(ssOperation));
 
-    stream.SetNull();
-    stream << (uint8_t)OP::REGISTER::OWNER << hash << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT256_T << state.hashOwner;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::REGISTER::OWNER << hash << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT256_T << state.hashOwner;
+    assert(Validate(ssOperation));
 
-    stream.SetNull();
-    stream << (uint8_t)OP::REGISTER::TIMESTAMP << hash << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT64_T << state.nTimestamp;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::REGISTER::TIMESTAMP << hash << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 3u << (uint8_t)OP::LESSTHAN << (uint8_t) OP::CHAIN::UNIFIED;
+    assert(Validate(ssOperation));
 
-    stream.SetNull();
-    stream << (uint8_t)OP::REGISTER::TYPE << hash << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT64_T << (uint64_t) 2;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::REGISTER::TYPE << hash << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT64_T << (uint64_t) 2;
+    assert(Validate(ssOperation));
 
 
 
 
     ////////////COMPUTATION
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT32_T << 555u << (uint8_t) OP::SUB << (uint8_t) OP::TYPES::UINT32_T << 333u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT32_T << 555u << (uint8_t) OP::SUB << (uint8_t) OP::TYPES::UINT32_T << 333u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
+    assert(Validate(ssOperation));
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT32_T << 9234837u << (uint8_t) OP::SUB << (uint8_t) OP::TYPES::UINT32_T << 384728u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 8850109u;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT32_T << 9234837u << (uint8_t) OP::SUB << (uint8_t) OP::TYPES::UINT32_T << 384728u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 8850109u;
+    assert(Validate(ssOperation));
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT32_T << 905u << (uint8_t) OP::MOD << (uint8_t) OP::TYPES::UINT32_T << 30u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 5u;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT32_T << 905u << (uint8_t) OP::MOD << (uint8_t) OP::TYPES::UINT32_T << 30u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 5u;
+    assert(Validate(ssOperation));
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)1000000000000 << (uint8_t) OP::DIV << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)30000 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 33333333u;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)1000000000000 << (uint8_t) OP::DIV << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)30000 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 33333333u;
+    assert(Validate(ssOperation));
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)5 << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)15 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)30517578125;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)5 << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)15 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)30517578125;
+    assert(Validate(ssOperation));
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT32_T << 2u << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT32_T << 8u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 256u;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT32_T << 2u << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT32_T << 8u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 256u;
+    assert(Validate(ssOperation));
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)9837 << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)7878 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)9837 << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)7878 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;
+    assert(Validate(ssOperation));
 
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)9837 << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::LESSTHAN << (uint8_t)OP::TYPES::UINT256_T << uint256_t(17716);
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)9837 << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::LESSTHAN << (uint8_t)OP::TYPES::UINT256_T << uint256_t(17716);
+    assert(Validate(ssOperation));
 
 
 
 
     //////////////// AND / OR
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT32_T << 9837u << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;
-    stream << (uint8_t)OP::AND;
-    stream << (uint8_t)OP::TYPES::UINT32_T << 9837u << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;
-    stream << (uint8_t)OP::AND;
-    stream << (uint8_t)OP::TYPES::UINT32_T << 9837u << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;
-    assert(Validate(stream));
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT32_T << 9837u << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;
+    ssOperation << (uint8_t)OP::AND;
+    ssOperation << (uint8_t)OP::TYPES::UINT32_T << 9837u << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;
+    ssOperation << (uint8_t)OP::AND;
+    ssOperation << (uint8_t)OP::TYPES::UINT32_T << 9837u << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;
+    assert(Validate(ssOperation));
 
 
 
