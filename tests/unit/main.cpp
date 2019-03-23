@@ -603,7 +603,7 @@ inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>
 
 bool Validate(const TAO::Operation::Stream& stream)
 {
-    int32_t nLimit = 1024;
+    int32_t nLimit = 2048;
 
     bool fRet = false;
 
