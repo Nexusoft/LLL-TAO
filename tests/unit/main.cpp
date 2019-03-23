@@ -19,6 +19,8 @@
 
 #include <LLD/include/global.h>
 
+#include <math.h>
+
 
 std::atomic<uint64_t> nVerified;
 
@@ -56,6 +58,7 @@ struct OP
             UINT256_T   = 0x05,
             UINT512_T   = 0x06,
             UINT1024_T  = 0x07,
+            STRING      = 0x08
         };
     };
 
@@ -121,52 +124,31 @@ struct OP
             UNIFIED       = 0xc2
         };
     };
+
+
+
+    //BYTES 0xd0 and up
+    struct CRYPTO
+    {
+        enum
+        {
+            SK256        = 0xd0,
+            SK512        = 0xd1,
+            SK1024       = 0xd2
+        };
+    };
 };
-
-
-inline void x86_add(const std::vector<uint32_t>& x, const std::vector<uint32_t>& y, std::vector<uint32_t>& ret)
-{
-    uint64_t carry = 0;
-
-    size_t nSize = std::min(x.size(), y.size());
-    for (int i = 0; i < nSize; ++i)
-    {
-        uint64_t n = carry + x[i] + y[i];
-        ret[i] = (n & 0xffffffff);
-        carry  =  (n >> 32);
-    }
-}
-
-
-inline void x86_sub(const std::vector<uint32_t>& x, const std::vector<uint32_t>& y, std::vector<uint32_t>& ret)
-{
-    std::vector<uint32_t> sub(y.size(), 0);
-    for(int i = 0; i < sub.size(); i++)
-        sub[i] = ~y[i];
-
-    int i = 0;
-    while (++sub[i] == 0 && i < sub.size())
-        ++i;
-
-    uint64_t carry = 0;
-    for (int i = 0; i < std::min(x.size(), y.size()); ++i)
-    {
-        uint64_t n = carry + x[i] + sub[i];
-        ret[i] = (n & 0xffffffff);
-        carry =  (n >> 32);
-    }
-}
 
 
 /**  Compares two byte arrays and determines their signed equivalence byte for
  *   byte.
  **/
-inline int32_t x86_compare(const std::vector<uint32_t>& a, const std::vector<uint32_t>& b)
+inline int64_t compare(const std::vector<uint64_t>& a, const std::vector<uint64_t>& b)
 {
     size_t nSize = std::min(a.size(), b.size()) - 1;
     for(int64_t i = nSize; i >= 0; --i)
     {
-        //debug::log(0, "I ", i, " Byte ", std::hex, (uint32_t)a[i], " vs Bytes ", std::hex, (uint32_t)b[i]);
+        //debug::log(0, "I ", i, " Byte ", std::hex, a[i], " vs Bytes ", std::hex, b[i]);
         if(a[i] != b[i])
             return a[i] - b[i];
 
@@ -181,7 +163,7 @@ inline int32_t x86_compare(const std::vector<uint32_t>& a, const std::vector<uin
  *  Extracts a value from an operation stream for use in the boolean validation scripts.
  *
  **/
-inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint32_t>& ret, int32_t &nLimit)
+inline bool GetValue(const TAO::Operation::Stream& stream, std::vector<uint64_t>& ret, int32_t &nLimit)
 {
 
     /* Iterate until end of stream. */
@@ -257,7 +239,6 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
                 /* Push onto the return value. */
                 ret.push_back(n);
-                ret.push_back(n >> 32);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 8;
@@ -274,8 +255,8 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
                 stream >> n;
 
                 /* Push each internal 32-bit integer on return value. */
-                for(int i = 0; i < 8; i++)
-                    ret.push_back(n.get(i));
+                ret.resize(4);
+                std::copy((uint8_t*)&n, (uint8_t*)&n + 32, (uint8_t*)&ret[0]);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 32;
@@ -293,8 +274,8 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
                 stream >> n;
 
                 /* Push each internal 32-bit integer on return value. */
-                for(int i = 0; i < 16; i++)
-                    ret.push_back(n.get(i));
+                ret.resize(8);
+                std::copy((uint8_t*)&n, (uint8_t*)&n + 64, (uint8_t*)&ret[0]);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 64;
@@ -311,11 +292,29 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
                 stream >> n;
 
                 /* Push each internal 32-bit integer on return value. */
-                for(int i = 0; i < 32; i++)
-                    ret.push_back(n.get(i));
+                ret.resize(16);
+                std::copy((uint8_t*)&n, (uint8_t*)&n + 128, (uint8_t*)&ret[0]);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 128;
+
+                break;
+            }
+
+
+            /* Extract an uint1024_t from the stream. */
+            case OP::TYPES::STRING:
+            {
+                /* Extract the string. */
+                std::string str;
+                stream >> str;
+
+                /* Push each internal 32-bit integer on return value. */
+                ret.resize(str.size() / 8);
+                std::copy((uint8_t*)&str[0], (uint8_t*)&str[0] + str.size(), (uint8_t*)&ret[0]);
+
+                /* Reduce the limits to prevent operation exhuastive attacks. */
+                nLimit -= str.size();
 
                 break;
             }
@@ -325,11 +324,10 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
             case OP::CHAIN::UNIFIED:
             {
                 /* Get the current unified timestamp. */
-                uint64_t n = runtime::unified_timestamp();
+                uint64_t n = runtime::unifiedtimestamp();
 
                 /* Push the timestamp onto the return value. */
                 ret.push_back(n);
-                ret.push_back(n >> 32);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 8;
@@ -352,7 +350,6 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
                 /* Push the timestamp onto the return value. */
                 ret.push_back(state.nTimestamp);
-                ret.push_back(state.nTimestamp >> 32);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 40;
@@ -374,8 +371,8 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
                     return false;
 
                 /* Push each internal 32-bit integer on return value. */
-                for(int i = 0; i < 8; i++)
-                    ret.push_back(state.hashOwner.get(i));
+                ret.resize(4);
+                std::copy((uint8_t*)&state.hashOwner, (uint8_t*)&state.hashOwner + 32, (uint8_t*)&ret[0]);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 64;
@@ -421,9 +418,9 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
                 /* Get the register's internal states. */
                 std::vector<uint8_t> vchState = state.GetState();
 
-
-                //TODO: add binary data into 32-bit VM form
-
+                /* Add binary data to ret. */
+                ret.resize(vchState.size() / 8);
+                std::copy((uint8_t*)&vchState[0], (uint8_t*)&vchState[0] + vchState.size(), (uint8_t*)&ret[0]);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 128;
@@ -437,14 +434,17 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
             //COMPUTATION
             case OP::ADD:
             {
-                std::vector<uint32_t> rvalue;
-                if(!x86_GetValue(stream, rvalue, nLimit))
+                std::vector<uint64_t> add;
+                if(!GetValue(stream, add, nLimit))
                     return false;
 
-                x86_add(ret, rvalue, ret);
+                if(add.size() > 1 || ret.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::ADD computation greater than 64-bits"));
+
+                ret[0] += add[0];
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
-                nLimit -= ((ret.size() + rvalue.size()) * 4);
+                nLimit -= 64;
 
                 break;
             }
@@ -452,13 +452,16 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
             case OP::SUB:
             {
-                std::vector<uint32_t> rvalue;
-                if(!x86_GetValue(stream, rvalue, nLimit))
+                std::vector<uint64_t> sub;
+                if(!GetValue(stream, sub, nLimit))
                     return false;
 
-                x86_sub(ret, rvalue, ret);
+                if(sub.size() > 1 || ret.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::SUB computation greater than 64-bits"));
 
-                nLimit -= ((ret.size() + rvalue.size()) * 4);
+                ret[0] -= sub[0];
+
+                nLimit -= 64;
 
                 break;
             }
@@ -466,10 +469,12 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
             case OP::INC:
             {
-                std::vector<uint32_t> rvalue(1);
-                x86_add(ret, rvalue, ret);
+                if(ret.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::INC computation greater than 64-bits"));
 
-                nLimit -= ((ret.size() + 1) * 4);
+                ++ret[0];
+
+                nLimit -= 64;
 
                 break;
             }
@@ -477,10 +482,12 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
             case OP::DEC:
             {
-                std::vector<uint32_t> rvalue(1);
-                x86_sub(ret, rvalue, ret);
+                if(ret.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::DEC computation greater than 64-bits"));
 
-                nLimit -= ((ret.size() + 1) * 4);
+                --ret[0];
+
+                nLimit -= 64;
 
                 break;
             }
@@ -488,22 +495,16 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
             case OP::DIV:
             {
-                std::vector<uint32_t> rvalue;
-                if(!x86_GetValue(stream, rvalue, nLimit))
+                std::vector<uint64_t> div;
+                if(!GetValue(stream, div, nLimit))
                     return false;
 
-                uint32_t nTotal = 0;
-                while(x86_compare(ret, rvalue) >= 0)
-                {
-                    x86_sub(ret, rvalue, ret);
+                if(div.size() > 1 || ret.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::DIV computation greater than 64-bits"));
 
-                    ++nTotal;
-                }
+                ret[0] /= div[0];
 
-                ret.clear();
-                ret.push_back(nTotal);
-
-                nLimit -= ((ret.size() + rvalue.size()) * 16);
+                nLimit -= 128;
 
                 break;
             }
@@ -511,23 +512,16 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
             case OP::MUL:
             {
-                const std::vector<uint32_t> mul = ret;
-
-                std::vector<uint32_t> rvalue;
-                if(!x86_GetValue(stream, rvalue, nLimit))
+                std::vector<uint64_t> mul;
+                if(!GetValue(stream, mul, nLimit))
                     return false;
 
-                std::vector<uint32_t> rdec(1, 1);
+                if(mul.size() > 1 || ret.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::MUL computation greater than 64-bits"));
 
-                std::vector<uint32_t> cmp(rvalue.size(), 0);
+                ret[0] *= mul[0];
 
-                while(x86_compare(rvalue, cmp) != 1)
-                {
-                    x86_add(ret, mul, ret);
-                    x86_sub(rvalue, rdec, rvalue);
-                }
-
-                nLimit -= ((ret.size() + rvalue.size()) * 16);
+                nLimit -= 128;
 
                 break;
             }
@@ -535,36 +529,16 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
             case OP::EXP:
             {
-                const std::vector<uint32_t> base = ret;
-
-                std::vector<uint32_t> mul = base;
-
-                std::vector<uint32_t> rexp;
-                if(!x86_GetValue(stream, rexp, nLimit))
+                std::vector<uint64_t> exp;
+                if(!GetValue(stream, exp, nLimit))
                     return false;
 
-                std::vector<uint32_t> rdec(1, 1);
+                if(exp.size() > 1 || ret.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::EXP computation greater than 64-bits"));
 
-                std::vector<uint32_t> rvalue = ret;
+                ret[0] = pow(ret[0], exp[0]);
 
-                std::vector<uint32_t> cmp(std::min(rexp.size(), rvalue.size()), 0);
-                while(x86_compare(rexp , cmp) != 1)
-                {
-                    while(x86_compare(rvalue, cmp) != 1)
-                    {
-                        x86_add(ret, mul, ret);
-
-                        x86_sub(rvalue, rdec, rvalue);
-                    }
-
-                    x86_sub(rexp, rdec, rexp);
-
-                    mul    = ret;
-                    rvalue = base;
-                }
-
-
-                nLimit -= ((ret.size() + base.size()) * 64);
+                nLimit -= 256;
 
                 break;
             }
@@ -572,14 +546,36 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
             case OP::MOD:
             {
-                std::vector<uint32_t> rvalue;
-                if(!x86_GetValue(stream, rvalue, nLimit))
+                std::vector<uint64_t> mod;
+                if(!GetValue(stream, mod, nLimit))
                     return false;
 
-                while(x86_compare(ret, rvalue) >= 0)
-                    x86_sub(ret, rvalue, ret);
+                if(mod.size() > 1 || ret.size() > 1)
+                    throw std::runtime_error(debug::safe_printstr("OP::MOD computation greater than 64-bits"));
 
-                nLimit -= ((ret.size() + rvalue.size()) * 16);
+                ret[0] %= mod[0];
+
+                nLimit -= 128;
+
+                break;
+            }
+
+
+
+            case OP::CRYPTO::SK256:
+            {
+                std::vector<uint8_t> data(ret.size() * 8);
+                std::copy((uint8_t*)&ret[0], (uint8_t*)&ret[0] + 32, (uint8_t*)&data[0]);
+
+                uint256_t n = LLC::SK256(data);
+
+                debug::log(0, n.ToString());
+
+                ret.resize(4);
+                std::copy((uint8_t*)&n, (uint8_t*)&n + 32, (uint8_t*)&ret[0]);
+
+
+                nLimit -= 1024;
 
                 break;
             }
@@ -605,16 +601,16 @@ inline bool x86_GetValue(const TAO::Operation::Stream& stream, std::vector<uint3
 
 
 
-bool x86_Validate(const TAO::Operation::Stream& stream)
+bool Validate(const TAO::Operation::Stream& stream)
 {
-    int32_t nLimit = 256;
+    int32_t nLimit = 1024;
 
     bool fRet = false;
 
-    std::vector<uint32_t> lvalue;
+    std::vector<uint64_t> lvalue;
     while(!stream.end())
     {
-        if(!x86_GetValue(stream, lvalue, nLimit))
+        if(!GetValue(stream, lvalue, nLimit))
             return false;
 
         uint8_t OPERATION;
@@ -624,51 +620,51 @@ bool x86_Validate(const TAO::Operation::Stream& stream)
         {
             case OP::EQUALS:
             {
-                std::vector<uint32_t> rvalue;
-                if(!x86_GetValue(stream, rvalue, nLimit))
+                std::vector<uint64_t> rvalue;
+                if(!GetValue(stream, rvalue, nLimit))
                     return false;
 
-                fRet = (x86_compare(lvalue, rvalue) == 0);
+                fRet = (compare(lvalue, rvalue) == 0);
 
                 break;
             }
 
             case OP::LESSTHAN:
             {
-                std::vector<uint32_t> rvalue;
-                if(!x86_GetValue(stream, rvalue, nLimit))
+                std::vector<uint64_t> rvalue;
+                if(!GetValue(stream, rvalue, nLimit))
                     return false;
 
-                fRet = (x86_compare(lvalue, rvalue) < 0);
+                fRet = (compare(lvalue, rvalue) < 0);
 
                 break;
             }
 
             case OP::GREATERTHAN:
             {
-                std::vector<uint32_t> rvalue;
-                if(!x86_GetValue(stream, rvalue, nLimit))
+                std::vector<uint64_t> rvalue;
+                if(!GetValue(stream, rvalue, nLimit))
                     return false;
 
-                fRet = (x86_compare(lvalue, rvalue) > 0);
+                fRet = (compare(lvalue, rvalue) > 0);
 
                 break;
             }
 
             case OP::NOTEQUALS:
             {
-                std::vector<uint32_t> rvalue;
-                if(!x86_GetValue(stream, rvalue, nLimit))
+                std::vector<uint64_t> rvalue;
+                if(!GetValue(stream, rvalue, nLimit))
                     return false;
 
-                fRet = (x86_compare(lvalue, rvalue) != 0);
+                fRet = (compare(lvalue, rvalue) != 0);
 
                 break;
             }
 
             case OP::AND:
             {
-                return fRet && x86_Validate(stream);
+                return fRet && Validate(stream);
             }
 
             case OP::OR:
@@ -676,7 +672,7 @@ bool x86_Validate(const TAO::Operation::Stream& stream)
                 if(fRet)
                     return true;
 
-                return x86_Validate(stream);
+                return Validate(stream);
             }
 
             default:
@@ -690,9 +686,12 @@ bool x86_Validate(const TAO::Operation::Stream& stream)
 }
 
 
-bool Validate(uint32_t a, uint32_t b)
+bool Validate2(uint64_t a, uint64_t b)
 {
-    return a + b == 10;
+    uint64_t ret;
+    ret = pow(a, b);
+
+    return (ret == 25);
 }
 
 
@@ -701,13 +700,13 @@ int main(int argc, char **argv)
 {
     TAO::Operation::Stream stream;
 
-    stream << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)5u << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)5u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)10u;
+    stream << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)5u << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT32_T << (uint32_t)2u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)25u;
 
     runtime::timer bench;
     bench.Start();
-    for(int i = 0; i < 1000000; ++i)
+    for(int i = 0; i < 1; ++i)
     {
-        assert(x86_Validate(stream));
+        assert(Validate(stream));
         stream.reset();
     }
 
@@ -715,13 +714,13 @@ int main(int argc, char **argv)
 
     debug::log(0, "Operations ", nTime);
 
-    uint32_t nA = 5;
-    uint32_t nB = 5;
+    uint64_t nA = 5;
+    uint64_t nB = 2;
 
     bench.Reset();
-    for(uint64_t i = 0; i <= 1000000; ++i)
+    for(uint64_t i = 0; i <= 1; ++i)
     {
-        assert(Validate(nA, nB));
+        assert(Validate2(nA, nB));
         stream.reset();
     }
 
@@ -729,52 +728,130 @@ int main(int argc, char **argv)
     debug::log(0, "Binary ", nTime);
 
 
+    uint256_t hash = LLC::GetRand256();
+
+    uint256_t hash2 = LLC::GetRand256();
+    TAO::Register::State state;
+    state.hashOwner = LLC::GetRand256();
+    state.nType     = 2;
+    state << hash2;
+
+
+    LLD::regDB = new LLD::RegisterDB();
+    assert(LLD::regDB->Write(hash, state));
+
+
+    std::string strName = "colin!!!";
+    uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+
+
+    debug::log(0, hashRegister.ToString());
+
+
+    stream.SetNull();
+    stream << (uint8_t)OP::TYPES::STRING << strName << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::STRING << strName;
+    assert(Validate(stream));
+
+
+    stream.SetNull();
+    stream << (uint8_t)OP::TYPES::STRING << strName << (uint8_t)OP::CRYPTO::SK256 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT256_T << hashRegister;
+    assert(Validate(stream));
+
+
+
+    //////////////COMPARISONS
+    stream.SetNull();
+    stream << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT256_T << hash;
+    assert(Validate(stream));
+
+
+    stream.SetNull();
+    stream << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::LESSTHAN << (uint8_t)OP::TYPES::UINT256_T << hash;
+    assert(!Validate(stream));
+
+
+    stream.SetNull();
+    stream << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::GREATERTHAN << (uint8_t)OP::TYPES::UINT256_T << hash;
+    assert(!Validate(stream));
+
+
+    stream.SetNull();
+    stream << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::NOTEQUALS << (uint8_t)OP::TYPES::UINT256_T << hash;
+    assert(!Validate(stream));
+
+
+    stream.SetNull();
+    stream << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::NOTEQUALS << (uint8_t)OP::TYPES::UINT256_T << hash + 1;
+    assert(Validate(stream));
+
+
+
+
+
+    /////REGISTERS
+    stream.SetNull();
+    stream << (uint8_t)OP::REGISTER::STATE << hash << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT256_T << hash2;
+    assert(Validate(stream));
+
+    stream.SetNull();
+    stream << (uint8_t)OP::REGISTER::OWNER << hash << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT256_T << state.hashOwner;
+    assert(Validate(stream));
+
+    stream.SetNull();
+    stream << (uint8_t)OP::REGISTER::TIMESTAMP << hash << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT64_T << state.nTimestamp;
+    assert(Validate(stream));
+
+    stream.SetNull();
+    stream << (uint8_t)OP::REGISTER::TYPE << hash << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT64_T << (uint64_t) 2;
+    assert(Validate(stream));
+
+
+
+
+    ////////////COMPUTATION
     stream.SetNull();
     stream << (uint8_t)OP::TYPES::UINT32_T << 555u << (uint8_t) OP::SUB << (uint8_t) OP::TYPES::UINT32_T << 333u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
-    assert(x86_Validate(stream));
-
+    assert(Validate(stream));
 
     stream.SetNull();
     stream << (uint8_t)OP::TYPES::UINT32_T << 9234837u << (uint8_t) OP::SUB << (uint8_t) OP::TYPES::UINT32_T << 384728u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 8850109u;
-    assert(x86_Validate(stream));
+    assert(Validate(stream));
 
     stream.SetNull();
     stream << (uint8_t)OP::TYPES::UINT32_T << 905u << (uint8_t) OP::MOD << (uint8_t) OP::TYPES::UINT32_T << 30u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 5u;
-    assert(x86_Validate(stream));
-
-
-    stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT32_T << 1200u << (uint8_t) OP::DIV << (uint8_t) OP::TYPES::UINT32_T << 30u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 40u;
-    assert(x86_Validate(stream));
-
+    assert(Validate(stream));
 
     stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT32_T << 5u << (uint8_t) OP::MUL << (uint8_t) OP::TYPES::UINT32_T << 5u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 25u;
-    assert(x86_Validate(stream));
+    stream << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)1000000000000 << (uint8_t) OP::DIV << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)30000 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 33333333u;
+    assert(Validate(stream));
 
+    stream.SetNull();
+    stream << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)5 << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)15 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)30517578125;
+    assert(Validate(stream));
 
     stream.SetNull();
     stream << (uint8_t)OP::TYPES::UINT32_T << 2u << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT32_T << 8u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 256u;
-    assert(x86_Validate(stream));
-
+    assert(Validate(stream));
 
     stream.SetNull();
     stream << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)9837 << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)7878 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;
-    assert(x86_Validate(stream));
-
+    assert(Validate(stream));
 
     stream.SetNull();
-    stream << (uint8_t)OP::TYPES::UINT256_T << uint256_t(9837) << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::LESSTHAN << (uint8_t)OP::TYPES::UINT256_T << uint256_t(17716);
-    assert(x86_Validate(stream));
+    stream << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)9837 << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::LESSTHAN << (uint8_t)OP::TYPES::UINT256_T << uint256_t(17716);
+    assert(Validate(stream));
 
 
+
+
+    //////////////// AND / OR
     stream.SetNull();
     stream << (uint8_t)OP::TYPES::UINT32_T << 9837u << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;
     stream << (uint8_t)OP::AND;
     stream << (uint8_t)OP::TYPES::UINT32_T << 9837u << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;
     stream << (uint8_t)OP::AND;
     stream << (uint8_t)OP::TYPES::UINT32_T << 9837u << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;
-    assert(x86_Validate(stream));
+    assert(Validate(stream));
 
 
 
