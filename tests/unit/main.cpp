@@ -44,96 +44,153 @@ void Verifier()
 }
 
 
+
+
+
+
+
+
+//claims
+//OP_CREDIT <txid of your debit> <hash-proof=0xff> <hash-to-b> 100
+//---> check state of locking transaction
+
+//OP_CREDIT <txid of your debit> <hash-proof=0xff> <hash-to-a> 500
+
+
 struct OP
 {
+    /** Primitive Operations. **/
+    enum
+    {
+        //register operations
+        WRITE      = 0x01,
+        REGISTER   = 0x02,
+        AUTHORIZE  = 0x03,
+        TRANSFER   = 0x04,
+        REQUIRE    = 0x05,
+        APPEND     = 0x06,
+
+
+        //financial operations
+        DEBIT      = 0x10,
+        CREDIT     = 0x11,
+        COINBASE   = 0x12,
+        TRUST      = 0x13, //for proof of stake
+
+
+        //internal funding
+        AMBASSADOR = 0x20,
+        DEVELOPER  = 0x21,
+
+        //consensus operations
+        VOTE  = 0x30,
+
+
+        //0x41 = 0x69 RESERVED
+    };
+
+
+    /** Core validation types. **/
     struct TYPES
     {
         enum
         {
-            RESERVED    = 0x00,
-            UINT8_T     = 0x01,
-            UINT16_T    = 0x02,
-            UINT32_T    = 0x03,
-            UINT64_T    = 0x04,
-            UINT256_T   = 0x05,
-            UINT512_T   = 0x06,
-            UINT1024_T  = 0x07,
-            STRING      = 0x08
+            UINT8_T     = 0x70,
+            UINT16_T    = 0x71,
+            UINT32_T    = 0x72,
+            UINT64_T    = 0x73,
+            UINT256_T   = 0x74,
+            UINT512_T   = 0x75,
+            UINT1024_T  = 0x76,
+            STRING      = 0x77
         };
     };
 
+    /** Core validation operations. **/
     enum
     {
         //RESERVED 0x08 - 0x0f
-        EQUALS      = 0x10,
-        LESSTHAN    = 0x11,
-        GREATERTHAN = 0x12,
-        NOTEQUALS   = 0x13,
+        EQUALS      = 0x80,
+        LESSTHAN    = 0x81,
+        GREATERTHAN = 0x82,
+        NOTEQUALS   = 0x83,
+        CONTAINS    = 0x84,
 
 
         //RESERVED to 0x1f
-        ADD         = 0x20,
-        SUB         = 0x21,
-        DIV         = 0x22,
-        MUL         = 0x23,
-        MOD         = 0x24,
-        INC         = 0x25,
-        DEC         = 0x26,
-        EXP         = 0x27,
+        ADD         = 0x90,
+        SUB         = 0x91,
+        DIV         = 0x92,
+        MUL         = 0x93,
+        MOD         = 0x94,
+        INC         = 0x95,
+        DEC         = 0x96,
+        EXP         = 0x97,
 
 
         //RESERVED to 0x2f
-        AND         = 0x30,
-        OR          = 0x31,
-        IF          = 0x32,
+        AND         = 0xa0,
+        OR          = 0xa1,
+        IF          = 0xa2,
     };
 
 
-    //BYTES 0xa0 and up
+    /** Register layer state values. **/
     struct REGISTER
     {
         enum
         {
-            TIMESTAMP     = 0xa0,
-            OWNER         = 0xa1,
-            TYPE          = 0xa2,
-            STATE         = 0xa3
+            TIMESTAMP     = 0xb0,
+            OWNER         = 0xb1,
+            TYPE          = 0xb2,
+            STATE         = 0xb3
         };
     };
 
 
-    //BYTES 0xb0 and up
+    /** Caller Values (The validation script caller). **/
     struct CALLER
     {
         enum
         {
-            GENESIS      = 0xb0,
-            TIMESTAMP    = 0xb1,
-            TXID         = 0xb2
+            GENESIS      = 0xc0,
+            TIMESTAMP    = 0xc1,
+            OPERATIONS   = 0xc2,
         };
     };
 
 
-    //BYTES 0xc0 and up
-    struct CHAIN
+    /* Ledger Layer State Values. */
+    struct LEDGER
     {
         enum
         {
-            HEIGHT        = 0xc0,
-            TIMESTAMP     = 0xc1,
-            UNIFIED       = 0xc2
+            HEIGHT        = 0xd0,
+            BLOCK         = 0xd1,
+            SUPPLY        = 0xd2,
+            TIME          = 0xd3
         };
     };
 
 
 
-    //BYTES 0xd0 and up
+    /* Cryptographic operations. */
     struct CRYPTO
     {
         enum
         {
-            SK256        = 0xd0,
-            SK512        = 0xd1
+            SK256        = 0xe0,
+            SK512        = 0xe1
+        };
+    };
+
+
+    /* Global state values. */
+    struct GLOBAL
+    {
+        enum
+        {
+            UNIFIED       = 0xf0
         };
     };
 };
@@ -156,6 +213,7 @@ inline int64_t compare(const std::vector<uint64_t>& a, const std::vector<uint64_
 }
 
 
+std::vector<uint64_t> vRegisters;
 
 /** Get Value
  *
@@ -419,7 +477,7 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 uint256_t n;
                 ssOperation >> n;
 
-                /* Push each internal 32-bit integer on return value. */
+                /* Copy contents into the return value. */
                 vRet.resize(4);
                 std::copy((uint8_t*)&n, (uint8_t*)&n + 32, (uint8_t*)&vRet[0]);
 
@@ -438,7 +496,7 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 uint512_t n;
                 ssOperation >> n;
 
-                /* Push each internal 32-bit integer on return value. */
+                /* Copy contents into the return value. */
                 vRet.resize(8);
                 std::copy((uint8_t*)&n, (uint8_t*)&n + 64, (uint8_t*)&vRet[0]);
 
@@ -456,7 +514,7 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 uint1024_t n;
                 ssOperation >> n;
 
-                /* Push each internal 32-bit integer on return value. */
+                /* Copy contents into the return value. */
                 vRet.resize(16);
                 std::copy((uint8_t*)&n, (uint8_t*)&n + 128, (uint8_t*)&vRet[0]);
 
@@ -474,7 +532,7 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 std::string str;
                 ssOperation >> str;
 
-                /* Push each internal 32-bit integer on return value. */
+                /* Copy contents into the return value. */
                 vRet.resize(str.size() / 8);
                 std::copy((uint8_t*)&str[0], (uint8_t*)&str[0] + str.size(), (uint8_t*)&vRet[0]);
 
@@ -486,7 +544,7 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
 
 
             /* Get a unified timestamp and push to return value. */
-            case OP::CHAIN::UNIFIED:
+            case OP::GLOBAL::UNIFIED:
             {
                 /* Get the current unified timestamp. */
                 uint64_t n = runtime::unifiedtimestamp();
@@ -594,7 +652,6 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
             }
 
 
-
             /* Compute an SK256 hash of current return value. */
             case OP::CRYPTO::SK256:
             {
@@ -649,10 +706,25 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
 }
 
 
-static uint64_t time_a = 0;
-static uint64_t time_b = 0;
-static uint64_t time_c = 0;
-static uint64_t time_d = 0;
+//Exchange would be:
+//OP::DEBIT <hash-from-a> <0xffffffffffffff> 100
+//OP::REQUIRE OP_DEBIT <identifier> 500
+
+//OP::AND TIMESTAMP OP::LESSTHAN OP::CHAIN::UNIFIED
+//OP::OR OP_CREDIT <%txid%> <hash-proof=0xff> <MATCH::hash-to-a> 100
+
+//first debit:
+// OP::DEBIT <hash-from-account> <0xffffffff> OP::REQUIRE OP::CALLER::OPERATIONS OP::CONTAINS OP::DEBIT <0xffffffffff> <0xffffffffff> 100 AND OP::REGISTER::TYPE OP::CALLER::DEBIT::FROM OP::EQUALS TAO::REGISTER::ACCOUNT AND OP::REGISTER::ACCOUNT::IDENTIFIER OP::CALLER::DEBIT::FROM OP::EQUALS <token-type>
+
+
+//second debit:
+// OP::DEBIT <hash-from-account> <0xffffffff>> OP_VALIDATE <txid>
+//---> OP_VALIDATE executes OP::VALIDATE from txid, if OP_REQUIRE satisfied
+
+
+//return to self
+//OP_VALIDATE <txid> OP_CREDIT <txid> <hash-proof=0xff> <hash-to-a> 100
+
 
 bool Validate(const TAO::Operation::Stream& ssOperation)
 {
@@ -672,6 +744,19 @@ bool Validate(const TAO::Operation::Stream& ssOperation)
 
         switch(OPERATION)
         {
+
+            case OP::DEBIT:
+            {
+                break;
+            }
+
+
+            case OP::CREDIT:
+            {
+                break;
+            }
+
+
             case OP::EQUALS:
             {
                 std::vector<uint64_t> rvalue;
@@ -721,6 +806,9 @@ bool Validate(const TAO::Operation::Stream& ssOperation)
                 return fRet && Validate(ssOperation);
             }
 
+            //OP::GROUP
+            //OP::UNGROUP
+
             case OP::OR:
             {
                 if(fRet)
@@ -762,24 +850,13 @@ int main(int argc, char **argv)
     runtime::timer func;
     func.Reset();
 
-    uint64_t time_e = 0;
     for(int t = 0; t < 1000000; ++t)
     {
-        //func.Reset();
-        //assert(Validate(ssOperation));
-        Validate(ssOperation);
+        assert(Validate(ssOperation));
         ssOperation.reset();
-        //time_e += func.ElapsedMicroseconds();
     }
-    time_e = func.ElapsedMicroseconds();
 
     uint64_t nTime = bench.ElapsedMicroseconds();
-
-    debug::log(0, "A ", time_a);
-    debug::log(0, "B ", time_b);
-    debug::log(0, "C ", time_c);
-    debug::log(0, "D ", time_d);
-    debug::log(0, "E ", time_e);
 
     debug::log(0, "Operations ", nTime);
 
@@ -858,7 +935,6 @@ int main(int argc, char **argv)
     assert(Validate(ssOperation));
 
 
-    runtime::sleep(3500);
 
     /////REGISTERS
     ssOperation.SetNull();
@@ -870,7 +946,7 @@ int main(int argc, char **argv)
     assert(Validate(ssOperation));
 
     ssOperation.SetNull();
-    ssOperation << (uint8_t)OP::REGISTER::TIMESTAMP << hash << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 3u << (uint8_t)OP::LESSTHAN << (uint8_t) OP::CHAIN::UNIFIED;
+    ssOperation << (uint8_t)OP::REGISTER::TIMESTAMP << hash << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 3u << (uint8_t)OP::GREATERTHAN << (uint8_t) OP::GLOBAL::UNIFIED;
     assert(Validate(ssOperation));
 
     ssOperation.SetNull();
