@@ -213,17 +213,183 @@ inline int64_t compare(const std::vector<uint64_t>& a, const std::vector<uint64_
 }
 
 
-std::vector<uint64_t> vRegisters;
+struct Value
+{
+    uint32_t nBegin;
+    uint32_t nEnd;
+
+    Value()
+    : nBegin(0)
+    , nEnd(0)
+    {
+
+    }
+
+    uint32_t size() const
+    {
+        return nEnd - nBegin;
+    }
+
+    bool null() const
+    {
+        return nBegin == 0 && nEnd == 0;
+    }
+};
+
+
+
+class Registers
+{
+    std::vector<uint64_t> vRegister;
+
+    uint32_t nPointer;
+
+public:
+    Registers()
+    : vRegister(64, 0) //MAX of 512 bytes in register buffer.
+    , nPointer(0)
+    {
+
+    }
+
+    const uint8_t* begin(const Value& test) const
+    {
+        return (uint8_t*)&vRegister[test.nBegin];
+    }
+
+
+    const uint8_t* end(const Value& test) const
+    {
+        return (uint8_t*)&vRegister[test.nEnd];
+    }
+
+
+    template<typename Data>
+    void allocate(const Data& data, Value& test)
+    {
+        test.nBegin = nPointer;
+        test.nEnd   = nPointer + sizeof(data) / 8;
+
+        if(test.nEnd >= vRegister.size())
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
+
+        std::copy((uint8_t*)&data, (uint8_t*)&data + sizeof(data), (uint8_t*)&vRegister[test.nBegin]);
+
+        nPointer += test.size();
+    }
+
+
+    void allocate(const uint64_t& data, Value& test)
+    {
+        test.nBegin = nPointer;
+        test.nEnd   = ++nPointer;
+
+        if(test.nEnd >= vRegister.size())
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
+
+        vRegister[test.nBegin] = data;
+    }
+
+
+    void allocate(const std::vector<uint8_t>& data, Value& test)
+    {
+        test.nBegin = nPointer;
+        test.nEnd   = nPointer + (data.size() / 8);
+
+        if(test.nEnd >= vRegister.size())
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
+
+        std::copy((uint8_t*)&data[0], (uint8_t*)&data[0] + data.size(), (uint8_t*)&vRegister[test.nBegin]);
+
+        nPointer += test.size();
+    }
+
+
+    void allocate(const std::string& data, Value& test)
+    {
+        test.nBegin = nPointer;
+        test.nEnd   = nPointer + (data.size() / 8);
+
+        if(test.nEnd >= vRegister.size())
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
+
+        std::copy((uint8_t*)&data[0], (uint8_t*)&data[0] + data.size(), (uint8_t*)&vRegister[test.nBegin]);
+
+        nPointer += test.size();
+    }
+
+
+    template<typename Data>
+    void deallocate(Data& data, const Value& test)
+    {
+        if(test.nEnd != nPointer)
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, " cannot deallocate when not last"));
+
+        std::copy((uint8_t*)&vRegister[test.nBegin], (uint8_t*)&vRegister[test.nEnd], (uint8_t*)&data);
+
+        if((int32_t)(nPointer - test.size()) < 0)
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, " invalid memory address ", nPointer - test.size()));
+
+        nPointer -= test.size();
+    }
+
+
+    void deallocate(const Value& test)
+    {
+        if(test.nEnd != nPointer)
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, " cannot deallocate when not last"));
+
+        if((int32_t)(nPointer - test.size()) < 0)
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, " invalid memory address ", nPointer - test.size()));
+
+        nPointer -= test.size();
+    }
+
+    uint64_t& at(const Value& test)
+    {
+        return vRegister[test.nBegin];
+    }
+
+    /**  Compares two byte arrays and determines their signed equivalence byte for
+     *   byte.
+     **/
+    int64_t compare(const Value& a, const Value& b)
+    {
+        size_t nSize = std::min(a.size(), b.size()) - 1;
+        for(int64_t i = nSize; i >= 0; --i)
+        {
+            //debug::log(0, "I ", i, " Byte ", std::hex, a[i], " vs Bytes ", std::hex, b[i]);
+            if(vRegister[a.nBegin + i] != vRegister[b.nBegin + i])
+                return vRegister[a.nBegin + i] - vRegister[b.nBegin + i];
+
+        }
+        return 0;
+    }
+
+    uint32_t available()
+    {
+        return (vRegister.size() - nPointer) * 8;
+    }
+};
+
+
+
+
+
+Registers registers;
+
+
+
 
 /** Get Value
  *
  *  Extracts a value from an operation ssOperation for use in the boolean validation scripts.
  *
  **/
-inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint64_t> &vRet, int32_t &nLimit)
+inline bool GetValue(const TAO::Operation::Stream& ssOperation, Value &vRet, int32_t &nLimit)
 {
 
-    /* Iterate until end of ssOperation. */
+    /* Iterate until end of stream. */
     while(!ssOperation.end())
     {
 
@@ -240,7 +406,7 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
             case OP::ADD:
             {
                 /* Get the add from r-value. */
-                std::vector<uint64_t> vAdd;
+                Value vAdd;
                 if(!GetValue(ssOperation, vAdd, nLimit))
                     return false;
 
@@ -249,7 +415,10 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                     throw std::runtime_error(debug::safe_printstr("OP::ADD computation greater than 64-bits"));
 
                 /* Compute the return value. */
-                vRet[0] += vAdd[0];
+                registers.at(vRet) += registers.at(vAdd);
+
+                /* Deallocate r-value from memory. */
+                registers.deallocate(vAdd);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 64;
@@ -262,7 +431,7 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
             case OP::SUB:
             {
                 /* Get the sub from r-value. */
-                std::vector<uint64_t> vSub;
+                Value vSub;
                 if(!GetValue(ssOperation, vSub, nLimit))
                     return false;
 
@@ -271,7 +440,10 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                     throw std::runtime_error(debug::safe_printstr("OP::SUB computation greater than 64-bits"));
 
                 /* Compute the return value. */
-                vRet[0] -= vSub[0];
+                registers.at(vRet) -= registers.at(vSub);
+
+                /* Deallocate r-value from memory. */
+                registers.deallocate(vSub);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 64;
@@ -287,8 +459,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 if(vRet.size() > 1)
                     throw std::runtime_error(debug::safe_printstr("OP::INC computation greater than 64-bits"));
 
-                /* Increment the return value. */
-                ++vRet[0];
+                /* Compute the return value. */
+                ++registers.at(vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 64;
@@ -304,8 +476,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 if(vRet.size() > 1)
                     throw std::runtime_error(debug::safe_printstr("OP::DEC computation greater than 64-bits"));
 
-                /* Deincrement the return value. */
-                --vRet[0];
+                /* Compute the return value. */
+                --registers.at(vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 64;
@@ -318,7 +490,7 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
             case OP::DIV:
             {
                 /* Get the divisor from r-value. */
-                std::vector<uint64_t> vDiv;
+                Value vDiv;
                 if(!GetValue(ssOperation, vDiv, nLimit))
                     return false;
 
@@ -327,7 +499,10 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                     throw std::runtime_error(debug::safe_printstr("OP::DIV computation greater than 64-bits"));
 
                 /* Compute the return value. */
-                vRet[0] /= vDiv[0];
+                registers.at(vRet) /= registers.at(vDiv);
+
+                /* Deallocate r-value from memory. */
+                registers.deallocate(vDiv);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 128;
@@ -340,7 +515,7 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
             case OP::MUL:
             {
                 /* Get the multiplier from r-value. */
-                std::vector<uint64_t> vMul;
+                Value vMul;
                 if(!GetValue(ssOperation, vMul, nLimit))
                     return false;
 
@@ -349,7 +524,10 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                     throw std::runtime_error(debug::safe_printstr("OP::MUL computation greater than 64-bits"));
 
                 /* Compute the return value. */
-                vRet[0] *= vMul[0];
+                registers.at(vRet) *= registers.at(vMul);
+
+                /* Deallocate r-value from memory. */
+                registers.deallocate(vMul);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 128;
@@ -362,7 +540,7 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
             case OP::EXP:
             {
                 /* Get the exponent from r-value. */
-                std::vector<uint64_t> vExp;
+                Value vExp;
                 if(!GetValue(ssOperation, vExp, nLimit))
                     return false;
 
@@ -371,7 +549,10 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                     throw std::runtime_error(debug::safe_printstr("OP::EXP computation greater than 64-bits"));
 
                 /* Compute the return value. */
-                vRet[0] = pow(vRet[0], vExp[0]);
+                registers.at(vRet) = pow(registers.at(vRet), registers.at(vExp));
+
+                /* Deallocate r-value from memory. */
+                registers.deallocate(vExp);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 256;
@@ -384,7 +565,7 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
             case OP::MOD:
             {
                 /* Get the modulus from r-value. */
-                std::vector<uint64_t> vMod;
+                Value vMod;
                 if(!GetValue(ssOperation, vMod, nLimit))
                     return false;
 
@@ -393,7 +574,10 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                     throw std::runtime_error(debug::safe_printstr("OP::MOD computation greater than 64-bits"));
 
                 /* Compute the return value. */
-                vRet[0] %= vMod[0];
+                registers.at(vRet) %= registers.at(vMod);
+
+                /* Deallocate r-value from memory. */
+                registers.deallocate(vMod);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 128;
@@ -409,8 +593,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 uint8_t n;
                 ssOperation >> n;
 
-                /* Push onto the return value. */
-                vRet.push_back(n);
+                /* Set the register value. */
+                registers.allocate((uint64_t)n, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 1;
@@ -426,8 +610,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 uint16_t n;
                 ssOperation >> n;
 
-                /* Push onto the return value. */
-                vRet.push_back(n);
+                /* Set the register value. */
+                registers.allocate((uint64_t)n, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 2;
@@ -443,8 +627,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 uint32_t n;
                 ssOperation >> n;
 
-                /* Push onto the return value. */
-                vRet.push_back(n);
+                /* Set the register value. */
+                registers.allocate((uint64_t)n, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 4;
@@ -460,8 +644,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 uint64_t n;
                 ssOperation >> n;
 
-                /* Push onto the return value. */
-                vRet.push_back(n);
+                /* Set the register value. */
+                registers.allocate(n, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 8;
@@ -477,9 +661,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 uint256_t n;
                 ssOperation >> n;
 
-                /* Copy contents into the return value. */
-                vRet.resize(4);
-                std::copy((uint8_t*)&n, (uint8_t*)&n + 32, (uint8_t*)&vRet[0]);
+                /* Set the register value. */
+                registers.allocate(n, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 32;
@@ -496,9 +679,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 uint512_t n;
                 ssOperation >> n;
 
-                /* Copy contents into the return value. */
-                vRet.resize(8);
-                std::copy((uint8_t*)&n, (uint8_t*)&n + 64, (uint8_t*)&vRet[0]);
+                /* Set the register value. */
+                registers.allocate(n, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 64;
@@ -514,9 +696,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 uint1024_t n;
                 ssOperation >> n;
 
-                /* Copy contents into the return value. */
-                vRet.resize(16);
-                std::copy((uint8_t*)&n, (uint8_t*)&n + 128, (uint8_t*)&vRet[0]);
+                /* Set the register value. */
+                registers.allocate(n, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 128;
@@ -525,16 +706,15 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
             }
 
 
-            /* Extract an uint1024_t from the stream. */
+            /* Extract a string from the stream. */
             case OP::TYPES::STRING:
             {
                 /* Extract the string. */
                 std::string str;
                 ssOperation >> str;
 
-                /* Copy contents into the return value. */
-                vRet.resize(str.size() / 8);
-                std::copy((uint8_t*)&str[0], (uint8_t*)&str[0] + str.size(), (uint8_t*)&vRet[0]);
+                /* Set the register value. */
+                registers.allocate(str, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= str.size();
@@ -549,8 +729,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 /* Get the current unified timestamp. */
                 uint64_t n = runtime::unifiedtimestamp();
 
-                /* Push the timestamp onto the return value. */
-                vRet.push_back(n);
+                /* Set the register value. */
+                registers.allocate(n, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 8;
@@ -571,8 +751,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 if(!LLD::regDB->Read(hashRegister, state))
                     return false;
 
-                /* Push the timestamp onto the return value. */
-                vRet.push_back(state.nTimestamp);
+                /* Set the register value. */
+                registers.allocate(state.nTimestamp, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 40;
@@ -593,9 +773,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 if(!LLD::regDB->Read(hashRegister, state))
                     return false;
 
-                /* Push each internal 32-bit integer on return value. */
-                vRet.resize(4);
-                std::copy((uint8_t*)&state.hashOwner, (uint8_t*)&state.hashOwner + 32, (uint8_t*)&vRet[0]);
+                /* Set the register value. */
+                registers.allocate(state.hashOwner, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 64;
@@ -617,7 +796,7 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                     return false;
 
                 /* Push the type onto the return value. */
-                vRet.push_back(state.nType);
+                registers.allocate((uint64_t)state.nType, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 33;
@@ -638,12 +817,8 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
                 if(!LLD::regDB->Read(hashRegister, state))
                     return false;
 
-                /* Get the register's internal states. */
-                std::vector<uint8_t> vState = state.GetState();
-
-                /* Add binary vData to vRet. */
-                vRet.resize(vState.size() / 8);
-                std::copy((uint8_t*)&vState[0], (uint8_t*)&vState[0] + vState.size(), (uint8_t*)&vRet[0]);
+                /* Allocate to the registers. */
+                registers.allocate(state.GetState(), vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 128;
@@ -655,12 +830,15 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
             /* Compute an SK256 hash of current return value. */
             case OP::CRYPTO::SK256:
             {
+                if(vRet.null())
+                    throw std::runtime_error("OP::CRYPTO::SK256: can't hash with no input");
+
                 /* Compute the return hash. */
-                uint256_t hash = LLC::SK256((uint8_t*)&vRet[0], (uint8_t*)&vRet[0] + vRet.size() * 8);
+                uint256_t hash = LLC::SK256((uint8_t*)registers.begin(vRet), (uint8_t*)registers.end(vRet));
 
                 /* Copy new hash into return value. */
-                vRet.resize(4);
-                std::copy((uint8_t*)&hash, (uint8_t*)&hash + 32, (uint8_t*)&vRet[0]);
+                registers.deallocate(vRet);
+                registers.allocate(hash, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 512;
@@ -672,12 +850,15 @@ inline bool GetValue(const TAO::Operation::Stream& ssOperation, std::vector<uint
             /* Compute an SK512 hash of current return value. */
             case OP::CRYPTO::SK512:
             {
+                if(vRet.null())
+                    throw std::runtime_error("OP::CRYPTO::SK512: can't hash with no input");
+
                 /* Compute the return hash. */
-                uint512_t hash = LLC::SK512((uint8_t*)&vRet[0], (uint8_t*)&vRet[0] + vRet.size() * 8);
+                uint512_t hash = LLC::SK512((uint8_t*)registers.begin(vRet), (uint8_t*)registers.end(vRet));
 
                 /* Copy new hash into return value. */
-                vRet.resize(8);
-                std::copy((uint8_t*)&hash, (uint8_t*)&hash + 64, (uint8_t*)&vRet[0]);
+                registers.deallocate(vRet);
+                registers.allocate(hash, vRet);
 
                 /* Reduce the limits to prevent operation exhuastive attacks. */
                 nLimit -= 1024;
@@ -732,10 +913,12 @@ bool Validate(const TAO::Operation::Stream& ssOperation)
 
     bool fRet = false;
 
-    std::vector<uint64_t> lvalue;
+    ssOperation.reset();
+
+    Value lvalue;
     while(!ssOperation.end())
     {
-
+        //uint32_t nBeginL = nPosition;
         if(!GetValue(ssOperation, lvalue, nLimit))
             return false;
 
@@ -759,44 +942,60 @@ bool Validate(const TAO::Operation::Stream& ssOperation)
 
             case OP::EQUALS:
             {
-                std::vector<uint64_t> rvalue;
+                Value rvalue;
                 if(!GetValue(ssOperation, rvalue, nLimit))
                     return false;
 
-                fRet = (compare(lvalue, rvalue) == 0);
+                fRet = (registers.compare(lvalue, rvalue) == 0);
+
+
+                registers.deallocate(rvalue);
+                registers.deallocate(lvalue);
 
                 break;
             }
 
             case OP::LESSTHAN:
             {
-                std::vector<uint64_t> rvalue;
+                Value rvalue;
                 if(!GetValue(ssOperation, rvalue, nLimit))
                     return false;
 
-                fRet = (compare(lvalue, rvalue) < 0);
+                fRet = (registers.compare(lvalue, rvalue) < 0);
+
+
+                registers.deallocate(rvalue);
+                registers.deallocate(lvalue);
 
                 break;
             }
 
             case OP::GREATERTHAN:
             {
-                std::vector<uint64_t> rvalue;
+                Value rvalue;
                 if(!GetValue(ssOperation, rvalue, nLimit))
                     return false;
 
-                fRet = (compare(lvalue, rvalue) > 0);
+                fRet = (registers.compare(lvalue, rvalue) > 0);
+
+
+                registers.deallocate(rvalue);
+                registers.deallocate(lvalue);
 
                 break;
             }
 
             case OP::NOTEQUALS:
             {
-                std::vector<uint64_t> rvalue;
+                Value rvalue;
                 if(!GetValue(ssOperation, rvalue, nLimit))
                     return false;
 
-                fRet = (compare(lvalue, rvalue) != 0);
+                fRet = (registers.compare(lvalue, rvalue) != 0);
+
+
+                registers.deallocate(rvalue);
+                registers.deallocate(lvalue);
 
                 break;
             }
@@ -838,8 +1037,61 @@ bool Validate2(uint64_t a, uint64_t b)
 
 
 
+
+
+
 int main(int argc, char **argv)
 {
+
+
+    Value test;
+    uint256_t hashing = LLC::GetRand256();
+
+    registers.allocate(hashing, test);
+
+    debug::log(0, "Hash ", hashing.ToString());
+
+    //uint256_t random = LLC::GetRand256();
+
+    Value test2;
+
+    registers.allocate(hashing, test2);
+
+    debug::log(0, "Random ", hashing.ToString());
+
+    debug::log(0, "Compare: ", registers.compare(test, test2));
+
+
+    Value test3;
+    uint64_t nTest = 48384839483948;
+
+    registers.allocate(nTest, test3);
+
+    debug::log(0, "Test ", nTest);
+
+
+    uint64_t nTest33;
+
+    registers.deallocate(nTest33, test3);
+
+    debug::log(0, "Test33 ", nTest33);
+
+
+    uint256_t hash333;
+    registers.deallocate(hash333, test2);
+
+
+    debug::log(0, "Hash333 ", hash333.ToString());
+
+
+    uint256_t random2;
+    registers.deallocate(random2, test);
+
+    debug::log(0, "Random ", random2.ToString());
+
+    debug::log(0, "Available bytes ", registers.available());
+
+
     TAO::Operation::Stream ssOperation;
 
     ssOperation << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)7u << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT32_T << (uint32_t)2u << (uint8_t) OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)49u;
@@ -850,15 +1102,14 @@ int main(int argc, char **argv)
     runtime::timer func;
     func.Reset();
 
-    for(int t = 0; t < 1000000; ++t)
+    for(int t = 0; t < 10000000; ++t)
     {
         assert(Validate(ssOperation));
-        ssOperation.reset();
     }
 
-    uint64_t nTime = bench.ElapsedMicroseconds();
+    //uint64_t nTime = bench.ElapsedMicroseconds();
 
-    debug::log(0, "Operations ", nTime);
+    debug::log(0, "Operations ", bench.ElapsedMicroseconds());
 
     uint64_t nA = 5;
     uint64_t nB = 2;
@@ -870,8 +1121,8 @@ int main(int argc, char **argv)
         ssOperation.reset();
     }
 
-    nTime = bench.ElapsedMicroseconds();
-    debug::log(0, "Binary ", nTime);
+    //nTime = bench.ElapsedMicroseconds();
+    debug::log(0, "Binary ", bench.ElapsedMicroseconds());
 
 
     uint256_t hash = LLC::GetRand256();
@@ -885,7 +1136,6 @@ int main(int argc, char **argv)
 
     LLD::regDB = new LLD::RegisterDB();
     assert(LLD::regDB->Write(hash, state));
-
 
     std::string strName = "colasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfin!!!";
     uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
@@ -906,6 +1156,8 @@ int main(int argc, char **argv)
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::STRING << strName << (uint8_t)OP::CRYPTO::SK512 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT512_T << hashRegister2;
     assert(Validate(ssOperation));
+
+
 
 
 
@@ -936,6 +1188,7 @@ int main(int argc, char **argv)
 
 
 
+
     /////REGISTERS
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::REGISTER::STATE << hash << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT256_T << hash2;
@@ -954,12 +1207,14 @@ int main(int argc, char **argv)
     assert(Validate(ssOperation));
 
 
-
+    return 0;
 
     ////////////COMPUTATION
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::UINT32_T << 555u << (uint8_t) OP::SUB << (uint8_t) OP::TYPES::UINT32_T << 333u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
     assert(Validate(ssOperation));
+
+    //return 0;
 
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::UINT32_T << 9234837u << (uint8_t) OP::SUB << (uint8_t) OP::TYPES::UINT32_T << 384728u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 8850109u;
@@ -988,8 +1243,6 @@ int main(int argc, char **argv)
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)9837 << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 7878u << (uint8_t)OP::LESSTHAN << (uint8_t)OP::TYPES::UINT256_T << uint256_t(17716);
     assert(Validate(ssOperation));
-
-
 
 
     //////////////// AND / OR
