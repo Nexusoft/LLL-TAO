@@ -119,7 +119,11 @@ namespace TAO
                     TIMESTAMP     = 0xb0,
                     OWNER         = 0xb1,
                     TYPE          = 0xb2,
-                    STATE         = 0xb3
+                    STATE         = 0xb3,
+
+                    //object registers
+                    BALANCE       = 0xb4,
+                    IDENTIFIER    = 0xb5
 
                     //TODO: mapValues (in object register)
                     //BALANCE     = 0xb4

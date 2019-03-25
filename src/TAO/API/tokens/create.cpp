@@ -115,7 +115,7 @@ namespace TAO
                 token.nVersion       = 1;
                 token.nIdentifier    = stoi(params["identifier"].get<std::string>());
                 token.nMaxSupply     = std::stoull(params["supply"].get<std::string>());
-                token.nCurrentSupply = token.nMaxSupply;
+                token.nBalance = token.nMaxSupply;
 
                 /* Create the serialiation stream. */
                 DataStream ssData(SER_REGISTER, 1);

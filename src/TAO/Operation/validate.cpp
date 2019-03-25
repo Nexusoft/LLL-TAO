@@ -18,6 +18,9 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/validate.h>
 #include <TAO/Operation/include/enum.h>
 
+#include <TAO/Register/objects/account.h>
+#include <TAO/Register/objects/token.h>
+
 namespace TAO
 {
 
@@ -635,6 +638,92 @@ namespace TAO
 
                         /* Allocate to the registers. */
                         allocate(state.GetState(), vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= 128;
+
+                        break;
+                    }
+
+
+                    /* Get an account register's balance and push to the return value. */
+                    case OP::REGISTER::BALANCE:
+                    {
+                        /* Read the register address. */
+                        uint256_t hashRegister;
+                        ssOperations >> hashRegister;
+
+                        /* Read the register states. */
+                        TAO::Register::State state;
+                        if(!LLD::regDB->Read(hashRegister, state))
+                            return false;
+
+                        /* Check for account type. */
+                        if(state.nType == TAO::Register::OBJECT::ACCOUNT)
+                        {
+                            /* Get the account object from register. */
+                            TAO::Register::Account account;
+                            state >> account;
+
+                            /* Allocate to the registers. */
+                            allocate(account.nBalance, vRet);
+                        }
+
+                        /* Check for token type. */
+                        else if(state.nType == TAO::Register::OBJECT::TOKEN)
+                        {
+                            /* Get the account object from register. */
+                            TAO::Register::Token token;
+                            state >> token;
+
+                            /* Allocate to the registers. */
+                            allocate(token.nBalance, vRet);
+                        }
+                        else
+                            return false;
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= 128;
+
+                        break;
+                    }
+
+
+                    /* Get an account register's balance and push to the return value. */
+                    case OP::REGISTER::IDENTIFIER:
+                    {
+                        /* Read the register address. */
+                        uint256_t hashRegister;
+                        ssOperations >> hashRegister;
+
+                        /* Read the register states. */
+                        TAO::Register::State state;
+                        if(!LLD::regDB->Read(hashRegister, state))
+                            return false;
+
+                        /* Check for account type. */
+                        if(state.nType == TAO::Register::OBJECT::ACCOUNT)
+                        {
+                            /* Get the account object from register. */
+                            TAO::Register::Account account;
+                            state >> account;
+
+                            /* Allocate to the registers. */
+                            allocate(account.nIdentifier, vRet);
+                        }
+
+                        /* Check for token type. */
+                        else if(state.nType == TAO::Register::OBJECT::TOKEN)
+                        {
+                            /* Get the account object from register. */
+                            TAO::Register::Token token;
+                            state >> token;
+
+                            /* Allocate to the registers. */
+                            allocate(token.nIdentifier, vRet);
+                        }
+                        else
+                            return false;
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 128;

@@ -67,8 +67,9 @@ void Verifier()
 //TAO::Operation::OP::OR TAO::Operation::OP_CREDIT <%txid%> <hash-proof=0xff> <MATCH::hash-to-a> 100
 
 //first debit:
-// TAO::Operation::OP::DEBIT <hash-from-account> <0xffffffff> TAO::Operation::OP::REQUIRE TAO::Operation::OP::CALLER::TAO::Operation::OPERATIONS TAO::Operation::OP::CONTAINS TAO::Operation::OP::DEBIT <0xffffffffff> <0xffffffffff> 100 AND TAO::Operation::OP::REGISTER::TYPE TAO::Operation::OP::CALLER::DEBIT::FROM TAO::Operation::OP::EQUALS TAO::REGISTER::ACCOUNT AND TAO::Operation::OP::REGISTER::ACCOUNT::IDENTIFIER TAO::Operation::OP::CALLER::DEBIT::FROM TAO::Operation::OP::EQUALS <token-type>
+// TAO::Operation::OP::DEBIT <hash-from-account> <0xffffffff> TAO::Operation::OP::REQUIRE TAO::Operation::OP::CALLER::OPERATIONS TAO::Operation::OP::CONTAINS TAO::Operation::OP::DEBIT <0xffffffffff> <0xffffffffff> 100 AND TAO::Operation::OP::REGISTER::TYPE TAO::Operation::OP::CALLER::DEBIT::FROM TAO::Operation::OP::EQUALS TAO::REGISTER::ACCOUNT AND TAO::Operation::OP::REGISTER::ACCOUNT::IDENTIFIER TAO::Operation::OP::CALLER::DEBIT::FROM TAO::Operation::OP::EQUALS <token-type>
 
+//TODO: need special parsing for specific caller parameters.
 
 //second debit:
 // TAO::Operation::OP::DEBIT <hash-from-account> <0xffffffff>> TAO::Operation::OP_VALIDATE <txid>

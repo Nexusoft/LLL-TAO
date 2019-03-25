@@ -104,7 +104,7 @@ namespace TAO
                     }
 
                     /* Check that the current supply and max supply are the same. */
-                    if(token.nMaxSupply != token.nCurrentSupply)
+                    if(token.nMaxSupply != token.nBalance)
                         return debug::error(FUNCTION, "token current supply and max supply can't mismatch");
 
                     break;
