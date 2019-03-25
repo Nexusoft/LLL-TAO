@@ -45,6 +45,10 @@ namespace TAO
             if(params.find("password") == params.end())
                 throw APIException(-24, "Missing Password");
 
+            /* Check for pin parameter. */
+            if(params.find("pin") == params.end())
+                throw APIException(-24, "Missing PIN");
+
             /* Create the sigchain. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
 
@@ -103,7 +107,7 @@ namespace TAO
             }
 
             /* Extract the PIN, if supplied. */
-            if( !config::fAPISessions && params.find("pin") != params.end() )
+            if( !config::fAPISessions  )
             {
                 if( !strActivePIN.IsNull())
                     strActivePIN.free();

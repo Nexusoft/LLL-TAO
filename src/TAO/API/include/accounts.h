@@ -114,37 +114,62 @@ namespace TAO
             uint512_t GetKey(uint32_t nKey, SecureString strSecret, uint64_t nSession) const;
 
 
-             /** GetGenesis
-              *
-              *  Returns the genesis ID from the account logged in.
-              *
-              *  @param[in] nSession The session identifier.
-              *
-              *  @return The genesis ID if logged in.
-              *
-              **/
-             uint256_t GetGenesis(uint64_t nSession) const;
+            /** GetGenesis
+             *
+             *  Returns the genesis ID from the account logged in.
+             *
+             *  @param[in] nSession The session identifier.
+             *
+             *  @return The genesis ID if logged in.
+             *
+             **/
+            uint256_t GetGenesis(uint64_t nSession) const;
 
 
-             /** GetAccount
-              *
-              *  Returns the sigchain the account logged in.
-              *
-              *  @param[in] nSession The session identifier.
-              *
-              *  @return the signature chain.
-              *
-              **/
-             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& GetAccount(uint64_t nSession) const;
+            /** GetAccount
+             *
+             *  Returns the sigchain the account logged in.
+             *
+             *  @param[in] nSession The session identifier.
+             *
+             *  @return the signature chain.
+             *
+             **/
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& GetAccount(uint64_t nSession) const;
 
-             /** GetActivePin
-              *
-              *  Returns the pin number for the currently logged in account.
-              
-              *  @return the pin.
-              *
-              **/
-             SecureString GetActivePin() const;
+            /** GetActivePin
+             *
+             *  Returns the pin number for the currently logged in account. 
+             * 
+             *  @return the pin.
+             *
+             **/
+            SecureString GetActivePin() const;
+
+            /** GetPin
+             *
+             *  If the API is running in sessionless mode this method will return the currently 
+             *  active PIN (if logged in) or the pin from the params.  If not in sessionless mode
+             *  then the method will return the pin from the params.  If no pin is available then
+             *  an APIException is thrown
+             *  
+             *  @return the pin.
+             *
+             **/
+            SecureString GetPin(const json::json params) const;
+
+            /** GetSession
+             *
+             *  If the API is running in sessionless mode this method will return the default
+             *  session ID that is used to store the one and only session (ID 0). If the user is not
+             *  logged in than an APIException is thrown.  
+             *  If not in sessionless mode then the method will return the session from the params.  
+             *  If the session is not is available in the params then an APIException is thrown.
+             *  
+             *  @return the pin.
+             *
+             **/
+            uint64_t GetSession(const json::json params) const;
 
 
             /** GetName

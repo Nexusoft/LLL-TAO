@@ -39,25 +39,11 @@ namespace TAO
         {
             json::json ret;
 
-            /* Check for pin parameter. */
-            SecureString strPIN;
-            bool fNeedPin = accounts.Locked();
+            /* Get the PIN to be used for this API call */
+            SecureString strPIN = accounts.GetPin(params);
 
-            if( fNeedPin && params.find("pin") == params.end() )
-                throw APIException(-25, "Missing PIN");
-            else if( fNeedPin)
-                strPIN = params["pin"].get<std::string>().c_str();
-            else
-                strPIN = accounts.GetActivePin();
-
-            /* Check for session parameter. */
-            uint64_t nSession = 0;
-            bool fNeedSession = !accounts.LoggedIn();
-
-            if(fNeedSession && params.find("session") == params.end())
-                throw APIException(-25, "Missing Session ID");
-            else if(fNeedSession)
-                nSession = std::stoull(params["session"].get<std::string>());
+            /* Get the session to be used for this API call */
+            uint64_t nSession = accounts.GetSession(params);
 
             /* Check for data parameter. */
             if(params.find("data") == params.end())

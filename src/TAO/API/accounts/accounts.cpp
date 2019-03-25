@@ -57,7 +57,7 @@ namespace TAO
         /* Determine if the accounts are locked. */
         bool Accounts::Locked() const
         {
-            if(config::fAPISessions || strActivePIN->empty())
+            if(config::fAPISessions || strActivePIN.IsNull() || strActivePIN->empty())
                 return true;
 
             return false;
@@ -124,6 +124,49 @@ namespace TAO
         SecureString Accounts::GetActivePin() const
         {
             return SecureString(strActivePIN->c_str());
+        }
+
+        /* If the API is running in sessionless mode this method will return the currently 
+         * active PIN (if logged in) or the pin from the params.  If not in sessionless mode
+         * then the method will return the pin from the params.  If no pin is available then
+         * an APIException is thrown */
+        SecureString Accounts::GetPin(const json::json params) const
+        {
+            /* Check for pin parameter. */
+            SecureString strPIN;
+            bool fNeedPin = accounts.Locked();
+
+            if( fNeedPin && params.find("pin") == params.end() )
+                throw APIException(-25, "Missing PIN");
+            else if( fNeedPin)
+                strPIN = params["pin"].get<std::string>().c_str();
+            else
+                strPIN = accounts.GetActivePin();
+            
+            return strPIN; 
+        }
+
+        /* If the API is running in sessionless mode this method will return the default
+         * session ID that is used to store the one and only session (ID 0). If the user is not
+         * logged in than an APIException is thrown.  
+         * If not in sessionless mode then the method will return the session from the params.  
+         * If the session is not is available in the params then an APIException is thrown. */
+        uint64_t Accounts::GetSession(const json::json params) const
+        {
+            /* Check for session parameter. */
+            uint64_t nSession = 0; // ID 0 is used for sessionless API
+
+            if( !config::fAPISessions && !accounts.LoggedIn())
+                throw APIException(-25, "User not logged in");
+            else if(config::fAPISessions)
+            {
+                if(params.find("session") == params.end())
+                    throw APIException(-25, "Missing Session ID");
+                else
+                    nSession = std::stoull(params["session"].get<std::string>());    
+            }
+            
+            return nSession;
         }
     }
 }
