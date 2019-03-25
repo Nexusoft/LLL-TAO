@@ -95,9 +95,12 @@ namespace TAO
             template<typename Data>
             void allocate(const Data& data, Value& value)
             {
+                /* Get the size. */
+                uint32_t nSize = (sizeof(data) / 8) + (sizeof(data) % 8 == 0 ? 0 : 1);
+
                 /* Set the value pointers. */
                 value.nBegin = nPointer;
-                value.nEnd   = nPointer + sizeof(data) / 8;
+                value.nEnd   = nPointer + nSize;
 
                 /* Check for memory overflows. */
                 if(value.nEnd >= vRegister.size())
@@ -107,7 +110,7 @@ namespace TAO
                 std::copy((uint8_t*)&data, (uint8_t*)&data + sizeof(data), (uint8_t*)begin(value));
 
                 /* Iterate the memory pointer. */
-                nPointer += value.size();
+                nPointer += nSize;
             }
 
 
@@ -166,6 +169,10 @@ namespace TAO
                 /* Copy data from the registers. */
                 std::copy((uint8_t*)begin(value), (uint8_t*)end(value), (uint8_t*)&data);
 
+                /* Zero out the memory. */
+                for(uint32_t i = 0; i < value.size(); ++i)
+                    vRegister[value.nBegin + i] = 0;
+
                 /* Iterate the memory pointer. */
                 nPointer -= value.size();
             }
@@ -204,6 +211,19 @@ namespace TAO
              *
              **/
             int64_t compare(const Value& a, const Value& b);
+
+
+            /** contains
+             *
+             *  Compare two memory locations in the register VM space.
+             *
+             *  @param[in] a The value object containing first memory locations.
+             *  @param[in] b The value object containing second memory locations.
+             *
+             *  @return True if b is contained in a
+             *
+             **/
+            bool contains(const Value& a, const Value& b);
 
 
             /** available

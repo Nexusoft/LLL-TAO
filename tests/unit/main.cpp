@@ -100,50 +100,35 @@ int main(int argc, char **argv)
 
     TAO::Register::Value test;
     uint256_t hashing = LLC::GetRand256();
-
     registers.allocate(hashing, test);
 
-    debug::log(0, "Hash ", hashing.ToString());
 
-    //uint256_t random = LLC::GetRand256();
-
+    uint256_t random = LLC::GetRand256();
     TAO::Register::Value test2;
-
-    registers.allocate(hashing, test2);
-
-    debug::log(0, "Random ", hashing.ToString());
-
-    debug::log(0, "Compare: ", registers.compare(test, test2));
+    registers.allocate(random, test2);
 
 
     TAO::Register::Value test3;
     uint64_t nTest = 48384839483948;
-
     registers.allocate(nTest, test3);
 
-    debug::log(0, "Test ", nTest);
 
 
     uint64_t nTest33;
-
     registers.deallocate(nTest33, test3);
-
-    debug::log(0, "Test33 ", nTest33);
+    assert(nTest == nTest33);
 
 
     uint256_t hash333;
     registers.deallocate(hash333, test2);
+    assert(hash333 == random);
 
 
-    debug::log(0, "Hash333 ", hash333.ToString());
+    uint256_t hashing2;
+    registers.deallocate(hashing2, test);
+    assert(hashing == hashing2);
 
-
-    uint256_t random2;
-    registers.deallocate(random2, test);
-
-    debug::log(0, "Random ", random2.ToString());
-
-    debug::log(0, "Available bytes ", registers.available());
+    assert(registers.available() == 512);
 
 
     TAO::Operation::Stream ssOperation;
@@ -157,19 +142,22 @@ int main(int argc, char **argv)
     func.Reset();
 
     TAO::Ledger::Transaction tx;
+    tx.nTimestamp  = 989798;
+    tx.hashGenesis = LLC::GetRand256();
+    tx << (uint8_t)TAO::Operation::OP::DEBIT;
 
     {
         TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
-        for(int t = 0; t < 12000000; ++t)
+        for(int t = 0; t < 1000000; ++t)
         {
             assert(script.Execute());
             script.Reset();
         }
     }
 
-    //uint64_t nTime = bench.ElapsedMicroseconds();
+    uint64_t nTime = bench.ElapsedMicroseconds();
 
-    debug::log(0, "Operations ", bench.ElapsedMicroseconds());
+    debug::log(0, "Operations ", nTime, " ", std::dec, 1000000.0 / nTime, " million ops / s");
 
     uint64_t nA = 5;
     uint64_t nB = 2;
@@ -181,7 +169,7 @@ int main(int argc, char **argv)
         ssOperation.reset();
     }
 
-    //nTime = bench.ElapsedMicroseconds();
+    nTime = bench.ElapsedMicroseconds();
     debug::log(0, "Binary ", bench.ElapsedMicroseconds());
 
 
@@ -275,6 +263,55 @@ int main(int argc, char **argv)
     }
 
 
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("is there an atomic bear out there?") << (uint8_t)TAO::Operation::OP::CONTAINS << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("bear out");
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("is there an atomic bear out there?") << (uint8_t)TAO::Operation::OP::CONTAINS << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("is");
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("is there an atomic bear out there?") << (uint8_t)TAO::Operation::OP::CONTAINS << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("atomic bear out");
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("is there an atomic bear out there?") << (uint8_t)TAO::Operation::OP::CONTAINS << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("atomic fox");
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(!script.Execute());
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("is there an atomic bear out there?") << (uint8_t)TAO::Operation::OP::CONTAINS << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("atomic") <<
+    (uint8_t)TAO::Operation::OP::AND << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("is there an atomic bear out there?") << (uint8_t)TAO::Operation::OP::CONTAINS << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("bear");
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("is there an atomic bear out there?") << (uint8_t)TAO::Operation::OP::CONTAINS << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("fox and bear") <<
+    (uint8_t)TAO::Operation::OP::OR << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("is there an atomic bear out there?") << (uint8_t)TAO::Operation::OP::CONTAINS << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("atomic bear");
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
+
 
 
     /////REGISTERS
@@ -307,6 +344,57 @@ int main(int argc, char **argv)
     }
 
 
+
+
+
+    ///////LEDGER and CALLER
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::CALLER::TIMESTAMP << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT64_T << (uint64_t) 989798;
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::CALLER::GENESIS << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT256_T << tx.hashGenesis;
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
+
+
+    TAO::Ledger::BlockState block;
+    block.nTime          = 947384;
+    block.nHeight        = 23030;
+    block.nMoneySupply   = 39239;
+    block.nChannelHeight = 3;
+    block.nChainTrust    = 55;
+
+    TAO::Ledger::ChainState::stateBest.store(block);
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::LEDGER::TIMESTAMP << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT64_T << (uint64_t)947384;
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::LEDGER::HEIGHT << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT64_T << (uint64_t)23030;
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::LEDGER::SUPPLY << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT64_T << (uint64_t)39239;
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
+
+
     ////////////COMPUTATION
     ssOperation.SetNull();
     ssOperation << (uint8_t)TAO::Operation::OP::TYPES::UINT32_T << 555u << (uint8_t) TAO::Operation::OP::SUB << (uint8_t) TAO::Operation::OP::TYPES::UINT32_T << 333u << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t)TAO::Operation::OP::TYPES::UINT32_T << 222u;
@@ -314,8 +402,6 @@ int main(int argc, char **argv)
         TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
         assert(script.Execute());
     }
-
-    //return 0;
 
     ssOperation.SetNull();
     ssOperation << (uint8_t)TAO::Operation::OP::TYPES::UINT32_T << 9234837u << (uint8_t) TAO::Operation::OP::SUB << (uint8_t) TAO::Operation::OP::TYPES::UINT32_T << 384728u << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t)TAO::Operation::OP::TYPES::UINT32_T << 8850109u;

@@ -122,6 +122,24 @@ namespace TAO
                         break;
                     }
 
+                    /* Handle to check if a sequence of bytes is inside another. */
+                    case OP::CONTAINS:
+                    {
+                        /* Grab the second value. */
+                        TAO::Register::Value vSecond;
+                        if(!GetValue(vSecond))
+                            return false;
+
+                        /* Compare both values to one another. */
+                        fRet = contains(vFirst, vSecond);
+
+                        /* Deallocate the values from the VM. */
+                        deallocate(vSecond);
+                        deallocate(vFirst);
+
+                        break;
+                    }
+
                     /* Handle for the && operator. */
                     case OP::AND:
                     {
@@ -622,7 +640,7 @@ namespace TAO
                         allocate(tx.nTimestamp, vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
+                        nLimits -= 1;
 
                         break;
                     }
@@ -635,7 +653,44 @@ namespace TAO
                         allocate(tx.ssOperation.Bytes(), vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
+                        nLimits -= tx.ssOperation.Bytes().size();
+
+                        break;
+                    }
+
+
+                    /* Get the current height of the chain. */
+                    case OP::LEDGER::HEIGHT:
+                    {
+                        /* Allocate to the registers. */
+                        allocate((uint64_t)TAO::Ledger::ChainState::stateBest.load().nHeight, vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= 8;
+
+                        break;
+                    }
+
+
+                    /* Get the current supply of the chain. */
+                    case OP::LEDGER::SUPPLY:
+                    {
+                        /* Allocate to the registers. */
+                        allocate((uint64_t)TAO::Ledger::ChainState::stateBest.load().nMoneySupply, vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= 8;
+
+                        break;
+                    }
+
+                    case OP::LEDGER::TIMESTAMP:
+                    {
+                        /* Allocate to the registers. */
+                        allocate((uint64_t)TAO::Ledger::ChainState::stateBest.load().nTime, vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= 8;
 
                         break;
                     }

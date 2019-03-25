@@ -154,7 +154,7 @@ namespace TAO
 
 
             /** Copy Assignment Operator. **/
-            BlockState operator=(const BlockState state)
+            BlockState& operator=(const BlockState& state)
             {
                 nVersion            = state.nVersion;
                 hashPrevBlock       = state.hashPrevBlock;
@@ -170,7 +170,7 @@ namespace TAO
 
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
-                nMoneySupply        = state.nMint;
+                nMint               = state.nMint;
                 nChannelHeight      = state.nChannelHeight;
 
                 nReleasedReserve[0] = state.nReleasedReserve[0];

@@ -33,6 +33,9 @@ namespace TAO
             /** Primitive Operations. **/
             enum
             {
+                //used for pattern matching
+                WILDCARD   = 0x00,
+
                 //register operations
                 WRITE      = 0x01,
                 REGISTER   = 0x02,
@@ -57,7 +60,7 @@ namespace TAO
                 VOTE  = 0x30,
 
 
-                //0x41 = 0x69 RESERVED
+                //0x31 = 0x6f RESERVED
             };
 
 
@@ -115,6 +118,11 @@ namespace TAO
                     OWNER         = 0xb1,
                     TYPE          = 0xb2,
                     STATE         = 0xb3
+
+                    //TODO: mapValues (in object register)
+                    //BALANCE     = 0xb4
+                    //IDENTIFIER  = 0xb5
+                    //TOTAL       = 0xb6
                 };
             };
 
@@ -137,9 +145,8 @@ namespace TAO
                 enum
                 {
                     HEIGHT        = 0xd0,
-                    BLOCK         = 0xd1,
-                    SUPPLY        = 0xd2,
-                    TIME          = 0xd3
+                    SUPPLY        = 0xd1,
+                    TIMESTAMP     = 0xd2
                 };
             };
 
