@@ -142,7 +142,7 @@ namespace TAO
 
             /* Check for value size overflows. */
             if(value.size() * 8 > data.size())
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch"));
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch ", value.size() * 8, " > ", data.size()));
 
             /* Copy data from the registers. */
             std::copy((uint8_t*)begin(value), (uint8_t*)end(value), (uint8_t*)&data[0]);
