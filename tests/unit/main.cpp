@@ -328,6 +328,17 @@ int main(int argc, char **argv)
     }
 
 
+    ssCompare.SetNull();
+    ssCompare << (uint8_t)TAO::Operation::OP::DEBIT << uint256_t(0) << uint256_t(5) << nAmount;
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::CALLER::OPERATIONS << (uint8_t)TAO::Operation::OP::CONTAINS << (uint8_t)TAO::Operation::OP::TYPES::BYTES << ssCompare.Bytes();
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(!script.Execute());
+    }
+
+
 
     /////REGISTERS
     ssOperation.SetNull();
