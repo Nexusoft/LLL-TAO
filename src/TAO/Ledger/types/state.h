@@ -7,7 +7,7 @@
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To the Voice of the People
+            "Doubt is the precursor to fear" - Alex Hannold
 
 ____________________________________________________________________________________________*/
 
@@ -154,7 +154,7 @@ namespace TAO
 
 
             /** Copy Assignment Operator. **/
-            BlockState operator=(const BlockState state)
+            BlockState& operator=(const BlockState& state)
             {
                 nVersion            = state.nVersion;
                 hashPrevBlock       = state.hashPrevBlock;
@@ -170,7 +170,7 @@ namespace TAO
 
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
-                nMoneySupply        = state.nMint;
+                nMint               = state.nMint;
                 nChannelHeight      = state.nChannelHeight;
 
                 nReleasedReserve[0] = state.nReleasedReserve[0];

@@ -75,9 +75,21 @@ public:
     {
     }
 
+
     /** Default Destructor **/
     virtual ~BaseStream()
     {
+    }
+
+
+    /** Bytes
+     *
+     *  Get the internal bytes from the stream.
+     *
+     **/
+    const std::vector<uint8_t>& Bytes() const
+    {
+        return vchData;
     }
 
 
@@ -137,6 +149,17 @@ public:
     uint64_t size() const
     {
         return vchData.size();
+    }
+
+
+    /** pos
+     *
+     *  Get the read position in the stream.
+     *
+     **/
+    uint64_t pos() const
+    {
+        return nReadPos;
     }
 
 

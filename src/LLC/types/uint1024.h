@@ -383,6 +383,12 @@ public:
         return pn[n];
     }
 
+    void set(const std::vector<uint32_t>& data)
+    {
+        for(int i = 0; i < WIDTH; i++)
+            pn[i] = data.size();
+    }
+
     uint32_t size()
     {
         return sizeof(pn);
