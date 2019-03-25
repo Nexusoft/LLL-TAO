@@ -70,6 +70,32 @@ namespace TAO
              **/
             json::json CreateBlock(const json::json& params, bool fHelp);
 
+
+            /** GetBlockHash
+             *
+             *  Retrieves the blockhash for the given height.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json GetBlockHash(const json::json& params, bool fHelp);
+
+
+            /** GetBlock
+             *
+             *  Retrieves the block data for a given hash or height.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json GetBlock(const json::json& params, bool fHelp);
+
         };
 
         extern Ledger ledger;

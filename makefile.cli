@@ -260,6 +260,7 @@ OBJS+=  build/LLC_skein.o \
 		build/Operation_trust.o \
 		build/Operation_write.o \
 		build/API_cmd.o \
+		build/API_apiutils.o \
 		build/API_accounts_accounts.o \
 		build/API_accounts_create.o \
 		build/API_accounts_lock.o \
@@ -275,6 +276,7 @@ OBJS+=  build/LLC_skein.o \
 		build/API_assets_tokenize.o \
 		build/API_assets_transfer.o \
 		build/API_ledger_create.o \
+		build/API_ledger_block.o \
 		build/API_lisp_lisp.o \
 		build/API_RPC_account.o \
 		build/API_RPC_daemon.o \

@@ -162,13 +162,14 @@ only resolve the genesis.
 
 The verbose parameter defines how much you receive in return.
 
-* Verbose 0: version, sequence, timestamp, hash, and operation.
+* Verbose 0: type, version, sequence, timestamp, hash, and operation.
 * Verbose 1: genesis, nexthash, and prevhash.
 * Verbose 2: pubkey and signature.
 
 Return value JSON object:
 ```
 {
+    "type": "tritium base",
     "genesis": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
     "hash": "f92fd92b7671d8358b82633fdf147e82a95ced60b54ceb4465fb34410345534bff3e9a3224032af08e01cb3b2c1dd4f6dcbb2a600e4b8b3c1109ea11b59ae7b8",
     "nexthash": "943aaa1f98c14852ff301c743bf25b962aaf5bc04912dd3e6fb925f1f7d8147e",

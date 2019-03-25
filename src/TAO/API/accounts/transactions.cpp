@@ -96,6 +96,7 @@ namespace TAO
                     break;
 
                 json::json obj;
+                obj["type"] = tx.GetTxTypeString();
                 obj["version"]   = tx.nVersion;
                 obj["sequence"]  = tx.nSequence;
                 obj["timestamp"] = tx.nTimestamp;
