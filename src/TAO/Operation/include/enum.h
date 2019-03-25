@@ -103,6 +103,8 @@ namespace TAO
                 DEC         = 0x96,
                 EXP         = 0x97,
 
+                SUBDATA     = 0x98,
+
 
                 //RESERVED to 0x2f
                 AND         = 0xa0,

@@ -563,7 +563,7 @@ namespace TAO
                     {
                         /* Read the register address. */
                         uint256_t hashRegister;
-                        ssOperations >> hashRegister;
+                        deallocate(hashRegister, vRet);
 
                         /* Read the register states. */
                         TAO::Register::State state;
@@ -585,7 +585,7 @@ namespace TAO
                     {
                         /* Read the register address. */
                         uint256_t hashRegister;
-                        ssOperations >> hashRegister;
+                        deallocate(hashRegister, vRet);
 
                         /* Read the register states. */
                         TAO::Register::State state;
@@ -607,7 +607,7 @@ namespace TAO
                     {
                         /* Read the register address. */
                         uint256_t hashRegister;
-                        ssOperations >> hashRegister;
+                        deallocate(hashRegister, vRet);
 
                         /* Read the register states. */
                         TAO::Register::State state;
@@ -629,7 +629,7 @@ namespace TAO
                     {
                         /* Read the register address. */
                         uint256_t hashRegister;
-                        ssOperations >> hashRegister;
+                        deallocate(hashRegister, vRet);
 
                         /* Read the register states. */
                         TAO::Register::State state;
@@ -651,7 +651,7 @@ namespace TAO
                     {
                         /* Read the register address. */
                         uint256_t hashRegister;
-                        ssOperations >> hashRegister;
+                        deallocate(hashRegister, vRet);
 
                         /* Read the register states. */
                         TAO::Register::State state;
@@ -694,7 +694,7 @@ namespace TAO
                     {
                         /* Read the register address. */
                         uint256_t hashRegister;
-                        ssOperations >> hashRegister;
+                        deallocate(hashRegister, vRet);
 
                         /* Read the register states. */
                         TAO::Register::State state;

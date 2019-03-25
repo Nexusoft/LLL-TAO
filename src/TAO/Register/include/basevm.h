@@ -166,6 +166,10 @@ namespace TAO
                 if((int32_t)(nPointer - value.size()) < 0)
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, " invalid memory address ", nPointer - value.size()));
 
+                /* Check for value size overflows. */
+                if(value.size() * 8 > sizeof(data))
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch"));
+
                 /* Copy data from the registers. */
                 std::copy((uint8_t*)begin(value), (uint8_t*)end(value), (uint8_t*)&data);
 

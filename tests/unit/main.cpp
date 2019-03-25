@@ -67,7 +67,9 @@ void Verifier()
 //TAO::Operation::OP::OR TAO::Operation::OP_CREDIT <%txid%> <hash-proof=0xff> <MATCH::hash-to-a> 100
 
 //first debit:
-// TAO::Operation::OP::DEBIT <hash-from-account> <0xffffffff> TAO::Operation::OP::REQUIRE TAO::Operation::OP::CALLER::OPERATIONS TAO::Operation::OP::CONTAINS TAO::Operation::OP::DEBIT <0xffffffffff> <0xffffffffff> 100 AND TAO::Operation::OP::REGISTER::TYPE TAO::Operation::OP::CALLER::DEBIT::FROM TAO::Operation::OP::EQUALS TAO::REGISTER::ACCOUNT AND TAO::Operation::OP::REGISTER::ACCOUNT::IDENTIFIER TAO::Operation::OP::CALLER::DEBIT::FROM TAO::Operation::OP::EQUALS <token-type>
+// TAO::Operation::OP::DEBIT <hash-from-account> <0xffffffff> TAO::Operation::OP::REQUIRE TAO::Operation::OP::CALLER::OPERATIONS TAO::Operation::OP::CONTAINS TAO::Operation::OP::DEBIT <0xffffffffff> <0xffffffffff> 100
+
+//TAO::Operation::OP::REGISTER::IDENTIFIER TAO::Operation::OP::CALLER::DEBIT::FROM TAO::Operation::OP::EQUALS <token-type>
 
 //TODO: need special parsing for specific caller parameters.
 
@@ -343,28 +345,28 @@ int main(int argc, char **argv)
 
     /////REGISTERS
     ssOperation.SetNull();
-    ssOperation << (uint8_t)TAO::Operation::OP::REGISTER::STATE << hash << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT256_T << hash2;
+    ssOperation << (uint8_t)TAO::Operation::OP::TYPES::UINT256_T << hash << (uint8_t)TAO::Operation::OP::REGISTER::STATE << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT256_T << hash2;
     {
         TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
         assert(script.Execute());
     }
 
     ssOperation.SetNull();
-    ssOperation << (uint8_t)TAO::Operation::OP::REGISTER::OWNER << hash << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT256_T << state.hashOwner;
+    ssOperation << (uint8_t)TAO::Operation::OP::TYPES::UINT256_T << hash << (uint8_t)TAO::Operation::OP::REGISTER::OWNER << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT256_T << state.hashOwner;
     {
         TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
         assert(script.Execute());
     }
 
     ssOperation.SetNull();
-    ssOperation << (uint8_t)TAO::Operation::OP::REGISTER::TIMESTAMP << hash << (uint8_t) TAO::Operation::OP::ADD << (uint8_t) TAO::Operation::OP::TYPES::UINT32_T << 3u << (uint8_t)TAO::Operation::OP::GREATERTHAN << (uint8_t) TAO::Operation::OP::GLOBAL::UNIFIED;
+    ssOperation << (uint8_t)TAO::Operation::OP::TYPES::UINT256_T << hash << (uint8_t)TAO::Operation::OP::REGISTER::TIMESTAMP << (uint8_t) TAO::Operation::OP::ADD << (uint8_t) TAO::Operation::OP::TYPES::UINT32_T << 3u << (uint8_t)TAO::Operation::OP::GREATERTHAN << (uint8_t) TAO::Operation::OP::GLOBAL::UNIFIED;
     {
         TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
         assert(script.Execute());
     }
 
     ssOperation.SetNull();
-    ssOperation << (uint8_t)TAO::Operation::OP::REGISTER::TYPE << hash << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT64_T << (uint64_t) 2;
+    ssOperation << (uint8_t)TAO::Operation::OP::TYPES::UINT256_T << hash << (uint8_t)TAO::Operation::OP::REGISTER::TYPE << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT64_T << (uint64_t) 2;
     {
         TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
         assert(script.Execute());
