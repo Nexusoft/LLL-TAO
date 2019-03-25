@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/accounts.h>
+#include <Util/include/args.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
@@ -30,25 +31,23 @@ namespace TAO
         /* Unlock an account for mining (TODO: make this much more secure) */
         json::json Accounts::Unlock(const json::json& params, bool fHelp)
         {
-            /* Check for username parameter. */
-            if(params.find("session") == params.end())
-                throw APIException(-23, "Missing Session");
+            /* Restrict Unlock to sessionless API */
+            if(config::fAPISessions)
+                throw APIException(-23, "Unlock not supported for session-based API");
 
-            /* Check for password parameter. */
+            if(!mapSessions.count(0))
+                throw APIException(-1, "User not logged in.");
+
+            /* Check for pin parameter. */
             if(params.find("pin") == params.end())
                 throw APIException(-24, "Missing Pin");
 
             /* Check if already unlocked. */
-            if(pairUnlocked->first != 0)
+            if(!Locked())
                 throw APIException(-26, "Account already unlocked");
 
-            /* Extract the session. */
-            uint64_t nSession = std::stoull(params["session"].get<std::string>());
-            if(!mapSessions.count(nSession))
-                throw APIException(-26, "Session not found");
-
             /* Get the sigchain from map of users. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[nSession];
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[0];
 
             /* Get the genesis ID. */
             uint256_t hashGenesis = user->Genesis();
@@ -86,8 +85,9 @@ namespace TAO
                 throw APIException(-28, "Invalid PIN");
 
             /* Extract the PIN. */
-            pairUnlocked->first = nSession;
-            pairUnlocked->second = params["pin"].get<std::string>().c_str();
+            if( !strActivePIN.IsNull())
+                    strActivePIN.free();
+            strActivePIN = new SecureString( params["pin"].get<std::string>().c_str());
 
             return true;
         }

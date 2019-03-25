@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/state.h>
 #include <TAO/Register/include/enum.h>
@@ -31,6 +32,10 @@ namespace TAO
         /* Creates a new register if it doesn't exist. */
         bool Register(const uint256_t &hashAddress, const uint8_t nType, const std::vector<uint8_t> &vchData, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
+            /* Check for wildcard reserved values. */
+            if(hashAddress == OP::WILDCARD)
+                return debug::error(FUNCTION, "cannot create register with WILDCARD address");
+
             /* Check that the register doesn't exist yet. */
             if(LLD::regDB->HasState(hashAddress))
                 return debug::error(FUNCTION, "cannot allocate register of same memory address ", hashAddress.ToString());
@@ -104,7 +109,7 @@ namespace TAO
                     }
 
                     /* Check that the current supply and max supply are the same. */
-                    if(token.nMaxSupply != token.nCurrentSupply)
+                    if(token.nMaxSupply != token.nBalance)
                         return debug::error(FUNCTION, "token current supply and max supply can't mismatch");
 
                     break;

@@ -44,6 +44,11 @@ namespace TAO
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
+            else if(!config::fAPISessions && mapSessions.count(0))
+            {
+                /* If no specific genesis or username have been provided then fall back to the active sig chain */
+                hashGenesis = mapSessions[0]->Genesis();
+            }
             else
                 throw APIException(-25, "Missing Genesis or Username");
 

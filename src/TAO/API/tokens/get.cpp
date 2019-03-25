@@ -87,7 +87,7 @@ namespace TAO
                 ret["version"]          = token.nVersion;
                 ret["identifier"]       = token.nIdentifier;
                 ret["maxsupply"]        = token.nMaxSupply;
-                ret["currentsupply"]    = token.nCurrentSupply;
+                ret["currentsupply"]    = token.nBalance;
             }
             else
                 throw APIException(-27, "Unknown object register");

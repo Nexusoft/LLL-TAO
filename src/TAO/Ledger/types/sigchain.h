@@ -123,7 +123,7 @@ namespace TAO
 
             /** Genesis
              *
-             *  This function is responsible for generating the genesis ID.
+             *  This function is responsible for generating the genesis ID for this sig chain.
              *
              *  @return The 512 bit hash of this key in the series.
              **/

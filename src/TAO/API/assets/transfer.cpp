@@ -37,13 +37,11 @@ namespace TAO
         {
             json::json ret;
 
-            /* Check for pin parameter. */
-            if(params.find("pin") == params.end())
-                throw APIException(-25, "Missing PIN");
+            /* Get the PIN to be used for this API call */
+            SecureString strPIN = accounts.GetPin(params);
 
-            /* Check for username parameter. */
-            if(params.find("session") == params.end())
-                throw APIException(-25, "Missing Session ID");
+            /* Get the session to be used for this API call */
+            uint64_t nSession = accounts.GetSession(params);
 
             /* Watch for destination genesis. */
             uint256_t hashTo = 0;
@@ -79,9 +77,6 @@ namespace TAO
             else
                 throw APIException(-23, "Missing memory address");
 
-            /* Get the session. */
-            uint64_t nSession = std::stoull(params["session"].get<std::string>());
-
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
             if(!user)
@@ -89,7 +84,7 @@ namespace TAO
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!TAO::Ledger::CreateTransaction(user, params["pin"].get<std::string>().c_str(), tx))
+            if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction");
 
             /* Submit the payload object. */
@@ -100,7 +95,7 @@ namespace TAO
                 throw APIException(-26, "Operations failed to execute");
 
             /* Sign the transaction. */
-            if(!tx.Sign(accounts.GetKey(tx.nSequence, params["pin"].get<std::string>().c_str(), nSession)))
+            if(!tx.Sign(accounts.GetKey(tx.nSequence, strPIN, nSession)))
                 throw APIException(-26, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

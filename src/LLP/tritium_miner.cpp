@@ -79,15 +79,16 @@ namespace LLP
          pBlock->SetNull();
 
          /* Get the sigchain and the PIN. */
-         uint64_t nSession;
          SecureString PIN;
 
          /* Attempt to unlock the account. */
-         if(!TAO::API::accounts.Locked(nSession, PIN))
+         if(TAO::API::accounts.Locked())
             debug::error(FUNCTION, "No unlocked account available");
+         else
+            PIN = TAO::API::accounts.GetActivePin();
 
          /* Ateempt to get the sigchain. */
-         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::accounts.GetAccount(nSession);
+         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::accounts.GetAccount(0);
          if(!pSigChain)
             debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
@@ -141,15 +142,16 @@ namespace LLP
          pBlock->print();
 
          /* Get the sigchain and the PIN. */
-         uint64_t nSession;
          SecureString PIN;
 
          /* Attempt to unlock the account. */
-         if(!TAO::API::accounts.Locked(nSession, PIN))
+         if(TAO::API::accounts.Locked())
             return debug::error(FUNCTION, "No unlocked account available");
+         else
+            PIN = TAO::API::accounts.GetActivePin();
 
          /* Attempt to get the sigchain. */
-         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::accounts.GetAccount(nSession);
+         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::accounts.GetAccount(0);
          if(!pSigChain)
             return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
@@ -158,7 +160,11 @@ namespace LLP
          LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
          /* Generate the EC Key and new block signature. */
-         LLC::ECKey key(LLC::BRAINPOOL_P512_T1, 64);
+         #if defined USE_FALCON
+         LLC::FLKey key;
+         #else
+         LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+         #endif
          if(!key.SetSecret(vchSecret, true)
          || !pBlock->GenerateSignature(key))
          {
@@ -194,12 +200,8 @@ namespace LLP
      /*  Determines if the mining wallet is unlocked. */
      bool TritiumMiner::is_locked()
      {
-         /* Get the sigchain and the PIN. */
-         uint64_t nSession;
-         SecureString PIN;
-
          /* Attempt to unlock the account. */
-         return !TAO::API::accounts.Locked(nSession, PIN);
+         return TAO::API::accounts.Locked();
      }
 
 }

@@ -99,16 +99,28 @@ namespace TAO
                     user.free();
 
                     ret["genesis"] = hashGenesis.ToString();
-                    ret["session"] = debug::safe_printstr(std::dec, session->first);
+                    if( config::fAPISessions)
+                        ret["session"] = debug::safe_printstr(std::dec, session->first);
 
                     return ret;
                 }
             }
 
+            /* Extract the PIN, if supplied. */
+            if( !config::fAPISessions  )
+            {
+                if( !strActivePIN.IsNull())
+                    strActivePIN.free();
+                strActivePIN = new SecureString(params["pin"].get<std::string>().c_str());
+            }
+            
+
             /* Set the return value. */
-            uint64_t nSession = LLC::GetRand();
+            /* For sessionless API use the active sig chain which is stored in session 0 */
+            uint64_t nSession = config::fAPISessions ? LLC::GetRand() : 0;
             ret["genesis"] = hashGenesis.ToString();
-            ret["session"] = debug::safe_printstr(std::dec, nSession);
+            if( config::fAPISessions)
+                ret["session"] = debug::safe_printstr(std::dec, nSession);
 
             /* Setup the account. */
             mapSessions.emplace(nSession, std::move(user));

@@ -1,106 +1,26 @@
-#include <Util/include/debug.h>
-#include <Util/include/hex.h>
+/*__________________________________________________________________________________________
 
-#include <Util/include/runtime.h>
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-#include <LLC/include/flkey.h>
+            (c) Copyright The Nexus Developers 2014 - 2019
 
-#include <TAO/Ledger/types/sigchain.h>
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <Util/include/memory.h>
+            "ad vocem populi" - To the Voice of the People
 
-#include <LLC/include/random.h>
+____________________________________________________________________________________________*/
 
-#include <openssl/rand.h>
+#define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
+#include <unit/catch2/catch.hpp>
 
-#include <LLC/aes/aes.h>
-
-
-std::atomic<uint64_t> nVerified;
-
-std::vector<uint8_t> vchPubKey;
-
-std::vector<uint8_t> vchSignature;
-
-std::vector<uint8_t> vchMessage;
-
-void Verifier()
-{
-    while(true)
-    {
-        LLC::FLKey key2;
-        key2.SetPubKey(vchPubKey);
-        if(!key2.Verify(vchMessage, vchSignature))
-            debug::error(FUNCTION, "failed to verify");
-
-        ++nVerified;
-    }
+unsigned int Factorial( unsigned int number ) {
+    return number <= 1 ? number : Factorial(number-1)*number;
 }
 
-
-struct Test
-{
-    uint32_t a;
-    uint32_t b;
-    uint32_t c;
-
-    uint256_t hash;
-};
-
-
-int main(int argc, char **argv)
-{
-    memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain("colin", "passing");
-
-    uint512_t hashGenerate = user->Generate(0, "1234");
-
-    debug::log(0, hashGenerate.ToString());
-
-    uint512_t hashGenerate2 = user->Generate(0, "1234");
-
-    debug::log(0, hashGenerate2.ToString());
-
-    user.free();
-
-
-    runtime::timer timer;
-    timer.Start();
-    LLC::FLKey key;
-
-    /* Get the secret from new key. */
-    std::vector<uint8_t> vBytes = hashGenerate.GetBytes();
-    LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
-
-    key.SetSecret(vchSecret, true);
-    uint64_t nElapsed = timer.ElapsedMicroseconds();
-    debug::log(0, FUNCTION, "Generated in ", nElapsed, " microseconds");
-    timer.Reset();
-
-    uint256_t hashRandom = 55;
-    vchMessage = hashRandom.GetBytes();
-
-    if(!key.Sign(vchMessage, vchSignature))
-        return debug::error(FUNCTION, "failed to sign");
-
-    nElapsed = timer.ElapsedMicroseconds();
-    debug::log(0, FUNCTION, "Signed in ", nElapsed, " microseconds");
-    timer.Reset();
-
-    vchPubKey = key.GetPubKey();
-
-
-
-    LLC::FLKey key2;
-    key2.SetPubKey(vchPubKey);
-    if(!key2.Verify(vchMessage, vchSignature))
-        debug::error(FUNCTION, "failed to verify");
-
-    nElapsed = timer.ElapsedMicroseconds();
-    debug::log(0, FUNCTION, "Verified in ", nElapsed, " microseconds");
-
-    debug::log(0, FUNCTION, "Passed (", vchPubKey.size() + vchSignature.size(), " bytes)");
-
-
-
-    return 0;
+TEST_CASE( "Factorials are computed", "[factorial]" ) {
+    REQUIRE( Factorial(1) == 1 );
+    REQUIRE( Factorial(2) == 2 );
+    REQUIRE( Factorial(3) == 6 );
+    REQUIRE( Factorial(10) == 3628800 );
 }

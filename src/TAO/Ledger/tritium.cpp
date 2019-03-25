@@ -138,7 +138,7 @@ namespace TAO
 
 
             /* Check the Proof of Work Claims. */
-            if (IsProofOfWork() && !VerifyWork())
+            if (!config::GetBoolArg("-private") && IsProofOfWork() && !VerifyWork())
                return debug::error(FUNCTION, "invalid proof of work");
 
 

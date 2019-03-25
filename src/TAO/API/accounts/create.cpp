@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/hex.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -93,5 +94,7 @@ namespace TAO
 
             return ret;
         }
+
+
     }
 }

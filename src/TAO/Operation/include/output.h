@@ -301,30 +301,29 @@ namespace TAO
 
                         case OP::VOTE:
                         {
-                            //voting mechanism. OP_VOTE can be to any random number. Something that can be regarded as a vote for thie hashOWner
-                            //consider how to index this from API to OP_READ the votes without having to parse too deep into the register layer
-                            //OP_VOTE doesn't need to change states. IT could be a vote read only object register
+                            /* The object register to tally the votes for. */
+                            uint256_t hashRegister;
+
+                            /* The account that holds the token balance. */
+                            uint256_t hashProof;
+
+                            /* Output the string information. */
+                            strOutput += debug::safe_printstr
+                            (
+                                "Vote(register=", hashRegister.ToString(), ", ",
+                                "proof=", hashProof.ToString(), ")"
+                            );
 
                             break;
                         }
 
-                        /*
-                        case OP_EXCHANGE:
-                        {
-                            //exchange contracts validation register. hashProof in credits can be used as an exchange medium if OP_DEBIT is to
-                            //an exchange object register which holds the token identifier and total in exchange for deposited amount.
-                            //OP_DEBIT goes to exchange object and sets its state. another OP_DEBIT from the other token locks this contract in
-                            //hash proof for OP_CREDIT on each side allows the OP_DEBIT from opposite token to be claimed
-                        }
-                        */
-
-                        case OP::SIGNATURE:
-                        {
+                        //case OP::SIGNATURE:
+                        //{
                             //a transaction proof that designates the hashOwner or genesisID has signed published data
                             //>> vchData. to prove this data was signed by being published. This can be a hash if needed.
 
-                            break;
-                        }
+                        //    break;
+                        //}
                     }
                 }
             }

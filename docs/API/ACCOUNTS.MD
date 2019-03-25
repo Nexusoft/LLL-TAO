@@ -46,6 +46,11 @@ This will log you into this specific API instance for the building of new transa
   pin=<pin>
 ```
 
+The username and password fields are mandatory for login.  
+The pin is optional and, if supplied, allows the signature chain to be immediately used 
+for mining and staking.  If it is not supplied then you must provide it in all subsequent 
+API calls that use this signature chain.
+
 Return value JSON object:    
 ```
 {
@@ -55,10 +60,9 @@ Return value JSON object:
 
 ```
 
-This is your genesis ID, or the identification number of your specific account.
-The session is what is required to submit for every command thereafter, to allow
-the managing of multiple login sessions. Your PIN is required for authentication,
-which this version uses to validate your credentials.
+This is your genesis ID, or the identification number of your specific account. 
+For session-based API (configured with apisessions=1), an additional session value is returned 
+and must be supplied in subsequent API calls, to allow the managing of multiple login sessions.
 
 ### Logout
 
@@ -80,7 +84,8 @@ Return value JSON object:
 }
 ```
 
-This is your genesis ID, or the identification number of your specific account.
+For session-based API (configured with apisessions=1) the session is required to identify 
+which session you are logging out of. For sessionless API the session should not be supplied
 
 ### Lock
 
@@ -130,8 +135,9 @@ The PIN credential is also required for wallet unlock.
 
 ### Transactions
 
-This will list off all of the transactions created by the logged in account.
-You DO NOT need to be logged in to use this command.
+This will list off all of the transactions for the requested genesis or username (either can be used). 
+You DO NOT need to be logged in to use this command.  If you are using sessionless API and are logged in
+then neither username or genesis are required and it will return transactions for the currently logged in user.
 
 ```
 <method>:
@@ -176,6 +182,10 @@ Return value JSON object:
 },
 ```
 
+NOTE: for session-based API (configured with apisessions=1) either genesis hash or username 
+      is required to identify the signature chain's transactions.  If neither are supplied 
+      and the API is configured for sessionless use (apisessions=0) then the transactions 
+      will be returned for the currently logged in user
 NOTE: if you use the username parameter, it will take slightly longer to
       calculate the username genesis with our brute-force protected hashing
       algorithm. For higher performance, use the genesis parameter.

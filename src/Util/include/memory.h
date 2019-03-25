@@ -725,6 +725,21 @@ namespace memory
         }
 
 
+        /** IsNull
+        *
+        *  Determines if the internal data for this encrypted pointer is nullptr 
+        *  
+        *  @return True, if the internal data for this encrypted pointer is nullptr.
+        *
+        **/
+       bool IsNull() const
+       {
+            RLOCK(MUTEX);
+
+            return data == nullptr; 
+       }
+
+
         /** store
          *
          *  Stores an object into memory.

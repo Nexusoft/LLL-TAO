@@ -24,23 +24,19 @@ namespace TAO
         /* Lock an account for mining (TODO: make this much more secure) */
         json::json Accounts::Lock(const json::json& params, bool fHelp)
         {
-            /* Check for username parameter. */
-            if(params.find("session") == params.end())
-                throw APIException(-23, "Missing Session");
-
+            /* Restrict Unlock / Lock to sessionless API */
+            if(config::fAPISessions)
+                throw APIException(-23, "Lock not supported for session-based API");
+            
             /* Check if already unlocked. */
-            if(pairUnlocked->first == 9)
+            if(!strActivePIN.IsNull() && strActivePIN == "")
                 throw APIException(-26, "Account already locked");
 
-            /* Extract the session. */
-            uint64_t nSession = std::stoull(params["session"].get<std::string>());
 
-            /* Check for session. */
-            if(!mapSessions.count(nSession))
-                throw APIException(-1, "Session not found");
+            /* Clear the pin */
+            LOCK(MUTEX);
 
-            pairUnlocked->first = 0;
-            pairUnlocked->second = "";
+            strActivePIN.free() ;
 
             return true;
         }

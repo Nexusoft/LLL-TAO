@@ -45,16 +45,11 @@ namespace TAO
         /* Creates a register with given RAW state. */
         json::json Ledger::CreateBlock(const json::json& params, bool fHelp)
         {
-            /* Check for username parameter. */
-            if(params.find("session") == params.end())
-                throw APIException(-25, "Missing Session ID");
+            /* Get the PIN to be used for this API call */
+            SecureString strPIN = accounts.GetPin(params);
 
-            /* Check for pin parameter. */
-            if(params.find("pin") == params.end())
-                throw APIException(-25, "Missing PIN");
-
-            /* Get the session. */
-            uint64_t nSession = std::stoull(params["session"].get<std::string>());
+            /* Get the session to be used for this API call */
+            uint64_t nSession = accounts.GetSession(params);
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
@@ -63,11 +58,11 @@ namespace TAO
 
             /* Create the block object. */
             TAO::Ledger::TritiumBlock block;
-            if(!TAO::Ledger::CreateBlock(user, params["pin"].get<std::string>().c_str(), 2, block))
+            if(!TAO::Ledger::CreateBlock(user, strPIN, 2, block))
                 throw APIException(-26, "Failed to create block");
 
             /* Get the secret from new key. */
-            std::vector<uint8_t> vBytes = accounts.GetKey(block.producer.nSequence, params["pin"].get<std::string>().c_str(), nSession).GetBytes();
+            std::vector<uint8_t> vBytes = accounts.GetKey(block.producer.nSequence, strPIN, nSession).GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Generate the EC Key. */
