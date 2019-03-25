@@ -179,7 +179,6 @@ int main(int argc, char **argv)
     nTime = bench.ElapsedMicroseconds();
     debug::log(0, "Binary ", bench.ElapsedMicroseconds());
 
-
     uint256_t hash = LLC::GetRand256();
 
     uint256_t hash2 = LLC::GetRand256();
@@ -191,6 +190,7 @@ int main(int argc, char **argv)
 
     LLD::regDB = new LLD::RegisterDB();
     assert(LLD::regDB->Write(hash, state));
+    assert(LLD::regDB->Write(hashFrom, state));
 
     std::string strName = "colasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfin!!!";
     uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
@@ -350,6 +350,12 @@ int main(int argc, char **argv)
         assert(script.Execute());
     }
 
+
+    ssOperation << (uint8_t)TAO::Operation::OP::CALLER::OPERATIONS << (uint8_t)TAO::Operation::OP::SUBDATA << uint16_t(1) << uint16_t(32) << (uint8_t)TAO::Operation::OP::REGISTER::STATE << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT256_T << hash2;
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
 
 
     /////REGISTERS

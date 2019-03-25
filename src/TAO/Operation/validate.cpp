@@ -389,7 +389,7 @@ namespace TAO
 
 
                     /* Parse out subdata from bytes. */
-                    case OP::SUBDATA:
+                    case OP::SUBDATA: //TODO: debug why this is slowing down the operations layer (13m down to 8-9m)
                     {
                         /* Get the beginning iterator. */
                         uint16_t nBegin;
@@ -412,6 +412,7 @@ namespace TAO
 
                         break;
                     }
+
 
 
                     /* Extract an uint8_t from the stream. */
