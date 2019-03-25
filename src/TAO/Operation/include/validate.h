@@ -15,8 +15,12 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_OPERATION_INCLUDE_VALIDATE_H
 #define NEXUS_TAO_OPERATION_INCLUDE_VALIDATE_H
 
-#include <LLC/types/uint1024.h>
-#include <TAO/Opeartion/include/stream.h>
+#include <TAO/Operation/include/stream.h>
+
+#include <TAO/Register/include/basevm.h>
+#include <TAO/Register/include/value.h>
+
+#include <TAO/Ledger/types/transaction.h>
 
 namespace TAO
 {
@@ -26,29 +30,79 @@ namespace TAO
 
         /** Validate
          *
-         *  Validates a given operation expression. This would evaluate to a boolean expression required to return true.
-         *
-         *  @param[in] regDB The register database to execute on
-         *  @param[in] hashOwner The owner executing the register batch.
-         *
-         *  @return True if operations executed successfully, false otherwise.
+         *  An object to handle the executing of validation scripts.
          *
          **/
-        bool Validate(std::vector<uint8_t> vchData, uint256_t hashOwner)
+        class Validate : public TAO::Register::BaseVM
         {
-            /* Create the operations stream to execute. */
-            Stream stream = Stream(vchData);
 
-            while(!stream.end())
+            /** Computational limits for validation script. **/
+            int32_t nLimits;
+
+
+            /** Reference of the stream that script exists on. **/
+            const Stream& ssOperations;
+
+
+            /** Reference of the transaction executing script. **/
+            const TAO::Ledger::Transaction& tx;
+
+
+            /** The stream position this script starts on. **/
+            const uint64_t nStreamPos;
+
+
+        public:
+            Validate(const Stream& ssOperationIn, const TAO::Ledger::Transaction& txIn, int32_t nLimitsIn = 2048)
+            : TAO::Register::BaseVM(64) //512 bytes of register memory.
+            , nLimits(nLimitsIn)
+            , ssOperations(ssOperationIn)
+            , tx(txIn)
+            , nStreamPos(ssOperations.pos())
             {
-                uint8_t OP;
-                stream >> OP;
-                switch(OP)
-                {
 
-                }
             }
-        }
+
+
+            /** Copy constructor. **/
+            Validate(const Validate& in)
+            : TAO::Register::BaseVM(in)
+            , nLimits(in.nLimits)
+            , ssOperations(in.ssOperations)
+            , tx(in.tx)
+            , nStreamPos(ssOperations.pos())
+            {
+
+            }
+
+
+            /** Reset
+             *
+             *  Reset the validation script for re-executing.
+             *
+             **/
+            void Reset()
+            {
+                ssOperations.reset();
+                nLimits = 2048;
+            }
+
+
+            /** Execute
+             *
+             *  Execute the validation script.
+             *
+             **/
+            bool Execute();
+
+
+            /** GetValue
+             *
+             *  Get a value from the register virtual machine.
+             *
+             **/
+            bool GetValue(TAO::Register::Value& vRet);
+        };
     }
 }
 

@@ -140,6 +140,17 @@ public:
     }
 
 
+    /** pos
+     *
+     *  Get the read position in the stream.
+     *
+     **/
+    uint64_t pos() const
+    {
+        return nReadPos;
+    }
+
+
     /** seek
      *
      *  Seeks the read pointer to position.

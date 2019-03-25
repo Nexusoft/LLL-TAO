@@ -28,79 +28,143 @@ namespace TAO
         //NETF - ORS - Object Register Standard - Document to define a specific object register for purpose of ADS standards, with NOS standards being capable of supporting methods
 
 
-        /** Operation Layer Byte Code. **/
-        enum OP
+        struct OP
         {
-            //register operations
-            WRITE      = 0x01, //OP_WRITE <vchRegAddress> <vchData> return fSuccess
-            REGISTER   = 0x02, //OP_REGISTER <vchRegData> return fSuccess
-            AUTHORIZE  = 0x03, //OP_AUTHORIZE OP_GETHASH <vchPubKey> return fSuccess
-            TRANSFER   = 0x04, //OP_TRANSFER <vchRegAddress> <vchGenesisID> return fSuccess
-            REQUIRE    = 0x05, //OP_REQUIRE <boolean=expression> must validate to true.
-            APPEND     = 0x06,
-
-            //financial operations
-            DEBIT      = 0x10,
-            CREDIT     = 0x11,
-            COINBASE   = 0x12,
-            TRUST      = 0x13, //for proof of stake
+            /** Primitive Operations. **/
+            enum
+            {
+                //register operations
+                WRITE      = 0x01,
+                REGISTER   = 0x02,
+                AUTHORIZE  = 0x03,
+                TRANSFER   = 0x04,
+                REQUIRE    = 0x05,
+                APPEND     = 0x06,
 
 
-            //internal funding
-            AMBASSADOR = 0x20,
-            DEVELOPER  = 0x21,
+                //financial operations
+                DEBIT      = 0x10,
+                CREDIT     = 0x11,
+                COINBASE   = 0x12,
+                TRUST      = 0x13, //for proof of stake
 
-            //crypto operations
-            SIGNATURE  = 0x30,
 
-            //consensus operations
-            VOTE       = 0x50, //OP_VOTE <vchData> <bool> return fSuccess - vote for or against a memory location (piece of data)
+                //internal funding
+                AMBASSADOR = 0x20,
+                DEVELOPER  = 0x21,
+
+                //consensus operations
+                VOTE  = 0x30,
+
+
+                //0x41 = 0x69 RESERVED
+            };
+
+
+            /** Core validation types. **/
+            struct TYPES
+            {
+                enum
+                {
+                    UINT8_T     = 0x70,
+                    UINT16_T    = 0x71,
+                    UINT32_T    = 0x72,
+                    UINT64_T    = 0x73,
+                    UINT256_T   = 0x74,
+                    UINT512_T   = 0x75,
+                    UINT1024_T  = 0x76,
+                    STRING      = 0x77
+                };
+            };
+
+            /** Core validation operations. **/
+            enum
+            {
+                //RESERVED 0x08 - 0x0f
+                EQUALS      = 0x80,
+                LESSTHAN    = 0x81,
+                GREATERTHAN = 0x82,
+                NOTEQUALS   = 0x83,
+                CONTAINS    = 0x84,
+
+
+                //RESERVED to 0x1f
+                ADD         = 0x90,
+                SUB         = 0x91,
+                DIV         = 0x92,
+                MUL         = 0x93,
+                MOD         = 0x94,
+                INC         = 0x95,
+                DEC         = 0x96,
+                EXP         = 0x97,
+
+
+                //RESERVED to 0x2f
+                AND         = 0xa0,
+                OR          = 0xa1,
+                IF          = 0xa2,
+            };
+
+
+            /** Register layer state values. **/
+            struct REGISTER
+            {
+                enum
+                {
+                    TIMESTAMP     = 0xb0,
+                    OWNER         = 0xb1,
+                    TYPE          = 0xb2,
+                    STATE         = 0xb3
+                };
+            };
+
+
+            /** Caller Values (The validation script caller). **/
+            struct CALLER
+            {
+                enum
+                {
+                    GENESIS      = 0xc0,
+                    TIMESTAMP    = 0xc1,
+                    OPERATIONS   = 0xc2,
+                };
+            };
+
+
+            /* Ledger Layer State Values. */
+            struct LEDGER
+            {
+                enum
+                {
+                    HEIGHT        = 0xd0,
+                    BLOCK         = 0xd1,
+                    SUPPLY        = 0xd2,
+                    TIME          = 0xd3
+                };
+            };
+
+
+
+            /* Cryptographic operations. */
+            struct CRYPTO
+            {
+                enum
+                {
+                    SK256        = 0xe0,
+                    SK512        = 0xe1
+                };
+            };
+
+
+            /* Global state values. */
+            struct GLOBAL
+            {
+                enum
+                {
+                    UNIFIED       = 0xf0
+                };
+            };
         };
-
-
-        //Exchange would be:
-        //OP_DEBIT <hash-from-a> <%hash-to%> 100 OP_REQUIRE OP_DEBIT <hash-from-b> 500 <token-id> OP_IF VAL_TIMESTAMP OP_LESSTHAN <future=time> OP_OR OP_CREDIT <%txid%> <hash-proof=0xff> <hash-to-a> 100
-
-        //second debit:
-        //OP_VALIDATE <txid> OP_DEBIT <hash-from-b> <hash-to-my-token> = 0xff> 500 <token-id>
-        //---> OP_VALIDATE executes txid, if OP_REQUIRE satisfied
-
-        //return to self
-        //OP_VALIDATE <txid> OP_CREDIT <txid> <hash-proof=0xff> <hash-to-a> 100
-
-
-        //claims
-        //OP_CREDIT <txid of your debit> <hash-proof=0xff> <hash-to-b> 100
-        //---> check state of locking transaction
-
-        //OP_CREDIT <txid of your debit> <hash-proof=0xff> <hash-to-a> 500
-
-        /** Validation Byte Code. **/
-        enum VALIDATE
-        {
-            //register operations
-            IF         = 0xf0,
-            ELSE       = 0xf1,
-            ENDIF      = 0xf2,
-            AND        = 0xf3,
-            OR         = 0xf4,
-            EQUALS     = 0xf5,
-            NOT        = 0xf6,
-
-            LESSTHAN   = 0xf7,
-            GREATTHAN  = 0xf8,
-
-            RETURN     = 0xff
-        };
-
-
-        /** Values. **/
-        enum
-        {
-            VAL_TIMESTAMP      = 0xe0
-
-        };
-
     }
 }
 
