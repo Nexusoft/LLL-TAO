@@ -102,6 +102,59 @@ namespace TAO
         }
 
 
+        /* Deallocate a vector from the VM register memory and return a copy. */
+        void BaseVM::deallocate(std::vector<uint8_t>& data, const Value& value)
+        {
+            /* Check for that this is last object (TODO: handle defragmenting). */
+            if(value.nEnd != nPointer)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, " cannot deallocate when not last"));
+
+            /* Check for memory overflows. */
+            if((int32_t)(nPointer - value.size()) < 0)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, " invalid memory address ", nPointer - value.size()));
+
+            /* Check for value size overflows. */
+            if(value.size() * 8 > data.size())
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch"));
+
+            /* Copy data from the registers. */
+            std::copy((uint8_t*)begin(value), (uint8_t*)end(value), (uint8_t*)&data[0]);
+
+            /* Zero out the memory. */
+            for(uint32_t i = 0; i < value.size(); ++i)
+                vRegister[value.nBegin + i] = 0;
+
+            /* Iterate the memory pointer. */
+            nPointer -= value.size();
+        }
+
+
+        /* Deallocate a string from the VM register memory and return a copy. */
+        void BaseVM::deallocate(std::string& data, const Value& value)
+        {
+            /* Check for that this is last object (TODO: handle defragmenting). */
+            if(value.nEnd != nPointer)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, " cannot deallocate when not last"));
+
+            /* Check for memory overflows. */
+            if((int32_t)(nPointer - value.size()) < 0)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, " invalid memory address ", nPointer - value.size()));
+
+            /* Check for value size overflows. */
+            if(value.size() * 8 > data.size())
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch"));
+
+            /* Copy data from the registers. */
+            std::copy((uint8_t*)begin(value), (uint8_t*)end(value), (uint8_t*)&data[0]);
+
+            /* Zero out the memory. */
+            for(uint32_t i = 0; i < value.size(); ++i)
+                vRegister[value.nBegin + i] = 0;
+
+            /* Iterate the memory pointer. */
+            nPointer -= value.size();
+        }
+
 
         /* Deallocate an object from the VM register memory. */
         void BaseVM::deallocate(const Value& value)
@@ -121,6 +174,7 @@ namespace TAO
             /* Iterate the memory pointer. */
             nPointer -= value.size();
         }
+
 
         /* Get a register value. */
         uint64_t& BaseVM::at(const Value& value)

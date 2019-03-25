@@ -388,6 +388,32 @@ namespace TAO
                     }
 
 
+                    /* Parse out subdata from bytes. */
+                    case OP::SUBDATA:
+                    {
+                        /* Get the beginning iterator. */
+                        uint16_t nBegin;
+                        ssOperations >> nBegin;
+
+                        /* Get the size to extract. */
+                        uint16_t nSize;
+                        ssOperations >> nSize;
+
+                        /* Extract the string. */
+                        std::vector<uint8_t> vData(vRet.size() * 8, 0);
+                        deallocate(vData, vRet);
+
+                        /* Set the register value. */
+                        std::vector<uint8_t> vAlloc(vData.begin() + nBegin, vData.begin() + nBegin + nSize);
+                        allocate(vAlloc, vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= vData.size();
+
+                        break;
+                    }
+
+
                     /* Extract an uint8_t from the stream. */
                     case OP::TYPES::UINT8_T:
                     {

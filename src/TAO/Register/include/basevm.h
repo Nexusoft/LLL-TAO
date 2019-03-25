@@ -184,6 +184,28 @@ namespace TAO
 
             /** deallocate
              *
+             *  Deallocate an vector from the VM register memory and return a copy.
+             *
+             *  @param[out] data The data to return.
+             *  @param[in] value The value object containing memory locations.
+             *
+             **/
+            void deallocate(std::vector<uint8_t>& data, const Value& value);
+
+
+            /** deallocate
+             *
+             *  Deallocate an string from the VM register memory and return a copy.
+             *
+             *  @param[out] data The data to return.
+             *  @param[in] value The value object containing memory locations.
+             *
+             **/
+            void deallocate(std::string& data, const Value& value);
+
+
+            /** deallocate
+             *
              *  Deallocate an object from the VM register memory.
              *
              *  @param[in] value The value object containing memory locations.

@@ -343,6 +343,15 @@ int main(int argc, char **argv)
 
 
 
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::CALLER::OPERATIONS << (uint8_t)TAO::Operation::OP::SUBDATA << uint16_t(1) << uint16_t(32) << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t)TAO::Operation::OP::TYPES::UINT256_T << hashFrom;
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
+
+
+
     /////REGISTERS
     ssOperation.SetNull();
     ssOperation << (uint8_t)TAO::Operation::OP::TYPES::UINT256_T << hash << (uint8_t)TAO::Operation::OP::REGISTER::STATE << (uint8_t)TAO::Operation::OP::EQUALS << (uint8_t) TAO::Operation::OP::TYPES::UINT256_T << hash2;
