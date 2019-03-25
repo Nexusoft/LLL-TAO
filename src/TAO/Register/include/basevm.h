@@ -75,6 +75,15 @@ namespace TAO
              **/
             const uint8_t* end(const Value& value) const;
 
+
+            /** reset
+             *
+             *  Reset the internal memory pointer.
+             *
+             **/
+            void reset();
+
+
             /** allocate
              *
              *  Allocate a new object into the VM register memory.

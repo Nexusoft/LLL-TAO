@@ -602,6 +602,45 @@ namespace TAO
                     }
 
 
+                    /* Get the genesis id of the transaction caller. */
+                    case OP::CALLER::GENESIS:
+                    {
+                        /* Allocate to the registers. */
+                        allocate(tx.hashGenesis, vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= 128;
+
+                        break;
+                    }
+
+
+                    /* Get the timestamp of the transaction caller. */
+                    case OP::CALLER::TIMESTAMP:
+                    {
+                        /* Allocate to the registers. */
+                        allocate(tx.nTimestamp, vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= 128;
+
+                        break;
+                    }
+
+
+                    /* Get the operations of the transaction caller. */
+                    case OP::CALLER::OPERATIONS:
+                    {
+                        /* Allocate to the registers. */
+                        allocate(tx.ssOperation.Bytes(), vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= 128;
+
+                        break;
+                    }
+
+
                     /* Compute an SK256 hash of current return value. */
                     case OP::CRYPTO::SK256:
                     {

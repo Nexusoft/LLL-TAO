@@ -75,9 +75,21 @@ public:
     {
     }
 
+
     /** Default Destructor **/
     virtual ~BaseStream()
     {
+    }
+
+
+    /** Bytes
+     *
+     *  Get the internal bytes from the stream.
+     *
+     **/
+    const std::vector<uint8_t>& Bytes() const
+    {
+        return vchData;
     }
 
 

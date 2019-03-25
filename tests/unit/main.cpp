@@ -160,11 +160,10 @@ int main(int argc, char **argv)
 
     {
         TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
-        for(int t = 0; t < 10000000; ++t)
+        for(int t = 0; t < 12000000; ++t)
         {
             assert(script.Execute());
             script.Reset();
-
         }
     }
 
@@ -176,7 +175,7 @@ int main(int argc, char **argv)
     uint64_t nB = 2;
 
     bench.Reset();
-    for(uint64_t i = 0; i <= 1000000; ++i)
+    for(uint64_t i = 0; i <= 13000000; ++i)
     {
         assert(Validate2(nA, nB));
         ssOperation.reset();

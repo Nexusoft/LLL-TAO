@@ -33,6 +33,13 @@ namespace TAO
         }
 
 
+        /* Reset the internal memory pointer. */
+        void BaseVM::reset()
+        {
+            nPointer = 0;
+        }
+
+
         /* Allocate a 64 bit integer into the VM register memory. */
         void BaseVM::allocate(const uint64_t& data, Value& value)
         {

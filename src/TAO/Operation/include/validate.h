@@ -54,7 +54,7 @@ namespace TAO
 
         public:
             Validate(const Stream& ssOperationIn, const TAO::Ledger::Transaction& txIn, int32_t nLimitsIn = 2048)
-            : TAO::Register::BaseVM(64) //512 bytes of register memory.
+            : TAO::Register::BaseVM() //512 bytes of register memory.
             , nLimits(nLimitsIn)
             , ssOperations(ssOperationIn)
             , tx(txIn)
@@ -85,6 +85,8 @@ namespace TAO
             {
                 ssOperations.reset();
                 nLimits = 2048;
+
+                reset();
             }
 
 
