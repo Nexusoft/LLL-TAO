@@ -69,6 +69,7 @@ namespace TAO
             {
                 enum
                 {
+                    //RESERVED to 0x7f
                     UINT8_T     = 0x70,
                     UINT16_T    = 0x71,
                     UINT32_T    = 0x72,
@@ -76,14 +77,15 @@ namespace TAO
                     UINT256_T   = 0x74,
                     UINT512_T   = 0x75,
                     UINT1024_T  = 0x76,
-                    STRING      = 0x77
+                    STRING      = 0x77,
+                    BYTES       = 0x78,
                 };
             };
 
             /** Core validation operations. **/
             enum
             {
-                //RESERVED 0x08 - 0x0f
+                //RESERVED to 0x8f
                 EQUALS      = 0x80,
                 LESSTHAN    = 0x81,
                 GREATERTHAN = 0x82,
@@ -91,7 +93,7 @@ namespace TAO
                 CONTAINS    = 0x84,
 
 
-                //RESERVED to 0x1f
+                //RESERVED to 0x9f
                 ADD         = 0x90,
                 SUB         = 0x91,
                 DIV         = 0x92,

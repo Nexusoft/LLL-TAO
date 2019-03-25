@@ -141,10 +141,14 @@ int main(int argc, char **argv)
     runtime::timer func;
     func.Reset();
 
+    uint256_t hashFrom = LLC::GetRand256();
+    uint256_t hashTo   = LLC::GetRand256();
+    uint64_t  nAmount  = 500;
+
     TAO::Ledger::Transaction tx;
     tx.nTimestamp  = 989798;
     tx.hashGenesis = LLC::GetRand256();
-    tx << (uint8_t)TAO::Operation::OP::DEBIT;
+    tx << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
 
     {
         TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
@@ -307,6 +311,17 @@ int main(int argc, char **argv)
     ssOperation.SetNull();
     ssOperation << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("is there an atomic bear out there?") << (uint8_t)TAO::Operation::OP::CONTAINS << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("fox and bear") <<
     (uint8_t)TAO::Operation::OP::OR << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("is there an atomic bear out there?") << (uint8_t)TAO::Operation::OP::CONTAINS << (uint8_t)TAO::Operation::OP::TYPES::STRING << std::string("atomic bear");
+    {
+        TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
+        assert(script.Execute());
+    }
+
+
+    TAO::Operation::Stream ssCompare;
+    ssCompare << (uint8_t)TAO::Operation::OP::DEBIT << uint256_t(0) << uint256_t(0) << nAmount;
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)TAO::Operation::OP::CALLER::OPERATIONS << (uint8_t)TAO::Operation::OP::CONTAINS << (uint8_t)TAO::Operation::OP::TYPES::BYTES << ssCompare.Bytes();
     {
         TAO::Operation::Validate script = TAO::Operation::Validate(ssOperation, tx);
         assert(script.Execute());

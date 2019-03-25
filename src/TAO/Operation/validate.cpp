@@ -68,6 +68,7 @@ namespace TAO
                         break;
                     }
 
+
                     /* Handle for < operator. */
                     case OP::LESSTHAN:
                     {
@@ -85,6 +86,7 @@ namespace TAO
 
                         break;
                     }
+
 
                     /* Handle for the > operator. */
                     case OP::GREATERTHAN:
@@ -104,6 +106,7 @@ namespace TAO
                         break;
                     }
 
+
                     /* Handle for the != operator. */
                     case OP::NOTEQUALS:
                     {
@@ -121,6 +124,7 @@ namespace TAO
 
                         break;
                     }
+
 
                     /* Handle to check if a sequence of bytes is inside another. */
                     case OP::CONTAINS:
@@ -140,12 +144,14 @@ namespace TAO
                         break;
                     }
 
+
                     /* Handle for the && operator. */
                     case OP::AND:
                     {
                         /* Recursively call for next statement. */
                         return fRet && Execute();
                     }
+
 
                     //OP::GROUP or the ( operator
                     //OP::UNGROUP or the ) operator
@@ -511,6 +517,23 @@ namespace TAO
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= str.size();
+
+                        break;
+                    }
+
+
+                    /* Extract bytes from the stream. */
+                    case OP::TYPES::BYTES:
+                    {
+                        /* Extract the string. */
+                        std::vector<uint8_t> vData;
+                        ssOperations >> vData;
+
+                        /* Set the register value. */
+                        allocate(vData, vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= vData.size();
 
                         break;
                     }
