@@ -96,6 +96,20 @@ namespace TAO
              **/
             json::json GetBlock(const json::json& params, bool fHelp);
 
+
+            /** GetBlocks
+             *
+             *  Retrieves the block data for a sequential range of blocks 
+             *  starting at a given hash or height.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json GetBlocks(const json::json& params, bool fHelp);
+
         };
 
         extern Ledger ledger;

@@ -48,8 +48,8 @@ Input parameter description:
 <height>:
     The block height to retrieve the block data for.
 <txverbose-level>
-    Determines how much transaction data to include in the response 
-    0: hash
+    Determines how much transaction data to include in the response, Optional (default 0). 
+    0: hash 
     1: type, version, sequence, timestamp, and operation.
     2: genesis, nexthash, and prevhash.
     3: pubkey and signature.
@@ -148,3 +148,138 @@ Output parameter description:
 
 ```
 
+### GetBlocks
+
+Retrieves an array of block data for a sequential range of blocks from a given hash or height.
+
+```
+<method>:
+    /ledger/getblock
+
+<key>=<value> parameter pairs:
+    hash=<hash>
+    height=<height>
+    count=<count>
+    txverbose<txverbose-level>
+    
+Input parameter description:
+<hash>:
+    The block hash to retrieve the block data for.
+<height>:
+    The block height to retrieve the block data for.
+<count>
+    The number of blocks to return data for.  Optional (default 10), must be between 1 and 1000
+<txverbose-level>
+    Determines how much transaction data to include in the response. Optional (default 0).  
+    0: hash
+    1: type, version, sequence, timestamp, and operation.
+    2: genesis, nexthash, and prevhash.
+    3: pubkey and signature.
+```
+
+Note: Either the hash or the height needs to be supplied, but not both.  
+Retrieving block data by height is only allowed if the daemon has been configured with indexheight=1
+
+Return value JSON object:
+```    
+[
+    {
+        "hash": "5534a161f52a2b4904c752fc487fca2ce18f27a25b2b7de9b894ac18a41a3b312a4a9b55204cf18b7b0ce0c55bc1d7a6decb0a4f3bad98f8274ae9e31d19a4862cf40daa0bc8bf567f14bcce43555c4a7ac9a7445647e9cb9f95ef759a7737917ece8d61306da38fd7d9ae45909de7ed96e82caa8af3f7ab6758fe539ac4d12f",
+        "proofhash": "500344c3287f8082802cbf21dbd31c4ef7f1f626046ab2b1e5f4db7dbf344cfbf4681c757f9e4c67ce5efde5bfa34d5b58b3d0c9456e9166c733cc37b4a2f5d5764ba122252f5e6efa9a233bb37f7b1528b46c56b7f17e24516a86a378738ea8dbc7d85b41e48705c827538f86dad226fda5257077542f2a9fe343a986b52e1f",
+        "size": 727,
+        "height": 1,
+        "channel": 1,
+        "version": 6,
+        "merkleroot": "3328b8e25d45904bb26ad1298260eda220417859bca8b7b1e123817518b8aecc8ea89404900c0ac6941139b5403579e705677bf9e2bd2f131891c6348f667d1b",
+        "time": "2019-03-22 03:58:09 UTC",
+        "nonce": 11636693071151760,
+        "bits": "017d7840",
+        "difficulty": 2.5,
+        "mint": 0.0,
+        "previousblockhash": "00002a0ccd35f2e1e9e1c08f5a2109a82834606b121aca891d5862ba12c6987d55d1e789024fcd5b9adaf07f5445d24e78604ea136a0654497ed3db0958d63e72f146fae2794e86323126b8c3d8037b193ce531c909e5222d090099b4d574782d15c135ddd99d183ec14288437563e8a6392f70259e761e62d2ea228977dd2f7",
+        "nextblockhash": "c4603451343ea95bfd543074751200bab6b55c7d27495eab25286d441edb112ea7fc6883a86f538218bba8fabf20eb30557fc6a73e9929059d20e7f74676ce1f700420b951832116e7420b4f5b8863b1ffc09810b2b123e465637d136d130033c6bc3b2fee701f25e980e4dee2711a2aca248ad529368dacb220968951cbd2a3",
+        "tx": [
+            {
+                "hash": "3328b8e25d45904bb26ad1298260eda220417859bca8b7b1e123817518b8aecc8ea89404900c0ac6941139b5403579e705677bf9e2bd2f131891c6348f667d1b"
+            }
+        ]
+    },
+    {
+        "hash": "c4603451343ea95bfd543074751200bab6b55c7d27495eab25286d441edb112ea7fc6883a86f538218bba8fabf20eb30557fc6a73e9929059d20e7f74676ce1f700420b951832116e7420b4f5b8863b1ffc09810b2b123e465637d136d130033c6bc3b2fee701f25e980e4dee2711a2aca248ad529368dacb220968951cbd2a3",
+        "proofhash": "61090468e7369af7013a46c4532013d21dc0e80401da19b723ceb7ef2f331c0864fba8c0dff2907d732b9f867af8fead3aabdf8ea8072a512e4a208c63f6b08c5d83a7855d3d6cf3f5ec6aad080f246f1c140710de2ecf614afe8bcd0b973f8e0d89830c4d9d66d4409b6e46819d337a2402d6eed2c664d38475d8a09993773b",
+        "size": 727,
+        "height": 2,
+        "channel": 1,
+        "version": 6,
+        "merkleroot": "b3e587c3299b8f4b9c65cd221e7ad3afe579a1d01b0acd935c9bbd2e35d102f9f2023bfc7bcba1f840a3b9725e651c26dc516e53c63eff7e37206ed94b8f746f",
+        "time": "2019-03-22 03:58:17 UTC",
+        "nonce": 143375589399502436,
+        "bits": "017d7840",
+        "difficulty": 2.5,
+        "mint": 0.0,
+        "previousblockhash": "5534a161f52a2b4904c752fc487fca2ce18f27a25b2b7de9b894ac18a41a3b312a4a9b55204cf18b7b0ce0c55bc1d7a6decb0a4f3bad98f8274ae9e31d19a4862cf40daa0bc8bf567f14bcce43555c4a7ac9a7445647e9cb9f95ef759a7737917ece8d61306da38fd7d9ae45909de7ed96e82caa8af3f7ab6758fe539ac4d12f",
+        "nextblockhash": "2e9176b4a8462244fafca6fa91d7549257d2513207272890b3c6875443abaa24cca19ddb5acaa234b0b70e3d226b37599e1a2a6950236dcb81871e4b685559e7f977e413cb2fbcf8589f62ebcd97471d377e22e4ad301ce7e9fd0049459accebf97813e669eda5e0fc33ad2ec1a77c104cd713112de09fc2f2c19b9b14306ae8",
+        "tx": [
+            {
+                "hash": "b3e587c3299b8f4b9c65cd221e7ad3afe579a1d01b0acd935c9bbd2e35d102f9f2023bfc7bcba1f840a3b9725e651c26dc516e53c63eff7e37206ed94b8f746f"
+            }
+        ]
+    }
+]
+
+    
+
+Output parameter description:
+<hash>:
+    The hash of the block
+<proofhash>
+    The proof hash of the block
+<size>
+    Block size in bytes
+<height>
+    Block height
+<channel>
+    Channel (1=Prime, 2=Hash, 3=Stake)
+<version>
+    Serialization version of this block
+<merkleroot>
+    Merkle root of the block transactions
+<time>
+    Unified time the block was created
+<nonce>
+    The solution nonce 
+<bits>
+<difficulty>
+    The channel specific difficulty 
+<mint>
+    The value minted in this block
+<previousblockhash>
+    Hash of the previous block in the chain
+<nextblockhash>
+    Hash of the next block in the chain, unless this is the last block in the chain. 
+<tx>
+    Array of transactions included in this block 
+    <type>
+        Description of the transaction (legacy|tritium base|trust|genesis|user)
+    <version>
+        Serialization version of the transaction
+    <sequence>
+        Sequence number of this transaction within the signature chain 
+    <timestamp>
+        Unix timestamp when the transaction was created
+    <genesis>
+        Signature chain genesis hash
+    <nexthash>
+        Hash of the next transaction in the sequence
+    <prevhash>
+        Hash of the previous transaction in the sequence
+    <pubkey>
+        Public key
+    <signature>
+        Signature hash
+    <hash>
+        Transaction hash
+    <operation>
+        Description of the opcodes included in the transaction
+
+```

@@ -41,6 +41,7 @@ namespace TAO
             mapFunctions["createblock"] = Function(std::bind(&Ledger::CreateBlock, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getblockhash"] = Function(std::bind(&Ledger::GetBlockHash, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getblock"] = Function(std::bind(&Ledger::GetBlock, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["getblocks"] = Function(std::bind(&Ledger::GetBlocks, this, std::placeholders::_1, std::placeholders::_2));
         }
 
 

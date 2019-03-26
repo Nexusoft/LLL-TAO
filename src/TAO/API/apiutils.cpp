@@ -75,10 +75,11 @@ namespace TAO
                         TAO::Ledger::Transaction tx;
                         if(LLD::legDB->ReadTx(vtx.second, tx))
                         {
+                            json::json txdata;
+                            txdata["hash"]       = tx.GetHash().ToString();
+
                             if (nTransactionVerbosity > 0)
                             {
-                                json::json txdata;
-
                                 txdata["type"] = tx.GetTxTypeString();
                                 txdata["version"]   = tx.nVersion;
                                 txdata["sequence"]  = tx.nSequence;
@@ -99,13 +100,13 @@ namespace TAO
                                     txdata["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                                 }
 
-                                txdata["hash"]       = tx.GetHash().ToString();
+                                
                                 txdata["operation"]  = TAO::Operation::Output(tx);
 
-                                txinfo.push_back(txdata);
+                                
                             }
-                            else
-                                txinfo.push_back(tx.GetHash().GetHex());
+
+                            txinfo.push_back(txdata);
                         }
                     }
                     else if(vtx.first == TAO::Ledger::TYPE::LEGACY_TX)
@@ -114,13 +115,14 @@ namespace TAO
                         Legacy::Transaction tx;
                         if(LLD::legacyDB->ReadTx(vtx.second, tx))
                         {
+                            json::json txdata;
+                            txdata["hash"] = tx.GetHash().GetHex();
+
                             if (nTransactionVerbosity > 0)
                             {
-                                json::json txdata;
-
                                 txdata["timestamp"] = convert::DateTimeStrFormat(tx.nTime);
                                 txdata["type"] = tx.GetTxTypeString();
-                                txdata["hash"] = tx.GetHash().GetHex();
+                                
 
                                 json::json vin = json::json::array();
                                 for(const Legacy::TxIn& txin : tx.vin)
@@ -135,8 +137,8 @@ namespace TAO
                                 txinfo.push_back(txdata);
 
                             }
-                            else
-                                txinfo.push_back(tx.GetHash().GetHex());
+                            
+                            txinfo.push_back(txdata);
                         }
                     }
                 }
