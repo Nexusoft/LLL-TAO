@@ -113,42 +113,13 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
 
     ///////////////////EXCEPTIONS
     ssOperation.SetNull();
-    ssOperation << (uint8_t)OP::TYPES::UINT64_T << std::numeric_limits<uint64_t>::max() << (uint8_t) OP::INC << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
-    {
-        Validate script = Validate(ssOperation, tx);
-        try
-        {
-            script.Execute();
-        }
-        catch(const std::runtime_error& e)
-        {
-            REQUIRE(e.what() == std::string("OP::INC 64-bit value overflow"));
-        }
-    }
-
-
-    ssOperation.SetNull();
-    ssOperation << (uint8_t)OP::TYPES::UINT64_T << uint64_t(0) << (uint8_t) OP::DEC << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
-    {
-        Validate script = Validate(ssOperation, tx);
-        try
-        {
-            script.Execute();
-        }
-        catch(const std::runtime_error& e)
-        {
-            REQUIRE(e.what() == std::string("OP::DEC 64-bit value overflow"));
-        }
-    }
-
-
-    ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::UINT64_T << uint64_t(0) << (uint8_t) OP::SUB << (uint8_t)OP::TYPES::UINT64_T << uint64_t(100) << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
     {
         Validate script = Validate(ssOperation, tx);
         try
         {
-            script.Execute();
+            if(script.Execute())
+                REQUIRE(false);
         }
         catch(const std::runtime_error& e)
         {
@@ -163,7 +134,8 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
         Validate script = Validate(ssOperation, tx);
         try
         {
-            script.Execute();
+            if(script.Execute())
+                REQUIRE(false);
         }
         catch(const std::runtime_error& e)
         {
@@ -178,7 +150,8 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
         Validate script = Validate(ssOperation, tx);
         try
         {
-            script.Execute();
+            if(script.Execute())
+                REQUIRE(false);
         }
         catch(const std::runtime_error& e)
         {
@@ -193,11 +166,78 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
         Validate script = Validate(ssOperation, tx);
         try
         {
-            script.Execute();
+            if(script.Execute())
+                REQUIRE(false);
         }
         catch(const std::runtime_error& e)
         {
             REQUIRE(e.what() == std::string("OP::MOD cannot divide by zero"));
+        }
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << uint64_t(std::numeric_limits<uint64_t>::max()) << (uint8_t) OP::INC << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << uint32_t(222);
+    {
+        Validate script = Validate(ssOperation, tx);
+        try
+        {
+            if(script.Execute())
+                REQUIRE(false);
+        }
+        catch(const std::runtime_error& e)
+        {
+            REQUIRE(e.what() == std::string("OP::INC 64-bit value overflow"));
+        }
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << uint64_t(0) << (uint8_t) OP::DEC << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << uint32_t(222);
+    {
+        Validate script = Validate(ssOperation, tx);
+        try
+        {
+            if(script.Execute())
+                REQUIRE(false);
+        }
+        catch(const std::runtime_error& e)
+        {
+            REQUIRE(e.what() == std::string("OP::DEC 64-bit value overflow"));
+        }
+    }
+
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << uint64_t(555) << (uint8_t) OP::EXP << (uint8_t)OP::TYPES::UINT64_T << uint64_t(9999) << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        try
+        {
+            if(script.Execute())
+                REQUIRE(false);
+        }
+        catch(const std::runtime_error& e)
+        {
+            REQUIRE(e.what() == std::string("OP::EXP 64-bit value overflow"));
+        }
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << uint64_t(555323423434433443) << (uint8_t) OP::MUL << (uint8_t)OP::TYPES::UINT64_T << uint64_t(2387438283734234423) << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
+    {
+        std::string strException = "";
+        Validate script = Validate(ssOperation, tx);
+        try
+        {
+            if(script.Execute())
+                REQUIRE(false);
+        }
+        catch(const std::runtime_error& e)
+        {
+            REQUIRE(e.what() == std::string("OP::MUL 64-bit value overflow"));
         }
     }
 
@@ -511,7 +551,7 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
 
 
     ssOperation.SetNull();
-    ssOperation << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)5 << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)15 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)30517578125;
+    ssOperation << uint8_t(OP::TYPES::UINT64_T) << uint64_t(5) << uint8_t(OP::EXP) << (uint8_t) OP::TYPES::UINT64_T << uint64_t(15) << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT64_T << uint64_t(30517578125);
     {
         Validate script = Validate(ssOperation, tx);
         REQUIRE(script.Execute());

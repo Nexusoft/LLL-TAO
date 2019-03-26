@@ -340,6 +340,10 @@ namespace TAO
                         if(vMul.size() > 1 || vRet.size() > 1)
                             throw std::runtime_error(debug::safe_printstr("OP::MUL computation greater than 64-bits"));
 
+                        /* Check for value overflows. */
+                        if (at(vRet) > std::numeric_limits<uint64_t>::max() / at(vMul))
+                            throw std::runtime_error(debug::safe_printstr("OP::MUL 64-bit value overflow"));
+
                         /* Compute the return value. */
                         at(vRet) *= at(vMul);
 
@@ -365,8 +369,21 @@ namespace TAO
                         if(vExp.size() > 1 || vRet.size() > 1)
                             throw std::runtime_error(debug::safe_printstr("OP::EXP computation greater than 64-bits"));
 
-                        /* Compute the return value. */
-                        at(vRet) = pow(at(vRet), at(vExp));
+                        /* Catch for a power of 0. */
+                        if(at(vExp) == 0)
+                            at(vRet) = 1;
+
+                        /* Exponentiate by integers. */
+                        uint64_t nBase = at(vRet);
+                        for(uint64_t e = 1; e < at(vExp); ++e)
+                        {
+                            /* Check for value overflows. */
+                            if (at(vRet) > std::numeric_limits<uint64_t>::max() / nBase)
+                                throw std::runtime_error(debug::safe_printstr("OP::EXP 64-bit value overflow"));
+
+                            /* Assign the return value. */
+                            at(vRet) *= nBase;
+                        }
 
                         /* Deallocate r-value from memory. */
                         deallocate(vExp);
