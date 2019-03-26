@@ -33,13 +33,13 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
 
     Stream ssOperation;
 
+
+
+
+
+
     ssOperation << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)7u << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT32_T << (uint32_t)2u << (uint8_t) OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)49u;
 
-    runtime::timer bench;
-    bench.Reset();
-
-    runtime::timer func;
-    func.Reset();
 
     uint256_t hashFrom = LLC::GetRand256();
     uint256_t hashTo   = LLC::GetRand256();
@@ -50,7 +50,6 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
     tx.hashGenesis = LLC::GetRand256();
     tx << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount;
 
-
     uint256_t hash = LLC::GetRand256();
     uint256_t hash2 = LLC::GetRand256();
     TAO::Register::State state;
@@ -59,6 +58,18 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
     state << hash2;
 
 
+    runtime::timer bench;
+    bench.Reset();
+    {
+        Validate script = Validate(ssOperation, tx);
+        for(int i = 0; i < 1000000; i++)
+        {
+            REQUIRE(script.Execute());
+            script.Reset();
+        }
+    }
+    uint64_t nTime = bench.ElapsedMicroseconds();
+    debug::log(0, "Processed ", 1000000.0 / nTime, " million ops / second");
 
 
     LLD::regDB = new LLD::RegisterDB();
@@ -76,7 +87,6 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
         REQUIRE(script.Execute());
     }
 
-
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::STRING << strName << (uint8_t)OP::CRYPTO::SK256 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT256_T << hashRegister;
 
@@ -84,6 +94,7 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
         Validate script = Validate(ssOperation, tx);
         REQUIRE(script.Execute());
     }
+
 
 
     uint512_t hashRegister2 = LLC::SK512(strName.begin(), strName.end());
@@ -95,6 +106,99 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
     {
         Validate script = Validate(ssOperation, tx);
         REQUIRE(script.Execute());
+    }
+
+
+
+
+    ///////////////////EXCEPTIONS
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << std::numeric_limits<uint64_t>::max() << (uint8_t) OP::INC << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        try
+        {
+            script.Execute();
+        }
+        catch(const std::runtime_error& e)
+        {
+            REQUIRE(e.what() == std::string("OP::INC 64-bit value overflow"));
+        }
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << uint64_t(0) << (uint8_t) OP::DEC << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        try
+        {
+            script.Execute();
+        }
+        catch(const std::runtime_error& e)
+        {
+            REQUIRE(e.what() == std::string("OP::DEC 64-bit value overflow"));
+        }
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << uint64_t(0) << (uint8_t) OP::SUB << (uint8_t)OP::TYPES::UINT64_T << uint64_t(100) << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        try
+        {
+            script.Execute();
+        }
+        catch(const std::runtime_error& e)
+        {
+            REQUIRE(e.what() == std::string("OP::SUB 64-bit value overflow"));
+        }
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << std::numeric_limits<uint64_t>::max() << (uint8_t) OP::ADD << (uint8_t)OP::TYPES::UINT64_T << uint64_t(100) << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        try
+        {
+            script.Execute();
+        }
+        catch(const std::runtime_error& e)
+        {
+            REQUIRE(e.what() == std::string("OP::ADD 64-bit value overflow"));
+        }
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << std::numeric_limits<uint64_t>::max() << (uint8_t) OP::DIV << (uint8_t)OP::TYPES::UINT64_T << uint64_t(0) << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        try
+        {
+            script.Execute();
+        }
+        catch(const std::runtime_error& e)
+        {
+            REQUIRE(e.what() == std::string("OP::DIV cannot divide by zero"));
+        }
+    }
+
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << std::numeric_limits<uint64_t>::max() << (uint8_t) OP::MOD << (uint8_t)OP::TYPES::UINT64_T << uint64_t(0) << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        try
+        {
+            script.Execute();
+        }
+        catch(const std::runtime_error& e)
+        {
+            REQUIRE(e.what() == std::string("OP::MOD cannot divide by zero"));
+        }
     }
 
 
@@ -164,6 +268,7 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
     }
 
 
+
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::STRING << std::string("is there an atomic bear out there?") << (uint8_t)OP::CONTAINS << (uint8_t)OP::TYPES::STRING << std::string("atomic bear out");
     {
@@ -228,19 +333,17 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
     {
         Validate script = Validate(ssOperation, tx);
         REQUIRE(script.Execute());
+        REQUIRE(script.available() == 512);
     }
 
 
+
+    ssOperation.SetNull();
     ssOperation << (uint8_t)OP::CALLER::OPERATIONS << (uint8_t)OP::SUBDATA << uint16_t(1) << uint16_t(32) << (uint8_t)OP::REGISTER::STATE << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT256_T << hash2;
     {
         Validate script = Validate(ssOperation, tx);
         REQUIRE(script.Execute());
     }
-
-
-
-
-
 
 
     /////REGISTERS
@@ -250,6 +353,8 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
         Validate script = Validate(ssOperation, tx);
         REQUIRE(script.Execute());
     }
+
+
 
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::REGISTER::OWNER << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT256_T << state.hashOwner;
@@ -284,12 +389,14 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
         REQUIRE(script.Execute());
     }
 
+
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::CALLER::GENESIS << (uint8_t)OP::EQUALS << (uint8_t) OP::TYPES::UINT256_T << tx.hashGenesis;
     {
         Validate script = Validate(ssOperation, tx);
         REQUIRE(script.Execute());
     }
+
 
 
     TAO::Ledger::BlockState block;
@@ -335,12 +442,21 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
         REQUIRE(script.Execute());
     }
 
+
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::UINT32_T << 9234837u << (uint8_t) OP::SUB << (uint8_t) OP::TYPES::UINT32_T << 384728u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 8850109u;
     {
         Validate script = Validate(ssOperation, tx);
         REQUIRE(script.Execute());
     }
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT32_T << 92382983u << (uint8_t) OP::SUB << (uint8_t) OP::TYPES::UINT32_T << 1727272u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 90655711u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        REQUIRE(script.Execute());
+    }
+
 
 
 
@@ -359,12 +475,40 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
         REQUIRE(script.Execute());
     }
 
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT32_T << 98247293u << (uint8_t) OP::MOD << (uint8_t) OP::TYPES::UINT32_T << 2394839u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 58894u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        REQUIRE(script.Execute());
+    }
+
+
+
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)1000000000000 << (uint8_t) OP::DIV << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)30000 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 33333333u;
     {
         Validate script = Validate(ssOperation, tx);
         REQUIRE(script.Execute());
     }
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)23984729837429387 << (uint8_t) OP::DIV << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)9238493893 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 2596173u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        REQUIRE(script.Execute());
+    }
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)23948392849238 << (uint8_t) OP::DIV << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)923239232 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 25939u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        REQUIRE(script.Execute());
+    }
+
+
+
+
 
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)5 << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)15 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)30517578125;
@@ -379,6 +523,18 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
         Validate script = Validate(ssOperation, tx);
         REQUIRE(script.Execute());
     }
+
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT32_T << 3u << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT32_T << 10u << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 59049u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        REQUIRE(script.Execute());
+    }
+
+
+
+
+
 
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::UINT64_T << (uint64_t)9837 << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT64_T << (uint64_t)7878 << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 17715u;

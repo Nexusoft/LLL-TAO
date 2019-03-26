@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <cmath>
+#include <limits>
 
 #include <LLD/include/global.h>
 
@@ -216,6 +217,10 @@ namespace TAO
                         if(vAdd.size() > 1 || vRet.size() > 1)
                             throw std::runtime_error(debug::safe_printstr("OP::ADD computation greater than 64-bits"));
 
+                        /* Check for overflows. */
+                        if(at(vRet) + at(vAdd) < at(vRet))
+                            throw std::runtime_error(debug::safe_printstr("OP::ADD 64-bit value overflow"));
+
                         /* Compute the return value. */
                         at(vRet) += at(vAdd);
 
@@ -241,6 +246,10 @@ namespace TAO
                         if(vSub.size() > 1 || vRet.size() > 1)
                             throw std::runtime_error(debug::safe_printstr("OP::SUB computation greater than 64-bits"));
 
+                        /* Check for overflows. */
+                        if(at(vRet) - at(vSub) > at(vRet))
+                            throw std::runtime_error(debug::safe_printstr("OP::SUB 64-bit value overflow"));
+
                         /* Compute the return value. */
                         at(vRet) -= at(vSub);
 
@@ -262,7 +271,8 @@ namespace TAO
                             throw std::runtime_error(debug::safe_printstr("OP::INC computation greater than 64-bits"));
 
                         /* Compute the return value. */
-                        ++at(vRet);
+                        if(++at(vRet) == 0)
+                            throw std::runtime_error(debug::safe_printstr("OP::INC 64-bit value overflow"));
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 64;
@@ -279,7 +289,8 @@ namespace TAO
                             throw std::runtime_error(debug::safe_printstr("OP::DEC computation greater than 64-bits"));
 
                         /* Compute the return value. */
-                        --at(vRet);
+                        if(--at(vRet) == std::numeric_limits<uint64_t>::max())
+                            throw std::runtime_error(debug::safe_printstr("OP::DEC 64-bit value overflow"));
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 64;
@@ -299,6 +310,10 @@ namespace TAO
                         /* Check computational bounds. */
                         if(vDiv.size() > 1 || vRet.size() > 1)
                             throw std::runtime_error(debug::safe_printstr("OP::DIV computation greater than 64-bits"));
+
+                        /* Check for exceptions. */
+                        if(at(vDiv) == 0)
+                            throw std::runtime_error(debug::safe_printstr("OP::DIV cannot divide by zero"));
 
                         /* Compute the return value. */
                         at(vRet) /= at(vDiv);
@@ -374,6 +389,10 @@ namespace TAO
                         /* Check computational bounds. */
                         if(vMod.size() > 1 || vRet.size() > 1)
                             throw std::runtime_error(debug::safe_printstr("OP::MOD computation greater than 64-bits"));
+
+                        /* Check for exceptions. */
+                        if(at(vMod) == 0)
+                            throw std::runtime_error(debug::safe_printstr("OP::MOD cannot divide by zero"));
 
                         /* Compute the return value. */
                         at(vRet) %= at(vMod);
