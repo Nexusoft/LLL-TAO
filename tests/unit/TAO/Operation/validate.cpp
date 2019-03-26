@@ -38,7 +38,7 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
 
 
 
-    ssOperation << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)7u << (uint8_t) OP::EXP << (uint8_t) OP::TYPES::UINT32_T << (uint32_t)2u << (uint8_t) OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)49u;
+    ssOperation << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)7u << (uint8_t) OP::MUL << (uint8_t) OP::TYPES::UINT32_T << (uint32_t)9u << (uint8_t) OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)63u;
 
 
     uint256_t hashFrom = LLC::GetRand256();
@@ -114,6 +114,23 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
     ///////////////////EXCEPTIONS
     ssOperation.SetNull();
     ssOperation << (uint8_t)OP::TYPES::UINT64_T << uint64_t(0) << (uint8_t) OP::SUB << (uint8_t)OP::TYPES::UINT64_T << uint64_t(100) << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
+    {
+        Validate script = Validate(ssOperation, tx);
+        try
+        {
+            if(script.Execute())
+                REQUIRE(false);
+        }
+        catch(const std::runtime_error& e)
+        {
+            REQUIRE(e.what() == std::string("OP::SUB 64-bit value overflow"));
+        }
+    }
+
+
+    ///////////////////EXCEPTIONS
+    ssOperation.SetNull();
+    ssOperation << (uint8_t)OP::TYPES::UINT64_T << uint64_t(555) << (uint8_t) OP::SUB << (uint8_t)OP::TYPES::UINT64_T << uint64_t(std::numeric_limits<uint64_t>::max()) << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << 222u;
     {
         Validate script = Validate(ssOperation, tx);
         try
