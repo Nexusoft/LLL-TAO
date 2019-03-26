@@ -154,7 +154,7 @@ Retrieves an array of block data for a sequential range of blocks from a given h
 
 ```
 <method>:
-    /ledger/getblock
+    /ledger/getblocks
 
 <key>=<value> parameter pairs:
     hash=<hash>
