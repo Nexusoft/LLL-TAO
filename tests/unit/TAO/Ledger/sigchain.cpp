@@ -11,16 +11,18 @@
 
 ____________________________________________________________________________________________*/
 
-#define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
+#include <TAO/Ledger/types/sigchain.h>
+
 #include <unit/catch2/catch.hpp>
 
-#include <Util/include/args.h>
+#include <Util/include/debug.h>
 
-TEST_CASE("Arguments Tests", "[args]")
+TEST_CASE( "Signature Chain Generation", "[sigchain]" )
 {
-    config::fTestNet = true;
-    config::mapArgs["-testnet"] = "92349234";
 
-    REQUIRE(config::fTestNet == true);
-    REQUIRE(config::GetArg("-testnet", 0) == 92349234);
+    TAO::Ledger::SignatureChain user = TAO::Ledger::SignatureChain("user", "password");
+
+    REQUIRE(user.Genesis() == uint256_t("0xb5254d24183a77625e2dbe0c63570194aca6fb7156cb84edf3e238f706b51019"));
+
+    REQUIRE(user.Generate(0, "pin") == uint512_t("0x2986e8254e45ce87484feb0cbb9a961588dfe040bf109662f1235d97e57745fdcfae12ed46ba8a523bf490caf9461c9ef8dbc68bbbe8c62ea484ec0fc519f00c"));
 }
