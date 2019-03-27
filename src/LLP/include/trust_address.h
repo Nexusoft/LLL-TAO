@@ -48,6 +48,9 @@ namespace LLP
      **/
     class TrustAddress : public BaseAddress
     {
+        /* Tell compiler we are overloading Print. */
+        using BaseAddress::Print;
+        
     public:
 
 
