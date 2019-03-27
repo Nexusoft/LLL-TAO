@@ -471,6 +471,21 @@ namespace LLD
         }
 
 
+        /** EraseLast
+         *
+         *  Erase the last txid of sigchain to disk indexed by genesis.
+         *
+         *  @param[in] hashGenesis The genesis hash to erase.
+         *
+         *  @return True if the last was successfully written, false otherwise.
+         *
+         **/
+        bool EraseLast(const uint256_t& hashGenesis)
+        {
+            return Erase(std::make_pair(std::string("last"), hashGenesis));
+        }
+
+
         /** ReadLast
          *
          *  Reads the last txid of sigchain to disk indexed by genesis.

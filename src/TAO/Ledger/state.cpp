@@ -692,8 +692,12 @@ namespace TAO
                     if(!TAO::Register::Rollback(tx))
                         return debug::error(FUNCTION, "transaction register layer failed to rollback");
 
+                    /* Erase last for genesis. */
+                    if(tx.IsGenesis() && !LLD::legDB->EraseLast(tx.hashGenesis))
+                        return debug::error(FUNCTION, "failed to erase last hash");
+
                     /* Set the last hash to previous transaciton in sigchain. */
-                    if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.hashPrevTx))
+                    else if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.hashPrevTx))
                         return debug::error(FUNCTION, "failed to write last hash");
                 }
                 else if(proof.first == TYPE::LEGACY_TX)
