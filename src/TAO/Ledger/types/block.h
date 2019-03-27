@@ -120,6 +120,7 @@ namespace TAO
              **/
             virtual void SetNull();
 
+
             /** Check
              *
              *  Check a block for consistency.

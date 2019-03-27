@@ -67,7 +67,7 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                11,
+                12,
 
                 /* Memory Cost (64 MB). */
                 (1 << 16),
@@ -164,7 +164,7 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                11,
+                12,
 
                 /* Memory Cost (64 MB). */
                 (1 << 16),

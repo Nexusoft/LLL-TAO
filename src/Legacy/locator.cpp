@@ -23,7 +23,7 @@ namespace Legacy
 {
 
     /* Set a locator from block state. */
-    Locator::Locator(TAO::Ledger::BlockState& state)
+    Locator::Locator(const TAO::Ledger::BlockState& state)
     : vHave()
     {
         Set(state);
@@ -52,28 +52,31 @@ namespace Legacy
 
 
     /* Set a locator object from a block state. */
-    void Locator::Set(TAO::Ledger::BlockState& state)
+    void Locator::Set(const TAO::Ledger::BlockState& state)
     {
         /* Step iterator */
         uint32_t nStep = 1;
 
+        /* Make a copy of the state. */
+        TAO::Ledger::BlockState statePrev = state;
+
         /* Loop back valid blocks. */
-        while (!state.IsNull())
+        while (!statePrev.IsNull())
         {
             /* Break when locator size is large enough. */
             if (vHave.size() > 20)
                 break;
 
             /* Loop back the total blocks of step iterator. */
-            for (int i = 0; !state.IsNull() && i < nStep; ++i)
-                state = state.Prev();
+            for (int i = 0; !statePrev.IsNull() && i < nStep; ++i)
+                statePrev = statePrev.Prev();
 
             /* After 10 blocks, start taking exponential steps back. */
             if(vHave.size() > 10)
                 nStep = nStep * 2;
 
             /* Push back the current state hash. */
-            vHave.push_back(state.GetHash());
+            vHave.push_back(statePrev.GetHash());
         }
 
         /* Push the genesis. */
