@@ -104,6 +104,20 @@ namespace TAO
                 if(tx.IsCoinbase() || tx.IsTrust())
                     continue;
 
+                /* Check for the last hash. */
+                uint512_t hashLast;
+                if(LLD::legDB->ReadLast(tx.hashGenesis, hashLast))
+                {
+                    /* Check that transaction is in phase with sigchain. */
+                    if(tx.hashPrevTx != hashLast)
+                    {
+                        /* Remove the transaction from memory pool. */
+                        mempool.Remove(hash);
+
+                        debug::log(2, FUNCTION, "TX ", tx.GetHash().ToString().substr(0, 20), " is STALE");
+                    }
+                }
+
                 /* Check for a unique genesis hash. */
                 if(mapUniqueGenesis.count(tx.hashGenesis))
                     continue;
