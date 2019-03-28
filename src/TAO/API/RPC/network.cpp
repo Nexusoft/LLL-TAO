@@ -25,7 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/tritium.h>
 
-#include <TAO/API/include/apiutils.h>
+#include <TAO/API/include/utils.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -396,7 +396,11 @@ namespace TAO
                 return "";
             }
 
-            return TAO::API::Utils::blockToJSON(block, params.size() > 1 ? params[1].get<bool>() : false);
+            int nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
+            if(params.size() > 1 && params[1].get<bool>())
+                nTransactionVerbosity = 2;
+
+            return TAO::API::Utils::blockToJSON(block, nTransactionVerbosity);
         }
     }
 }

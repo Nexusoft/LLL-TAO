@@ -6,7 +6,7 @@
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/tritium.h>
 
-#include <TAO/API/include/apiutils.h>
+#include <TAO/API/include/utils.h>
 
 #include <Util/include/string.h>
 
@@ -100,7 +100,7 @@ namespace TAO
                     throw APIException(-25, "Block not found");
             }
             
-            int nTransactionVerbosity = 0;
+            int nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
             if( params.count("txverbose") > 0 && IsAllDigit(params["txverbose"].get<std::string>())) 
                 nTransactionVerbosity = atoi(params["txverbose"].get<std::string>().c_str());
 
@@ -168,7 +168,7 @@ namespace TAO
             }
             
             /* Get the transaction verbosity level from the request*/
-            int nTransactionVerbosity = 0;
+            int nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
             if( params.count("txverbose") > 0 && IsAllDigit(params["txverbose"].get<std::string>())) 
                 nTransactionVerbosity = atoi(params["txverbose"].get<std::string>().c_str());
 

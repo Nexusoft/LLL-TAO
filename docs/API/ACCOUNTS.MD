@@ -160,11 +160,11 @@ genesis is supplied first, it will supersede the username. We recommend you to
 only use one of the parameters, as typing in both genesis and username will
 only resolve the genesis.
 
-The verbose parameter defines how much you receive in return.
-
-* Verbose 0: type, version, sequence, timestamp, hash, and operation.
-* Verbose 1: genesis, nexthash, and prevhash.
-* Verbose 2: pubkey and signature.
+The verbose parameter defines how much you receive in return (default 2).
+* Verbose 1: hash.
+* Verbose 2: type, version, sequence, timestamp, and operation.
+* Verbose 3: genesis, nexthash, and prevhash.
+* Verbose 4: pubkey and signature.
 
 Return value JSON object:
 ```

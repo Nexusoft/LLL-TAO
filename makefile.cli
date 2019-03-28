@@ -266,7 +266,7 @@ OBJS+=  build/LLC_skein.o \
 		build/Operation_validate.o \
 		build/Operation_write.o \
 		build/API_cmd.o \
-		build/API_apiutils.o \
+		build/API_utils_utils.o \
 		build/API_accounts_accounts.o \
 		build/API_accounts_create.o \
 		build/API_accounts_lock.o \
@@ -426,6 +426,9 @@ build/LLP_%.o: ./src/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_%.o: ./src/TAO/API/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_utils_%.o: ./src/TAO/API/utils/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_accounts_%.o: ./src/TAO/API/accounts/%.cpp $(HEADERS)
@@ -617,6 +620,13 @@ build/LLP_%.o: src/LLP/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_%.o: src/TAO/API/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_utils_%.o: src/TAO/API/utils/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -900,6 +910,13 @@ build/LLP_%.o: src/LLP/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_%.o: src/TAO/API/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_utils_%.o: src/TAO/API/utils/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

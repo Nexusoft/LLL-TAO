@@ -48,11 +48,12 @@ Input parameter description:
 <height>:
     The block height to retrieve the block data for.
 <txverbose-level>
-    Determines how much transaction data to include in the response, Optional (default 0). 
-    0: hash 
-    1: type, version, sequence, timestamp, and operation.
-    2: genesis, nexthash, and prevhash.
-    3: pubkey and signature.
+    Determines how much transaction data to include in the response, Optional (default 1). 
+    0: no transaction data
+    1: hash 
+    2: type, version, sequence, timestamp, and operation.
+    3: genesis, nexthash, and prevhash.
+    4: pubkey and signature.
 ```
 
 Note: Either the hash or the height needs to be supplied, but not both.  
@@ -170,11 +171,12 @@ Input parameter description:
 <count>
     The number of blocks to return data for.  Optional (default 10), must be between 1 and 1000
 <txverbose-level>
-    Determines how much transaction data to include in the response. Optional (default 0).  
-    0: hash
-    1: type, version, sequence, timestamp, and operation.
-    2: genesis, nexthash, and prevhash.
-    3: pubkey and signature.
+    Determines how much transaction data to include in the response, Optional (default 1). 
+    0: no transaction data
+    1: hash 
+    2: type, version, sequence, timestamp, and operation.
+    3: genesis, nexthash, and prevhash.
+    4: pubkey and signature.
 ```
 
 Note: Either the hash or the height needs to be supplied, but not both.  

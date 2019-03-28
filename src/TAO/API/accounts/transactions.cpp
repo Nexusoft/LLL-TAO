@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/accounts.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/output.h>
 
@@ -63,7 +64,7 @@ namespace TAO
                 nLimit = atoi(params["limit"].get<std::string>().c_str());
 
             /* Get verbose levels. */
-            uint32_t nVerbose = 0;
+            uint32_t nVerbose = 2; // default to level 2
             if(params.find("verbose") != params.end())
                 nVerbose = atoi(params["verbose"].get<std::string>().c_str());
 
@@ -94,31 +95,13 @@ namespace TAO
 
                 if(nCurrentPage > nPage)
                     break;
+                TAO::Ledger::BlockState blockState;
+                /* Read the block state from the the ledger DB using the transaction hash index */
+                if(!LLD::legDB->ReadBlock(tx.GetHash(), blockState))
+                    throw APIException(-25, "Block not found");
 
-                json::json obj;
-                obj["type"] = tx.GetTxTypeString();
-                obj["version"]   = tx.nVersion;
-                obj["sequence"]  = tx.nSequence;
-                obj["timestamp"] = tx.nTimestamp;
-
-                /* Genesis and hashes are verbose 1 and up. */
-                if(nVerbose >= 1)
-                {
-                    obj["genesis"]   = tx.hashGenesis.ToString();
-                    obj["nexthash"]  = tx.hashNext.ToString();
-                    obj["prevhash"]  = tx.hashPrevTx.ToString();
-                }
-
-                /* Signatures and public keys are verbose level 2 and up. */
-                if(nVerbose >= 2)
-                {
-                    obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
-                    obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
-                }
-
-                obj["hash"]       = tx.GetHash().ToString();
-                obj["operation"]  = TAO::Operation::Output(tx);
-
+                json::json obj = TAO::API::Utils::transactionToJSON( tx, blockState, nVerbose);
+                
                 ret.push_back(obj);
             }
 
