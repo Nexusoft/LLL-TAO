@@ -17,6 +17,9 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/output.h>
 
+#include <TAO/Register/include/unpack.h>
+#include <TAO/Register/objects/account.h>
+
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -67,11 +70,109 @@ namespace TAO
             if(params.find("verbose") != params.end())
                 nVerbose = atoi(params["verbose"].get<std::string>().c_str());
 
+            /* Get the last transaction. */
+            uint512_t hashLast = 0;
+            if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+                throw APIException(-28, "No transactions found");
+
+            /* Keep a running list of owned registers. */
+            std::vector< std::pair<uint256_t, uint64_t> > vRegisters;
+
+            /* Loop until genesis. */
+            while(hashLast != 0)
+            {
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::legDB->ReadTx(hashLast, tx))
+                    throw APIException(-28, "Failed to read transaction");
+
+                /* Set the next last. */
+                hashLast = tx.hashPrevTx;
+
+                /* Attempt to unpack a register script. */
+                TAO::Register::State state;
+                if(!TAO::Register::Unpack(tx, state))
+                    continue;
+
+                /* Check that it is an account. */
+                if(state.nType != TAO::Register::OBJECT::ACCOUNT)
+                    continue;
+
+                /* Get the account. */
+                TAO::Register::Account account;
+                state >> account;
+
+                /* Skip over identifier 0. */
+                if(account.nIdentifier == 0)
+                    continue;
+
+                /* Get the token address. */
+                uint256_t hashToken;
+                if(!LLD::regDB->ReadIdentifier(account.nIdentifier, hashToken))
+                    continue;
+
+                /* Push the token identifier to list to check. */
+                vRegisters.push_back(std::make_pair(hashToken, account.nBalance));
+            }
+
             /* Start with sequence 0 (chronological order). */
             uint32_t nSequence = 0;
 
             /* Loop until genesis. */
             uint32_t nTotal = 0;
+
+            /* Get notifications for foreign token registers. */
+            for(const auto& hash : vRegisters)
+            {
+                /* Loop through all events for given token (split payments). */
+                while(!config::fShutdown)
+                {
+                    /* Get the current page. */
+                    uint32_t nCurrentPage = nTotal / nLimit;
+
+                    /* Get the transaction from disk. */
+                    TAO::Ledger::Transaction tx;
+                    if(!LLD::legDB->ReadEvent(hash.first, nSequence, tx))
+                        break;
+
+                    /* Check the paged data. */
+                    if(nCurrentPage < nPage)
+                        continue;
+
+                    if(nCurrentPage > nPage)
+                        break;
+
+                    json::json obj;
+                    obj["version"]   = tx.nVersion;
+                    obj["sequence"]  = tx.nSequence;
+                    obj["timestamp"] = tx.nTimestamp;
+
+                    /* Genesis and hashes are verbose 1 and up. */
+                    if(nVerbose >= 1)
+                    {
+                        obj["genesis"]   = tx.hashGenesis.ToString();
+                        obj["nexthash"]  = tx.hashNext.ToString();
+                        obj["prevhash"]  = tx.hashPrevTx.ToString();
+                    }
+
+                    /* Signatures and public keys are verbose level 2 and up. */
+                    if(nVerbose >= 2)
+                    {
+                        obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
+                        obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
+                    }
+                    obj["hash"]      = tx.GetHash().ToString();
+                    obj["operation"]  = TAO::Operation::Output(tx);
+
+                    ret.push_back(obj);
+
+                    /* Iterate sequence forward. */
+                    ++nSequence;
+                }
+            }
+
+            /* Get notifications for personal genesis indexes. */
+            nSequence = 0;
             while(!config::fShutdown)
             {
                 /* Get the current page. */
