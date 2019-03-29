@@ -283,6 +283,7 @@ OBJS+=  build/LLC_skein.o \
 		build/API_assets_transfer.o \
 		build/API_ledger_create.o \
 		build/API_ledger_block.o \
+		build/API_ledger_transaction.o \
 		build/API_lisp_lisp.o \
 		build/API_RPC_account.o \
 		build/API_RPC_daemon.o \

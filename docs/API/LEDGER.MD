@@ -1,13 +1,13 @@
 The Ledger API Interface Definition
 -----------------------------------
 
-### GetBlockHash
+### BlockHash
 
 Retrieves the blockhash for the given height.
 
 ```
 <method>:
-    /ledger/getblockhash
+    /ledger/blockhash
 
 <key>=<value> parameter pairs:
     height=<height>
@@ -29,13 +29,13 @@ Output parameter description:
 ```
 
 
-### GetBlock
+### Block
 
 Retrieves block data for the given block hash or height.
 
 ```
 <method>:
-    /ledger/getblock
+    /ledger/block
 
 <key>=<value> parameter pairs:
     hash=<hash>
@@ -149,7 +149,7 @@ Output parameter description:
 
 ```
 
-### GetBlocks
+### Blocks
 
 Retrieves an array of block data for a sequential range of blocks from a given hash or height.
 
@@ -283,5 +283,73 @@ Output parameter description:
         Transaction hash
     <operation>
         Description of the opcodes included in the transaction
+
+```
+
+### Transaction
+
+Retrieves transaction data for a given transaction hash.
+
+```
+<method>:
+    /ledger/transaction
+
+<key>=<value> parameter pairs:
+    hash=<hash>
+    txverbose<txverbose-level>
+    
+Input parameter description:
+<hash>:
+    The hash of the transaction to retrieve data for.
+<txverbose-level>
+    Determines how much transaction data to include in the response, Optional (default 1).  
+    1: hash, type, version, sequence, timestamp, and operation.
+    2: genesis, nexthash, and prevhash.
+    3: pubkey and signature.
+```
+
+Return value JSON object:
+```    
+{
+    "hash": "47959e245f45aab773c0ce5320a5454f49ac15f63e15acb36855ac654d54d6314fe36b61dd64ec7a9a546bcc439a628e9badcdccb6e5f8072d04a0a3b67f8679",
+    "type": "tritium base",
+    "version": 1,
+    "sequence": 2,
+    "timestamp": 1553656640,
+    "confirmations": 0,
+    "genesis": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+    "nexthash": "da052996cfbb854c9748c7290fcd84bd72316faa75421a647aa8444ca7242eb3",
+    "prevhash": "798b258df4d435a16321f83129a449b87774a393f85daef9fbae890de94e11865b7133b3c16f9799b8a5468b3af1ca29fabfa145585870ab9e4e4f8351d40167",
+    "pubkey": "034ecb0320d445b3d51a1e62e465476a9cfde8589117cfaa65240bd44520e0049fcf059843a93b276b088e0de1da33be0c04aaa9a972988c2e57d8eb5a55d3ef72",
+    "signature": "308184024052ae4d673e18c0603ef9db388d3b86735c63d48f76bc04be36a99c53417ff908cecbbab33c8c8ed27c01d5b1301d0ab9edc3f9a1b00c31e6b2a8ddb3b1b18d61024004781116f62a59d4fa73f88cae03f1de9f6116a07e0898ff36f2c3fcde390d324d32a5fa3e3f2a4c40c8613657ce99574fbe7bbf79b5b43e1a22167f48c3a878",
+    "operation": "Coinbase(nonce=2, amount=76499587)"
+}
+
+    
+
+Output parameter description:
+
+<hash>
+    Transaction hash
+<type>
+    Description of the transaction (legacy|tritium base|trust|genesis|user)
+<version>
+    Serialization version of the transaction
+<sequence>
+    Sequence number of this transaction within the signature chain 
+<timestamp>
+    Unix timestamp when the transaction was created
+<genesis>
+    Signature chain genesis hash
+<nexthash>
+    Hash of the next transaction in the sequence
+<prevhash>
+    Hash of the previous transaction in the sequence
+<pubkey>
+    Public key
+<signature>
+    Signature hash
+<operation>
+    Description of the opcodes included in the transaction
 
 ```

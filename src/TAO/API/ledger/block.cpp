@@ -1,3 +1,15 @@
+/*__________________________________________________________________________________________
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+
+            (c) Copyright The Nexus Developers 2014 - 2019
+
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+            "ad vocem populi" - To the Voice of the People
+
+____________________________________________________________________________________________*/
 
 #include <TAO/API/include/ledger.h>
 
@@ -18,7 +30,7 @@ namespace TAO
     namespace API
     {
         /* Retrieves the blockhash for the given height. */
-        json::json Ledger::GetBlockHash(const json::json& params, bool fHelp)
+        json::json Ledger::BlockHash(const json::json& params, bool fHelp)
         {
             /* Check that the node is configured to index blocks by height */ 
             if(!config::GetBoolArg("-indexheight"))
@@ -56,7 +68,7 @@ namespace TAO
 
 
         /* Retrieves the block data for a given hash or height. */
-        json::json Ledger::GetBlock(const json::json& params, bool fHelp)
+        json::json Ledger::Block(const json::json& params, bool fHelp)
         {
             /* Check for the block height parameter. */
             if(params.find("hash") == params.end() && params.find("height") == params.end())
@@ -111,7 +123,7 @@ namespace TAO
 
 
         /* Retrieves the block data for a sequential range of blocks starting at a given hash or height. */
-        json::json Ledger::GetBlocks(const json::json& params, bool fHelp)
+        json::json Ledger::Blocks(const json::json& params, bool fHelp)
         {
             /* Check for the block height parameter. */
             if(params.find("hash") == params.end() && params.find("height") == params.end())

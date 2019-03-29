@@ -38,15 +38,17 @@ namespace TAO
         /* Standard initialization function. */
         void Ledger::Initialize()
         {
-            mapFunctions["createblock"] = Function(std::bind(&Ledger::CreateBlock, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["getblockhash"] = Function(std::bind(&Ledger::GetBlockHash, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["getblock"] = Function(std::bind(&Ledger::GetBlock, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["getblocks"] = Function(std::bind(&Ledger::GetBlocks, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["create"] = Function(std::bind(&Ledger::Create, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["blockhash"] = Function(std::bind(&Ledger::BlockHash, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["block"] = Function(std::bind(&Ledger::Block, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["blocks"] = Function(std::bind(&Ledger::Blocks, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["transaction"] = Function(std::bind(&Ledger::Transaction, this, std::placeholders::_1, std::placeholders::_2));
+        
         }
 
 
         /* Creates a register with given RAW state. */
-        json::json Ledger::CreateBlock(const json::json& params, bool fHelp)
+        json::json Ledger::Create(const json::json& params, bool fHelp)
         {
             /* Get the PIN to be used for this API call */
             SecureString strPIN = accounts.GetPin(params);

@@ -37,7 +37,7 @@ namespace TAO
             *  @return the formatted JSON object
             *
             **/            
-            json::json blockToJSON(const TAO::Ledger::BlockState& block,  int nTransactionVerbosity);
+            json::json blockToJSON(const TAO::Ledger::BlockState& block, int nTransactionVerbosity);
 
 
             /** transactionToJSON
@@ -51,7 +51,7 @@ namespace TAO
             *  @return the formatted JSON object
             *
             **/            
-            json::json transactionToJSON(TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block,  int nTransactionVerbosity);
+            json::json transactionToJSON(TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, int nTransactionVerbosity);
 
 
             /** transactionToJSON
@@ -65,7 +65,19 @@ namespace TAO
             *  @return the formatted JSON object
             *
             **/            
-            json::json transactionToJSON(Legacy::Transaction& tx, const TAO::Ledger::BlockState& block,  int nTransactionVerbosity);
+            json::json transactionToJSON(Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, int nTransactionVerbosity);
+
+
+            /** operationToJSON
+            *
+            *  Converts a serialized operation stream to formattted JSON
+            *
+            *  @param[in] ssOperation The serialized Operation stream to convert 
+            *
+            *  @return the formatted JSON object
+            *
+            **/
+            json::json operationToJSON(const TAO::Operation::Stream& ssOperation);
         }
     }
 
