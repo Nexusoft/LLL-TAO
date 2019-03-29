@@ -107,7 +107,7 @@ class sdk_init():
     #enddef
        
     def nexus_accounts_lock(self):
-        if (self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session-id={}".format(self.session_id)
         url = accounts_url.format("lock") + parms
@@ -116,7 +116,7 @@ class sdk_init():
     #enddef
        
     def nexus_accounts_unlock(self):
-        if (self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session-id={}".format(self.pin, self.session_id)
         url = accounts_url.format("unlock") + parms
@@ -135,8 +135,6 @@ class sdk_init():
     #enddef
        
     def nexus_accounts_notifications_by_username(self, page, limit, verbose):
-        if (self.genesis_id == None): return(self.__error("Not logged in"))
-
         parms = "?username={}&page={}&limit={}&verbose={}".format( \
             self.username, page, limit, verbose)
         url = accounts_url.format("notifications") + parms
@@ -212,7 +210,7 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_assets_create(self, name, data):
+    def nexus_assets_create(self, asset_name, data):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
@@ -224,14 +222,14 @@ class sdk_init():
         data = urllib.quote_plus(data)
 
         parms = "?pin={}&session={}&name={}&data={}".format(self.pin,
-            self.session_id, name, data)
+            self.session_id, asset_name, data)
         url = assets_url.format("create") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
-    def nexus_assets_get_by_name(self, name):
-        parms = "?name={}".format(name)
+    def nexus_assets_get_by_name(self, asset_name):
+        parms = "?name={}".format(asset_name)
         url = assets_url.format("get") + parms
         json_data = self.__get(url)
 
@@ -240,13 +238,13 @@ class sdk_init():
         #
         if (json_data.has_key("result")):
             data = urllib.unquote_plus(json_data["result"]["metadata"])
-            json_data["result"]["state"] = data.replace("%26", "&")
+            json_data["result"]["metadata"] = data.replace("%26", "&")
         #endif
         return(json_data)
     #enddef
 
-    def nexus_assets_get_by_address(self, address):
-        parms = "?address={}".format(address)
+    def nexus_assets_get_by_address(self, asset_address):
+        parms = "?address={}".format(asset_address)
         url = assets_url.format("get") + parms
         json_data = self.__get(url)
 
@@ -255,22 +253,26 @@ class sdk_init():
         #
         if (json_data.has_key("result")):
             data = urllib.unquote_plus(json_data["result"]["metadata"])
-            json_data["result"]["state"] = data.replace("%26", "&")
+            json_data["result"]["metadata"] = data.replace("%26", "&")
         #endif
         return(json_data)
     #enddef
 
-    def nexus_assets_transfer_by_name(self, name, dest_name):
+    def nexus_assets_transfer_by_name(self, asset_name, dest_username):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
         parms = "?pin={}&session={}&name={}&username={}".format(self.pin,
-            self.session_id, name, dest_name)
+            self.session_id, asset_name, dest_username)
         url = assets_url.format("transfer") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
-    def nexus_assets_transfer_by_address(self, address, dest_address):
+    def nexus_assets_transfer_by_address(self, asset_address, dest_address):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
         parms = "?pin={}&session={}&address={}&destinatiion={}".format( \
-            self.pin, self.session_id, address, dest_address)
+            self.pin, self.session_id, asset_address, dest_address)
         url = assets_url.format("transfer") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -348,6 +350,11 @@ class sdk_init():
     #enddef
 
     def nexus_tokens_debit_by_name(self, from_name, to_name, amount):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
+        #
+        # Arguments from_name and to_name are token account names.
+        #
         parms = "?pin={}&session={}&amount={}&name_from={}&name_to={}". \
             format(self.pin, self.session_id, amount, from_name, to_name)
         url = tokens_url.format("debit") + parms
@@ -356,6 +363,11 @@ class sdk_init():
     #enddef
 
     def nexus_tokens_debit_by_address(self, from_address, to_address, amount):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
+        #
+        # Arguments from_address and to_address are token account addresses.
+        #
         parms = "?pin={}&session={}&amount={}&address_from={}&address_to={}". \
             format(self.pin, self.session_id, amount, from_address, to_address)
         url = tokens_url.format("debit") + parms
@@ -364,6 +376,11 @@ class sdk_init():
     #enddef
 
     def nexus_tokens_credit_by_name(self, to_name, amount, txid, proof):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
+        #
+        # Argument to_name is a token account name.
+        #
         parms = "?pin={}&session={}&txid={}&amount={}&name_to={}".format( \
             self.pin, self.session_id, txid, amount, to_name)
         url = tokens_url.format("debit") + parms
@@ -372,6 +389,11 @@ class sdk_init():
     #enddef
 
     def nexus_tokens_credit_by_address(self, to_address, amount, txid, proof):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
+        #
+        # Argument to_address is a token account address.
+        #
         parms = "?pin={}&session={}&txid={}&amount={}&address_to={}".format( \
             self.pin, self.session_id, txid, amount, to_address)
         url = tokens_url.format("debit") + parms
