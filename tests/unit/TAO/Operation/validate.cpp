@@ -58,20 +58,6 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
     state << hash2;
 
 
-    runtime::timer bench;
-    bench.Reset();
-    {
-        Validate script = Validate(ssOperation, tx);
-        for(int i = 0; i < 1000000; i++)
-        {
-            REQUIRE(script.Execute());
-            script.Reset();
-        }
-    }
-    uint64_t nTime = bench.ElapsedMicroseconds();
-    debug::log(0, "Processed ", 1000000.0 / nTime, " million ops / second");
-
-
     LLD::regDB = new LLD::RegisterDB();
     REQUIRE(LLD::regDB->Write(hash, state));
     REQUIRE(LLD::regDB->Write(hashFrom, state));
