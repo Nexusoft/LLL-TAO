@@ -17,7 +17,7 @@ import time
 import sys
 
 if (len(sys.argv) == 1):
-    do_supply = do_assets = do_tokens = True
+    do_accounts = do_supply = do_assets = do_tokens = True
 else:
     do_accounts = ("accounts" in sys.argv)
     do_supply = ("supply" in sys.argv)
