@@ -102,6 +102,8 @@ namespace TAO
                             /* Seek register past the post state */
                             tx.ssRegister.seek(9);
 
+                            //TODO: erase identifier
+
                             /* Erase the register from database. */
                             if(!LLD::regDB->EraseState(hashAddress))
                                 return debug::error(FUNCTION, "failed to erase post-state");
