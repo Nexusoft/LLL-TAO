@@ -27,11 +27,11 @@ width = 48
 # to 1 second. You can litter sleep() calls whereever you like below.
 #
 def sleep():
-    delay = 1
+    delay = 2
     if (delay == 0): return
     print "Sleeping for {} ...".format(delay)
     time.sleep(delay)
-#enddef    
+#enddef
 
 #------------------------------------------------------------------------------
 
@@ -48,7 +48,7 @@ def api_print(json, succeed_msg=None):
         print msg
         return(False)
     #endif
-        
+
     msg = json["error"]["message"]
     print "failed, {}".format(msg)
     if (msg == "Connection refused"):
@@ -136,7 +136,7 @@ print "Supply-Chain create item, data '{}' ...".format(data).ljust(width),
 json = primer1.nexus_supply_createitem(data)
 if (json.has_key("result") and json["result"] != None):
     address = json["result"]["address"]
-#endif    
+#endif
 api_print(json, "address {}".format(address))
 
 sleep()
@@ -186,12 +186,12 @@ print ""
 print "---------- Assets SDK/API ----------"
 
 #
-# Call API assets/create 
+# Call API assets/create
 #
 address = None
 data = "asset-data"
 print "Create Asset named '{}' ...".format("primer1-asset").ljust(width),
-json = primer1.nexus_assets_create("primer-asset", data)
+json = primer1.nexus_assets_create("primer1-asset", data)
 if (json.has_key("result") and json["result"] != None):
     address = json["result"]["address"]
 #endif
@@ -209,7 +209,7 @@ if (json.has_key("result") and json["result"] != None):
     owner = json["result"]["owner"]
     state = json["result"]["metadata"]
     msg = "stored metadata '{}', owner {}".format(state, owner)
-#endif    
+#endif
 api_print(json, msg)
 
 sleep()
@@ -220,12 +220,12 @@ sleep()
 msg = None
 print "Transfer Asset 'primer1-asset' to user 'primer2'"
 print "Transfer ownership ...".ljust(width),
-json = primer1.nexus_assets_transfer_by_name("primer1", "primer2")
+json = primer1.nexus_assets_transfer_by_name("primer1-asset", "primer2")
 if (json.has_key("result") and json["result"] != None):
     txid = json["result"]["txid"]
     address = json["result"]["address"]
     msg = "txid {}, address {}".format(txid, address)
-#endif    
+#endif
 api_print(json, msg)
 
 sleep()
@@ -249,7 +249,7 @@ print ""
 print "---------- Tokens SDK/API ----------"
 
 #
-# Call API tokens/create 
+# Call API tokens/create
 #
 address = None
 print "Create Token '{}', supply {} ...".format("primer1-token", 1000). \
@@ -263,7 +263,7 @@ api_print(json, "address {}".format(address))
 address = None
 print "Create Token '{}', supply {} ...".format("primer2-token", 0). \
     ljust(width),
-json = primer2.nexus_tokens_create_token("primer2-token", 1, 0)
+json = primer2.nexus_tokens_create_token("primer2-token", 2, 0)
 if (json.has_key("result") and json["result"] != None):
     address = json["result"]["address"]
 #endif
