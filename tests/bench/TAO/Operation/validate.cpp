@@ -31,6 +31,8 @@ TEST_CASE( "Validation Script Operation Benchmarks", "[validation]" )
 {
     using namespace TAO::Operation;
 
+    debug::log(0, "===== Begin Validation Script Benchmarks =====");
+
     //random data for tx script
     uint256_t hashFrom = LLC::GetRand256();
     uint256_t hashTo   = LLC::GetRand256();
@@ -300,5 +302,8 @@ TEST_CASE( "Validation Script Operation Benchmarks", "[validation]" )
         uint64_t nTime = bench.ElapsedMicroseconds();
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "UNIFIED::", ANSI_COLOR_RESET, "Processed ", nOps * 1000000.0 / nTime, " million ops / second");
     }
+
+
+    debug::log(0, "===== End Validation Script Benchmarks =====\n");
 
 }

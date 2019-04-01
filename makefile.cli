@@ -170,17 +170,25 @@ endif
 #Source File List
 HEADERS= $(wildcard *.h)
 
+#Run Unit Tests
 ifdef UNIT_TESTS
 	OBJS = build/Tests_main.o \
 	       build/Tests_testvm.o \
 		   build/Tests_block.o \
 		   build/Tests_sigchain.o \
 		   build/Tests_validate.o
+
+#Run benchmarks on subsystems
 else ifdef BENCHMARKS
 	OBJS = build/Benchmarks_main.o \
-		   build/Benchmarks_validate.o
+		   build/Benchmarks_validate.o \
+		   build/Benchmarks_sigchain.o
+
+#Live tests for prototyping new code
 else ifdef LIVE_TESTS
 	OBJS = build/Live_main.o
+
+#Regular production main method
 else
 	OBJS = build/main.o
 endif
