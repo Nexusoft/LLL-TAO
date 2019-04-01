@@ -118,4 +118,187 @@ TEST_CASE( "Validation Script Operation Benchmarks", "[validation]" )
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "EXP::", ANSI_COLOR_RESET, "Processed ", nOps * 1000000.0 / nTime, " million ops / second");
     }
 
+
+    {
+        //Operation stream
+        Stream ssOperation;
+        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(99) << uint8_t(OP::SUB) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(66) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(33);
+
+        //Total Operations
+        uint32_t nOps = 5;
+
+        //Benchmark of 1 million executions
+        runtime::timer bench;
+        bench.Reset();
+        {
+            Validate script = Validate(ssOperation, tx);
+            for(int i = 0; i < 1000000; i++)
+            {
+                REQUIRE(script.Execute());
+                script.Reset();
+            }
+        }
+
+        //time output
+        uint64_t nTime = bench.ElapsedMicroseconds();
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "SUB::", ANSI_COLOR_RESET, "Processed ", nOps * 1000000.0 / nTime, " million ops / second");
+    }
+
+
+    {
+        //Operation stream
+        Stream ssOperation;
+        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(99) << uint8_t(OP::INC) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(100);
+
+        //Total Operations
+        uint32_t nOps = 4;
+
+        //Benchmark of 1 million executions
+        runtime::timer bench;
+        bench.Reset();
+        {
+            Validate script = Validate(ssOperation, tx);
+            for(int i = 0; i < 1000000; i++)
+            {
+                REQUIRE(script.Execute());
+                script.Reset();
+            }
+        }
+
+        //time output
+        uint64_t nTime = bench.ElapsedMicroseconds();
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "INC::", ANSI_COLOR_RESET, "Processed ", nOps * 1000000.0 / nTime, " million ops / second");
+    }
+
+
+    {
+        //Operation stream
+        Stream ssOperation;
+        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(99) << uint8_t(OP::DEC) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(98);
+
+        //Total Operations
+        uint32_t nOps = 4;
+
+        //Benchmark of 1 million executions
+        runtime::timer bench;
+        bench.Reset();
+        {
+            Validate script = Validate(ssOperation, tx);
+            for(int i = 0; i < 1000000; i++)
+            {
+                REQUIRE(script.Execute());
+                script.Reset();
+            }
+        }
+
+        //time output
+        uint64_t nTime = bench.ElapsedMicroseconds();
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "DEC::", ANSI_COLOR_RESET, "Processed ", nOps * 1000000.0 / nTime, " million ops / second");
+    }
+
+
+    {
+        //Operation stream
+        Stream ssOperation;
+        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(99) << uint8_t(OP::DIV) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(3) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(33);
+
+        //Total Operations
+        uint32_t nOps = 5;
+
+        //Benchmark of 1 million executions
+        runtime::timer bench;
+        bench.Reset();
+        {
+            Validate script = Validate(ssOperation, tx);
+            for(int i = 0; i < 1000000; i++)
+            {
+                REQUIRE(script.Execute());
+                script.Reset();
+            }
+        }
+
+        //time output
+        uint64_t nTime = bench.ElapsedMicroseconds();
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "DIV::", ANSI_COLOR_RESET, "Processed ", nOps * 1000000.0 / nTime, " million ops / second");
+    }
+
+
+    {
+        //Operation stream
+        Stream ssOperation;
+        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(100) << uint8_t(OP::MOD) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(3) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(1);
+
+        //Total Operations
+        uint32_t nOps = 5;
+
+        //Benchmark of 1 million executions
+        runtime::timer bench;
+        bench.Reset();
+        {
+            Validate script = Validate(ssOperation, tx);
+            for(int i = 0; i < 1000000; i++)
+            {
+                REQUIRE(script.Execute());
+                script.Reset();
+            }
+        }
+
+        //time output
+        uint64_t nTime = bench.ElapsedMicroseconds();
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "MOD::", ANSI_COLOR_RESET, "Processed ", nOps * 1000000.0 / nTime, " million ops / second");
+    }
+
+
+
+    {
+        //Operation stream
+        Stream ssOperation;
+        ssOperation << uint8_t(OP::TYPES::STRING) << std::string("This is data to parse") << uint8_t(OP::SUBDATA) << uint16_t(5) << uint16_t(7) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::STRING) << std::string("is data");
+
+        //Total Operations
+        uint32_t nOps = 4;
+
+        //Benchmark of 1 million executions
+        runtime::timer bench;
+        bench.Reset();
+        {
+            Validate script = Validate(ssOperation, tx);
+            for(int i = 0; i < 1000000; i++)
+            {
+                REQUIRE(script.Execute());
+                script.Reset();
+            }
+        }
+
+        //time output
+        uint64_t nTime = bench.ElapsedMicroseconds();
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "SUBDATA::", ANSI_COLOR_RESET, "Processed ", nOps * 1000000.0 / nTime, " million ops / second");
+    }
+
+
+    {
+        //Operation stream
+        Stream ssOperation;
+        ssOperation << uint8_t(OP::GLOBAL::UNIFIED) << uint8_t(OP::EQUALS) << uint8_t(OP::GLOBAL::UNIFIED);
+
+        //Total Operations
+        uint32_t nOps = 3;
+
+        //Benchmark of 1 million executions
+        runtime::timer bench;
+        bench.Reset();
+        {
+            Validate script = Validate(ssOperation, tx);
+            for(int i = 0; i < 1000000; i++)
+            {
+                REQUIRE(script.Execute());
+                script.Reset();
+            }
+        }
+
+        //time output
+        uint64_t nTime = bench.ElapsedMicroseconds();
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "UNIFIED::", ANSI_COLOR_RESET, "Processed ", nOps * 1000000.0 / nTime, " million ops / second");
+    }
+
 }
