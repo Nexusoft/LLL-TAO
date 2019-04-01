@@ -33,10 +33,12 @@ namespace TAO
             bool fParsed = false;
 
             Object()
+            : State()
+            , vchMethods()
+            , vchSystem()
+            , mapData()
             {
             }
-
-
 
             uint8_t type(const uint8_t n) const
             {
@@ -83,12 +85,12 @@ namespace TAO
                 return TYPES::BYTES;
             }
 
-
             template<typename Type>
-            uint8_t type(const Type& n)
+            uint8_t type(const Type& n) const
             {
                 return TYPES::UNSUPPORTED;
             }
+
 
             bool Parse()
             {
@@ -99,10 +101,8 @@ namespace TAO
                     std::string name;
                     *this >> name;
 
-                    //if(mapData.count(name))
-                    //    return debug::error(FUNCTION, "duplicate value entries");
-
-                    //debug::log(0, "Name ", name);
+                    if(mapData.count(name))
+                        return debug::error(FUNCTION, "duplicate value entries");
 
                     uint8_t op;
                     *this >> op;
