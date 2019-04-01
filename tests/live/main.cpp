@@ -23,7 +23,6 @@ namespace TAO
     {
         class Object : public State
         {
-
         public:
             std::vector<uint8_t> vchMethods; //methods for object register
 
@@ -59,24 +58,29 @@ namespace TAO
                 return TYPES::UINT64_T;
             }
 
-            uint8_t type(const uint256_t& n)
+            uint8_t type(const uint256_t& n) const
             {
                 return TYPES::UINT256_T;
             }
 
-            uint8_t type(const uint512_t& n)
+            uint8_t type(const uint512_t& n) const
             {
                 return TYPES::UINT512_T;
             }
 
-            uint8_t type(const uint1024_t& n)
+            uint8_t type(const uint1024_t& n) const
             {
                 return TYPES::UINT1024_T;
             }
 
-            uint8_t type(const std::string& n)
+            uint8_t type(const std::string& n) const
             {
                 return TYPES::STRING;
+            }
+
+            uint8_t type(const std::vector<uint8_t>& n) const
+            {
+                return TYPES::BYTES;
             }
 
 
