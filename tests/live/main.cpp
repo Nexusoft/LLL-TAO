@@ -17,332 +17,321 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/stream.h>
 
-class Object : public TAO::Register::State
+namespace TAO
 {
-
-public:
-    std::vector<uint8_t> vchMethods; //methods for object register
-
-    std::vector<uint8_t> vchSystem; //system level memory in object register
-
-    mutable std::map< std::string, std::pair<uint16_t, bool> > mapData; //internal map for data members
-
-    bool fParsed = false;
-
-    Object()
+    namespace Register
     {
-    }
-
-
-
-    uint8_t type(const uint8_t n)
-    {
-        using namespace TAO::Register;
-        return TYPES::UINT8_T;
-    }
-
-    uint8_t type(const uint16_t n)
-    {
-        using namespace TAO::Register;
-        return TYPES::UINT16_T;
-    }
-
-    uint8_t type(const uint32_t n)
-    {
-        using namespace TAO::Register;
-        return TYPES::UINT32_T;
-    }
-
-    uint8_t type(const uint64_t& n)
-    {
-        using namespace TAO::Register;
-        return TYPES::UINT64_T;
-    }
-
-    uint8_t type(const uint256_t& n)
-    {
-        using namespace TAO::Register;
-        return TYPES::UINT256_T;
-    }
-
-    uint8_t type(const uint512_t& n)
-    {
-        using namespace TAO::Register;
-        return TYPES::UINT512_T;
-    }
-
-    uint8_t type(const uint1024_t& n)
-    {
-        using namespace TAO::Register;
-        return TYPES::UINT1024_T;
-    }
-
-    uint8_t type(const std::string& n)
-    {
-        using namespace TAO::Register;
-        return TYPES::STRING;
-    }
-
-
-    template<typename Type>
-    uint8_t type(const Type& n)
-    {
-        using namespace TAO::Register;
-        return TYPES::UNSUPPORTED;
-    }
-
-    bool Parse()
-    {
-        using namespace TAO::Register;
-
-        nReadPos   = 0;
-
-        while(!end())
+        class Object : public State
         {
-            std::string name;
-            *this >> name;
 
-            //if(mapData.count(name))
-            //    return debug::error(FUNCTION, "duplicate value entries");
+        public:
+            std::vector<uint8_t> vchMethods; //methods for object register
 
-            //debug::log(0, "Name ", name);
+            std::vector<uint8_t> vchSystem; //system level memory in object register
 
-            uint8_t op;
-            *this >> op;
+            mutable std::map< std::string, std::pair<uint16_t, bool> > mapData; //internal map for data members
 
-            bool fMutable = false;
-            if(op == TYPES::MUTABLE)
+            bool fParsed = false;
+
+            Object()
             {
-                fMutable = true;
-
-                *this >> op;
             }
 
-            switch(op)
+
+
+            uint8_t type(const uint8_t n) const
             {
+                return TYPES::UINT8_T;
+            }
 
-                case TYPES::UINT8_T:
+            uint8_t type(const uint16_t n) const
+            {
+                return TYPES::UINT16_T;
+            }
+
+            uint8_t type(const uint32_t n) const
+            {
+                return TYPES::UINT32_T;
+            }
+
+            uint8_t type(const uint64_t& n) const
+            {
+                return TYPES::UINT64_T;
+            }
+
+            uint8_t type(const uint256_t& n)
+            {
+                return TYPES::UINT256_T;
+            }
+
+            uint8_t type(const uint512_t& n)
+            {
+                return TYPES::UINT512_T;
+            }
+
+            uint8_t type(const uint1024_t& n)
+            {
+                return TYPES::UINT1024_T;
+            }
+
+            uint8_t type(const std::string& n)
+            {
+                return TYPES::STRING;
+            }
+
+
+            template<typename Type>
+            uint8_t type(const Type& n)
+            {
+                return TYPES::UNSUPPORTED;
+            }
+
+            bool Parse()
+            {
+                nReadPos   = 0;
+
+                while(!end())
                 {
-                    mapData[name] = std::make_pair(--nReadPos, fMutable);
+                    std::string name;
+                    *this >> name;
 
-                    nReadPos += 2;
+                    //if(mapData.count(name))
+                    //    return debug::error(FUNCTION, "duplicate value entries");
 
-                    break;
+                    //debug::log(0, "Name ", name);
+
+                    uint8_t op;
+                    *this >> op;
+
+                    bool fMutable = false;
+                    if(op == TYPES::MUTABLE)
+                    {
+                        fMutable = true;
+
+                        *this >> op;
+                    }
+
+                    switch(op)
+                    {
+
+                        case TYPES::UINT8_T:
+                        {
+                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+
+                            nReadPos += 2;
+
+                            break;
+                        }
+
+
+                        case TYPES::UINT16_T:
+                        {
+                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+
+                            nReadPos += 3;
+
+                            break;
+                        }
+
+
+                        case TYPES::UINT32_T:
+                        {
+                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+
+                            nReadPos += 5;
+
+                            break;
+                        }
+
+
+                        case TYPES::UINT64_T:
+                        {
+                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+
+                            nReadPos += 9;
+
+                            break;
+                        }
+
+
+                        case TYPES::UINT256_T:
+                        {
+                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+
+                            nReadPos += 33;
+
+                            break;
+                        }
+
+
+                        case TYPES::UINT512_T:
+                        {
+                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+
+                            nReadPos += 65;
+
+                            break;
+                        }
+
+
+                        case TYPES::UINT1024_T:
+                        {
+                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+
+                            nReadPos += 129;
+
+                            break;
+                        }
+
+
+                        case TYPES::STRING:
+                        {
+                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+
+                            ++nReadPos;
+                            uint64_t nSize = ReadCompactSize(*this);
+
+                            nReadPos += nSize;
+
+                            break;
+                        }
+
+
+
+                        //fail on object registers with unknown types
+                        default:
+                            return false;
+                    }
                 }
 
+                //(std::string) (OP::TYPE) (DATA)
 
-                case TYPES::UINT16_T:
-                {
-                    mapData[name] = std::make_pair(--nReadPos, fMutable);
+                fParsed = true;
 
-                    nReadPos += 3;
+                return true;
+            }
 
-                    break;
-                }
-
-
-                case TYPES::UINT32_T:
-                {
-                    mapData[name] = std::make_pair(--nReadPos, fMutable);
-
-                    nReadPos += 5;
-
-                    break;
-                }
-
-
-                case TYPES::UINT64_T:
-                {
-                    mapData[name] = std::make_pair(--nReadPos, fMutable);
-
-                    nReadPos += 9;
-
-                    break;
-                }
-
-
-                case TYPES::UINT256_T:
-                {
-                    mapData[name] = std::make_pair(--nReadPos, fMutable);
-
-                    nReadPos += 33;
-
-                    break;
-                }
-
-
-                case TYPES::UINT512_T:
-                {
-                    mapData[name] = std::make_pair(--nReadPos, fMutable);
-
-                    nReadPos += 65;
-
-                    break;
-                }
-
-
-                case TYPES::UINT1024_T:
-                {
-                    mapData[name] = std::make_pair(--nReadPos, fMutable);
-
-                    nReadPos += 129;
-
-                    break;
-                }
-
-
-                case TYPES::STRING:
-                {
-                    mapData[name] = std::make_pair(--nReadPos, fMutable);
-
-                    ++nReadPos;
-                    uint64_t nSize = ReadCompactSize(*this);
-
-                    nReadPos += nSize;
-
-                    break;
-                }
-
-
-
-                //fail on object registers with unknown types
-                default:
+            template<typename Type>
+            bool GetValue(const std::string& str, Type& value)
+            {
+                if(!fParsed)
                     return false;
+
+                if(!mapData.count(str))
+                    return false;
+
+                nReadPos = mapData[str].first;
+
+                uint8_t nType;
+                *this >> nType;
+
+                if(nType == TYPES::UNSUPPORTED)
+                    return debug::error(FUNCTION, "unsupported type");
+
+                if(type(value) != nType)
+                    return debug::error(FUNCTION, "type mismatch");
+
+                *this >> value;
+
+                return true;
             }
-        }
 
-        //(std::string) (OP::TYPE) (DATA)
 
-        fParsed = true;
+            bool GetValue(const std::string& str, std::string& value)
+            {
+                if(!fParsed)
+                    return false;
 
-        return true;
+                if(!mapData.count(str))
+                    return false;
+
+                nReadPos = mapData[str].first;
+
+                uint8_t nType;
+                *this >> nType;
+
+                if(nType != TYPES::STRING)
+                    return debug::error("INVALID STRING TYPE");
+
+                *this >> value;
+
+                return true;
+            }
+
+
+            template<typename Type>
+            bool SetValue(const std::string& str, const Type& value)
+            {
+                if(!fParsed)
+                    return false;
+
+                if(!mapData.count(str))
+                    return false;
+
+                //if(type(value) == TYPES::UNSUPPORTED)
+                //    return debug::error(FUNCTION, "unsupported type");
+                if(!mapData[str].second)
+                    return debug::error(FUNCTION, "cannot set value for READONLY data member");
+
+                nReadPos = mapData[str].first;
+
+                uint8_t nType;
+                *this >> nType;
+
+                if(nType == TYPES::UNSUPPORTED)
+                    return debug::error(FUNCTION, "unsupported type");
+
+                if(type(value) != nType)
+                    return debug::error(FUNCTION, "type mismatch");
+
+                //TODO: check expected sizes
+                if(nReadPos + sizeof(value) >= vchState.size())
+                    return debug::error(FUNCTION, "performing an over-write");
+
+                /* Copy the bytes into tmp object. */
+                std::copy((uint8_t*)&value, (uint8_t*)&value + sizeof(value), (uint8_t*)&vchState[nReadPos]);
+
+                return true;
+            }
+
+
+            bool SetValue(const std::string& str, const std::string& value)
+            {
+                if(!fParsed)
+                    return false;
+
+                if(!mapData.count(str))
+                    return false;
+
+                if(!mapData[str].second)
+                    return debug::error(FUNCTION, "cannot set value for READONLY data member");
+
+                nReadPos = mapData[str].first;
+
+                uint8_t nType;
+                *this >> nType;
+
+                if(nType != TYPES::STRING)
+                    return debug::error("INVALID STRING TYPE");
+
+                //TODO: check expected sizes
+                uint64_t nSize = ReadCompactSize(*this);
+                if(nSize != value.size())
+                    return debug::error("INVALID STRING SIZES ", nSize, "::", value.size());
+
+                if(nReadPos + nSize >= vchState.size())
+                    return debug::error(FUNCTION, "performing an over-write");
+
+                /* Copy the bytes into tmp object. */
+                std::copy((uint8_t*)&value[0], (uint8_t*)&value[0] + value.size(), (uint8_t*)&vchState[nReadPos]);
+
+                return true;
+            }
+        };
     }
-
-    template<typename Type>
-    bool GetValue(const std::string& str, Type& value)
-    {
-        if(!fParsed)
-            return false;
-
-        using namespace TAO::Register;
-
-        if(!mapData.count(str))
-            return false;
-
-        nReadPos = mapData[str].first;
-
-        uint8_t nType;
-        *this >> nType;
-
-        if(nType == TYPES::UNSUPPORTED)
-            return debug::error(FUNCTION, "unsupported type");
-
-        if(type(value) != nType)
-            return debug::error(FUNCTION, "type mismatch");
-
-        *this >> value;
-
-        return true;
-    }
+}
 
 
-    bool GetValue(const std::string& str, std::string& value)
-    {
-        if(!fParsed)
-            return false;
-
-        using namespace TAO::Register;
-
-        if(!mapData.count(str))
-            return false;
-
-        nReadPos = mapData[str].first;
-
-        uint8_t nType;
-        *this >> nType;
-
-        if(nType != TYPES::STRING)
-            return debug::error("INVALID STRING TYPE");
-
-        *this >> value;
-
-        return true;
-    }
-
-
-    template<typename Type>
-    bool SetValue(const std::string& str, const Type& value)
-    {
-        if(!fParsed)
-            return false;
-
-        using namespace TAO::Register;
-
-        if(!mapData.count(str))
-            return false;
-
-        //if(type(value) == TYPES::UNSUPPORTED)
-        //    return debug::error(FUNCTION, "unsupported type");
-        if(!mapData[str].second)
-            return debug::error(FUNCTION, "cannot set value for READONLY data member");
-
-        nReadPos = mapData[str].first;
-
-        uint8_t nType;
-        *this >> nType;
-
-        if(nType == TYPES::UNSUPPORTED)
-            return debug::error(FUNCTION, "unsupported type");
-
-        if(type(value) != nType)
-            return debug::error(FUNCTION, "type mismatch");
-
-        //TODO: check expected sizes
-        if(nReadPos + sizeof(value) >= vchState.size())
-            return debug::error(FUNCTION, "performing an over-write");
-
-        /* Copy the bytes into tmp object. */
-        std::copy((uint8_t*)&value, (uint8_t*)&value + sizeof(value), (uint8_t*)&vchState[nReadPos]);
-
-        return true;
-    }
-
-
-    bool SetValue(const std::string& str, const std::string& value)
-    {
-        if(!fParsed)
-            return false;
-
-        using namespace TAO::Register;
-
-        if(!mapData.count(str))
-            return false;
-
-        if(!mapData[str].second)
-            return debug::error(FUNCTION, "cannot set value for READONLY data member");
-
-        nReadPos = mapData[str].first;
-
-        uint8_t nType;
-        *this >> nType;
-
-        if(nType != TYPES::STRING)
-            return debug::error("INVALID STRING TYPE");
-
-        //TODO: check expected sizes
-        uint64_t nSize = ReadCompactSize(*this);
-        if(nSize != value.size())
-            return debug::error("INVALID STRING SIZES ", nSize, "::", value.size());
-
-        if(nReadPos + nSize >= vchState.size())
-            return debug::error(FUNCTION, "performing an over-write");
-
-        /* Copy the bytes into tmp object. */
-        std::copy((uint8_t*)&value[0], (uint8_t*)&value[0] + value.size(), (uint8_t*)&vchState[nReadPos]);
-
-        return true;
-    }
-};
 
 //This main function is for prototyping new code
 //It is accessed by compiling with LIVE_TESTS=1
