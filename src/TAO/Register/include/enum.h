@@ -53,6 +53,30 @@ namespace TAO
         };
 
 
+        /** Object register data types. **/
+        struct TYPES
+        {
+            enum
+            {
+                UNSUPPORTED = 0x00,
+
+                //RESERVED to 0x7f
+                UINT8_T     = 0x01,
+                UINT16_T    = 0x02,
+                UINT32_T    = 0x03,
+                UINT64_T    = 0x04,
+                UINT256_T   = 0x05,
+                UINT512_T   = 0x06,
+                UINT1024_T  = 0x07,
+                STRING      = 0x08,
+                BYTES       = 0x09,
+
+                //by default everything is read-only
+                MUTABLE     = 0xff
+            };
+        };
+
+
         /** STATES
          *
          *  The states for the register script in transaction.

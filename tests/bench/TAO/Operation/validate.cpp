@@ -25,9 +25,13 @@
 
 #include <unit/catch2/catch.hpp>
 
+#include <Legacy/types/script.h>
+#include <Legacy/include/enum.h>
+#include <Legacy/types/transaction.h>
+#include <Legacy/include/evaluate.h>
 
 
-TEST_CASE( "Validation Script Operation Benchmarks", "[validation]" )
+TEST_CASE( "Validation Script Benchmarks", "[validation]" )
 {
     using namespace TAO::Operation;
 
