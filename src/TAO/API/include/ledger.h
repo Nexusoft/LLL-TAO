@@ -123,6 +123,19 @@ namespace TAO
              **/
             json::json Transaction(const json::json& params, bool fHelp);
 
+            
+            /** MiningInfo
+            *
+            *  Returns an object containing mining-related information
+            *
+            *  @param[in] params The parameters from the API call.
+            *  @param[in] fHelp Trigger for help data.
+            *
+            *  @return The return object in JSON.
+            *
+            **/
+            json::json MiningInfo(const json::json& params, bool fHelp);
+
         };
 
         extern Ledger ledger;
