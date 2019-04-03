@@ -353,3 +353,66 @@ Output parameter description:
     Description of the opcodes included in the transaction
 
 ```
+
+
+### MiningInfo
+
+Retrieves mining related data for the ledger.
+
+```
+<method>:
+    /ledger/mininginfo
+
+
+```
+
+Return value JSON object:
+```    
+{
+    "blocks": 20267,
+    "timestamp": 1554269575,
+    "stakeDifficulty": 0.0,
+    "primeDifficulty": 3.8210223,
+    "hashDifficulty": 0.0,
+    "primeReserve": 21852246.988376,
+    "hashReserve": 0.0,
+    "primeValue": 74.893038,
+    "hashValue": 1.0,
+    "pooledtx": 0,
+    "primesPerSecond": 6764,
+    "hashPerSecond": 0,
+    "totalConnections": 0
+}
+
+    
+
+Output parameter description:
+
+<blocks>
+    The current block height
+<timestamp>
+    Unix timestamp of the last block
+<stakeDifficulty>
+    The current difficulty of the stake channel
+<primeDifficulty>
+    The current difficulty of the prime channel
+<hashDifficulty>
+    The current difficulty of the hash channel
+<primeReserve>
+    The amount of NXS in the reserve balance for the prime channel
+<hashReserve>
+    The amount of NXS in the reserve balance for the hash channel
+<primeValue>
+    The block reward for the next prime block to be found
+<hashValue>
+    The block reward for the next hash block to be found
+<pooledtx>
+    The number of transactions currently in the mem pool
+<primesPerSecond>
+    Average number of primes per second currently being calculated by the whole network
+<hashPerSecond>
+    Average number of hashes per second currently being calculated by the whole network
+<totalConnections>
+    Number of connections to the mining LLP of this node
+```
+
