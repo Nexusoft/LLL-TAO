@@ -62,6 +62,7 @@ namespace debug
     static FILE* fileout = nullptr;
     std::mutex DEBUG_MUTEX;
     std::ofstream ssFile;
+    thread_local std::string strLastError;
 
 
     std::string rfc1123Time()

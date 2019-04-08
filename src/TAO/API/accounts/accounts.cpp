@@ -99,7 +99,7 @@ namespace TAO
                 if( config::fAPISessions)
                     throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
                 else
-                    throw APIException(-1, "User not logged in.");
+                    throw APIException(-1, "User not logged in");
             }
 
             return mapSessions[nSessionToUse]->Generate(nKey, strSecret);
@@ -119,7 +119,7 @@ namespace TAO
                 if( config::fAPISessions)
                     throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
                 else
-                    throw APIException(-1, "User not logged in.");
+                    throw APIException(-1, "User not logged in");
             }
 
             return mapSessions[nSessionToUse]->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.

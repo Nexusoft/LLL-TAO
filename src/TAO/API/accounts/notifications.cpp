@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/hex.h>
+#include <Util/include/debug.h>
 
 /* Global TAO namespace. */
 namespace TAO

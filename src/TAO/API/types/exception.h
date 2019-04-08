@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #pragma once
 
 #include <Util/include/json.h>
+#include <Util/include/debug.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -53,7 +54,15 @@ namespace TAO
             {
                 json::json jsonError;
                 jsonError["code"] = id;
-                jsonError["message"] = std::string(what());
+
+                std::string strMessage = std::string(what()); 
+
+                /* If a global error message has been logged via debug::error then include this in the JSON*/
+                if( !debug::strLastError.empty())
+                    strMessage += ". " + debug::strLastError;
+
+                jsonError["message"] = strMessage; 
+
                 return jsonError;
             }
 
