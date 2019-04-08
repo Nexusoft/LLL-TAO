@@ -92,6 +92,16 @@ namespace TAO
             /** The default constructor. **/
             TritiumBlock();
 
+
+            /** Copy constructor from base block. **/
+            TritiumBlock(const Block& block)
+            : Block(block)
+            , producer()
+            , vtx(0)
+            {
+
+            }
+
             /** Copy Constructor. **/
             TritiumBlock(const TritiumBlock& block);
 

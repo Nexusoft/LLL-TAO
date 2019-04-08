@@ -223,7 +223,7 @@ namespace LLP
                 try
                 {
                     /* Set the proper POLLIN flags. */
-                    POLLFDS.at(nIndex).events = POLLIN | POLLRDHUP;
+                    POLLFDS.at(nIndex).events = POLLIN;// | POLLRDHUP;
 
                     /* Set to invalid socket if connection is inactive. */
                     if(!CONNECTIONS->at(nIndex))
@@ -265,7 +265,7 @@ namespace LLP
                     /* Disconnect if there was a polling error */
                     if((POLLFDS.at(nIndex).revents & POLLERR)
                     || (POLLFDS.at(nIndex).revents & POLLNVAL)
-                    || (POLLFDS.at(nIndex).revents & POLLRDHUP)
+                    //|| (POLLFDS.at(nIndex).revents & POLLRDHUP)
                     || (POLLFDS.at(nIndex).revents & POLLHUP))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);

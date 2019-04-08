@@ -159,6 +159,10 @@ namespace TAO
             uint256_t hashTo;
             txSpend.ssOperation >> hashTo;
 
+            /* Read the account to state. */
+            if(!LLD::regDB->ReadState(hashTo, state))
+                return debug::error(FUNCTION, "couldn't read debit to address");
+
             /* Credits specific to account objects. */
             if(state.nType == TAO::Register::OBJECT::ACCOUNT)
             {

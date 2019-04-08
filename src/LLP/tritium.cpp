@@ -206,7 +206,7 @@ namespace LLP
                 }
 
                 /* Unreliabilitiy re-requesting (max time since getblocks) */
-                if(config::GetBoolArg("-fastsync")
+                if(config::GetBoolArg("-fastsync", true)
                 && TAO::Ledger::ChainState::Synchronizing()
                 && addrFastSync == GetAddress()
                 && nLastTimeReceived.load() + 10 < runtime::timestamp()
@@ -567,7 +567,7 @@ namespace LLP
                 }
 
                 /* Fast sync mode. */
-                if(config::GetBoolArg("-fastsync")
+                if(config::GetBoolArg("-fastsync", true)
                 && addrFastSync == GetAddress()
                 && TAO::Ledger::ChainState::Synchronizing()
                 && (vInv.back().GetType() == MSG_BLOCK_LEGACY || vInv.back().GetType() == MSG_BLOCK_TRITIUM )
@@ -592,14 +592,13 @@ namespace LLP
                         if(inv.GetType() == MSG_BLOCK_LEGACY || inv.GetType() == MSG_BLOCK_TRITIUM)
                         {
                             /* Check the LLD for block. */
-                            if(!cacheInventory.Has(inv.GetHash())
-                            && !LLD::legDB->HasBlock(inv.GetHash()))
+                            if(!LLD::legDB->HasBlock(inv.GetHash()))
                             {
                                 /* Add this item to request queue. */
                                 vGet.push_back(inv);
 
                                 /* Add this item to cached relay inventory (key only). */
-                                cacheInventory.Add(inv.GetHash());
+                                //cacheInventory.Add(inv.GetHash());
                             }
                             else
                                 break; //break since iterating backwards (searching newest to oldest)
@@ -607,14 +606,13 @@ namespace LLP
                         }
 
                         /* Check the memory pool for transactions being relayed. */
-                        else if(!cacheInventory.Has(inv.GetHash().getuint512())
-                            && !TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
+                        else if(!TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
                         {
                             /* Add this item to request queue. */
                             vGet.push_back(inv);
 
                             /* Add this item to cached relay inventory (key only). */
-                            cacheInventory.Add(inv.GetHash().getuint512());
+                            //cacheInventory.Add(inv.GetHash().getuint512());
                         }
                     }
 
@@ -1015,7 +1013,7 @@ namespace LLP
             /* Fast sync block requests. */
             if(!TAO::Ledger::ChainState::Synchronizing())
                 pnode->PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-            else if(!config::GetBoolArg("-fastsync"))
+            else if(!config::GetBoolArg("-fastsync", true))
             {
                 /* Switch to a new node. */
                 SwitchNode();
@@ -1068,7 +1066,7 @@ namespace LLP
             {
 
                 /* Fast Sync node switch. */
-                if(config::GetBoolArg("-fastsync")
+                if(config::GetBoolArg("-fastsync", true)
                 && TAO::Ledger::ChainState::Synchronizing())
                 {
                     /* Find a new fast sync node if too many failures. */

@@ -35,6 +35,9 @@ namespace LLP
      **/
     class LegacyAddress : public BaseAddress
     {
+        /* Tell compiler we are overloading Print. */
+        using BaseAddress::Print;
+
     public:
 
         /* Default constructor */

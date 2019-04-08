@@ -153,7 +153,7 @@ ifdef ENABLE_DEBUG
 	DEBUG+=-g
 	OPTIMIZATION+=-Og
 else
-	DEBUG+=-s
+	#DEBUG+=-s
 	OPTIMIZATION+=-O3
 endif
 
@@ -173,6 +173,8 @@ HEADERS= $(wildcard *.h)
 ifdef LIVE_TESTS
 	OBJS = build/Tests_main.o \
 	       build/Tests_testvm.o \
+		   build/Tests_block.o \
+		   build/Tests_sigchain.o \
 		   build/Tests_validate.o
 else
 	OBJS = build/main.o

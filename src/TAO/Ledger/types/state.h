@@ -40,6 +40,9 @@ namespace TAO
          **/
         class BlockState : public Block
         {
+            /* Tell compiler we are overloading this virtual method. */
+            using Block::ToString;
+
         public:
             static std::mutex STATE_MUTEX;
 

@@ -100,6 +100,7 @@ namespace LLP
              We need to drop into this for loop at least once to set the unique hash, but we will iterate
              indefinitely for the prime channel until the generated hash meets the min prime origins
              and is less than 1024 bits*/
+
          for(;;)
          {
 
@@ -110,12 +111,12 @@ namespace LLP
              /* Update the time. */
              pBlock->UpdateTime();
 
+             /* Get the proof hash. */
+             hashProof = pBlock->ProofHash();
+
              /* Skip if not prime channel or version less than 5. */
              if(nChannel != 1 || pBlock->nVersion < 5)
                  break;
-
-            /* Get the proof hash. */
-             hashProof = pBlock->ProofHash();
 
              /* Exit loop when the block is above minimum prime origins and less than
                  1024-bit hashes */

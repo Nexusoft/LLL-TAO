@@ -133,6 +133,21 @@ namespace LLD
         }
 
 
+        /** EraseIdentifier
+         *
+         *  Erase a token identifier to the register database.
+         *
+         *  @param[in] nIdentifier The token identifier.
+         *
+         *  @return True if write was successful, false otherwise.
+         *
+         **/
+        bool EraseIdentifier(const uint32_t nIdentifier)
+        {
+            return Erase(std::make_pair(std::string("token"), nIdentifier));
+        }
+
+
         /** ReadIdentifier
          *
          *  Read a token identifier from the register database.
