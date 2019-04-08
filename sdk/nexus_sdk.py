@@ -351,7 +351,7 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_tokens_get_account_by_address(self, token_accoun_address):
+    def nexus_tokens_get_account_by_address(self, token_account_address):
         parms = "?address={}&type=account".format(token_account_address)
         url = tokens_url.format("get") + parms
         json_data = self.__get(url)
@@ -403,9 +403,8 @@ class sdk_init():
         #
         # Argument from_address is a token account address.
         #
-        parms = ("?pin={}&session={}&address={}&txid={}&amount={}" + \
-            "&address_to={}").format(self.pin, self.session_id,
-            token_address, txid, amount, from_address)
+        parms = ("?pin={}&session={}&txid={}&amount={}&address_to={}"). \
+            format(self.pin, self.session_id, txid, amount, to_address)
         url = tokens_url.format("credit") + parms
         json_data = self.__get(url)
         return(json_data)

@@ -332,7 +332,8 @@ def assets(primer1, primer2):
     if (json.has_key("error") == False):
         owner = json["result"]["owner"]
         state = json["result"]["metadata"]
-        msg = "stored metadata '{}', owner {}".format(state, short_genid(owner))
+        msg = "stored metadata '{}', owner {}".format(state,
+            short_genid(owner))
         print "asset already exists, {}".format(msg)
     else:    
         json = primer1.nexus_assets_create(asset_name, asset_data)
@@ -358,7 +359,8 @@ def assets(primer1, primer2):
         if (json.has_key("result") and json["result"] != None):
             owner = json["result"]["owner"]
             state = json["result"]["metadata"]
-            msg = "stored metadata '{}', owner {}".format(state, short_genid(owner))
+            msg = "stored metadata '{}', owner {}".format(state,
+                short_genid(owner))
         #endif    
         api_print(json, msg)
     #endif
@@ -422,8 +424,8 @@ def tokens(primer1, primer2):
     # Call API tokens/create for a token. Token-ID will be 1.
     #
     token_name = "primer-token"
-    address = None
-    print "Create Token '{}', supply {} ...".format(token_name, 10000).ljust(width),
+    print "Create Token '{}', supply {} ...".format(token_name, 10000). \
+        ljust(width),
     create_token(primer1, token_name, True)
     print "Create Token Account '{}' ...".format("primer1").ljust(width),
     create_token(primer1, "primer1", False)
@@ -435,7 +437,8 @@ def tokens(primer1, primer2):
     #
     msg = None
     txid1 = None
-    print "Debit '{}' by 100 for 'primer1' ...".format(token_name).ljust(width),
+    print "Debit '{}' by 100 for 'primer1' ...".format(token_name). \
+        ljust(width),
     json = primer1.nexus_tokens_debit_by_name(token_name, "primer1", 100)
     if (json.has_key("result") and json["result"] != None):
         txid1 = json["result"]["txid"]
@@ -446,7 +449,8 @@ def tokens(primer1, primer2):
     
     msg = None
     txid2 = None
-    print "Debit '{}' by 200 for 'primer2' ...".format(token_name).ljust(width),
+    print "Debit '{}' by 200 for 'primer2' ...".format(token_name). \
+        ljust(width),
     json = primer1.nexus_tokens_debit_by_name(token_name, "primer2", 200)
     if (json.has_key("result") and json["result"] != None):
         txid2 = json["result"]["txid"]
@@ -456,8 +460,8 @@ def tokens(primer1, primer2):
     sleep()
     
     #
-    # Call API tokens/credit to credit eash token account with 100 and 200 tokens
-    # respectively.
+    # Call API tokens/credit to credit eash token account with 100 and 200
+    # tokens respectively.
     #
     msg = None
     print "Credit 100 to user 'primer1' ...".ljust(width),
@@ -507,10 +511,26 @@ primer2 = nexus_sdk.sdk_init("primer2", "primer-password", "1234")
 temp_primer = nexus_sdk.sdk_init("temp-primer", "primer-password", "1234")
 print "succeeded"
 
+asset = token = None
+
 if (do_accounts): accounts(primer1, primer2)
 if (do_supply): supply_chain(primer1, primer2)
 if (do_assets): assets(primer1, primer2)
 if (do_tokens): tokens(primer1, primer2)
+
+#
+# Tokenize asset 'primer-asset'.
+#
+msg = None
+print ""
+print "Tokenize 'primer-asset' ...",
+json = primer1.nexus_assets_tokenize_by_name("primer-asset", "primer-token")
+if (json.has_key("result") and json["result"] != None):
+    txid = json["result"]["txid"]
+    address= json["result"]["address"]
+    msg = "txid {}, address {}".format(txid, address)
+#endif
+api_print(json, msg)
 
 print ""
 print "All Done!"
