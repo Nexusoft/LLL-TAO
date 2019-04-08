@@ -2,12 +2,12 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) CnTypeyright The Nexus DevelnTypeers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
-            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+            file CnTypeYING or http://www.nTypeensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To the Voice of the People
+            "ad vocem pnTypeuli" - To the Voice of the PenTypele
 
 ____________________________________________________________________________________________*/
 
@@ -27,365 +27,496 @@ namespace TAO
     {
         class Object : public State
         {
-            //special system level memory for managing system states in protected portion of memory
+            /** Special system level memory for managing system states in protected portion of memory **/
             std::vector<uint8_t> vchSystem;
 
         public:
+
+            /** Internal map for managing object data members and their binary positions. **/
             mutable std::map< std::string, std::pair<uint16_t, bool> > mapData; //internal map for data members
+
 
             Object()
             : State()
+            , vchSystem(512, 0) //system memory by default is 512 bytes
             , mapData()
             {
             }
 
-            uint8_t type(const uint8_t n) const
-            {
-                return TYPES::UINT8_T;
-            }
-
-            uint8_t type(const uint16_t n) const
-            {
-                return TYPES::UINT16_T;
-            }
-
-            uint8_t type(const uint32_t n) const
-            {
-                return TYPES::UINT32_T;
-            }
-
-            uint8_t type(const uint64_t& n) const
-            {
-                return TYPES::UINT64_T;
-            }
-
-            uint8_t type(const uint256_t& n) const
-            {
-                return TYPES::UINT256_T;
-            }
-
-            uint8_t type(const uint512_t& n) const
-            {
-                return TYPES::UINT512_T;
-            }
-
-            uint8_t type(const uint1024_t& n) const
-            {
-                return TYPES::UINT1024_T;
-            }
-
-            uint8_t type(const std::string& n) const
-            {
-                return TYPES::STRING;
-            }
-
-            uint8_t type(const std::vector<uint8_t>& n) const
-            {
-                return TYPES::BYTES;
-            }
-
-            template<typename Type>
-            uint8_t type(const Type& n) const
-            {
-                return TYPES::UNSUPPORTED;
-            }
 
 
+            /** Parse
+             *
+             *  Parses out the data members of an object register.
+             *
+             **/
             bool Parse()
             {
+                /* Reset the read position. */
                 nReadPos   = 0;
 
-
-                std::string name;
+                /* Read until end of state. */
                 while(!end())
                 {
-
+                    /* Deserialize the named value. */
+                    std::string name;
                     *this >> name;
 
-                    //if(mapData.count(name))
-                    //    return debug::error(FUNCTION, "duplicate value entries");
+                    /* Disallow duplicate value entries. */
+                    if(mapData.count(name))
+                        return debug::error(FUNCTION, "duplicate value entries");
 
-                    uint8_t op;
-                    *this >> op;
+                    /* Deserialize the type. */
+                    uint8_t nType;
+                    *this >> nType;
 
+                    /* Mutable default: false (read only). */
                     bool fMutable = false;
-                    if(op == TYPES::MUTABLE)
+
+                    /* Check for mutable specifier. */
+                    if(nType == TYPES::MUTABLE)
                     {
+                        /* Set this type to be mutable. */
                         fMutable = true;
 
-                        *this >> op;
+                        /* If mutable found, deserialize the type. */
+                        *this >> nType;
                     }
 
-                    switch(op)
+                    /* Switch between supported types. */
+                    switch(nType)
                     {
 
+                        /* Standard type for C++ uint8_t. */
                         case TYPES::UINT8_T:
                         {
-                            //mapData[name] =
+                            /* Track the binary position of type. */
                             mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
+                            /* Iterate the types size plus type byte. */
                             nReadPos += 2;
 
                             break;
                         }
 
 
+                        /* Standard type for C++ uint16_t. */
                         case TYPES::UINT16_T:
                         {
-                            //mapData[name] =
+                            /* Track the binary position of type. */
                             mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
+                            /* Iterate the types size plus type byte. */
                             nReadPos += 3;
 
                             break;
                         }
 
 
+                        /* Standard type for C++ uint32_t. */
                         case TYPES::UINT32_T:
                         {
-                            //mapData[name] =
+                            /* Track the binary position of type. */
                             mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
+                            /* Iterate the types size plus type byte. */
                             nReadPos += 5;
 
                             break;
                         }
 
 
+                        /* Standard type for C++ uint64_t. */
                         case TYPES::UINT64_T:
                         {
-                            //mapData[name] =
+                            /* Track the binary position of type. */
                             mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
+                            /* Iterate the types size plus type byte. */
                             nReadPos += 9;
 
                             break;
                         }
 
 
+                        /* Standard type for Custom uint256_t */
                         case TYPES::UINT256_T:
                         {
-                            //mapData[name] =
+                            /* Track the binary position of type. */
                             mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
+                            /* Iterate the types size plus type byte. */
                             nReadPos += 33;
 
                             break;
                         }
 
 
+                        /* Standard type for Custom uint512_t */
                         case TYPES::UINT512_T:
                         {
-                            //mapData[name] =
+                            /* Track the binary position of type. */
                             mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
+                            /* Iterate the types size plus type byte. */
                             nReadPos += 65;
 
                             break;
                         }
 
 
+                        /* Standard type for Custom uint1024_t */
                         case TYPES::UINT1024_T:
                         {
-                            //mapData[name] =
+                            /* Track the binary position of type. */
                             mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
+                            /* Iterate the types size plus type byte. */
                             nReadPos += 129;
 
                             break;
                         }
 
 
+                        /* Standard type for STL string */
                         case TYPES::STRING:
                         {
+                            /* Track the binary position of type. */
                             mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
+                            /* Iterate to start of size. */
                             ++nReadPos;
+
+                            /* Find the serialized size of type. */
                             uint64_t nSize = ReadCompactSize(*this);
 
+                            /* Iterate the type size */
                             nReadPos += nSize;
 
                             break;
                         }
 
 
+                        /* Standard type for STL vector with C++ type uint8_t */
                         case TYPES::BYTES:
                         {
+                            /* Track the binary position of type. */
                             mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
+                            /* Iterate to start of size. */
                             ++nReadPos;
+
+                            /* Find the serialized size of type. */
                             uint64_t nSize = ReadCompactSize(*this);
 
+                            /* Iterate the type size */
                             nReadPos += nSize;
 
                             break;
                         }
 
 
-
-                        //fail on object registers with unknown types
+                        /* Fail if types are unknown. */
                         default:
                             return false;
                     }
                 }
 
-                //(std::string) (OP::TYPE) (DATA)
-
                 return true;
             }
 
+
+            /** Read
+             *
+             *  Read a value form the object register.
+             *
+             *  @param[in] strName The name of the value to read
+             *  @param[in] vData The data to read from the object.
+             *
+             *  @return True if the read was successful.
+             *
+             **/
             template<typename Type>
-            bool GetValue(const std::string& str, Type& value)
+            bool Read(const std::string& strName, Type& value)
             {
-                if(!mapData.count(str))
+                /* Check that the name exists in the object. */
+                if(!mapData.count(strName))
                     return false;
 
-                nReadPos = mapData[str].first;
+                /* Find the binary position of value. */
+                nReadPos = mapData[strName].first;
 
+                /* Deserialize the type specifier. */
                 uint8_t nType;
                 *this >> nType;
 
+                /* Check for unsupported type enums. */
                 if(nType == TYPES::UNSUPPORTED)
                     return debug::error(FUNCTION, "unsupported type");
 
+                /* Check the expected type from read. */
                 if(type(value) != nType)
                     return debug::error(FUNCTION, "type mismatch");
 
+                /* Deserialize the value. */
                 *this >> value;
 
                 return true;
             }
 
 
-            bool GetValue(const std::string& str, std::string& value)
-            {
-                if(!mapData.count(str))
-                    return false;
-
-                nReadPos = mapData[str].first;
-
-                uint8_t nType;
-                *this >> nType;
-
-                if(nType != TYPES::STRING)
-                    return debug::error("INVALID STRING TYPE");
-
-                *this >> value;
-
-                return true;
-            }
-
-
-            bool GetValue(const std::string& str, std::vector<uint8_t>& value)
-            {
-                if(!mapData.count(str))
-                    return false;
-
-                nReadPos = mapData[str].first;
-
-                uint8_t nType;
-                *this >> nType;
-
-                if(nType != TYPES::BYTES)
-                    return debug::error("INVALID STRING TYPE");
-
-                *this >> value;
-
-                return true;
-            }
-
-
+            /** Write
+             *
+             *  Write into the object register a value of type bytes.
+             *
+             *  @param[in] strName The name of the value to write
+             *  @param[in] value The data to write into the object.
+             *
+             *  @return True if the write was successful.
+             *
+             **/
             template<typename Type>
-            bool SetValue(const std::string& str, const Type& value)
+            bool Write(const std::string& strName, const Type& value)
             {
-                if(!mapData.count(str))
+                /* Check that the name exists in the object. */
+                if(!mapData.count(strName))
                     return false;
 
-                //if(type(value) == TYPES::UNSUPPORTED)
-                //    return debug::error(FUNCTION, "unsupported type");
-                if(!mapData[str].second)
+                /* Check that the value is mutable (writes allowed). */
+                if(!mapData[strName].second)
                     return debug::error(FUNCTION, "cannot set value for READONLY data member");
 
-                nReadPos = mapData[str].first;
+                /* Find the binary position of value. */
+                nReadPos = mapData[strName].first;
 
+                /* Deserialize the type specifier. */
                 uint8_t nType;
                 *this >> nType;
 
+                /* Check for unsupported types. */
                 if(nType == TYPES::UNSUPPORTED)
                     return debug::error(FUNCTION, "unsupported type");
 
+                /* Check the type to helper templates. */
                 if(type(value) != nType)
                     return debug::error(FUNCTION, "type mismatch");
 
-                //TODO: check expected sizes
+                /* Get the expected size. */
                 if(nReadPos + sizeof(value) >= vchState.size())
                     return debug::error(FUNCTION, "performing an over-write");
 
-                /* Copy the bytes into tmp object. */
+                /* CnTypey the bytes into the object. */
                 std::copy((uint8_t*)&value, (uint8_t*)&value + sizeof(value), (uint8_t*)&vchState[nReadPos]);
 
                 return true;
             }
 
 
-            bool SetValue(const std::string& str, const std::string& value)
+            /** Write
+             *
+             *  Write into the object register a value of type bytes.
+             *
+             *  @param[in] strName The name of the value to write
+             *  @param[in] strValue The data to write into the object.
+             *
+             *  @return True if the write was successful.
+             *
+             **/
+            bool Write(const std::string& strName, const std::string& strValue)
             {
-                if(!mapData.count(str))
+                /* Check that the name exists in the object. */
+                if(!mapData.count(strName))
                     return false;
 
-                if(!mapData[str].second)
+                /* Check that the value is mutable (writes allowed). */
+                if(!mapData[strName].second)
                     return debug::error(FUNCTION, "cannot set value for READONLY data member");
 
-                nReadPos = mapData[str].first;
+                /* Find the binary position of value. */
+                nReadPos = mapData[strName].first;
 
+                /* Deserialize the type specifier. */
                 uint8_t nType;
                 *this >> nType;
 
+                /* Make sure that value being written is type-safe. */
                 if(nType != TYPES::STRING)
-                    return debug::error("INVALID STRING TYPE");
+                    return debug::error(FUNCTION, "type must be string");
 
-                //TODO: check expected sizes
+                /* Get the expected size. */
                 uint64_t nSize = ReadCompactSize(*this);
-                if(nSize != value.size())
-                    return debug::error("INVALID STRING SIZES ", nSize, "::", value.size());
+                if(nSize != strValue.size())
+                    return debug::error(FUNCTION, "string size mismatch");
 
+                /* Check for memory overflows. */
                 if(nReadPos + nSize >= vchState.size())
                     return debug::error(FUNCTION, "performing an over-write");
 
-                /* Copy the bytes into tmp object. */
-                std::copy((uint8_t*)&value[0], (uint8_t*)&value[0] + value.size(), (uint8_t*)&vchState[nReadPos]);
+                /* CnTypey the bytes into the object. */
+                std::copy((uint8_t*)&strValue[0], (uint8_t*)&strValue[0] + strValue.size(), (uint8_t*)&vchState[nReadPos]);
 
                 return true;
             }
 
-            bool SetValue(const std::string& str, const std::vector<uint8_t>& value)
+
+
+            /** Write
+             *
+             *  Write into the object register a value of type bytes.
+             *
+             *  @param[in] strName The name of the value to write
+             *  @param[in] vData The data to write into the object.
+             *
+             *  @return True if the write was successful.
+             *
+             **/
+            bool Write(const std::string& strName, const std::vector<uint8_t>& vData)
             {
-                if(!mapData.count(str))
+                /* Check that the name exists in the object. */
+                if(!mapData.count(strName))
                     return false;
 
-                if(!mapData[str].second)
+                /* Check that the value is mutable (writes allowed). */
+                if(!mapData[strName].second)
                     return debug::error(FUNCTION, "cannot set value for READONLY data member");
 
-                nReadPos = mapData[str].first;
+                /* Find the binary position of value. */
+                nReadPos = mapData[strName].first;
 
+                /* Deserialize the type specifier. */
                 uint8_t nType;
                 *this >> nType;
 
+                /* Make sure that value being written is type-safe. */
                 if(nType != TYPES::BYTES)
-                    return debug::error("INVALID BYTES TYPE");
+                    return debug::error(FUNCTION, "type must be bytes");
 
-                //TODO: check expected sizes
+                /* Get the expected size. */
                 uint64_t nSize = ReadCompactSize(*this);
-                if(nSize != value.size())
-                    return debug::error("INVALID BYTES SIZES ", nSize, "::", value.size());
+                if(nSize != vData.size())
+                    return debug::error(FUNCTION, "bytes size mismatch");
 
+                /* Check for memory overflows. */
                 if(nReadPos + nSize >= vchState.size())
                     return debug::error(FUNCTION, "performing an over-write");
 
-                /* Copy the bytes into tmp object. */
-                std::copy((uint8_t*)&value[0], (uint8_t*)&value[0] + value.size(), (uint8_t*)&vchState[nReadPos]);
+                /* CnTypey the bytes into the object. */
+                std::copy((uint8_t*)&vData[0], (uint8_t*)&vData[0] + vData.size(), (uint8_t*)&vchState[nReadPos]);
 
                 return true;
+            }
+
+
+        private:
+
+            /** type
+             *
+             *  Helper function that uses template deduction to find type enum.
+             *
+             **/
+            uint8_t type(const uint8_t n) const
+            {
+                return TYPES::UINT8_T;
+            }
+
+
+            /** type
+             *
+             *  Helper function that uses template deduction to find type enum.
+             *
+             **/
+            uint8_t type(const uint16_t n) const
+            {
+                return TYPES::UINT16_T;
+            }
+
+
+            /** type
+             *
+             *  Helper function that uses template deduction to find type enum.
+             *
+             **/
+            uint8_t type(const uint32_t n) const
+            {
+                return TYPES::UINT32_T;
+            }
+
+
+            /** type
+             *
+             *  Helper function that uses template deduction to find type enum.
+             *
+             **/
+            uint8_t type(const uint64_t& n) const
+            {
+                return TYPES::UINT64_T;
+            }
+
+
+            /** type
+             *
+             *  Helper function that uses template deduction to find type enum.
+             *
+             **/
+            uint8_t type(const uint256_t& n) const
+            {
+                return TYPES::UINT256_T;
+            }
+
+
+            /** type
+             *
+             *  Helper function that uses template deduction to find type enum.
+             *
+             **/
+            uint8_t type(const uint512_t& n) const
+            {
+                return TYPES::UINT512_T;
+            }
+
+
+            /** type
+             *
+             *  Helper function that uses template deduction to find type enum.
+             *
+             **/
+            uint8_t type(const uint1024_t& n) const
+            {
+                return TYPES::UINT1024_T;
+            }
+
+
+            /** type
+             *
+             *  Helper function that uses template deduction to find type enum.
+             *
+             **/
+            uint8_t type(const std::string& n) const
+            {
+                return TYPES::STRING;
+            }
+
+
+            /** type
+             *
+             *  Helper function that uses template deduction to find type enum.
+             *
+             **/
+            uint8_t type(const std::vector<uint8_t>& n) const
+            {
+                return TYPES::BYTES;
+            }
+
+
+            /** type
+             *
+             *  Helper function to determine unsupported types that failed tempalte deduction.
+             *
+             **/
+            template<typename Type>
+            uint8_t type(const Type& n) const
+            {
+                return TYPES::UNSUPPORTED;
             }
         };
     }
@@ -413,7 +544,10 @@ int main(int argc, char** argv)
     timer.Start();
 
     for(int i = 0; i < 1000000; i++)
+    {
+        object.mapData.clear();
         object.Parse();
+    }
 
     uint64_t nTime = timer.ElapsedMicroseconds();
 
@@ -422,48 +556,48 @@ int main(int argc, char** argv)
 
     //unit tests
     uint8_t nTest;
-    object.GetValue("byte", nTest);
+    object.Read("byte", nTest);
 
     debug::log(0, "TEST ", uint32_t(nTest));
 
-    object.SetValue("byte", uint8_t(98));
+    object.Write("byte", uint8_t(98));
 
     uint8_t nTest2;
-    object.GetValue("byte", nTest2);
+    object.Read("byte", nTest2);
 
     debug::log(0, "TEST2 ", uint32_t(nTest2));
 
     std::string strTest;
-    object.GetValue("test", strTest);
+    object.Read("test", strTest);
 
     debug::log(0, "STRING ", strTest);
 
-    object.SetValue("test", std::string("fail"));
-    object.SetValue("test", "fail");
+    object.Write("test", std::string("fail"));
+    object.Write("test", "fail");
 
-    object.SetValue("test", std::string("THIS string"));
+    object.Write("test", std::string("THIS string"));
 
     std::string strGet;
-    object.GetValue("test", strGet);
+    object.Read("test", strGet);
 
     debug::log(0, strGet);
 
     std::vector<uint8_t> vBytes;
-    object.GetValue("bytes", vBytes);
+    object.Read("bytes", vBytes);
 
     debug::log(0, "DATA ", HexStr(vBytes.begin(), vBytes.end()));
 
     vBytes[0] = 0x00;
-    object.SetValue("bytes", vBytes);
+    object.Write("bytes", vBytes);
 
-    object.GetValue("bytes", vBytes);
+    object.Read("bytes", vBytes);
 
     debug::log(0, "DATA ", HexStr(vBytes.begin(), vBytes.end()));
 
 
 
     std::string identifier;
-    object.GetValue("identifier", identifier);
+    object.Read("identifier", identifier);
 
     debug::log(0, "Token Type ", identifier);
 
