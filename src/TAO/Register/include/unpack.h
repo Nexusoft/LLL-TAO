@@ -38,9 +38,9 @@ namespace TAO
     namespace Register
     {
 
-        /** Output
+        /** Unpack
          *
-         *  Output an operation script into human readable text.
+         *  Unpack a state register declaration from operation scripts.
          *
          **/
         inline bool Unpack(const TAO::Ledger::Transaction& tx, State& state)
