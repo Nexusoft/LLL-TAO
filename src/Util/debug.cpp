@@ -312,4 +312,12 @@ namespace debug
             ssFile.close();
     }
 
+    /* Gets the last error string logged via debug::error and clears the last error */
+    std::string GetLastError()
+    {
+        std::string strRet = strLastError;
+        strLastError = "";
+        return strRet;
+    }
+
 }

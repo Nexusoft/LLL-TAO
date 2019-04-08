@@ -59,7 +59,7 @@ namespace TAO
 
                 /* If a global error message has been logged via debug::error then include this in the JSON*/
                 if( !debug::strLastError.empty())
-                    strMessage += ". " + debug::strLastError;
+                    strMessage += ". " + debug::GetLastError();
 
                 jsonError["message"] = strMessage; 
 
