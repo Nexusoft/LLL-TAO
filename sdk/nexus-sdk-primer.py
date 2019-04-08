@@ -138,7 +138,7 @@ def create_token(sdk, token_name, tok_or_account):
         json = sdk.nexus_tokens_create_token(token_name, 1, 10000)
         token_string = "token already exists"
     else:
-        json = sdk.nexus_tokens_create_account(token_name, 1, 0)
+        json = sdk.nexus_tokens_create_account(token_name, 1)
         token_string = "token account already exists"
     #endif
 

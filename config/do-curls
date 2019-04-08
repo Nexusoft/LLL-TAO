@@ -22,7 +22,7 @@ cn "tokens/get?name=dino-token&type=token"
 cn "tokens/create?pin=1234&session=$SES&type=account"
 cn "tokens/get?name=dino-token&type=token"
 cn "tokens/debit?pin=1234&session=$SES&amount=10&name_from=dino&name_to=nancy"
-cn "tokens/credit?pin=1234&session=$SES&&txid=$TXIDX&amount=10&address_to=$ADDR&proof=$PROOF"
+cn "tokens/credit?pin=1234&session=$SES&&txid=$TXIDX&amount=10&address_to=$ADDR"
 
 cn "supply/createitem?pin=1234&data=dino-item-data&session=$SES"
 cn "supply/getitem?address=$ADDR"

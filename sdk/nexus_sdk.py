@@ -319,12 +319,11 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_tokens_create_account(self, token_account_name, token_id, supply):
+    def nexus_tokens_create_account(self, token_account_name, token_id):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
-        parms = ("?pin={}&session={}&identifier={}&type=account&supply={}" + \
-            "&name={}").format(self.pin, self.session_id, token_id, supply,
-            token_account_name)
+        parms = "?pin={}&session={}&identifier={}&type=account&name={}". \
+            format(self.pin, self.session_id, token_id, token_account_name)
         url = tokens_url.format("create") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -384,7 +383,7 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_tokens_credit_by_name(self, to_name, amount, txid, proof):
+    def nexus_tokens_credit_by_name(self, to_name, amount, txid, proof=None):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
