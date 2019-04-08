@@ -11,11 +11,15 @@
 
 ____________________________________________________________________________________________*/
 
+#include <openssl/rand.h>
+
 #include <TAO/Register/include/state.h>
 
 #include <TAO/Register/include/enum.h>
 
 #include <TAO/Register/include/stream.h>
+
+#include <LLC/aes/aes.h>
 
 namespace TAO
 {
@@ -23,19 +27,14 @@ namespace TAO
     {
         class Object : public State
         {
+            //special system level memory for managing system states in protected portion of memory
+            std::vector<uint8_t> vchSystem;
+
         public:
-            std::vector<uint8_t> vchMethods; //methods for object register
-
-            std::vector<uint8_t> vchSystem; //system level memory in object register
-
             mutable std::map< std::string, std::pair<uint16_t, bool> > mapData; //internal map for data members
-
-            bool fParsed = false;
 
             Object()
             : State()
-            , vchMethods()
-            , vchSystem()
             , mapData()
             {
             }
@@ -96,13 +95,15 @@ namespace TAO
             {
                 nReadPos   = 0;
 
+
+                std::string name;
                 while(!end())
                 {
-                    std::string name;
+
                     *this >> name;
 
-                    if(mapData.count(name))
-                        return debug::error(FUNCTION, "duplicate value entries");
+                    //if(mapData.count(name))
+                    //    return debug::error(FUNCTION, "duplicate value entries");
 
                     uint8_t op;
                     *this >> op;
@@ -120,7 +121,8 @@ namespace TAO
 
                         case TYPES::UINT8_T:
                         {
-                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+                            //mapData[name] =
+                            mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
                             nReadPos += 2;
 
@@ -130,7 +132,8 @@ namespace TAO
 
                         case TYPES::UINT16_T:
                         {
-                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+                            //mapData[name] =
+                            mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
                             nReadPos += 3;
 
@@ -140,7 +143,8 @@ namespace TAO
 
                         case TYPES::UINT32_T:
                         {
-                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+                            //mapData[name] =
+                            mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
                             nReadPos += 5;
 
@@ -150,7 +154,8 @@ namespace TAO
 
                         case TYPES::UINT64_T:
                         {
-                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+                            //mapData[name] =
+                            mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
                             nReadPos += 9;
 
@@ -160,7 +165,8 @@ namespace TAO
 
                         case TYPES::UINT256_T:
                         {
-                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+                            //mapData[name] =
+                            mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
                             nReadPos += 33;
 
@@ -170,7 +176,8 @@ namespace TAO
 
                         case TYPES::UINT512_T:
                         {
-                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+                            //mapData[name] =
+                            mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
                             nReadPos += 65;
 
@@ -180,7 +187,8 @@ namespace TAO
 
                         case TYPES::UINT1024_T:
                         {
-                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+                            //mapData[name] =
+                            mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
                             nReadPos += 129;
 
@@ -190,7 +198,20 @@ namespace TAO
 
                         case TYPES::STRING:
                         {
-                            mapData[name] = std::make_pair(--nReadPos, fMutable);
+                            mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
+
+                            ++nReadPos;
+                            uint64_t nSize = ReadCompactSize(*this);
+
+                            nReadPos += nSize;
+
+                            break;
+                        }
+
+
+                        case TYPES::BYTES:
+                        {
+                            mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
 
                             ++nReadPos;
                             uint64_t nSize = ReadCompactSize(*this);
@@ -210,17 +231,12 @@ namespace TAO
 
                 //(std::string) (OP::TYPE) (DATA)
 
-                fParsed = true;
-
                 return true;
             }
 
             template<typename Type>
             bool GetValue(const std::string& str, Type& value)
             {
-                if(!fParsed)
-                    return false;
-
                 if(!mapData.count(str))
                     return false;
 
@@ -243,9 +259,6 @@ namespace TAO
 
             bool GetValue(const std::string& str, std::string& value)
             {
-                if(!fParsed)
-                    return false;
-
                 if(!mapData.count(str))
                     return false;
 
@@ -263,12 +276,28 @@ namespace TAO
             }
 
 
+            bool GetValue(const std::string& str, std::vector<uint8_t>& value)
+            {
+                if(!mapData.count(str))
+                    return false;
+
+                nReadPos = mapData[str].first;
+
+                uint8_t nType;
+                *this >> nType;
+
+                if(nType != TYPES::BYTES)
+                    return debug::error("INVALID STRING TYPE");
+
+                *this >> value;
+
+                return true;
+            }
+
+
             template<typename Type>
             bool SetValue(const std::string& str, const Type& value)
             {
-                if(!fParsed)
-                    return false;
-
                 if(!mapData.count(str))
                     return false;
 
@@ -301,9 +330,6 @@ namespace TAO
 
             bool SetValue(const std::string& str, const std::string& value)
             {
-                if(!fParsed)
-                    return false;
-
                 if(!mapData.count(str))
                     return false;
 
@@ -331,6 +357,36 @@ namespace TAO
 
                 return true;
             }
+
+            bool SetValue(const std::string& str, const std::vector<uint8_t>& value)
+            {
+                if(!mapData.count(str))
+                    return false;
+
+                if(!mapData[str].second)
+                    return debug::error(FUNCTION, "cannot set value for READONLY data member");
+
+                nReadPos = mapData[str].first;
+
+                uint8_t nType;
+                *this >> nType;
+
+                if(nType != TYPES::BYTES)
+                    return debug::error("INVALID BYTES TYPE");
+
+                //TODO: check expected sizes
+                uint64_t nSize = ReadCompactSize(*this);
+                if(nSize != value.size())
+                    return debug::error("INVALID BYTES SIZES ", nSize, "::", value.size());
+
+                if(nReadPos + nSize >= vchState.size())
+                    return debug::error(FUNCTION, "performing an over-write");
+
+                /* Copy the bytes into tmp object. */
+                std::copy((uint8_t*)&value[0], (uint8_t*)&value[0] + value.size(), (uint8_t*)&vchState[nReadPos]);
+
+                return true;
+            }
         };
     }
 }
@@ -339,6 +395,7 @@ namespace TAO
 
 //This main function is for prototyping new code
 //It is accessed by compiling with LIVE_TESTS=1
+//Prototype code and it's tests created here should move to production code and unit tests
 int main(int argc, char** argv)
 {
     using namespace TAO::Register;
@@ -346,9 +403,12 @@ int main(int argc, char** argv)
     Object object;
     object << std::string("byte") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT8_T) << uint8_t(55)
            << std::string("test") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::STRING) << std::string("this string")
+           << std::string("bytes") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::BYTES) << std::vector<uint8_t>(10, 0xff)
            << std::string("balance") << uint8_t(TYPES::UINT64_T) << uint64_t(55)
            << std::string("identifier") << uint8_t(TYPES::STRING) << std::string("NXS");
 
+
+    //benchmarks
     runtime::timer timer;
     timer.Start();
 
@@ -359,6 +419,8 @@ int main(int argc, char** argv)
 
     debug::log(0, "Parsed ", 1000000.0 / nTime, " million registers / s");
 
+
+    //unit tests
     uint8_t nTest;
     object.GetValue("byte", nTest);
 
@@ -385,6 +447,20 @@ int main(int argc, char** argv)
     object.GetValue("test", strGet);
 
     debug::log(0, strGet);
+
+    std::vector<uint8_t> vBytes;
+    object.GetValue("bytes", vBytes);
+
+    debug::log(0, "DATA ", HexStr(vBytes.begin(), vBytes.end()));
+
+    vBytes[0] = 0x00;
+    object.SetValue("bytes", vBytes);
+
+    object.GetValue("bytes", vBytes);
+
+    debug::log(0, "DATA ", HexStr(vBytes.begin(), vBytes.end()));
+
+
 
     std::string identifier;
     object.GetValue("identifier", identifier);
