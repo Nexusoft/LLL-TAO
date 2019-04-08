@@ -44,12 +44,27 @@ This will log you into this specific API instance for the building of new transa
   username=<username>
   password=<password>
   pin=<pin>
+  minting=<minting>
+  transactions=<transactions>
+
+Input parameter description:
+<username>:
+    The username for the signature chain.
+<password>:
+    The password for the signature chain.
+<PIN>:
+    The PIN for the signature chain.
+<minting>:
+    true/false to indicate that the signature chain can be used for minting.
+<transactions>:
+    true/false to indicate that the signature chain can be used for transactions.
 ```
 
-The username and password fields are mandatory for login.  
-The pin is optional and, if supplied, allows the signature chain to be immediately used 
-for mining and staking.  If it is not supplied then you must provide it in all subsequent 
-API calls that use this signature chain.
+The username, password, and pin fields are mandatory for login.  
+The minting/transactions parameters are optional and, if supplied, allow the signature chain to 
+be immediately used for mining/staking or creating transactions when in sessionless API mode.  
+If the minting/transactions parameters are not supplied then you must either subsequently call unlock 
+or provide the PIN number in in all subsequent API calls in order to use this signature chain.
 
 Return value JSON object:    
 ```
@@ -89,15 +104,13 @@ which session you are logging out of. For sessionless API the session should not
 
 ### Lock
 
-This will lock your signature chain, making it unavailable for use in mining.
-It takes a session and will check if the sig-chain has already been locked.
+This will lock your signature chain, making it unavailable for use unless it is
+either unlocked or the PIN is passed in to all API requests.
 
 ```
 <method>:
   /accounts/lock
 
-<key>=<value> parameter pairs:
-  session=<session-id>
 ```
 
 Return value JSON object:
@@ -107,20 +120,26 @@ Return value JSON object:
 }
 ```
 
-Session is required to identify what session you are locking wallet from.
-
 ### Unlock
 
-This will unlock your signature chain for use in mining. It takes a session
-and your pin, and caches it encrypted memory.
-
+This will unlock your signature chain and cache the PIN in encrypted memory to be used for all subsequent API calls. 
+This method is only available when using sessionless API mode (-apisessions=0)
 ```
 <method>:
   /accounts/unlock
 
 <key>=<value> parameter pairs:
-  session=<session-id>
   pin=<pin>
+  minting=<minting>
+  transactions=<transactions>
+
+Input parameter description:
+<PIN>:
+    The PIN for the signature chain.
+<minting>:
+    true/false to indicate that the signature chain can be used for minting.
+<transactions>:
+    true/false to indicate that the signature chain can be used for transactions.
 ```
 
 Return value JSON object:
@@ -130,8 +149,11 @@ Return value JSON object:
 }
 ```
 
-Session is required to identify what session you are unlocking wallet from.
-The PIN credential is also required for wallet unlock.
+The pin field is mandatory for unlock.  
+The minting/transactions parameters are optional and, if supplied, allow the signature chain to 
+be used for either mining/staking or creating transactions when in sessionless API mode.  
+If the minting/transactions parameters are not supplied then it is assumed that the signature chain
+can be used for both.
 
 ### Transactions
 

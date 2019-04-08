@@ -57,7 +57,29 @@ namespace TAO
         /* Determine if the accounts are locked. */
         bool Accounts::Locked() const
         {
-            if(config::fAPISessions || strActivePIN.IsNull() || strActivePIN->empty())
+            if(config::fAPISessions || pActivePIN.IsNull() || pActivePIN->PIN().empty())
+                return true;
+
+            return false;
+        }
+
+        /* In sessionless API mode this method checks that the active sig chain has 
+         * been unlocked to allow transactions.  If the account has not been specifically
+         * unlocked then we assume that they ARE allowed to transact, since the PIN would
+         * need to be provided in each API call */
+        bool Accounts::CanTransact() const
+        {
+            if(config::fAPISessions || pActivePIN.IsNull() || pActivePIN->CanTransact())
+                return true;
+
+            return false;
+        }
+
+        /* In sessionless API mode this method checks that the active sig chain has 
+         *  been unlocked to allow minting */
+        bool Accounts::CanMint() const
+        {
+            if(config::fAPISessions || (!pActivePIN.IsNull() && pActivePIN->CanMint()))
                 return true;
 
             return false;
@@ -123,7 +145,7 @@ namespace TAO
         /* Returns the pin number for the currently logged in account. */
         SecureString Accounts::GetActivePin() const
         {
-            return SecureString(strActivePIN->c_str());
+            return SecureString(pActivePIN->PIN().c_str());
         }
 
         /* If the API is running in sessionless mode this method will return the currently 

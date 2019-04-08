@@ -50,6 +50,10 @@ namespace TAO
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
+            /* Check that the account is unlocked for creating transactions */
+            if( !accounts.CanTransact())
+                throw APIException(-25, "Account has not been unlocked for transactions");
+
             /* Create the block object. */
             TAO::Ledger::TritiumBlock block;
             if(!TAO::Ledger::CreateBlock(user, strPIN, 2, block))
