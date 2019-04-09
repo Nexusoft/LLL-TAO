@@ -484,6 +484,15 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
            Validate script = Validate(ssOperation, tx);
            REQUIRE(script.Execute());
        }
+
+
+       ssOperation.SetNull();
+       ssOperation << uint8_t(OP::TYPES::STRING) << strObject << uint8_t(OP::CRYPTO::SK256) << uint8_t(OP::REGISTER::VALUE) << std::string("identifier")
+                   << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::STRING) << std::string("NXS");
+       {
+           Validate script = Validate(ssOperation, tx);
+           REQUIRE(script.Execute());
+       }
     }
 
 
