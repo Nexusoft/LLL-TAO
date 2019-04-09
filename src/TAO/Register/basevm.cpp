@@ -42,6 +42,74 @@ namespace TAO
         }
 
 
+        /* Allocate a 8 bit integer into the VM register memory. */
+        void BaseVM::allocate(const uint8_t& data, Value& value)
+        {
+            /* Set the value pointers. */
+            value.nBegin = nPointer;
+            value.nEnd   = ++nPointer;
+            value.nBytes = 1;
+
+            /* Check for memory overflows. */
+            if(value.nEnd >= vRegister.size())
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
+
+            /* Copy data into register. */
+            vRegister[value.nBegin] = data;
+        }
+
+
+        /* Allocate a 16 bit integer into the VM register memory. */
+        void BaseVM::allocate(const uint16_t& data, Value& value)
+        {
+            /* Set the value pointers. */
+            value.nBegin = nPointer;
+            value.nEnd   = ++nPointer;
+            value.nBytes = 2;
+
+            /* Check for memory overflows. */
+            if(value.nEnd >= vRegister.size())
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
+
+            /* Copy data into register. */
+            vRegister[value.nBegin] = data;
+        }
+
+
+        /* Allocate a 32 bit integer into the VM register memory. */
+        void BaseVM::allocate(const uint32_t& data, Value& value)
+        {
+            /* Set the value pointers. */
+            value.nBegin = nPointer;
+            value.nEnd   = ++nPointer;
+            value.nBytes = 4;
+
+            /* Check for memory overflows. */
+            if(value.nEnd >= vRegister.size())
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
+
+            /* Copy data into register. */
+            vRegister[value.nBegin] = data;
+        }
+
+
+        /* Allocate a 64 bit integer into the VM register memory. */
+        void BaseVM::allocate(const uint64_t& data, Value& value)
+        {
+            /* Set the value pointers. */
+            value.nBegin = nPointer;
+            value.nEnd   = ++nPointer;
+            value.nBytes = 8;
+
+            /* Check for memory overflows. */
+            if(value.nEnd >= vRegister.size())
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
+
+            /* Copy data into register. */
+            vRegister[value.nBegin] = data;
+        }
+
+
         /* Allocate a byte stream into the VM register memory. */
         void BaseVM::allocate(const std::vector<uint8_t>& data, Value& value)
         {

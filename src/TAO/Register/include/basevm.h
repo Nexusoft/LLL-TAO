@@ -86,6 +86,50 @@ namespace TAO
 
             /** allocate
              *
+             *  Allocate a 8 bit integer into the VM register memory.
+             *
+             *  @param[in] data The data to allocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void allocate(const uint8_t& data, Value& value);
+
+
+            /** allocate
+             *
+             *  Allocate a 16 bit integer into the VM register memory.
+             *
+             *  @param[in] data The data to allocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void allocate(const uint16_t& data, Value& value);
+
+
+            /** allocate
+             *
+             *  Allocate a 8 bit integer into the VM register memory.
+             *
+             *  @param[in] data The data to allocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void allocate(const uint32_t& data, Value& value);
+
+
+            /** allocate
+             *
+             *  Allocate a 8 bit integer into the VM register memory.
+             *
+             *  @param[in] data The data to allocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void allocate(const uint64_t& data, Value& value);
+
+
+            /** allocate
+             *
              *  Allocate a new object into the VM register memory.
              *
              *  @param[in] data The data to allocate.
