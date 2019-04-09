@@ -412,23 +412,8 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
 
 
        std::string strObject = "register-vanity";
-       std::vector<uint8_t> vTest(strObject.begin(), strObject.end());
-
-       PrintHex(vTest.begin(), vTest.end());
-
-       std::string strTest(vTest.begin(), vTest.end());
-
-       debug::log(0, "STRING ", strTest);
 
        uint256_t hashObject = LLC::SK256(std::vector<uint8_t>(strObject.begin(), strObject.end()));
-
-       debug::log(0, "Hash ", hashObject.ToString());
-
-
-       uint256_t hashObject2 = LLC::SK256(vTest);
-
-       debug::log(0, "Hash2 ", hashObject2.ToString());
-
        REQUIRE(LLD::regDB->Write(hashObject, object));
 
 
