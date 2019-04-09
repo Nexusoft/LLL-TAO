@@ -41,8 +41,9 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
         runtime::timer timer;
         timer.Start();
 
+        uint8_t nWrite = 77;
         for(int i = 0; i < 1000000; i++)
-            object.Write("byte", uint8_t(77));
+            object.Write("byte", nWrite);
 
         uint64_t nTime = timer.ElapsedMicroseconds();
 
@@ -54,8 +55,9 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
         runtime::timer timer;
         timer.Start();
 
+        uint64_t nWrite = 7777;
         for(int i = 0; i < 1000000; i++)
-            object.Write("balance", uint64_t(7777));
+            object.Write("balance", nWrite);
 
         uint64_t nTime = timer.ElapsedMicroseconds();
 
@@ -67,12 +69,28 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
         runtime::timer timer;
         timer.Start();
 
+        std::string strWrite = "this strnnn";
         for(int i = 0; i < 1000000; i++)
-            object.Write("test", std::string("this strnnn"));
+            object.Write("test", strWrite);
 
         uint64_t nTime = timer.ElapsedMicroseconds();
 
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Write::", ANSI_COLOR_RESET, 1000000.0 / nTime, " million strings / second");
+    }
+
+
+    {
+        runtime::timer timer;
+        timer.Start();
+
+        std::vector<uint8_t> vWrite(10, 0xff);
+        for(int i = 0; i < 1000000; i++)
+            object.Write("bytes", vWrite);
+
+        uint64_t nTime = timer.ElapsedMicroseconds();
+
+        //10m here -> 10 bytes in vector -> 1000000 iterations / microseconds
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Write::", ANSI_COLOR_RESET, 1000000.0 / nTime, " million vectors / second");
     }
 
 
@@ -116,6 +134,20 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
         uint64_t nTime = timer.ElapsedMicroseconds();
 
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Read ::", ANSI_COLOR_RESET, 1000000.0 / nTime, " million strings / second");
+    }
+
+
+    {
+        runtime::timer timer;
+        timer.Start();
+
+        std::vector<uint8_t> vRead(10);
+        for(int i = 0; i < 1000000; i++)
+            object.Write("bytes", vRead);
+
+        uint64_t nTime = timer.ElapsedMicroseconds();
+
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Read ::", ANSI_COLOR_RESET, 1000000.0 / nTime, " million vectors / second");
     }
 
 
