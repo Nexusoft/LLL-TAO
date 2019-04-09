@@ -40,6 +40,7 @@ namespace config
     bool fUseProxy = false;
     bool fAllowDNS = false;
     bool fLogTimestamps = false;
+    bool fAPISessions = false;
 
     std::mutex ARGS_MUTEX;
 
@@ -175,12 +176,12 @@ namespace config
         fPrintToConsole         = GetBoolArg("-printtoconsole", false);
         fDaemon                 = GetBoolArg("-daemon", false);
         fServer                 = fDaemon || GetBoolArg("-server", false);
-        fTestNet                = GetBoolArg("-testnet", false) ||
-                                  GetBoolArg("-lispnet", false);
+        fTestNet                = (GetArg("-testnet", 0) > 0);
         fListen                 = GetBoolArg("-listen", true);
         //fUseProxy               = GetBoolArg("-proxy")
         fAllowDNS               = GetBoolArg("-allowdns", true);
         fLogTimestamps          = GetBoolArg("-logtimestamps", false);
+        fAPISessions            = GetBoolArg("-apisessions", false);
 
 
         /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/

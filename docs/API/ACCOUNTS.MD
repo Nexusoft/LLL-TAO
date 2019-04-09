@@ -1,7 +1,7 @@
 The Accounts API Interface Definition
 -------------------------------------
 
-### CreateAccount
+### Create
 
 This will create a new account for use on the network.
 
@@ -12,7 +12,7 @@ This will create a new account for use on the network.
 <key>=<value> parameter pairs:
   username=<user>
   password=<password>
-  pin=<pin-number>
+  pin=<pin>
 ```
 
 Return value JSON object:
@@ -43,8 +43,13 @@ This will log you into this specific API instance for the building of new transa
 <key>=<value> parameter pairs:
   username=<username>
   password=<password>
-  pin=<pin-number>
+  pin=<pin>
 ```
+
+The username and password fields are mandatory for login.  
+The pin is optional and, if supplied, allows the signature chain to be immediately used 
+for mining and staking.  If it is not supplied then you must provide it in all subsequent 
+API calls that use this signature chain.
 
 Return value JSON object:    
 ```
@@ -55,11 +60,14 @@ Return value JSON object:
 
 ```
 
-This is your genesis ID, or the identification number of your specific account. The session is what is required to submit for every command thereafter, to allow the managing of multiple login sessions. Your PIN is required for authentication, which this version uses to validate your credentials.
+This is your genesis ID, or the identification number of your specific account. 
+For session-based API (configured with apisessions=1), an additional session value is returned 
+and must be supplied in subsequent API calls, to allow the managing of multiple login sessions.
 
 ### Logout
 
-This will log you out of this specific API, and delete your credentials stored in a Secure Allocator.
+This will log you out of this specific API, and delete your credentials stored
+in encrypted memory.
 
 ```
 <method>:
@@ -76,17 +84,20 @@ Return value JSON object:
 }
 ```
 
-### Unlock
+For session-based API (configured with apisessions=1) the session is required to identify 
+which session you are logging out of. For sessionless API the session should not be supplied
 
-This will unlock your signature chain for use in mining. It takes a session and your pin, and caches it in a secure allocator.
+### Lock
+
+This will lock your signature chain, making it unavailable for use in mining.
+It takes a session and will check if the sig-chain has already been locked.
 
 ```
 <method>:
-  /accounts/unlock
+  /accounts/lock
 
 <key>=<value> parameter pairs:
   session=<session-id>
-  pin=<pin-number>
 ```
 
 Return value JSON object:
@@ -96,12 +107,37 @@ Return value JSON object:
 }
 ```
 
-Session is required to identify what session you are logging out of.
+Session is required to identify what session you are locking wallet from.
+
+### Unlock
+
+This will unlock your signature chain for use in mining. It takes a session
+and your pin, and caches it encrypted memory.
+
+```
+<method>:
+  /accounts/unlock
+
+<key>=<value> parameter pairs:
+  session=<session-id>
+  pin=<pin>
+```
+
+Return value JSON object:
+```
+{
+    true
+}
+```
+
+Session is required to identify what session you are unlocking wallet from.
+The PIN credential is also required for wallet unlock.
 
 ### Transactions
 
-This will list off all of the transactions created by the logged in account.
-You DO NOT need to be logged in to use this command.s
+This will list off all of the transactions for the requested genesis or username (either can be used). 
+You DO NOT need to be logged in to use this command.  If you are using sessionless API and are logged in
+then neither username or genesis are required and it will return transactions for the currently logged in user.
 
 ```
 <method>:
@@ -119,13 +155,16 @@ You DO NOT need to be logged in to use this command.s
   verbose<verbose-level>
 ```
 
-Only the genesis or the username are required to fulfill this command. If the genesis is supplied first, it will supersede the username. We recommend you to only use one of the parameters, as typing in both genesis and username will only resolve the genesis.
+Only the genesis or the username are required to fulfill this command. If the
+genesis is supplied first, it will supersede the username. We recommend you to
+only use one of the parameters, as typing in both genesis and username will
+only resolve the genesis.
 
 The verbose parameter defines how much you receive in return.
 
-Verbose 0: version, sequence, timestamp, hash, and operation.
-Verbose 1: genesis, nexthash, and prevhash.
-Verbose 2: pubkey and signature.
+* Verbose 0: version, sequence, timestamp, hash, and operation.
+* Verbose 1: genesis, nexthash, and prevhash.
+* Verbose 2: pubkey and signature.
 
 Return value JSON object:
 ```
@@ -143,12 +182,20 @@ Return value JSON object:
 },
 ```
 
-NOTE: if you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+NOTE: for session-based API (configured with apisessions=1) either genesis hash or username 
+      is required to identify the signature chain's transactions.  If neither are supplied 
+      and the API is configured for sessionless use (apisessions=0) then the transactions 
+      will be returned for the currently logged in user
+NOTE: if you use the username parameter, it will take slightly longer to
+      calculate the username genesis with our brute-force protected hashing
+      algorithm. For higher performance, use the genesis parameter.
 
 
 ### Notifications
 
-This will list off all of the transactions sent to a particular genesis or username. It is useful for identifying transactions that you need to accept such as credits.
+This will list off all of the transactions sent to a particular genesis or
+username. It is useful for identifying transactions that you need to accept
+such as credits.
 
 ```
 <method>:
@@ -166,13 +213,16 @@ This will list off all of the transactions sent to a particular genesis or usern
   verbose<verbose-level>
 ```
 
-Only the genesis or the username are required to fulfill this command. If the genesis is supplied first, it will supersede the username. We recommend you to only use one of the parameters, as typing in both genesis and username will only resolve the genesis.
+Only the genesis or the username are required to fulfill this command. If the
+genesis is supplied first, it will supersede the username. We recommend you to
+only use one of the parameters, as typing in both genesis and username will
+only resolve the genesis.
 
 The verbose parameter defines how much you receive in return.
 
-Verbose 0: version, sequence, timestamp, hash, and operation.
-Verbose 1: genesis, nexthash, and prevhash.
-Verbose 2: pubkey and signature.
+* Verbose 0: version, sequence, timestamp, hash, and operation.
+* Verbose 1: genesis, nexthash, and prevhash.
+* Verbose 2: pubkey and signature.
 
 Return value JSON object:
 ```
@@ -190,4 +240,6 @@ Return value JSON object:
 },
 ```
 
-NOTE: if you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+NOTE: If you use the username parameter, it will take slightly longer to
+      calculate the username genesis with our brute-force protected hashing
+      algorithm. For higher performance, use the genesis parameter.

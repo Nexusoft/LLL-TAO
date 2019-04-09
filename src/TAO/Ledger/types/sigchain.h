@@ -63,6 +63,17 @@ namespace TAO
 
         public:
 
+            /** Default constructor. **/
+            SignatureChain()
+            : strUsername()
+            , strPassword()
+            , MUTEX()
+            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+            , hashGenesis()
+            {
+
+            }
+
             /** Constructor to generate Keychain
              *
              * @param[in] strUsernameIn The username to seed the signature chain
@@ -78,9 +89,41 @@ namespace TAO
             }
 
 
+            /** Copy constructor **/
+            SignatureChain(const SignatureChain& chain)
+            : strUsername(chain.strUsername)
+            , strPassword(chain.strPassword)
+            , MUTEX()
+            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+            , hashGenesis(chain.hashGenesis)
+            {
+            }
+
+
+            /** Move constructor
+             *
+             * @param[in] strUsernameIn The username to seed the signature chain
+             * @param[in] strPasswordIn The password to seed the signature chain
+             **/
+            SignatureChain(const SignatureChain&& chain)
+            : strUsername(chain.strUsername)
+            , strPassword(chain.strPassword)
+            , MUTEX()
+            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+            , hashGenesis(chain.hashGenesis)
+            {
+            }
+
+
+            /** Destructor. **/
+            ~SignatureChain()
+            {
+            }
+
+
             /** Genesis
              *
-             *  This function is responsible for generating the genesis ID.
+             *  This function is responsible for generating the genesis ID for this sig chain.
              *
              *  @return The 512 bit hash of this key in the series.
              **/

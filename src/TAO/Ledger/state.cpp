@@ -7,7 +7,7 @@
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To The Voice of The People
+            "Doubt is the precursor to fear" - Alex Hannold
 
 ____________________________________________________________________________________________*/
 
@@ -237,8 +237,12 @@ namespace TAO
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
 
-                    /* Check the memory pool. */
+                    /* Check the database. */
                     TAO::Ledger::Transaction tx;
+                    if(LLD::legDB->ReadTx(hash, tx))
+                        continue;
+
+                    /* Check the memory pool. */
                     if(!mempool.Get(hash, tx))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
@@ -256,8 +260,12 @@ namespace TAO
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
 
-                    /* Check if in memory pool. */
+                    /* Check the database. */
                     Legacy::Transaction tx;
+                    if(LLD::legacyDB->ReadTx(hash, tx))
+                        continue;
+
+                    /* Check if in memory pool. */
                     if(!mempool.Get(hash, tx))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
@@ -684,8 +692,12 @@ namespace TAO
                     if(!TAO::Register::Rollback(tx))
                         return debug::error(FUNCTION, "transaction register layer failed to rollback");
 
+                    /* Erase last for genesis. */
+                    if(tx.IsGenesis() && !LLD::legDB->EraseLast(tx.hashGenesis))
+                        return debug::error(FUNCTION, "failed to erase last hash");
+
                     /* Set the last hash to previous transaciton in sigchain. */
-                    if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.hashPrevTx))
+                    else if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.hashPrevTx))
                         return debug::error(FUNCTION, "failed to write last hash");
                 }
                 else if(proof.first == TYPE::LEGACY_TX)

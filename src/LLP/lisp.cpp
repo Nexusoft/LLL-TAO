@@ -150,7 +150,14 @@ namespace LLP
                                 LLP::RLOC RLOC;
                                 RLOC.strInterface = rloc.value()["interface"];
                                 RLOC.strRLOCName = rloc.value()["rloc-name"];
-                                RLOC.strTranslatedRLOC = rloc.value()["translated-rloc"];
+                                
+                                /* if nodes are behind NAT then their public IP will be supplied 
+                                    in a translated-rloc field, otherwise the public IP will be
+                                    supplied in the rloc field */
+                                if( rloc.value().count("translated-rloc") > 0 )
+                                    RLOC.strTranslatedRLOC = rloc.value()["translated-rloc"];
+                                else
+                                    RLOC.strTranslatedRLOC = rloc.value()["rloc"];
 
                                 /* Add to the cached data. */
                                 EID.vRLOCs.push_back(RLOC);

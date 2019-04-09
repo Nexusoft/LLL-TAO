@@ -52,9 +52,9 @@
 
 /*
  * If SAMPLER_CDF is non-zero, then the discrete Gaussian sampler will
- * use a tabulated distribution with 128 bits of precision and a constant 
+ * use a tabulated distribution with 128 bits of precision and a constant
  * number of PRNG invocations; use -DSAMPLER_CDF (or -DSAMPLER_CDF=1)
- * to enable this code. The default Gaussian sampler uses a tabulated 
+ * to enable this code. The default Gaussian sampler uses a tabulated
  * distribution with 136 bits of precision and a variable number of PRNG
  * invocations.
  */
@@ -578,11 +578,13 @@ ffLDL_fft3(fpr *restrict tree, const fpr *restrict g00,
  * Get the size of the LDL tree for an input with polynomials of size
  * 2^logn. The size is expressed in the number of elements.
  */
+ /* NOTE: disabled due to no use
 static inline unsigned
 ffLDL_ternary_treesize(unsigned logn)
 {
 	return 3 * ((logn + 2) << (logn - 1));
 }
+*/
 
 static size_t
 ffLDL_ternary_normalize_inner(fpr *tree, fpr sigma, unsigned logn)
@@ -1496,8 +1498,8 @@ gaussian0_sampler_large(prng *p)
  *  - CDFs holds the next 128 MSBs of the same CDF images as CDF8;
  *  - CDF0 holds the next 128 MSBs of each CDF image starting with 0x00.
  *
- * We use the same distribution and indexation as above (i.e. CDF8[z] and 
- * CDFs[z] correspond to CDF[z]) exept that D(z) is scaled to 2^136 and CDF0 
+ * We use the same distribution and indexation as above (i.e. CDF8[z] and
+ * CDFs[z] correspond to CDF[z]) exept that D(z) is scaled to 2^136 and CDF0
  * is offset by 6 slots (i.e. CDF0[z] corresponds to CDF[z + 6]).
  *
  * Values below have been computed with 256 bits of precision, then
@@ -1559,14 +1561,14 @@ gaussian0_sampler(prng *p)
 	msb = falcon_prng_get_u8(p);
 	if (msb != 0x00) {
 		/*
-		 * The loop below return the sample when the byte drawn is 
+		 * The loop below return the sample when the byte drawn is
 		 * equal to the MSBs of at most one CDF image (i.e. msb != 0x00
 		 * by construction of CDF8 and CDFs).
 		 */
 		for (z = 0; z < (int)sizeof CDF8; z ++) {
 			/*
 			 * We conclude directly when the byte drawn differs
-			 * from all CDF images, since 8 bits are enough to 
+			 * from all CDF images, since 8 bits are enough to
 			 * compare it to any CDF image.
 			 */
 			if (msb > CDF8[z]) {
@@ -1592,7 +1594,7 @@ gaussian0_sampler(prng *p)
 	}
 
 	/*
-	 * Otherwise (case msb == 0x00), we draw 128 bits more and compare 
+	 * Otherwise (case msb == 0x00), we draw 128 bits more and compare
 	 * it with the CDF images whose the 8 MSBs are equal to 0x00.
 	 */
 	hi = falcon_prng_get_u64(p);

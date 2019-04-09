@@ -410,7 +410,7 @@ int validate_inputs(const argon2_context *context) {
         }
     }
 
-    if (ARGON2_MIN_PWD_LENGTH > context->pwdlen) {
+    if (ARGON2_MIN_PWD_LENGTH >= context->pwdlen) {
       return ARGON2_PWD_TOO_SHORT;
     }
 
@@ -439,7 +439,7 @@ int validate_inputs(const argon2_context *context) {
             return ARGON2_SECRET_PTR_MISMATCH;
         }
     } else {
-        if (ARGON2_MIN_SECRET > context->secretlen) {
+        if (ARGON2_MIN_SECRET >= context->secretlen) {
             return ARGON2_SECRET_TOO_SHORT;
         }
         if (ARGON2_MAX_SECRET < context->secretlen) {
@@ -453,7 +453,7 @@ int validate_inputs(const argon2_context *context) {
             return ARGON2_AD_PTR_MISMATCH;
         }
     } else {
-        if (ARGON2_MIN_AD_LENGTH > context->adlen) {
+        if (ARGON2_MIN_AD_LENGTH >= context->adlen) {
             return ARGON2_AD_TOO_SHORT;
         }
         if (ARGON2_MAX_AD_LENGTH < context->adlen) {
@@ -462,11 +462,11 @@ int validate_inputs(const argon2_context *context) {
     }
 
     /* Validate memory cost */
-    if (ARGON2_MIN_MEMORY > context->m_cost) {
+    if (ARGON2_MIN_MEMORY >= context->m_cost) {
         return ARGON2_MEMORY_TOO_LITTLE;
     }
 
-    if (ARGON2_MAX_MEMORY < context->m_cost) {
+    if (ARGON2_MAX_MEMORY <= context->m_cost) {
         return ARGON2_MEMORY_TOO_MUCH;
     }
 

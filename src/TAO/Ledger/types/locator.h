@@ -64,7 +64,7 @@ namespace TAO
              *  @param[in] hashBlock The block hash to work from.
              *
              **/
-            explicit Locator(const uint1024_t hashBlock);
+            explicit Locator(const uint1024_t& hashBlock);
 
 
             /** Constructor
@@ -116,7 +116,7 @@ namespace TAO
              *  @param[in] state The state to set object from.
              *
              **/
-            void Set(TAO::Ledger::BlockState state);
+            void Set(const TAO::Ledger::BlockState& state);
 
 
 

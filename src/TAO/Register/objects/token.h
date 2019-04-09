@@ -50,7 +50,7 @@ namespace TAO
 
 
             /** The current token supply. */
-            uint64_t nCurrentSupply;
+            uint64_t nBalance;
 
 
             /** The significant figures of said token. **/
@@ -63,7 +63,7 @@ namespace TAO
                 READWRITE(nVersion);
                 READWRITE(nIdentifier);
                 READWRITE(nMaxSupply);
-                READWRITE(nCurrentSupply);
+                READWRITE(nBalance);
                 READWRITE(nCoinDigits);
             )
 
@@ -73,7 +73,7 @@ namespace TAO
             : nVersion(1)
             , nIdentifier(0)
             , nMaxSupply(0)
-            , nCurrentSupply(0)
+            , nBalance(0)
             , nCoinDigits(0)
             {
 
@@ -92,7 +92,7 @@ namespace TAO
             : nVersion(1)
             , nIdentifier(nIdentifierIn)
             , nMaxSupply(nMaxSupplyIn)
-            , nCurrentSupply(nMaxSupply)
+            , nBalance(nMaxSupply)
             , nCoinDigits(6)
             {
 
@@ -112,7 +112,7 @@ namespace TAO
             : nVersion(1)
             , nIdentifier(nIdentifierIn)
             , nMaxSupply(nMaxSupplyIn)
-            , nCurrentSupply(nMaxSupplyIn)
+            , nBalance(nMaxSupplyIn)
             , nCoinDigits(nCoinDigitsIn)
             {
 

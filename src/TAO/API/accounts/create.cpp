@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/hex.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -29,7 +30,7 @@ namespace TAO
     {
 
         /* Create's a user account. */
-        json::json Accounts::CreateAccount(const json::json& params, bool fHelp)
+        json::json Accounts::Create(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
             json::json ret;
@@ -47,22 +48,31 @@ namespace TAO
                 throw APIException(-25, "Missing PIN");
 
             /* Generate the signature chain. */
-            TAO::Ledger::SignatureChain user(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
 
             /* Get the Genesis ID. */
-            uint256_t hashGenesis = user.Genesis();
+            uint256_t hashGenesis = user->Genesis();
 
             /* Check for duplicates in ledger db. */
             TAO::Ledger::Transaction tx;
             if(LLD::legDB->HasGenesis(hashGenesis))
+            {
+                user.free();
                 throw APIException(-26, "Account already exists");
+            }
 
             /* Create the transaction. */
-            if(!TAO::Ledger::CreateTransaction(&user, params["pin"].get<std::string>().c_str(), tx))
+            if(!TAO::Ledger::CreateTransaction(user, params["pin"].get<std::string>().c_str(), tx))
+            {
+                user.free();
                 throw APIException(-25, "Failed to create transaction");
+            }
 
             /* Sign the transaction. */
-            tx.Sign(user.Generate(tx.nSequence, params["pin"].get<std::string>().c_str()));
+            tx.Sign(user->Generate(tx.nSequence, params["pin"].get<std::string>().c_str()));
+
+            /* Free the sigchain. */
+            user.free();
 
             /* Check that the transaction is valid. */
             if(!tx.IsValid())
@@ -84,5 +94,7 @@ namespace TAO
 
             return ret;
         }
+
+
     }
 }

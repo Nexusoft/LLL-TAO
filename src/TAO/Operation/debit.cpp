@@ -90,11 +90,11 @@ namespace TAO
                 state >> token;
 
                 /* Check the balance of the from account. */
-                if(nAmount > token.nCurrentSupply)
+                if(nAmount > token.nBalance)
                     return debug::error(FUNCTION, hashFrom.ToString(), " token doesn't have sufficient balance");
 
                 /* Change the state of token register. */
-                token.nCurrentSupply -= nAmount;
+                token.nBalance -= nAmount;
 
                 /* Clear the state of register. */
                 state.ClearState();

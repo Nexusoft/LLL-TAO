@@ -42,7 +42,7 @@ namespace TAO
 
 
         /* Create a new transaction object from signature chain. */
-        bool CreateTransaction(const TAO::Ledger::SignatureChain* user, const SecureString& pin, TAO::Ledger::Transaction& tx)
+        bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin, TAO::Ledger::Transaction& tx)
         {
 
             /* Get the last transaction. */
@@ -104,6 +104,20 @@ namespace TAO
                 if(tx.IsCoinbase() || tx.IsTrust())
                     continue;
 
+                /* Check for the last hash. */
+                uint512_t hashLast;
+                if(LLD::legDB->ReadLast(tx.hashGenesis, hashLast))
+                {
+                    /* Check that transaction is in phase with sigchain. */
+                    if(tx.hashPrevTx != hashLast)
+                    {
+                        /* Remove the transaction from memory pool. */
+                        mempool.Remove(hash);
+
+                        debug::log(2, FUNCTION, "TX ", tx.GetHash().ToString().substr(0, 20), " is STALE");
+                    }
+                }
+
                 /* Check for a unique genesis hash. */
                 if(mapUniqueGenesis.count(tx.hashGenesis))
                     continue;
@@ -129,7 +143,7 @@ namespace TAO
 
         /* Create a new block object from the chain.*/
         static memory::atomic<TAO::Ledger::TritiumBlock> blockCache[3];
-        bool CreateBlock(const TAO::Ledger::SignatureChain* user, const SecureString& pin, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce)
+        bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce)
         {
             /* Set the block to null. */
             block.SetNull();
@@ -364,7 +378,7 @@ namespace TAO
             debug::log(0, FUNCTION, "Generator Thread Started...");
 
             /* Get the account. */
-            TAO::Ledger::SignatureChain* user = new TAO::Ledger::SignatureChain("user", "pass");
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain("user", "pass");
 
             std::mutex MUTEX;
             while(!config::fShutdown.load())

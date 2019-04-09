@@ -137,7 +137,7 @@ namespace TAO
 
 
             /* Check the Proof of Work Claims. */
-            if (IsProofOfWork() && !VerifyWork())
+            if (!config::GetBoolArg("-private") && IsProofOfWork() && !VerifyWork())
                return debug::error(FUNCTION, "invalid proof of work");
 
 
@@ -229,7 +229,7 @@ namespace TAO
                 {
                     /* Check the memory pool. */
                     Legacy::Transaction tx;
-                    if(!mempool.Get(proof.second, tx))
+                    if(!mempool.Get(proof.second, tx) && !LLD::legacyDB->ReadTx(proof.second, tx))
                     {
                         missingTx.push_back(proof);
                         continue;
@@ -249,7 +249,7 @@ namespace TAO
                 {
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
-                    if(!mempool.Has(proof.second))
+                    if(!mempool.Has(proof.second) && !LLD::legDB->ReadTx(proof.second, tx))
                     {
                         missingTx.push_back(proof);
                         continue;

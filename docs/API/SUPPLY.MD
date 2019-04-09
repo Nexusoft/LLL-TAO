@@ -39,6 +39,7 @@ destination=NEW_OWNER
 session=23894738473847
 ```
 
+Note that the pin and session values are only required for session-based API (configured with apisessions=1)
 The NEW_OWNER in this case, is another user's genesis transaction.
 
 Return value JSON object:
@@ -66,6 +67,8 @@ data=XXXXX
 session=23894738473847
 ```
 
+Note that the pin and session values are only required for session-based API (configured with apisessions=1)
+
 Return value JSON object:
 ```
 {
@@ -89,6 +92,8 @@ data=XXXXX
 session=23894738473847
 address=XXXXX
 ```
+
+Note that the pin and session values are only required for session-based API (configured with apisessions=1)
 
 Return value JSON object:
 ```

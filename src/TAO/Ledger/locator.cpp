@@ -33,44 +33,55 @@ namespace TAO
 
 
         /* Set a locator from block hash. */
-        Locator::Locator(const uint1024_t hashBlock)
+        Locator::Locator(const uint1024_t& hashBlock)
         : vHave()
         {
+            /* Push back the hash locating from. */
             vHave.push_back(hashBlock);
+
+            /* Return on genesis. */
             if(hashBlock == TAO::Ledger::ChainState::Genesis())
                 return;
 
+            /* Attempt to read the block state. */
             TAO::Ledger::BlockState state;
             if(!LLD::legDB->ReadBlock(hashBlock, state))
-            {
-                if(hashBlock != TAO::Ledger::ChainState::hashBestChain.load())
-                    vHave.push_back(TAO::Ledger::ChainState::hashBestChain.load());
-
                 return;
-            }
 
+            /* On success, check back the blocks. */
             Set(state);
         }
 
 
         /* Set a locator object from a block state. */
-        void Locator::Set(TAO::Ledger::BlockState state)
+        void Locator::Set(const TAO::Ledger::BlockState& state)
         {
-            vHave.clear();
-            int32_t nStep = 1;
+            /* Step iterator */
+            uint32_t nStep = 1;
 
-            while (!state.IsNull())
+            /* Make a copy of the state. */
+            TAO::Ledger::BlockState statePrev = state;
+
+            /* Loop back valid blocks. */
+            while (!statePrev.IsNull())
             {
+                /* Break when locator size is large enough. */
                 if (vHave.size() > 20)
                     break;
 
-                for (int i = 0; !state.IsNull() && i < nStep; i++)
-                    state = state.Prev();
+                /* Loop back the total blocks of step iterator. */
+                for (int i = 0; !statePrev.IsNull() && i < nStep; ++i)
+                    statePrev = statePrev.Prev();
+
+                /* After 10 blocks, start taking exponential steps back. */
                 if(vHave.size() > 10)
                     nStep = nStep * 2;
 
-                vHave.push_back(state.GetHash());
+                /* Push back the current state hash. */
+                vHave.push_back(statePrev.GetHash());
             }
+
+            /* Push the genesis. */
             vHave.push_back(TAO::Ledger::ChainState::Genesis());
         }
     }

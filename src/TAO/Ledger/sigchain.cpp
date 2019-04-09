@@ -11,13 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
-#pragma once
 
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
 #include <LLC/hash/argon2.h>
 
 #include <TAO/Ledger/types/sigchain.h>
+
+#include <Util/include/debug.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -53,11 +54,11 @@ namespace TAO
 
                 /* Password input data. */
                 &vUsername[0],
-                vUsername.size(),
+                static_cast<uint32_t>(vUsername.size()),
 
                 /* The salt for usernames */
                 &vSalt[0],
-                vSalt.size(),
+                static_cast<uint32_t>(vSalt.size()),
 
                 /* Optional secret data */
                 NULL, 0,
@@ -66,7 +67,7 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                11,
+                12,
 
                 /* Memory Cost (64 MB). */
                 (1 << 16),
@@ -85,8 +86,9 @@ namespace TAO
             };
 
             /* Run the argon2 computation. */
-            if(argon2id_ctx(&context) != ARGON2_OK)
-                return 0;
+            int32_t nRet = argon2id_ctx(&context);
+            if(nRet != ARGON2_OK)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
 
             /* Set the bytes for the key. */
             uint256_t hashKey;
@@ -121,6 +123,14 @@ namespace TAO
             }
 
             /* Generate the Secret Phrase */
+            std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
+            vUsername.insert(vUsername.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
+
+            /* Set to minimum salt limits. */
+            if(vUsername.size() < 8)
+                vUsername.resize(8);
+
+            /* Generate the Secret Phrase */
             std::vector<uint8_t> vPassword(strPassword.begin(), strPassword.end());
             vPassword.insert(vPassword.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
@@ -140,20 +150,21 @@ namespace TAO
 
                 /* Password input data. */
                 &vPassword[0],
-                vPassword.size(),
+                static_cast<uint32_t>(vPassword.size()),
 
-                /* The secret phrase (PIN) as the salt. */
+                /* Username and key ID as the salt. */
+                &vUsername[0],
+                static_cast<uint32_t>(vUsername.size()),
+
+                /* The secret phrase as secret data. */
                 &vSecret[0],
-                vSecret.size(),
-
-                /* Optional secret data */
-                NULL, 0,
+                static_cast<uint32_t>(vSecret.size()),
 
                 /* Optional associated data */
                 NULL, 0,
 
                 /* Computational Cost. */
-                11,
+                12,
 
                 /* Memory Cost (64 MB). */
                 (1 << 16),
@@ -172,8 +183,9 @@ namespace TAO
             };
 
             /* Run the argon2 computation. */
-            if(argon2id_ctx(&context) != ARGON2_OK)
-                return 0;
+            int nRet = argon2id_ctx(&context);
+            if(nRet != ARGON2_OK)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
 
             /* Set the cache items. */
             { LOCK(MUTEX);

@@ -40,6 +40,7 @@ namespace config
     extern bool fUseProxy;
     extern bool fAllowDNS;
     extern bool fLogTimestamps;
+    extern bool fAPISessions;
 
 
     /** InterpretNegativeSetting

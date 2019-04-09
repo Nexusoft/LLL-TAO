@@ -1426,12 +1426,14 @@ modp_sub(uint32_t a, uint32_t b, uint32_t p)
 /*
  * Halving modulo p.
  */
+/* NOTE: DISABLED DUE TO NO USE
 static inline uint32_t
 modp_half(uint32_t a, uint32_t p)
 {
 	a += p & -(a & 1);
 	return a >> 1;
 }
+*/
 
 /*
  * Montgomery multiplication modulo p. The 'p0i' value is -1/p mod 2^31.
@@ -6183,7 +6185,7 @@ solve_NTRU(falcon_keygen *fk, int16_t *F, int16_t *G,
  * Generate a random polynomial with a Gaussian distribution. This function
  * also makes sure that the resultant of the polynomial with phi is odd.
  *
- * This function is only for the binary case. 
+ * This function is only for the binary case.
  */
 static void
 poly_small_mkgauss(falcon_keygen *fk, int16_t *f, unsigned logn)

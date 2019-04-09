@@ -63,7 +63,7 @@ failure, it will look like this:
 {"error":{"code":-24,"message":"Missing Password"}}
 ```
 
-Note that you will be parsing for the error key now, and there will be no results. This allows you the choice as a programmer to check for the existence of the "error" key to check for errors, or check for the existence of the "result" key to find if it executed successfully. The choice is yours how you handle it, just know that it is an either / or situation. You will get only one or the other. 
+Note that you will be parsing for the error key now, and there will be no results. This allows you the choice as a programmer to check for the existence of the "error" key to check for errors, or check for the existence of the "result" key to find if it executed successfully. The choice is yours how you handle it, just know that it is an either / or situation. You will get only one or the other.
 
 
 ## Accounts API
@@ -99,11 +99,40 @@ NOTE: some of the commands in this API require LOGIN. Make sure to use the
 accounts API to login before using LOGIN required commands.
 
 
+## Assets API
+
+The assets API is designed for managing of digital assets, by recording
+meta-data that represents the specific asset. It also provides functionality
+to tokenize the assets themselves, in relation to having an asset owned by
+many individuals.
+
+The Assets API can be found in the following repo path:
+
+[LLL-TAO/docs/API/ASSETS.MD](API/ASSETS.MD)
+
+NOTE: some of the commands in this API require LOGIN. Make sure to use the
+accounts API to login before using LOGIN required commands.
+
+
+## Tokens API
+
+The tokens API allows you to create tokens and accounts, in order to send
+and receive tokens with one another. This is also a prerequisite to creating
+tokens that are meant to be shares in a digital asset, or company (STO).
+
+The Tokens API can be found in the following repo path:
+
+[LLL-TAO/docs/API/TOKENS.MD](API/TOKENS.MD)
+
+NOTE: some of the commands in this API require LOGIN. Make sure to use the
+accounts API to login before using LOGIN required commands.
+
+
 ## Lisp API
 
 The lisp API provides information on the lisp configuration and status for this node.
 The purpose of this API is to offer a summarized and simplified wrapper around the lispers.net API,
-which itself must be running on the local node at localhost:9090/lisp 
+which itself must be running on the local node at localhost:9090/lisp
 
 The Lisp API can be found in the following repo path:
 

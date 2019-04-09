@@ -48,7 +48,7 @@ namespace TAO
                 ACCOUNT  = 0x04,
 
                 /* This type of register to hold token parameters. */
-                TOKEN    = 0x05
+                TOKEN    = 0x05,
             };
         };
 
