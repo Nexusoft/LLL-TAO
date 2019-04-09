@@ -34,6 +34,8 @@ TEST_CASE( "Base VM allocation tests", "[register]" )
 
         REQUIRE(data == data2);
 
+        REQUIRE(value.nBytes == 1);
+
     }
 
 
@@ -48,6 +50,8 @@ TEST_CASE( "Base VM allocation tests", "[register]" )
         registers.deallocate(data2, value);
 
         REQUIRE(data == data2);
+
+        REQUIRE(value.nBytes == 2);
     }
 
 
@@ -62,6 +66,8 @@ TEST_CASE( "Base VM allocation tests", "[register]" )
         registers.deallocate(data2, value);
 
         REQUIRE(data == data2);
+
+        REQUIRE(value.nBytes == 4);
     }
 
 
@@ -76,6 +82,8 @@ TEST_CASE( "Base VM allocation tests", "[register]" )
         registers.deallocate(data2, value);
 
         REQUIRE(data == data2);
+
+        REQUIRE(value.nBytes == 8);
     }
 
 
@@ -90,6 +98,8 @@ TEST_CASE( "Base VM allocation tests", "[register]" )
         registers.deallocate(data2, value);
 
         REQUIRE(data == data2);
+
+        REQUIRE(value.nBytes == 32);
     }
 
 
@@ -104,6 +114,8 @@ TEST_CASE( "Base VM allocation tests", "[register]" )
         registers.deallocate(data2, value);
 
         REQUIRE(data == data2);
+
+        REQUIRE(value.nBytes == 64);
     }
 
 
@@ -118,6 +130,8 @@ TEST_CASE( "Base VM allocation tests", "[register]" )
         registers.deallocate(data2, value);
 
         REQUIRE(data == data2);
+
+        REQUIRE(value.nBytes == 128);
     }
 
 
@@ -135,6 +149,8 @@ TEST_CASE( "Base VM allocation tests", "[register]" )
         REQUIRE(std::equal(data.begin(), data.end(), data2.begin()));
 
         REQUIRE(data2.size() == 55);
+
+        REQUIRE(value.nBytes == 55);
     }
 
 
@@ -152,6 +168,8 @@ TEST_CASE( "Base VM allocation tests", "[register]" )
         REQUIRE(std::equal(data.begin(), data.end(), data2.begin()));
 
         REQUIRE(data2.size() == 65);
+
+        REQUIRE(value.nBytes == 65);
     }
 
 
@@ -168,6 +186,8 @@ TEST_CASE( "Base VM allocation tests", "[register]" )
         REQUIRE(data == data2);
 
         REQUIRE(data2.size() == 23);
+
+        REQUIRE(value.nBytes == 23);
     }
 
 
