@@ -36,6 +36,7 @@ namespace TAO
             mutable std::map< std::string, std::pair<uint16_t, bool> > mapData; //internal map for data members
 
 
+            /** Default constructor. **/
             Object()
             : State()
             , vchSystem(512, 0) //system memory by default is 512 bytes
@@ -43,6 +44,14 @@ namespace TAO
             {
             }
 
+
+            /** Copy Constructor. **/
+            Object(const Object& object)
+            : State(object)
+            , vchSystem(object.vchSystem)
+            , mapData(object.mapData)
+            {
+            }
 
 
             /** Parse
