@@ -724,12 +724,12 @@ namespace TAO
                         if(!LLD::regDB->Read(hashRegister, object))
                             return false;
 
-                        /* Parse the object register. */
-                        if(!object.Parse())
-                            return false;
-
                         /* Check for object register type. */
                         if(object.nType != TAO::Register::STATE::OBJECT)
+                            return false;
+
+                        /* Parse the object register. */
+                        if(!object.Parse())
                             return false;
 
                         /* Get the supported type enumeration. */

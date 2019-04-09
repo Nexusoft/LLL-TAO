@@ -43,6 +43,9 @@ void hashtest(uint32_t version, uint32_t t, uint32_t m, uint32_t p, const char *
     char encoded[ENCODED_LEN];
     int ret, i;
 
+    printf("Hash test: $v=%d t=%d, m=%d, p=%d, pass=%s, salt=%s: ", version,
+           t, m, p, pwd, salt);
+
     ret = argon2_hash(t, 1 << m, p, pwd, strlen(pwd), salt, strlen(salt), out,
                       OUT_LEN, encoded, ENCODED_LEN, type, version);
     REQUIRE(ret == ARGON2_OK);
@@ -59,8 +62,9 @@ void hashtest(uint32_t version, uint32_t t, uint32_t m, uint32_t p, const char *
     REQUIRE(ret == ARGON2_OK);
     ret = argon2_verify(mcfref, pwd, strlen(pwd), type);
     REQUIRE(ret == ARGON2_OK);
-}
 
+    printf("PASS\n");
+}
 
 TEST_CASE( "Argon2 Hashing Tests", "[LLC]" )
 {
@@ -118,33 +122,37 @@ TEST_CASE( "Argon2 Hashing Tests", "[LLC]" )
                         "$9sTbSlTio3Biev89thdrlKKiCaYsjjYVJxGAL3swxpQ",
                         "password", strlen("password"), Argon2_i);
     REQUIRE(ret == ARGON2_DECODING_FAIL);
-
+    printf("Recognise an invalid encoding: PASS\n");
 
     /* Handle an invalid encoding correctly (it is missing a $) */
     ret = argon2_verify("$argon2i$m=65536,t=2,p=1$c29tZXNhbHQ"
                         "9sTbSlTio3Biev89thdrlKKiCaYsjjYVJxGAL3swxpQ",
                         "password", strlen("password"), Argon2_i);
     REQUIRE(ret == ARGON2_DECODING_FAIL);
-
+    printf("Recognise an invalid encoding: PASS\n");
 
     /* Handle an invalid encoding correctly (salt is too short) */
     ret = argon2_verify("$argon2i$m=65536,t=2,p=1$"
                         "$9sTbSlTio3Biev89thdrlKKiCaYsjjYVJxGAL3swxpQ",
                         "password", strlen("password"), Argon2_i);
     REQUIRE(ret == ARGON2_SALT_TOO_SHORT);
-
+    printf("Recognise an invalid salt in encoding: PASS\n");
 
     /* Handle an mismatching hash (the encoded password is "passwore") */
     ret = argon2_verify("$argon2i$m=65536,t=2,p=1$c29tZXNhbHQ"
                         "$b2G3seW+uPzerwQQC+/E1K50CLLO7YXy0JRcaTuswRo",
                         "password", strlen("password"), Argon2_i);
     REQUIRE(ret == ARGON2_VERIFY_MISMATCH);
+    printf("Verify with mismatched password: PASS\n");
 
     msg = argon2_error_message(ARGON2_DECODING_FAIL);
     REQUIRE(strcmp(msg, "Decoding failed") == 0);
+    printf("Decode an error message: PASS\n");
 
+    printf("\n");
 
     version = ARGON2_VERSION_NUMBER;
+    printf("Test Argon2i version number: %02x\n", version);
 
     /* Multiple test cases for various input values */
     hashtest(version, 2, 16, 1, "password", "somesalt",
@@ -194,28 +202,34 @@ TEST_CASE( "Argon2 Hashing Tests", "[LLC]" )
                         "$wWKIMhR9lyDFvRz9YTZweHKfbftvj+qf+YFY4NeBbtA",
                         "password", strlen("password"), Argon2_i);
     REQUIRE(ret == ARGON2_DECODING_FAIL);
+    printf("Recognise an invalid encoding: PASS\n");
 
     /* Handle an invalid encoding correctly (it is missing a $) */
     ret = argon2_verify("$argon2i$v=19$m=65536,t=2,p=1$c29tZXNhbHQ"
                         "wWKIMhR9lyDFvRz9YTZweHKfbftvj+qf+YFY4NeBbtA",
                         "password", strlen("password"), Argon2_i);
     REQUIRE(ret == ARGON2_DECODING_FAIL);
+    printf("Recognise an invalid encoding: PASS\n");
 
     /* Handle an invalid encoding correctly (salt is too short) */
     ret = argon2_verify("$argon2i$v=19$m=65536,t=2,p=1$"
                         "$9sTbSlTio3Biev89thdrlKKiCaYsjjYVJxGAL3swxpQ",
                         "password", strlen("password"), Argon2_i);
     REQUIRE(ret == ARGON2_SALT_TOO_SHORT);
+    printf("Recognise an invalid salt in encoding: PASS\n");
 
     /* Handle an mismatching hash (the encoded password is "passwore") */
     ret = argon2_verify("$argon2i$v=19$m=65536,t=2,p=1$c29tZXNhbHQ"
                         "$8iIuixkI73Js3G1uMbezQXD0b8LG4SXGsOwoQkdAQIM",
                         "password", strlen("password"), Argon2_i);
     REQUIRE(ret == ARGON2_VERIFY_MISMATCH);
+    printf("Verify with mismatched password: PASS\n");
 
     msg = argon2_error_message(ARGON2_DECODING_FAIL);
     REQUIRE(strcmp(msg, "Decoding failed") == 0);
+    printf("Decode an error message: PASS\n\n");
 
+    printf("Test Argon2id version number: %02x\n", version);
 
     /* Multiple test cases for various input values */
     hashtest(version, 2, 16, 1, "password", "somesalt",
@@ -252,17 +266,24 @@ TEST_CASE( "Argon2 Hashing Tests", "[LLC]" )
              "$vfMrBczELrFdWP0ZsfhWsRPaHppYdP3MVEMIVlqoFBw", Argon2_id);
 
     /* Common error state tests */
+
+    printf("\n");
+    printf("Common error state tests\n");
+
     ret = argon2_hash(2, 1, 1, "password", strlen("password"),
                       "diffsalt", strlen("diffsalt"),
                       out, OUT_LEN, NULL, 0, Argon2_id, version);
     REQUIRE(ret == ARGON2_MEMORY_TOO_LITTLE);
+    printf("Fail on invalid memory: PASS\n");
 
     ret = argon2_hash(2, 1 << 12, 1, NULL, strlen("password"),
                       "diffsalt", strlen("diffsalt"),
                       out, OUT_LEN, NULL, 0, Argon2_id, version);
     REQUIRE(ret == ARGON2_PWD_PTR_MISMATCH);
+    printf("Fail on invalid null pointer: PASS\n");
 
     ret = argon2_hash(2, 1 << 12, 1, "password", strlen("password"), "s", 1,
                       out, OUT_LEN, NULL, 0, Argon2_id, version);
     REQUIRE(ret == ARGON2_SALT_TOO_SHORT);
+    printf("Fail on salt too short: PASS\n");
 }
