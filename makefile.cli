@@ -182,6 +182,7 @@ ifdef UNIT_TESTS
 else ifdef BENCHMARKS
 	OBJS = build/Benchmarks_main.o \
 		   build/Benchmarks_validate.o \
+		   build/Benchmarks_object.o \
 		   build/Benchmarks_sigchain.o
 
 #Live tests for prototyping new code
