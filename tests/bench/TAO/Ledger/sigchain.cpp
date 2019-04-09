@@ -4,7 +4,7 @@
 
 #include <Util/include/debug.h>
 
-TEST_CASE( "Signature Chain Benchmarks", "[sigchain]" )
+TEST_CASE( "Signature Chain Benchmarks", "[ledger]" )
 {
 
     debug::log(0, "===== Begin Signature Chain Benchmarks =====");
