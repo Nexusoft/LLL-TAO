@@ -101,13 +101,14 @@ namespace TAO
                 /* Set the value pointers. */
                 value.nBegin = nPointer;
                 value.nEnd   = nPointer + nSize;
+                value.nBytes = sizeof(data);
 
                 /* Check for memory overflows. */
                 if(value.nEnd >= vRegister.size())
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
 
                 /* Copy data into the registers. */
-                std::copy((uint8_t*)&data, (uint8_t*)&data + sizeof(data), (uint8_t*)begin(value));
+                std::copy((uint8_t*)&data, (uint8_t*)&data + value.nBytes, (uint8_t*)begin(value));
 
                 /* Iterate the memory pointer. */
                 nPointer += nSize;
@@ -167,7 +168,7 @@ namespace TAO
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, " invalid memory address ", nPointer - value.size()));
 
                 /* Check for value size overflows. */
-                if(value.size() * 8 > sizeof(data))
+                if(value.size() * 8 > value.nBytes)
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch"));
 
                 /* Copy data from the registers. */

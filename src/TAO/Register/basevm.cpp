@@ -31,7 +31,7 @@ namespace TAO
         /* Get the internal byte level pointers for value. */
         const uint8_t* BaseVM::end(const Value& value) const
         {
-            return (uint8_t*)&vRegister[value.nEnd];
+            return (uint8_t*)&vRegister[value.nEnd] - ((value.size() * 8) % value.nBytes);
         }
 
 
@@ -48,6 +48,7 @@ namespace TAO
             /* Set the value pointers. */
             value.nBegin = nPointer;
             value.nEnd   = ++nPointer;
+            value.nBytes = sizeof(data);
 
             /* Check for memory overflows. */
             if(value.nEnd >= vRegister.size())
@@ -67,13 +68,14 @@ namespace TAO
             /* Set the value pointers. */
             value.nBegin = nPointer;
             value.nEnd   = nPointer + nSize;
+            value.nBytes = data.size();
 
             /* Check for memory overflows. */
             if(value.nEnd >= vRegister.size())
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
 
             /* Copy data into the registers. */
-            std::copy((uint8_t*)&data[0], (uint8_t*)&data[0] + data.size(), (uint8_t*)begin(value));
+            std::copy((uint8_t*)&data[0], (uint8_t*)&data[0] + value.nBytes, (uint8_t*)begin(value));
 
             /* Iterate the memory pointer. */
             nPointer += nSize;
@@ -89,13 +91,14 @@ namespace TAO
             /* Set the value pointers. */
             value.nBegin = nPointer;
             value.nEnd   = nPointer + nSize;
+            value.nBytes = data.size();
 
             /* Check for memory overflows. */
             if(value.nEnd >= vRegister.size())
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
 
             /* Copy data into the registers. */
-            std::copy((uint8_t*)&data[0], (uint8_t*)&data[0] + data.size(), (uint8_t*)begin(value));
+            std::copy((uint8_t*)&data[0], (uint8_t*)&data[0] + value.nBytes, (uint8_t*)begin(value));
 
             /* Iterate the memory pointer. */
             nPointer += nSize;
@@ -113,8 +116,11 @@ namespace TAO
             if((int32_t)(nPointer - value.size()) < 0)
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, " invalid memory address ", nPointer - value.size()));
 
+            /* Set the data to expected size. */
+            data.resize(value.nBytes);
+
             /* Check for value size overflows. */
-            if(value.size() * 8 > data.size())
+            if(value.nBytes > data.size())
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch"));
 
             /* Copy data from the registers. */
@@ -140,8 +146,11 @@ namespace TAO
             if((int32_t)(nPointer - value.size()) < 0)
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, " invalid memory address ", nPointer - value.size()));
 
+            /* Set the data to expected size. */
+            data.resize(value.nBytes);
+
             /* Check for value size overflows. */
-            if(value.size() * 8 > data.size())
+            if(value.nBytes > data.size())
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch ", value.size() * 8, " > ", data.size()));
 
             /* Copy data from the registers. */

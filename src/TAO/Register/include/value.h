@@ -41,6 +41,10 @@ namespace TAO
             uint32_t nEnd;
 
 
+            /** The bytes allocated in this register value. **/
+            uint16_t nBytes;
+
+
             /** Default constructor. **/
             Value()
             : nBegin(0)
