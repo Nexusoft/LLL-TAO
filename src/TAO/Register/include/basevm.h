@@ -183,6 +183,50 @@ namespace TAO
 
             /** deallocate
              *
+             *  Deallocate a 8 bit integer from the VM register memory.
+             *
+             *  @param[in] data The data to deallocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void deallocate(uint8_t& data, const Value& value);
+
+
+            /** deallocate
+             *
+             *  Deallocate a 16 bit integer from the VM register memory.
+             *
+             *  @param[in] data The data to deallocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void deallocate(uint16_t& data, const Value& value);
+
+
+            /** deallocate
+             *
+             *  Deallocate a 32 bit integer from the VM register memory.
+             *
+             *  @param[in] data The data to deallocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void deallocate(uint32_t& data, const Value& value);
+
+
+            /** deallocate
+             *
+             *  Deallocate a 64 bit integer from the VM register memory.
+             *
+             *  @param[in] data The data to deallocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void deallocate(uint64_t& data, const Value& value);
+
+
+            /** deallocate
+             *
              *  Deallocate an object from the VM register memory and return a copy.
              *
              *  @param[out] data The data to return.
