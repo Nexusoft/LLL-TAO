@@ -34,21 +34,6 @@ int main(int argc, char** argv)
            << std::string("identifier") << uint8_t(TYPES::STRING) << std::string("NXS");
 
 
-    //benchmarks
-    runtime::timer timer;
-    timer.Start();
-
-    for(int i = 0; i < 1000000; i++)
-    {
-        object.mapData.clear();
-        object.Parse();
-    }
-
-    uint64_t nTime = timer.ElapsedMicroseconds();
-
-    debug::log(0, "Parsed ", 1000000.0 / nTime, " million registers / s");
-
-
     //unit tests
     uint8_t nTest;
     object.Read("byte", nTest);

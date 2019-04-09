@@ -26,7 +26,7 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
         for(int i = 0; i < 1000000; i++)
         {
             object.mapData.clear();
-            object.Parse();
+            REQUIRE(object.Parse());
         }
 
         uint64_t nTime = timer.ElapsedMicroseconds();
@@ -43,7 +43,7 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
 
         uint8_t nWrite = 77;
         for(int i = 0; i < 1000000; i++)
-            object.Write("byte", nWrite);
+            REQUIRE(object.Write("byte", nWrite));
 
         uint64_t nTime = timer.ElapsedMicroseconds();
 
@@ -57,7 +57,7 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
 
         uint64_t nWrite = 7777;
         for(int i = 0; i < 1000000; i++)
-            object.Write("balance", nWrite);
+            REQUIRE(object.Write("balance", nWrite));
 
         uint64_t nTime = timer.ElapsedMicroseconds();
 
@@ -71,7 +71,7 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
 
         std::string strWrite = "this strnnn";
         for(int i = 0; i < 1000000; i++)
-            object.Write("test", strWrite);
+            REQUIRE(object.Write("test", strWrite));
 
         uint64_t nTime = timer.ElapsedMicroseconds();
 
@@ -85,7 +85,7 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
 
         std::vector<uint8_t> vWrite(10, 0xff);
         for(int i = 0; i < 1000000; i++)
-            object.Write("bytes", vWrite);
+            REQUIRE(object.Write("bytes", vWrite));
 
         uint64_t nTime = timer.ElapsedMicroseconds();
 
@@ -94,14 +94,13 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
     }
 
 
-
     {
         runtime::timer timer;
         timer.Start();
 
         uint8_t nRead;
         for(int i = 0; i < 1000000; i++)
-            object.Read("byte", nRead);
+            REQUIRE(object.Read("byte", nRead));
 
         uint64_t nTime = timer.ElapsedMicroseconds();
 
@@ -115,7 +114,7 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
 
         uint64_t nRead;
         for(int i = 0; i < 1000000; i++)
-            object.Read("balance", nRead);
+            REQUIRE(object.Read("balance", nRead));
 
         uint64_t nTime = timer.ElapsedMicroseconds();
 
@@ -129,7 +128,7 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
 
         std::string strRead;
         for(int i = 0; i < 1000000; i++)
-            object.Read("test", strRead);
+            REQUIRE(object.Read("test", strRead));
 
         uint64_t nTime = timer.ElapsedMicroseconds();
 
@@ -143,7 +142,7 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
 
         std::vector<uint8_t> vRead(10);
         for(int i = 0; i < 1000000; i++)
-            object.Write("bytes", vRead);
+            REQUIRE(object.Write("bytes", vRead));
 
         uint64_t nTime = timer.ElapsedMicroseconds();
 
