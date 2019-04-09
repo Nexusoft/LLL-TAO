@@ -117,17 +117,6 @@ namespace TAO
 
             /** allocate
              *
-             *  Allocate a 64 bit integer into the VM register memory.
-             *
-             *  @param[in] data The data to allocate.
-             *  @param[out] value The value object containing memory locations.
-             *
-             **/
-            void allocate(const uint64_t& data, Value& value);
-
-
-            /** allocate
-             *
              *  Allocate a byte stream into the VM register memory.
              *
              *  @param[in] data The data to allocate.
@@ -168,8 +157,8 @@ namespace TAO
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, " invalid memory address ", nPointer - value.size()));
 
                 /* Check for value size overflows. */
-                if(value.size() * 8 > value.nBytes)
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch"));
+                if(end(value) - begin(value) != sizeof(data))
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch ", end(value) - begin(value), " to ", sizeof(data)));
 
                 /* Copy data from the registers. */
                 std::copy((uint8_t*)begin(value), (uint8_t*)end(value), (uint8_t*)&data);

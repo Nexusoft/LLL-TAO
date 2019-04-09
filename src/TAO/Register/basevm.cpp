@@ -31,7 +31,7 @@ namespace TAO
         /* Get the internal byte level pointers for value. */
         const uint8_t* BaseVM::end(const Value& value) const
         {
-            return (uint8_t*)&vRegister[value.nEnd] - ((value.size() * 8) % value.nBytes);
+            return (uint8_t*)&vRegister[value.nEnd] - ((value.size() * 8) - value.nBytes);
         }
 
 
@@ -39,23 +39,6 @@ namespace TAO
         void BaseVM::reset()
         {
             nPointer = 0;
-        }
-
-
-        /* Allocate a 64 bit integer into the VM register memory. */
-        void BaseVM::allocate(const uint64_t& data, Value& value)
-        {
-            /* Set the value pointers. */
-            value.nBegin = nPointer;
-            value.nEnd   = ++nPointer;
-            value.nBytes = sizeof(data);
-
-            /* Check for memory overflows. */
-            if(value.nEnd >= vRegister.size())
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
-
-            /* Copy data into register. */
-            vRegister[value.nBegin] = data;
         }
 
 
@@ -120,7 +103,7 @@ namespace TAO
             data.resize(value.nBytes);
 
             /* Check for value size overflows. */
-            if(value.nBytes > data.size())
+            if(end(value) - begin(value) != data.size())
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch"));
 
             /* Copy data from the registers. */
@@ -150,7 +133,7 @@ namespace TAO
             data.resize(value.nBytes);
 
             /* Check for value size overflows. */
-            if(value.nBytes > data.size())
+            if(end(value) - begin(value) != data.size())
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch ", value.size() * 8, " > ", data.size()));
 
             /* Copy data from the registers. */
