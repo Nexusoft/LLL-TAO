@@ -62,6 +62,16 @@ namespace TAO
             }
 
 
+            /** Copy Constructor. **/
+            Object(const State& state)
+            : State(state)
+            , vchSystem(512, 0)
+            , mapData()
+            {
+                Parse();
+            }
+
+
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(nVersion);
@@ -69,7 +79,6 @@ namespace TAO
                 READWRITE(hashOwner);
                 READWRITE(nTimestamp);
                 READWRITE(vchState);
-                READWRITE(vchSystem);
 
                 //checksum hash not serialized on gethash
                 if(!(nSerType & SER_GETHASH))
@@ -85,6 +94,31 @@ namespace TAO
             bool Parse();
 
 
+            /** Type
+             *
+             *  Get the type enumeration from the object register.
+             *
+             *  @param[in] strName The name of the value type to get
+             *  @param[out] nType The value enumeration type out.
+             *
+             *  @return True if the type is supported.
+             *
+             **/
+            bool Type(const std::string& strName, uint8_t& nType) const;
+
+
+            /** Size
+             *
+             *  Get the size of value in object register.
+             *
+             *  @param[in] strName The name of the value type to get
+             *
+             *  @return The size of the type.
+             *
+             **/
+            uint64_t Size(const std::string& strName) const;
+
+
             /** Read
              *
              *  Read a value form the object register.
@@ -96,7 +130,7 @@ namespace TAO
              *
              **/
             template<typename Type>
-            bool Read(const std::string& strName, Type& value)
+            bool Read(const std::string& strName, Type& value) const
             {
                 /* Check that the name exists in the object. */
                 if(!mapData.count(strName))

@@ -79,7 +79,7 @@ namespace TAO
             ssData << params["data"].get<std::string>();
 
             /* Submit the payload object. */
-            tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::READONLY << ssData.Bytes();
+            tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::STATE::READONLY << ssData.Bytes();
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))

@@ -95,7 +95,7 @@ namespace TAO
                     continue;
 
                 /* Check that it is an account. */
-                if(state.nType != TAO::Register::OBJECT::ACCOUNT)
+                if(state.nType != TAO::Register::STATE::ACCOUNT)
                     continue;
 
                 /* Get the account. */

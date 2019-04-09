@@ -19,8 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/validate.h>
 #include <TAO/Operation/include/enum.h>
 
-#include <TAO/Register/objects/account.h>
-#include <TAO/Register/objects/token.h>
+#include <TAO/Register/include/object.h>
 
 namespace TAO
 {
@@ -710,83 +709,174 @@ namespace TAO
 
 
                     /* Get an account register's balance and push to the return value. */
-                    case OP::REGISTER::BALANCE:
+                    case OP::REGISTER::VALUE:
                     {
                         /* Read the register address. */
                         uint256_t hashRegister;
                         deallocate(hashRegister, vRet);
 
-                        /* Read the register states. */
-                        TAO::Register::State state;
-                        if(!LLD::regDB->Read(hashRegister, state))
-                            return false;
-
-                        /* Check for account type. */
-                        if(state.nType == TAO::Register::OBJECT::ACCOUNT)
-                        {
-                            /* Get the account object from register. */
-                            TAO::Register::Account account;
-                            state >> account;
-
-                            /* Allocate to the registers. */
-                            allocate(account.nBalance, vRet);
-                        }
-
-                        /* Check for token type. */
-                        else if(state.nType == TAO::Register::OBJECT::TOKEN)
-                        {
-                            /* Get the account object from register. */
-                            TAO::Register::Token token;
-                            state >> token;
-
-                            /* Allocate to the registers. */
-                            allocate(token.nBalance, vRet);
-                        }
-                        else
-                            return false;
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
-
-                        break;
-                    }
-
-
-                    /* Get an account register's balance and push to the return value. */
-                    case OP::REGISTER::IDENTIFIER:
-                    {
-                        /* Read the register address. */
-                        uint256_t hashRegister;
-                        deallocate(hashRegister, vRet);
+                        /* Read the string for value name. */
+                        std::string strValue;
+                        ssOperations >> strValue;
 
                         /* Read the register states. */
-                        TAO::Register::State state;
-                        if(!LLD::regDB->Read(hashRegister, state))
+                        TAO::Register::Object object;
+                        if(!LLD::regDB->Read(hashRegister, object))
                             return false;
 
-                        /* Check for account type. */
-                        if(state.nType == TAO::Register::OBJECT::ACCOUNT)
-                        {
-                            /* Get the account object from register. */
-                            TAO::Register::Account account;
-                            state >> account;
-
-                            /* Allocate to the registers. */
-                            allocate(account.nIdentifier, vRet);
-                        }
-
-                        /* Check for token type. */
-                        else if(state.nType == TAO::Register::OBJECT::TOKEN)
-                        {
-                            /* Get the account object from register. */
-                            TAO::Register::Token token;
-                            state >> token;
-
-                            /* Allocate to the registers. */
-                            allocate(token.nIdentifier, vRet);
-                        }
-                        else
+                        /* Parse the object register. */
+                        if(!object.Parse())
                             return false;
+
+                        /* Check for object register type. */
+                        if(object.nType != TAO::Register::STATE::OBJECT)
+                            return false;
+
+                        /* Get the supported type enumeration. */
+                        uint8_t nType;
+                        if(!object.Type(strValue, nType))
+                            return false;
+
+                        /* Switch supported types. */
+                        switch(nType)
+                        {
+                            /* Standard type for C++ uint8_t. */
+                            case TAO::Register::TYPES::UINT8_T:
+                            {
+                                /* Read the value. */
+                                uint8_t nValue;
+                                if(!object.Read(strValue, nValue))
+                                    return false;
+
+                                /* Allocate the value. */
+                                allocate(nValue, vRet);
+
+                                break;
+                            }
+
+
+                            /* Standard type for C++ uint16_t. */
+                            case TAO::Register::TYPES::UINT16_T:
+                            {
+                                /* Read the value. */
+                                uint16_t nValue;
+                                if(!object.Read(strValue, nValue))
+                                    return false;
+
+                                /* Allocate the value. */
+                                allocate(nValue, vRet);
+
+                                break;
+                            }
+
+
+                            /* Standard type for C++ uint32_t. */
+                            case TAO::Register::TYPES::UINT32_T:
+                            {
+                                /* Read the value. */
+                                uint32_t nValue;
+                                if(!object.Read(strValue, nValue))
+                                    return false;
+
+                                /* Allocate the value. */
+                                allocate(nValue, vRet);
+
+                                break;
+                            }
+
+
+                            /* Standard type for C++ uint64_t. */
+                            case TAO::Register::TYPES::UINT64_T:
+                            {
+                                /* Read the value. */
+                                uint64_t nValue;
+                                if(!object.Read(strValue, nValue))
+                                    return false;
+
+                                /* Allocate the value. */
+                                allocate(nValue, vRet);
+
+                                break;
+                            }
+
+
+                            /* Standard type for Custom uint256_t */
+                            case TAO::Register::TYPES::UINT256_T:
+                            {
+                                /* Read the value. */
+                                uint256_t nValue;
+                                if(!object.Read(strValue, nValue))
+                                    return false;
+
+                                /* Allocate the value. */
+                                allocate(nValue, vRet);
+
+                                break;
+                            }
+
+
+                            /* Standard type for Custom uint512_t */
+                            case TAO::Register::TYPES::UINT512_T:
+                            {
+                                /* Read the value. */
+                                uint512_t nValue;
+                                if(!object.Read(strValue, nValue))
+                                    return false;
+
+                                /* Allocate the value. */
+                                allocate(nValue, vRet);
+
+                                break;
+                            }
+
+
+                            /* Standard type for Custom uint1024_t */
+                            case TAO::Register::TYPES::UINT1024_T:
+                            {
+                                /* Read the value. */
+                                uint1024_t nValue;
+                                if(!object.Read(strValue, nValue))
+                                    return false;
+
+                                /* Allocate the value. */
+                                allocate(nValue, vRet);
+
+                                break;
+                            }
+
+
+                            /* Standard type for STL string */
+                            case TAO::Register::TYPES::STRING:
+                            {
+                                /* Read the value. */
+                                std::string strData(object.Size(strValue), '\0');
+                                if(!object.Read(strValue, strData))
+                                    return false;
+
+                                /* Allocate the value. */
+                                allocate(strData, vRet);
+
+                                break;
+                            }
+
+
+                            /* Standard type for STL vector with C++ type uint8_t */
+                            case TAO::Register::TYPES::BYTES:
+                            {
+                                /* Read the value. */
+                                std::vector<uint8_t> vData(object.Size(strValue), 0);
+                                if(!object.Read(strValue, vData))
+                                    return false;
+
+                                /* Allocate the value. */
+                                allocate(vData, vRet);
+
+                                break;
+                            }
+
+                            default:
+                                return false;
+                        }
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 128;

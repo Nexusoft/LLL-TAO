@@ -204,6 +204,80 @@ namespace TAO
         }
 
 
+        /* Get the type enumeration from the object register. */
+        bool Object::Type(const std::string& strName, uint8_t& nType) const
+        {
+            /* Check that the name exists in the object. */
+            if(!mapData.count(strName))
+                return false;
+
+            /* Find the binary position of value. */
+            nReadPos = mapData[strName].first;
+
+            /* Deserialize the type specifier. */
+            *this >> nType;
+
+            /* Check for unsupported type enums. */
+            if(nType == TYPES::UNSUPPORTED)
+                return debug::error(FUNCTION, "unsupported type");
+
+            return true;
+        }
+
+
+        /*  Get the size of value in object register. */
+        uint64_t Object::Size(const std::string& strName) const
+        {
+            /* Get the type for given name. */
+            uint8_t nType;
+            if(!Type(strName, nType))
+                return 0;
+
+            /* Switch between supported types. */
+            switch(nType)
+            {
+
+                /* Standard type for C++ uint8_t. */
+                case TYPES::UINT8_T:
+                    return 1;
+
+                /* Standard type for C++ uint16_t. */
+                case TYPES::UINT16_T:
+                    return 2;
+
+                /* Standard type for C++ uint32_t. */
+                case TYPES::UINT32_T:
+                    return 4;
+
+                /* Standard type for C++ uint64_t. */
+                case TYPES::UINT64_T:
+                    return 8;
+
+                /* Standard type for Custom uint256_t */
+                case TYPES::UINT256_T:
+                    return 32;
+
+                /* Standard type for Custom uint512_t */
+                case TYPES::UINT512_T:
+                    return 64;
+
+                /* Standard type for Custom uint1024_t */
+                case TYPES::UINT1024_T:
+                    return 128;
+
+                /* Standard type for STL string */
+                case TYPES::STRING:
+                    return ReadCompactSize(*this);
+
+                /* Standard type for STL vector with C++ type uint8_t */
+                case TYPES::BYTES:
+                    return ReadCompactSize(*this);
+            }
+
+            return 0;
+        }
+
+
         /* Write into the object register a value of type bytes. */
         bool Object::Write(const std::string& strName, const std::string& strValue)
         {

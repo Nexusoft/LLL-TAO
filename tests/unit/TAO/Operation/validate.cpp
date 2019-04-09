@@ -21,6 +21,8 @@
 
 #include <LLD/include/global.h>
 
+#include <TAO/Register/include/object.h>
+
 #include <cmath>
 
 #include <unit/catch2/catch.hpp>
@@ -387,6 +389,85 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
         Validate script = Validate(ssOperation, tx);
         REQUIRE(script.Execute());
     }
+
+
+
+
+
+
+
+    ////////////////////OBJECT REGISTERS
+    {
+        using namespace TAO::Register;
+
+        Object object;
+        object << std::string("byte") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT8_T) << uint8_t(55)
+               << std::string("test") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::STRING) << std::string("this string")
+               << std::string("bytes") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::BYTES) << std::vector<uint8_t>(10, 0xff)
+               << std::string("balance") << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+               << std::string("identifier") << uint8_t(TYPES::STRING) << std::string("NXS");
+
+       object.hashOwner = LLC::GetRand256();
+       object.nType     = TAO::Register::STATE::OBJECT;
+
+
+       std::string strObject = "register-vanity-name";
+       uint256_t hashObject = LLC::SK256(std::vector<uint8_t>(strObject.begin(), strObject.end()));
+
+       REQUIRE(LLD::regDB->Write(hashObject, object));
+
+
+       ssOperation.SetNull();
+       ssOperation << uint8_t(OP::TYPES::UINT256_T) << hashObject << uint8_t(OP::REGISTER::VALUE) << std::string("byte")
+                   << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT8_T) << uint8_t(55);
+       {
+           Validate script = Validate(ssOperation, tx);
+           REQUIRE(script.Execute());
+       }
+
+
+       ssOperation.SetNull();
+       ssOperation << uint8_t(OP::TYPES::UINT256_T) << hashObject << uint8_t(OP::REGISTER::VALUE) << std::string("test")
+                   << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::STRING) << std::string("this string");
+       {
+           Validate script = Validate(ssOperation, tx);
+           REQUIRE(script.Execute());
+       }
+
+
+       ssOperation.SetNull();
+       ssOperation << uint8_t(OP::TYPES::UINT256_T) << hashObject << uint8_t(OP::REGISTER::VALUE) << std::string("test")
+                   << uint8_t(OP::CONTAINS) << uint8_t(OP::TYPES::STRING) << std::string("this");
+       {
+           Validate script = Validate(ssOperation, tx);
+           REQUIRE(script.Execute());
+       }
+
+
+       ssOperation.SetNull();
+       ssOperation << uint8_t(OP::TYPES::UINT256_T) << hashObject << uint8_t(OP::REGISTER::VALUE) << std::string("balance")
+                   << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(55);
+       {
+           Validate script = Validate(ssOperation, tx);
+           REQUIRE(script.Execute());
+       }
+
+
+       ssOperation.SetNull();
+       ssOperation << uint8_t(OP::TYPES::UINT256_T) << hashObject << uint8_t(OP::REGISTER::VALUE) << std::string("identifier")
+                   << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::STRING) << std::string("NXS");
+       {
+           Validate script = Validate(ssOperation, tx);
+           REQUIRE(script.Execute());
+       }
+    }
+
+
+
+
+
+
+
 
 
     /////REGISTERS

@@ -164,7 +164,7 @@ namespace TAO
                 return debug::error(FUNCTION, "couldn't read debit to address");
 
             /* Credits specific to account objects. */
-            if(state.nType == TAO::Register::OBJECT::ACCOUNT)
+            if(state.nType == TAO::Register::STATE::ACCOUNT)
             {
                 /* Check if this is a whole credit that the transaction is not already spent. */
                 if(LLD::legDB->HasProof(hashAccount, hashTx, nFlags))
@@ -247,7 +247,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write new state");
                 }
             }
-            else if(state.nType == TAO::Register::OBJECT::RAW || state.nType == TAO::Register::OBJECT::READONLY)
+            else if(state.nType == TAO::Register::STATE::RAW || state.nType == TAO::Register::STATE::READONLY)
             {
 
                 /* Get the state register of this register's owner. */
@@ -256,7 +256,7 @@ namespace TAO
                     return debug::error(FUNCTION, "credit from raw object can't be without owner");
 
                 /* Disable any account that's not owned by a token (for now). */
-                if(stateOwner.nType != TAO::Register::OBJECT::TOKEN)
+                if(stateOwner.nType != TAO::Register::STATE::TOKEN)
                     return debug::error(FUNCTION, "credit from raw object can't be owned by non token");
 
                 /* Get the token object. */
@@ -277,7 +277,7 @@ namespace TAO
                     return debug::error(FUNCTION, "temporal proof is stale");
 
                 /* Check that the proof is an account being used. */
-                if(stateProof.nType != TAO::Register::OBJECT::ACCOUNT)
+                if(stateProof.nType != TAO::Register::STATE::ACCOUNT)
                     return debug::error(FUNCTION, "temporal proof register must be account");
 
                 /* Check the ownership of proof register. */
@@ -293,7 +293,7 @@ namespace TAO
                     return debug::error(FUNCTION, "account proof identifier not token identifier");
 
                 /* Make sure the account to is an object account (for now - otherwise you can have chans of chains of chains). */
-                if(state.nType != TAO::Register::OBJECT::ACCOUNT)
+                if(state.nType != TAO::Register::STATE::ACCOUNT)
                     return debug::error(FUNCTION, "credit register is not of account type");
 
                 /* Get the total amount of the debit. */

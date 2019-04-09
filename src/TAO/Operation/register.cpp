@@ -50,7 +50,7 @@ namespace TAO
             switch(nType)
             {
 
-                case TAO::Register::OBJECT::ACCOUNT:
+                case TAO::Register::STATE::ACCOUNT:
                 {
                     /* Create an account object. */
                     TAO::Register::Account acct;
@@ -78,7 +78,7 @@ namespace TAO
                     break;
                 }
 
-                case TAO::Register::OBJECT::TOKEN:
+                case TAO::Register::STATE::TOKEN:
                 {
                     /* Create an account object. */
                     TAO::Register::Token token;
