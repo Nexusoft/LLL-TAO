@@ -100,8 +100,8 @@ class sdk_init():
     def nexus_accounts_transactions(self, page=0, limit=100, verbose=2):
         if (self.genesis_id == None): return(self.__error("Not logged in"))
 
-        parms = "?genesis={}&page={}&limit={}&verbose={}".format(self.genesis_id, page,
-            limit, verbose)
+        parms = "?genesis={}&page={}&limit={}&verbose={}".format( \
+            self.genesis_id, page, limit, verbose)
         parms = "?genesis={}".format(self.genesis_id)
         url = accounts_url.format("transactions") + parms
         json_data = self.__get(url)
