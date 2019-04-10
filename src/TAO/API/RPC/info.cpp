@@ -24,7 +24,7 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 #include <Util/include/version.h>
 
-#include <Legacy/types/minter.h>
+#include <Legacy/types/legacy_minter.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/include/money.h>
@@ -64,11 +64,11 @@ namespace TAO
             obj["stake"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetStake());
 
             /* Staking metrics */
-            Legacy::StakeMinter& stakeMinter = Legacy::StakeMinter::GetInstance();
+            Legacy::LegacyMinter& stakeMinter = Legacy::LegacyMinter::GetInstance();
 			obj["staking"] = stakeMinter.IsStarted() ? "Started" : "Not Started";
 			if (stakeMinter.IsStarted())
 			{
-	            obj["stakerate"]   = 100.0 * stakeMinter.GetStakeRate();
+	            obj["stakerate"]   = stakeMinter.GetStakeRatePercent();
 	            obj["trustweight"] = stakeMinter.GetTrustWeightPercent();
 	            obj["blockweight"] = stakeMinter.GetBlockWeightPercent();
 	            obj["stakeweight"] = stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight(); // These total to 100, so can use as a %

@@ -237,11 +237,13 @@ OBJS+=  build/LLC_skein.o \
 		build/LLP_time.o \
 		build/LLP_tritium.o \
 		build/LLP_trust_address.o \
+		build/Ledger_base_minter.o \
 		build/Ledger_block.o \
 		build/Ledger_chainstate.o \
 		build/Ledger_checkpoints.o \
 		build/Ledger_create.o \
 		build/Ledger_difficulty.o \
+		build/Ledger_locator.o \
 		build/Ledger_mempool.o \
 		build/Ledger_prime.o \
 		build/Ledger_sigchain.o \
@@ -251,7 +253,6 @@ OBJS+=  build/LLC_skein.o \
 		build/Ledger_tritium.o \
 		build/Ledger_trust.o \
 		build/Ledger_trustkey.o \
-		build/Ledger_locator.o \
 		build/Register_rollback.o \
 		build/Register_basevm.o \
 		build/Register_verify.o \
@@ -313,9 +314,9 @@ OBJS+=  build/LLC_skein.o \
 		build/Legacy_keypool.o \
 		build/Legacy_keystore.o \
 		build/Legacy_legacy.o \
+		build/Legacy_legacy_minter.o \
 		build/Legacy_mempool.o \
 		build/Legacy_merkle.o \
-		build/Legacy_minter.o \
 		build/Legacy_outpoint.o \
 		build/Legacy_reservekey.o \
 		build/Legacy_script.o \

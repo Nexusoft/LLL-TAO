@@ -45,7 +45,7 @@ ________________________________________________________________________________
 #include <Util/include/daemon.h>
 
 #include <Legacy/include/ambassador.h>
-#include <Legacy/types/minter.h>
+#include <Legacy/types/legacy_minter.h>
 #include <Legacy/wallet/db.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
@@ -268,8 +268,8 @@ int main(int argc, char** argv)
 
 
     /* If wallet is not encrypted, it is unlocked by default. Start stake minter now. It will run until stopped by system shutdown. */
-    if (!Legacy::Wallet::GetInstance().IsCrypted())
-        Legacy::StakeMinter::GetInstance().StartStakeMinter();
+    if (!Legacy::Wallet::GetInstance().IsCrypted() && config::GetBoolArg(std::string("-beta")))
+        Legacy::LegacyMinter::GetInstance().StartStakeMinter();
 
 
     /* Startup performance metric. */
@@ -310,7 +310,8 @@ int main(int argc, char** argv)
     timer.Reset();
 
     /* Stop stake minter if it is running (before server shutdown). */
-    Legacy::StakeMinter::GetInstance().StopStakeMinter();
+    if (config::GetBoolArg(std::string("-beta")))
+        Legacy::LegacyMinter::GetInstance().StopStakeMinter();
 
     /* Shutdown the time server and its subsystems. */
     LLP::ShutdownServer<LLP::TimeNode>(LLP::TIME_SERVER);
