@@ -228,14 +228,14 @@ def accounts(primer1, primer2):
     #
     # Call API accounts/transactions
     #
-    json = primer1.nexus_accounts_transactions()
+    json = primer1.nexus_accounts_transactions(0, -1, 0)
     print "Transaction history for 'primer1':"
     for entry in json["result"]:
         tx = entry["operation"]
         print "  {}".format(parse_tx(tx))
     #endfor
 
-    json = primer2.nexus_accounts_transactions()
+    json = primer2.nexus_accounts_transactions(0, -1, 0)
     print "Transaction history for 'primer2':"
     for entry in json["result"]:
         tx = entry["operation"]
