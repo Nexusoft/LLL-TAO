@@ -95,6 +95,10 @@ namespace TAO
 
                 if(nCurrentPage > nPage)
                     break;
+
+                if( nTotal > nLimit)
+                    break;
+                
                 TAO::Ledger::BlockState blockState;
                 /* Read the block state from the the ledger DB using the transaction hash index */
                 if(!LLD::legDB->ReadBlock(tx.GetHash(), blockState))

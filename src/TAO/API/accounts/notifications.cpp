@@ -136,11 +136,16 @@ namespace TAO
                     if(!LLD::legDB->ReadEvent(hash.first, nSequence, tx))
                         break;
 
+                    ++nTotal;
+
                     /* Check the paged data. */
                     if(nCurrentPage < nPage)
                         continue;
 
                     if(nCurrentPage > nPage)
+                        break;
+
+                    if(nTotal > nLimit)
                         break;
 
                     json::json obj;
@@ -184,12 +189,17 @@ namespace TAO
                 if(!LLD::legDB->ReadEvent(hashGenesis, nSequence, tx))
                     break;
 
+                ++nTotal;
+
                 /* Check the paged data. */
                 if(nCurrentPage < nPage)
                     continue;
 
                 if(nCurrentPage > nPage)
                     break;
+
+                if(nTotal > nLimit)
+                        break;
 
                 json::json obj;
                 obj["version"]   = tx.nVersion;
