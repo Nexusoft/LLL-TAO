@@ -97,7 +97,7 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_accounts_transactions(self, page, limit, verbose):
+    def nexus_accounts_transactions(self, page=0, limit=100, verbose=2):
         if (self.genesis_id == None): return(self.__error("Not logged in"))
 
         parms = "?genesis={}&page={}&limit={}&verbose={}".format(self.genesis_id, page,
