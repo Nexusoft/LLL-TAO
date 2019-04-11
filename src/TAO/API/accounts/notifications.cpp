@@ -14,11 +14,11 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/accounts.h>
-
-#include <TAO/Operation/include/output.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/objects/account.h>
+#include <TAO/Register/objects/token.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -148,6 +148,12 @@ namespace TAO
                     if(nTotal > nLimit)
                         break;
 
+                    /* Read the object register. */
+                    TAO::Register::State state;
+                    if(!LLD::regDB->ReadState(hash.first, state))
+                        continue;
+                        
+
                     json::json obj;
                     obj["version"]   = tx.nVersion;
                     obj["sequence"]  = tx.nSequence;
@@ -167,8 +173,15 @@ namespace TAO
                         obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                         obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                     }
-                    obj["hash"]      = tx.GetHash().ToString();
-                    obj["operation"]  = TAO::Operation::Output(tx);
+                    obj["hash"]          = tx.GetHash().ToString();
+                    obj["operation"]  = OperationToJSON(tx.ssOperation);
+
+                    /* Get the token object. */
+                    TAO::Register::Token token;
+                    state >> token;
+
+                    /* Calculate the partial debit amount. */
+                    obj["operation"]["amount"] = hash.second / token.nMaxSupply;
 
                     ret.push_back(obj);
 
@@ -220,8 +233,8 @@ namespace TAO
                     obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                     obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                 }
-                obj["hash"]      = tx.GetHash().ToString();
-                obj["operation"]  = TAO::Operation::Output(tx);
+                obj["hash"]       = tx.GetHash().ToString();
+                obj["operation"]  = OperationToJSON(tx.ssOperation);
 
                 ret.push_back(obj);
 

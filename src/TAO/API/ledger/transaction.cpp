@@ -43,7 +43,7 @@ namespace TAO
                 nTransactionVerbosity = atoi(params["txverbose"].get<std::string>().c_str());
 
             /* keep the verbosity level no less than 2.  Also translate a calling level of 1 to 2 (add 1 to it)
-             so that we can use the generic transactionToJSON method which uses a 0-4 range */
+             so that we can use the generic TransactionToJSON method which uses a 0-4 range */
             nTransactionVerbosity = nTransactionVerbosity < 1 ? 2 : nTransactionVerbosity +  1;
 
             /* Declare the tritium and legacy transaction objects ready to attempt to load them from disk*/
@@ -61,12 +61,12 @@ namespace TAO
                First try to see if it is a tritium tx in the leger db*/
             if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::legDB->ReadTx(hash, txTritium) )
             {
-                ret = TAO::API::Utils::transactionToJSON (txTritium, blockState, nTransactionVerbosity);
+                ret = TAO::API::TransactionToJSON (txTritium, blockState, nTransactionVerbosity);
             }
             /* If it is not a tritium transaction then see if it is a legacy tx in the legacy DB */
             else if(TAO::Ledger::mempool.Get(hash, txLegacy) || LLD::legacyDB->ReadTx(hash, txLegacy))
             {
-                ret = TAO::API::Utils::transactionToJSON (txLegacy, blockState, nTransactionVerbosity);
+                ret = TAO::API::TransactionToJSON (txLegacy, blockState, nTransactionVerbosity);
             }
             else
             {

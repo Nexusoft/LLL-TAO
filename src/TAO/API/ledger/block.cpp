@@ -176,7 +176,7 @@ namespace TAO
             if( params.count("txverbose") > 0 && IsAllDigit(params["txverbose"].get<std::string>())) 
                 nTransactionVerbosity = atoi(params["txverbose"].get<std::string>().c_str());
 
-            json::json ret = TAO::API::Utils::blockToJSON(blockState, nTransactionVerbosity);
+            json::json ret = TAO::API::BlockToJSON(blockState, nTransactionVerbosity);
 
             return ret;
         }
@@ -251,7 +251,7 @@ namespace TAO
             for(int i=0; i<nCount; i++)
             {
                 /* convert the block to JSON data and add it to the return JSON array*/
-                ret.push_back(TAO::API::Utils::blockToJSON(blockState, nTransactionVerbosity));
+                ret.push_back(TAO::API::BlockToJSON(blockState, nTransactionVerbosity));
 
                 /* Move on to the next block in the sequence*/
                 blockState = blockState.Next();

@@ -16,8 +16,6 @@ ________________________________________________________________________________
 #include <TAO/API/include/accounts.h>
 #include <TAO/API/include/utils.h>
 
-#include <TAO/Operation/include/output.h>
-
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -98,14 +96,14 @@ namespace TAO
 
                 if( nTotal > nLimit)
                     break;
-                
+
                 TAO::Ledger::BlockState blockState;
                 /* Read the block state from the the ledger DB using the transaction hash index */
                 if(!LLD::legDB->ReadBlock(tx.GetHash(), blockState))
                     throw APIException(-25, "Block not found");
 
-                json::json obj = TAO::API::Utils::transactionToJSON( tx, blockState, nVerbose);
-                
+                json::json obj = TAO::API::TransactionToJSON( tx, blockState, nVerbose);
+
                 ret.push_back(obj);
             }
 

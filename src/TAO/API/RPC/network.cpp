@@ -400,7 +400,7 @@ namespace TAO
             if(params.size() > 1 && params[1].get<bool>())
                 nTransactionVerbosity = 2;
 
-            return TAO::API::Utils::blockToJSON(block, nTransactionVerbosity);
+            return TAO::API::BlockToJSON(block, nTransactionVerbosity);
         }
     }
 }
