@@ -26,6 +26,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/tritium.h>
 
+#include <TAO/API/include/utils.h>
+
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
@@ -372,95 +374,7 @@ namespace TAO
 
         }
 
-        json::json blockToJSON(const TAO::Ledger::BlockState& block,  bool fPrintTransactionDetail)
-        {
-            json::json result;
-            result["hash"] = block.GetHash().GetHex();
-            // the hash that was relevant for Proof of Stake or Proof of Work (depending on block version)
-            result["proofhash"] =
-                                    block.nVersion < 5 ? block.GetHash().GetHex() :
-                                    ((block.nChannel == 0) ? block.StakeHash().GetHex() : block.ProofHash().GetHex());
 
-            result["size"] = (int)::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION);
-            result["height"] = (int)block.nHeight;
-            result["channel"] = (int)block.nChannel;
-            result["version"] = (int)block.nVersion;
-            result["merkleroot"] = block.hashMerkleRoot.GetHex();
-            result["time"] = convert::DateTimeStrFormat(block.GetBlockTime());
-            result["nonce"] = (uint64_t)block.nNonce;
-            result["bits"] = HexBits(block.nBits);
-            result["difficulty"] = TAO::Ledger::GetDifficulty(block.nBits, block.nChannel);
-            result["mint"] = Legacy::SatoshisToAmount(block.nMint);
-            if (block.hashPrevBlock != 0)
-                result["previousblockhash"] = block.hashPrevBlock.GetHex();
-            if (block.hashNextBlock != 0)
-                result["nextblockhash"] = block.hashNextBlock.GetHex();
-
-            json::json txinfo = json::json::array();
-
-            for (const auto& vtx : block.vtx)
-            {
-                if(vtx.first == TAO::Ledger::TYPE::TRITIUM_TX)
-                {
-
-                    /* Get the tritium transaction  from the database*/
-                    TAO::Ledger::Transaction tx;
-                    if(LLD::legDB->ReadTx(vtx.second, tx))
-                    {
-                        if (fPrintTransactionDetail)
-                        {
-                            json::json txdata;
-
-                            txdata["timestamp"] = convert::DateTimeStrFormat(tx.nTimestamp);
-                            txdata["type"] = tx.GetTxTypeString();
-
-                            txdata["hash"] = tx.GetHash().GetHex();
-                            txdata["hashNext"] = tx.hashNext.ToString().substr(0, 20);
-                            txdata["hashPrevTx"] = tx.hashPrevTx.ToString().substr(0, 20);
-                            txdata["hashGenesis"] =  tx.hashGenesis.ToString().substr(0, 20);
-
-                            txinfo.push_back(txdata);
-                        }
-                        else
-                            txinfo.push_back(tx.GetHash().GetHex());
-                    }
-                }
-                else if(vtx.first == TAO::Ledger::TYPE::LEGACY_TX)
-                {
-                    /* Get the legacy transaction from the database. */
-                    Legacy::Transaction tx;
-                    if(LLD::legacyDB->ReadTx(vtx.second, tx))
-                    {
-                        if (fPrintTransactionDetail)
-                        {
-                            json::json txdata;
-
-                            txdata["timestamp"] = convert::DateTimeStrFormat(tx.nTime);
-                            txdata["type"] = tx.GetTxTypeString();
-                            txdata["hash"] = tx.GetHash().GetHex();
-
-                            json::json vin = json::json::array();
-                            for(const Legacy::TxIn& txin : tx.vin)
-                                vin.push_back(txin.ToStringShort());
-                            txdata["vin"] = vin;
-
-                            json::json vout = json::json::array();
-                            for(const Legacy::TxOut& txout : tx.vout)
-                                vout.push_back(txout.ToStringShort());
-                            txdata["vout"] = vout;
-
-                            txinfo.push_back(txdata);
-
-                        }
-                        else
-                            txinfo.push_back(tx.GetHash().GetHex());
-                    }
-                }
-            }
-
-            result["tx"] = txinfo;
-            return result;
-        }
 
         /* getblock <hash> [txinfo]"
         *  txinfo optional to print more detailed tx info."
@@ -483,7 +397,11 @@ namespace TAO
                 return "";
             }
 
-            return blockToJSON(block, params.size() > 1 ? params[1].get<bool>() : false);
+            int nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
+            if(params.size() > 1 && params[1].get<bool>())
+                nTransactionVerbosity = 2;
+
+            return TAO::API::BlockToJSON(block, nTransactionVerbosity);
         }
     }
 }
