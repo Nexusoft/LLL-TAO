@@ -20,11 +20,14 @@ ________________________________________________________________________________
 #include <cmath>
 
 
+typedef unsigned int uint128_t __attribute__((mode(TI)));
+
+
 template<uint32_t FIGURES>
 class precision_t
 {
     uint32_t nFigures;
-    uint64_t nValue;
+    uint128_t nValue;
 
 
     uint32_t get_figures()
@@ -52,7 +55,7 @@ public:
 
     precision_t& operator=(double value)
     {
-        nValue = static_cast<uint64_t>(value * nFigures);
+        nValue = static_cast<uint128_t>(value * nFigures);
 
         return *this;
     }
@@ -73,28 +76,28 @@ public:
 
     bool operator==(int32_t value) const
     {
-        uint64_t compare = static_cast<uint64_t>(value) * nFigures;
+        uint64_t compare = static_cast<uint128_t>(value) * nFigures;
 
         return compare == nValue;
     }
 
     bool operator==(uint32_t value) const
     {
-        uint64_t compare = static_cast<uint64_t>(value) * nFigures;
+        uint64_t compare = static_cast<uint128_t>(value) * nFigures;
 
         return compare == nValue;
     }
 
     bool operator<(int32_t value) const
     {
-        uint64_t compare = static_cast<uint64_t>(value) * nFigures;
+        uint64_t compare = static_cast<uint128_t>(value) * nFigures;
 
         return nValue < compare;
     }
 
     bool operator>(int32_t value) const
     {
-        uint64_t compare = static_cast<uint64_t>(value) * nFigures;
+        uint64_t compare = static_cast<uint128_t>(value) * nFigures;
 
         return nValue > compare;
     }
@@ -314,7 +317,7 @@ int main(int argc, char** argv)
 
     precision_t<9> euler = 2.718281828;
 
-    precision_t<9> testing = _exp(2.7, 3);
+    precision_t<9> testing = _exp(euler, 3);
 
     testing.print();
 
