@@ -253,7 +253,7 @@ namespace TAO
 
                 /* Get the state register of this register's owner. */
                 TAO::Register::State stateOwner;
-                if(!LLD::regDB->ReadState(state.hashOwner, stateOwner))
+                if(!LLD::regDB->ReadState(stateTo.hashOwner, stateOwner))
                     return debug::error(FUNCTION, "credit from raw object can't be without owner");
 
                 /* Disable any account that's not owned by a token (for now). */
@@ -368,7 +368,7 @@ namespace TAO
                         return debug::error(FUNCTION, "register script has invalid post-state");
 
                     /* Write the proof spend. */
-                    if(!LLD::legDB->WriteProof(hashAccount, hashTx, nFlags))
+                    if(!LLD::legDB->WriteProof(hashProof, hashTx, nFlags))
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */

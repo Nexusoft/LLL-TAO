@@ -102,6 +102,7 @@ namespace TAO
                 /* Get the account. */
                 TAO::Register::Account account;
                 state >> account;
+                account.print();
 
                 /* Skip over identifier 0. */
                 if(account.nIdentifier == 0)
@@ -152,7 +153,7 @@ namespace TAO
                     TAO::Register::State state;
                     if(!LLD::regDB->ReadState(hash.first, state))
                         continue;
-                        
+
 
                     json::json obj;
                     obj["version"]   = tx.nVersion;
@@ -173,15 +174,30 @@ namespace TAO
                         obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                         obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                     }
+
                     obj["hash"]          = tx.GetHash().ToString();
-                    obj["operation"]  = OperationToJSON(tx.ssOperation);
+                    obj["operation"]     = OperationToJSON(tx.ssOperation);
 
-                    /* Get the token object. */
-                    TAO::Register::Token token;
-                    state >> token;
+                    if(obj["operation"]["OP"] == "DEBIT")
+                    {
+                        uint256_t hashTo = uint256_t(obj["operation"]["transfer"].get<std::string>());
 
-                    /* Calculate the partial debit amount. */
-                    obj["operation"]["amount"] = hash.second / token.nMaxSupply;
+                        TAO::Register::State stateTo;
+                        if(!LLD::regDB->ReadState(hashTo, stateTo))
+                            continue;
+
+                        if(stateTo.nType == TAO::Register::OBJECT::RAW || stateTo.nType == TAO::Register::OBJECT::READONLY)
+                        {
+                            /* Get the token object. */
+                            TAO::Register::Token token;
+                            state >> token;
+
+                            /* Calculate the partial debit amount. */
+                            obj["operation"]["amount"] = (obj["operation"]["amount"].get<uint64_t>() * hash.second) / token.nMaxSupply;
+                        }
+                    }
+
+
 
                     ret.push_back(obj);
 
