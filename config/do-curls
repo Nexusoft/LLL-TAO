@@ -10,6 +10,8 @@ alias cn "/nexus/curl-nexus"
 
 cn "accounts/create?username=dino&password=dino-pw&pin=1234"
 cn "accounts/login?pin=1234&username=dino&password=dino-pw"
+cn "accounts/transactions?genesis=$GENID&page=0&limit=3&verbose=1"
+cn "accounts/notifications?genesis=$GENID&page=0&limit=3&verbose=0"
 
 cn "assets/create?pin=1234&session=$SES&data=dino-data&name=dino-asset"
 cn "assets/get?pin=1234&name=dino-asset"

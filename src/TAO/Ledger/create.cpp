@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/timelocks.h>
 
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>

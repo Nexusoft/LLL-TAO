@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/trust.h>
 #include <TAO/Ledger/include/checkpoints.h>
@@ -130,7 +131,6 @@ namespace Legacy
             VALUE("vtx.size()") " = ", vtx.size(), ")"
         );
     }
-
 
 
     /* Checks if a block is valid if not connected to chain. */

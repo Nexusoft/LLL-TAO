@@ -38,9 +38,9 @@ namespace TAO
     namespace Register
     {
 
-        /** Output
+        /** Unpack
          *
-         *  Output an operation script into human readable text.
+         *  Unpack registers from operation script.
          *
          **/
         inline bool Unpack(const TAO::Ledger::Transaction& tx, State& state)
@@ -79,11 +79,9 @@ namespace TAO
                             tx.ssOperation >> vchData;
 
                             /* Set the owner of this register. */
-                            state.nVersion  = 1;
-                            state.nType     = nType;
-                            state.nTimestamp = tx.nTimestamp;
-                            state.SetState(vchData);
-
+                            if(!LLD::regDB->ReadState(hashAddress, state))
+                                return false;
+                                
                             return true;
                         }
 

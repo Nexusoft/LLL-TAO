@@ -160,11 +160,12 @@ namespace TAO
             txSpend.ssOperation >> hashTo;
 
             /* Read the account to state. */
-            if(!LLD::regDB->ReadState(hashTo, state))
+            TAO::Register::State stateTo;
+            if(!LLD::regDB->ReadState(hashTo, stateTo))
                 return debug::error(FUNCTION, "couldn't read debit to address");
 
             /* Credits specific to account objects. */
-            if(state.nType == TAO::Register::OBJECT::ACCOUNT)
+            if(stateTo.nType == TAO::Register::OBJECT::ACCOUNT)
             {
                 /* Check if this is a whole credit that the transaction is not already spent. */
                 if(LLD::legDB->HasProof(hashAccount, hashTx, nFlags))
@@ -189,7 +190,7 @@ namespace TAO
 
                 /* Get the account to. */
                 TAO::Register::Account acctTo;
-                state >> acctTo;
+                stateTo >> acctTo;
 
                 /* Check token identifiers. */
                 if(acctFrom.nIdentifier != acctTo.nIdentifier)
@@ -247,12 +248,12 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write new state");
                 }
             }
-            else if(state.nType == TAO::Register::OBJECT::RAW || state.nType == TAO::Register::OBJECT::READONLY)
+            else if(stateTo.nType == TAO::Register::OBJECT::RAW || stateTo.nType == TAO::Register::OBJECT::READONLY)
             {
 
                 /* Get the state register of this register's owner. */
                 TAO::Register::State stateOwner;
-                if(!LLD::regDB->ReadState(state.hashOwner, stateOwner))
+                if(!LLD::regDB->ReadState(stateTo.hashOwner, stateOwner))
                     return debug::error(FUNCTION, "credit from raw object can't be without owner");
 
                 /* Disable any account that's not owned by a token (for now). */
@@ -302,6 +303,7 @@ namespace TAO
 
                 /* Get the total tokens to be distributed. */
                 uint64_t nTotal = (acctProof.nBalance * nDebit) / token.nMaxSupply;
+
                 //NOTE: ISSUE here, temporal proofs can't be used if post timestamped. This prevents double spending,
                 //but it doesn't prevent coins from getting locked if a temporal proof has been changed. Possible to
                 //check tokens to ensure tokens aren't moved if a proof is able to be claimed.
@@ -366,7 +368,7 @@ namespace TAO
                         return debug::error(FUNCTION, "register script has invalid post-state");
 
                     /* Write the proof spend. */
-                    if(!LLD::legDB->WriteProof(hashAccount, hashTx, nFlags))
+                    if(!LLD::legDB->WriteProof(hashProof, hashTx, nFlags))
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */

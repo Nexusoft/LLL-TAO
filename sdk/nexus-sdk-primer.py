@@ -228,18 +228,18 @@ def accounts(primer1, primer2):
     #
     # Call API accounts/transactions
     #
-    json = primer1.nexus_accounts_transactions()
+    json = primer1.nexus_accounts_transactions(0, 3, 2)
     print "Transaction history for 'primer1':"
     for entry in json["result"]:
         tx = entry["operation"]
-        print "  {}".format(parse_tx(tx))
+        print "  {}".format(str(tx))
     #endfor
 
-    json = primer2.nexus_accounts_transactions()
+    json = primer2.nexus_accounts_transactions(0, 3, 2)
     print "Transaction history for 'primer2':"
     for entry in json["result"]:
         tx = entry["operation"]
-        print "  {}".format(parse_tx(tx))
+        print "  {}".format(str(tx))
     #endfor
 #enddef
 
@@ -327,6 +327,7 @@ def assets(primer1, primer2):
     asset_data = "asset-data"
     address = None
     owner = None
+    new_owner = None
     print "Create Asset named '{}' ...".format(asset_name).ljust(width),
     json = primer1.nexus_assets_get_by_name(asset_name)
     if (json.has_key("error") == False):
@@ -371,6 +372,7 @@ def assets(primer1, primer2):
     to = None
     if (primer1.genesis_id == owner):
         sdk = primer1
+        new_owner = primer2
         fr = "primer1"
         to = "primer2"
         print "Transfer Asset '{}' from '{}' (genid {}) to '{}' (genid {})". \
@@ -379,6 +381,7 @@ def assets(primer1, primer2):
     #endif
     if (primer2.genesis_id == owner):
         sdk = primer2
+        new_owner = primer1
         fr = "primer2"
         to = "primer1"
         print "Transfer Asset '{}' from '{}' (genid {}) to '{}' (genid {})". \
@@ -399,7 +402,23 @@ def assets(primer1, primer2):
     #endif    
     
     sleep()
-    
+
+    #
+    # Tokenize asset 'primer-asset'.
+    #
+    if (new_owner != None):
+        msg = None
+        print ""
+        print "Tokenize 'primer-asset' ...",
+        json = new_owner.nexus_assets_tokenize_by_name("primer-asset", "primer-token")
+        if (json.has_key("result") and json["result"] != None):
+            txid = json["result"]["txid"]
+            address= json["result"]["address"]
+            msg = "txid {}, address {}".format(txid, address)
+        #endif
+        api_print(json, msg)
+    #endif
+
     #
     # Call API assets/history
     #
@@ -518,19 +537,6 @@ if (do_supply): supply_chain(primer1, primer2)
 if (do_assets): assets(primer1, primer2)
 if (do_tokens): tokens(primer1, primer2)
 
-#
-# Tokenize asset 'primer-asset'.
-#
-msg = None
-print ""
-print "Tokenize 'primer-asset' ...",
-json = primer1.nexus_assets_tokenize_by_name("primer-asset", "primer-token")
-if (json.has_key("result") and json["result"] != None):
-    txid = json["result"]["txid"]
-    address= json["result"]["address"]
-    msg = "txid {}, address {}".format(txid, address)
-#endif
-api_print(json, msg)
 
 print ""
 print "All Done!"

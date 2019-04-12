@@ -97,9 +97,11 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_accounts_transactions(self):
+    def nexus_accounts_transactions(self, page=0, limit=100, verbose=2):
         if (self.genesis_id == None): return(self.__error("Not logged in"))
 
+        parms = "?genesis={}&page={}&limit={}&verbose={}".format( \
+            self.genesis_id, page, limit, verbose)
         parms = "?genesis={}".format(self.genesis_id)
         url = accounts_url.format("transactions") + parms
         json_data = self.__get(url)
@@ -287,8 +289,8 @@ class sdk_init():
     #enddef
 
     def nexus_assets_tokenize_by_address(self, asset_address, token_address):
-        parms = "?pin={}&session={}&token_address={}&asset_address={}".format( \
-            self.pin, self.session_id, token_address, asset_address)
+        parms = "?pin={}&session={}&token_address={}&asset_address={}". \
+            format(self.pin, self.session_id, token_address, asset_address)
         url = assets_url.format("tokenize") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -396,7 +398,8 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_tokens_credit_by_address(self, to_address, amount, txid, proof):
+    def nexus_tokens_credit_by_address(self, to_address, amount, txid,
+        proof=None):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
@@ -438,25 +441,6 @@ class sdk_init():
         json_data["error"]["message"] = message
         return(json_data)
     #enddef
-                
-    def __login(self, user, pw, pin, create_account):
-        json_data = self.nexus_accounts_login()
-
-        #
-        # Already logged in?
-        #
-        if (json_data.has_key("error") and json_data["error"].has_key("code")):
-            if (json_data["error"]["code"] == -22): return
-            if (create_account == False): return
-
-            #
-            # Account does not exist. Creatr it and then log in.
-            #
-            if (json_data["error"]["code"] == -26):
-                json_data = self.nexus_accounts_create()
-            #endif
-        #endry
-        return(json_data)
 #endclass
 
 #------------------------------------------------------------------------------
