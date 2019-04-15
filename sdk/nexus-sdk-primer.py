@@ -124,6 +124,10 @@ def login_or_create_username(sdk, username):
     #endif
 
     json = sdk.nexus_accounts_login()
+    if (sdk.genesis_id == None):
+        print "accounts/login failed, nexus daemon may not be running"
+        exit(1)
+    #endif
     api_print(json, "genesis {}".format(short_genid(sdk.genesis_id)))
 #enddef
 
@@ -404,22 +408,6 @@ def assets(primer1, primer2):
     sleep()
 
     #
-    # Tokenize asset 'primer-asset'.
-    #
-    if (new_owner != None):
-        msg = None
-        print ""
-        print "Tokenize 'primer-asset' ...",
-        json = new_owner.nexus_assets_tokenize_by_name("primer-asset", "primer-token")
-        if (json.has_key("result") and json["result"] != None):
-            txid = json["result"]["txid"]
-            address= json["result"]["address"]
-            msg = "txid {}, address {}".format(txid, address)
-        #endif
-        api_print(json, msg)
-    #endif
-
-    #
     # Call API assets/history
     #
     print "Get history for Asset '{}' ...".format(asset_name).ljust(width),
@@ -428,6 +416,54 @@ def assets(primer1, primer2):
     if (json.has_key("result") and json["result"] != None):
         print_history(json)
     #endif
+    print ""
+
+    #
+    # Tokenize an asset. Create new asset and token token now.
+    #
+    asset_name = "tokenized-asset"
+    print "Get tokenized asset '{}'...".format(asset_name).ljust(width),
+    json = primer1.nexus_assets_get_by_name(asset_name)
+    if (json.has_key("error")):
+        print ""
+        print "Create tokenized asset '{}'...".format(asset_name).ljust(width),
+        json = primer1.nexus_assets_create(asset_name, asset_name)
+        if (json.has_key("result") and json["result"] != None):
+            address = json["result"]["address"]
+        #endif
+        api_print(json, "address {}".format(address))
+    else:
+        api_print(json)
+    #endif
+    sleep()
+
+    tn = "shares-token"
+    print "Get token token '{}'...".format(tn).ljust(width),
+    json = primer1.nexus_tokens_get_token_by_name(tn)
+    if (json.has_key("error")):
+        print ""
+        print "Create token token '{}', supply {}...".format(tn, 100),
+        json = sdk.nexus_tokens_create_token(tn, 100, 100)
+        if (json.has_key("result") and json["result"] != None):
+            address = json["result"]["address"]
+        #endif
+        api_print(json, "address {}".format(address))
+        print json
+    else:
+        api_print(json)
+    #endif
+    sleep()
+
+    print ""
+    print "Tokenize '{}'...".format(asset_name).ljust(width),
+    json = primer1.nexus_assets_tokenize_by_name(asset_name, tn)
+    if (json.has_key("result") and json["result"] != None):
+        txid = json["result"]["txid"]
+        address= json["result"]["address"]
+        msg = "txid {}, address {}".format(txid, address)
+    #endif
+    api_print(json, msg)
+
 #enddef
 
 #
