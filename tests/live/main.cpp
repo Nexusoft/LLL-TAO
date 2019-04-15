@@ -76,28 +76,28 @@ public:
 
     bool operator==(int32_t value) const
     {
-        uint64_t compare = static_cast<uint128_t>(value) * nFigures;
+        uint128_t compare = static_cast<uint128_t>(value) * nFigures;
 
         return compare == nValue;
     }
 
     bool operator==(uint32_t value) const
     {
-        uint64_t compare = static_cast<uint128_t>(value) * nFigures;
+        uint128_t compare = static_cast<uint128_t>(value) * nFigures;
 
         return compare == nValue;
     }
 
     bool operator<(int32_t value) const
     {
-        uint64_t compare = static_cast<uint128_t>(value) * nFigures;
+        uint128_t compare = static_cast<uint128_t>(value) * nFigures;
 
         return nValue < compare;
     }
 
     bool operator>(int32_t value) const
     {
-        uint64_t compare = static_cast<uint128_t>(value) * nFigures;
+        uint128_t compare = static_cast<uint128_t>(value) * nFigures;
 
         return nValue > compare;
     }
@@ -168,6 +168,35 @@ public:
         return ret;
     }
 
+/*
+
+    // should be much more precise with large b
+    inline double fastPrecisePow(double a, double b) {
+      // calculate approximation with fraction of the exponent
+      int e = (int) b;
+      union {
+        double d;
+        int x[2];
+      } u = { a };
+      u.x[1] = (int)((b - e) * (u.x[1] - 1072632447) + 1072632447);
+      u.x[0] = 0;
+
+      // exponentiation by squaring with the exponent's integer part
+      // double r = u.d makes everything much slower, not sure why
+      double r = 1.0;
+      while (e) {
+        if (e & 1) {
+          r *= a;
+        }
+        a *= a;
+        e >>= 1;
+      }
+
+      return r * u.d;
+    }
+
+*/
+
 
     precision_t operator^(const precision_t& value) const
     {
@@ -175,12 +204,20 @@ public:
         if(value == 0)
             return 1;
 
-        uint64_t exp = value.get();
+        uint64_t whole = value.get_int();
+        debug::log(0, "Whole ", whole);
 
-        //break it into the a^x.v = (a^x * a^v)
+        //break it into the a^(x + v) = (a^x * a^v)
 
-        for(int i = 1; exp > i; ++i)
+        for(int i = 1; i < whole; ++i)
             ret *= (*this);
+
+        debug::log(0, "Fraction ", whole);
+
+        uint64_t fraction = value.nValue - (whole * value.nFigures);
+
+        debug::log(0, "Fraction ", fraction);
+        //handle the floating point (exp by squaring)
 
         return ret;
     }
@@ -213,6 +250,7 @@ public:
 
         return *this;
     }
+    
 
     precision_t e()
     {
@@ -232,7 +270,7 @@ public:
     }
 
 
-    uint64_t get() const
+    uint64_t get_int() const
     {
         return nValue / nFigures;
     }
@@ -317,6 +355,32 @@ precision_t<9> _exp(precision_t<9> a, precision_t<9> b)
     return result;
 }
 
+// should be much more precise with large b
+inline double fastPrecisePow(double a, double b) {
+  // calculate approximation with fraction of the exponent
+  int e = (int) b;
+  union {
+    double d;
+    int x[2];
+  } u = { a };
+  u.x[1] = (int)((b - e) * (u.x[1] - 1072632447) + 1072632447);
+  u.x[0] = 0;
+
+  // exponentiation by squaring with the exponent's integer part
+  // double r = u.d makes everything much slower, not sure why
+  double r = 1.0;
+  while (e) {
+    if (e & 1) {
+      r *= a;
+    }
+    a *= a;
+    e >>= 1;
+  }
+
+  return r * u.d;
+}
+
+
 
 
 //This main function is for prototyping new code
@@ -324,6 +388,12 @@ precision_t<9> _exp(precision_t<9> a, precision_t<9> b)
 //Prototype code and it's tests created here should move to production code and unit tests
 int main(int argc, char** argv)
 {
+
+    double test = 5.0;
+    double test2 = 3.1;
+
+    debug::log(0, "POW ", fastPrecisePow(test, test2));
+    debug::log(0, "POW2 ", pow(test, test2));
 
     precision_t<9> euler = 2.718281828;
 
@@ -333,11 +403,11 @@ int main(int argc, char** argv)
 
     printf("------------------------------\n");
 
-    precision_t<6> base = 5;
+    precision_t<9> base = 5;
 
     base.print();
 
-    precision_t<6> expo = base^3.1;
+    precision_t<9> expo = base^3.222;
 
     expo.print();
 
