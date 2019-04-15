@@ -97,9 +97,11 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_accounts_transactions(self):
+    def nexus_accounts_transactions(self, page=0, limit=100, verbose=2):
         if (self.genesis_id == None): return(self.__error("Not logged in"))
 
+        parms = "?genesis={}&page={}&limit={}&verbose={}".format( \
+            self.genesis_id, page, limit, verbose)
         parms = "?genesis={}".format(self.genesis_id)
         url = accounts_url.format("transactions") + parms
         json_data = self.__get(url)
@@ -107,7 +109,7 @@ class sdk_init():
     #enddef
        
     def nexus_accounts_lock(self):
-        if (self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session-id={}".format(self.session_id)
         url = accounts_url.format("lock") + parms
@@ -116,7 +118,7 @@ class sdk_init():
     #enddef
        
     def nexus_accounts_unlock(self):
-        if (self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session-id={}".format(self.pin, self.session_id)
         url = accounts_url.format("unlock") + parms
@@ -135,8 +137,6 @@ class sdk_init():
     #enddef
        
     def nexus_accounts_notifications_by_username(self, page, limit, verbose):
-        if (self.genesis_id == None): return(self.__error("Not logged in"))
-
         parms = "?username={}&page={}&limit={}&verbose={}".format( \
             self.username, page, limit, verbose)
         url = accounts_url.format("notifications") + parms
@@ -212,7 +212,7 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_assets_create(self, name, data):
+    def nexus_assets_create(self, asset_name, data):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
@@ -224,60 +224,73 @@ class sdk_init():
         data = urllib.quote_plus(data)
 
         parms = "?pin={}&session={}&name={}&data={}".format(self.pin,
-            self.session_id, name, data)
+            self.session_id, asset_name, data)
         url = assets_url.format("create") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
-    def nexus_assets_get_by_name(self, name):
-        parms = "?name={}".format(name)
+    def nexus_assets_get_by_name(self, asset_name):
+        parms = "?name={}".format(asset_name)
         url = assets_url.format("get") + parms
         json_data = self.__get(url)
 
         #
-        # Unquote data if "state" key is present.
+        # Unquote data if "metadata" key is present.
         #
         if (json_data.has_key("result")):
-            data = urllib.unquote_plus(json_data["result"]["state"])
-            json_data["result"]["state"] = data.replace("%26", "&")
+            data = urllib.unquote_plus(json_data["result"]["metadata"])
+            json_data["result"]["metadata"] = data.replace("%26", "&")
         #endif
         return(json_data)
     #enddef
 
-    def nexus_assets_get_by_address(self, address):
-        parms = "?address={}".format(address)
+    def nexus_assets_get_by_address(self, asset_address):
+        parms = "?address={}".format(asset_address)
         url = assets_url.format("get") + parms
         json_data = self.__get(url)
 
         #
-        # Unquote data if "state" key is present.
+        # Unquote data if "metadataa" key is present.
         #
         if (json_data.has_key("result")):
-            data = urllib.unquote_plus(json_data["result"]["state"])
-            json_data["result"]["state"] = data.replace("%26", "&")
+            data = urllib.unquote_plus(json_data["result"]["metadata"])
+            json_data["result"]["metadata"] = data.replace("%26", "&")
         #endif
         return(json_data)
     #enddef
 
-    def nexus_assets_transfer_by_name(self, name, dest_name):
+    def nexus_assets_transfer_by_name(self, asset_name, dest_username):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
         parms = "?pin={}&session={}&name={}&username={}".format(self.pin,
-            self.session_id, name, dest_name)
+            self.session_id, asset_name, dest_username)
         url = assets_url.format("transfer") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
-    def nexus_assets_transfer_by_address(self, address, dest_address):
+    def nexus_assets_transfer_by_address(self, asset_address, dest_address):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
         parms = "?pin={}&session={}&address={}&destinatiion={}".format( \
-            self.pin, self.session_id, address, dest_address)
+            self.pin, self.session_id, asset_address, dest_address)
         url = assets_url.format("transfer") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
-    def nexus_assets_tokenize(self):
-        parms = "?"
+    def nexus_assets_tokenize_by_name(self, asset_name, token_name):
+        parms = "?pin={}&session={}&token_name={}&asset_name={}".format( \
+            self.pin, self.session_id, token_name, asset_name)
+        url = assets_url.format("tokenize") + parms
+        json_data = self.__get(url)
+        return(json_data)
+    #enddef
+
+    def nexus_assets_tokenize_by_address(self, asset_address, token_address):
+        parms = "?pin={}&session={}&token_address={}&asset_address={}". \
+            format(self.pin, self.session_id, token_address, asset_address)
         url = assets_url.format("tokenize") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -308,12 +321,11 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_tokens_create_account(self, token_name, token_id, supply):
+    def nexus_tokens_create_account(self, token_account_name, token_id):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
-        parms = ("?pin={}&session={}&identifier={}&type=account&supply={}" + \
-            "&name={}").format(self.pin, self.session_id, token_id, supply,
-            token_name)
+        parms = "?pin={}&session={}&identifier={}&type=account&name={}". \
+            format(self.pin, self.session_id, token_id, token_account_name)
         url = tokens_url.format("create") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -333,21 +345,26 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_tokens_get_account_by_name(self, token_name):
-        parms = "?name={}&type=account".format(token_name)
+    def nexus_tokens_get_account_by_name(self, token_account_name):
+        parms = "?name={}&type=account".format(token_account_name)
         url = tokens_url.format("get") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
-    def nexus_tokens_get_account_by_address(self, token_address):
-        parms = "?address={}&type=account".format(token_address)
+    def nexus_tokens_get_account_by_address(self, token_account_address):
+        parms = "?address={}&type=account".format(token_account_address)
         url = tokens_url.format("get") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
     def nexus_tokens_debit_by_name(self, from_name, to_name, amount):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
+        #
+        # Arguments from_name and to_name are token account names.
+        #
         parms = "?pin={}&session={}&amount={}&name_from={}&name_to={}". \
             format(self.pin, self.session_id, amount, from_name, to_name)
         url = tokens_url.format("debit") + parms
@@ -356,6 +373,11 @@ class sdk_init():
     #enddef
 
     def nexus_tokens_debit_by_address(self, from_address, to_address, amount):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
+        #
+        # Arguments from_address and to_address are token account addresses.
+        #
         parms = "?pin={}&session={}&amount={}&address_from={}&address_to={}". \
             format(self.pin, self.session_id, amount, from_address, to_address)
         url = tokens_url.format("debit") + parms
@@ -363,18 +385,29 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_tokens_credit_by_name(self, to_name, amount, txid, proof):
-        parms = "?pin={}&session={}&txid={}&amount={}&name_to={}".format( \
-            self.pin, self.session_id, txid, amount, to_name)
-        url = tokens_url.format("debit") + parms
+    def nexus_tokens_credit_by_name(self, to_name, amount, txid, proof=None):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
+        #
+        # Argument from_name is a token account name.
+        #
+        parms = "?pin={}&session={}&txid={}&amount={}&name_to={}". \
+            format(self.pin, self.session_id, txid, amount, to_name)
+        url = tokens_url.format("credit") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
-    def nexus_tokens_credit_by_address(self, to_address, amount, txid, proof):
-        parms = "?pin={}&session={}&txid={}&amount={}&address_to={}".format( \
-            self.pin, self.session_id, txid, amount, to_address)
-        url = tokens_url.format("debit") + parms
+    def nexus_tokens_credit_by_address(self, to_address, amount, txid,
+        proof=None):
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
+        #
+        # Argument from_address is a token account address.
+        #
+        parms = ("?pin={}&session={}&txid={}&amount={}&address_to={}"). \
+            format(self.pin, self.session_id, txid, amount, to_address)
+        url = tokens_url.format("credit") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
@@ -408,25 +441,6 @@ class sdk_init():
         json_data["error"]["message"] = message
         return(json_data)
     #enddef
-                
-    def __login(self, user, pw, pin, create_account):
-        json_data = self.nexus_accounts_login()
-
-        #
-        # Already logged in?
-        #
-        if (json_data.has_key("error") and json_data["error"].has_key("code")):
-            if (json_data["error"]["code"] == -22): return
-            if (create_account == False): return
-
-            #
-            # Account does not exist. Creatr it and then log in.
-            #
-            if (json_data["error"]["code"] == -26):
-                json_data = self.nexus_accounts_create()
-            #endif
-        #endry
-        return(json_data)
 #endclass
 
 #------------------------------------------------------------------------------

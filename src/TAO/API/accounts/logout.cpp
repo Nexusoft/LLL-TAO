@@ -56,8 +56,8 @@ namespace TAO
 
             /* Erase the session. */
             mapSessions.erase(nSession);
-            if( !strActivePIN.IsNull())
-                    strActivePIN.free();
+            if( !pActivePIN.IsNull())
+                    pActivePIN.free();
 
             return ret;
         }

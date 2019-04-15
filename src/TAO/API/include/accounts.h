@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/base.h>
 
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/pinunlock.h>
 
 #include <Util/include/mutex.h>
 #include <Util/include/memory.h>
@@ -42,7 +43,7 @@ namespace TAO
 
 
             /** The active pin for sessionless API use **/
-            mutable memory::encrypted_ptr<SecureString> strActivePIN;
+            mutable memory::encrypted_ptr<TAO::Ledger::PinUnlock> pActivePIN;
 
 
             /** The mutex for locking. **/
@@ -53,7 +54,7 @@ namespace TAO
             /** Default Constructor. **/
             Accounts()
             : mapSessions()
-            , strActivePIN()
+            , pActivePIN()
             , MUTEX()
             {
                 Initialize();
@@ -73,8 +74,8 @@ namespace TAO
                 /* Clear the sessions map of all entries */
                 mapSessions.clear();
 
-                if( !strActivePIN.IsNull())
-                    strActivePIN.free();
+                if( !pActivePIN.IsNull())
+                    pActivePIN.free();
             }
 
 
@@ -100,6 +101,24 @@ namespace TAO
              *
              **/
             bool Locked() const;
+
+            /** CanTransact
+             *
+             *  In sessionless API mode this method checks that the active sig chain has 
+             *  been unlocked to allow transactions.  If the account has not been specifically
+             *  unlocked then we assume that they ARE allowed to transact, since the PIN would
+             *  need to be provided in each API call.
+             *
+             **/
+            bool CanTransact() const;
+
+            /** CanMint
+             *
+             *  In sessionless API mode this method checks that the active sig chain has 
+             *  been unlocked to allow minting.
+             *
+             **/
+            bool CanMint() const;
 
 
             /** GetKey

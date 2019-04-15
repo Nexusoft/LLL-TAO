@@ -62,6 +62,7 @@ namespace debug
 
     extern std::mutex DEBUG_MUTEX;
     extern std::ofstream ssFile;
+    extern thread_local std::string strLastError;
 
     /** Block debug output flags. **/
     enum flags
@@ -190,6 +191,7 @@ namespace debug
     template<class... Args>
     bool error(Args&&... args)
     {
+        strLastError = safe_printstr(args...);
         log(0, ANSI_COLOR_BRIGHT_RED, "ERROR: ", ANSI_COLOR_RESET, args...);
 
         return false;
@@ -298,6 +300,15 @@ namespace debug
      *
      **/
     void ShrinkDebugFile(std::string debugPath = config::GetDataDir() + "debug.log");
+
+    /** GetLastError
+    *
+    *  Gets the last error string logged via debug::error and clears the last error
+    *
+    *  @return The last error string logged via debug::error
+    *
+    **/
+    std::string GetLastError();
 
 }
 #endif
