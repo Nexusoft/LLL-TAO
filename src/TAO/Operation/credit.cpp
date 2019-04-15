@@ -165,7 +165,7 @@ namespace TAO
                 return debug::error(FUNCTION, "couldn't read debit to address");
 
             /* Credits specific to account objects. */
-            if(stateTo.nType == TAO::Register::OBJECT::ACCOUNT)
+            if(stateTo.nType == TAO::Register::STATE::ACCOUNT)
             {
                 /* Check if this is a whole credit that the transaction is not already spent. */
                 if(LLD::legDB->HasProof(hashAccount, hashTx, nFlags))
@@ -248,7 +248,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write new state");
                 }
             }
-            else if(stateTo.nType == TAO::Register::OBJECT::RAW || stateTo.nType == TAO::Register::OBJECT::READONLY)
+            else if(stateTo.nType == TAO::Register::STATE::RAW || stateTo.nType == TAO::Register::STATE::READONLY)
             {
 
                 /* Get the state register of this register's owner. */
