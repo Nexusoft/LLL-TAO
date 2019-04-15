@@ -26,13 +26,13 @@ typedef unsigned int uint128_t __attribute__((mode(TI)));
 template<uint32_t FIGURES>
 class precision_t
 {
-    uint32_t nFigures;
+    uint64_t  nFigures;
     uint128_t nValue;
 
 
-    uint32_t get_figures()
+    uint64_t get_figures()
     {
-        uint32_t nTemp = 10;
+        uint64_t nTemp = 10;
         for(int i = 1; i < FIGURES; i++)
             nTemp *= 10;
 
@@ -175,7 +175,11 @@ public:
         if(value == 0)
             return 1;
 
-        for(int i = 1; value > i; ++i)
+        uint64_t exp = value.get();
+
+        //break it into the a^x.v = (a^x * a^v)
+
+        for(int i = 1; exp > i; ++i)
             ret *= (*this);
 
         return ret;
@@ -225,6 +229,12 @@ public:
         }
 
         return ret;
+    }
+
+
+    uint64_t get() const
+    {
+        return nValue / nFigures;
     }
 
 
@@ -327,7 +337,7 @@ int main(int argc, char** argv)
 
     base.print();
 
-    precision_t<6> expo = base^3;
+    precision_t<6> expo = base^3.1;
 
     expo.print();
 
