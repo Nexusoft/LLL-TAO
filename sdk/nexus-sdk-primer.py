@@ -331,7 +331,6 @@ def assets(primer1, primer2):
     asset_data = "asset-data"
     address = None
     owner = None
-    new_owner = None
     print "Create Asset named '{}' ...".format(asset_name).ljust(width),
     json = primer1.nexus_assets_get_by_name(asset_name)
     if (json.has_key("error") == False):
@@ -376,7 +375,6 @@ def assets(primer1, primer2):
     to = None
     if (primer1.genesis_id == owner):
         sdk = primer1
-        new_owner = primer2
         fr = "primer1"
         to = "primer2"
         print "Transfer Asset '{}' from '{}' (genid {}) to '{}' (genid {})". \
@@ -385,7 +383,6 @@ def assets(primer1, primer2):
     #endif
     if (primer2.genesis_id == owner):
         sdk = primer2
-        new_owner = primer1
         fr = "primer2"
         to = "primer1"
         print "Transfer Asset '{}' from '{}' (genid {}) to '{}' (genid {})". \
