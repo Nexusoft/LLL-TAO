@@ -429,7 +429,7 @@ int main(int argc, char** argv)
 
     double e = exp(2);
 
-    debug::log(0, std::fixed, std::setprecision(12), e);
+    debug::log(0, "exp(2)   = ", std::fixed, std::setprecision(12), e);
 
     debug::log(0, "expo.e() = ", expo.e());
 
