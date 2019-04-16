@@ -17,6 +17,9 @@ ________________________________________________________________________________
 
 #include <LLC/aes/aes.h>
 
+#include <iostream>
+#include <iomanip>
+
 #include <cmath>
 
 
@@ -250,7 +253,7 @@ public:
 
         return *this;
     }
-    
+
 
     precision_t e()
     {
@@ -285,6 +288,15 @@ public:
     void print() const
     {
         printf("%.12f\n", get());
+    }
+
+
+    friend std::ostream &operator<<(std::ostream &o, const precision_t &value)
+    {
+        //uint32_t nFigures = std::min(12u, FIGURES);
+        //o << std::fixed << std::setprecision(nFigures) << value.get();
+        o << std::fixed << std::setprecision(12) << value.get();
+        return o;
     }
 };
 
@@ -344,7 +356,8 @@ precision_t<9> _exp(precision_t<9> a, precision_t<9> b)
 
     while (b > 0)
     {
-      if (b%2==1){
+      if (b % 2 == 1)
+      {
         result *= a;
       }
 
@@ -356,10 +369,12 @@ precision_t<9> _exp(precision_t<9> a, precision_t<9> b)
 }
 
 // should be much more precise with large b
-inline double fastPrecisePow(double a, double b) {
+inline double fastPrecisePow(double a, double b)
+{
   // calculate approximation with fraction of the exponent
   int e = (int) b;
-  union {
+  union
+  {
     double d;
     int x[2];
   } u = { a };
@@ -369,8 +384,10 @@ inline double fastPrecisePow(double a, double b) {
   // exponentiation by squaring with the exponent's integer part
   // double r = u.d makes everything much slower, not sure why
   double r = 1.0;
-  while (e) {
-    if (e & 1) {
+  while (e)
+  {
+    if (e & 1)
+    {
       r *= a;
     }
     a *= a;
@@ -388,7 +405,6 @@ inline double fastPrecisePow(double a, double b) {
 //Prototype code and it's tests created here should move to production code and unit tests
 int main(int argc, char** argv)
 {
-
     double test = 5.0;
     double test2 = 3.1;
 
@@ -399,28 +415,28 @@ int main(int argc, char** argv)
 
     precision_t<9> testing = _exp(euler, 3);
 
-    testing.print();
+    debug::log(0, "testing = ", testing);
 
-    printf("------------------------------\n");
+    debug::log(0, "------------------------------");
 
     precision_t<9> base = 5;
 
-    base.print();
+    debug::log(0, "base = ", base);
 
     precision_t<9> expo = base^3.222;
 
-    expo.print();
+    debug::log(0, "expo = ", expo);
 
     double e = exp(2);
 
-    printf("%.12f\n", e);
+    debug::log(0, std::fixed, std::setprecision(12), e);
 
-    expo.e().print();
+    debug::log(0, "expo.e() = ", expo.e());
 
     precision_t<12> exponent = 3;
     exponent.exp();
 
-    exponent.print();
+    debug::log(0, "exponent = ", exponent);
 
 
     precision_t<6> value = 100.333;
@@ -431,15 +447,11 @@ int main(int argc, char** argv)
     precision_t<6> value3 = value / value2;
     precision_t<6> value4 = value * value2;
 
-    printf("%f\n", value.get());
-
-    printf("%f\n", value2.get());
-
-    printf("%f\n", value3.get());
-
-    printf("%f\n", value4.get());
-
-    printf("%.9f\n", euler.get());
+    debug::log(0, "value  = ", value);
+    debug::log(0, "value2 = ", value2);
+    debug::log(0, "value3 = ", value3);
+    debug::log(0, "value4 = ", value4);
+    debug::log(0, "euler  = ", euler);
 
     return 0;
 
