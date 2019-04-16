@@ -23,6 +23,8 @@ ________________________________________________________________________________
 #include <cstdint>
 #include <algorithm>
 
+#include <Util/include/debug.h>
+
 /** Base class without constructors for uint256_t, uint512_t, uint576_t, uint1024_t.
 * This makes the compiler let u use it in a union.
 */
@@ -205,6 +207,58 @@ public:
         const base_uint ret = *this;
         --(*this);
         return ret;
+    }
+
+    base_uint& operator*=(uint32_t b32)
+    {
+        uint64_t carry = 0;
+        for (int i = 0; i < WIDTH; i++) {
+            uint64_t n = carry + (uint64_t)b32 * pn[i];
+            pn[i] = n & 0xffffffff;
+            carry = n >> 32;
+        }
+        return *this;
+    }
+
+    base_uint& operator*=(const base_uint& b)
+    {
+        base_uint<BITS> a;
+        for (int j = 0; j < WIDTH; j++) {
+            uint64_t carry = 0;
+            for (int i = 0; i + j < WIDTH; i++) {
+                uint64_t n = carry + a.pn[i + j] + (uint64_t)pn[j] * b.pn[i];
+                a.pn[i + j] = n & 0xffffffff;
+                carry = n >> 32;
+            }
+        }
+        *this = a;
+        return *this;
+    }
+
+    base_uint& operator/=(const base_uint& b)
+    {
+        base_uint<BITS> div = b;     // make a copy, so we can shift.
+        base_uint<BITS> num = *this; // make a copy, so we can subtract.
+        *this = 0;                   // the quotient.
+        int num_bits = num.bits();
+        int div_bits = div.bits();
+        if (div_bits == 0)
+            throw std::domain_error(debug::safe_printstr("Division by zero"));
+
+        if (div_bits > num_bits) // the result is certainly 0.
+            return *this;
+        int shift = num_bits - div_bits;
+        div <<= shift; // shift so that div and num align.
+        while (shift >= 0) {
+            if (num >= div) {
+                num -= div;
+                pn[shift / 32] |= (1 << (shift & 31)); // set a bit of the result.
+            }
+            div >>= 1; // shift back.
+            shift--;
+        }
+        // num now contains the remainder of the division.
+        return *this;
     }
 
 
@@ -392,6 +446,28 @@ public:
     uint32_t size()
     {
         return sizeof(pn);
+    }
+
+    /**
+     * Returns the position of the highest bit set plus one, or zero if the
+     * value is zero.
+     */
+    uint32_t bits() const
+    {
+        for (int pos = WIDTH - 1; pos >= 0; pos--)
+        {
+            if (pn[pos])
+            {
+                for (int nbits = 31; nbits > 0; nbits--)
+                {
+                    if (pn[pos] & 1U << nbits)
+                        return 32 * pos + nbits + 1;
+                }
+                return 32 * pos + 1;
+            }
+        }
+
+        return 0;
     }
 
     uint64_t Get64(int n=0) const
