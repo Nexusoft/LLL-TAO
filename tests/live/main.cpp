@@ -19,6 +19,8 @@ ________________________________________________________________________________
 
 #include <cmath>
 
+#include <LLC/types/bignum.h>
+
 
 typedef unsigned int uint128_t __attribute__((mode(TI)));
 
@@ -26,13 +28,13 @@ typedef unsigned int uint128_t __attribute__((mode(TI)));
 template<uint32_t FIGURES>
 class precision_t
 {
-    uint32_t nFigures;
+    uint64_t nFigures;
     uint128_t nValue;
 
 
-    uint32_t get_figures()
+    uint64_t get_figures()
     {
-        uint32_t nTemp = 10;
+        uint64_t nTemp = 10;
         for(int i = 1; i < FIGURES; i++)
             nTemp *= 10;
 
@@ -50,7 +52,6 @@ public:
     : nFigures(get_figures())
     , nValue(value * nFigures)
     {
-
     }
 
     precision_t& operator=(double value)
@@ -76,28 +77,28 @@ public:
 
     bool operator==(int32_t value) const
     {
-        uint64_t compare = static_cast<uint128_t>(value) * nFigures;
+        uint128_t compare = static_cast<uint128_t>(value) * nFigures;
 
         return compare == nValue;
     }
 
     bool operator==(uint32_t value) const
     {
-        uint64_t compare = static_cast<uint128_t>(value) * nFigures;
+        uint128_t compare = static_cast<uint128_t>(value) * nFigures;
 
         return compare == nValue;
     }
 
     bool operator<(int32_t value) const
     {
-        uint64_t compare = static_cast<uint128_t>(value) * nFigures;
+        uint128_t compare = static_cast<uint128_t>(value) * nFigures;
 
         return nValue < compare;
     }
 
     bool operator>(int32_t value) const
     {
-        uint64_t compare = static_cast<uint128_t>(value) * nFigures;
+        uint128_t compare = static_cast<uint128_t>(value) * nFigures;
 
         return nValue > compare;
     }
@@ -139,6 +140,22 @@ public:
         return *this;
     }
 
+
+    precision_t& operator/=(const uint128_t& value)
+    {
+        nValue /= value;
+
+        return *this;
+    }
+
+
+    precision_t& operator*=(const uint128_t& value)
+    {
+        nValue *= value;
+
+        return *this;
+    }
+
     precision_t operator/(const precision_t& value) const
     {
         precision_t ret = *this;
@@ -150,9 +167,19 @@ public:
     }
 
 
+    precision_t operator/(const uint128_t& value) const
+    {
+        precision_t ret = *this;
+
+        ret.nValue /= value;
+
+        return ret;
+    }
+
+
     uint32_t operator%(const uint32_t value) const
     {
-        uint64_t ret = nValue / nFigures;
+        uint128_t ret = nValue / nFigures;
 
         return ret % value;
     }
@@ -190,21 +217,56 @@ public:
   else if n is odd  then return x * exp_by_squaring(x * x, (n - 1) / 2);
   */
 
-    precision_t& exp()
+    precision_t& exp(bool fPrint = false)
     {
-        precision_t fact = 1;
+        uint128_t fact = 1;
 
         precision_t base  = *this;
+        //precision_t temp;
+
+        double dBase = get();
 
         *this = 0;
-        for(int i = 1; i <= 11; ++i)
+        for(int i = 1; i <= 33; ++i)
         {
-            precision_t temp = (base^(i - 1)) / fact;
+            double dTemp = pow(dBase, (i - 1)) / fact;
+
+
+            precision_t power = i - 1;
+            if(fPrint)
+                power.print();
+
+            precision_t temp = (base^power) / fact;
+
+
+            if(fPrint)
+            {
+                printf("++++\n");
+                printf("%.16f\n", dTemp);
+                temp.print();
+            }
+
+            //if(fPrint)
+            //    temp.print();
+
+            if(temp == 0)
+            {
+                if(fPrint)
+                    printf("Taylor out at %u\n", i);
+                break;
+            }
+
+
+
             //nSum += power(x, i - 1) / nFactorial;
             *this += temp;
 
-            fact *= i;
+            if(fPrint)
+                print();
 
+
+
+            fact *= i;
         }
 
         return *this;
@@ -233,10 +295,28 @@ public:
         return static_cast<double>(nValue) / nFigures;
     }
 
+    uint128_t getint() const
+    {
+        return nValue;
+    }
+
+    uint64_t get_uint(uint32_t nTotalFigures = FIGURES)
+    {
+        uint128_t nRet = nValue;
+        for(int i = 0; i < (FIGURES - nTotalFigures); i++)
+        {
+            //debug::log(0, i, " UINT ", uint64_t(nRet));
+
+            nRet /= 10;
+        }
+
+        return nRet;
+    }
+
 
     void print() const
     {
-        printf("%.12f\n", get());
+        printf("%.16f\n", get());
     }
 };
 
@@ -296,7 +376,8 @@ precision_t<9> _exp(precision_t<9> a, precision_t<9> b)
 
     while (b > 0)
     {
-      if (b%2==1){
+      if (b % 2 == 1)
+      {
         result *= a;
       }
 
@@ -307,6 +388,30 @@ precision_t<9> _exp(precision_t<9> a, precision_t<9> b)
     return result;
 }
 
+#include <TAO/Ledger/include/supply.h>
+
+const precision_t<15> decays[3][3] =
+{
+    {50.0, 0.00000110, 1.000},
+    {10.0, 0.00000055, 1.000},
+    {1.00, 0.00000059, 0.032}
+};
+
+uint64_t Subsidy(const uint32_t nMinutes, const uint32_t nType, bool fPrint = false)
+{
+    precision_t<15> exponent = decays[nType][1] * nMinutes;
+    exponent.exp(fPrint);
+
+    precision_t<15> ret = decays[nType][0] / exponent;
+    ret += decays[nType][2];
+
+    ret /= 2;
+
+    if(fPrint)
+        ret.print();
+
+    return ret.get_uint(6);
+}
 
 
 //This main function is for prototyping new code
@@ -314,12 +419,41 @@ precision_t<9> _exp(precision_t<9> a, precision_t<9> b)
 //Prototype code and it's tests created here should move to production code and unit tests
 int main(int argc, char** argv)
 {
+    using namespace TAO::Ledger;
 
-    precision_t<9> euler = 2.718281828;
+//2.7182818284590452353602874713527
 
-    precision_t<9> testing = _exp(euler, 3);
+    debug::log(0, "Chain Age ", GetChainAge(time(NULL)));
 
-    testing.print();
+    uint32_t nFails = 0;
+    uint32_t nTotals = 10000000;
+    for(int i = 0; i < nTotals; i++)
+    {
+        //debug::log(0, i);
+        if(GetSubsidy(i, 0) != Subsidy(i, 0))
+        {
+            debug::log(0, "MINUTE ", i);
+            debug::log(0, GetSubsidy(i, 0));
+            debug::log(0, Subsidy(i, 0, true));
+            printf("------------------------------\n");
+
+            ++nFails;
+
+            return 0;
+        }
+
+        assert(GetSubsidy(i, 1) == Subsidy(i, 1));
+        assert(GetSubsidy(i, 2) == Subsidy(i, 2));
+    }
+
+    debug::log(0, "FAILURES: ", nFails, " ", nFails * 100.0 / nTotals, " %");
+
+    return 0;
+
+    //precision_t<9> testing2 = _exp(euler, 3.333333333);
+
+    //testing.print();
+    //testing2.print();
 
     printf("------------------------------\n");
 
@@ -359,7 +493,7 @@ int main(int argc, char** argv)
 
     printf("%f\n", value4.get());
 
-    printf("%.9f\n", euler.get());
+    //printf("%.9f\n", euler.get());
 
     return 0;
 
