@@ -285,6 +285,51 @@ namespace LLC
         return n;
     }
 
+
+    void CBigNum::setuint128(uint128_t n)
+    {
+        uint8_t pch[sizeof(n) + 6];
+        uint8_t* p = pch + 4;
+        bool fLeadingZeroes = true;
+        uint8_t* pbegin = (uint8_t*)&n;
+        uint8_t* psrc = pbegin + sizeof(n);
+        while (psrc != pbegin)
+        {
+            uint8_t c = *(--psrc);
+            if (fLeadingZeroes)
+            {
+                if (c == 0)
+                    continue;
+                if (c & 0x80)
+                    *p++ = 0;
+                fLeadingZeroes = false;
+            }
+            *p++ = c;
+        }
+        uint32_t nSize = static_cast<uint32_t>(p - (pch + 4));
+        pch[0] = static_cast<uint8_t>((nSize >> 24) & 0xff);
+        pch[1] = static_cast<uint8_t>((nSize >> 16) & 0xff);
+        pch[2] = static_cast<uint8_t>((nSize >> 8) & 0xff);
+        pch[3] = static_cast<uint8_t>((nSize) & 0xff);
+        BN_mpi2bn(pch, static_cast<int32_t>(p - pch), m_BN);
+    }
+
+
+    uint128_t CBigNum::getuint128() const
+    {
+        uint32_t nSize = BN_bn2mpi(m_BN, nullptr);
+        if (nSize < 4)
+            return 0;
+        std::vector<uint8_t> vch(nSize);
+        BN_bn2mpi(m_BN, &vch[0]);
+        if (vch.size() > 4)
+            vch[4] &= 0x7f;
+        uint128_t n = 0;
+        for (uint64_t i = 0, j = vch.size()-1; i < sizeof(n) && j >= 4; ++i, --j)
+            ((uint8_t*)&n)[i] = vch[j];
+        return n;
+    }
+
     void CBigNum::setuint256(uint256_t n)
     {
         uint8_t pch[sizeof(n) + 6];

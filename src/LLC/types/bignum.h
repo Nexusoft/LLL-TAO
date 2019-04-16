@@ -26,6 +26,9 @@ struct bignum_ctx;
 typedef struct bignum_st BIGNUM;
 typedef struct bignum_ctx BN_CTX;
 
+
+typedef unsigned int uint128_t __attribute__((mode(TI)));
+
 namespace LLC
 {
 
@@ -270,6 +273,15 @@ namespace LLC
         uint64_t getuint64() const;
 
 
+        /** getuint128
+         *
+         *
+         *
+         *
+         **/
+        uint128_t getuint128() const;
+
+
         /** getuint256
          *
          *
@@ -340,6 +352,9 @@ namespace LLC
          *
          **/
         void setuint64(uint64_t n);
+
+
+        void setuint128(uint128_t n);
 
 
         /** setuint256
