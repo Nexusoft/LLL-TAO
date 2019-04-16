@@ -14,71 +14,199 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <TAO/Register/include/basevm.h>
 
+#include <openssl/rand.h>
+
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "Base VM allocation tests", "[basevm]" )
+TEST_CASE( "Base VM allocation tests", "[register]" )
 {
     TAO::Register::BaseVM registers;
 
+    {
+        TAO::Register::Value value;
+        uint8_t data = 55;
 
-    TAO::Register::Value test;
-    uint256_t hashing = LLC::GetRand256();
-    registers.allocate(hashing, test);
-    REQUIRE(registers.available() == 480);
+        registers.allocate(data, value);
+        REQUIRE(registers.available() == 504);
 
+        uint8_t data2;
+        registers.deallocate(data2, value);
 
-    uint256_t random = LLC::GetRand256();
-    TAO::Register::Value test2;
-    registers.allocate(random, test2);
-    REQUIRE(registers.available() == 448);
+        REQUIRE(data == data2);
 
+        REQUIRE(value.nBytes == 1);
 
-    TAO::Register::Value test3;
-    uint64_t nTest = 48384839483948;
-    registers.allocate(nTest, test3);
-    REQUIRE(registers.available() == 440);
+    }
 
 
-    uint64_t nTest33;
-    registers.deallocate(nTest33, test3);
-    REQUIRE(nTest == nTest33);
+    {
+        TAO::Register::Value value;
+        uint16_t data = 55555;
+
+        registers.allocate(data, value);
+        REQUIRE(registers.available() == 504);
+
+        uint16_t data2;
+        registers.deallocate(data2, value);
+
+        REQUIRE(data == data2);
+
+        REQUIRE(value.nBytes == 2);
+    }
 
 
-    uint256_t hash333;
-    registers.deallocate(hash333, test2);
-    REQUIRE(hash333 == random);
+    {
+        TAO::Register::Value value;
+        uint32_t data = 823847328;
+
+        registers.allocate(data, value);
+        REQUIRE(registers.available() == 504);
+
+        uint32_t data2;
+        registers.deallocate(data2, value);
+
+        REQUIRE(data == data2);
+
+        REQUIRE(value.nBytes == 4);
+    }
 
 
-    uint256_t hashing2;
-    registers.deallocate(hashing2, test);
-    REQUIRE(hashing == hashing2);
-    REQUIRE(registers.available() == 512);
+    {
+        TAO::Register::Value value;
+        uint64_t data = 82323847387847328;
+
+        registers.allocate(data, value);
+        REQUIRE(registers.available() == 504);
+
+        uint64_t data2;
+        registers.deallocate(data2, value);
+
+        REQUIRE(data == data2);
+
+        REQUIRE(value.nBytes == 8);
+    }
 
 
-    std::string str = "this is a long form test string to make sure no corruption";
-    registers.allocate(str, test);
+    {
+        TAO::Register::Value value;
+        uint256_t data = LLC::GetRand256();
+
+        registers.allocate(data, value);
+        REQUIRE(registers.available() == 480);
+
+        uint256_t data2;
+        registers.deallocate(data2, value);
+
+        REQUIRE(data == data2);
+
+        REQUIRE(value.nBytes == 32);
+    }
 
 
-    std::string str2(test.size() * 8, 0);
-    registers.deallocate(str2, test);
-    REQUIRE(str2.find(str) != std::string::npos);
+    {
+        TAO::Register::Value value;
+        uint512_t data = LLC::GetRand512();
+
+        registers.allocate(data, value);
+        REQUIRE(registers.available() == 448);
+
+        uint512_t data2;
+        registers.deallocate(data2, value);
+
+        REQUIRE(data == data2);
+
+        REQUIRE(value.nBytes == 64);
+    }
 
 
-    registers.allocate(str2, test);
-    std::string str3(test.size() * 8, 0);
-    registers.deallocate(str3, test);
+    {
+        TAO::Register::Value value;
+        uint1024_t data = LLC::GetRand1024();
+
+        registers.allocate(data, value);
+        REQUIRE(registers.available() == 384);
+
+        uint1024_t data2;
+        registers.deallocate(data2, value);
+
+        REQUIRE(data == data2);
+
+        REQUIRE(value.nBytes == 128);
+    }
 
 
-    REQUIRE(str2 == str3);
-    REQUIRE(registers.available() == 512);
+    {
+        TAO::Register::Value value;
+        std::vector<uint8_t> data(55, 0);
+        RAND_bytes((uint8_t*)&data[0], data.size());
+
+        registers.allocate(data, value);
+        REQUIRE(registers.available() == 456);
+
+        std::vector<uint8_t> data2;
+        registers.deallocate(data2, value);
+
+        REQUIRE(std::equal(data.begin(), data.end(), data2.begin()));
+
+        REQUIRE(data2.size() == 55);
+
+        REQUIRE(value.nBytes == 55);
+    }
 
 
-    std::vector<uint8_t> vData = hashing.GetBytes();
-    registers.allocate(vData, test);
+    {
+        TAO::Register::Value value;
+        std::vector<uint8_t> data(65, 0);
+        RAND_bytes((uint8_t*)&data[0], data.size());
 
-    std::vector<uint8_t> vData2(test.size() * 8, 0);
-    registers.deallocate(vData2, test);
+        registers.allocate(data, value);
+        REQUIRE(registers.available() == 440);
+
+        std::vector<uint8_t> data2;
+        registers.deallocate(data2, value);
+
+        REQUIRE(std::equal(data.begin(), data.end(), data2.begin()));
+
+        REQUIRE(data2.size() == 65);
+
+        REQUIRE(value.nBytes == 65);
+    }
 
 
-    REQUIRE(vData == vData2);
+    {
+        TAO::Register::Value value;
+        std::string data = "this is a random string";
+
+        registers.allocate(data, value);
+        REQUIRE(registers.available() == 488);
+
+        std::string data2;
+        registers.deallocate(data2, value);
+
+        REQUIRE(data == data2);
+
+        REQUIRE(data2.size() == 23);
+
+        REQUIRE(value.nBytes == 23);
+    }
+
+
+
+    {
+        TAO::Register::Value value;
+        std::string data = "this is a random string";
+
+        registers.allocate(data, value);
+        REQUIRE(registers.available() == 488);
+
+        TAO::Register::Value value2;
+        std::string data2 = "random";
+        registers.allocate(data2, value2);
+
+        REQUIRE(registers.contains(value, value2));
+        REQUIRE(!registers.contains(value2, value));
+        REQUIRE(registers.compare(value, value2) != 0);
+    }
+
+
 }

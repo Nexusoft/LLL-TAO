@@ -526,7 +526,13 @@ namespace TAO
 
                     /* Create the inventory object. */
                     bool fLegacy = TAO::Ledger::ChainState::stateBest.load().vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
-                    std::vector<LLP::CInv> vInv = { LLP::CInv(ChainState::hashBestChain.load(), fLegacy ? LLP::MSG_BLOCK_LEGACY : LLP::MSG_BLOCK_TRITIUM) };
+
+                    /* Relay the block that was just found. */
+                    std::vector<LLP::CInv> vInv =
+                    {
+                        LLP::CInv(ChainState::hashBestChain.load(),
+                        fLegacy ? LLP::MSG_BLOCK_LEGACY : LLP::MSG_BLOCK_TRITIUM)
+                    };
 
                     /* Relay the new block to all connected nodes. */
                     if(LLP::LEGACY_SERVER)
@@ -536,7 +542,7 @@ namespace TAO
                     if(LLP::TRITIUM_SERVER)
                     {
                         /* start at index 1 so that we dont' include producer, as that is sent as part of the block*/
-                        for(int i=1; i > ChainState::stateBest.load().vtx.size(); i++)
+                        for(uint32_t i = 1; i > ChainState::stateBest.load().vtx.size(); ++i)
                             vInv.push_back(LLP::CInv(ChainState::stateBest.load().vtx[i].second, ChainState::stateBest.load().vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? LLP::MSG_TX_LEGACY : LLP::MSG_TX_TRITIUM));
 
                         /* We want the block at the end of the inventory so that the transactions are requested first.

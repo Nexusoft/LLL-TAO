@@ -23,12 +23,12 @@ namespace TAO
     namespace Register
     {
 
-        /** OBJECT
+        /** STATE
          *
          *  Object registers that are available for use.
          *
          **/
-        struct OBJECT
+        struct STATE
         {
             enum
             {
@@ -44,11 +44,38 @@ namespace TAO
                 /* This type of register is just raw data that can be changed. */
                 RAW      = 0x03,
 
+                /* This type of register has its dadta fields enforced by operations layer. */
+                OBJECT   = 0x04,
+
                 /* This type of register handles general accounts and DEBITS / CREDITS */
-                ACCOUNT  = 0x04,
+                ACCOUNT  = 0x05,
 
                 /* This type of register to hold token parameters. */
-                TOKEN    = 0x05,
+                TOKEN    = 0x06,
+            };
+        };
+
+
+        /** Object register data types. **/
+        struct TYPES
+        {
+            enum
+            {
+                UNSUPPORTED = 0x00,
+
+                //RESERVED to 0x0f
+                UINT8_T     = 0x01,
+                UINT16_T    = 0x02,
+                UINT32_T    = 0x03,
+                UINT64_T    = 0x04,
+                UINT256_T   = 0x05,
+                UINT512_T   = 0x06,
+                UINT1024_T  = 0x07,
+                STRING      = 0x08,
+                BYTES       = 0x09,
+
+                //by default everything is read-only
+                MUTABLE     = 0xff
             };
         };
 

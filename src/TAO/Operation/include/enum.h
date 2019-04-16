@@ -124,13 +124,7 @@ namespace TAO
                     STATE         = 0xb3,
 
                     //object registers
-                    BALANCE       = 0xb4,
-                    IDENTIFIER    = 0xb5
-
-                    //TODO: mapValues (in object register)
-                    //BALANCE     = 0xb4
-                    //IDENTIFIER  = 0xb5
-                    //TOTAL       = 0xb6
+                    VALUE         = 0xb4
                 };
             };
 

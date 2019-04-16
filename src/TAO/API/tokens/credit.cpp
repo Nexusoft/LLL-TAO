@@ -53,7 +53,6 @@ namespace TAO
             if(params.find("amount") == params.end())
                 throw APIException(-25, "Missing Amount");
 
-
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
             if(!user)

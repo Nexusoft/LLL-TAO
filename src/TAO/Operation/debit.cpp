@@ -63,7 +63,7 @@ namespace TAO
                 return debug::error(FUNCTION, hashCaller.ToString(), " caller not authorized to debit from register");
 
             /* Check for account object register. */
-            if(state.nType == TAO::Register::OBJECT::ACCOUNT)
+            if(state.nType == TAO::Register::STATE::ACCOUNT)
             {
                 /* Get the account object from register. */
                 TAO::Register::Account account;
@@ -83,7 +83,7 @@ namespace TAO
             }
 
             /* Check for token object register. */
-            else if(state.nType == TAO::Register::OBJECT::TOKEN)
+            else if(state.nType == TAO::Register::STATE::TOKEN)
             {
                 /* Get the account object from register. */
                 TAO::Register::Token token;

@@ -56,11 +56,11 @@ namespace TAO
             }
 
             /* Check ReadOnly permissions. */
-            if(state.nType == TAO::Register::OBJECT::READONLY)
+            if(state.nType == TAO::Register::STATE::READONLY)
                 return debug::error(FUNCTION, "append operation called on read-only register");
 
             /* Check write permissions for raw state registers. */
-            if(state.nType != TAO::Register::OBJECT::APPEND)
+            if(state.nType != TAO::Register::STATE::APPEND)
                 return debug::error(FUNCTION, "append operation called on raw register");
 
             /*state Check that the proper owner is commiting the write. */

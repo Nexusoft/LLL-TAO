@@ -20,7 +20,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/version.h>
 
-#include <Util/templates/serialize.h>
+#include <Util/templates/basestream.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -52,7 +52,7 @@ namespace TAO
              *  @param[in] vchDataIn The byte vector to insert.
              *
              **/
-            Stream(std::vector<uint8_t> vchDataIn)
+            Stream(const std::vector<uint8_t>& vchDataIn)
             : BaseStream(vchDataIn)
             {
             }
