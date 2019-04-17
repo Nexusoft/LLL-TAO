@@ -319,5 +319,20 @@ static inline std::string ToLower(const std::string& strIn)
     return strOut;
 }
 
+/** IsAllDigit
+*
+*  Checks if all characters in the string are digits.
+*
+*  @param[in] strIn The string to be checked.
+*
+*  @return true if all characters in the string are digits.
+*
+**/
+static inline bool IsAllDigit(const std::string& strIn)
+{
+    return !strIn.empty() && std::find_if(strIn.begin(), strIn.end(), [](char c) 
+        { return !std::isdigit(c); }) == strIn.end();
+}
+
 
 #endif

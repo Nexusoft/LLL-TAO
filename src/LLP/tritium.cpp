@@ -1002,8 +1002,9 @@ namespace LLP
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool TritiumNode::Process(const TAO::Ledger::Block& block, TritiumNode* pnode)
     {
-        /* Check if the block is valid. */
         uint1024_t hash = block.GetHash();
+
+        /* Check if the block is valid. */
         if(!block.Check())
             return false;
 

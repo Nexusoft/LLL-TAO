@@ -79,10 +79,8 @@ namespace TAO
                             tx.ssOperation >> vchData;
 
                             /* Set the owner of this register. */
-                            state.nVersion  = 1;
-                            state.nType     = nType;
-                            state.nTimestamp = tx.nTimestamp;
-                            state.SetState(vchData);
+                            if(!LLD::regDB->ReadState(hashAddress, state))
+                                return false;
 
                             return true;
                         }

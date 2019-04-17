@@ -10,6 +10,8 @@ alias cn "/nexus/curl-nexus"
 
 cn "accounts/create?username=dino&password=dino-pw&pin=1234"
 cn "accounts/login?pin=1234&username=dino&password=dino-pw"
+cn "accounts/transactions?genesis=$GENID&page=0&limit=3&verbose=1"
+cn "accounts/notifications?genesis=$GENID&page=0&limit=3&verbose=0"
 
 cn "assets/create?pin=1234&session=$SES&data=dino-data&name=dino-asset"
 cn "assets/get?pin=1234&name=dino-asset"
@@ -19,8 +21,10 @@ cn "assets/history?name=dino-asset"
     
 cn "tokens/create?pin=1234&session=$SES&type=token&identifier=1&supply=1000&name=dino-token"
 cn "tokens/get?name=dino-token&type=token"
+cn "tokens/create?pin=1234&session=$SES&type=account"
+cn "tokens/get?name=dino-token&type=token"
 cn "tokens/debit?pin=1234&session=$SES&amount=10&name_from=dino&name_to=nancy"
-cn "tokens/credit?pin=1234&session=$SES&&txid=$TXIDX&amount=10&address_to=$ADDR&proof=$PROOF"
+cn "tokens/credit?pin=1234&session=$SES&&txid=$TXIDX&amount=10&address_to=$ADDR"
 
 cn "supply/createitem?pin=1234&data=dino-item-data&session=$SES"
 cn "supply/getitem?address=$ADDR"

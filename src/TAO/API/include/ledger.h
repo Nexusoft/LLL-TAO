@@ -68,7 +68,73 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json CreateBlock(const json::json& params, bool fHelp);
+            json::json Create(const json::json& params, bool fHelp);
+
+
+            /** BlockHash
+             *
+             *  Retrieves the blockhash for the given height.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json BlockHash(const json::json& params, bool fHelp);
+
+
+            /** Block
+             *
+             *  Retrieves the block data for a given hash or height.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Block(const json::json& params, bool fHelp);
+
+
+            /** Blocks
+             *
+             *  Retrieves the block data for a sequential range of blocks 
+             *  starting at a given hash or height.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Blocks(const json::json& params, bool fHelp);
+
+
+            /** Transaction
+             *
+             *  Retrieves the transaction data for a given hash.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Transaction(const json::json& params, bool fHelp);
+
+            
+            /** MiningInfo
+            *
+            *  Returns an object containing mining-related information
+            *
+            *  @param[in] params The parameters from the API call.
+            *  @param[in] fHelp Trigger for help data.
+            *
+            *  @return The return object in JSON.
+            *
+            **/
+            json::json MiningInfo(const json::json& params, bool fHelp);
 
         };
 

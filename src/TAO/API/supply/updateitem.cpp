@@ -57,6 +57,10 @@ namespace TAO
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
+            /* Check that the account is unlocked for creating transactions */
+            if( !accounts.CanTransact())
+                throw APIException(-25, "Account has not been unlocked for transactions");
+
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))

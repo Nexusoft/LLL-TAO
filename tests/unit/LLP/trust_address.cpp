@@ -11,24 +11,31 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/global.h>
+#include <unit/catch2/catch.hpp>
 
-/* Global TAO namespace. */
-namespace TAO
+#include <LLP/include/trust_address.h>
+
+TEST_CASE( "LLP Tests", "[trust_address]")
 {
+    LLP::TrustAddress a1, a2;
 
-    /* Operation Layer namespace. */
-    namespace Operation
-    {
+    a1.SetIP("192.168.0.1");
+    a1.SetPort(9325);
 
-        /* Commits funds from a coinbase transaction. */
-        bool Trust(const uint256_t &hashAddress, const uint1024_t &hashLastTrust,
-            const uint32_t nSequence, const uint64_t nLastTrust,
-            const uint64_t nStake, const uint256_t &hashCaller,
-            const uint8_t nFlags, TAO::Ledger::Transaction &tx)
-        {
+    a1.nConected = 2;
+    a1.nDropped = 1;
+    a1.nFailed = 1;
+    a1.nFails = 0;
 
-            return true;
-        }
-    }
+
+    a2.SetIP("192.168.0.2");
+    a2.SetPort(8325);
+
+    /* Testing Logical Not */
+    REQUIRE(a1 != a2);
+
+    a1 = a2;
+
+    /* Testing assignment and relational equivalance */
+    REQUIRE(a1 == a2);
 }
