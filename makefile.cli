@@ -216,6 +216,7 @@ OBJS+=  build/LLC_skein.o \
 		build/LLC_frng.o \
 		build/LLC_shake.o \
 		build/LLC_bignum.o \
+        build/LLC_base_uint.o \
 		build/LLC_eckey.o \
 		build/LLC_flkey.o \
 		build/LLC_random.o \

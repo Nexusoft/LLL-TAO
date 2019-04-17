@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/wallet/wallettx.h>
 
+#include <algorithm>
+
 namespace Legacy
 {
 
@@ -192,7 +194,7 @@ namespace Legacy
     {
         Legacy::NexusAddress address;
         bool fKeyUsed = false;
-        
+
         if( !fForceNew )
         {
             // first look up the address currently assigned to the account
@@ -202,7 +204,7 @@ namespace Legacy
             if (it != std::end(mapAddressBook))
                 address = it->first;
 
-            
+
 
             // Check if the current key has been used
             if( address.IsValid() )
