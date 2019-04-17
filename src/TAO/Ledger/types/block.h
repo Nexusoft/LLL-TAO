@@ -171,7 +171,7 @@ namespace TAO
              *
              *  Returns the current UNIX timestamp of the block.
              *
-             *  @return 64-bit uint32_teger of timestamp.
+             *  @return 64-bit integer of timestamp.
              *
              **/
             uint64_t GetBlockTime() const;

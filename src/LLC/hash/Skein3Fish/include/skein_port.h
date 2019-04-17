@@ -18,9 +18,9 @@
 
 #include <LLC/hash/Skein3Fish/include/brg_types.h>  /* get integer type definitions */
 
-typedef uint32_t    uint_t;        /* native uint32_teger */
-typedef uint_8t         u08b_t;    /*  8-bit uint32_teger */
-typedef uint_64t        u64b_t;    /* 64-bit uint32_teger */
+typedef uint32_t    uint_t;        /* native integer */
+typedef uint_8t         u08b_t;    /*  8-bit integer */
+typedef uint_64t        u64b_t;    /* 64-bit integer */
 
 #ifndef RotL_64
 #define RotL_64(x,N)    (((x) << (N)) | ((x) >> (64-(N))))

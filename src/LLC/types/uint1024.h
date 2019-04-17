@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <cstdint>
 #include <algorithm>
 
-#include <Util/include/debug.h>
+#include <stdexcept>
 
 /** Base class without constructors for uint256_t, uint512_t, uint576_t, uint1024_t.
 * This makes the compiler let u use it in a union.
@@ -68,6 +68,14 @@ public:
         pn[1] = (uint32_t)(b >> 32);
         for (int i = 2; i < WIDTH; ++i)
             pn[i] = 0;
+        return *this;
+    }
+
+    base_uint& operator=(const base_uint& b)
+    {
+        for (int i = 0; i < b.WIDTH; ++i)
+            pn[i] = b.pn[i];
+
         return *this;
     }
 
@@ -209,6 +217,8 @@ public:
         return ret;
     }
 
+
+    /*
     base_uint& operator*=(uint32_t b32)
     {
         uint64_t carry = 0;
@@ -219,11 +229,19 @@ public:
         }
         return *this;
     }
+    */
 
-    base_uint& operator*=(const base_uint& b)
+
+    base_uint& operator*=(const uint64_t& n)
     {
         base_uint<BITS> a;
-        for (int j = 0; j < WIDTH; j++) {
+        a = 0;
+
+        base_uint<BITS> b;
+        b = n;
+
+        for (int j = 0; j < WIDTH; j++)
+        {
             uint64_t carry = 0;
             for (int i = 0; i + j < WIDTH; i++) {
                 uint64_t n = carry + a.pn[i + j] + (uint64_t)pn[j] * b.pn[i];
@@ -235,28 +253,91 @@ public:
         return *this;
     }
 
+    base_uint& operator*=(const base_uint& b)
+    {
+        base_uint<BITS> a;
+        a = 0;
+
+        for (int j = 0; j < WIDTH; j++)
+        {
+            uint64_t carry = 0;
+            for (int i = 0; i + j < WIDTH; i++) {
+                uint64_t n = carry + a.pn[i + j] + (uint64_t)pn[j] * b.pn[i];
+                a.pn[i + j] = n & 0xffffffff;
+                carry = n >> 32;
+            }
+        }
+        *this = a;
+
+        return *this;
+    }
+
     base_uint& operator/=(const base_uint& b)
     {
         base_uint<BITS> div = b;     // make a copy, so we can shift.
         base_uint<BITS> num = *this; // make a copy, so we can subtract.
         *this = 0;                   // the quotient.
         int num_bits = num.bits();
+
         int div_bits = div.bits();
         if (div_bits == 0)
-            throw std::domain_error(debug::safe_printstr("Division by zero"));
+            throw std::domain_error("Division by zero");
+
+        if (div_bits > num_bits) // the result is certainly 0.
+            return *this;
+
+        int shift = num_bits - div_bits;
+
+        div <<= shift; // shift so that div and num align.
+        while (shift >= 0)
+        {
+            if (num >= div)
+            {
+                num -= div;
+                pn[shift / 32] |= (1 << (shift & 31)); // set a bit of the result.
+            }
+
+            div >>= 1; // shift back.
+            shift--;
+        }
+
+        // num now contains the remainder of the division.
+        return *this;
+    }
+
+
+    base_uint& operator/=(const uint64_t& b)
+    {
+        base_uint<BITS> div;         // make a copy, so we can shift.
+        div = b;
+
+        base_uint<BITS> num = *this; // make a copy, so we can subtract.
+        *this = 0;                   // the quotient.
+        int num_bits = num.bits();
+        int div_bits = div.bits();
+        if (div_bits == 0)
+            throw std::domain_error("Division by zero");
 
         if (div_bits > num_bits) // the result is certainly 0.
             return *this;
         int shift = num_bits - div_bits;
         div <<= shift; // shift so that div and num align.
-        while (shift >= 0) {
-            if (num >= div) {
+
+        while (shift >= 0)
+        {
+            //debug::log(0, "DIV: ", GetDec());
+            if (num >= div)
+            {
                 num -= div;
                 pn[shift / 32] |= (1 << (shift & 31)); // set a bit of the result.
             }
+
             div >>= 1; // shift back.
             shift--;
         }
+
+
+
         // num now contains the remainder of the division.
         return *this;
     }
@@ -330,10 +411,12 @@ public:
         return true;
     }
 
+
     friend inline bool operator!=(const base_uint& a, const base_uint& b)
     {
         return (!(a == b));
     }
+
 
     friend inline bool operator!=(const base_uint& a, uint64_t b)
     {
@@ -341,14 +424,27 @@ public:
     }
 
 
-
     std::string GetHex() const
     {
         char psz[sizeof(pn)*2 + 1];
         for (uint32_t i = 0; i < sizeof(pn); ++i)
             sprintf(psz + i*2, "%02x", ((uint8_t*)pn)[sizeof(pn) - i - 1]);
+
         return std::string(psz, psz + sizeof(pn)*2);
     }
+
+
+    double getdouble() const
+    {
+        double ret = 0.0;
+        double fact = 1.0;
+        for (int i = 0; i < WIDTH; i++) {
+            ret += fact * pn[i];
+            fact *= 4294967296.0;
+        }
+        return ret;
+    }
+
 
     void SetHex(const char* psz)
     {
@@ -386,7 +482,7 @@ public:
         SetHex(str.c_str());
     }
 
-    /** Converts the corresponding uint32_teger into bytes.
+    /** Converts the corresponding integer into bytes.
         Used for serializing in Miner LLP **/
     const std::vector<uint8_t> GetBytes() const
     {
@@ -406,7 +502,7 @@ public:
         return DATA;
     }
 
-    /** Creates an uint32_teger from bytes.
+    /** Creates an integer from bytes.
         Used for de-serializing in Miner LLP **/
     void SetBytes(const std::vector<uint8_t> DATA)
     {
@@ -498,19 +594,133 @@ public:
     }
 
 
+    friend class uint192_t;
     friend class uint256_t;
     friend class uint512_t;
     friend class uint576_t;
     friend class uint1024_t;
 };
 
+typedef base_uint<192> base_uint192;
 typedef base_uint<256> base_uint256;
 typedef base_uint<512> base_uint512;
 typedef base_uint<576> base_uint576;
 typedef base_uint<1024> base_uint1024;
 
 
-/** 256-bit uint32_teger */
+/** 128-bit integer */
+class uint192_t : public base_uint192
+{
+public:
+    typedef base_uint192 basetype;
+
+    uint192_t()
+    {
+        for (int i = 0; i < WIDTH; ++i)
+            pn[i] = 0;
+    }
+
+    uint192_t(const basetype& b)
+    {
+        for (int i = 0; i < WIDTH; ++i)
+            pn[i] = b.pn[i];
+    }
+
+    uint192_t& operator=(const basetype& b)
+    {
+        for (int i = 0; i < WIDTH; ++i)
+            pn[i] = b.pn[i];
+        return *this;
+    }
+
+    uint192_t(uint64_t b)
+    {
+        pn[0] = (uint32_t)b;
+        pn[1] = (uint32_t)(b >> 32);
+        for (int i = 2; i < WIDTH; ++i)
+            pn[i] = 0;
+    }
+
+    uint192_t& operator=(uint64_t b)
+    {
+        pn[0] = (uint32_t)b;
+        pn[1] = (uint32_t)(b >> 32);
+        for (int i = 2; i < WIDTH; ++i)
+            pn[i] = 0;
+        return *this;
+    }
+
+    explicit uint192_t(const std::string& str)
+    {
+        SetHex(str);
+    }
+
+    explicit uint192_t(const std::vector<uint8_t>& vch)
+    {
+        if (vch.size() == sizeof(pn))
+            //memcpy(pn, &vch[0], sizeof(pn));
+            std::copy(&vch[0], &vch[0] + sizeof(pn), (uint8_t *)pn);
+        else
+            *this = 0;
+    }
+};
+
+inline bool operator==(const uint192_t& a, uint64_t b)                           { return (base_uint192)a == b; }
+inline bool operator!=(const uint192_t& a, uint64_t b)                           { return (base_uint192)a != b; }
+inline const uint192_t operator<<(const base_uint192& a, uint32_t shift)   { return uint192_t(a) <<= shift; }
+inline const uint192_t operator>>(const base_uint192& a, uint32_t shift)   { return uint192_t(a) >>= shift; }
+inline const uint192_t operator<<(const uint192_t& a, uint32_t shift)        { return uint192_t(a) <<= shift; }
+inline const uint192_t operator>>(const uint192_t& a, uint32_t shift)        { return uint192_t(a) >>= shift; }
+
+inline const uint192_t operator^(const base_uint192& a, const base_uint192& b) { return uint192_t(a) ^= b; }
+inline const uint192_t operator&(const base_uint192& a, const base_uint192& b) { return uint192_t(a) &= b; }
+inline const uint192_t operator|(const base_uint192& a, const base_uint192& b) { return uint192_t(a) |= b; }
+inline const uint192_t operator+(const base_uint192& a, const base_uint192& b) { return uint192_t(a) += b; }
+inline const uint192_t operator-(const base_uint192& a, const base_uint192& b) { return uint192_t(a) -= b; }
+inline const uint192_t operator*(const base_uint192& a, const base_uint192& b) { return uint192_t(a) *= b; }
+inline const uint192_t operator/(const base_uint192& a, const base_uint192& b) { return uint192_t(a) /= b; }
+
+inline const uint192_t operator*(const base_uint192& a, const uint64_t& b) { return uint192_t(a) *= b; }
+inline const uint192_t operator/(const base_uint192& a, const uint64_t& b) { return uint192_t(a) /= b; }
+
+inline bool operator<(const base_uint192& a, const uint192_t& b)          { return (base_uint192)a <  (base_uint192)b; }
+inline bool operator<=(const base_uint192& a, const uint192_t& b)         { return (base_uint192)a <= (base_uint192)b; }
+inline bool operator>(const base_uint192& a, const uint192_t& b)          { return (base_uint192)a >  (base_uint192)b; }
+inline bool operator>=(const base_uint192& a, const uint192_t& b)         { return (base_uint192)a >= (base_uint192)b; }
+inline bool operator==(const base_uint192& a, const uint192_t& b)         { return (base_uint192)a == (base_uint192)b; }
+inline bool operator!=(const base_uint192& a, const uint192_t& b)         { return (base_uint192)a != (base_uint192)b; }
+inline const uint192_t operator^(const base_uint192& a, const uint192_t& b) { return (base_uint192)a ^  (base_uint192)b; }
+inline const uint192_t operator&(const base_uint192& a, const uint192_t& b) { return (base_uint192)a &  (base_uint192)b; }
+inline const uint192_t operator|(const base_uint192& a, const uint192_t& b) { return (base_uint192)a |  (base_uint192)b; }
+inline const uint192_t operator+(const base_uint192& a, const uint192_t& b) { return (base_uint192)a +  (base_uint192)b; }
+inline const uint192_t operator-(const base_uint192& a, const uint192_t& b) { return (base_uint192)a -  (base_uint192)b; }
+
+inline bool operator<(const uint192_t& a, const base_uint192& b)          { return (base_uint192)a <  (base_uint192)b; }
+inline bool operator<=(const uint192_t& a, const base_uint192& b)         { return (base_uint192)a <= (base_uint192)b; }
+inline bool operator>(const uint192_t& a, const base_uint192& b)          { return (base_uint192)a >  (base_uint192)b; }
+inline bool operator>=(const uint192_t& a, const base_uint192& b)         { return (base_uint192)a >= (base_uint192)b; }
+inline bool operator==(const uint192_t& a, const base_uint192& b)         { return (base_uint192)a == (base_uint192)b; }
+inline bool operator!=(const uint192_t& a, const base_uint192& b)         { return (base_uint192)a != (base_uint192)b; }
+inline const uint192_t operator^(const uint192_t& a, const base_uint192& b) { return (base_uint192)a ^  (base_uint192)b; }
+inline const uint192_t operator&(const uint192_t& a, const base_uint192& b) { return (base_uint192)a &  (base_uint192)b; }
+inline const uint192_t operator|(const uint192_t& a, const base_uint192& b) { return (base_uint192)a |  (base_uint192)b; }
+inline const uint192_t operator+(const uint192_t& a, const base_uint192& b) { return (base_uint192)a +  (base_uint192)b; }
+inline const uint192_t operator-(const uint192_t& a, const base_uint192& b) { return (base_uint192)a -  (base_uint192)b; }
+
+inline bool operator<(const uint192_t& a, const uint192_t& b)               { return (base_uint192)a <  (base_uint192)b; }
+inline bool operator<=(const uint192_t& a, const uint192_t& b)              { return (base_uint192)a <= (base_uint192)b; }
+inline bool operator>(const uint192_t& a, const uint192_t& b)               { return (base_uint192)a >  (base_uint192)b; }
+inline bool operator>=(const uint192_t& a, const uint192_t& b)              { return (base_uint192)a >= (base_uint192)b; }
+inline bool operator==(const uint192_t& a, const uint192_t& b)              { return (base_uint192)a == (base_uint192)b; }
+inline bool operator!=(const uint192_t& a, const uint192_t& b)              { return (base_uint192)a != (base_uint192)b; }
+inline const uint192_t operator^(const uint192_t& a, const uint192_t& b)      { return (base_uint192)a ^  (base_uint192)b; }
+inline const uint192_t operator&(const uint192_t& a, const uint192_t& b)      { return (base_uint192)a &  (base_uint192)b; }
+inline const uint192_t operator|(const uint192_t& a, const uint192_t& b)      { return (base_uint192)a |  (base_uint192)b; }
+inline const uint192_t operator+(const uint192_t& a, const uint192_t& b)      { return (base_uint192)a +  (base_uint192)b; }
+inline const uint192_t operator-(const uint192_t& a, const uint192_t& b)      { return (base_uint192)a -  (base_uint192)b; }
+
+
+/** 256-bit integer */
 class uint256_t : public base_uint256
 {
 public:
@@ -528,6 +738,12 @@ public:
             pn[i] = b.pn[i];
     }
 
+    uint256_t(const uint192_t& b)
+    {
+        for (int i = 0; i < b.WIDTH; ++i)
+            pn[i] = b.pn[i];
+    }
+
     uint256_t& operator=(const basetype& b)
     {
         for (int i = 0; i < WIDTH; ++i)
@@ -541,6 +757,15 @@ public:
         pn[1] = (uint32_t)(b >> 32);
         for (int i = 2; i < WIDTH; ++i)
             pn[i] = 0;
+    }
+
+    uint192_t getuint128() const
+    {
+        uint192_t b;
+        for (int i = 0; i < b.WIDTH; ++i)
+            b.pn[i] = pn[i];
+
+        return b;
     }
 
     uint256_t& operator=(uint64_t b)
@@ -617,7 +842,7 @@ inline const uint256_t operator+(const uint256_t& a, const uint256_t& b)      { 
 inline const uint256_t operator-(const uint256_t& a, const uint256_t& b)      { return (base_uint256)a -  (base_uint256)b; }
 
 
-/** 512-bit uint32_teger */
+/** 512-bit integer */
 class uint512_t : public base_uint512
 {
 public:
@@ -730,7 +955,7 @@ inline const uint512_t operator|(const uint512_t& a, const uint512_t& b)      { 
 inline const uint512_t operator+(const uint512_t& a, const uint512_t& b)      { return (base_uint512)a +  (base_uint512)b; }
 inline const uint512_t operator-(const uint512_t& a, const uint512_t& b)      { return (base_uint512)a -  (base_uint512)b; }
 
-/** 576-bit uint32_teger */
+/** 576-bit integer */
 class uint576_t : public base_uint576
 {
 public:
@@ -838,7 +1063,7 @@ inline const uint576_t operator-(const uint576_t& a, const uint576_t& b)      { 
 
 
 
-/** 1024-bit uint32_teger */
+/** 1024-bit integer */
 class uint1024_t : public base_uint1024
 {
 public:

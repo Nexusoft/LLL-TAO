@@ -29,7 +29,7 @@
  ---------------------------------------------------------------------------
  Issue 09/09/2006
 
- The uint32_teger types defined here are of the form uint_<nn>t where
+ The integer types defined here are of the form uint_<nn>t where
  <nn> is the length of the type; for example, the unsigned 32-bit type is
  'uint_32t'.  These are NOT the same as the 'C99 integer types' that are
  defined in the inttypes.h and stdint.h headers since attempts to use these
@@ -55,7 +55,7 @@ extern "C" {
 #  if UCHAR_MAX == 255u
      typedef uint8_t uint_8t;
 #  else
-#    error Please define uint_8t as an 8-bit uint32_teger type in brg_types.h
+#    error Please define uint_8t as an 8-bit integer type in brg_types.h
 #  endif
 #endif
 
@@ -79,7 +79,7 @@ extern "C" {
 #  elif defined( _CRAY )
 #    error This code needs 32-bit data types, which Cray machines do not provide
 #  else
-#    error Please define uint_32t as a 32-bit uint32_teger type in brg_types.h
+#    error Please define uint_32t as a 32-bit integer type in brg_types.h
 #  endif
 #endif
 

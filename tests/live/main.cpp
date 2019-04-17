@@ -31,7 +31,7 @@ template<uint32_t FIGURES>
 class precision_t
 {
     uint64_t nFigures;
-    uint128_t nValue;
+    uint192_t nValue;
 
 
     uint64_t get_figures()
@@ -61,7 +61,7 @@ public:
 
     precision_t& operator=(double value)
     {
-        nValue = static_cast<uint128_t>(value * nFigures);
+        nValue = static_cast<uint192_t>(value * nFigures);
 
         return *this;
     }
@@ -85,7 +85,7 @@ public:
 
     bool operator==(int32_t value) const
     {
-        uint128_t compare = static_cast<uint128_t>(value) * nFigures;
+        uint192_t compare = static_cast<uint192_t>(value) * nFigures;
 
         return compare == nValue;
     }
@@ -93,7 +93,7 @@ public:
 
     bool operator==(uint32_t value) const
     {
-        uint128_t compare = static_cast<uint128_t>(value) * nFigures;
+        uint192_t compare = static_cast<uint192_t>(value) * nFigures;
 
         return compare == nValue;
     }
@@ -101,7 +101,7 @@ public:
 
     bool operator<(int32_t value) const
     {
-        uint128_t compare = static_cast<uint128_t>(value) * nFigures;
+        uint192_t compare = static_cast<uint192_t>(value) * nFigures;
 
         return nValue < compare;
     }
@@ -109,7 +109,7 @@ public:
 
     bool operator>(int32_t value) const
     {
-        uint128_t compare = static_cast<uint128_t>(value) * nFigures;
+        uint192_t compare = static_cast<uint192_t>(value) * nFigures;
 
         return nValue > compare;
     }
@@ -141,16 +141,8 @@ public:
 
     precision_t& operator/=(const precision_t& value)
     {
-        LLC::CBigNum bn;
-        bn.setuint128(nValue);
-
-        LLC::CBigNum bn2;
-        bn2.setuint128(value.nValue);
-
-        bn     *= value.nFigures;
-        bn     /= bn2;
-
-        nValue = bn.getuint128();
+        nValue     *= value.nFigures;
+        nValue     /= value.nValue;
 
         return *this;
     }
@@ -158,22 +150,14 @@ public:
 
     precision_t& operator*=(const precision_t& value)
     {
-        LLC::CBigNum bn;
-        bn.setuint128(nValue);
-
-        LLC::CBigNum bn2;
-        bn2.setuint128(value.nValue);
-
-        bn *= bn2;
-        bn /= value.nFigures;
-
-        nValue = bn.getuint128();
+        nValue *= value.nValue;
+        nValue /= value.nFigures;
 
         return *this;
     }
 
 
-    precision_t& operator/=(const uint128_t& value)
+    precision_t& operator/=(const uint64_t& value)
     {
         nValue /= value;
 
@@ -181,7 +165,15 @@ public:
     }
 
 
-    precision_t& operator*=(const uint128_t& value)
+    precision_t& operator/=(const uint192_t& value)
+    {
+        nValue /= value;
+
+        return *this;
+    }
+
+
+    precision_t& operator*=(const uint192_t& value)
     {
         nValue *= value;
 
@@ -193,22 +185,14 @@ public:
     {
         precision_t ret = *this;
 
-        LLC::CBigNum bn;
-        bn.setuint128(ret.nValue);
-
-        LLC::CBigNum bn2;
-        bn2.setuint128(value.nValue);
-
-        bn     *= value.nFigures;
-        bn     /= bn2;
-
-        ret.nValue = bn.getuint128();
+        ret.nValue     *= value.nFigures;
+        ret.nValue     /= value.nValue;
 
         return ret;
     }
 
 
-    precision_t operator/(const uint128_t& value) const
+    precision_t operator/(const uint192_t& value) const
     {
         precision_t ret = *this;
 
@@ -218,28 +202,21 @@ public:
     }
 
 
-    uint32_t operator%(const uint32_t value) const
-    {
-        uint128_t ret = nValue / nFigures;
-
-        return ret % value;
-    }
-
-
     precision_t operator*(const precision_t& value) const
     {
         precision_t ret = *this;
 
-        LLC::CBigNum bn;
-        bn.setuint128(ret.nValue);
+        ret.nValue *= value.nValue;
+        ret.nValue /= value.nFigures;
 
-        LLC::CBigNum bn2;
-        bn2.setuint128(value.nValue);
+        return ret;
+    }
 
-        bn *= bn2;
-        bn /= value.nFigures;
+    precision_t operator*(const uint32_t& value) const
+    {
+        precision_t ret = *this;
 
-        ret.nValue = bn.getuint128();
+        ret.nValue *= value;
 
         return ret;
     }
@@ -280,10 +257,11 @@ public:
         if(value == 0)
             return 1;
 
-        uint64_t whole = value.get_int();
-
-        for(int i = 1; i < whole; ++i)
+        for(int i = 1; value > i; ++i)
+        {
+            //if(fPrint)
             ret *= (*this);
+        }
         //handle the floating point (exp by squaring)
 
         return ret;
@@ -301,36 +279,51 @@ public:
 
     precision_t& exp(bool fPrint = false)
     {
-        uint128_t fact = 1;
+        uint192_t fact = 1;
 
-        precision_t base  = *this;
+        const precision_t base  = *this;
+        precision_t power  = base;
+
+        precision_t temp;
+
+        if(fPrint)
+        {
+            printf("BASE: ");
+            base.print();
+        }
         //precision_t temp;
 
-        double dBase = get();
+
+        //double dBase = get();
 
         *this = 0;
-        for(int i = 1; i <= 40; ++i)
+        for(uint32_t i = 1; i <= 40; ++i)
         {
-            double dTemp = pow(dBase, (i - 1)) / fact;
-
-
-            precision_t power = i - 1;
-            if(fPrint)
-                power.print();
-
-            precision_t temp = (base^power) / fact;
-
+            //double dTemp = pow(dBase, (i - 1)) / fact;
 
             if(fPrint)
             {
-                printf("++++\n");
-                printf("%.16f\n", dTemp);
-                temp.print();
+                printf("POWER: ");
+                power.print();
+
+                printf("BASE: ");
+                base.print();
             }
+
+
+            if(i == 1)
+                power = 1;
+            else if(i == 2)
+                power = base;
+            else
+                power *= base;
+
+            // / fact;
 
             //if(fPrint)
             //    temp.print();
 
+            precision_t temp = (power / fact);
             if(temp == 0)
             {
                 if(fPrint)
@@ -343,9 +336,6 @@ public:
             //nSum += power(x, i - 1) / nFactorial;
             *this += temp;
 
-            if(fPrint)
-                print();
-
 
 
             fact *= i;
@@ -355,6 +345,7 @@ public:
     }
 
 
+    /*
     precision_t e()
     {
         precision_t fact = 1;
@@ -371,27 +362,22 @@ public:
 
         return ret;
     }
-
-
-    uint64_t get_int() const
-    {
-        return nValue / nFigures;
-    }
+    */
 
 
     double get() const
     {
-        return static_cast<double>(nValue) / nFigures;
+        return nValue.getdouble() / nFigures;
     }
 
-    uint128_t getint() const
+    uint192_t getint() const
     {
         return nValue;
     }
 
     uint64_t get_uint(uint32_t nTotalFigures = FIGURES)
     {
-        uint128_t nRet = nValue;
+        uint192_t nRet = nValue;
         for(int i = 0; i < (FIGURES - nTotalFigures); i++)
         {
             //debug::log(0, i, " UINT ", uint64_t(nRet));
@@ -399,7 +385,7 @@ public:
             nRet /= 10;
         }
 
-        return nRet;
+        return nRet.Get64();
     }
 
 
@@ -419,88 +405,23 @@ public:
 };
 
 
-/*
-
-Function exp_by_squaring_iterative(x, n)
-  if n < 0 then
-    x := 1 / x;
-    n := -n;
-  if n = 0 then return 1
-  y := 1;
-  while n > 1 do
-    if n is even then
-      x := x * x;
-      n := n / 2;
-    else
-      y := x * y;
-      x := x * x;
-      n := (n – 1) / 2;
-  return x * y
-
-
- int expo(int a, int b){
-    if (b==1)
-        return a;
-    if (b==2)
-        return a*a;
-
-    if (b%2==0){
-            return expo(expo(a,b/2),2);
-    }
-    else{
-        return a*expo(expo(a,(b-1)/2),2);
-    }
-}
-
-*/
-
-int expo(int a, int b){
-  int result = 1;
-
-  while (b){
-    if (b%2==1){
-      result *= a;
-    }
-    b /= 2;
-    a *= a;
-  }
-
-  return result;
-}
-
-precision_t<9> _exp(precision_t<9> a, precision_t<9> b)
-{
-    precision_t<9> result = 1;
-
-    while (b > 0)
-    {
-      if (b % 2 == 1)
-      {
-        result *= a;
-      }
-
-      b /= 2;
-      a *= a;
-    }
-
-    return result;
-}
-
 #include <TAO/Ledger/include/supply.h>
 
-const precision_t<17> decays[3][3] =
+
+const precision_t<15> decays[3][3] =
 {
     {50.0, 0.00000110, 1.000},
     {10.0, 0.00000055, 1.000},
     {1.00, 0.00000059, 0.032}
 };
 
+
 uint64_t Subsidy(const uint32_t nMinutes, const uint32_t nType, bool fPrint = false)
 {
-    precision_t<17> exponent = decays[nType][1] * nMinutes;
+    precision_t<15> exponent = decays[nType][1] * nMinutes;
     exponent.exp(fPrint);
 
-    precision_t<17> ret = decays[nType][0] / exponent;
+    precision_t<15> ret = decays[nType][0] / exponent;
     ret += decays[nType][2];
 
     ret /= 2;
@@ -512,87 +433,12 @@ uint64_t Subsidy(const uint32_t nMinutes, const uint32_t nType, bool fPrint = fa
 }
 
 
-struct big64
-{
-	uint32_t v[2]; /* num = v[0] + (v[1] << 32)  - "little endian" */
-};
-typedef struct big64 big64_t;
-
-struct big128
-{
-	uint32_t v[4];
-};
-
-typedef struct big128 big128_t;
-
-/*
-big128_t big128_mul(big64_t x, big64_t y)
-{
-	 x * y = (z2 << 64) + (z1 << 32) + z0
-	 * where z2 = x1 * y1
-	 *       z1 = x0 * y1 + x1 * y0
-	 *       z0 = x0 * y0
-
-
-	uint64_t x0 =	x.v[0], x1 = x.v[1], y0 = y.v[0], y1 = y.v[1];
-	uint64_t z0 = x0 * y0;
-	uint64_t z1a = x1 * y0;
-	uint64_t z1b = x0 * y1;
-	uint64_t z2 = x1 * y1;
-
-	uint32_t z0l = z0 & 0xffffffff;
-	uint32_t z0h = z0 >> 32u;
-
-	uint64_t z1al = z1a & 0xffffffff;
-	uint64_t z1bl = z1b & 0xffffffff;
-	uint64_t z1l = z1al + z1bl + z0h;
-
-	uint64_t z1h = (z1a >> 32u) + (z1b >> 32u) + (z1l >> 32u);
-	z2 += z1h;
-
-	big128_t p = {{ z0l, z1l & 0xffffffff, z2 & 0xffffffff, z2 >> 32u }};
-	return p;
-}
-*/
-
-
-struct _uint128_t
-{
-    uint64_t v[4];
-
-    _uint128_t()
-    {
-
-    }
-
-    _uint128_t(uint128_t n)
-    {
-        v[0] = static_cast<uint64_t>(n) & 0xffffffffffffffff;
-        v[1] = n >> 96;
-
-        debug::log(0, "[0]=", v[0], " [1]=", v[1], " [2]=", v[2], " [3]=", v[3]);
-    }
-
-    uint128_t get() const
-    {
-        uint128_t ret = v[0] + (v[1] << 32);
-        return ret;
-    }
-};
-
 //This main function is for prototyping new code
 //It is accessed by compiling with LIVE_TESTS=1
 //Prototype code and it's tests created here should move to production code and unit tests
 int main(int argc, char** argv)
 {
     using namespace TAO::Ledger;
-
-
-    uint256_t hashTesting = 5555;
-
-    debug::log(0, "Testing ", hashTesting.ToString());
-
-    return 0;
 
 
 //2.7182818284590452353602874713527
@@ -641,12 +487,6 @@ int main(int argc, char** argv)
     precision_t<9> expo = base^3.222;
 
     debug::log(0, "expo = ", expo);
-
-    double e = exp(2);
-
-    debug::log(0, "exp(2)   = ", std::fixed, std::setprecision(12), e);
-
-    debug::log(0, "expo.e() = ", expo.e());
 
     precision_t<12> exponent = 3;
     exponent.exp();
