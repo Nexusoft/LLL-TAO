@@ -61,6 +61,10 @@ namespace TAO
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
+            /* Check that the account is unlocked for creating transactions */
+            if( !accounts.CanTransact())
+                throw APIException(-25, "Account has not been unlocked for transactions");
+
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
@@ -96,7 +100,7 @@ namespace TAO
                 ssData << account;
 
                 /* Submit the payload object. */
-                tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::ACCOUNT << ssData.Bytes();
+                tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::STATE::ACCOUNT << ssData.Bytes();
             }
             else if(params["type"].get<std::string>() == "token")
             {
@@ -118,7 +122,7 @@ namespace TAO
                 ssData << token;
 
                 /* Submit the payload object. */
-                tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::TOKEN << ssData.Bytes();
+                tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::STATE::TOKEN << ssData.Bytes();
             }
             else
                 throw APIException(-27, "Unknown object register");

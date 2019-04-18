@@ -52,7 +52,7 @@ namespace TAO
              *  @param[in] vchDataIn The byte vector to insert.
              *
              **/
-            Stream(std::vector<uint8_t> vchDataIn)
+            Stream(const std::vector<uint8_t>& vchDataIn)
             : BaseStream(vchDataIn)
             {
             }

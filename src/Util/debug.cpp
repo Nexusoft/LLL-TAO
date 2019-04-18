@@ -62,6 +62,7 @@ namespace debug
     static FILE* fileout = nullptr;
     std::mutex DEBUG_MUTEX;
     std::ofstream ssFile;
+    thread_local std::string strLastError;
 
 
     std::string rfc1123Time()
@@ -309,6 +310,14 @@ namespace debug
 
         if(ssFile.is_open())
             ssFile.close();
+    }
+
+    /* Gets the last error string logged via debug::error and clears the last error */
+    std::string GetLastError()
+    {
+        std::string strRet = strLastError;
+        strLastError = "";
+        return strRet;
     }
 
 }

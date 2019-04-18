@@ -14,16 +14,17 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/accounts.h>
-
-#include <TAO/Operation/include/output.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/objects/account.h>
+#include <TAO/Register/objects/token.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/hex.h>
+#include <Util/include/debug.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -95,12 +96,13 @@ namespace TAO
                     continue;
 
                 /* Check that it is an account. */
-                if(state.nType != TAO::Register::OBJECT::ACCOUNT)
+                if(state.nType != TAO::Register::STATE::ACCOUNT)
                     continue;
 
                 /* Get the account. */
                 TAO::Register::Account account;
                 state >> account;
+                account.print();
 
                 /* Skip over identifier 0. */
                 if(account.nIdentifier == 0)
@@ -135,12 +137,23 @@ namespace TAO
                     if(!LLD::legDB->ReadEvent(hash.first, nSequence, tx))
                         break;
 
+                    ++nTotal;
+
                     /* Check the paged data. */
                     if(nCurrentPage < nPage)
                         continue;
 
                     if(nCurrentPage > nPage)
                         break;
+
+                    if(nTotal > nLimit)
+                        break;
+
+                    /* Read the object register. */
+                    TAO::Register::State state;
+                    if(!LLD::regDB->ReadState(hash.first, state))
+                        continue;
+
 
                     json::json obj;
                     obj["version"]   = tx.nVersion;
@@ -161,8 +174,30 @@ namespace TAO
                         obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                         obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                     }
-                    obj["hash"]      = tx.GetHash().ToString();
-                    obj["operation"]  = TAO::Operation::Output(tx);
+
+                    obj["hash"]          = tx.GetHash().ToString();
+                    obj["operation"]     = OperationToJSON(tx.ssOperation);
+
+                    if(obj["operation"]["OP"] == "DEBIT")
+                    {
+                        uint256_t hashTo = uint256_t(obj["operation"]["transfer"].get<std::string>());
+
+                        TAO::Register::State stateTo;
+                        if(!LLD::regDB->ReadState(hashTo, stateTo))
+                            continue;
+
+                        if(stateTo.nType == TAO::Register::STATE::RAW || stateTo.nType == TAO::Register::STATE::READONLY)
+                        {
+                            /* Get the token object. */
+                            TAO::Register::Token token;
+                            state >> token;
+
+                            /* Calculate the partial debit amount. */
+                            obj["operation"]["amount"] = (obj["operation"]["amount"].get<uint64_t>() * hash.second) / token.nMaxSupply;
+                        }
+                    }
+
+
 
                     ret.push_back(obj);
 
@@ -183,12 +218,17 @@ namespace TAO
                 if(!LLD::legDB->ReadEvent(hashGenesis, nSequence, tx))
                     break;
 
+                ++nTotal;
+
                 /* Check the paged data. */
                 if(nCurrentPage < nPage)
                     continue;
 
                 if(nCurrentPage > nPage)
                     break;
+
+                if(nTotal > nLimit)
+                        break;
 
                 json::json obj;
                 obj["version"]   = tx.nVersion;
@@ -209,8 +249,8 @@ namespace TAO
                     obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                     obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                 }
-                obj["hash"]      = tx.GetHash().ToString();
-                obj["operation"]  = TAO::Operation::Output(tx);
+                obj["hash"]       = tx.GetHash().ToString();
+                obj["operation"]  = OperationToJSON(tx.ssOperation);
 
                 ret.push_back(obj);
 

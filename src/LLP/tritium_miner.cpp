@@ -83,15 +83,27 @@ namespace LLP
 
          /* Attempt to unlock the account. */
          if(TAO::API::accounts.Locked())
+         {
             debug::error(FUNCTION, "No unlocked account available");
+            return nullptr;
+         }
          else
             PIN = TAO::API::accounts.GetActivePin();
 
-         /* Ateempt to get the sigchain. */
+         /* Attempt to get the sigchain. */
          memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::accounts.GetAccount(0);
          if(!pSigChain)
+         {
             debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
+            return nullptr;
+         }
 
+        /* Check that the account is unlocked for minting */
+        if( !TAO::API::accounts.CanMint())
+        {
+            debug::error(FUNCTION, "Account has not been unlocked for minting");
+            return nullptr;
+        }
 
          /* We need to make the block hash unique for each subsribed miner so that they are not
              duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
@@ -106,7 +118,10 @@ namespace LLP
 
              /* Create the Tritium block with the corresponding sigchain and pin. */
              if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *pBlock, ++nBlockIterator))
+             {
                  debug::error(FUNCTION, "Failed to create a new Tritium Block.");
+                 return nullptr;
+             }
 
              /* Update the time. */
              pBlock->UpdateTime();
@@ -148,6 +163,7 @@ namespace LLP
          /* Attempt to unlock the account. */
          if(TAO::API::accounts.Locked())
             return debug::error(FUNCTION, "No unlocked account available");
+            
          else
             PIN = TAO::API::accounts.GetActivePin();
 
@@ -155,6 +171,10 @@ namespace LLP
          memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::accounts.GetAccount(0);
          if(!pSigChain)
             return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
+
+        /* Check that the account is unlocked for minting */
+        if( !TAO::API::accounts.CanMint())
+            return debug::error(FUNCTION, "Account has not been unlocked for minting");
 
          /* Sign the submitted block */
          std::vector<uint8_t> vBytes = pSigChain->Generate(pBlock->producer.nSequence, PIN).GetBytes();

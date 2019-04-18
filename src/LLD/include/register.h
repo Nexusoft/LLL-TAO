@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <LLD/templates/sector.h>
 
 #include <TAO/Register/include/state.h>
+#include <TAO/Register/include/object.h>
 #include <TAO/Register/include/enum.h>
 
 

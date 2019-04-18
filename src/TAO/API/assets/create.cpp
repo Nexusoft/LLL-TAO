@@ -54,6 +54,10 @@ namespace TAO
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
+            /* Check that the account is unlocked for creating transactions */
+            if( !accounts.CanTransact())
+                throw APIException(-25, "Account has not been unlocked for transactions");
+
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
@@ -79,7 +83,7 @@ namespace TAO
             ssData << params["data"].get<std::string>();
 
             /* Submit the payload object. */
-            tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::OBJECT::READONLY << ssData.Bytes();
+            tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::STATE::READONLY << ssData.Bytes();
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))

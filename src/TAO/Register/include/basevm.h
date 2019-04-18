@@ -86,6 +86,50 @@ namespace TAO
 
             /** allocate
              *
+             *  Allocate a 8 bit integer into the VM register memory.
+             *
+             *  @param[in] data The data to allocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void allocate(const uint8_t& data, Value& value);
+
+
+            /** allocate
+             *
+             *  Allocate a 16 bit integer into the VM register memory.
+             *
+             *  @param[in] data The data to allocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void allocate(const uint16_t& data, Value& value);
+
+
+            /** allocate
+             *
+             *  Allocate a 8 bit integer into the VM register memory.
+             *
+             *  @param[in] data The data to allocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void allocate(const uint32_t& data, Value& value);
+
+
+            /** allocate
+             *
+             *  Allocate a 8 bit integer into the VM register memory.
+             *
+             *  @param[in] data The data to allocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void allocate(const uint64_t& data, Value& value);
+
+
+            /** allocate
+             *
              *  Allocate a new object into the VM register memory.
              *
              *  @param[in] data The data to allocate.
@@ -101,28 +145,18 @@ namespace TAO
                 /* Set the value pointers. */
                 value.nBegin = nPointer;
                 value.nEnd   = nPointer + nSize;
+                value.nBytes = sizeof(data);
 
                 /* Check for memory overflows. */
                 if(value.nEnd >= vRegister.size())
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
 
                 /* Copy data into the registers. */
-                std::copy((uint8_t*)&data, (uint8_t*)&data + sizeof(data), (uint8_t*)begin(value));
+                std::copy((uint8_t*)&data, (uint8_t*)&data + value.nBytes, (uint8_t*)begin(value));
 
                 /* Iterate the memory pointer. */
                 nPointer += nSize;
             }
-
-
-            /** allocate
-             *
-             *  Allocate a 64 bit integer into the VM register memory.
-             *
-             *  @param[in] data The data to allocate.
-             *  @param[out] value The value object containing memory locations.
-             *
-             **/
-            void allocate(const uint64_t& data, Value& value);
 
 
             /** allocate
@@ -149,6 +183,50 @@ namespace TAO
 
             /** deallocate
              *
+             *  Deallocate a 8 bit integer from the VM register memory.
+             *
+             *  @param[in] data The data to deallocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void deallocate(uint8_t& data, const Value& value);
+
+
+            /** deallocate
+             *
+             *  Deallocate a 16 bit integer from the VM register memory.
+             *
+             *  @param[in] data The data to deallocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void deallocate(uint16_t& data, const Value& value);
+
+
+            /** deallocate
+             *
+             *  Deallocate a 32 bit integer from the VM register memory.
+             *
+             *  @param[in] data The data to deallocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void deallocate(uint32_t& data, const Value& value);
+
+
+            /** deallocate
+             *
+             *  Deallocate a 64 bit integer from the VM register memory.
+             *
+             *  @param[in] data The data to deallocate.
+             *  @param[out] value The value object containing memory locations.
+             *
+             **/
+            void deallocate(uint64_t& data, const Value& value);
+
+
+            /** deallocate
+             *
              *  Deallocate an object from the VM register memory and return a copy.
              *
              *  @param[out] data The data to return.
@@ -167,8 +245,8 @@ namespace TAO
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, " invalid memory address ", nPointer - value.size()));
 
                 /* Check for value size overflows. */
-                if(value.size() * 8 > sizeof(data))
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch"));
+                if(end(value) - begin(value) != sizeof(data))
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, " deallocate size mismatch ", end(value) - begin(value), " to ", sizeof(data)));
 
                 /* Copy data from the registers. */
                 std::copy((uint8_t*)begin(value), (uint8_t*)end(value), (uint8_t*)&data);

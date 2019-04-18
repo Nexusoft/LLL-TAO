@@ -53,11 +53,14 @@ namespace TAO
             if(params.find("amount") == params.end())
                 throw APIException(-25, "Missing Amount");
 
-
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
+
+            /* Check that the account is unlocked for creating transactions */
+            if( !accounts.CanTransact())
+                throw APIException(-25, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
@@ -85,7 +88,17 @@ namespace TAO
 
             /* Get the optional proof (for joint credits). */
             uint256_t hashProof = user->Genesis();
-            if(params.find("proof") != params.end())
+            
+            /* Check for data parameter. */
+            if(params.find("name_proof") != params.end())
+            {
+                /* Get the address from the name. */
+                std::string strName = GetName() + ":" + params["name_proof"].get<std::string>();
+
+                /* Build the address from an SK256 hash of API:NAME. */
+                hashProof = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+            }
+            else if(params.find("proof") != params.end())
                 hashProof.SetHex(params["proof"].get<std::string>());
 
             /* Get the transaction id. */
