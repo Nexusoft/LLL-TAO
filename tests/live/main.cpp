@@ -198,7 +198,18 @@ public:
 
         while(nTemp > std::numeric_limits<uint64_t>::max())
         {
+            uint128_t nDiff = nTemp;
             nTemp    /= 10;
+
+            uint64_t nRound = static_cast<uint64_t>(nDiff - (nTemp * 10));
+            //debug::log(0, "Rounding ", nRound);
+
+            if(nRound >= 5)
+            {
+                debug::log(0, "Rounding ", nRound);
+                nTemp += 1;
+            }
+
             nFigures /= 10;
         }
 
@@ -262,7 +273,12 @@ public:
 
         while(nTemp > std::numeric_limits<uint64_t>::max())
         {
+            uint128_t nDiff = nTemp;
+
+            uint64_t nRound = (nDiff - nTemp);
             nTemp    /= 10;
+
+            debug::log(0, "Rounding ", nRound);
             ret.nFigures /= 10;
         }
 
@@ -513,7 +529,7 @@ int main(int argc, char** argv)
 
     uint32_t nFails = 0;
     uint32_t nTotals = 10000000;
-    for(int i = 0; i < nTotals; i++)
+    for(int i = 2141874; i < nTotals; i++)
     {
         if(i % 10000 == 0)
             printf("%u\n", i);
