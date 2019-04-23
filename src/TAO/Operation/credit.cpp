@@ -74,7 +74,7 @@ namespace TAO
                 return debug::error(FUNCTION, "not authorized to credit to this register");
 
             /* Check that prev is coinbase. */
-            if(TX_OP == TAO::Operation::OP::COINBASE) //NOTE: thie coinbase can't be spent unless flag is byte 0. Safe to use this for coinbase flag.
+            if(TX_OP == OP::COINBASE) //NOTE: thie coinbase can't be spent unless flag is byte 0. Safe to use this for coinbase flag.
             {
                 /* Check if this is a whole credit that the transaction is not already connected. */
                 if(LLD::legDB->HasProof(hashCaller, hashTx, nFlags))
@@ -148,7 +148,7 @@ namespace TAO
             }
 
             /* Check that prev is debit. */
-            else if(TX_OP != TAO::Operation::OP::DEBIT)
+            else if(TX_OP != OP::DEBIT)
                 return debug::error(FUNCTION,  hashTx.ToString(), " tx claim is not a debit");
 
             /* Get the debit from account. */
@@ -165,7 +165,7 @@ namespace TAO
                 return debug::error(FUNCTION, "couldn't read debit to address");
 
             /* Credits specific to account objects. */
-            if(stateTo.nType == TAO::Register::OBJECT::ACCOUNT)
+            if(stateTo.nType == TAO::Register::STATE::ACCOUNT)
             {
                 /* Check if this is a whole credit that the transaction is not already spent. */
                 if(LLD::legDB->HasProof(hashAccount, hashTx, nFlags))
@@ -248,7 +248,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write new state");
                 }
             }
-            else if(stateTo.nType == TAO::Register::OBJECT::RAW || stateTo.nType == TAO::Register::OBJECT::READONLY)
+            else if(stateTo.nType == TAO::Register::STATE::RAW || stateTo.nType == TAO::Register::STATE::READONLY)
             {
 
                 /* Get the state register of this register's owner. */
