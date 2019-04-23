@@ -25,13 +25,14 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 
 
-
+typedef unsigned int uint128_t __attribute__((mode(TI)));
 
 template<uint32_t FIGURES>
 class precision_t
 {
+public:
     uint64_t nFigures;
-    uint192_t nValue;
+    uint64_t nValue;
 
 
     uint64_t get_figures()
@@ -44,7 +45,7 @@ class precision_t
     }
 
 
-public:
+
     precision_t()
     : nFigures(get_figures())
     , nValue(0)
@@ -85,7 +86,7 @@ public:
 
     bool operator==(int32_t value) const
     {
-        uint192_t compare = static_cast<uint192_t>(value) * nFigures;
+        uint64_t compare = static_cast<uint64_t>(value) * nFigures;
 
         return compare == nValue;
     }
@@ -93,7 +94,7 @@ public:
 
     bool operator==(uint32_t value) const
     {
-        uint192_t compare = static_cast<uint192_t>(value) * nFigures;
+        uint64_t compare = static_cast<uint64_t>(value) * nFigures;
 
         return compare == nValue;
     }
@@ -101,7 +102,7 @@ public:
 
     bool operator<(int32_t value) const
     {
-        uint192_t compare = static_cast<uint192_t>(value) * nFigures;
+        uint64_t compare = static_cast<uint64_t>(value) * nFigures;
 
         return nValue < compare;
     }
@@ -109,7 +110,7 @@ public:
 
     bool operator>(int32_t value) const
     {
-        uint192_t compare = static_cast<uint192_t>(value) * nFigures;
+        uint64_t compare = static_cast<uint64_t>(value) * nFigures;
 
         return nValue > compare;
     }
@@ -117,6 +118,24 @@ public:
 
     precision_t& operator+=(const precision_t& value)
     {
+        if(value.nFigures < nFigures)
+        {
+            uint64_t nDiff = nFigures / value.nFigures;
+
+            nValue += (value.nValue * nDiff);
+
+            return *this;
+        }
+
+        if(value.nFigures > nFigures)
+        {
+            uint64_t nDiff = value.nFigures / nFigures;
+
+            nValue += (value.nValue / nDiff);
+
+            return *this;
+        }
+
         nValue += value.nValue;
 
         return *this;
@@ -125,6 +144,24 @@ public:
 
     precision_t& operator-=(const precision_t& value)
     {
+        if(value.nFigures < nFigures)
+        {
+            uint64_t nDiff = nFigures / value.nFigures;
+
+            nValue -= (value.nValue * nDiff);
+
+            return *this;
+        }
+
+        if(value.nFigures > nFigures)
+        {
+            uint64_t nDiff = value.nFigures / nFigures;
+
+            nValue -= (value.nValue / nDiff);
+
+            return *this;
+        }
+
         nValue -= value.nValue;
 
         return *this;
@@ -141,8 +178,12 @@ public:
 
     precision_t& operator/=(const precision_t& value)
     {
-        nValue     *= value.nFigures;
-        nValue     /= value.nValue;
+        uint128_t nTemp = nValue;
+
+        nTemp     *= value.nFigures;
+        nTemp     /= value.nValue;
+
+        nValue   = static_cast<uint64_t>(nTemp);
 
         return *this;
     }
@@ -150,14 +191,25 @@ public:
 
     precision_t& operator*=(const precision_t& value)
     {
-        nValue *= value.nValue;
-        nValue /= value.nFigures;
+        uint128_t nTemp = nValue;
+
+        nTemp *= value.nValue;
+        nTemp /= value.nFigures;
+
+        while(nTemp > std::numeric_limits<uint64_t>::max())
+        {
+            nTemp    /= 10;
+            nFigures /= 10;
+        }
+
+        nValue   = static_cast<uint64_t>(nTemp);
 
         return *this;
     }
 
 
-    precision_t& operator/=(const uint64_t& value)
+
+    precision_t& operator/=(const uint128_t& value)
     {
         nValue /= value;
 
@@ -165,15 +217,7 @@ public:
     }
 
 
-    precision_t& operator/=(const uint192_t& value)
-    {
-        nValue /= value;
-
-        return *this;
-    }
-
-
-    precision_t& operator*=(const uint192_t& value)
+    precision_t& operator*=(const uint64_t& value)
     {
         nValue *= value;
 
@@ -185,14 +229,19 @@ public:
     {
         precision_t ret = *this;
 
-        ret.nValue     *= value.nFigures;
-        ret.nValue     /= value.nValue;
+        uint128_t nTemp = nValue;
+
+        nTemp     *= value.nFigures;
+        nTemp     /= value.nValue;
+
+        ret.nValue = static_cast<uint64_t>(nTemp);
 
         return ret;
     }
 
 
-    precision_t operator/(const uint192_t& value) const
+
+    precision_t operator/(const uint128_t& value) const
     {
         precision_t ret = *this;
 
@@ -206,8 +255,18 @@ public:
     {
         precision_t ret = *this;
 
-        ret.nValue *= value.nValue;
-        ret.nValue /= value.nFigures;
+        uint128_t nTemp = nValue;
+
+        nTemp *= value.nValue;
+        nTemp /= value.nFigures;
+
+        while(nTemp > std::numeric_limits<uint64_t>::max())
+        {
+            nTemp    /= 10;
+            ret.nFigures /= 10;
+        }
+
+        ret.nValue = static_cast<uint64_t>(nTemp);
 
         return ret;
     }
@@ -279,7 +338,7 @@ public:
 
     precision_t& exp(bool fPrint = false)
     {
-        uint192_t fact = 1;
+        uint128_t fact = 1;
 
         const precision_t base  = *this;
         precision_t power  = base;
@@ -308,6 +367,11 @@ public:
 
                 printf("BASE: ");
                 base.print();
+
+                printf("SUM: ");
+                print();
+
+                //debug::log(0, fact);
             }
 
 
@@ -324,6 +388,10 @@ public:
             //    temp.print();
 
             precision_t temp = (power / fact);
+
+            if(fPrint)
+                temp.print();
+
             if(temp == 0)
             {
                 if(fPrint)
@@ -336,7 +404,8 @@ public:
             //nSum += power(x, i - 1) / nFactorial;
             *this += temp;
 
-
+            //if(fact > std::numeric_limits<uint64_t>::max() / i)
+            //    debug::error("factorial overflow");
 
             fact *= i;
         }
@@ -367,7 +436,7 @@ public:
 
     double get() const
     {
-        return nValue.getdouble() / nFigures;
+        return nValue / static_cast<double>(nFigures);
     }
 
     uint192_t getint() const
@@ -391,7 +460,7 @@ public:
 
     void print() const
     {
-        printf("%.16f\n", get());
+        printf("%.16f FIGURES %llu\n", get(), nFigures);
     }
 
 
@@ -410,9 +479,9 @@ public:
 
 const precision_t<15> decays[3][3] =
 {
-    {50.0, 0.00000110, 1.000},
-    {10.0, 0.00000055, 1.000},
-    {1.00, 0.00000059, 0.032}
+    {25.0, 0.00000110, 0.500},
+    {5.00, 0.00000055, 0.500},
+    {0.50, 0.00000059, 0.016}
 };
 
 
@@ -423,8 +492,6 @@ uint64_t Subsidy(const uint32_t nMinutes, const uint32_t nType, bool fPrint = fa
 
     precision_t<15> ret = decays[nType][0] / exponent;
     ret += decays[nType][2];
-
-    ret /= 2;
 
     if(fPrint)
         ret.print();
@@ -439,7 +506,6 @@ uint64_t Subsidy(const uint32_t nMinutes, const uint32_t nType, bool fPrint = fa
 int main(int argc, char** argv)
 {
     using namespace TAO::Ledger;
-
 
 //2.7182818284590452353602874713527
 
