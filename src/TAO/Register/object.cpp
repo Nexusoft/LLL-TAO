@@ -47,6 +47,10 @@ namespace TAO
         /* Parses out the data members of an object register. */
         bool Object::Parse()
         {
+            /* Ensure that object register is of proper type. */
+            if(this->nType != STATE::OBJECT)
+                return false;
+
             /* Reset the read position. */
             nReadPos   = 0;
 

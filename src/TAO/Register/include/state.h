@@ -94,6 +94,20 @@ namespace TAO
             }
 
 
+            /** Basic Type Constructor **/
+            State(uint8_t nTypeIn)
+            : nVersion(1)
+            , nType(nTypeIn)
+            , hashOwner(0)
+            , nTimestamp(runtime::unifiedtimestamp())
+            , vchState()
+            , hashChecksum(0)
+            , nReadPos(0)
+            {
+                vchState.clear();
+            }
+
+
             /** Default Constructor **/
             State(std::vector<uint8_t> vchData)
             : nVersion(1)

@@ -63,13 +63,15 @@ namespace TAO
             if(state.nType != TAO::Register::STATE::APPEND)
                 return debug::error(FUNCTION, "append operation called on raw register");
 
-            /*state Check that the proper owner is commiting the write. */
+            /* Check that the proper owner is commiting the write. */
             if(hashCaller != state.hashOwner)
                 return debug::error(FUNCTION, "no append permissions for caller ", hashCaller.ToString());
 
-            /* Set the new state of the register. */
+            /* Append the state data. */
             std::vector<uint8_t> vchState = state.GetState();
             vchState.insert(vchState.end(), vchData.begin(), vchData.end());
+            
+            /* Set the new state of the register. */
             state.nTimestamp = tx.nTimestamp;
             state.SetState(vchState);
 

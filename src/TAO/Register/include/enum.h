@@ -44,7 +44,7 @@ namespace TAO
                 /* This type of register is just raw data that can be changed. */
                 RAW      = 0x03,
 
-                /* This type of register has its dadta fields enforced by operations layer. */
+                /* This type of register has its data fields enforced by operations layer. */
                 OBJECT   = 0x04,
 
                 /* This type of register handles general accounts and DEBITS / CREDITS */

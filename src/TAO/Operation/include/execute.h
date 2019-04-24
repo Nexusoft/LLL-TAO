@@ -300,6 +300,9 @@ namespace TAO
 
                         //    break;
                         //}
+
+                        default:
+                            return debug::error(FUNCTION, "operations reached invalid stream state");
                     }
                 }
             }

@@ -46,7 +46,7 @@ namespace TAO
 
             /** Default constructor. **/
             Object()
-            : State()
+            : State(uint8_t(STATE::OBJECT))
             , vchSystem(512, 0) //system memory by default is 512 bytes
             , mapData()
             {
@@ -68,7 +68,8 @@ namespace TAO
             , vchSystem(512, 0)
             , mapData()
             {
-                Parse();
+                if(!Parse())
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to parse state register"));
             }
 
 
@@ -270,7 +271,7 @@ namespace TAO
 
                 /* Read the value from object. */
                 if(!Read(std::string(strName), nRet))
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "[] uint32_t access read failed"));
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access read failed"));
 
                 return nRet;
             }

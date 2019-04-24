@@ -119,7 +119,7 @@ namespace TAO
          *  @param[in] hashTx The account being transferred from.
          *  @param[in] hashProof The proof address used in this credit.
          *  @param[in] hashTo The account being transferred to.
-         *  @param[in] nAmount The amount being transferred
+         *  @param[in] nCredit The amount being transferred
          *  @param[in] hashCaller The calling signature chain.
          *  @param[in] nFlags The flag to determine if database state should be written.
          *  @param[out] tx The transaction calling operations
@@ -128,7 +128,7 @@ namespace TAO
          *
          **/
         bool Credit(const uint512_t &hashTx, const uint256_t &hashProof,
-            const uint256_t &hashTo, const uint64_t nAmount, const uint256_t &hashCaller, const uint8_t nFlags,
+            const uint256_t &hashTo, const uint64_t nCredit, const uint256_t &hashCaller, const uint8_t nFlags,
             TAO::Ledger::Transaction &tx);
 
 
