@@ -219,7 +219,7 @@ namespace TAO
                 if(nReadPos + sizeof(value) >= vchState.size())
                     return debug::error(FUNCTION, "performing an over-write");
 
-                /* CnTypey the bytes into the object. */
+                /* Copy the bytes into the object. */
                 std::copy((uint8_t*)&value, (uint8_t*)&value + sizeof(value), (uint8_t*)&vchState[nReadPos]);
 
                 return true;

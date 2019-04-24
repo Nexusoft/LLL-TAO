@@ -213,7 +213,7 @@ namespace TAO
 
                     /* Fail if types are unknown. */
                     default:
-                        return false;
+                        return debug::error(FUNCTION, "invalid types ", uint32_t(nType));
                 }
             }
 
@@ -245,6 +245,10 @@ namespace TAO
         /* Check the type enumeration from the object register. */
         bool Object::Check(const std::string& strName, const uint8_t nType, bool fMutable) const
         {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                return debug::error(FUNCTION, "object is not parsed");
+
             /* Check that the name exists in the object. */
             if(!mapData.count(strName))
                 return false;
@@ -348,7 +352,7 @@ namespace TAO
             if(nReadPos + nSize >= vchState.size())
                 return debug::error(FUNCTION, "performing an over-write");
 
-            /* CnTypey the bytes into the object. */
+            /* Copy the bytes into the object. */
             std::copy((uint8_t*)&strValue[0], (uint8_t*)&strValue[0] + strValue.size(), (uint8_t*)&vchState[nReadPos]);
 
             return true;
@@ -386,7 +390,7 @@ namespace TAO
             if(nReadPos + nSize >= vchState.size())
                 return debug::error(FUNCTION, "performing an over-write");
 
-            /* CnTypey the bytes into the object. */
+            /* Copy the bytes into the object. */
             std::copy((uint8_t*)&vData[0], (uint8_t*)&vData[0] + vData.size(), (uint8_t*)&vchState[nReadPos]);
 
             return true;

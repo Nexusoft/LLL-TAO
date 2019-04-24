@@ -25,10 +25,10 @@ TEST_CASE( "Object Register Tests", "[register]" )
                << std::string("test") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::STRING) << std::string("this string")
                << std::string("bytes") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::BYTES) << std::vector<uint8_t>(10, 0xff)
                << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-               << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint64_t(0);
+               << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint32_t(0);
 
         //parse object
-        object.Parse();
+        REQUIRE(object.Parse());
 
         //read test
         uint8_t nByte;
@@ -94,5 +94,59 @@ TEST_CASE( "Object Register Tests", "[register]" )
 
         //check standards
         REQUIRE(object.Standard() == OBJECTS::ACCOUNT);
+    }
+
+
+    {
+        Object object;
+        object << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+               << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint32_t(0)
+               << std::string("supply") << uint8_t(TYPES::UINT64_T) << uint64_t(888888);
+
+        //parse object
+        REQUIRE(object.Parse());
+
+        //check standards
+        REQUIRE(object.Standard() == OBJECTS::ACCOUNT);
+    }
+
+
+    {
+        Object object;
+        object << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+               << std::string("current") << uint8_t(TYPES::UINT32_T) << uint32_t(0)
+               << std::string("testing") << uint8_t(TYPES::UINT64_T) << uint64_t(888888);
+
+        //parse object
+        REQUIRE(object.Parse());
+
+        //check standards
+        REQUIRE(object.Standard() == OBJECTS::NONSTANDARD);
+    }
+
+
+    {
+        Object object;
+        object << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+               << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint32_t(0)
+               << std::string("supply") << uint8_t(TYPES::UINT64_T) << uint64_t(888888)
+               << std::string("digits") << uint8_t(TYPES::UINT64_T) << uint64_t(100);
+
+        //parse object
+        REQUIRE(object.Parse());
+
+        //check standards
+        REQUIRE(object.Standard() == OBJECTS::TOKEN);
+    }
+
+    {
+        Object object;
+        object << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+               << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint64_t(0)
+               << std::string("supply") << uint8_t(TYPES::UINT64_T) << uint64_t(888888)
+               << std::string("digits") << uint8_t(TYPES::UINT64_T) << uint64_t(100);
+
+        //parse object
+        REQUIRE(!object.Parse());
     }
 }
