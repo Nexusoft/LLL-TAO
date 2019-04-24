@@ -23,11 +23,28 @@ namespace TAO
     namespace Register
     {
 
-        /** Parse
-         *
-         *  Parses out the data members of an object register.
-         *
-         **/
+        /* Get's the standard object type. */
+        uint8_t Object::Standard() const
+        {
+            /* Set the return value. */
+            uint8_t nType = OBJECTS::NONSTANDARD;
+
+            /* Search object register for key types. */
+            if(Check("identifier", TYPES::UINT32_T, false) && Check("balance", TYPES::UINT64_T, true))
+            {
+                /* Set the return value. */
+                nType = OBJECTS::ACCOUNT;
+
+                /* Make the supply immutable for now (add continued distribution later). */
+                if(Check("supply", TYPES::UINT64_T, false) && Check("digits", TYPES::UINT64_T, false))
+                    nType = OBJECTS::TOKEN;
+            }
+
+            return nType;
+        }
+
+
+        /* Parses out the data members of an object register. */
         bool Object::Parse()
         {
             /* Reset the read position. */
@@ -222,6 +239,28 @@ namespace TAO
                 return debug::error(FUNCTION, "unsupported type");
 
             return true;
+        }
+
+
+        /* Check the type enumeration from the object register. */
+        bool Object::Check(const std::string& strName, const uint8_t nType, bool fMutable) const
+        {
+            /* Check that the name exists in the object. */
+            if(!mapData.count(strName))
+                return false;
+
+            /* Find the binary position of value. */
+            nReadPos = mapData[strName].first;
+
+            /* Deserialize the type specifier. */
+            uint8_t nCheck;
+            *this >> nCheck;
+
+            /* Check for unsupported type enums. */
+            if(nType != nCheck)
+                return false;
+
+            return (fMutable == mapData[strName].second);
         }
 
 

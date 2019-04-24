@@ -30,9 +30,11 @@ int main(int argc, char** argv)
     object << std::string("byte") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT8_T) << uint8_t(55)
            << std::string("test") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::STRING) << std::string("this string")
            << std::string("bytes") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::BYTES) << std::vector<uint8_t>(10, 0xff)
-           << std::string("balance") << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-           << std::string("identifier") << uint8_t(TYPES::STRING) << std::string("NXS");
+           << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+           << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint64_t(0);
 
+    //parse object
+    object.Parse();
 
     //unit tests
     uint8_t nTest;
@@ -80,6 +82,8 @@ int main(int argc, char** argv)
     object.Read("identifier", identifier);
 
     debug::log(0, "Token Type ", identifier);
+
+    debug::log(0, uint32_t(object.Standard()));
 
     return 0;
 }

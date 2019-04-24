@@ -25,7 +25,7 @@ namespace TAO
 
         /** STATE
          *
-         *  Object registers that are available for use.
+         *  State registers that are available for use.
          *
          **/
         struct STATE
@@ -52,6 +52,27 @@ namespace TAO
 
                 /* This type of register to hold token parameters. */
                 TOKEN    = 0x06,
+            };
+        };
+
+
+        /** OBJECT
+         *
+         *  Object registers that are available and standardized.
+         *
+         **/
+        struct OBJECTS
+        {
+            enum
+            {
+                /* Non-Standard Object (User Defined Type). */
+                NONSTANDARD  = 0x00,
+
+                /* Account Object Register. */
+                ACCOUNT      = 0x01,
+
+                /* Token Object Register. */
+                TOKEN        = 0x02
             };
         };
 

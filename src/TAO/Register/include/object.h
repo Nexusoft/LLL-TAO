@@ -86,6 +86,14 @@ namespace TAO
             )
 
 
+            /** Standard
+             *
+             *  Get's the standard object type.
+             *
+             **/
+            uint8_t Standard() const;
+
+
             /** Parse
              *
              *  Parses out the data members of an object register.
@@ -105,6 +113,19 @@ namespace TAO
              *
              **/
             bool Type(const std::string& strName, uint8_t& nType) const;
+
+
+            /** Check
+             *
+             *  Check the type enumeration from the object register.
+             *
+             *  @param[in] strName The name of the value type to get
+             *  @param[out] nType The value enumeration type out.
+             *
+             *  @return True if the type is supported.
+             *
+             **/
+            bool Check(const std::string& strName, const uint8_t nType, bool fMutable) const;
 
 
             /** Size
