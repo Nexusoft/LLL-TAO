@@ -11,6 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/include/random.h>
+
+#include <openssl/rand.h>
+
 #include <TAO/Register/include/object.h>
 
 #include <unit/catch2/catch.hpp>
@@ -139,6 +143,7 @@ TEST_CASE( "Object Register Tests", "[register]" )
         REQUIRE(object.Standard() == OBJECTS::TOKEN);
     }
 
+
     {
         Object object;
         object << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
@@ -148,5 +153,92 @@ TEST_CASE( "Object Register Tests", "[register]" )
 
         //parse object
         REQUIRE(!object.Parse());
+    }
+
+
+    {
+        uint256_t hash256   = LLC::GetRand256();
+        uint512_t hash512   = LLC::GetRand512();
+        uint1024_t hash1024 = LLC::GetRand1024();
+
+        std::vector<uint8_t> vBytes(15);
+        RAND_bytes((uint8_t*)&vBytes[0], vBytes.size());
+
+        Object object;
+        object << std::string("uint8_t")    << uint8_t(TYPES::UINT8_T)    << uint8_t(55)
+               << std::string("uint16_t")   << uint8_t(TYPES::UINT16_T)   << uint16_t(9383)
+               << std::string("uint32_t")   << uint8_t(TYPES::UINT32_T)   << uint32_t(82384293823)
+               << std::string("uint64_t")   << uint8_t(TYPES::UINT64_T)   << uint64_t(239482349023843984)
+               << std::string("uint256_t")  << uint8_t(TYPES::UINT256_T)  << hash256
+               << std::string("uint512_t")  << uint8_t(TYPES::UINT512_T)  << hash512
+               << std::string("uint1024_t") << uint8_t(TYPES::UINT1024_T) << hash1024
+               << std::string("string")     << uint8_t(TYPES::STRING)     << std::string("this is a string to test long forms")
+               << std::string("bytes")      << uint8_t(TYPES::BYTES)      << vBytes;
+
+        //parse object
+        REQUIRE(object.Parse());
+
+        //read byte
+        uint8_t nByte;
+        REQUIRE(object.Read("uint8_t", nByte));
+
+        //check
+        REQUIRE(nByte == uint8_t(55));
+
+        //read short
+        uint16_t nShort;
+        REQUIRE(object.Read("uint16_t", nShort));
+
+        //check
+        REQUIRE(nShort == uint16_t(9383));
+
+        //read int
+        uint32_t nInt;
+        REQUIRE(object.Read("uint32_t", nInt));
+
+        //check
+        REQUIRE(nInt == uint32_t(82384293823));
+
+        //read 64-bit int
+        uint64_t n64;
+        REQUIRE(object.Read("uint64_t", n64));
+
+        //check
+        REQUIRE(n64 ==uint64_t(239482349023843984));
+
+        //read 256
+        uint256_t hashRead256;
+        REQUIRE(object.Read("uint256_t", hashRead256));
+
+        //check
+        REQUIRE(hashRead256 == hash256);
+
+        //read 256
+        uint512_t hashRead512;
+        REQUIRE(object.Read("uint512_t", hashRead512));
+
+        //check
+        REQUIRE(hashRead512 == hash512);
+
+        //read 1024
+        uint1024_t hashRead1024;
+        REQUIRE(object.Read("uint1024_t", hashRead1024));
+
+        //check
+        REQUIRE(hashRead1024 == hash1024);
+
+        //read string
+        std::string strRead;
+        REQUIRE(object.Read("string", strRead));
+
+        //check
+        REQUIRE(strRead == std::string("this is a string to test long forms"));
+
+        //read bytes
+        std::vector<uint8_t> vRead;
+        REQUIRE(object.Read("bytes", vRead));
+
+        //check
+        REQUIRE(vRead == vBytes);
     }
 }
