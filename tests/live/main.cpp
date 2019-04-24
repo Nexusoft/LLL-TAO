@@ -26,5 +26,18 @@ int main(int argc, char** argv)
 {
     using namespace TAO::Register;
 
+    Object object;
+    object << std::string("value") << uint8_t(TYPES::UINT32_T) << uint32_t(555)
+           << std::string("key2")  << uint8_t(TYPES::UINT64_T) << uint64_t(404040);
+
+    object.Parse();
+
+    uint32_t nValue  = object.get<uint32_t>("value");
+
+    uint64_t nValue2 = object.get<uint64_t>("key2");
+
+
+    debug::log(0, "Value ", nValue, " Value 2 ", nValue2);
+
     return 0;
 }

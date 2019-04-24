@@ -253,6 +253,29 @@ namespace TAO
             bool Write(const std::string& strName, const std::vector<uint8_t>& vData);
 
 
+            /** get
+             *
+             *  Template to access a member variable of an object register.
+             *
+             *  @param[in] strName The name to lookup value by.
+             *
+             *  @return The value to access.
+             *
+             **/
+            template<typename Type>
+            Type get(const char* strName) const
+            {
+                /* Declare the return value. */
+                Type nRet;
+
+                /* Read the value from object. */
+                if(!Read(std::string(strName), nRet))
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "[] uint32_t access read failed"));
+
+                return nRet;
+            }
+
+
         private:
 
             /** type
