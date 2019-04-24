@@ -175,6 +175,7 @@ ifdef UNIT_TESTS
 	OBJS = build/Tests_main.o \
 	       build/Tests_aes.o \
 	       build/Tests_testvm.o \
+		   build/Tests_objects.o \
 		   build/Tests_block.o \
 		   build/Tests_sigchain.o \
 		   build/Tests_validate.o
