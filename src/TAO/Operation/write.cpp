@@ -18,6 +18,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/state.h>
 #include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -95,9 +96,8 @@ namespace TAO
                     stream >> strName;
 
                     /* Manually check reserved field names for now. */
-                    if(strName == std::string("balance")) //THIS IS ONLY FOR MUTABLE TYPES
+                    if(!TAO::Register::Reserved(strName))
                         return debug::error(FUNCTION, "cannot write with reserved field names");
-                    //TODO: make this a function with a list of reserved values (ex. "trust", "stake")
 
                     //TODO: maybe we should catch duplicates?
                     //no real point being that it will just overwrite a value in same transaction as long as it is mutable.
