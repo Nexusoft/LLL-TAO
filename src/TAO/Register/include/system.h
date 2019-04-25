@@ -30,8 +30,10 @@ namespace TAO
          *
          *  Initialize system register values.
          *
+         *  @return true if the system register initialized correctly.
+         *
          **/
-        void Initialize();
+        bool Initialize();
 
 
         /** Reserved

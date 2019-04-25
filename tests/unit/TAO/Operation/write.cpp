@@ -33,7 +33,6 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
 
         //write the object register for testing
         uint256_t hash = LLC::GetRand256();
-        LLD::regDB = new LLD::RegisterDB();
         REQUIRE(LLD::regDB->WriteState(hash, object));
 
         //create an operation stream to set values.

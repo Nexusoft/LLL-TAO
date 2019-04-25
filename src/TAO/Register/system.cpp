@@ -12,6 +12,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
@@ -23,9 +25,25 @@ namespace TAO
     {
 
         /* Initialize system register values. */
-        void Initialize()
+        bool Initialize()
         {
+            /* Check if system register exists. */
+            Object object;
+            if(!LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), object))
+            {
+                /* Debug output that the trust system register is initializing. */
+                debug::log(0, FUNCTION, "Initializing Trust System Register");
 
+                /* Create the object. */
+                object << std::string("trust")      << uint8_t(TAO::Register::TYPES::MUTABLE)  << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(0)
+                       << std::string("stake")      << uint8_t(TAO::Register::TYPES::MUTABLE)  << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(0);
+
+                /* Write the system value. */
+                if(!LLD::regDB->WriteState(uint256_t(SYSTEM::TRUST), object))
+                    return debug::error(FUNCTION, "failed to write system::trust register");
+            }
+
+            return true;
         }
     }
 }

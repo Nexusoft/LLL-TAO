@@ -54,7 +54,6 @@ TEST_CASE( "Validation Script Operation Tests", "[operation]" )
     state << hash2;
 
 
-    LLD::regDB = new LLD::RegisterDB();
     REQUIRE(LLD::regDB->Write(hash, state));
     REQUIRE(LLD::regDB->Write(hashFrom, state));
 

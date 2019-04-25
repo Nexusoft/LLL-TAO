@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
 #include <unit/catch2/catch.hpp>
 
+#include <LLD/include/global.h>
+
 #include <Util/include/args.h>
 
 TEST_CASE("Arguments Tests", "[args]")
@@ -23,4 +25,14 @@ TEST_CASE("Arguments Tests", "[args]")
 
     REQUIRE(config::fTestNet == true);
     REQUIRE(config::GetArg("-testnet", 0) == 92349234);
+
+    /* Create the database instances. */
+    LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+
+
+    /* Initialize the Legacy Database. */
+    LLD::trustDB  = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::legacyDB = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 }

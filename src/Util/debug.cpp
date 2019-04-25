@@ -85,6 +85,8 @@ namespace debug
      *  Encapsulated log for improved compile time. Not thread safe. */
     void log_(time_t &timestamp, std::string &debug_str)
     {
+        #ifndef UNIT_TESTS
+        
         /* Dump it to the console. */
         std::cout << "["
                   << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
@@ -106,6 +108,7 @@ namespace debug
                   << "] "
                   << debug_str
                   << std::endl;
+        #endif
     }
 
 
