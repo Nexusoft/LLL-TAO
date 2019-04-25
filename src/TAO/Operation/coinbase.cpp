@@ -38,26 +38,7 @@ namespace TAO
             TAO::Register::State state;
             if(!LLD::regDB->ReadState(hashAddress, state))
             {
-                /* Set the owner of this register. */
-                state.nVersion  = 1;
-                state.nType     = TAO::Register::STATE::ACCOUNT;
-                state.nTimestamp = tx.nTimestamp;
-                state.hashOwner = hashCaller;
-
-                /* Create the new account. */
-                TAO::Register::Account acct;
-                acct.nVersion    = 1;
-                acct.nIdentifier = 0; //NXS native token.
-                acct.nBalance    = 0; //Always start with a 0 balance
-                state << acct;
-
-                /* Check the state change is correct. */
-                if(!state.IsValid())
-                    return debug::error(FUNCTION, "memory address ", hashAddress.ToString().c_str(), " is in invalid state");
-
-                /* Write the register to database. */
-                if(!LLD::regDB->WriteState(hashAddress, state))
-                    return debug::error(FUNCTION, "failed to write state register ", hashAddress.ToString(), " memory address");
+                //TODO: create the new account if coinbase with no account
 
                 debug::log(0, FUNCTION, "created new account ", hashAddress.ToString(), " for coinbase transaction");
             }

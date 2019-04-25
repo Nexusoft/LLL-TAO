@@ -30,10 +30,6 @@ namespace TAO
         {
             json::json ret;
 
-            /* Check for identifier parameter. */
-            if(params.find("type") == params.end())
-                throw APIException(-25, "Missing Type");
-
             /* Get the Register ID. */
             uint256_t hashRegister = 0;
 

@@ -83,6 +83,7 @@ namespace TAO
 
             /* Update the state register's timestamp. */
             account.nTimestamp = tx.nTimestamp;
+            account.SetChecksum();
 
             /* Check that the register is in a valid state. */
             if(!account.IsValid())

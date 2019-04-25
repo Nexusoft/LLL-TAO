@@ -104,12 +104,13 @@ namespace TAO
                 if(nCoinbase != nCredit)
                     return debug::error(FUNCTION, "credit ", nCredit, "and coinbase ", nCredit, " amounts mismatch");
 
-                /* Update the state register's timestamp. */
-                account.nTimestamp = tx.nTimestamp;
-
                 /* Write the new balance to object register. */
                 if(!account.Write("balance", account.get<uint64_t>("balance") + nCredit))
                     return debug::error(FUNCTION, "balance could not be written to object register");
+
+                /* Update the state register's timestamp. */
+                account.nTimestamp = tx.nTimestamp;
+                account.SetChecksum();
 
                 /* Check that the register is in a valid state. */
                 if(!account.IsValid())
@@ -209,6 +210,7 @@ namespace TAO
 
                 /* Update the state register's timestamp. */
                 account.nTimestamp = tx.nTimestamp;
+                account.SetChecksum();
 
                 /* Check that the register is in a valid state. */
                 if(!account.IsValid())
@@ -332,6 +334,7 @@ namespace TAO
 
                 /* Update the state register's timestamp. */
                 account.nTimestamp = tx.nTimestamp;
+                account.SetChecksum();
 
                 /* Check that the register is in a valid state. */
                 if(!account.IsValid())
