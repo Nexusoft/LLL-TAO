@@ -72,7 +72,6 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
-
         {
             Stream stream;
             stream << std::string("identifier") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
@@ -80,7 +79,6 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             //run the write operation.
             REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
-
 
         {
             Stream stream;
@@ -90,7 +88,6 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
-
         {
             Stream stream;
             stream << std::string("digits") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
@@ -99,7 +96,6 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
-
         {
             Stream stream;
             stream << std::string("trust") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
@@ -107,7 +103,6 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             //run the write operation.
             REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
-
 
         {
             Stream stream;

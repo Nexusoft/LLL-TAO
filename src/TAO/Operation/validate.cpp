@@ -849,7 +849,7 @@ namespace TAO
                             case TAO::Register::TYPES::STRING:
                             {
                                 /* Read the value. */
-                                std::string strData(object.Size(strValue), '\0');
+                                std::string strData;
                                 if(!object.Read(strValue, strData))
                                     return false;
 
@@ -864,7 +864,7 @@ namespace TAO
                             case TAO::Register::TYPES::BYTES:
                             {
                                 /* Read the value. */
-                                std::vector<uint8_t> vData(object.Size(strValue), 0);
+                                std::vector<uint8_t> vData;
                                 if(!object.Read(strValue, vData))
                                     return false;
 
