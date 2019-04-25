@@ -117,5 +117,13 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
+
+        //check failure on system values
+        {
+            //run the write operation.
+            REQUIRE(!Write(1, std::vector<uint8_t>(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+        }
+
+
     }
 }
