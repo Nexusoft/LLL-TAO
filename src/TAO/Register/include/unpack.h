@@ -40,7 +40,7 @@ namespace TAO
 
         /** Unpack
          *
-         *  Unpack registers from operation script.
+         *  Unpack a state register declaration from operation scripts.
          *
          **/
         inline bool Unpack(const TAO::Ledger::Transaction& tx, State& state)
@@ -81,7 +81,7 @@ namespace TAO
                             /* Set the owner of this register. */
                             if(!LLD::regDB->ReadState(hashAddress, state))
                                 return false;
-                                
+
                             return true;
                         }
 

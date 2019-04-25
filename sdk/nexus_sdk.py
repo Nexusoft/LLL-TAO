@@ -385,21 +385,24 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_tokens_credit_by_name(self, to_name, amount, txid, proof=None):
+    def nexus_tokens_credit_by_name(self, to_name, amount, txid,
+        proof_name=None):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # Argument from_name is a token account name.
         #
-        parms = "?pin={}&session={}&txid={}&amount={}&name_to={}". \
-            format(self.pin, self.session_id, txid, amount, to_name)
+        parms = "?pin={}&session={}&txid={}&amount={}&name_to={}".format( \
+            self.pin, self.session_id, txid, amount, to_name)
+        if (proof_name != None): parms += "&name_proof={}".format(proof_name)
+
         url = tokens_url.format("credit") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
     def nexus_tokens_credit_by_address(self, to_address, amount, txid,
-        proof=None):
+        proof_address=None):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
@@ -407,6 +410,10 @@ class sdk_init():
         #
         parms = ("?pin={}&session={}&txid={}&amount={}&address_to={}"). \
             format(self.pin, self.session_id, txid, amount, to_address)
+        if (proof_address != None):
+            parms += "&address_proof={}".format(proof_address)
+        #endif
+
         url = tokens_url.format("credit") + parms
         json_data = self.__get(url)
         return(json_data)

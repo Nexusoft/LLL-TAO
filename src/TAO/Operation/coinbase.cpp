@@ -40,7 +40,7 @@ namespace TAO
             {
                 /* Set the owner of this register. */
                 state.nVersion  = 1;
-                state.nType     = TAO::Register::OBJECT::ACCOUNT;
+                state.nType     = TAO::Register::STATE::ACCOUNT;
                 state.nTimestamp = tx.nTimestamp;
                 state.hashOwner = hashCaller;
 

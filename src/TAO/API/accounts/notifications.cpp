@@ -96,7 +96,7 @@ namespace TAO
                     continue;
 
                 /* Check that it is an account. */
-                if(state.nType != TAO::Register::OBJECT::ACCOUNT)
+                if(state.nType != TAO::Register::STATE::ACCOUNT)
                     continue;
 
                 /* Get the account. */
@@ -186,7 +186,7 @@ namespace TAO
                         if(!LLD::regDB->ReadState(hashTo, stateTo))
                             continue;
 
-                        if(stateTo.nType == TAO::Register::OBJECT::RAW || stateTo.nType == TAO::Register::OBJECT::READONLY)
+                        if(stateTo.nType == TAO::Register::STATE::RAW || stateTo.nType == TAO::Register::STATE::READONLY)
                         {
                             /* Get the token object. */
                             TAO::Register::Token token;

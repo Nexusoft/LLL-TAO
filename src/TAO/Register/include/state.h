@@ -166,17 +166,7 @@ namespace TAO
              *  Set the State Register into a nullptr state.
              *
              **/
-            void SetNull()
-            {
-                nVersion     = 0;
-                nType        = 0;
-                hashOwner    = 0;
-                nTimestamp   = 0;
-                hashChecksum = 0;
-
-                vchState.clear();
-                nReadPos     = 0;
-            }
+            void SetNull();
 
 
             /** IsNull
@@ -184,10 +174,7 @@ namespace TAO
              *  nullptr Checking flag for a State Register.
              *
              **/
-            bool IsNull() const
-            {
-                return (nVersion == 0 && vchState.size() == 0 && hashChecksum == 0);
-            }
+            bool IsNull() const;
 
 
             /** IsPruned
@@ -195,10 +182,7 @@ namespace TAO
              *  Flag to determine if the state register has been pruned.
              *
              **/
-            bool IsPruned() const
-            {
-                return (nVersion == 0 && vchState.size() == 0 && hashChecksum != 0);
-            }
+            bool IsPruned() const;
 
 
             /** GetHash
@@ -206,13 +190,7 @@ namespace TAO
              *  Get the hash of the current state.
              *
              **/
-            uint64_t GetHash() const
-            {
-                DataStream ss(SER_GETHASH, nVersion);
-                ss << *this;
-
-                return LLC::SK64(ss.begin(), ss.end());
-            }
+            uint64_t GetHash() const;
 
 
             /** SetChecksum
@@ -220,10 +198,7 @@ namespace TAO
              *  Set the Checksum of this Register.
              *
              **/
-            void SetChecksum()
-            {
-                hashChecksum = GetHash();
-            }
+            void SetChecksum();
 
 
             /** IsValid
@@ -231,22 +206,7 @@ namespace TAO
              *  Check if the register is valid.
              *
              **/
-            bool IsValid() const
-            {
-                /* Check for null state. */
-                if(IsNull())
-                    return debug::error(FUNCTION, "register cannot be null");
-
-                /* Check the checksum. */
-                if(GetHash() != hashChecksum)
-                    return debug::error(FUNCTION, "register checksum (", GetHash(), ") mismatch (", hashChecksum, ")");
-
-                /* Check the timestamp. */
-                if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
-                    return debug::error(FUNCTION, "register timestamp too far in the future");
-
-                return true;
-            }
+            bool IsValid() const;
 
 
             /** GetState
@@ -254,10 +214,7 @@ namespace TAO
              *  Get the State from the Register.
              *
              **/
-            const std::vector<uint8_t>& GetState() const
-            {
-                return vchState;
-            }
+            const std::vector<uint8_t>& GetState() const;
 
 
             /** SetState
@@ -265,12 +222,7 @@ namespace TAO
              *  Set the State from Byte Vector.
              *
              **/
-            void SetState(const std::vector<uint8_t>& vchStateIn)
-            {
-                vchState = vchStateIn;
-
-                SetChecksum();
-            }
+            void SetState(const std::vector<uint8_t>& vchStateIn);
 
 
             /** ClearState
@@ -278,11 +230,7 @@ namespace TAO
              *  Clear a register's state.
              *
              **/
-            void ClearState()
-            {
-                vchState.clear();
-                nReadPos = 0;
-            }
+            void ClearState();
 
 
             /** end
@@ -290,10 +238,7 @@ namespace TAO
              *  Detect end of register stream.
              *
              **/
-            bool end() const
-            {
-                return nReadPos >= vchState.size();
-            }
+            bool end() const;
 
 
             /** read
@@ -304,20 +249,7 @@ namespace TAO
              *  @param[in] nSize The total number of bytes to read.
              *
              **/
-            const State& read(char* pch, int nSize) const
-            {
-                /* Check size constraints. */
-                if(nReadPos + nSize > vchState.size())
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "reached end of stream ", nReadPos));
-
-                /* Copy the bytes into tmp object. */
-                std::copy((uint8_t*)&vchState[nReadPos], (uint8_t*)&vchState[nReadPos] + nSize, (uint8_t*)pch);
-
-                /* Iterate the read position. */
-                nReadPos += nSize;
-
-                return *this;
-            }
+            const State& read(char* pch, int nSize) const;
 
 
             /** write
@@ -328,16 +260,7 @@ namespace TAO
              *  @param[in] nSize The total number of bytes to copy.
              *
              **/
-            State& write(const char* pch, int nSize)
-            {
-                /* Push the obj bytes into the vector. */
-                vchState.insert(vchState.end(), (uint8_t*)pch, (uint8_t*)pch + nSize);
-
-                /* Set the length and checksum. */
-                SetChecksum();
-
-                return *this;
-            }
+            State& write(const char* pch, int nSize);
 
 
             /** Operator Overload <<
@@ -376,16 +299,7 @@ namespace TAO
              *  Print debug information to the console and log file.
              *
              **/
-            void print() const
-            {
-                debug::log(0,
-                    "State(version=", nVersion,
-                    ", type=", (uint32_t)nType,
-                    ", length=", vchState.size(),
-                    ", owner=", hashOwner.ToString().substr(0, 20),
-                    ", checksum=", hashChecksum,
-                    ", state=", HexStr(vchState.begin(), vchState.end()));
-            }
+            void print() const;
 
         };
     }
