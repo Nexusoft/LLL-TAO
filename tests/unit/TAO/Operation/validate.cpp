@@ -29,7 +29,7 @@
 
 
 
-TEST_CASE( "Validation Script Operation Tests", "[validation]" )
+TEST_CASE( "Validation Script Operation Tests", "[operation]" )
 {
     using namespace TAO::Operation;
 

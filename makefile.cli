@@ -178,6 +178,7 @@ ifdef UNIT_TESTS
 		   build/Tests_objects.o \
 		   build/Tests_block.o \
 		   build/Tests_sigchain.o \
+		   build/Tests_write.o \
 		   build/Tests_validate.o
 
 #Run benchmarks on subsystems

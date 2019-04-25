@@ -96,8 +96,8 @@ namespace TAO
                     stream >> strName;
 
                     /* Manually check reserved field names for now. */
-                    if(!TAO::Register::Reserved(strName))
-                        return debug::error(FUNCTION, "cannot write with reserved field names");
+                    if(TAO::Register::Reserved(strName))
+                        return debug::error(FUNCTION, "cannot write with reserved '", strName, "' field names");
 
                     //TODO: maybe we should catch duplicates?
                     //no real point being that it will just overwrite a value in same transaction as long as it is mutable.
@@ -268,6 +268,7 @@ namespace TAO
 
             /* Update the state register timestamp. */
             state.nTimestamp = tx.nTimestamp;
+            state.SetChecksum();
 
             /* Check that the register is in a valid state. */
             if(!state.IsValid())
