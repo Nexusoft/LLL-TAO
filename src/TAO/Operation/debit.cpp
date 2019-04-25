@@ -15,8 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/operations.h>
 
-#include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/object.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -29,6 +29,10 @@ namespace TAO
         /* Authorizes funds from an account to an account */
         bool Debit(const uint256_t &hashFrom, const uint256_t &hashTo, const uint64_t nAmount, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashFrom))
+                return debug::error(FUNCTION, "cannot debit from register with reserved address");
+
             /* Read the register from the database. */
             TAO::Register::Object account;
 

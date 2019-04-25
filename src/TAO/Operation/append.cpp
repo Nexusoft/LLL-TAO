@@ -14,8 +14,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/operations.h>
+
 #include <TAO/Register/include/state.h>
-#include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -28,6 +29,10 @@ namespace TAO
         /* Writes data to a register. */
         bool Append(const uint256_t &hashAddress, const std::vector<uint8_t> &vchData, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAddress))
+                return debug::error(FUNCTION, "cannot append register with reserved address");
+
             /* Read the binary data of the Register. */
             TAO::Register::State state;
 
@@ -70,7 +75,7 @@ namespace TAO
             /* Append the state data. */
             std::vector<uint8_t> vchState = state.GetState();
             vchState.insert(vchState.end(), vchData.begin(), vchData.end());
-            
+
             /* Set the new state of the register. */
             state.nTimestamp = tx.nTimestamp;
             state.SetState(vchState);

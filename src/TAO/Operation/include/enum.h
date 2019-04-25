@@ -51,14 +51,13 @@ namespace TAO
                 COINBASE   = 0x12,
                 TRUST      = 0x13, //for proof of stake
 
-
                 //internal funding
                 AMBASSADOR = 0x20,
                 DEVELOPER  = 0x21,
 
                 //consensus operations
-                VOTE  = 0x30,
-
+                ACK        = 0x30, //a vote to credit trust towards a proposal
+                NACK       = 0x31, //a vote to withdrawl trust from a proposal
 
                 //0x31 = 0x6f RESERVED
             };

@@ -14,7 +14,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/operations.h>
+
 #include <TAO/Register/include/state.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -27,6 +29,10 @@ namespace TAO
         /* Transfers a register between sigchains. */
         bool Transfer(const uint256_t &hashAddress, const uint256_t &hashTransfer, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAddress))
+                return debug::error(FUNCTION, "cannot transfer register with reserved address");
+
             /* Read the register from the database. */
             TAO::Register::State state = TAO::Register::State();
             if(!LLD::regDB->ReadState(hashAddress, state))

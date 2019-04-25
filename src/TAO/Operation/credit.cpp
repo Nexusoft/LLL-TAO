@@ -16,8 +16,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/operations.h>
 
-#include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/object.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -30,6 +30,9 @@ namespace TAO
         /* Commits funds from an account to an account */
         bool Credit(const uint512_t &hashTx, const uint256_t &hashProof, const uint256_t &hashAccount, const uint64_t nCredit, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAccount))
+                return debug::error(FUNCTION, "cannot credit register with reserved address");
 
             /* Read the claimed transaction. */
             TAO::Ledger::Transaction txSpend;

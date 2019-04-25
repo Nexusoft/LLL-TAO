@@ -56,6 +56,27 @@ namespace TAO
         };
 
 
+        /** SYSTEM
+         *
+         *  System registers with reserved indexes.
+         *
+         **/
+        struct SYSTEM
+        {
+            enum
+            {
+                /* RESERVED can't be used as system register. */
+                RESERVED  = 0x00,
+
+                /* This type of register is a system register holding global trust. */
+                TRUST     = 0x01,
+
+                /* LIMIT is defined as 256 values. */
+                LIMIT     = 0xff
+            };
+        };
+
+
         /** OBJECT
          *
          *  Object registers that are available and standardized.

@@ -444,34 +444,6 @@ namespace TAO
 
                             break;
                         }
-
-
-                        case TAO::Operation::OP::VOTE:
-                        {
-                            /* The object register to tally the votes for. */
-                            uint256_t hashRegister;
-
-                            /* The account that holds the token balance. */
-                            uint256_t hashProof;
-
-                            /* Output the json information. */
-                            ret["OP"]       = "VOTE";
-                            ret["register"] = hashRegister.ToString();
-                            ret["proof"]    = hashProof.ToString();
-
-                            break;
-                        }
-
-                        //case TAO::Operation::OP::SIGNATURE:
-                        //{
-                            //a transaction proof that designates the hashOwner or genesisID has signed published data
-                            //>> vchData. to prove this data was signed by being published. This can be a hash if needed.
-                            /* Output the json information. */
-                            //ret["OP"] = "SIGNATURE";
-                            //ret["register"] = hashRegister.ToString();
-                            //ret["proof"] = hashProof.ToString();
-                        //    break;
-                        //}
                     }
                 }
             }

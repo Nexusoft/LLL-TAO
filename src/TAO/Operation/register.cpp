@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/object.h>
-#include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -30,9 +30,9 @@ namespace TAO
         /* Creates a new register if it doesn't exist. */
         bool Register(const uint256_t &hashAddress, const uint8_t nType, const std::vector<uint8_t> &vchData, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
-            /* Check for wildcard reserved values. */
-            if(hashAddress == OP::WILDCARD)
-                return debug::error(FUNCTION, "cannot create register with WILDCARD address");
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAddress))
+                return debug::error(FUNCTION, "cannot create register with reserved address");
 
             /* Check that the register doesn't exist yet. */
             if(LLD::regDB->HasState(hashAddress))

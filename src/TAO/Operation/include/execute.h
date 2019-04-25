@@ -282,12 +282,25 @@ namespace TAO
                         }
 
 
-                        case OP::VOTE:
+                        case OP::ACK:
                         {
                             /* The object register to tally the votes for. */
                             uint256_t hashRegister;
 
-                            //TODO: OP::VOTE -> tally in a voter object register (create object on first vote)
+                            //TODO: OP::ACK -> tally trust to object register "trust" field.
+                            //tally stake to object register "stake" field
+
+                            break;
+                        }
+
+
+                        case OP::NACK:
+                        {
+                            /* The object register to tally the votes for. */
+                            uint256_t hashRegister;
+
+                            //TODO: OP::NACK -> remove trust from LLD
+                            //remove stake from object register "stake" field
 
                             break;
                         }

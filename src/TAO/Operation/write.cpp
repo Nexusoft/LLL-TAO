@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/state.h>
-#include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -30,6 +30,10 @@ namespace TAO
         /* Writes data to a register. */
         bool Write(const uint256_t &hashAddress, const std::vector<uint8_t> &vchData, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAddress))
+                return debug::error(FUNCTION, "cannot write to register with reserved address");
+
             /* Read the binary data of the Register. */
             TAO::Register::State state;
 
@@ -89,6 +93,11 @@ namespace TAO
                     /* Deserialize the named value. */
                     std::string strName;
                     stream >> strName;
+
+                    /* Manually check reserved field names for now. */
+                    if(strName == std::string("balance")) //THIS IS ONLY FOR MUTABLE TYPES
+                        return debug::error(FUNCTION, "cannot write with reserved field names");
+                    //TODO: make this a function with a list of reserved values (ex. "trust", "stake")
 
                     //TODO: maybe we should catch duplicates?
                     //no real point being that it will just overwrite a value in same transaction as long as it is mutable.
