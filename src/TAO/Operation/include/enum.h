@@ -39,17 +39,16 @@ namespace TAO
                 //register operations
                 WRITE      = 0x01,
                 REGISTER   = 0x02,
-                AUTHORIZE  = 0x03,
+                AUTHORIZE  = 0x03, //to be determined how this will work 
                 TRANSFER   = 0x04,
-                REQUIRE    = 0x05,
-                APPEND     = 0x06,
-
+                APPEND     = 0x05,
 
                 //financial operations
                 DEBIT      = 0x10,
                 CREDIT     = 0x11,
                 COINBASE   = 0x12,
-                TRUST      = 0x13, //for proof of stake
+                GENESIS    = 0x13, //for proof of stake
+                TRUST      = 0x14, //for proof of stake
 
                 //internal funding
                 AMBASSADOR = 0x20,
@@ -58,6 +57,10 @@ namespace TAO
                 //consensus operations
                 ACK        = 0x30, //a vote to credit trust towards a proposal
                 NACK       = 0x31, //a vote to withdrawl trust from a proposal
+
+                //conditional operations
+                VALIDATE    = 0x40,
+                REQUIRE     = 0x41,
 
                 //0x31 = 0x6f RESERVED
             };

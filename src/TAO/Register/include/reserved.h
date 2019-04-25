@@ -28,6 +28,7 @@ namespace TAO
         {
             "balance",
             "identifier",
+            "require",
             "supply",
             "digits",
             "trust",
