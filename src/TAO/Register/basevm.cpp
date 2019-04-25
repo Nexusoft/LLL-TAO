@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 
-#include <TAO/Register/include/basevm.h>
+#include <TAO/Register/types/basevm.h>
 
 namespace TAO
 {

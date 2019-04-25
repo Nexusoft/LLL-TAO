@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/include/random.h>
-#include <TAO/Register/include/basevm.h>
+#include <TAO/Register/types/basevm.h>
 
 #include <openssl/rand.h>
 

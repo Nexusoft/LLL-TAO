@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/validate.h>
 #include <TAO/Operation/include/enum.h>
 
-#include <TAO/Register/include/object.h>
+#include <TAO/Register/types/object.h>
 
 namespace TAO
 {

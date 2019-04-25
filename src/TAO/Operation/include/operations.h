@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_OPERATION_INCLUDE_OPERATIONS_H
 #define NEXUS_TAO_OPERATION_INCLUDE_OPERATIONS_H
 
-#include <TAO/Register/include/stream.h>
+#include <TAO/Register/types/stream.h>
 #include <TAO/Ledger/types/transaction.h>
 
 /* Global TAO namespace. */

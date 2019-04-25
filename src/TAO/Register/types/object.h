@@ -15,9 +15,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_OBJECT_H
 #define NEXUS_TAO_REGISTER_INCLUDE_OBJECT_H
 
-#include <TAO/Register/include/state.h>
+#include <TAO/Register/types/state.h>
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/stream.h>
+#include <TAO/Register/types/stream.h>
 
 
 /* Global TAO namespace. */

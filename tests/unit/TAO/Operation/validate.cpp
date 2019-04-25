@@ -21,7 +21,7 @@
 
 #include <LLD/include/global.h>
 
-#include <TAO/Register/include/object.h>
+#include <TAO/Register/types/object.h>
 
 #include <cmath>
 
@@ -34,12 +34,6 @@ TEST_CASE( "Validation Script Operation Tests", "[operation]" )
     using namespace TAO::Operation;
 
     Stream ssOperation;
-
-
-
-
-
-
     ssOperation << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)7u << (uint8_t) OP::MUL << (uint8_t) OP::TYPES::UINT32_T << (uint32_t)9u << (uint8_t) OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)63u;
 
 

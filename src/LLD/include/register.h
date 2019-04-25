@@ -20,8 +20,8 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <TAO/Register/include/state.h>
-#include <TAO/Register/include/object.h>
+#include <TAO/Register/types/state.h>
+#include <TAO/Register/types/object.h>
 #include <TAO/Register/include/enum.h>
 
 

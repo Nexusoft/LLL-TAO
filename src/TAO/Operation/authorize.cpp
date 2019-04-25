@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/operations.h>
-#include <TAO/Register/include/state.h>
+#include <TAO/Register/types/state.h>
 #include <TAO/Register/include/enum.h>
 
 /* Global TAO namespace. */

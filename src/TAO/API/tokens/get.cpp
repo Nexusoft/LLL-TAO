@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/tokens.h>
 
-#include <TAO/Register/include/object.h>
+#include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
 namespace TAO

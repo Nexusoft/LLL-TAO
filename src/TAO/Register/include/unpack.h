@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/operations.h>
 
-#include <TAO/Register/include/state.h>
+#include <TAO/Register/types/state.h>
 
 #include <TAO/Ledger/types/transaction.h>
 

@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_BASEVM_H
 #define NEXUS_TAO_REGISTER_INCLUDE_BASEVM_H
 
-#include <TAO/Register/include/value.h>
+#include <TAO/Register/types/value.h>
 
 #include <Util/include/debug.h>
 

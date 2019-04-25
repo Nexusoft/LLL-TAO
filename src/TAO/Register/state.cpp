@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Register/include/state.h>
+#include <TAO/Register/types/state.h>
 
 #include <Util/templates/datastream.h>
 

@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <vector>
 
 #include <TAO/Operation/include/stream.h>
-#include <TAO/Register/include/stream.h>
+#include <TAO/Register/types/stream.h>
 
 #include <Util/include/runtime.h>
 

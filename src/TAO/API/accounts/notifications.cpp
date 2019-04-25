@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Register/include/unpack.h>
-#include <TAO/Register/include/object.h>
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>

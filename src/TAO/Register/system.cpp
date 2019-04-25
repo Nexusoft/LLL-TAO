@@ -12,11 +12,7 @@
 
 ____________________________________________________________________________________________*/
 
-#pragma once
-#ifndef NEXUS_TAO_REGISTER_INCLUDE_SYSTEM_H
-#define NEXUS_TAO_REGISTER_INCLUDE_SYSTEM_H
-
-#include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -26,28 +22,10 @@ namespace TAO
     namespace Register
     {
 
-        /** Initialize
-         *
-         *  Initialize system register values.
-         *
-         **/
-        void Initialize();
-
-
-        /** Reserved
-         *
-         *  System reserved values for system registers.
-         *
-         *  @param[in] hashAddress The register address to check.
-         *
-         *  @return True if value is system reserved value.
-         *
-         **/
-        inline bool Reserved(const uint256_t& hashAddress)
+        /* Initialize system register values. */
+        void Initialize()
         {
-            return hashAddress >= uint8_t(SYSTEM::RESERVED) && hashAddress <= uint8_t(SYSTEM::LIMIT);
+
         }
     }
 }
-
-#endif

@@ -17,8 +17,8 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/stream.h>
 
-#include <TAO/Register/include/basevm.h>
-#include <TAO/Register/include/value.h>
+#include <TAO/Register/types/basevm.h>
+#include <TAO/Register/types/value.h>
 
 #include <TAO/Ledger/types/transaction.h>
 

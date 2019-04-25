@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/operations.h>
 
-#include <TAO/Register/include/state.h>
+#include <TAO/Register/types/state.h>
 #include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */

@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 
-#include <TAO/Register/include/stream.h>
+#include <TAO/Register/types/stream.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/rollback.h>
 #include <new> //std::bad_alloc

@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <openssl/rand.h>
 
-#include <TAO/Register/include/object.h>
+#include <TAO/Register/types/object.h>
 
 #include <LLC/aes/aes.h>
 
