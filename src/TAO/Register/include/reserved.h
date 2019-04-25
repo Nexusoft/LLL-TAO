@@ -26,12 +26,25 @@ namespace TAO
         /** Hold list of reserved object register values. **/
         const std::vector<std::string> RESERVED =
         {
+            /* Used to hold token blance. */
             "balance",
+
+            /* Used to identify a specific token. */
             "identifier",
+
+            /* Used to set validation script in object register. */
             "require",
+
+            /* Used for token domain parameters for max supply. */
             "supply",
+
+            /* Used to determine digits of a token. */
             "digits",
+
+            /* Used to determine collective trust in a register. */
             "trust",
+
+            /* Used to determine total stake for a register. */
             "stake"
         };
 
