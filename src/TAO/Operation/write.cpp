@@ -101,6 +101,7 @@ namespace TAO
 
                     //TODO: maybe we should catch duplicates?
                     //no real point being that it will just overwrite a value in same transaction as long as it is mutable.
+                    //but it might be best to be stricter here. to decide
 
                     /* Deserialize the type. */
                     uint8_t nType;

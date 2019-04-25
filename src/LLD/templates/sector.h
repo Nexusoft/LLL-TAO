@@ -290,6 +290,8 @@ namespace LLD
             /* Return the Key existance in the Keychain Database. */
             bool fErased = pSectorKeys->Erase(ssKey.Bytes());
 
+            debug::log(0, "Erased ", fErased ? "TRUE" : "FALSE");
+
             if(config::GetBoolArg("-runtime", false))
             {
                 debug::log(0, ANSI_COLOR_GREEN FUNCTION, "executed in ",

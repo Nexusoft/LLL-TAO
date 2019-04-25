@@ -48,7 +48,8 @@ namespace TAO
         bool Object::Parse()
         {
             /* Ensure that object register is of proper type. */
-            if(this->nType != STATE::OBJECT)
+            if(this->nType != STATE::OBJECT
+            && this->nType != STATE::SYSTEM)
                 return false;
 
             /* Reset the read position. */

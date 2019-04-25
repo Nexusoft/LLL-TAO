@@ -48,10 +48,7 @@ namespace TAO
                 OBJECT   = 0x04,
 
                 /* This type of register handles general accounts and DEBITS / CREDITS */
-                ACCOUNT  = 0x05,
-
-                /* This type of register to hold token parameters. */
-                TOKEN    = 0x06,
+                SYSTEM   = 0x05,
             };
         };
 

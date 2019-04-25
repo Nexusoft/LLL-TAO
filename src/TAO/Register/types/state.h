@@ -121,7 +121,7 @@ namespace TAO
             }
 
             /** Default Constructor **/
-            State(uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn)
+            State(uint8_t nTypeIn, uint256_t hashOwnerIn)
             : nVersion(1)
             , nType(nTypeIn)
             , hashOwner(hashOwnerIn)
@@ -135,7 +135,7 @@ namespace TAO
 
 
             /** Default Constructor **/
-            State(std::vector<uint8_t> vchData, uint8_t nTypeIn, uint256_t hashAddressIn, uint256_t hashOwnerIn)
+            State(std::vector<uint8_t> vchData, uint8_t nTypeIn, uint256_t hashOwnerIn)
             : nVersion(1)
             , nType(nTypeIn)
             , hashOwner(hashOwnerIn)
