@@ -68,8 +68,6 @@ namespace TAO
             , vchSystem(512, 0)
             , mapData()
             {
-                if(!Parse())
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to parse state register"));
             }
 
 

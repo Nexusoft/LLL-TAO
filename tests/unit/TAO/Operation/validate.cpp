@@ -418,8 +418,8 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
 
 
       ssOperation.SetNull();
-      ssOperation << (uint8_t)OP::TYPES::STRING << strObject << (uint8_t)OP::CRYPTO::SK256
-                  << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT256_T << hashObject;
+      ssOperation << uint8_t(OP::TYPES::STRING) << strObject << uint8_t(OP::CRYPTO::SK256)
+                  << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT256_T) << hashObject;
 
       {
           Validate script = Validate(ssOperation, tx);
