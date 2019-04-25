@@ -63,6 +63,31 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
         REQUIRE(object.get<uint64_t>("balance") == uint64_t(55));
         REQUIRE(object.get<uint32_t>("identifier") == uint32_t(0));
 
+
+        //create an operation stream to set values.
+        {
+            Stream stream;
+            stream << std::string("test") << uint8_t(OP::TYPES::STRING) << std::string("stRInGISNew");
+
+            //run the write operation.
+            REQUIRE(Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::WRITE, tx));
+        }
+
+        //check values all match
+        TAO::Register::Object object2;
+        REQUIRE(LLD::regDB->ReadState(hash, object2));
+
+        //parse
+        REQUIRE(object2.Parse());
+
+        //check values
+        REQUIRE(object2.get<uint8_t>("byte") == uint8_t(99));
+        REQUIRE(object2.get<std::string>("test") == std::string("stRInGISNew"));
+        REQUIRE(object2.get<std::vector<uint8_t>>("bytes") == std::vector<uint8_t>(10, 0xff));
+        REQUIRE(object2.get<uint64_t>("balance") == uint64_t(55));
+        REQUIRE(object2.get<uint32_t>("identifier") == uint32_t(0));
+
         //make sure reserved values fail
         {
             Stream stream;
