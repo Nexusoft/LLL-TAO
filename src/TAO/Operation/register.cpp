@@ -100,7 +100,7 @@ namespace TAO
 
                         /* Check that the current supply and max supply are the same. */
                         if(object.get<uint64_t>("supply") != object.get<uint64_t>("balance"))
-                            return debug::error(FUNCTION, "token current supply and max supply can't mismatch");
+                            return debug::error(FUNCTION, "token current supply and balance can't mismatch");
 
                         break;
                     }

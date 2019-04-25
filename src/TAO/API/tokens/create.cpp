@@ -20,8 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/objects/account.h>
-#include <TAO/Register/objects/token.h>
+#include <TAO/Register/include/object.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -55,14 +54,13 @@ namespace TAO
             if(params.find("type") == params.end())
                 throw APIException(-25, "Missing Type");
 
-
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if( !accounts.CanTransact())
+            if(!accounts.CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
@@ -87,20 +85,16 @@ namespace TAO
 
             if(params["type"].get<std::string>() == "account")
             {
-                /* Create a token object. */
-                TAO::Register::Account account;
+                /* Create an account object register. */
+                TAO::Register::Object account;
 
-                /* Fill in the token parameters. */
-                account.nVersion     = 1;
-                account.nIdentifier  = stoi(params["identifier"].get<std::string>());
-                account.nBalance     = 0;
-
-                /* Create the serialiation stream. */
-                DataStream ssData(SER_REGISTER, 1);
-                ssData << account;
+                /* Generate the object register values. */
+                account << std::string("balance")    << uint8_t(TAO::Register::TYPES::MUTABLE)  << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(0)
+                        << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT32_T) << uint32_t(stoul(params["identifier"].get<std::string>()));
 
                 /* Submit the payload object. */
-                tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::STATE::ACCOUNT << ssData.Bytes();
+                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::STATE::OBJECT) << account.GetState();
+
             }
             else if(params["type"].get<std::string>() == "token")
             {
@@ -108,21 +102,20 @@ namespace TAO
                 if(params.find("supply") == params.end())
                     throw APIException(-25, "Missing Supply");
 
-                /* Create a token object. */
-                TAO::Register::Token token;
+                /* Get the total supply. */
+                uint64_t nSupply = std::stoull(params["supply"].get<std::string>());
 
-                /* Fill in the token parameters. */
-                token.nVersion       = 1;
-                token.nIdentifier    = stoi(params["identifier"].get<std::string>());
-                token.nMaxSupply     = std::stoull(params["supply"].get<std::string>());
-                token.nBalance = token.nMaxSupply;
+                /* Create an account object register. */
+                TAO::Register::Object token;
 
-                /* Create the serialiation stream. */
-                DataStream ssData(SER_REGISTER, 1);
-                ssData << token;
+                /* Generate the object register values. */
+                token   << std::string("balance")    << uint8_t(TAO::Register::TYPES::MUTABLE)  << uint8_t(TAO::Register::TYPES::UINT64_T) << nSupply
+                        << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT32_T) << uint32_t(stoul(params["identifier"].get<std::string>()))
+                        << std::string("supply")     << uint8_t(TAO::Register::TYPES::UINT64_T) << nSupply
+                        << std::string("digits")     << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(1000000);
 
                 /* Submit the payload object. */
-                tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::STATE::TOKEN << ssData.Bytes();
+                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::STATE::OBJECT) << token.GetState();
             }
             else
                 throw APIException(-27, "Unknown object register");
