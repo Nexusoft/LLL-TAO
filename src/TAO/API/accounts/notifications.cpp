@@ -17,8 +17,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Register/include/unpack.h>
-#include <TAO/Register/objects/account.h>
-#include <TAO/Register/objects/token.h>
+#include <TAO/Register/include/object.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -91,30 +90,29 @@ namespace TAO
                 hashLast = tx.hashPrevTx;
 
                 /* Attempt to unpack a register script. */
-                TAO::Register::State state;
-                if(!TAO::Register::Unpack(tx, state))
+                TAO::Register::Object object;
+                if(!TAO::Register::Unpack(tx, object))
                     continue;
 
                 /* Check that it is an account. */
-                if(state.nType != TAO::Register::STATE::ACCOUNT)
+                if(object.nType != TAO::Register::STATE::OBJECT)
                     continue;
 
-                /* Get the account. */
-                TAO::Register::Account account;
-                state >> account;
-                account.print();
+                /* Parse out the object register. */
+                if(!object.Parse())
+                    continue;
 
                 /* Skip over identifier 0. */
-                if(account.nIdentifier == 0)
+                if(object.get<uint32_t>("identifier") == 0)
                     continue;
 
                 /* Get the token address. */
                 uint256_t hashToken;
-                if(!LLD::regDB->ReadIdentifier(account.nIdentifier, hashToken))
+                if(!LLD::regDB->ReadIdentifier(object.get<uint32_t>("identifier"), hashToken))
                     continue;
 
                 /* Push the token identifier to list to check. */
-                vRegisters.push_back(std::make_pair(hashToken, account.nBalance));
+                vRegisters.push_back(std::make_pair(hashToken, object.get<uint64_t>("balance")));
             }
 
             /* Start with sequence 0 (chronological order). */
@@ -150,10 +148,9 @@ namespace TAO
                         break;
 
                     /* Read the object register. */
-                    TAO::Register::State state;
-                    if(!LLD::regDB->ReadState(hash.first, state))
+                    TAO::Register::Object object;
+                    if(!LLD::regDB->ReadState(hash.first, object))
                         continue;
-
 
                     json::json obj;
                     obj["version"]   = tx.nVersion;
@@ -188,12 +185,12 @@ namespace TAO
 
                         if(stateTo.nType == TAO::Register::STATE::RAW || stateTo.nType == TAO::Register::STATE::READONLY)
                         {
-                            /* Get the token object. */
-                            TAO::Register::Token token;
-                            state >> token;
+                            /* Parse the object register. */
+                            if(!object.Parse())
+                                continue;
 
                             /* Calculate the partial debit amount. */
-                            obj["operation"]["amount"] = (obj["operation"]["amount"].get<uint64_t>() * hash.second) / token.nMaxSupply;
+                            obj["operation"]["amount"] = (obj["operation"]["amount"].get<uint64_t>() * hash.second) / object.get<uint64_t>("supply");
                         }
                     }
 

@@ -18,7 +18,6 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/state.h>
-#include <TAO/Register/objects/account.h>
 
 /* Global TAO namespace. */
 namespace TAO

@@ -16,9 +16,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/operations.h>
 
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/state.h>
-#include <TAO/Register/objects/account.h>
-#include <TAO/Register/objects/token.h>
+#include <TAO/Register/include/object.h>
 
 /* Global TAO namespace. */
 namespace TAO
