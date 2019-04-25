@@ -7,7 +7,8 @@
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To the Voice of the People
+            "If only you knew the magnificence of the 3, 6, and 9, then you
+             would have a key to the universe" - Nikola Tesla
 
 ____________________________________________________________________________________________*/
 
