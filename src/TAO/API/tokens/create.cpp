@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/create.h>
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -86,11 +87,7 @@ namespace TAO
             if(params["type"].get<std::string>() == "account")
             {
                 /* Create an account object register. */
-                TAO::Register::Object account;
-
-                /* Generate the object register values. */
-                account << std::string("balance")    << uint8_t(TAO::Register::TYPES::MUTABLE)  << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(0)
-                        << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT32_T) << uint32_t(stoul(params["identifier"].get<std::string>()));
+                TAO::Register::Object account = TAO::Register::CreateAccount(stoul(params["identifier"].get<std::string>()));
 
                 /* Submit the payload object. */
                 tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
@@ -102,17 +99,10 @@ namespace TAO
                 if(params.find("supply") == params.end())
                     throw APIException(-25, "Missing Supply");
 
-                /* Get the total supply. */
-                uint64_t nSupply = std::stoull(params["supply"].get<std::string>());
-
-                /* Create an account object register. */
-                TAO::Register::Object token;
-
-                /* Generate the object register values. */
-                token   << std::string("balance")    << uint8_t(TAO::Register::TYPES::MUTABLE)  << uint8_t(TAO::Register::TYPES::UINT64_T) << nSupply
-                        << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT32_T) << uint32_t(stoul(params["identifier"].get<std::string>()))
-                        << std::string("supply")     << uint8_t(TAO::Register::TYPES::UINT64_T) << nSupply
-                        << std::string("digits")     << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(1000000);
+                /* Create a token object register. */
+                TAO::Register::Object token = TAO::Register::CreateToken(stoul(params["identifier"].get<std::string>()),
+                                                                         std::stoull(params["supply"].get<std::string>()),
+                                                                         1000000);
 
                 /* Submit the payload object. */
                 tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();

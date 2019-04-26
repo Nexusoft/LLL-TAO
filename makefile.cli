@@ -177,6 +177,7 @@ ifdef UNIT_TESTS
 	       build/Tests_testvm.o \
 		   build/Tests_objects.o \
 		   build/Tests_system.o \
+		   build/Tests_rollback.o \
 		   build/Tests_block.o \
 		   build/Tests_sigchain.o \
 		   build/Tests_write.o \
@@ -274,6 +275,7 @@ OBJS+=  build/LLC_skein.o \
 		build/Ledger_locator.o \
 		build/Register_rollback.o \
 		build/Register_basevm.o \
+		build/Register_create.o \
 		build/Register_object.o \
 		build/Register_state.o \
 		build/Register_system.o \
