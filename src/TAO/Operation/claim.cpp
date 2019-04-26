@@ -28,13 +28,8 @@ namespace TAO
     {
 
         /* Transfers a register between sigchains. */
-        bool Claim(const uint512_t& hashTx, const uint256_t& hashAddress,
-                   const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Claim(const uint512_t& hashTx, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashAddress))
-                return debug::error(FUNCTION, "cannot claim register with reserved address");
-
             /* Check for reserved values. */
             if(TAO::Register::Reserved(tx.hashGenesis))
                 return debug::error(FUNCTION, "cannot claim register to reserved address");
@@ -53,20 +48,32 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot claim a register with no transfer");
 
             /* Extract the address  */
-            uint256_t hashAddressFrom;
-            txClaim.ssOperation >> hashAddressFrom;
+            uint256_t hashAddress;
+            txClaim.ssOperation >> hashAddress;
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAddress))
+                return debug::error(FUNCTION, "cannot claim register with reserved address");
+
+            /* Check if this transfer is already claimed. */
+            if(LLD::legDB->HasProof(hashAddress, hashTx))
+                return debug::error(FUNCTION, "transfer is already claimed");
 
             /* Read the register transfer recipient. */
             uint256_t hashTransfer;
             txClaim.ssOperation >> hashTransfer;
 
-            /* Check the addresses match. */
-            if(hashAddressFrom != hashAddress)
-                return debug::error(FUNCTION, "register address mismatch");
+            /* Check for claim back to self. */
+            if(txClaim.hashGenesis == tx.hashGenesis)
+            {
+                /* Erase the previous event if claimed back to self. */
+                if(!LLD::legDB->EraseEvent(hashTransfer))
+                    return debug::error(FUNCTION, "can't erase event for return to self");
+            }
 
             /* Check the addresses match. */
-            if(hashTransfer != tx.hashGenesis)
-                return debug::error(FUNCTION, "claim address mismatch with claim address");
+            else if(hashTransfer != tx.hashGenesis)
+                return debug::error(FUNCTION, "claim genesis mismatch with transfer address");
 
             /* Read the register from the database. */
             TAO::Register::State state = TAO::Register::State();
@@ -111,6 +118,10 @@ namespace TAO
 
                 /* Write the register to the database. */
                 if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
+                    return debug::error(FUNCTION, "failed to write new state");
+
+                /* Write the proof to the database. */
+                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteProof(hashAddress, hashTx))
                     return debug::error(FUNCTION, "failed to write new state");
             }
 

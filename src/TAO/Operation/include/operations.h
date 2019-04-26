@@ -101,8 +101,7 @@ namespace TAO
          *  @return true if successful.
          *
          **/
-        bool Claim(const uint512_t& hashTx, const uint256_t& hashAddress,
-                   const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Claim(const uint512_t& hashTx, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Debit

@@ -179,9 +179,33 @@ namespace TAO
                             uint512_t hashTx;
                             tx.ssOperation >> hashTx;
 
-                            /* Extract the address from the tx.ssOperation. */
+                            /* Read the previous transaction. */
+                            TAO::Ledger::Transaction txClaim;
+                            if(!LLD::legDB->ReadTx(hashTx, txClaim))
+                                return debug::error(FUNCTION, "could not read previous transaction");
+
+                            /* Seek past the op. */
+                            txClaim.ssOperation.seek(1);
+
+                            /* Read the address. */
                             uint256_t hashAddress;
-                            tx.ssOperation >> hashAddress;
+                            txClaim.ssOperation >> hashAddress;
+
+                            /* Read the transfer address. */
+                            uint256_t hashTransfer;
+                            txClaim.ssOperation >> hashTransfer;
+
+                            /* Check for claim back to self. */
+                            if(txClaim.hashGenesis == txClaim.hashGenesis)
+                            {
+                                /* Write the event. */
+                                if(!LLD::legDB->WriteEvent(hashTransfer, hashTx))
+                                    return debug::error(FUNCTION, "failed to write event");
+                            }
+
+                            /* Erase the proof. */
+                            if(!LLD::legDB->EraseProof(hashAddress, hashTx))
+                                return debug::error(FUNCTION, "failed to erase transfer proof");
 
                             /* Read the register from database. */
                             State state;

@@ -51,8 +51,25 @@ namespace TAO
             if(state.hashOwner == hashTransfer)
                 return debug::error(FUNCTION, tx.hashGenesis.ToString(), " cannot transfer to self when already owned");
 
+            /* Check if transfer is to a register. */
+            TAO::Register::Object object;
+            if(LLD::regDB->ReadState(hashTransfer, object))
+            {
+                /* Parse the object. */
+                if(!object.Parse())
+                    return debug::error(FUNCTION, "couldn't parse object register");
+
+                /* Check for token. */
+                if(object.Standard() != TAO::Register::OBJECTS::TOKEN)
+                    return debug::error(FUNCTION, "cannot transfer to non-token");
+
+                /* Set the owner. */
+                state.hashOwner = hashTransfer;
+            }
+            else
+                state.hashOwner  = 0; //register custody is in SYSTEM ownership until claimed
+
             /* Set the new owner of the register. */
-            state.hashOwner  = 0; //register custody is in SYSTEM ownership until claimed
             state.nTimestamp = tx.nTimestamp;
             state.SetChecksum();
 
@@ -88,12 +105,9 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to write new state");
 
                 /* Write the notification foreign index. */
-                if(nFlags & TAO::Register::FLAGS::WRITE) //TODO: possibly add some checks for invalid stateTo (wrong token ID)
-                {
-                    /* Write the event to the ledger database. */
-                    if(!LLD::legDB->WriteEvent(hashTransfer, tx.GetHash()))
-                        return debug::error(FUNCTION, "failed to commit event to ledger DB");
-                }
+                if(nFlags & TAO::Register::FLAGS::WRITE && !LLD::legDB->WriteEvent(hashTransfer, tx.GetHash()))
+                    return debug::error(FUNCTION, "failed to commit event to ledger DB");
+
             }
 
             return true;
