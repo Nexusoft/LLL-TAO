@@ -102,7 +102,26 @@ namespace TAO
                             /* Seek register past the post state */
                             tx.ssRegister.seek(9);
 
-                            //TODO: erase identifier
+                            /* Read the object from register database. */
+                            Object object;
+                            if(!LLD::regDB->ReadState(hashAddress, object))
+                                return debug::error(FUNCTION, "failed to read register object");
+
+                            /* Check for object register. */
+                            if(object.nType == STATE::OBJECT)
+                            {
+                                /* Check for token to remove reserved identifier. */
+                                if(object.Standard() == OBJECTS::TOKEN)
+                                {
+                                    /* Parse the object. */
+                                    if(!object.Parse())
+                                        return debug::error(FUNCTION, "failed to parse object");
+
+                                    /* Erase the identifier. */ //TODO: possibly do not check for false
+                                    if(!LLD::regDB->EraseIdentifier(object.get<uint32_t>("identifier")))
+                                        return debug::error(FUNCTION, "could not erase identifier");
+                                }
+                            }
 
                             /* Erase the register from database. */
                             if(!LLD::regDB->EraseState(hashAddress))
@@ -175,6 +194,16 @@ namespace TAO
                             /* The total to be staked. */
                             uint64_t  nStake;
                             tx.ssOperation >> nStake;
+
+                            break;
+                        }
+
+
+                        /* Coinstake operation. Requires an account. */
+                        case TAO::Operation::OP::GENESIS:
+                        {
+                            /* Genesis doesn't have anything to roll back. */
+                            tx.ssOperation.seek(40);
 
                             break;
                         }

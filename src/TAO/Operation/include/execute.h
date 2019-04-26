@@ -7,7 +7,7 @@
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To the Voice of the People
+            "Man often becomes what he believes himself to be." - Mahatma Gandhi
 
 ____________________________________________________________________________________________*/
 
@@ -251,6 +251,33 @@ namespace TAO
 
                             /* Execute the operation method. */
                             if(!Trust(hashAccount, hashLastTrust, nSequence, nTrust, nStake, nFlags, tx))
+                                return false;
+
+                            /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
+                            if(!tx.ssOperation.end())
+                                return debug::error(FUNCTION, "trust can't have extra data");
+
+                            break;
+                        }
+
+
+                        /* Coinstake operation. Requires an account. */
+                        case OP::GENESIS:
+                        {
+                            /* Ensure that it as beginning of the tx.ssOperation. */
+                            if(!tx.ssOperation.begin())
+                                return debug::error(FUNCTION, "trust opeartion has to be first");
+
+                            /* The account that is being staked. */
+                            uint256_t hashAccount;
+                            tx.ssOperation >> hashAccount;
+
+                            /* The total to be staked. */
+                            uint64_t  nStake;
+                            tx.ssOperation >> nStake;
+
+                            /* Execute the operation method. */
+                            if(!Genesis(hashAccount, nStake, nFlags, tx))
                                 return false;
 
                             /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
