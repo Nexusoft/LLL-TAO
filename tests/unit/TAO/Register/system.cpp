@@ -27,7 +27,7 @@ TEST_CASE( "System Register Tests", "[register]" )
         LLD::regDB->EraseState(uint256_t(SYSTEM::TRUST));
 
         //check that state is erased
-        Object object;bgfdde4w\sxdexesbb7`10000083wsedz10i3
+        Object object;
         REQUIRE(!LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), object));
 
         //check the intialize function
@@ -51,5 +51,15 @@ TEST_CASE( "System Register Tests", "[register]" )
         REQUIRE(object.nType      == STATE::SYSTEM);
         REQUIRE(object.hashOwner  == 0);
         REQUIRE(object.nTimestamp == 1409456199);
+
+        //check critical validation code
+        object.hashOwner = 493494;
+
+        REQUIRE(!object.IsValid());
+
+        object.hashOwner = 0;
+        object.nVersion  = 2;
+
+        REQUIRE(!object.IsValid());
     }
 }
