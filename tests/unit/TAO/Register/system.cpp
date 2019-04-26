@@ -27,7 +27,7 @@ TEST_CASE( "System Register Tests", "[register]" )
         LLD::regDB->EraseState(uint256_t(SYSTEM::TRUST));
 
         //check that state is erased
-        Object object;
+        Object object;bgfdde4w\sxdexesbb7`10000083wsedz10i3
         REQUIRE(!LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), object));
 
         //check the intialize function
