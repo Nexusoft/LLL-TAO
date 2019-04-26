@@ -41,9 +41,9 @@ namespace TAO
 
             /* Set the owner of this register. */
             TAO::Register::State state;
-            state.nVersion  = 1;
-            state.nType     = nType;
-            state.hashOwner = tx.hashGenesis;
+            state.nVersion   = 1;
+            state.nType      = nType;
+            state.hashOwner  = tx.hashGenesis;
             state.nTimestamp = tx.nTimestamp;
 
             /* Set the data in the state register. */

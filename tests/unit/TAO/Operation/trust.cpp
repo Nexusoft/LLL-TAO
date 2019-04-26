@@ -29,7 +29,7 @@ TEST_CASE( "Trust Primitive Tests", "[operation]" )
     using namespace TAO::Register;
     using namespace TAO::Operation;
 
-    //rollback a token object register
+    //create a trust object register
     {
         uint256_t hashAddress = LLC::GetRand256();
         {

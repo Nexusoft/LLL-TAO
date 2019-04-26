@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/Operation/include/operations.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -22,7 +24,7 @@ namespace TAO
     {
 
         /* Commits funds from a coinbase transaction. */
-        bool Genesis(const uint256_t& hashAddress, const uint64_t nStake, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Genesis(const uint256_t& hashAddress, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
 
             return true;

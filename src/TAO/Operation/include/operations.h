@@ -181,15 +181,13 @@ namespace TAO
          *  Handles the locking of stake in a stake register.
          *
          *  @param[in] hashAccount The account being staked to
-         *  @param[in] nAmount The amount being transferred
          *  @param[in] nFlags The flag to determine if database state should be written.
          *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Genesis(const uint256_t& hashAddress, const uint64_t nAmount,
-            const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Genesis(const uint256_t& hashAddress, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Authorize

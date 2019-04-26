@@ -281,23 +281,19 @@ namespace TAO
                         {
                             /* Ensure that it as beginning of the tx.ssOperation. */
                             if(!tx.ssOperation.begin())
-                                return debug::error(FUNCTION, "trust opeartion has to be first");
+                                return debug::error(FUNCTION, "genesis opeartion has to be first");
 
                             /* The account that is being staked. */
                             uint256_t hashAccount;
                             tx.ssOperation >> hashAccount;
 
-                            /* The total to be staked. */
-                            uint64_t  nStake;
-                            tx.ssOperation >> nStake;
-
                             /* Execute the operation method. */
-                            if(!Genesis(hashAccount, nStake, nFlags, tx))
+                            if(!Genesis(hashAccount, nFlags, tx))
                                 return false;
 
-                            /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
+                            /* Ensure that it as end of tx.ssOperation. */
                             if(!tx.ssOperation.end())
-                                return debug::error(FUNCTION, "trust can't have extra data");
+                                return debug::error(FUNCTION, "genesis can't have extra data");
 
                             break;
                         }
