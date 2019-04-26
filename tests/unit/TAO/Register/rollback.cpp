@@ -17,6 +17,8 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/execute.h>
 
+#include <TAO/Register/include/create.h>
+
 #include <TAO/Ledger/types/transaction.h>
 
 #include <unit/catch2/catch.hpp>
@@ -33,6 +35,27 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         tx.hashGenesis = LLC::GetRand256();
         tx.nSequence   = 0;
         tx.nTimestamp  = runtime::timestamp();
-        //tx << uint8_t(OP::REGISTER) <<
+
+        //cleanup from last time
+        LLD::regDB->EraseIdentifier(11);
+
+        //create object
+        uint256_t hashRegister = LLC::GetRand256();
+        Object account = CreateToken(11, 1000, 100);
+
+        //payload
+        tx << uint8_t(OP::REGISTER) << hashRegister << uint8_t(REGISTER::OBJECT) << account.GetState();
+
+        //check for tx
+        REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+
+        //generate the prestates and poststates
+        REQUIRE(TAO::Operation::Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+        //commit to disk
+        REQUIRE(TAO::Operation::Execute(tx, FLAGS::WRITE));
+
+        //check for reserved identifier
+        REQUIRE(LLD::regDB->HasIdentifier(11));
     }
 }
