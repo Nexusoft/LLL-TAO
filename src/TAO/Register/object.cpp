@@ -44,6 +44,23 @@ namespace TAO
         }
 
 
+        /* Get's the standard object type. */
+        uint8_t Object::Base() const
+        {
+            /* Set the return value. */
+            uint8_t nType = OBJECTS::NONSTANDARD;
+
+            /* Search object register for key types. */
+            if(Check("identifier", TYPES::UINT32_T, false) && Check("balance", TYPES::UINT64_T, true))
+            {
+                /* Set the return value. */
+                nType = OBJECTS::ACCOUNT;
+            }
+
+            return nType;
+        }
+
+
         /* Parses out the data members of an object register. */
         bool Object::Parse()
         {

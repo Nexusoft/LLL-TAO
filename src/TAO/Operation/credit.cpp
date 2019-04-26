@@ -80,8 +80,8 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to parse account object register");
 
             /* Check that we are crediting to an account object register. */
-            if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT)
-                return debug::error(FUNCTION, "Cannot credit to a non-account object");
+            if(account.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                return debug::error(FUNCTION, "Cannot credit to a non-account base object");
 
             /* Check that prev is coinbase. */
             if(TX_OP == OP::COINBASE) //NOTE: thie coinbase can't be spent unless flag is byte 0. Safe to use this for coinbase flag.
@@ -193,6 +193,10 @@ namespace TAO
                 /* Parse the account from. */
                 if(!accountFrom.Parse())
                     return debug::error(FUNCTION, "failed to parse account from");
+
+                /* Check debit hashFrom is a base object account. */
+                if(accountFrom.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                    return debug::error(FUNCTION, "debit from must have a base account object");
 
                 /* Check token identifiers. */
                 if(accountFrom.get<uint32_t>("identifier") != account.get<uint32_t>("identifier"))

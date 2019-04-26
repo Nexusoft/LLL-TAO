@@ -93,6 +93,14 @@ namespace TAO
             uint8_t Standard() const;
 
 
+            /** Base
+             *
+             *  Get's the standard object base object.
+             *
+             **/
+            uint8_t Base() const;
+
+
             /** Parse
              *
              *  Parses out the data members of an object register.
