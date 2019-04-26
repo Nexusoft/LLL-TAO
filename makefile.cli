@@ -180,6 +180,7 @@ ifdef UNIT_TESTS
 		   build/Tests_rollback.o \
 		   build/Tests_block.o \
 		   build/Tests_sigchain.o \
+		   build/Tests_register.o \
 		   build/Tests_write.o \
 		   build/Tests_validate.o
 

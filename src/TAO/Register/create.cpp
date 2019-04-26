@@ -23,33 +23,36 @@ namespace TAO
     namespace Register
     {
 
-        /** CreateAccount
-         *
-         *  Generate a new account object register.
-         *
-         *  @return The object register just created.
-         *
-         **/
+        /* Generate a new account object register. */
         Object CreateAccount(const uint32_t nIdentifier)
         {
             /* Create an account object register. */
             TAO::Register::Object account;
 
             /* Generate the object register values. */
-            account << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(0)
+            account << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                     << std::string("identifier") << uint8_t(TYPES::UINT32_T) << nIdentifier;
 
             return account;
         }
 
 
-        /** CreateToken
-         *
-         *  Generate a new token object register.
-         *
-         *  @return The object register just created.
-         *
-         **/
+        /* Generate a new trust object register. */
+        Object CreateTrust()
+        {
+            /* Create an account object register. */
+            TAO::Register::Object trust;
+
+            /* Generate the object register values. */
+            trust   << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint32_t(0);
+
+            return trust;
+        }
+
+
+        /* Generate a new token object register. */
         Object CreateToken(const uint32_t nIdentifier, const uint64_t nSupply, const uint64_t nDigits)
         {
             /* Create an token object register. */

@@ -117,6 +117,23 @@ TEST_CASE( "Object Register Tests", "[register]" )
 
     {
         Object object;
+        object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+               << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+               << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint32_t(0);
+
+
+        //parse object
+        REQUIRE(object.Parse());
+
+        //check standards
+        REQUIRE(object.Standard() == OBJECTS::TRUST);
+        REQUIRE(object.Standard() != OBJECTS::TOKEN);
+        REQUIRE(object.Base()     == OBJECTS::ACCOUNT);
+    }
+
+
+    {
+        Object object;
         object << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
                << std::string("current") << uint8_t(TYPES::UINT32_T) << uint32_t(0)
                << std::string("testing") << uint8_t(TYPES::UINT64_T) << uint64_t(888888);
@@ -141,6 +158,7 @@ TEST_CASE( "Object Register Tests", "[register]" )
 
         //check standards
         REQUIRE(object.Standard() == OBJECTS::TOKEN);
+        REQUIRE(object.Base()     == OBJECTS::ACCOUNT);
     }
 
 

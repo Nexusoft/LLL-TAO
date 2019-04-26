@@ -37,6 +37,16 @@ namespace TAO
         Object CreateAccount(const uint32_t nIdentifier);
 
 
+        /** CreateTrust
+         *
+         *  Generate a new trust object register.
+         *
+         *  @return The object register just created.
+         *
+         **/
+        Object CreateTrust();
+
+
         /** CreateToken
          *
          *  Generate a new account object register.

@@ -90,7 +90,10 @@ namespace TAO
                 ACCOUNT      = 0x01,
 
                 /* Token Object Register. */
-                TOKEN        = 0x02
+                TOKEN        = 0x02,
+
+                /* Trust Object Register. */
+                TRUST        = 0x03
             };
         };
 

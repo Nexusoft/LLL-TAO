@@ -81,15 +81,38 @@ namespace TAO
                     }
 
 
+                    /* Check default values for creating a standard account. */
+                    case TAO::Register::OBJECTS::TRUST:
+                    {
+                        /* Check the account balance. */
+                        if(object.get<uint64_t>("balance") != 0)
+                            return debug::error(FUNCTION, "trust account can't be created with non-zero balance ", object.get<uint64_t>("balance"));
+
+                        /* Check the account balance. */
+                        if(object.get<uint64_t>("trust") != 0)
+                            return debug::error(FUNCTION, "trust account can't be created with non-zero trust ", object.get<uint64_t>("trust"));
+
+                        /* Check that token identifier hasn't been claimed. */
+                        if(object.get<uint32_t>("identifier") != 0)
+                            return debug::error(FUNCTION, "trust account can't be created with non-default identifier ", object.get<uint32_t>("identifier"));
+
+                        break;
+                    }
+
+
                     /* Check default values for creating a standard token. */
                     case TAO::Register::OBJECTS::TOKEN:
                     {
+                        /* Check for reserved native token. */
+                        if(object.get<uint32_t>("identifier") == 0)
+                            return debug::error(FUNCTION, "token can't be created with reserved identifier ", object.get<uint32_t>("identifier"));
+
                         /* Check that token identifier hasn't been claimed. */
                         if((nFlags & TAO::Register::FLAGS::WRITE) || (nFlags & TAO::Register::FLAGS::MEMPOOL))
                         {
                             /* Check the claimed register address to identifier. */
                             uint256_t hashClaimed = 0;
-                            if(object.get<uint32_t>("identifier") == 0 || (LLD::regDB->ReadIdentifier(object.get<uint32_t>("identifier"), hashClaimed, nFlags) && hashClaimed != hashAddress))
+                            if(LLD::regDB->ReadIdentifier(object.get<uint32_t>("identifier"), hashClaimed, nFlags))
                                 return debug::error(FUNCTION, "token can't be created with reserved identifier ", object.get<uint32_t>("identifier"));
 
                             /* Write the new identifier to database. */
