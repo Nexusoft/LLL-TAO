@@ -308,4 +308,102 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         //check owner
         REQUIRE(state.hashOwner == hashGenesis);
     }
+
+
+    //rollback a debit from token
+    {
+        //create object
+        uint256_t hashRegister = LLC::GetRand256();
+        uint256_t hashAccount  = LLC::GetRand256();
+        uint256_t hashGenesis  = LLC::GetRand256();
+
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //create object
+            Object token = CreateToken(11, 1000, 100);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashRegister << uint8_t(REGISTER::OBJECT) << token.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //commit to disk
+            REQUIRE(Execute(tx, FLAGS::WRITE));
+        }
+
+
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 1;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //create object
+            Object account = CreateAccount(11);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //commit to disk
+            REQUIRE(Execute(tx, FLAGS::WRITE));
+        }
+
+
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 2;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx << uint8_t(OP::DEBIT) << hashRegister << hashAccount << uint64_t(500);
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //write transaction
+            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+
+            //commit to disk
+            REQUIRE(Execute(tx, FLAGS::WRITE));
+
+            //check register values
+            {
+                Object token;
+                REQUIRE(LLD::regDB->ReadState(hashRegister, token));
+
+                //parse register
+                REQUIRE(token.Parse());
+
+                //check balance
+                REQUIRE(token.get<uint64_t>("balance") == 500);
+            }
+
+            //rollback
+            REQUIRE(Rollback(tx));
+
+            //check register values
+            {
+                Object token;
+                REQUIRE(LLD::regDB->ReadState(hashRegister, token));
+
+                //parse register
+                REQUIRE(token.Parse());
+
+                //check balance
+                REQUIRE(token.get<uint64_t>("balance") == 1000);
+            }
+        }
+    }
 }
