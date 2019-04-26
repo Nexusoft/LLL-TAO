@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 #include <LLC/types/base_uint.h>
-
+#include <stdexcept>
 
 namespace
 {
@@ -281,6 +281,152 @@ template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator>>(uint32_t shift) const
 {
     return base_uint<BITS>(*this) >>= shift;
+}
+
+
+template<uint32_t BITS>
+base_uint<BITS>& base_uint<BITS>::operator*=(const uint64_t& n)
+{
+    base_uint<BITS> a;
+    a = 0;
+
+    base_uint<BITS> b;
+    b = n;
+
+    for (int j = 0; j < WIDTH; j++)
+    {
+        uint64_t carry = 0;
+        for (int i = 0; i + j < WIDTH; i++)
+        {
+            uint64_t n = carry + a.pn[i + j] + (uint64_t)pn[j] * b.pn[i];
+            a.pn[i + j] = n & 0xffffffff;
+            carry = n >> 32;
+        }
+    }
+    *this = a;
+    return *this;
+}
+
+
+template<uint32_t BITS>
+base_uint<BITS>& base_uint<BITS>::operator*=(const base_uint<BITS>& b)
+{
+    base_uint<BITS> a;
+    a = 0;
+
+    for (int j = 0; j < WIDTH; j++)
+    {
+        uint64_t carry = 0;
+        for (int i = 0; i + j < WIDTH; i++)
+        {
+            uint64_t n = carry + a.pn[i + j] + (uint64_t)pn[j] * b.pn[i];
+            a.pn[i + j] = n & 0xffffffff;
+            carry = n >> 32;
+        }
+    }
+    *this = a;
+
+    return *this;
+}
+
+
+template<uint32_t BITS>
+base_uint<BITS>& base_uint<BITS>::operator*(const uint64_t& rhs)
+{
+    return base_uint<BITS>(*this) *= rhs;
+}
+
+
+template<uint32_t BITS>
+base_uint<BITS>& base_uint<BITS>::operator*(const base_uint<BITS>& rhs)
+{
+    return base_uint<BITS>(*this) *= rhs;
+}
+
+
+template<uint32_t BITS>
+base_uint<BITS>& base_uint<BITS>::operator/=(const base_uint<BITS>& b)
+{
+    base_uint<BITS> div = b;     // make a copy, so we can shift.
+    base_uint<BITS> num = *this; // make a copy, so we can subtract.
+    *this = 0;                   // the quotient.
+    int num_bits = num.bits();
+
+    int div_bits = div.bits();
+    if (div_bits == 0)
+        throw std::domain_error("Division by zero");
+
+    if (div_bits > num_bits) // the result is certainly 0.
+        return *this;
+
+    int shift = num_bits - div_bits;
+
+    div <<= shift; // shift so that div and num align.
+    while (shift >= 0)
+    {
+        if (num >= div)
+        {
+            num -= div;
+            pn[shift / 32] |= (1 << (shift & 31)); // set a bit of the result.
+        }
+
+        div >>= 1; // shift back.
+        shift--;
+    }
+
+    // num now contains the remainder of the division.
+    return *this;
+}
+
+
+
+template<uint32_t BITS>
+base_uint<BITS>& base_uint<BITS>::operator/=(const uint64_t& b)
+{
+    base_uint<BITS> div = b;         // make a copy, so we can shift.
+    base_uint<BITS> num = *this; // make a copy, so we can subtract.
+    *this = 0;                   // the quotient.
+    int num_bits = num.bits();
+    int div_bits = div.bits();
+    if (div_bits == 0)
+        throw std::domain_error("Division by zero");
+
+    if (div_bits > num_bits) // the result is certainly 0.
+        return *this;
+    int shift = num_bits - div_bits;
+    div <<= shift; // shift so that div and num align.
+
+    while (shift >= 0)
+    {
+        //debug::log(0, "DIV: ", GetDec());
+        if (num >= div)
+        {
+            num -= div;
+            pn[shift / 32] |= (1 << (shift & 31)); // set a bit of the result.
+        }
+
+        div >>= 1; // shift back.
+        shift--;
+    }
+
+
+
+    // num now contains the remainder of the division.
+    return *this;
+}
+
+
+template<uint32_t BITS>
+base_uint<BITS>& base_uint<BITS>::operator/(const uint64_t& rhs)
+{
+    return base_uint<BITS>(*this) /= rhs;
+}
+
+
+template<uint32_t BITS>
+base_uint<BITS>& base_uint<BITS>::operator/(const base_uint<BITS>& rhs)
+{
+    return base_uint<BITS>(*this) /= rhs;
 }
 
 
@@ -662,6 +808,26 @@ template<uint32_t BITS>
 uint32_t base_uint<BITS>::high_bits(uint32_t mask)
 {
     return pn[WIDTH-1] & mask;
+}
+
+
+/**  Returns the number of bits represented in the integer. **/
+template <uint32_t BITS>
+uint32_t base_uint<BITS>::bits() const
+{
+    for (int32_t pos = WIDTH - 1; pos >= 0; --pos)
+    {
+        if (pn[pos])
+        {
+            for (int32_t nbits = 31; nbits > 0; --nbits)
+            {
+                if (pn[pos] & 1U << nbits)
+                    return 32 * pos + nbits + 1;
+            }
+            return 32 * pos + 1;
+        }
+    }
+    return 0;
 }
 
 

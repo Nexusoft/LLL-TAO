@@ -15,12 +15,66 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLC_TYPES_UINT1024_H
 #define NEXUS_LLC_TYPES_UINT1024_H
 
-
-
 #include <LLC/types/base_uint.h>
 
 
-/** 256-bit uint32_teger */
+/** 192-bit integer */
+class uint192_t : public base_uint<192>
+{
+public:
+
+    uint192_t()
+    : base_uint<192>()
+    {
+    }
+
+    uint192_t(const  base_uint<192>& b)
+    {
+        for (int i = 0; i < WIDTH; ++i)
+            pn[i] = b.pn[i];
+    }
+
+    uint192_t& operator=(const  base_uint<192>& b)
+    {
+        for (int i = 0; i < WIDTH; ++i)
+            pn[i] = b.pn[i];
+        return *this;
+    }
+
+    uint192_t(uint64_t b)
+    {
+        pn[0] = (uint32_t)b;
+        pn[1] = (uint32_t)(b >> 32);
+        for (int i = 2; i < WIDTH; ++i)
+            pn[i] = 0;
+    }
+
+    uint192_t& operator=(uint64_t b)
+    {
+        pn[0] = (uint32_t)b;
+        pn[1] = (uint32_t)(b >> 32);
+        for (int i = 2; i < WIDTH; ++i)
+            pn[i] = 0;
+        return *this;
+    }
+
+    explicit uint192_t(const std::string& str)
+    {
+        SetHex(str);
+    }
+
+    explicit uint192_t(const std::vector<uint8_t>& vch)
+    {
+        if (vch.size() == sizeof(pn))
+            //memcpy(pn, &vch[0], sizeof(pn));
+            std::copy(&vch[0], &vch[0] + sizeof(pn), (uint8_t *)pn);
+        else
+            *this = 0;
+    }
+};
+
+
+/** 256-bit integer **/
 class uint256_t : public base_uint<256>
 {
 public:
@@ -82,7 +136,7 @@ public:
 
 
 
-/** 512-bit uint32_teger */
+/** 512-bit integer **/
 class uint512_t : public base_uint<512>
 {
 public:
@@ -144,7 +198,7 @@ public:
 };
 
 
-/** 576-bit uint32_teger */
+/** 576-bit integer **/
 class uint576_t : public base_uint<576>
 {
 public:
@@ -205,7 +259,7 @@ public:
 };
 
 
-/** 1024-bit uint32_teger */
+/** 1024-bit integer **/
 class uint1024_t : public base_uint<1024>
 {
 public:

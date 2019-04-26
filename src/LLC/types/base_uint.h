@@ -140,6 +140,38 @@ public:
     base_uint& operator+=(const base_uint& b);
 
 
+    /** Multiply assignment operator. (64-bit) **/
+    base_uint& operator*=(const uint64_t& n);
+
+
+    /** Multiply assignment operator. **/
+    base_uint& operator*=(const base_uint& b);
+
+
+    /** Multiply binary operator. **/
+    base_uint& operator*(const base_uint& rhs);
+
+
+    /** Multiply binary operator. (64-bit) **/
+    base_uint& operator*(const uint64_t& rhs);
+
+
+    /** Divide assignment operator. **/
+    base_uint& operator/=(const base_uint& b);
+
+
+    /** Divide assignment operator. (64-bit) **/
+    base_uint& operator/=(const uint64_t& b);
+
+
+    /** Divide binary operator. **/
+    base_uint& operator/(const base_uint& rhs);
+
+
+    /** Divide binary operator. (64-bit) **/
+    base_uint& operator/(const uint64_t& rhs);
+
+
     /** Addition assignment operator. (64-bit) **/
     base_uint& operator+=(uint64_t b64);
 
@@ -396,11 +428,20 @@ public:
     uint32_t high_bits(uint32_t mask);
 
 
+    /** bits
+     *
+     *  Returns the number of bits represented in the integer.
+     *
+     **/
+    uint32_t bits() const;
+
+
     /* Friend class declarations to access protected members with operator overloads. */
     friend class uint1024_t;
     friend class uint576_t;
     friend class uint512_t;
     friend class uint256_t;
+    friend class uint192_t;
 
 };
 
