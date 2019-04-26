@@ -72,6 +72,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
 
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                   << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint32_t(0);
 
@@ -201,6 +202,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+                   << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint32_t(0);
 
             //run tests
@@ -222,6 +224,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
                    << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
+                   << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint32_t(0);
 
             //run tests
@@ -243,6 +246,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
                    << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                   << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint32_t(0);
 
             //run tests
@@ -264,6 +268,29 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             TAO::Register::Object object;
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                   << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                   << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint32_t(55);
+
+            //run tests
+            REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
+        }
+    }
+
+
+    //check for incorrect register values
+    {
+        //object account address
+        uint256_t hashAddress = LLC::GetRand256();
+
+        {
+            TAO::Ledger::Transaction tx;
+            tx.nTimestamp  = 989798;
+            tx.hashGenesis = LLC::GetRand256();
+
+            TAO::Register::Object object;
+            object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                   << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                   << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
                    << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint32_t(55);
 
             //run tests

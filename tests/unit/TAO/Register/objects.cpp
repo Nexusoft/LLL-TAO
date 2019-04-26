@@ -119,6 +119,7 @@ TEST_CASE( "Object Register Tests", "[register]" )
         Object object;
         object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
                << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+               << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                << std::string("identifier") << uint8_t(TYPES::UINT32_T) << uint32_t(0);
 
 
