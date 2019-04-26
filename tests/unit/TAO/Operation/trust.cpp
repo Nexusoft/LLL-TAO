@@ -24,48 +24,50 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "Register Rollback Tests", "[operation]" )
+TEST_CASE( "Trust Primitive Tests", "[operation]" )
 {
     using namespace TAO::Register;
     using namespace TAO::Operation;
 
     //rollback a token object register
     {
-        //create the transaction object
-        TAO::Ledger::Transaction tx;
-        tx.hashGenesis = LLC::GetRand256();
-        tx.nSequence   = 0;
-        tx.nTimestamp  = runtime::timestamp();
+        uint256_t hashAddress = LLC::GetRand256();
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = LLC::GetRand256();
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
 
-        //cleanup from last time
-        LLD::regDB->EraseIdentifier(11);
+            //create object
+            Object object = CreateTrust();
 
-        //create object
-        uint256_t hashRegister = LLC::GetRand256();
-        Object account = CreateToken(11, 1000, 100);
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
-        //payload
-        tx << uint8_t(OP::REGISTER) << hashRegister << uint8_t(REGISTER::OBJECT) << account.GetState();
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
 
-        //generate the prestates and poststates
-        REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            //commit to disk
+            REQUIRE(Execute(tx, FLAGS::WRITE));
+        }
 
-        //commit to disk
-        REQUIRE(Execute(tx, FLAGS::WRITE));
+        {
+            //check values all match
+            TAO::Register::Object object;
+            REQUIRE(LLD::regDB->ReadState(hashAddress, object));
 
-        //check for reserved identifier
-        REQUIRE(LLD::regDB->HasIdentifier(11));
+            //parse
+            REQUIRE(object.Parse());
 
-        //check that register exists
-        REQUIRE(LLD::regDB->HasState(hashRegister));
+            //check standards
+            REQUIRE(object.Standard() == OBJECTS::TRUST);
+            REQUIRE(object.Base()     == OBJECTS::ACCOUNT);
 
-        //rollback the transaction
-        REQUIRE(Rollback(tx));
-
-        //check reserved identifier
-        REQUIRE(!LLD::regDB->HasIdentifier(11));
-
-        //make sure object is deleted
-        REQUIRE(!LLD::regDB->HasState(hashRegister));
+            //check values
+            REQUIRE(object.get<uint64_t>("balance") == 0);
+            REQUIRE(object.get<uint64_t>("trust")   == 0);
+            REQUIRE(object.get<uint32_t>("identifier") == 0);
+        }
     }
 }

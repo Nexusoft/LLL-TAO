@@ -182,6 +182,7 @@ ifdef UNIT_TESTS
 		   build/Tests_sigchain.o \
 		   build/Tests_register.o \
 		   build/Tests_debit.o \
+		   build/Tests_trust.o \
 		   build/Tests_write.o \
 		   build/Tests_validate.o
 
