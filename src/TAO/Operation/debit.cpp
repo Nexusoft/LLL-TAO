@@ -34,6 +34,10 @@ namespace TAO
             if(TAO::Register::Reserved(hashFrom))
                 return debug::error(FUNCTION, "cannot debit from register with reserved address");
 
+            /* Check for debit to and from same account. */
+            if(hashFrom == hashTo)
+                return debug::error(FUNCTION, "cannot debit to the same address as from");
+
             /* Read the register from the database. */
             TAO::Register::Object account;
 
