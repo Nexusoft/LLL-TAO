@@ -287,6 +287,7 @@ OBJS+=  build/LLC_skein.o \
 		build/Operation_debit.o \
 		build/Operation_register.o \
 		build/Operation_transfer.o \
+		build/Operation_claim.o \
 		build/Operation_trust.o \
 		build/Operation_genesis.o \
 		build/Operation_validate.o \

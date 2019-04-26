@@ -145,13 +145,17 @@ namespace TAO
                             uint256_t hashAddress;
                             tx.ssOperation >> hashAddress;
 
+                            /* Extract the transfer address from the tx. */
+                            uint256_t hashTransfer;
+                            tx.ssOperation >> hashTransfer;
+
                             /* Read the register from database. */
                             State state;
                             if(!LLD::regDB->ReadState(hashAddress, state))
                                 return debug::error(FUNCTION, "register pre-state doesn't exist");
 
                             /* Rollback the event. */
-                            if(!LLD::legDB->EraseEvent(state.hashOwner))
+                            if(!LLD::legDB->EraseEvent(hashTransfer))
                                 return debug::error(FUNCTION, "failed to rollback event");
 
                             /* Set the previous owner to this sigchain. */
@@ -161,8 +165,35 @@ namespace TAO
                             if(!LLD::regDB->WriteState(hashAddress, state))
                                 return debug::error(FUNCTION, "failed to rollback to pre-state");
 
-                            /* Seek to next operation. */
-                            tx.ssOperation.seek(32);
+                            /* Seek register past the post state */
+                            tx.ssRegister.seek(9);
+
+                            break;
+                        }
+
+
+                        /* Transfer ownership of a register to another signature chain. */
+                        case TAO::Operation::OP::CLAIM:
+                        {
+                            /* The transaction that this transfer is claiming. */
+                            uint512_t hashTx;
+                            tx.ssOperation >> hashTx;
+
+                            /* Extract the address from the tx.ssOperation. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
+                            /* Read the register from database. */
+                            State state;
+                            if(!LLD::regDB->ReadState(hashAddress, state))
+                                return debug::error(FUNCTION, "register pre-state doesn't exist");
+
+                            /* Set the previous owner to this sigchain. */
+                            state.hashOwner = 0;
+
+                            /* Write the register to database. */
+                            if(!LLD::regDB->WriteState(hashAddress, state))
+                                return debug::error(FUNCTION, "failed to rollback to pre-state");
 
                             /* Seek register past the post state */
                             tx.ssRegister.seek(9);

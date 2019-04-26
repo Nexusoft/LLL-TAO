@@ -229,7 +229,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         REQUIRE(LLD::regDB->ReadState(hashRegister, state));
 
         //check owner
-        REQUIRE(state.hashOwner == 0xffff);
+        REQUIRE(state.hashOwner == 0);
 
         //rollback the transaction
         REQUIRE(Rollback(tx));
@@ -243,10 +243,12 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
 
 
+    //rollback a claim
     {
         //create object
         uint256_t hashRegister = LLC::GetRand256();
         uint256_t hashGenesis  = LLC::GetRand256();
+        uint256_t hashGenesis2 = LLC::GetRand256();
 
         {
 
@@ -257,7 +259,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashRegister << uint8_t(REGISTER::RAW) << std::vector<uint8_t>(0xff, 0);
+            tx << uint8_t(OP::REGISTER) << hashRegister << uint8_t(REGISTER::RAW) << std::vector<uint8_t>(10, 0xff);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -274,39 +276,82 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
         }
 
-        //create the transaction object
-        TAO::Ledger::Transaction tx;
-        tx.hashGenesis = hashGenesis;
-        tx.nSequence   = 1;
-        tx.nTimestamp  = runtime::timestamp();
+        uint512_t hashTx;
+        {
 
-        //payload
-        tx << uint8_t(OP::TRANSFER) << hashRegister << uint256_t(0xffff);
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 1;
+            tx.nTimestamp  = runtime::timestamp();
 
-        //generate the prestates and poststates
-        REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            //payload
+            tx << uint8_t(OP::TRANSFER) << hashRegister << hashGenesis2;
 
-        //write transaction
-        REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
 
-        //commit to disk
-        REQUIRE(Execute(tx, FLAGS::WRITE));
+            //write transaction
+            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
-        //check that register exists
-        State state;
-        REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+            //commit to disk
+            REQUIRE(Execute(tx, FLAGS::WRITE));
 
-        //check owner
-        REQUIRE(state.hashOwner == 0xffff);
+            //get claim hash
+            hashTx = tx.GetHash();
 
-        //rollback the transaction
-        REQUIRE(Rollback(tx));
+            //check that register exists
+            State state;
+            REQUIRE(LLD::regDB->ReadState(hashRegister, state));
 
-        //grab the new state
-        REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+            //check owner
+            REQUIRE(state.hashOwner == 0);
 
-        //check owner
-        REQUIRE(state.hashOwner == hashGenesis);
+        }
+
+
+        {
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis2;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx << uint8_t(OP::CLAIM) << hashTx << hashRegister;
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //write transaction
+            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+
+            //commit to disk
+            REQUIRE(Execute(tx, FLAGS::WRITE));
+
+            //check that register exists
+            {
+                State state;
+                REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+
+                //check owner
+                REQUIRE(state.hashOwner == hashGenesis2);
+            }
+
+            //rollback the transaction
+            REQUIRE(Rollback(tx));
+
+            //grab the new state
+            {
+                State state;
+                REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+
+                //check owner
+                REQUIRE(state.hashOwner == 0);
+            }
+
+        }
     }
 
 

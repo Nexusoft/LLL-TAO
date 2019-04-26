@@ -152,6 +152,25 @@ namespace TAO
                         }
 
 
+                        /* Transfer ownership of a register to another signature chain. */
+                        case OP::CLAIM:
+                        {
+                            /* The transaction that this transfer is claiming. */
+                            uint512_t hashTx;
+                            tx.ssOperation >> hashTx;
+
+                            /* Extract the address from the tx.ssOperation. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
+                            /* Execute the operation method. */
+                            if(!Claim(hashTx, hashAddress, nFlags, tx))
+                                return false;
+
+                            break;
+                        }
+
+
                         /* Debit tokens from an account you own. */
                         case OP::DEBIT:
                         {

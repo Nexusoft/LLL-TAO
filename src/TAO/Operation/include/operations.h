@@ -89,6 +89,21 @@ namespace TAO
         bool Transfer(const uint256_t& hashAddress, const uint256_t& hashTransfer,
             const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
+        /** Transfer
+         *
+         *  Transfers a register between sigchains.
+         *
+         *  @param[in] hashTx The tx that is being claimed.
+         *  @param[in] hashAddress The register address to claim.
+         *  @param[in] nFlags The flag to determine if database state should be written.
+         *  @param[out] tx The transaction calling operations
+         *
+         *  @return true if successful.
+         *
+         **/
+        bool Claim(const uint512_t& hashTx, const uint256_t& hashAddress,
+                   const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+
 
         /** Debit
          *

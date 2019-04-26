@@ -39,9 +39,10 @@ namespace TAO
                 //register operations
                 WRITE      = 0x01,
                 REGISTER   = 0x02,
-                AUTHORIZE  = 0x03, //to be determined how this will work 
+                AUTHORIZE  = 0x03, //to be determined how this will work
                 TRANSFER   = 0x04,
-                APPEND     = 0x05,
+                CLAIM      = 0x05,
+                APPEND     = 0x06,
 
                 //financial operations
                 DEBIT      = 0x10,

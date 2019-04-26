@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/state.h>
 #include <TAO/Register/include/system.h>
@@ -27,32 +28,57 @@ namespace TAO
     {
 
         /* Transfers a register between sigchains. */
-        bool Transfer(const uint256_t& hashAddress, const uint256_t& hashTransfer,
-                      const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Claim(const uint512_t& hashTx, const uint256_t& hashAddress,
+                   const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashAddress))
-                return debug::error(FUNCTION, "cannot transfer register with reserved address");
+                return debug::error(FUNCTION, "cannot claim register with reserved address");
 
             /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashTransfer))
-                return debug::error(FUNCTION, "cannot transfer register to reserved address");
+            if(TAO::Register::Reserved(tx.hashGenesis))
+                return debug::error(FUNCTION, "cannot claim register to reserved address");
+
+            /* Read the claimed transaction. */
+            TAO::Ledger::Transaction txClaim;
+            if(!LLD::legDB->ReadTx(hashTx, txClaim))
+                return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist");
+
+            /* Extract the state from tx. */
+            uint8_t TX_OP;
+            txClaim.ssOperation >> TX_OP;
+
+            /* Check for transfer. */
+            if(TX_OP != OP::TRANSFER)
+                return debug::error(FUNCTION, "cannot claim a register with no transfer");
+
+            /* Extract the address  */
+            uint256_t hashAddressFrom;
+            txClaim.ssOperation >> hashAddressFrom;
+
+            /* Read the register transfer recipient. */
+            uint256_t hashTransfer;
+            txClaim.ssOperation >> hashTransfer;
+
+            /* Check the addresses match. */
+            if(hashAddressFrom != hashAddress)
+                return debug::error(FUNCTION, "register address mismatch");
+
+            /* Check the addresses match. */
+            if(hashTransfer != tx.hashGenesis)
+                return debug::error(FUNCTION, "claim address mismatch with claim address");
 
             /* Read the register from the database. */
             TAO::Register::State state = TAO::Register::State();
             if(!LLD::regDB->ReadState(hashAddress, state))
                 return debug::error(FUNCTION, "Register ", hashAddress.ToString(), " doesn't exist in register DB");
 
-            /* Make sure that you won the rights to register first. */
-            if(state.hashOwner != tx.hashGenesis)
+            /* Make sure the register claim is in SYSTEM pending from a transfer. */
+            if(state.hashOwner != 0)
                 return debug::error(FUNCTION, tx.hashGenesis.ToString(), " not authorized to transfer register");
 
-            /* Check that you aren't sending to yourself. */
-            if(state.hashOwner == hashTransfer)
-                return debug::error(FUNCTION, tx.hashGenesis.ToString(), " cannot transfer to self when already owned");
-
             /* Set the new owner of the register. */
-            state.hashOwner  = 0; //register custody is in SYSTEM ownership until claimed
+            state.hashOwner  = tx.hashGenesis;
             state.nTimestamp = tx.nTimestamp;
             state.SetChecksum();
 
@@ -86,14 +112,6 @@ namespace TAO
                 /* Write the register to the database. */
                 if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
                     return debug::error(FUNCTION, "failed to write new state");
-
-                /* Write the notification foreign index. */
-                if(nFlags & TAO::Register::FLAGS::WRITE) //TODO: possibly add some checks for invalid stateTo (wrong token ID)
-                {
-                    /* Write the event to the ledger database. */
-                    if(!LLD::legDB->WriteEvent(hashTransfer, tx.GetHash()))
-                        return debug::error(FUNCTION, "failed to commit event to ledger DB");
-                }
             }
 
             return true;
