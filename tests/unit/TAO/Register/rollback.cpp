@@ -568,6 +568,9 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                     //check balance
                     REQUIRE(account.get<uint64_t>("balance") == 500);
+
+                    //check that proofs are established
+                    REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx));
                 }
 
                 //rollback
@@ -587,6 +590,71 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                     //check that proofs are removed
                     REQUIRE(!LLD::legDB->HasProof(hashRegister, hashTx));
                 }
+            }
+
+
+            {
+                //create the transaction object
+                TAO::Ledger::Transaction tx;
+                tx.hashGenesis = hashGenesis2;
+                tx.nSequence   = 3;
+                tx.nTimestamp  = runtime::timestamp();
+
+                //payload
+                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashAccount << uint64_t(500);
+
+                //generate the prestates and poststates
+                REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+                //commit to disk
+                REQUIRE(Execute(tx, FLAGS::WRITE));
+
+                //check register values
+                {
+                    Object account;
+                    REQUIRE(LLD::regDB->ReadState(hashAccount, account));
+
+                    //parse register
+                    REQUIRE(account.Parse());
+
+                    //check balance
+                    REQUIRE(account.get<uint64_t>("balance") == 500);
+
+                    //check that proofs are established
+                    REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx));
+                }
+            }
+
+
+            //attempt to double spend
+            {
+                //create the transaction object
+                TAO::Ledger::Transaction tx;
+                tx.hashGenesis = hashGenesis2;
+                tx.nSequence   = 3;
+                tx.nTimestamp  = runtime::timestamp();
+
+                //payload
+                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashAccount << uint64_t(500);
+
+                //generate the prestates and poststates
+                REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            }
+
+
+            //attempt to double spend back to self
+            {
+                //create the transaction object
+                TAO::Ledger::Transaction tx;
+                tx.hashGenesis = hashGenesis;
+                tx.nSequence   = 3;
+                tx.nTimestamp  = runtime::timestamp();
+
+                //payload
+                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashRegister << uint64_t(500);
+
+                //generate the prestates and poststates
+                REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
             }
         }
     }

@@ -61,7 +61,7 @@ namespace TAO
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if( !accounts.CanTransact())
+            if(!accounts.CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
@@ -127,13 +127,11 @@ namespace TAO
                 hashProof = hashFrom;
             }
 
-
-
             /* Get the credit. */
             uint64_t nAmount = std::stoull(params["amount"].get<std::string>());
 
             /* Submit the payload object. */
-            tx << (uint8_t)TAO::Operation::OP::CREDIT << hashTx << hashProof << hashTo << nAmount;
+            tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashProof << hashTo << nAmount;
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
