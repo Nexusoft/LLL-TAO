@@ -47,6 +47,10 @@ namespace TAO
         /* Parses out the data members of an object register. */
         bool Object::Parse()
         {
+            /* Check the map for empty. */
+            if(!mapData.empty())
+                return debug::error(FUNCTION, "object is already parsed");
+
             /* Ensure that object register is of proper type. */
             if(this->nType != REGISTER::OBJECT
             && this->nType != REGISTER::SYSTEM)
@@ -229,6 +233,10 @@ namespace TAO
         /* Get the type enumeration from the object register. */
         bool Object::Type(const std::string& strName, uint8_t& nType) const
         {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                return debug::error(FUNCTION, "object is not parsed");
+
             /* Check that the name exists in the object. */
             if(!mapData.count(strName))
                 return false;
@@ -276,6 +284,10 @@ namespace TAO
         /*  Get the size of value in object register. */
         uint64_t Object::Size(const std::string& strName) const
         {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                return debug::error(FUNCTION, "object is not parsed");
+
             /* Get the type for given name. */
             uint8_t nType;
             if(!Type(strName, nType))
@@ -329,6 +341,10 @@ namespace TAO
         /* Write into the object register a value of type bytes. */
         bool Object::Write(const std::string& strName, const std::string& strValue)
         {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                return debug::error(FUNCTION, "object is not parsed");
+
             /* Check that the name exists in the object. */
             if(!mapData.count(strName))
                 return false;
@@ -367,6 +383,10 @@ namespace TAO
         /* Write into the object register a value of type bytes. */
         bool Object::Write(const std::string& strName, const std::vector<uint8_t>& vData)
         {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                return debug::error(FUNCTION, "object is not parsed");
+
             /* Check that the name exists in the object. */
             if(!mapData.count(strName))
                 return false;

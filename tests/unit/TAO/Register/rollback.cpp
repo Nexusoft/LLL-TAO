@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/execute.h>
 
+#include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/create.h>
 
 #include <TAO/Ledger/types/transaction.h>
@@ -50,12 +51,24 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
         //generate the prestates and poststates
-        REQUIRE(TAO::Operation::Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+        REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
 
         //commit to disk
-        REQUIRE(TAO::Operation::Execute(tx, FLAGS::WRITE));
+        REQUIRE(Execute(tx, FLAGS::WRITE));
 
         //check for reserved identifier
         REQUIRE(LLD::regDB->HasIdentifier(11));
+
+        //check that register exists
+        REQUIRE(LLD::regDB->HasState(hashRegister));
+
+        //rollback the transaction
+        REQUIRE(Rollback(tx));
+
+        //check reserved identifier
+        REQUIRE(!LLD::regDB->HasIdentifier(11));
+
+        //make sure object is deleted
+        REQUIRE(!LLD::regDB->HasState(hashRegister));
     }
 }

@@ -29,8 +29,14 @@ namespace TAO
     {
 
         /* Verify the pre-states of a register to current network state. */
-        bool Rollback(TAO::Ledger::Transaction tx)
+        bool Rollback(const TAO::Ledger::Transaction& tx)
         {
+            /* Start the stream at the beginning. */
+            tx.ssOperation.seek(0, STREAM::BEGIN);
+
+            /* Start the register stream at the beginning. */
+            tx.ssRegister.seek(0, STREAM::BEGIN);
+
             /* Make sure no exceptions are thrown. */
             try
             {
@@ -91,7 +97,8 @@ namespace TAO
                             tx.ssOperation >> hashAddress;
 
                             /* Skip over type. */
-                            tx.ssOperation.seek(1);
+                            uint8_t nType;
+                            tx.ssOperation >> nType;
 
                             /* Skip over the post-state data. */
                             uint64_t nSize = ReadCompactSize(tx.ssOperation);
@@ -102,21 +109,21 @@ namespace TAO
                             /* Seek register past the post state */
                             tx.ssRegister.seek(9);
 
-                            /* Read the object from register database. */
-                            Object object;
-                            if(!LLD::regDB->ReadState(hashAddress, object))
-                                return debug::error(FUNCTION, "failed to read register object");
-
                             /* Check for object register. */
-                            if(object.nType == REGISTER::OBJECT)
+                            if(nType == REGISTER::OBJECT)
                             {
+                                /* Read the object from register database. */
+                                Object object;
+                                if(!LLD::regDB->ReadState(hashAddress, object))
+                                    return debug::error(FUNCTION, "failed to read register object");
+
+                                /* Parse the object. */
+                                if(!object.Parse())
+                                    return debug::error(FUNCTION, "failed to parse object");
+
                                 /* Check for token to remove reserved identifier. */
                                 if(object.Standard() == OBJECTS::TOKEN)
                                 {
-                                    /* Parse the object. */
-                                    if(!object.Parse())
-                                        return debug::error(FUNCTION, "failed to parse object");
-
                                     /* Erase the identifier. */ //TODO: possibly do not check for false
                                     if(!LLD::regDB->EraseIdentifier(object.get<uint32_t>("identifier")))
                                         return debug::error(FUNCTION, "could not erase identifier");

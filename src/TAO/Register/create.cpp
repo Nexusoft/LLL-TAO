@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/create.h>
 
+#include <TAO/Register/include/enum.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -34,8 +36,8 @@ namespace TAO
             TAO::Register::Object account;
 
             /* Generate the object register values. */
-            account << std::string("balance")    << uint8_t(TAO::Register::TYPES::MUTABLE)  << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(0)
-                    << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT32_T) << nIdentifier;
+            account << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("identifier") << uint8_t(TYPES::UINT32_T) << nIdentifier;
 
             return account;
         }
@@ -54,10 +56,10 @@ namespace TAO
             TAO::Register::Object token;
 
             /* Generate the object register values. */
-            token   << std::string("balance")    << uint8_t(TAO::Register::TYPES::MUTABLE)  << uint8_t(TAO::Register::TYPES::UINT64_T) << nSupply
-                    << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT32_T) << nIdentifier
-                    << std::string("supply")     << uint8_t(TAO::Register::TYPES::UINT64_T) << nSupply
-                    << std::string("digits")     << uint8_t(TAO::Register::TYPES::UINT64_T) << nDigits;
+            token   << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << nSupply
+                    << std::string("identifier") << uint8_t(TYPES::UINT32_T) << nIdentifier
+                    << std::string("supply")     << uint8_t(TYPES::UINT64_T) << nSupply
+                    << std::string("digits")     << uint8_t(TYPES::UINT64_T) << nDigits;
 
             return token;
         }

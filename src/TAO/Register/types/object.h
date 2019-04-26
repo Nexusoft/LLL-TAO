@@ -152,6 +152,10 @@ namespace TAO
             template<typename Type>
             bool Read(const std::string& strName, Type& value) const
             {
+                /* Check the map for empty. */
+                if(mapData.empty())
+                    return debug::error(FUNCTION, "object is not parsed");
+
                 /* Check that the name exists in the object. */
                 if(!mapData.count(strName))
                     return false;
