@@ -735,6 +735,81 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             }
 
 
+            //attempt to to send back to self
+            {
+                //create the transaction object
+                TAO::Ledger::Transaction tx;
+                tx.hashGenesis = hashGenesis;
+                tx.nSequence   = 3;
+                tx.nTimestamp  = runtime::timestamp();
+
+                //payload
+                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashRegister << uint64_t(500);
+
+                //generate the prestates and poststates
+                REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+                //commit to disk
+                REQUIRE(Execute(tx, FLAGS::WRITE));
+
+                //check register values
+                {
+                    Object account;
+                    REQUIRE(LLD::regDB->ReadState(hashRegister, account));
+
+                    //parse register
+                    REQUIRE(account.Parse());
+
+                    //check balance
+                    REQUIRE(account.get<uint64_t>("balance") == 1000);
+
+                    //check that proofs are removed
+                    REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx));
+
+                    {
+                        //check event is discarded
+                        uint32_t nSequence;
+                        REQUIRE(LLD::legDB->ReadSequence(hashGenesis2, nSequence));
+
+                        //check for tx
+                        TAO::Ledger::Transaction txEvent;
+                        REQUIRE(!LLD::legDB->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
+                    }
+                }
+
+                //rollback
+                REQUIRE(Rollback(tx));
+
+                //check register values
+                {
+                    Object account;
+                    REQUIRE(LLD::regDB->ReadState(hashRegister, account));
+
+                    //parse register
+                    REQUIRE(account.Parse());
+
+                    //check balance
+                    REQUIRE(account.get<uint64_t>("balance") == 500);
+
+                    //check that proofs are removed
+                    REQUIRE(!LLD::legDB->HasProof(hashRegister, hashTx));
+
+                    {
+                        //check event is discarded
+                        uint32_t nSequence;
+                        REQUIRE(LLD::legDB->ReadSequence(hashGenesis2, nSequence));
+
+                        //check for tx
+                        TAO::Ledger::Transaction txEvent;
+                        REQUIRE(LLD::legDB->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
+
+                        //make sure hashes match
+                        REQUIRE(txEvent.GetHash() == hashTx);
+                    }
+                }
+            }
+
+
             {
                 //create the transaction object
                 TAO::Ledger::Transaction tx;
