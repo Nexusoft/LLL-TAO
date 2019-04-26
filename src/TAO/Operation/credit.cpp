@@ -86,8 +86,12 @@ namespace TAO
             /* Check that prev is coinbase. */
             if(TX_OP == OP::COINBASE) //NOTE: thie coinbase can't be spent unless flag is byte 0. Safe to use this for coinbase flag.
             {
+                /* Check that the proof is the genesis. */
+                if(hashProof != tx.hashGenesis)
+                    return debug::error(FUNCTION, "proof for coinbase needs to be genesis");
+
                 /* Check if this is a whole credit that the transaction is not already connected. */
-                if(LLD::legDB->HasProof(tx.hashGenesis, hashTx, nFlags))
+                if(LLD::legDB->HasProof(hashProof, hashTx, nFlags))
                     return debug::error(FUNCTION, "transaction is already spent");
 
                 /* Get the coinbase amount. */
@@ -142,7 +146,7 @@ namespace TAO
                         return debug::error(FUNCTION, "register script has invalid post-state");
 
                     /* Write the proof spend. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteProof(tx.hashGenesis, hashTx, nFlags))
+                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteProof(hashProof, hashTx, nFlags))
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */
@@ -165,6 +169,86 @@ namespace TAO
             uint256_t hashTo;
             txSpend.ssOperation >> hashTo;
 
+            /* Handle a return to self. */
+            if(txSpend.hashGenesis == tx.hashGenesis)
+            {
+                /* Check the proof as being the caller. */
+                if(hashProof != hashFrom)
+                    return debug::error(FUNCTION, "hash proof must be hashFrom for return to self");
+
+                /* Check if this is a whole credit that the transaction is not already spent. */
+                if(LLD::legDB->HasProof(hashProof, hashTx, nFlags))
+                    return debug::error(FUNCTION, "transaction is already spent");
+
+                /* Read the to account state. */
+                if(hashAccount != hashFrom)
+                    return debug::error(FUNCTION, "cannot return funds to self if differnet account");
+
+                /* Get the debit amount. */
+                uint64_t nDebit;
+                txSpend.ssOperation >> nDebit;
+
+                /* Check the proper balance requirements. */
+                if(nCredit != nDebit)
+                     return debug::error(FUNCTION, "credit and debit totals don't match");
+
+                /* Write the new balance to object register. */
+                if(!account.Write("balance", account.get<uint64_t>("balance") + nCredit))
+                    return debug::error(FUNCTION, "balance could not be written to object register");
+
+                /* Update the state register's timestamp. */
+                account.nTimestamp = tx.nTimestamp;
+                account.SetChecksum();
+
+                /* Check that the register is in a valid state. */
+                if(!account.IsValid())
+                    return debug::error(FUNCTION, "memory address ", hashAccount.ToString(), " is in invalid state");
+
+                /* Write post-state checksum. */
+                if((nFlags & TAO::Register::FLAGS::POSTSTATE))
+                    tx.ssRegister << uint8_t(TAO::Register::STATES::POSTSTATE) << account.GetHash();
+
+                /* Verify the post-state checksum. */
+                if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+                {
+                    /* Get the state byte. */
+                    uint8_t nState = 0; //RESERVED
+                    tx.ssRegister >> nState;
+
+                    /* Check for the pre-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "register script not in post-state");
+
+                    /* Get the post state checksum. */
+                    uint64_t nChecksum;
+                    tx.ssRegister >> nChecksum;
+
+                    /* Check for matching post states. */
+                    if(nChecksum != account.GetHash())
+                        return debug::error(FUNCTION, "register script has invalid post-state");
+
+                    /* Read the register from the database. */
+                    TAO::Register::State stateTo;
+                    if(!LLD::regDB->ReadState(hashTo, stateTo))
+                        return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
+
+                    /* Write the proof spend. */
+                    if(!LLD::legDB->WriteProof(hashProof, hashTx, nFlags))
+                        return debug::error(FUNCTION, "failed to write proof");
+
+                    /* Write the register to the database. */
+                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAccount, account))
+                        return debug::error(FUNCTION, "failed to write new state");
+
+                    /* Erase the event to the ledger database. */
+                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->EraseEvent(stateTo.hashOwner))
+                        return debug::error(FUNCTION, "failed to rollback event to register DB");
+                }
+
+                return true;
+            }
+
+
             /* Read the account to state. */
             TAO::Register::State stateTo;
             if(!LLD::regDB->ReadState(hashTo, stateTo))
@@ -173,13 +257,13 @@ namespace TAO
             /* Credits specific to account objects. */
             if(stateTo.nType == TAO::Register::REGISTER::OBJECT)
             {
-                /* Check if this is a whole credit that the transaction is not already spent. */
-                if(LLD::legDB->HasProof(hashAccount, hashTx, nFlags))
-                    return debug::error(FUNCTION, "transaction is already spent");
-
                 /* Check the proof as being the caller. */
-                if(hashProof != tx.hashGenesis)
-                    return debug::error(FUNCTION, "hash proof and caller mismatch");
+                if(hashProof != hashFrom)
+                    return debug::error(FUNCTION, "hash proof must hashFrom for credit to account");
+
+                /* Check if this is a whole credit that the transaction is not already spent. */
+                if(LLD::legDB->HasProof(hashProof, hashTx, nFlags))
+                    return debug::error(FUNCTION, "transaction is already spent");
 
                 /* Read the to account state. */
                 if(hashTo != hashAccount)
@@ -246,7 +330,7 @@ namespace TAO
                         return debug::error(FUNCTION, "register script has invalid post-state");
 
                     /* Write the proof spend. */
-                    if(!LLD::legDB->WriteProof(hashAccount, hashTx, nFlags))
+                    if(!LLD::legDB->WriteProof(hashProof, hashTx, nFlags))
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */
@@ -256,6 +340,9 @@ namespace TAO
             }
             else if(stateTo.nType == TAO::Register::REGISTER::RAW || stateTo.nType == TAO::Register::REGISTER::READONLY)
             {
+                /* Check that this proof has not been used in a partial credit. */
+                if(LLD::legDB->HasProof(hashProof, hashTx, nFlags))
+                    return debug::error(FUNCTION, "temporal proof has already been spent");
 
                 /* Get the state register of this register's owner. */
                 TAO::Register::Object tokenOwner;
@@ -269,10 +356,6 @@ namespace TAO
                 /* Check that owner is of a valid type. */
                 if(tokenOwner.Standard() != TAO::Register::OBJECTS::TOKEN)
                     return debug::error(FUNCTION, "owner object is not a token");
-
-                /* Check that this proof has not been used in a partial credit. */
-                if(LLD::legDB->HasProof(hashProof, hashTx, nFlags))
-                    return debug::error(FUNCTION, "temporal proof has already been spent");
 
                 /* Check the state register that is being used as proof from creditor. */
                 TAO::Register::Object accountProof;

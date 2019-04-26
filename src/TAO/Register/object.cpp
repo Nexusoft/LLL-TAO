@@ -44,7 +44,7 @@ namespace TAO
         }
 
 
-        /* Get's the standard object type. */
+        /* Get's the standard object base type. */
         uint8_t Object::Base() const
         {
             /* Set the return value. */

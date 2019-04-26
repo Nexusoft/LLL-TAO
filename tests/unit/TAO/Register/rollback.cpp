@@ -461,6 +461,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             uint256_t hashRegister = LLC::GetRand256();
             uint256_t hashAccount  = LLC::GetRand256();
             uint256_t hashGenesis  = LLC::GetRand256();
+            uint256_t hashGenesis2 = LLC::GetRand256();
 
             {
                 //create the transaction object
@@ -486,8 +487,8 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             {
                 //create the transaction object
                 TAO::Ledger::Transaction tx;
-                tx.hashGenesis = hashGenesis;
-                tx.nSequence   = 1;
+                tx.hashGenesis = hashGenesis2;
+                tx.nSequence   = 0;
                 tx.nTimestamp  = runtime::timestamp();
 
                 //create object
@@ -509,7 +510,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 //create the transaction object
                 TAO::Ledger::Transaction tx;
                 tx.hashGenesis = hashGenesis;
-                tx.nSequence   = 2;
+                tx.nSequence   = 1;
                 tx.nTimestamp  = runtime::timestamp();
 
                 //payload
@@ -544,12 +545,12 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             {
                 //create the transaction object
                 TAO::Ledger::Transaction tx;
-                tx.hashGenesis = hashGenesis;
-                tx.nSequence   = 3;
+                tx.hashGenesis = hashGenesis2;
+                tx.nSequence   = 2;
                 tx.nTimestamp  = runtime::timestamp();
 
                 //payload
-                tx << uint8_t(OP::CREDIT) << hashTx << hashGenesis << hashAccount << uint64_t(500);
+                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashAccount << uint64_t(500);
 
                 //generate the prestates and poststates
                 REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -582,6 +583,9 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                     //check balance
                     REQUIRE(account.get<uint64_t>("balance") == 0);
+
+                    //check that proofs are removed
+                    REQUIRE(!LLD::legDB->HasProof(hashRegister, hashTx));
                 }
             }
         }

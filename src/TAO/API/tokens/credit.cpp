@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
+#include <LLD/include/global.h>
+
 #include <TAO/API/include/accounts.h>
 #include <TAO/API/include/tokens.h>
 
@@ -86,10 +88,12 @@ namespace TAO
             else
                 throw APIException(-22, "Missing to account");
 
-            /* Get the optional proof (for joint credits). */
-            uint256_t hashProof = user->Genesis();
-            
+            /* Get the transaction id. */
+            uint512_t hashTx;
+            hashTx.SetHex(params["txid"].get<std::string>());
+
             /* Check for data parameter. */
+            uint256_t hashProof;
             if(params.find("name_proof") != params.end())
             {
                 /* Get the address from the name. */
@@ -100,10 +104,30 @@ namespace TAO
             }
             else if(params.find("proof") != params.end())
                 hashProof.SetHex(params["proof"].get<std::string>());
+            else
+            {
+                /* Read the previous transaction. */
+                TAO::Ledger::Transaction txPrev;
+                if(!LLD::legDB->ReadTx(hashTx, txPrev))
+                    throw APIException(-23, "Previous transaction not found");
 
-            /* Get the transaction id. */
-            uint512_t hashTx;
-            hashTx.SetHex(params["txid"].get<std::string>());
+                /* Read the type from previous transaction */
+                uint8_t nType;
+                txPrev.ssOperation >> nType;
+
+                /* Check type. */
+                if(nType != TAO::Operation::OP::DEBIT)
+                    throw APIException(-32, "Previous transaction not debit");
+
+                /* Get the hashFrom from the previous transaction. */
+                uint256_t hashFrom;
+                txPrev.ssOperation >> hashFrom;
+
+                /* Assign hash proof to hash to. */
+                hashProof = hashFrom;
+            }
+
+
 
             /* Get the credit. */
             uint64_t nAmount = std::stoull(params["amount"].get<std::string>());

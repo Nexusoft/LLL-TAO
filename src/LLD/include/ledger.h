@@ -565,6 +565,34 @@ namespace LLD
         }
 
 
+        /** EraseProof
+         *
+         *  Remove a temporal proof from the database.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTransaction The transaction hash that proof is being spent for.
+         *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        {
+            /* Memory mode for pre-database commits. */
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+            {
+                LOCK(MEMORY_MUTEX); //TODO: these shoudl really be in the memory pool structures
+                //(they cause conflicts in MEMPOOL | WRITE)
+
+                /* Erase memory proof if they exist. */
+                if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
+                   mapProofs.erase(std::make_pair(hashProof, hashTransaction));
+            }
+
+            return Erase(std::make_pair(hashProof, hashTransaction));
+        }
+
+
         /** WriteBlock
          *
          *  Writes a block state object to disk.

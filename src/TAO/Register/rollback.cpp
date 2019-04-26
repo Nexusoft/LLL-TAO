@@ -297,7 +297,12 @@ namespace TAO
                         case TAO::Operation::OP::CREDIT:
                         {
                             /* The transaction that this credit is claiming. */
-                            tx.ssOperation.seek(96);
+                            uint512_t hashTx;
+                            tx.ssOperation >> hashTx;
+
+                            /* Get the hash proof. */
+                            uint256_t hashProof;
+                            tx.ssOperation >> hashProof;
 
                             /* The account that is being credited. */
                             uint256_t hashAddress;
@@ -318,6 +323,10 @@ namespace TAO
                             /* Read the register from database. */
                             if(!LLD::regDB->WriteState(hashAddress, prestate))
                                 return debug::error(FUNCTION, "failed to rollback to pre-state");
+
+                            /* Erase the proof event from database. */
+                            if(!LLD::legDB->EraseProof(hashProof, hashTx))
+                                return debug::error(FUNCTION, "failed to erase the proof");
 
                             /* Seek to the next operation. */
                             tx.ssOperation.seek(8);

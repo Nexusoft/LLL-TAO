@@ -72,8 +72,7 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to parse account object register");
 
             /* Check for standard types. */
-            if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT
-            && account.Standard() != TAO::Register::OBJECTS::TOKEN)
+            if(account.Base() != TAO::Register::OBJECTS::ACCOUNT)
                 return debug::error(FUNCTION, "cannot debit from non-standard object register");
 
             /* Check the account balance. */
