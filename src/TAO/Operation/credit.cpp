@@ -28,7 +28,8 @@ namespace TAO
     {
 
         /* Commits funds from an account to an account */
-        bool Credit(const uint512_t &hashTx, const uint256_t &hashProof, const uint256_t &hashAccount, const uint64_t nCredit, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Credit(const uint512_t& hashTx, const uint256_t& hashProof, const uint256_t& hashAccount,
+                    const uint64_t nCredit, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashAccount))
@@ -71,7 +72,7 @@ namespace TAO
             }
 
             /* Check that the creditor has permissions. */
-            if(account.hashOwner != hashCaller)
+            if(account.hashOwner != tx.hashGenesis)
                 return debug::error(FUNCTION, "not authorized to credit to this register");
 
             /* Parse the account object register. */
@@ -86,7 +87,7 @@ namespace TAO
             if(TX_OP == OP::COINBASE) //NOTE: thie coinbase can't be spent unless flag is byte 0. Safe to use this for coinbase flag.
             {
                 /* Check if this is a whole credit that the transaction is not already connected. */
-                if(LLD::legDB->HasProof(hashCaller, hashTx, nFlags))
+                if(LLD::legDB->HasProof(tx.hashGenesis, hashTx, nFlags))
                     return debug::error(FUNCTION, "transaction is already spent");
 
                 /* Get the coinbase amount. */
@@ -94,7 +95,7 @@ namespace TAO
                 txSpend.ssOperation >> nCoinbase;
 
                 /* Make sure the claimed account is the debited account. */
-                if(txSpend.hashGenesis != hashCaller)
+                if(txSpend.hashGenesis != tx.hashGenesis)
                     return debug::error(FUNCTION, "cannot claim coinbase from different sigchain");
 
                 /* Check the identifier. */
@@ -141,7 +142,7 @@ namespace TAO
                         return debug::error(FUNCTION, "register script has invalid post-state");
 
                     /* Write the proof spend. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteProof(hashCaller, hashTx, nFlags))
+                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteProof(tx.hashGenesis, hashTx, nFlags))
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */
@@ -177,7 +178,7 @@ namespace TAO
                     return debug::error(FUNCTION, "transaction is already spent");
 
                 /* Check the proof as being the caller. */
-                if(hashProof != hashCaller)
+                if(hashProof != tx.hashGenesis)
                     return debug::error(FUNCTION, "hash proof and caller mismatch");
 
                 /* Read the to account state. */
@@ -287,7 +288,7 @@ namespace TAO
                     return debug::error(FUNCTION, "owner object is not a token");
 
                 /* Check the ownership of proof register. */
-                if(accountProof.hashOwner != hashCaller)
+                if(accountProof.hashOwner != tx.hashGenesis)
                     return debug::error(FUNCTION, "not authorized to use this temporal proof");
 
                 /* Check that the token indetifier matches token identifier. */

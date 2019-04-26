@@ -27,7 +27,8 @@ namespace TAO
     {
 
         /* Authorizes funds from an account to an account */
-        bool Debit(const uint256_t &hashFrom, const uint256_t &hashTo, const uint64_t nAmount, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Debit(const uint256_t& hashFrom, const uint256_t& hashTo, const uint64_t nAmount,
+                   const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashFrom))
@@ -61,8 +62,8 @@ namespace TAO
             }
 
             /* Check ownership of register. */
-            if(account.hashOwner != hashCaller)
-                return debug::error(FUNCTION, hashCaller.ToString(), " caller not authorized to debit from register");
+            if(account.hashOwner != tx.hashGenesis)
+                return debug::error(FUNCTION, tx.hashGenesis.ToString(), " caller not authorized to debit from register");
 
             //TODO: sanitize the account to and ensure that it will be creditable
 

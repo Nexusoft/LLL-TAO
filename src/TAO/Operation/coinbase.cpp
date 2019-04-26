@@ -28,7 +28,8 @@ namespace TAO
     {
 
         /* Commits funds from a coinbase transaction. */
-        bool Coinbase(const uint256_t &hashAddress, const uint64_t nAmount, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Coinbase(const uint256_t& hashAddress, const uint64_t nAmount,
+                      const uint8_t nFlags, TAO::Ledger::Transaction& tx)
         {
             //make the coinbase able to be credited as a debit check in credit
             //this will allow the number of confirmations to be defined.

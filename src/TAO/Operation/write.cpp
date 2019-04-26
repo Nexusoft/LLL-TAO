@@ -29,7 +29,8 @@ namespace TAO
     {
 
         /* Writes data to a register. */
-        bool Write(const uint256_t &hashAddress, const std::vector<uint8_t> &vchData, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Write(const uint256_t& hashAddress, const std::vector<uint8_t>& vchData,
+                   const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashAddress))
@@ -67,8 +68,8 @@ namespace TAO
                 return debug::error(FUNCTION, "write operation called on read-only register");
 
             /* Check that the proper owner is commiting the write. */
-            if(hashCaller != state.hashOwner)
-                return debug::error(FUNCTION, "no write permissions for caller ", hashCaller.ToString());
+            if(tx.hashGenesis != state.hashOwner)
+                return debug::error(FUNCTION, "no write permissions for caller ", tx.hashGenesis.ToString());
 
             /* Check write permissions for raw state registers. */
             if(state.nType == TAO::Register::STATE::OBJECT)

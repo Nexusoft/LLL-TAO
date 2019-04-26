@@ -28,7 +28,8 @@ namespace TAO
     {
 
         /* Creates a new register if it doesn't exist. */
-        bool Register(const uint256_t &hashAddress, const uint8_t nType, const std::vector<uint8_t> &vchData, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Register(const uint256_t& hashAddress, const uint8_t nType, const std::vector<uint8_t>& vchData,
+                      const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashAddress))
@@ -42,7 +43,7 @@ namespace TAO
             TAO::Register::State state;
             state.nVersion  = 1;
             state.nType     = nType;
-            state.hashOwner = hashCaller;
+            state.hashOwner = tx.hashGenesis;
             state.nTimestamp = tx.nTimestamp;
 
             /* Set the data in the state register. */

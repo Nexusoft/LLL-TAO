@@ -27,7 +27,8 @@ namespace TAO
     {
 
         /* Writes data to a register. */
-        bool Append(const uint256_t &hashAddress, const std::vector<uint8_t> &vchData, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Append(const uint256_t& hashAddress, const std::vector<uint8_t>& vchData,
+                    const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashAddress))
@@ -69,8 +70,8 @@ namespace TAO
                 return debug::error(FUNCTION, "append operation called on raw register");
 
             /* Check that the proper owner is commiting the write. */
-            if(hashCaller != state.hashOwner)
-                return debug::error(FUNCTION, "no append permissions for caller ", hashCaller.ToString());
+            if(tx.hashGenesis != state.hashOwner)
+                return debug::error(FUNCTION, "no append permissions for caller ", tx.hashGenesis.ToString());
 
             /* Append the state data. */
             std::vector<uint8_t> vchState = state.GetState();

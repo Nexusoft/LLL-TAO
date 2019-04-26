@@ -41,8 +41,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             stream << std::string("byte") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
 
             //run the write operation.
-            REQUIRE(Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
-            REQUIRE(Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::WRITE, tx));
+            REQUIRE(Write(hash, stream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(Write(hash, stream.Bytes(), TAO::Register::FLAGS::WRITE, tx));
         }
 
         //check values all match
@@ -69,8 +69,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             stream << std::string("test") << uint8_t(OP::TYPES::STRING) << std::string("stRInGISNew");
 
             //run the write operation.
-            REQUIRE(Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
-            REQUIRE(Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::WRITE, tx));
+            REQUIRE(Write(hash, stream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(Write(hash, stream.Bytes(), TAO::Register::FLAGS::WRITE, tx));
         }
 
         //check values all match
@@ -93,7 +93,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             stream << std::string("balance") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
 
             //run the write operation.
-            REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(!Write(hash, stream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
         {
@@ -101,7 +101,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             stream << std::string("identifier") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
 
             //run the write operation.
-            REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(!Write(hash, stream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
         {
@@ -109,7 +109,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             stream << std::string("require") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
 
             //run the write operation.
-            REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(!Write(hash, stream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
         {
@@ -117,7 +117,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             stream << std::string("supply") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
 
             //run the write operation.
-            REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(!Write(hash, stream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
         {
@@ -125,7 +125,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             stream << std::string("digits") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
 
             //run the write operation.
-            REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(!Write(hash, stream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
         {
@@ -133,7 +133,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             stream << std::string("trust") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
 
             //run the write operation.
-            REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(!Write(hash, stream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
         {
@@ -141,29 +141,29 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             stream << std::string("stake") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
 
             //run the write operation.
-            REQUIRE(!Write(hash, stream.Bytes(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(!Write(hash, stream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
 
         //check failure on system values
         {
             //run the write operation.
-            REQUIRE(!Write(0, std::vector<uint8_t>(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(!Write(0, std::vector<uint8_t>(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
         {
             //run the write operation.
-            REQUIRE(!Write(1, std::vector<uint8_t>(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(!Write(1, std::vector<uint8_t>(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
         {
             //run the write operation.
-            REQUIRE(!Write(55, std::vector<uint8_t>(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(!Write(55, std::vector<uint8_t>(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
         {
             //run the write operation.
-            REQUIRE(!Write(255, std::vector<uint8_t>(), tx.hashGenesis, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
+            REQUIRE(!Write(255, std::vector<uint8_t>(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
         }
 
 

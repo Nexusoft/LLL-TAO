@@ -27,7 +27,8 @@ namespace TAO
     {
 
         /* Transfers a register between sigchains. */
-        bool Transfer(const uint256_t &hashAddress, const uint256_t &hashTransfer, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Transfer(const uint256_t& hashAddress, const uint256_t& hashTransfer,
+                      const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashAddress))
@@ -39,12 +40,12 @@ namespace TAO
                 return debug::error(FUNCTION, "Register ", hashAddress.ToString(), " doesn't exist in register DB");
 
             /* Make sure that you won the rights to register first. */
-            if(state.hashOwner != hashCaller)
-                return debug::error(FUNCTION, hashCaller.ToString(), " not authorized to transfer register");
+            if(state.hashOwner != tx.hashGenesis)
+                return debug::error(FUNCTION, tx.hashGenesis.ToString(), " not authorized to transfer register");
 
             /* Check that you aren't sending to yourself. */
             if(state.hashOwner == hashTransfer)
-                return debug::error(FUNCTION, hashCaller.ToString(), " cannot transfer to self when already owned");
+                return debug::error(FUNCTION, tx.hashGenesis.ToString(), " cannot transfer to self when already owned");
 
             /* Set the new owner of the register. */
             state.hashOwner = hashTransfer;
