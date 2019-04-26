@@ -67,7 +67,7 @@ namespace TAO
             if(txClaim.hashGenesis == tx.hashGenesis)
             {
                 /* Erase the previous event if claimed back to self. */
-                if(!LLD::legDB->EraseEvent(hashTransfer))
+                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->EraseEvent(hashTransfer))
                     return debug::error(FUNCTION, "can't erase event for return to self");
             }
 

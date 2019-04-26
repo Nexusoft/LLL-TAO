@@ -324,9 +324,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
 
-            //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
-
             //commit to disk
             REQUIRE(Execute(tx, FLAGS::WRITE));
 
@@ -387,9 +384,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
 
-            //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
-
             //commit to disk
             REQUIRE(Execute(tx, FLAGS::WRITE));
 
@@ -412,7 +406,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                 //check for tx
                 TAO::Ledger::Transaction txEvent;
-                REQUIRE(!LLD::legDB->ReadEvent(hashGenesis2, nSequence, txEvent));
+                REQUIRE(!LLD::legDB->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
             }
 
             //rollback the transaction
@@ -451,7 +445,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //create the transaction object
             TAO::Ledger::Transaction tx;
             tx.hashGenesis = hashGenesis2;
-            tx.nSequence   = 0;
+            tx.nSequence   = 1;
             tx.nTimestamp  = runtime::timestamp();
 
             //payload

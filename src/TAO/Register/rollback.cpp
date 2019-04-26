@@ -196,7 +196,7 @@ namespace TAO
                             txClaim.ssOperation >> hashTransfer;
 
                             /* Check for claim back to self. */
-                            if(txClaim.hashGenesis == txClaim.hashGenesis)
+                            if(txClaim.hashGenesis == tx.hashGenesis)
                             {
                                 /* Write the event. */
                                 if(!LLD::legDB->WriteEvent(hashTransfer, hashTx))
@@ -331,6 +331,31 @@ namespace TAO
                             /* The account that is being credited. */
                             uint256_t hashAddress;
                             tx.ssOperation >> hashAddress;
+
+                            /* Read the previous transaction. */
+                            TAO::Ledger::Transaction txClaim;
+                            if(!LLD::legDB->ReadTx(hashTx, txClaim))
+                                return debug::error(FUNCTION, "could not read previous transaction");
+
+                            /* Check for claim back to self. */
+                            if(txClaim.hashGenesis == tx.hashGenesis)
+                            {
+                                /* Seek to the address to. */
+                                txClaim.ssOperation.seek(33);
+
+                                /* Get the hash to. */
+                                uint256_t hashTo;
+                                txClaim.ssOperation >> hashTo;
+
+                                /* Read the register from the database. */
+                                TAO::Register::State stateTo;
+                                if(!LLD::regDB->ReadState(hashTo, stateTo))
+                                    return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
+
+                                /* Write the event. */
+                                if(!LLD::legDB->WriteEvent(stateTo.hashOwner, hashTx))
+                                    return debug::error(FUNCTION, "failed to write event");
+                            }
 
                             /* Verify the first register code. */
                             uint8_t nState;
