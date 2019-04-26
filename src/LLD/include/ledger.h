@@ -433,7 +433,7 @@ namespace LLD
             if(!WriteSequence(hashAddress, nSequence - 1))
                 return false;
 
-            return Erase(std::make_pair(hashAddress, nSequence));
+            return Erase(std::make_pair(hashAddress, nSequence - 1));
         }
 
 

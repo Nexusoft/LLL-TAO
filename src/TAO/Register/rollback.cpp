@@ -146,19 +146,19 @@ namespace TAO
                             tx.ssOperation >> hashAddress;
 
                             /* Read the register from database. */
-                            State dbstate;
-                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                            State state;
+                            if(!LLD::regDB->ReadState(hashAddress, state))
                                 return debug::error(FUNCTION, "register pre-state doesn't exist");
 
                             /* Rollback the event. */
-                            if(!LLD::legDB->EraseEvent(dbstate.hashOwner))
+                            if(!LLD::legDB->EraseEvent(state.hashOwner))
                                 return debug::error(FUNCTION, "failed to rollback event");
 
                             /* Set the previous owner to this sigchain. */
-                            dbstate.hashOwner = tx.hashGenesis;
+                            state.hashOwner = tx.hashGenesis;
 
                             /* Write the register to database. */
-                            if(!LLD::regDB->WriteState(hashAddress, dbstate))
+                            if(!LLD::regDB->WriteState(hashAddress, state))
                                 return debug::error(FUNCTION, "failed to rollback to pre-state");
 
                             /* Seek to next operation. */
@@ -169,6 +169,7 @@ namespace TAO
 
                             break;
                         }
+
 
                         /* Coinbase operation. Creates an account if none exists. */
                         case TAO::Operation::OP::COINBASE:

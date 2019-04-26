@@ -34,6 +34,10 @@ namespace TAO
             if(TAO::Register::Reserved(hashAddress))
                 return debug::error(FUNCTION, "cannot transfer register with reserved address");
 
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashTransfer))
+                return debug::error(FUNCTION, "cannot transfer register to reserved address");
+
             /* Read the register from the database. */
             TAO::Register::State state = TAO::Register::State();
             if(!LLD::regDB->ReadState(hashAddress, state))
