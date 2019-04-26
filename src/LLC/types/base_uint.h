@@ -352,6 +352,26 @@ public:
     uint32_t size();
 
 
+    /** GetCompact
+     *
+     *  Returns the 32-bit compact representation of the base_uint.
+     *
+     **/
+    uint32_t GetCompact() const;
+
+
+    /** SetCompact
+     *
+     *  Sets the base_uint from the compact 32-bit representation.
+     *
+     *  @param[in] nCompact The compact representation to set.
+     *
+     *  @return Returns the compact representation in a base_uint class.
+     *
+     **/
+    base_uint& SetCompact(uint32_t nCompact);
+
+
     /** Get64
      *
      *  Gets a 64-bit integer comprised of low and high 32-bit words derived from

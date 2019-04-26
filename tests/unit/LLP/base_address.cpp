@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/base_address.h>
 
-TEST_CASE( "LLP Tests", "[base_address]")
+TEST_CASE( "LLP::BaseAddress", "[base_address]")
 {
     LLP::BaseAddress a1, a2;
 

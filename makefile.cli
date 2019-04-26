@@ -177,7 +177,9 @@ ifdef UNIT_TESTS
 	       build/Tests_testvm.o \
 		   build/Tests_block.o \
 		   build/Tests_sigchain.o \
-		   build/Tests_validate.o
+		   build/Tests_base_address.o \
+		   build/Tests_trust_address.o \
+		   build/Tests_uint1024.o
 
 #Run benchmarks on subsystems
 else ifdef BENCHMARKS

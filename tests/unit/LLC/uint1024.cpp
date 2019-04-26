@@ -10,16 +10,26 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
-#ifndef NEXUS_UNIT_LLP_INCLUDE_MANAGER_H
-#define NEXUS_UNIT_LLP_INCLUDE_MANAGER_H
 
-#include <src/LLP/include/base_address.h>
-#include <src/LLP/include/trust_address.h>
-#include <src/LLP/include/manager.h>
+#include <LLC/types/uint1024.h>
+#include <LLC/types/bignum.h>
+#include <LLC/include/random.h>
 
-namespace unit
+#include <unit/catch2/catch.hpp>
+
+
+using namespace LLC;
+
+TEST_CASE( "Compact", "[bignum]" )
 {
-    void test_address_manager();
-}
+    uint1024_t bn1 = GetRand1024();
+    CBigNum bn2(bn1);
 
-#endif
+    std::vector<uint8_t> v1 = bn1.GetBytes();
+    std::vector<uint8_t> v2 = bn2.getvch();
+
+
+    REQUIRE(bn1.GetCompact() == bn2.GetCompact());
+
+
+}
