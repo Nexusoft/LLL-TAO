@@ -285,7 +285,7 @@ namespace TAO
                             tx.ssRegister  >> prestate;
 
                             /* Read the register from database. */
-                            if(!LLD::regDB->ReadState(hashAddress, prestate))
+                            if(!LLD::regDB->WriteState(hashAddress, prestate))
                                 return debug::error(FUNCTION, "failed to rollback to pre-state");
 
                             /* Seek to the next operation. */
