@@ -443,6 +443,63 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(txEvent.GetHash() == hashTx);
             }
         }
+
+
+        //simulate original user finally getting their claim
+        {
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis2;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx << uint8_t(OP::CLAIM) << hashTx;
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //write transaction
+            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+
+            //commit to disk
+            REQUIRE(Execute(tx, FLAGS::WRITE));
+
+            //check that register exists
+            {
+                State state;
+                REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+
+                //check owner
+                REQUIRE(state.hashOwner == hashGenesis2);
+            }
+
+            //check proof is active
+            REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx));
+
+            //grab the new state
+            {
+                State state;
+                REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+
+                //check owner
+                REQUIRE(state.hashOwner == hashGenesis2);
+            }
+
+            {
+                //check for event
+                uint32_t nSequence;
+                REQUIRE(LLD::legDB->ReadSequence(hashGenesis2, nSequence));
+
+                //check for tx
+                TAO::Ledger::Transaction txEvent;
+                REQUIRE(LLD::legDB->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
+
+                //check the hashes match
+                REQUIRE(txEvent.GetHash() == hashTx);
+            }
+        }
     }
 
 
