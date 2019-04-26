@@ -36,7 +36,7 @@ namespace TAO
 
                 /* Create the object. */
                 object.nVersion   = 1;
-                object.nType      = STATE::SYSTEM;
+                object.nType      = REGISTER::SYSTEM;
                 object.hashOwner  = 0; //NOTE: all system register must have owner of zero
                 object.nTimestamp = 1409456199; //genesis block timestamp
                 object << std::string("trust") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(0)

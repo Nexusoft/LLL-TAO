@@ -64,7 +64,7 @@ namespace TAO
             }
 
             /* Check ReadOnly permissions. */
-            if(state.nType == TAO::Register::STATE::READONLY)
+            if(state.nType == TAO::Register::REGISTER::READONLY)
                 return debug::error(FUNCTION, "write operation called on read-only register");
 
             /* Check that the proper owner is commiting the write. */
@@ -72,7 +72,7 @@ namespace TAO
                 return debug::error(FUNCTION, "no write permissions for caller ", tx.hashGenesis.ToString());
 
             /* Check write permissions for raw state registers. */
-            if(state.nType == TAO::Register::STATE::OBJECT)
+            if(state.nType == TAO::Register::REGISTER::OBJECT)
             {
                 /* Create the object register. */
                 TAO::Register::Object object = TAO::Register::Object(state);

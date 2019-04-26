@@ -50,7 +50,7 @@ namespace TAO
             state.SetState(vchData);
 
             /* Check register types specific rules. */
-            if(nType == TAO::Register::STATE::OBJECT)
+            if(nType == TAO::Register::REGISTER::OBJECT)
             {
                 /* Create the object register. */
                 TAO::Register::Object object = TAO::Register::Object(state);

@@ -46,7 +46,7 @@ namespace TAO
 
             /** Default constructor. **/
             Object()
-            : State(uint8_t(STATE::OBJECT))
+            : State(uint8_t(REGISTER::OBJECT))
             , vchSystem(512, 0) //system memory by default is 512 bytes
             , mapData()
             {

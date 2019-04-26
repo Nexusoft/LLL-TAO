@@ -95,7 +95,7 @@ namespace TAO
                     continue;
 
                 /* Check that it is an account. */
-                if(object.nType != TAO::Register::STATE::OBJECT)
+                if(object.nType != TAO::Register::REGISTER::OBJECT)
                     continue;
 
                 /* Parse out the object register. */
@@ -183,7 +183,7 @@ namespace TAO
                         if(!LLD::regDB->ReadState(hashTo, stateTo))
                             continue;
 
-                        if(stateTo.nType == TAO::Register::STATE::RAW || stateTo.nType == TAO::Register::STATE::READONLY)
+                        if(stateTo.nType == TAO::Register::REGISTER::RAW || stateTo.nType == TAO::Register::REGISTER::READONLY)
                         {
                             /* Parse the object register. */
                             if(!object.Parse())

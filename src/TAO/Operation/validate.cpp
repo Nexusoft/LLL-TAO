@@ -725,7 +725,7 @@ namespace TAO
                             return false;
 
                         /* Check for object register type. */
-                        if(object.nType != TAO::Register::STATE::OBJECT)
+                        if(object.nType != TAO::Register::REGISTER::OBJECT)
                             return false;
 
                         /* Parse the object register. */

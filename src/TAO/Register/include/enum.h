@@ -28,7 +28,7 @@ namespace TAO
          *  State registers that are available for use.
          *
          **/
-        struct STATE
+        struct REGISTER
         {
             enum
             {

@@ -108,7 +108,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "failed to read register object");
 
                             /* Check for object register. */
-                            if(object.nType == STATE::OBJECT)
+                            if(object.nType == REGISTER::OBJECT)
                             {
                                 /* Check for token to remove reserved identifier. */
                                 if(object.Standard() == OBJECTS::TOKEN)

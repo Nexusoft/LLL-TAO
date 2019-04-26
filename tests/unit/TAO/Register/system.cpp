@@ -48,7 +48,7 @@ TEST_CASE( "System Register Tests", "[register]" )
 
         //check the state values
         REQUIRE(object.nVersion   == 1);
-        REQUIRE(object.nType      == STATE::SYSTEM);
+        REQUIRE(object.nType      == REGISTER::SYSTEM);
         REQUIRE(object.hashOwner  == 0);
         REQUIRE(object.nTimestamp == 1409456199);
 

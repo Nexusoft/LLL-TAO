@@ -89,7 +89,7 @@ namespace TAO
                 return debug::error(FUNCTION, "register can't have version other than 1");
 
             /* System register specific checks. */
-            if(nType == STATE::SYSTEM && hashOwner != 0)
+            if(nType == REGISTER::SYSTEM && hashOwner != 0)
                 return debug::error(FUNCTION, "system register cannot have an owner");
 
             return true;

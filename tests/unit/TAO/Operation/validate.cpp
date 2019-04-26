@@ -401,7 +401,7 @@ TEST_CASE( "Validation Script Operation Tests", "[operation]" )
                << std::string("identifier") << uint8_t(TYPES::STRING) << std::string("NXS");
 
        object.hashOwner = LLC::GetRand256();
-       object.nType     = TAO::Register::STATE::OBJECT;
+       object.nType     = TAO::Register::REGISTER::OBJECT;
 
 
        std::string strObject = "register-vanity";

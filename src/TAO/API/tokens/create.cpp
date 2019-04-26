@@ -93,7 +93,7 @@ namespace TAO
                         << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT32_T) << uint32_t(stoul(params["identifier"].get<std::string>()));
 
                 /* Submit the payload object. */
-                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::STATE::OBJECT) << account.GetState();
+                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
 
             }
             else if(params["type"].get<std::string>() == "token")
@@ -115,7 +115,7 @@ namespace TAO
                         << std::string("digits")     << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(1000000);
 
                 /* Submit the payload object. */
-                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::STATE::OBJECT) << token.GetState();
+                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();
             }
             else
                 throw APIException(-27, "Unknown object register");
