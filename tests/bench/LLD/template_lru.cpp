@@ -44,7 +44,7 @@ TEST_CASE( "Template LRU Benchmarks", "[LLD]" )
         }
 
         uint64_t nTime = timer.ElapsedMicroseconds();
-        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Has::", ANSI_COLOR_RESET, 1000000.0 / nTime, " million records / second");
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Get::", ANSI_COLOR_RESET, 1000000.0 / nTime, " million records / second");
     }
 
 
