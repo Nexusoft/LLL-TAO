@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Ledger/include/trust.h>
+#include <Legacy/include/trust.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/state.h>
 

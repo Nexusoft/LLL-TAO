@@ -26,8 +26,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/include/trust.h>
-#include <TAO/Ledger/types/trustkey.h>
+#include <Legacy/include/trust.h>
+#include <Legacy/types/trustkey.h>
 
 #include <Util/include/runtime.h>
 

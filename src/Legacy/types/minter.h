@@ -25,7 +25,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <TAO/Ledger/types/trustkey.h>
+#include <Legacy/types/trustkey.h>
 
 #include <Util/include/mutex.h>
 

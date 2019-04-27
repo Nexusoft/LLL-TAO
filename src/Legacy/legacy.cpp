@@ -29,7 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/supply.h>
-#include <TAO/Ledger/include/trust.h>
+#include <Legacy/include/trust.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/chainstate.h>
 

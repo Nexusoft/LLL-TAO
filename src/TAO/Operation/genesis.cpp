@@ -29,18 +29,6 @@ namespace TAO
         bool Genesis(const uint256_t& hashAddress, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
 
-            /*
-                System Register will have its own LLD records to keep track of all the genesis-id’s that have updated the system value by:
-
-                When network updates, check if genesis exists. If it does not exist, trust += nTrust and stake += stake.
-                If the key does exist trust += (nCurrentTrust - LLD::Trust), stake += (nCurrentstake - LLD::Stake)
-                When OP::DEBIT from trust account, stake -= nAmount. Update the LLD::Stake value.
-
-                The LLD instance is the TrustDB. This existing key will be like the “Genesis” of the
-                Trust account that happens on the very first TRUST block. We could make this a GENESIS like it is now, with an OP::GENESIS op code.
-
-            */
-
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashAddress))
                 return debug::error(FUNCTION, "cannot create genesis from register with reserved address");
@@ -55,6 +43,8 @@ namespace TAO
                     return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
 
                 tx.ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << account;
+
+                //update system register values PRESTATE
             }
 
             /* Get pre-states on write. */
@@ -79,6 +69,71 @@ namespace TAO
             /* Parse the account object register. */
             if(!account.Parse())
                 return debug::error(FUNCTION, "failed to parse account object register");
+
+            /* Check that there is no stake. */
+            if(account.get<uint64_t>("stake") != 0)
+                return debug::error(FUNCTION, "cannot create genesis with already existing stake");
+
+            /* Check that there is no trust. */
+            if(account.get<uint64_t>("trust") != 0)
+                return debug::error(FUNCTION, "cannot create genesis with already existing trust");
+
+            /* Check that there is no trust. */
+            if(account.get<uint64_t>("balance") == 0)
+                return debug::error(FUNCTION, "cannot create genesis with no available balance");
+
+            //update system register values
+
+            /* Write the new balance to object register. */
+            if(!account.Write("stake", account.get<uint64_t>("balance")))
+                return debug::error(FUNCTION, "stake could not be written to object register");
+
+            /* Write the new balance to object register. */
+            if(!account.Write("balance", uint64_t(0)))
+                return debug::error(FUNCTION, "balance could not be written to object register");
+
+            /* Update the state register's timestamp. */
+            account.nTimestamp = tx.nTimestamp;
+            account.SetChecksum();
+
+            /* Check that the register is in a valid state. */
+            if(!account.IsValid())
+                return debug::error(FUNCTION, "memory address ", hashAddress.ToString(), " is in invalid state");
+
+            /* Write post-state checksum. */
+            if((nFlags & TAO::Register::FLAGS::POSTSTATE))
+            {
+                tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << account.GetHash();
+
+                //update system register values POSTSTATE
+            }
+
+            /* Verify the post-state checksum. */
+            if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            {
+                /* Get the state byte. */
+                uint8_t nState = 0; //RESERVED
+                tx.ssRegister >> nState;
+
+                /* Check for the pre-state. */
+                if(nState != TAO::Register::STATES::POSTSTATE)
+                    return debug::error(FUNCTION, "register script not in post-state");
+
+                /* Get the post state checksum. */
+                uint64_t nChecksum;
+                tx.ssRegister >> nChecksum;
+
+                /* Check for matching post states. */
+                if(nChecksum != account.GetHash())
+                    return debug::error(FUNCTION, "register script has invalid post-state");
+
+                //write trust key information
+
+                /* Write the register to the database. */
+                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, account))
+                    return debug::error(FUNCTION, "failed to write new state");
+
+            }
 
 
             return true;

@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_TRUST_H
 #define NEXUS_TAO_LEDGER_INCLUDE_TRUST_H
 
-#include <TAO/Ledger/types/trustkey.h>
+#include <Legacy/types/trustkey.h>
 
 /* Global TAO namespace. */
 namespace TAO

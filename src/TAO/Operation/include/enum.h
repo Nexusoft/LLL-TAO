@@ -50,6 +50,8 @@ namespace TAO
                 COINBASE   = 0x12,
                 GENESIS    = 0x13, //for proof of stake
                 TRUST      = 0x14, //for proof of stake
+                LOCK       = 0x15, //to lock funds in stake
+                UNLOCK     = 0x16, //to unlock funds from stake
 
                 //internal funding
                 AMBASSADOR = 0x20,

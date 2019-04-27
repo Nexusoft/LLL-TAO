@@ -18,9 +18,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/trust.h>
+#include <Legacy/include/trust.h>
 #include <TAO/Ledger/types/tritium.h>
-#include <TAO/Ledger/types/trustkey.h>
+#include <Legacy/types/trustkey.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>

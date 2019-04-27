@@ -273,8 +273,6 @@ OBJS+=  build/LLC_skein.o \
 		build/Ledger_supply.o \
 		build/Ledger_transaction.o \
 		build/Ledger_tritium.o \
-		build/Ledger_trust.o \
-		build/Ledger_trustkey.o \
 		build/Ledger_locator.o \
 		build/Register_rollback.o \
 		build/Register_basevm.o \
@@ -356,6 +354,8 @@ OBJS+=  build/LLC_skein.o \
 		build/Legacy_secret.o \
 		build/Legacy_signature.o \
 		build/Legacy_transaction.o \
+		build/Legacy_trust.o \
+		build/Legacy_trustkey.o \
 		build/Legacy_txin.o \
 		build/Legacy_txout.o \
 		build/Legacy_wallet.o \
