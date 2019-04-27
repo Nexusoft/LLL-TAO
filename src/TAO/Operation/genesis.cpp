@@ -43,8 +43,6 @@ namespace TAO
                     return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
 
                 tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << account;
-
-                //update system register values PRESTATE
             }
 
             /* Get pre-states on write. */
@@ -82,7 +80,8 @@ namespace TAO
             if(account.get<uint64_t>("balance") == 0)
                 return debug::error(FUNCTION, "cannot create genesis with no available balance");
 
-            //update system register values
+            //update trust database with this finding
+            //write to the system 
 
             /* Write the new balance to object register. */
             if(!account.Write("stake", account.get<uint64_t>("balance")))
@@ -102,11 +101,7 @@ namespace TAO
 
             /* Write post-state checksum. */
             if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-            {
                 tx.ssRegister << uint8_t(TAO::Register::STATES::POSTSTATE) << account.GetHash();
-
-                //update system register values POSTSTATE
-            }
 
             /* Verify the post-state checksum. */
             if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
