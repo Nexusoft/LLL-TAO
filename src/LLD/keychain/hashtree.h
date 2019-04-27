@@ -54,14 +54,6 @@ namespace LLD
         TemplateLRU<uint32_t, std::fstream*> *fileCache;
 
 
-        /** Keychain index stream. **/
-        std::fstream* pindex;
-
-
-        /** Total elements in hashmap for quick inserts. **/
-        std::vector<uint32_t> hashmap;
-
-
         /** The Maximum buckets allowed in the hashmap. */
         uint32_t HASHMAP_TOTAL_BUCKETS;
 
@@ -95,6 +87,7 @@ namespace LLD
         /** Default Constructor **/
         BinaryHashTree(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn = FLAGS::APPEND);
 
+
         /** Copy Assignment Operator **/
         BinaryHashTree& operator=(BinaryHashTree map);
 
@@ -116,15 +109,7 @@ namespace LLD
          *  @param[in] nSize The desired size of key after compression.
          *
          **/
-        void CompressKey(std::vector<uint8_t>& vData, uint16_t nSize = 32);
-
-
-        /** GetKeys
-         *
-         *  Placeholder.
-         *
-         **/
-         std::vector< std::vector<uint8_t> > GetKeys();
+        void CompressKey(std::vector<uint8_t>& vKey, uint16_t nSize = 32);
 
 
         /** GetBucket
@@ -132,7 +117,7 @@ namespace LLD
          *  Calculates a bucket to be used for the hashmap allocation.
          *
          *  @param[in] vKey The key object to calculate with.
-         *Hashmap
+         *
          *  @return The bucket assigned to the key.
          *
          **/
@@ -145,6 +130,14 @@ namespace LLD
          *
          **/
         void Initialize();
+
+
+        /** GetKeys
+         *
+         *  Placeholder.
+         *
+         **/
+        std::vector< std::vector<uint8_t> > GetKeys();
 
 
         /** Get
@@ -160,20 +153,6 @@ namespace LLD
         bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey);
 
 
-        /** Get
-         *
-         *  Read a key index from the disk hashmaps.
-         *  This method iterates all maps to find all keys.
-         *
-         *  @param[in] vKey The binary data of the key.
-         *  @param[out] vKeys The list of keys to return.
-         *
-         *  @return True if the key was found, false otherwise.
-         *
-         **/
-        bool Get(const std::vector<uint8_t>& vKey, std::vector<SectorKey>& vKeys);
-
-
         /** Put
          *
          *  Write a key to the disk hashmaps.
@@ -186,22 +165,9 @@ namespace LLD
         bool Put(const SectorKey& cKey);
 
 
-        /** Restore
-         *
-         *  Restore an erased key from keychain.
-         *
-         *  @param[in] vKey the key to restore.
-         *
-         *  @return True if the key was restored.
-         *
-         **/
-        bool Restore(const std::vector<uint8_t> &vKey);
-
-
         /** Erase
          *
          *  Erase a key from the disk hashmaps.
-         *  TODO: This should be optimized further.
          *
          *  @param[in] vKey the key to erase.
          *
