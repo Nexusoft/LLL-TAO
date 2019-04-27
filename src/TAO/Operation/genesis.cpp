@@ -42,7 +42,7 @@ namespace TAO
                 if(!LLD::regDB->ReadState(hashAddress, account))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
 
-                tx.ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << account;
+                tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << account;
 
                 //update system register values PRESTATE
             }
@@ -103,7 +103,7 @@ namespace TAO
             /* Write post-state checksum. */
             if((nFlags & TAO::Register::FLAGS::POSTSTATE))
             {
-                tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << account.GetHash();
+                tx.ssRegister << uint8_t(TAO::Register::STATES::POSTSTATE) << account.GetHash();
 
                 //update system register values POSTSTATE
             }
@@ -134,7 +134,6 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to write new state");
 
             }
-
 
             return true;
         }
