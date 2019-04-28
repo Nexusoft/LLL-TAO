@@ -7,7 +7,7 @@
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "Excellence is not a skill. It is an attitude." - Ralph Marston
+            "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
 
@@ -33,8 +33,8 @@ namespace LLD
      *
      *  This class is responsible for managing the keys to the sector database.
      *
-     *  It contains a Binary Hash Tree with a minimum complexity of O(1).
-     *  It uses a binary search tree based on index to iterate trhough files and binary Positions
+     *  It contains a Binary Hash Map with a minimum complexity of O(1).
+     *  It uses a linked file list based on index to iterate trhough files and binary Positions
      *  when there is a collision that is found.
      *
      **/
@@ -52,6 +52,14 @@ namespace LLD
 
         /** Keychain stream object. **/
         TemplateLRU<uint32_t, std::fstream*> *fileCache;
+
+
+        /** Keychain index stream. **/
+        std::fstream* pindex;
+
+
+        /** Total elements in hashmap for quick inserts. **/
+        std::vector<uint32_t> hashmap;
 
 
         /** The Maximum buckets allowed in the hashmap. */
@@ -81,15 +89,15 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashTree(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND);
+        BinaryHashTree(const std::string& strBaseLocationIn, const uint8_t nFlagsIn = FLAGS::APPEND);
 
 
         /** Default Constructor **/
-        BinaryHashTree(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn = FLAGS::APPEND);
+        BinaryHashTree(const std::string& strBaseLocationIn, const uint32_t nTotalBuckets, const uint32_t nMaxCacheSize, const uint8_t nFlagsIn = FLAGS::APPEND);
 
 
         /** Copy Assignment Operator **/
-        BinaryHashTree& operator=(BinaryHashTree map);
+        BinaryHashTree& operator=(const BinaryHashTree& map);
 
 
         /** Copy Constructor **/
@@ -109,7 +117,15 @@ namespace LLD
          *  @param[in] nSize The desired size of key after compression.
          *
          **/
-        void CompressKey(std::vector<uint8_t>& vKey, uint16_t nSize = 32);
+        void CompressKey(std::vector<uint8_t>& vData, uint16_t nSize = 32);
+
+
+        /** GetKeys
+         *
+         *  Placeholder.
+         *
+         **/
+         std::vector< std::vector<uint8_t> > GetKeys();
 
 
         /** GetBucket
@@ -130,14 +146,6 @@ namespace LLD
          *
          **/
         void Initialize();
-
-
-        /** GetKeys
-         *
-         *  Placeholder.
-         *
-         **/
-        std::vector< std::vector<uint8_t> > GetKeys();
 
 
         /** Get
@@ -165,9 +173,22 @@ namespace LLD
         bool Put(const SectorKey& cKey);
 
 
+        /** Restore
+         *
+         *  Restore an erased key from keychain.
+         *
+         *  @param[in] vKey the key to restore.
+         *
+         *  @return True if the key was restored.
+         *
+         **/
+        bool Restore(const std::vector<uint8_t> &vKey);
+
+
         /** Erase
          *
          *  Erase a key from the disk hashmaps.
+         *  TODO: This should be optimized further.
          *
          *  @param[in] vKey the key to erase.
          *

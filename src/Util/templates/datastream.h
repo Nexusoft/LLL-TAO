@@ -64,6 +64,18 @@ public:
 
     /** DataStream
      *
+     *  Constructs the DataStream object.
+     *
+     *  @param[in] vchDataIn The byte vector to insert.
+     *  @param[in] nSerTypeIn The serialize type.
+     *  @param[in] nSerVersionIn The serialize version.
+     *
+     **/
+    DataStream(const std::vector<uint64_t>& vchDataIn, const uint32_t nSerTypeIn, const uint32_t nSerVersionIn);
+
+
+    /** DataStream
+     *
      *  Default constructor for initialization with serialize data, type and version
      *
      **/

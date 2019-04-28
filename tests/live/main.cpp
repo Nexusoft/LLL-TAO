@@ -35,6 +35,8 @@ ________________________________________________________________________________
 #include <LLD/keychain/hashtree.h>
 #include <LLD/cache/binary_lru.h>
 
+#include <assert.h>
+
 
 
 std::vector< std::vector<uint8_t> > vFill(256);
@@ -57,6 +59,23 @@ uint32_t GetLeaf(const std::vector<uint8_t>& vKey)
     return 0;
 }
 
+/*  Compresses a given key until it matches size criteria.
+ *  This function is one way and efficient for reducing key sizes. */
+void CompressKey(std::vector<uint8_t>& vKey, uint16_t nSize = 32)
+{
+    /* Loop until key is of desired size. */
+    while(vKey.size() > nSize)
+    {
+        /* Loop half of the key to XOR elements. */
+        for(uint64_t i = 0; i < vKey.size() / 2; ++i)
+            if(i * 2 < vKey.size())
+                vKey[i] = vKey[i] ^ vKey[i * 2];
+
+        /* Resize the container to half its size. */
+        vKey.resize(std::max(uint16_t(vKey.size() / 2), nSize));
+    }
+}
+
 
 namespace LLD
 {
@@ -77,31 +96,82 @@ namespace LLD
         {
             return Read(hash, hash2);
         }
+
+        bool WriteLast(const uint256_t& last)
+        {
+            return Write(std::string("last"), last);
+        }
+
+        bool ReadLast(uint256_t& last)
+        {
+            return Read(std::string("last"), last);
+        }
     };
+}
+
+template< typename Iter1, typename Iter2 >
+int32_t equal_safe2( Iter1 begin1, Iter1 end1, Iter2 begin2, Iter2 end2 )
+{
+    while( begin1 != end1 && begin2 != end2 )
+    {
+        if( *begin1 != *begin2 )
+        {
+            return *begin1 - *begin2;
+        }
+        ++begin1;
+        ++begin2;
+    }
+
+    return 0;
 }
 
 
 int main(int argc, char** argv)
 {
+    debug::log(0, "Precomputing");
 
-    uint256_t hash = LLC::GetRand256();
+    uint256_t last = 0;
     {
         LLD::TestDB* db = new LLD::TestDB();
 
-        runtime::timer timer;
-        timer.Start();
-        for(int i = 0; i < 100000; ++i)
-        {
-            db->WriteHash(hash + i, hash);
-        }
-
-        uint64_t nElapsed = timer.ElapsedMilliseconds();
-        debug::log(0, "100,000 entries written in ", nElapsed, " milliseconds");
+        db->ReadLast(last);
 
         delete db;
     }
 
 
+
+    std::vector<uint256_t> vHashes;
+    for(uint256_t i = 0; i < 100000; ++i)
+        vHashes.push_back(LLC::GetRand256());
+
+    debug::log(0, "Writing");
+    {
+        LLD::TestDB* db = new LLD::TestDB();
+
+        runtime::timer timer;
+        timer.Start();
+
+        uint256_t hash = 0;
+        for(int i = 0; i < 10000; ++i)
+        {
+            if(!db->WriteHash(vHashes[i], hash))
+                return debug::error("Failed on ", i);
+        }
+
+        db->WriteLast(last + 100000);
+
+        if(!db->Erase(vHashes[9999]))
+            return debug::error("Failed to erase");
+
+        uint64_t nElapsed = timer.ElapsedMicroseconds();
+        debug::log(0, "100,000 entries written in ", nElapsed, " microseconds");
+
+        delete db;
+    }
+
+
+    debug::log(0, "Reading");
     {
         LLD::TestDB* db = new LLD::TestDB();
 
@@ -109,13 +179,14 @@ int main(int argc, char** argv)
         timer.Start();
 
         uint256_t hash2;
-        for(int i = 0; i < 100000; ++i)
+        for(int i = 0; i < 10000; ++i)
         {
-            db->ReadHash(hash + i, hash2);
+            if(!db->ReadHash(vHashes[i], hash2))
+                return debug::error("Failed on ", i);
         }
 
-        uint64_t nElapsed = timer.ElapsedMilliseconds();
-        debug::log(0, "100,000 entries read in ", nElapsed, " milliseconds");
+        uint64_t nElapsed = timer.ElapsedMicroseconds();
+        debug::log(0, "100,000 entries read in ", nElapsed, " microseconds");
 
         delete db;
     }
@@ -142,21 +213,27 @@ int main(int argc, char** argv)
 
             ssKey << nRand;
 
-            uint32_t nBucket = Bucket(ssKey.Bytes());
+            std::vector<uint8_t> vKeyCompressed = ssKey.Bytes();
+
+            uint32_t nBucket = Bucket(vKeyCompressed);
+
+            CompressKey(vKeyCompressed);
+
+            //
 
             uint32_t nFile = 1;
-            while(true)
+            for(int i = 0; i < vFiles.size(); ++i)
             {
                 if(vFiles[nFile - 1][nBucket].empty())
                 {
-                    vFiles[nFile - 1][nBucket] = ssKey.Bytes();
+                    vFiles[nFile - 1][nBucket] = vKeyCompressed;
 
                     break;
                 }
                 else
                 {
                     std::vector<uint8_t> vKey2 = vFiles[nFile - 1][nBucket];
-                    std::vector<uint8_t> vKey  = ssKey.Bytes();
+                    std::vector<uint8_t> vKey  = vKeyCompressed;
 
                     int32_t nCompare = memory::compare((uint8_t*)&vKey[0], (uint8_t*)&vKey2[0], std::min(vKey.size(), vKey2.size()));
 
@@ -170,8 +247,14 @@ int main(int argc, char** argv)
                     nFile <<= 1;
                     nFile |= (fRight);
 
-                    //debug::log(0, std::bitset<32>(nFile));
-                    //debug::log(0, "New File ", nFile);
+                    if(i > 0)
+                    {
+                        PrintHex(vKeyCompressed.begin(), vKeyCompressed.end());
+
+                        debug::log(0, std::bitset<32>(nFile), " New File ", nFile, " Iterator ", i, " Compare ", nCompare);
+
+                        runtime::sleep(100);
+                    }
                 }
             }
 
@@ -188,19 +271,23 @@ int main(int argc, char** argv)
             DataStream ssKey(SER_LLD, LLD::DATABASE_VERSION);
             ssKey << hash;
 
-            uint32_t nBucket = Bucket(ssKey.Bytes());
+            std::vector<uint8_t> vKeyCompressed = ssKey.Bytes();
+
+            uint32_t nBucket = Bucket(vKeyCompressed);
+
+            CompressKey(vKeyCompressed);
 
             uint32_t nFile = 1;
             while(true)
             {
-                if(vFiles[nFile - 1][nBucket] == ssKey.Bytes())
+                if(vFiles[nFile - 1][nBucket] == vKeyCompressed)
                 {
                     break;
                 }
                 else
                 {
                     std::vector<uint8_t> vKey2 = vFiles[nFile - 1][nBucket];
-                    std::vector<uint8_t> vKey  = ssKey.Bytes();
+                    std::vector<uint8_t> vKey  = vKeyCompressed;
 
                     int32_t nCompare = memory::compare((uint8_t*)&vKey[0], (uint8_t*)&vKey2[0], std::min(vKey.size(), vKey2.size()));
 
@@ -214,8 +301,10 @@ int main(int argc, char** argv)
                     nFile <<= 1;
                     nFile |= (fRight);
 
-                    //debug::log(0, std::bitset<32>(nFile));
-                    //debug::log(0, "New File ", nFile);
+                    debug::log(0, std::bitset<32>(nFile));
+                    debug::log(0, "New File ", nFile);
+
+                    runtime::sleep(1000);
                 }
             }
 
@@ -252,14 +341,18 @@ int main(int argc, char** argv)
 
             ssKey << nRand;
 
-            uint32_t nBucket = Bucket(ssKey.Bytes());
+            std::vector<uint8_t> vKeyCompressed = ssKey.Bytes();
+
+            uint32_t nBucket = Bucket(vKeyCompressed);
+
+            CompressKey(vKeyCompressed);
 
             uint32_t nFile = vIndex[nBucket];
             while(true)
             {
                 if(vFiles[nFile - 1][nBucket].empty())
                 {
-                    vFiles[nFile - 1][nBucket] = ssKey.Bytes();
+                    vFiles[nFile - 1][nBucket] = vKeyCompressed;
 
                     ++vIndex[nBucket];
 
@@ -268,7 +361,7 @@ int main(int argc, char** argv)
                 else
                 {
                     std::vector<uint8_t> vKey2 = vFiles[nFile - 1][nBucket];
-                    std::vector<uint8_t> vKey  = ssKey.Bytes();
+                    std::vector<uint8_t> vKey  = vKeyCompressed;
 
                     int32_t nCompare = memory::compare((uint8_t*)&vKey[0], (uint8_t*)&vKey2[0], std::min(vKey.size(), vKey2.size()));
 
@@ -289,19 +382,23 @@ int main(int argc, char** argv)
             DataStream ssKey(SER_LLD, LLD::DATABASE_VERSION);
             ssKey << hash;
 
-            uint32_t nBucket = Bucket(ssKey.Bytes());
+            std::vector<uint8_t> vKeyCompressed = ssKey.Bytes();
+
+            uint32_t nBucket = Bucket(vKeyCompressed);
+
+            CompressKey(vKeyCompressed);
 
             uint32_t nFile = 1;
             while(true)
             {
-                if(vFiles[nFile - 1][nBucket] == ssKey.Bytes())
+                if(vFiles[nFile - 1][nBucket] == vKeyCompressed)
                 {
                     break;
                 }
                 else
                 {
                     std::vector<uint8_t> vKey2 = vFiles[nFile - 1][nBucket];
-                    std::vector<uint8_t> vKey  = ssKey.Bytes();
+                    std::vector<uint8_t> vKey  = vKeyCompressed;
 
                     int32_t nCompare = memory::compare((uint8_t*)&vKey[0], (uint8_t*)&vKey2[0], std::min(vKey.size(), vKey2.size()));
 

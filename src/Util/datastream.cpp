@@ -33,6 +33,15 @@ DataStream::DataStream(const std::vector<uint8_t>& vchDataIn, const uint32_t nSe
 {
 }
 
+/*  Default constructor for initialization with serialize data, type and version. */
+DataStream::DataStream(const std::vector<uint64_t>& vchDataIn, const uint32_t nSerTypeIn, const uint32_t nSerVersionIn)
+: vData((uint8_t*)&vchDataIn.begin()[0], (uint8_t*)&vchDataIn.end()[0])
+, nReadPos(0)
+, nSerType(nSerTypeIn)
+, nSerVersion(nSerVersionIn)
+{
+}
+
 
 /*  Default constructor for initialization with serialize data, type and version */
 DataStream::DataStream( const std::vector<uint8_t>::const_iterator pbegin,

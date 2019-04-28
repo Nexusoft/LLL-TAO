@@ -114,7 +114,7 @@ namespace LLD
                     vData[i] = vData[i] ^ vData[i * 2];
 
             /* Resize the container to half its size. */
-            vData.resize(vData.size() / 2);
+            vData.resize(std::max(uint16_t(vData.size() / 2), nSize));
         }
     }
 
@@ -131,13 +131,8 @@ namespace LLD
     /*  Calculates a bucket to be used for the hashmap allocation. */
     uint32_t BinaryHashMap::GetBucket(const std::vector<uint8_t>& vKey)
     {
-        /* Get an MD5 digest. */
-        uint8_t digest[MD5_DIGEST_LENGTH];
-        MD5((uint8_t *)&vKey[0], vKey.size(), (uint8_t *)&digest);
-
-        /* Copy bytes into the bucket. */
-        uint64_t nBucket = 0;
-        std::copy((uint8_t *)&digest[0], (uint8_t *)&digest[0] + 8, (uint8_t *)&nBucket);
+        /* Get an xxHash. */
+        uint64_t nBucket = XXH64(&vKey[0], vKey.size(), 0);
 
         return static_cast<uint32_t>(nBucket % HASHMAP_TOTAL_BUCKETS);
     }
@@ -155,7 +150,7 @@ namespace LLD
         if(!filesystem::exists(index))
         {
             /* Generate empty space for new file. */
-            std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * 4, 0);
+            const static std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * 4, 0);
 
             /* Write the new disk index .*/
             std::fstream stream(index, std::ios::out | std::ios::binary | std::ios::trunc);
