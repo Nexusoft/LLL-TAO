@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/ledger.h>
 
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/types/state.h>
 #include <Legacy/include/money.h>
@@ -65,7 +66,7 @@ namespace TAO
                     nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
 
                 }
-                /* If we have at least 1 prime block, work out the averages*/ 
+                /* If we have at least 1 prime block, work out the averages*/
                 if( nTotal > 0)
                 {
                     nPrimeAverageDifficulty /= nTotal;
@@ -107,7 +108,7 @@ namespace TAO
 
                 }
                 /* protect against getmininginfo being called before hash channel start block */
-                /* If we have at least 1 hash block, work out the averages */ 
+                /* If we have at least 1 hash block, work out the averages */
                 if( nHTotal > 0)
                 {
                     nHashAverageDifficulty /= nHTotal;

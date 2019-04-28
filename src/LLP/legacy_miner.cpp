@@ -75,7 +75,7 @@ namespace LLP
     TAO::Ledger::Block *LegacyMiner::new_block()
     {
         /*  make a copy of the base block before making the hash  unique for this requst*/
-        uint1024_t proof_hash;
+        uint1024_t nProofHash;
 
         /* Create a new Legacy Block. */
         Legacy::LegacyBlock *pBlock = new Legacy::LegacyBlock();
@@ -92,24 +92,26 @@ namespace LLP
          and is less than 1024 bits*/
         for(;;)
         {
-            if(!Legacy::CreateLegacyBlock(*pMiningKey, CoinbaseTx, nChannel, ++nBlockIterator, *pBlock))
+            if(!Legacy::CreateLegacyBlock(*pMiningKey, CoinbaseTx, nChannel.load(), ++nBlockIterator, *pBlock))
                 debug::error(FUNCTION, "Failed to create a new Legacy Block.");
 
-            /* skip if not prime channel or version less than 5 */
-            if(nChannel != 1 || pBlock->nVersion < 5)
-                break;
 
-            proof_hash = pBlock->ProofHash();
+            /* Get the proof hash. */
+            nProofHash = pBlock->ProofHash();
+
+            /* skip if not prime channel or version less than 5 */
+            if(nChannel.load() != 1 || pBlock->nVersion < 5)
+                break;
 
             /* exit loop when the block is above minimum prime origins and less than
              1024-bit hashes */
-            if(proof_hash > TAO::Ledger::bnPrimeMinOrigins.getuint1024()
-            && !proof_hash.high_bits(0x80000000))
+            if(nProofHash > TAO::Ledger::bnPrimeMinOrigins.getuint1024()
+            && !nProofHash.high_bits(0x80000000))
                 break;
         }
 
         debug::log(2, FUNCTION, "***** Mining LLP: Created new Legacy Block ",
-            proof_hash.ToString().substr(0, 20), " nVersion=", pBlock->nVersion);
+            nProofHash.ToString().substr(0, 20), " nVersion=", pBlock->nVersion);
 
         /* Return a pointer to the heap memory */
         return pBlock;

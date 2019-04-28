@@ -33,6 +33,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -167,7 +168,7 @@ namespace Legacy
         /* calculate the reward for this wallet */
         int64_t nReward = 0;
         if(coinbaseRecipients.IsNull())
-            nReward = nBlockReward; 
+            nReward = nBlockReward;
         else
             nReward = coinbaseRecipients.nPoolFee;
 
