@@ -7,7 +7,7 @@
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To the Voice of the People
+            "Excellence is not a skill. It is an attitude." - Ralph Marston
 
 ____________________________________________________________________________________________*/
 
