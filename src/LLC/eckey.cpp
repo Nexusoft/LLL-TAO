@@ -609,12 +609,12 @@ namespace LLC
         bool fSuccess = false;
         if(nBits == 256)
         {
-            uint256_t hash256 = hash.getuint256();
+            uint256_t hash256 = hash;
             fSuccess = (ECDSA_sign(0, (uint8_t*)&hash256, sizeof(hash256), &vchSig[0], &nSize, pkey) == 1);
         }
         else if(nBits == 512)
         {
-            uint512_t hash512 = hash.getuint512();
+            uint512_t hash512 = hash;
             fSuccess = (ECDSA_sign(0, (uint8_t*)&hash512, sizeof(hash512), &vchSig[0], &nSize, pkey) == 1);
         }
         else
@@ -772,12 +772,12 @@ namespace LLC
         bool fSuccess = false;
         if(nBits == 256)
         {
-            uint256_t hash256 = hash.getuint256();
+            uint256_t hash256 = hash;
             fSuccess = (ECDSA_verify(0, (uint8_t*)&hash256, sizeof(hash256), &vchSig[0], static_cast<int32_t>(vchSig.size()), pkey) == 1);
         }
         else if(nBits == 512)
         {
-            uint512_t hash512 = hash.getuint512();
+            uint512_t hash512 = hash;
             fSuccess = (ECDSA_verify(0, (uint8_t*)&hash512, sizeof(hash512), &vchSig[0], static_cast<int32_t>(vchSig.size()), pkey) == 1);
         }
         else

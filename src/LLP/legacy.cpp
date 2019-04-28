@@ -672,7 +672,7 @@ namespace LLP
                     else
                     {
                         /* Get the inventory hash. */
-                        hashTx    = hashBlock.getuint512();
+                        hashTx = hashBlock;
 
                         /* Check for transaction. */
                         if(!cacheInventory.Has(hashTx)
@@ -774,7 +774,7 @@ namespace LLP
                 }
                 else if (nInvType == LLP::MSG_TX_LEGACY)
                 {
-                    hashTx = hashBlock.getuint512();
+                    hashTx = hashBlock;
 
                     Legacy::Transaction tx;
                     if(!TAO::Ledger::mempool.Get(hashTx, tx) && !LLD::legacyDB->ReadTx(hashTx, tx))

@@ -458,7 +458,7 @@ namespace LLP
 
                 break;
             }
-            
+
 
             case GET_INVENTORY:
             {
@@ -607,13 +607,13 @@ namespace LLP
                         }
 
                         /* Check the memory pool for transactions being relayed. */
-                        else if(!TAO::Ledger::mempool.Has(inv.GetHash().getuint512()))
+                        else if(!TAO::Ledger::mempool.Has((uint512_t)inv.GetHash()))
                         {
                             /* Add this item to request queue. */
                             vGet.push_back(inv);
 
                             /* Add this item to cached relay inventory (key only). */
-                            //cacheInventory.Add(inv.GetHash().getuint512());
+                            //cacheInventory.Add(uint512_t(inv.GetHash()));
                         }
                     }
 
@@ -691,7 +691,7 @@ namespace LLP
                     else if (inv.GetType() == LLP::MSG_TX_TRITIUM)
                     {
                         TAO::Ledger::Transaction tx;
-                        if(!TAO::Ledger::mempool.Get(inv.GetHash().getuint512(), tx) && !LLD::legDB->ReadTx(inv.GetHash().getuint512(), tx))
+                        if(!TAO::Ledger::mempool.Get((uint512_t)inv.GetHash(), tx) && !LLD::legDB->ReadTx((uint512_t)inv.GetHash(), tx))
                             continue;
 
                         PushMessage(DAT_TRANSACTION, (uint8_t)LLP::MSG_TX_TRITIUM, tx);
@@ -699,7 +699,7 @@ namespace LLP
                     else if (inv.GetType() == LLP::MSG_TX_LEGACY)
                     {
                         Legacy::Transaction tx;
-                        if(!TAO::Ledger::mempool.Get(inv.GetHash().getuint512(), tx) && !LLD::legacyDB->ReadTx(inv.GetHash().getuint512(), tx))
+                        if(!TAO::Ledger::mempool.Get((uint512_t)inv.GetHash(), tx) && !LLD::legacyDB->ReadTx((uint512_t)inv.GetHash(), tx))
                             continue;
 
                         PushMessage(DAT_TRANSACTION, (uint8_t)LLP::MSG_TX_LEGACY, tx);
