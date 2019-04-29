@@ -14,22 +14,37 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 #include <LLC/types/bignum.h>
 #include <LLC/include/random.h>
-
 #include <unit/catch2/catch.hpp>
 
 
 using namespace LLC;
 
-TEST_CASE( "Compact", "[bignum]" )
+TEST_CASE( "Base Uint Compact Tests", "[LLC]" )
 {
-    uint1024_t bn1 = GetRand1024();
-    CBigNum bn2(bn1);
+    for(int i = 0; i < 10000; ++i)
+    {
+        uint1024_t bn1 = GetRand1024();
+        CBigNum bn2(bn1);
 
-    std::vector<uint8_t> v1 = bn1.GetBytes();
-    std::vector<uint8_t> v2 = bn2.getvch();
+        uint32_t c1 = bn1.GetCompact();
+        uint32_t c2 = bn2.GetCompact();
 
+        /* Test GetCompact */
+        REQUIRE(c1 == c2);
 
-    REQUIRE(bn1.GetCompact() == bn2.GetCompact());
+        /* Test SetCompact */
+        bn1.SetCompact(c1);
+        bn2.SetCompact(c2);
 
+        REQUIRE( bn1 == bn2.getuint1024());
 
+        /* Test Random SetCompact */
+        c1 = GetRand();
+
+        bn1.SetCompact(c1);
+        bn2.SetCompact(c1);
+
+        REQUIRE(bn1 == bn2.getuint1024());
+
+    }
 }

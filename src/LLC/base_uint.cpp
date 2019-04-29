@@ -825,9 +825,10 @@ base_uint<BITS>& base_uint<BITS>::SetCompact(uint32_t nCompact)
 template <uint32_t BITS>
 uint32_t base_uint<BITS>::GetCompact() const
 {
-    uint32_t nSize = (bits() + 7) / 8;
-    uint32_t nCompact = 0;
+    uint32_t nBits = bits();
+    uint32_t nSize = ((nBits + 7) / 8) + ((nBits & 0x07) == 0);
 
+    uint32_t nCompact = 0;
     if (nSize <= 3)
     {
         nCompact = Get64() << 8 * (3 - nSize);
@@ -837,28 +838,11 @@ uint32_t base_uint<BITS>::GetCompact() const
         base_uint<BITS> bn = *this >> 8 * (nSize - 3);
         nCompact = bn.Get64();
     }
-    // The 0x00800000 bit denotes the sign.
-    // Thus, if it is already set, divide the mantissa by 256 and increase the exponent.
-
-    //if (nCompact & 0x00800000)
-    //{
-    //    nCompact >>= 8;
-    //    ++nSize;
-    //}
-
-    //assert((nCompact & ~0x007fffff) == 0);
 
     nCompact |= nSize << 24;
 
     return nCompact;
 }
-
-/*##############################################################################################################*/
-
-
-
-
-
 
 
 /** Explicity instantiate all template instances needed for compiler. **/
