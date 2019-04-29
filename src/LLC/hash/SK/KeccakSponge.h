@@ -22,11 +22,11 @@ http://creativecommons.org/publicdomain/zero/1.0/
 #endif
 
 #if defined(__GNUC__)
-#define ALIGN __attribute__ ((aligned(32)))
+#define ALIGN(n) __attribute__ ((aligned(n)))
 #elif defined(_MSC_VER)
-#define ALIGN __declspec(align(32))
+#define ALIGN(n) __declspec(align(n))
 #else
-#define ALIGN
+#define ALIGN(n) /* disabled */
 #endif
 
 /**
@@ -36,9 +36,9 @@ http://creativecommons.org/publicdomain/zero/1.0/
   * the position of input/output bytes in the state and the phase
   * (absorbing or squeezing).
   */
-ALIGN typedef struct Keccak_SpongeInstanceStruct {
+ALIGN(32) typedef struct Keccak_SpongeInstanceStruct {
     /** The state processed by the permutation. */
-    ALIGN uint8_t state[KeccakF_width/8];
+    ALIGN(32) uint8_t state[KeccakF_width/8];
     /** The value of the rate in bits.*/
     uint32_t rate;
     /** The position in the state of the next byte to be input (when absorbing) or output (when squeezing). */

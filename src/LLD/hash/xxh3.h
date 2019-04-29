@@ -58,6 +58,10 @@
 #  define restrict   /* disable */
 #endif
 
+#ifdef ALIGN
+#undef ALIGN
+#endif
+
 #if defined(__GNUC__)
 #  if defined(__SSE2__)
 #    include <x86intrin.h>
