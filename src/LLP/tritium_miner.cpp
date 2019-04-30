@@ -135,7 +135,7 @@ namespace LLP
 
              /* Exit loop when the block is above minimum prime origins and less than
                  1024-bit hashes */
-             if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024()
+             if(hashProof > TAO::Ledger::bnPrimeMinOrigins
              && !hashProof.high_bits(0x80000000))
                  break;
          }
@@ -163,7 +163,7 @@ namespace LLP
          /* Attempt to unlock the account. */
          if(TAO::API::accounts.Locked())
             return debug::error(FUNCTION, "No unlocked account available");
-            
+
          else
             PIN = TAO::API::accounts.GetActivePin();
 

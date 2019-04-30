@@ -69,7 +69,7 @@ namespace TAO
 
 
         /* Switching function for each difficulty re-target [each channel uses their own version] */
-        uint32_t GetNextTargetRequired(const BlockState& state, int nChannel, bool fDebug)
+        uint32_t GetNextTargetRequired(const BlockState& state, uint32_t nChannel, bool fDebug)
         {
             if(nChannel == 0)
                 return RetargetTrust(state, fDebug);
@@ -142,7 +142,7 @@ namespace TAO
 
 
             /* Get the Difficulty Stored in Bignum Compact. */
-            LLC::CBigNum bnNew;
+            uint1024_t bnNew;
             bnNew.SetCompact(first.nBits);
 
 
@@ -194,13 +194,13 @@ namespace TAO
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
             if (!GetLastState(first, 1))
-                return bnProofOfWorkStart[1].getuint32();
+                return bnProofOfWorkStart[1].get(0);
 
 
             /* Get Last Block Index [2nd block back in Channel]. */
             BlockState last = first.Prev();
             if (!GetLastState(last, 1))
-                return bnProofOfWorkStart[1].getuint32();
+                return bnProofOfWorkStart[1].get(0);
 
 
             /* Standard Time Proportions */
@@ -304,13 +304,13 @@ namespace TAO
 
 
             /* Check for minimum value. */
-            if (nBits < bnProofOfWorkLimit[1].getuint32())
-                nBits = bnProofOfWorkLimit[1].getuint32();
+            if (nBits < bnProofOfWorkLimit[1].get(0))
+                nBits = bnProofOfWorkLimit[1].get(0);
 
 
             /* Handle for regression testing blocks. */
             if(config::GetBoolArg("-regtest"))
-                nBits = bnProofOfWorkLimit[1].getuint32();
+                nBits = bnProofOfWorkLimit[1].get(0);
 
 
             /* Debug output. */
@@ -437,7 +437,7 @@ namespace TAO
 
 
             /* Get the Difficulty Stored in Bignum Compact. */
-            LLC::CBigNum bnNew;
+            uint1024_t bnNew;
             bnNew.SetCompact(first.nBits);
 
 

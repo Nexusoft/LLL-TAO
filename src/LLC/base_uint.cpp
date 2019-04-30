@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 #include <LLC/types/base_uint.h>
+#include <limits>
 #include <stdexcept>
 
 namespace
@@ -93,21 +94,6 @@ base_uint<BITS>& base_uint<BITS>::operator=(const base_uint<BITS>& b)
 
     return *this;
 }
-
-/*
-template<uint32_t BITS>
-template<uint32_t BITS2>
-base_uint<BITS>& base_uint<BITS>::operator=(const base_uint<BITS2>& b)
-{
-    uint32_t nMinWidth = std::min(WIDTH, b.WIDTH);
-
-    for (uint8_t i = 0; i < nMinWidth; ++i)
-        pn[i] = b.pn[i];
-
-    return *this;
-}
-
-*/
 
 
 /** Assignment operator. (64-bit) **/
@@ -385,10 +371,11 @@ base_uint<BITS>& base_uint<BITS>::operator/=(const base_uint<BITS>& b)
 {
     base_uint<BITS> div = b;     // make a copy, so we can shift.
     base_uint<BITS> num = *this; // make a copy, so we can subtract.
-    *this = 0u;                  // the quotient.
+    *this = 0;                   // the quotient.
     int num_bits = num.bits();
 
     int div_bits = div.bits();
+
     if (div_bits == 0)
         throw std::domain_error("Division by zero");
 
@@ -403,11 +390,11 @@ base_uint<BITS>& base_uint<BITS>::operator/=(const base_uint<BITS>& b)
         if (num >= div)
         {
             num -= div;
-            pn[shift / 32] |= (1 << (shift & 31)); // set a bit of the result.
+            pn[shift >> 5] |= (1 << (shift & 31)); // set a bit of the result.
         }
 
         div >>= 1; // shift back.
-        shift--;
+        --shift;
     }
 
     // num now contains the remainder of the division.
@@ -421,7 +408,7 @@ base_uint<BITS>& base_uint<BITS>::operator/=(uint64_t b)
 {
     base_uint<BITS> div = b;         // make a copy, so we can shift.
     base_uint<BITS> num = *this; // make a copy, so we can subtract.
-    *this = 0u;                   // the quotient.
+    *this = 0;                   // the quotient.
     int num_bits = num.bits();
     int div_bits = div.bits();
     if (div_bits == 0)
@@ -429,20 +416,20 @@ base_uint<BITS>& base_uint<BITS>::operator/=(uint64_t b)
 
     if (div_bits > num_bits) // the result is certainly 0.
         return *this;
+
     int shift = num_bits - div_bits;
     div <<= shift; // shift so that div and num align.
 
     while (shift >= 0)
     {
-        //debug::log(0, "DIV: ", GetDec());
         if (num >= div)
         {
             num -= div;
-            pn[shift / 32] |= (1 << (shift & 31)); // set a bit of the result.
+            pn[shift >> 5] |= (1 << (shift & 31)); // set a bit of the result.
         }
 
         div >>= 1; // shift back.
-        shift--;
+        --shift;
     }
 
     // num now contains the remainder of the division.
@@ -738,9 +725,21 @@ uint8_t* base_uint<BITS>::end()
 
 /**  Gets a 32-bit word from the base_uint array at the given index. **/
 template<uint32_t BITS>
-uint32_t base_uint<BITS>::get(uint32_t n)
+uint32_t base_uint<BITS>::get(uint32_t n) const
 {
     return pn[n];
+}
+
+
+/**  Gets a 32-bit word from the base_uint array. If the base_uint cannot be
+ *  represented as 32-bit bit word. Returns all-bits set (i.e 0xFFFFFFFF) **/
+template<uint32_t BITS>
+uint32_t base_uint<BITS>::getuint32() const
+{
+    if(bits() > 64)
+        return std::numeric_limits<uint32_t>::max();
+
+    return get(0);
 }
 
 
@@ -851,3 +850,5 @@ template class base_uint<256>;
 template class base_uint<512>;
 template class base_uint<576>;
 template class base_uint<1024>;
+template class base_uint<1056>;
+template class base_uint<1088>;

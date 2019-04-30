@@ -20,7 +20,6 @@ ________________________________________________________________________________
 //forward declerations for BigNum
 namespace LLC
 {
-    class CBigNum;
     class ECKey;
 }
 
@@ -181,17 +180,17 @@ namespace TAO
              *
              *  Get the Prime number for the block (hash + nNonce).
              *
-             *  @return Prime number stored as a CBigNum. (wrapper for BIGNUM in OpenSSL)
+             *  @return Returns a 1024-bit prime number.
              *
              **/
-            LLC::CBigNum GetPrime() const;
+            uint1024_t GetPrime() const;
 
 
             /** ProofHash
              *
              *  Get the Proof Hash of the block. Used to verify work claims.
              *
-             *  @return 1024-bit proof hash
+             *  @return Returns a 1024-bit proof hash.
              *
              **/
             uint1024_t ProofHash() const;
@@ -201,7 +200,7 @@ namespace TAO
              *
              *  Get the Signature Hash of the block. Used to verify work claims.
              *
-             *  @return 1024-bit signature hash
+             *  @return Returns a 1024-bit signature hash.
              *
              **/
             uint1024_t SignatureHash() const;
@@ -211,7 +210,7 @@ namespace TAO
              *
              *  Get the Hash of the block.
              *
-             *  @return 1024-bit block hash
+             *  @return Returns a 1024-bit block hash.
              *
              **/
             uint1024_t GetHash() const;
@@ -219,7 +218,7 @@ namespace TAO
 
             /** UpdateTime
              *
-             *  Update the blocks timestamp
+             *  Update the blocks timestamp.
              *
              **/
             void UpdateTime();

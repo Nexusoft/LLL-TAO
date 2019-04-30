@@ -123,9 +123,9 @@ namespace TAO
 
 
         /* Get the prime number of the block. */
-        LLC::CBigNum Block::GetPrime() const
+        uint1024_t Block::GetPrime() const
         {
-            return LLC::CBigNum(ProofHash() + nNonce);
+            return ProofHash() + nNonce;
         }
 
 
@@ -234,7 +234,7 @@ namespace TAO
             if(nChannel == 1)
             {
                 /* Check prime minimum origins. */
-                if(nVersion >= 5 && ProofHash() < bnPrimeMinOrigins.getuint1024())
+                if(nVersion >= 5 && ProofHash() < bnPrimeMinOrigins)
                     return debug::error(FUNCTION, "prime origins below 1016-bits");
 
                 /* Check proof of work limits. */
@@ -252,7 +252,7 @@ namespace TAO
             {
 
                 /* Get the hash target. */
-                LLC::CBigNum bnTarget;
+                uint1024_t bnTarget;
                 bnTarget.SetCompact(nBits);
 
                 /* Check that the hash is within range. */
@@ -261,7 +261,7 @@ namespace TAO
 
 
                 /* Check that the that enough work was done on this block. */
-                if (ProofHash() > bnTarget.getuint1024())
+                if (ProofHash() > bnTarget)
                     return debug::error(FUNCTION, "proof-of-work hash below target");
 
                 return true;

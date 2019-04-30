@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_CONSTANTS_H
 #define NEXUS_TAO_LEDGER_INCLUDE_CONSTANTS_H
 
-#include <LLC/types/bignum.h>
 #include <Legacy/include/money.h>
 
 /* Global TAO namespace. */
@@ -35,25 +34,25 @@ namespace TAO
 
 
         /** Minimum channels difficulty. **/
-        const LLC::CBigNum bnProofOfWorkLimit[] =
+        const uint1024_t bnProofOfWorkLimit[] =
         {
-            LLC::CBigNum(~uint1024_t(0) >> 5),
-            LLC::CBigNum(20000000),
-            LLC::CBigNum(~uint1024_t(0) >> 17)
+            uint1024_t(~uint1024_t(0) >> 5),
+            uint1024_t(20000000),
+            uint1024_t(~uint1024_t(0) >> 17)
         };
 
 
         /** Starting channels difficulty. **/
-        const LLC::CBigNum bnProofOfWorkStart[] =
+        const uint1024_t bnProofOfWorkStart[] =
         {
-            LLC::CBigNum(~uint1024_t(0) >> 7),
-            LLC::CBigNum(25000000),
-            LLC::CBigNum(~uint1024_t(0) >> 22)
+            uint1024_t(~uint1024_t(0) >> 7),
+            uint1024_t(25000000),
+            uint1024_t(~uint1024_t(0) >> 22)
         };
 
 
         /** Minimum prime zero bits (1016-bits). **/
-        const LLC::CBigNum bnPrimeMinOrigins    =   LLC::CBigNum(~uint1024_t(0) >> 8); //minimum prime origins of 1016 bits
+        const uint1024_t bnPrimeMinOrigins = uint1024_t(~uint1024_t(0) >> 8); //minimum prime origins of 1016 bits
 
 
         /** Maximum size a block can be in transit. **/

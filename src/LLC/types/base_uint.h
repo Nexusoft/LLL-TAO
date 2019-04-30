@@ -313,7 +313,18 @@ public:
      *  @return Returns the 32-bit word at the given index.
      *
      **/
-    uint32_t get(uint32_t n);
+    uint32_t get(uint32_t n) const;
+
+
+    /** getuint32
+     *
+     *  Gets a 32-bit word from the base_uint array. If the base_uint cannot be
+     *  represented as 32-bit bit word. Returns all-bits set (i.e 0xFFFFFFFF)
+     *
+     *  @return Returns the 32-bit integer representation, or all-bits-set.
+     *
+     **/
+    uint32_t getuint32() const;
 
 
     /** set
@@ -439,6 +450,9 @@ public:
 
 
     /* Needed for specialized copy and assignment constructors. */
+
+    friend class base_uint<1088>;
+    friend class base_uint<1056>;
     friend class base_uint<1024>;
     friend class base_uint<576>;
     friend class base_uint<512>;
@@ -456,9 +470,24 @@ bool operator==(const base_uint<BITS>& a, uint64_t b)
 }
 
 
+/** Relational equivalence binary operator (64-bit). **/
+template<uint32_t BITS>
+bool operator==(uint64_t b, const base_uint<BITS>& a)
+{
+    return a == b;
+}
+
+
 /** Relational inequivalence binary operator (64-bit). **/
 template<uint32_t BITS>
 bool operator!=(const base_uint<BITS>& a, uint64_t b)
+{
+    return a != b;
+}
+
+/** Relational inequivalence binary operator (64-bit). **/
+template<uint32_t BITS>
+bool operator!=(uint64_t b, const base_uint<BITS>& a)
 {
     return a != b;
 }
@@ -488,11 +517,43 @@ bool operator<(const base_uint<BITS> &a, const base_uint<BITS> &b)
 }
 
 
+/** Relational less-than binary operator. (64-bit) **/
+template<uint32_t BITS>
+bool operator<(const base_uint<BITS> &a, uint64_t b)
+{
+    return a < base_uint<BITS>(b);
+}
+
+
+/** Relational less-than binary operator. (64-bit) **/
+template<uint32_t BITS>
+bool operator<(uint64_t a, const base_uint<BITS> &b)
+{
+    return base_uint<BITS>(a) < b;
+}
+
+
 /** Relational less-than-or-equal binary operator. **/
 template<uint32_t BITS>
 bool operator<=(const base_uint<BITS> &a, const base_uint<BITS> &b)
 {
     return a <= b;
+}
+
+
+/** Relational less-than-or-equal binary operator. (64-bit) **/
+template<uint32_t BITS>
+bool operator<=(const base_uint<BITS> &a, uint64_t b)
+{
+    return a <= base_uint<BITS>(b);
+}
+
+
+/** Relational less-than-or-equal binary operator. (64-bit) **/
+template<uint32_t BITS>
+bool operator<=(uint64_t a, const base_uint<BITS> &b)
+{
+    return base_uint<BITS>(a) <= b;
 }
 
 
@@ -504,11 +565,43 @@ bool operator>(const base_uint<BITS> &a, const base_uint<BITS> &b)
 }
 
 
+/** Relational greater-than binary operator. (64-bit) **/
+template<uint32_t BITS>
+bool operator>(const base_uint<BITS> &a, uint64_t b)
+{
+    return a > base_uint<BITS>(b);
+}
+
+
+/** Relational greater-than binary operator. (64-bit) **/
+template<uint32_t BITS>
+bool operator>(uint64_t a, const base_uint<BITS> &b)
+{
+    return base_uint<BITS>(a) > b;
+}
+
+
 /** Relational greater-than-or-equal binary operator. **/
 template<uint32_t BITS>
 bool operator>=(const base_uint<BITS> &a, const base_uint<BITS> &b)
 {
     return a >= b;
+}
+
+
+/** Relational greater-than-or-equal binary operator  (64-bit). **/
+template<uint32_t BITS>
+bool operator>=(const base_uint<BITS> &a, uint64_t b)
+{
+    return a >= base_uint<BITS>(b);
+}
+
+
+/** Relational greater-than-or-equal binary operator  (64-bit). **/
+template<uint32_t BITS>
+bool operator>=(uint64_t a, const base_uint<BITS> &b)
+{
+    return base_uint<BITS>(a) >= b;
 }
 
 
@@ -568,6 +661,14 @@ const base_uint<BITS> operator*(const base_uint<BITS> &lhs, uint64_t rhs)
 }
 
 
+/** Multiply binary operator. (64-bit) **/
+template<uint32_t BITS>
+const base_uint<BITS> operator*(uint64_t rhs, const base_uint<BITS> &lhs)
+{
+    return base_uint<BITS>(lhs) *= rhs;
+}
+
+
 /** Divide binary operator. **/
 template<uint32_t BITS>
 const base_uint<BITS> operator/(const base_uint<BITS> &lhs, const base_uint<BITS> &rhs)
@@ -581,6 +682,29 @@ template<uint32_t BITS>
 const base_uint<BITS> operator/(const base_uint<BITS> &lhs, uint64_t rhs)
 {
     return base_uint<BITS>(lhs) /= rhs;
+}
+
+/** Modulo binary operator. (16-bit) **/
+template<uint32_t BITS>
+uint32_t operator%(const base_uint<BITS> &lhs, uint16_t rhs)
+{
+	uint32_t x=0;
+    uint32_t y=0;
+    uint32_t z=0;
+
+	for(int8_t i = (BITS>>5)-1; i>=0; --i)
+	{
+		x = lhs.get(i);
+		y = (y << 16) | (x >> 16);
+		z = y / rhs;
+		y -= z * rhs;
+		x <<= 16;
+		y = (y << 16) | (x >> 16);
+		z = y / rhs;
+		y -= z * rhs;
+	}
+
+	return y;
 }
 
 
@@ -600,6 +724,14 @@ const base_uint<BITS> operator+(const base_uint<BITS> &lhs, uint64_t rhs)
 }
 
 
+/** Addition binary operator. (64-bit)**/
+template<uint32_t BITS>
+const base_uint<BITS> operator+(uint64_t rhs, const base_uint<BITS> &lhs)
+{
+    return base_uint<BITS>(lhs) += rhs;
+}
+
+
 /** Subtraction binary operator **/
 template<uint32_t BITS>
 const base_uint<BITS> operator-(const base_uint<BITS> &lhs, const base_uint<BITS> &rhs)
@@ -611,6 +743,14 @@ const base_uint<BITS> operator-(const base_uint<BITS> &lhs, const base_uint<BITS
 /** Subtraction binary operator. (64-bit)**/
 template<uint32_t BITS>
 const base_uint<BITS> operator-(const base_uint<BITS> &lhs, uint64_t rhs)
+{
+    return base_uint<BITS>(lhs) -= rhs;
+}
+
+
+/** Subtraction binary operator. (64-bit)**/
+template<uint32_t BITS>
+const base_uint<BITS> operator-(uint64_t lhs, const base_uint<BITS> &rhs)
 {
     return base_uint<BITS>(lhs) -= rhs;
 }

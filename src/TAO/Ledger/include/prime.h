@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_PRIME_H
 #define NEXUS_TAO_LEDGER_INCLUDE_PRIME_H
 
-#include <LLC/types/bignum.h>
+#include <LLC/types/uint1024.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -46,12 +46,11 @@ namespace TAO
          *  of Fermat Remainder from last Composite Number [0 - 1]
          *
          *  @param[in] bnPrime The prime to check.
-         *  @param[in] nChecks The check level
          *
          *  @return The double value of prime difficulty.
          *
          **/
-        double GetPrimeDifficulty(const LLC::CBigNum& bnPrime, int32_t nChecks);
+        double GetPrimeDifficulty(const uint1024_t& bnPrime);
 
 
         /** GetPrimeBits
@@ -63,7 +62,7 @@ namespace TAO
          *  @return uint32_t representation of prime difficulty.
          *
          **/
-        uint32_t GetPrimeBits(const LLC::CBigNum& bnPrime);
+        uint32_t GetPrimeBits(const uint1024_t& bnPrime);
 
 
         /** GetFractionalDifficulty
@@ -75,7 +74,7 @@ namespace TAO
          *  @return The fractional proportion
          *
          **/
-        uint32_t GetFractionalDifficulty(const LLC::CBigNum& bnComposite);
+        uint32_t GetFractionalDifficulty(const uint1024_t& bnComposite);
 
 
         /** PrimeCheck
@@ -83,12 +82,11 @@ namespace TAO
          *  Determines if given number is Prime.
          *
          *	@param[in] bnTest The number to test for primality
-         *  @param[in] nChecks The number of times to check
          *
          *  @return True if number passes prime tests.
          *
          **/
-        bool PrimeCheck(const LLC::CBigNum& bnTest, uint32_t nChecks);
+        bool PrimeCheck(const uint1024_t& bnTest);
 
 
         /** FermatTest
@@ -96,12 +94,11 @@ namespace TAO
          *  Used after Miller-Rabin and Divisor tests to verify primality.
          *
          *  @param[in] bnPrime The prime to check
-         *  @param[in] bnBase The base to check from.
          *
          *  @return The remainder of the fermat test.
          *
          **/
-        LLC::CBigNum FermatTest(const LLC::CBigNum& bnPrime, const LLC::CBigNum& bnBase);
+        uint1024_t FermatTest(const uint1024_t& nPrime);
 
 
         /** MillerRabin
@@ -109,12 +106,24 @@ namespace TAO
          *  Wrapper for is_prime from OpenSSL
          *
          *  @param[in] bnPrime The prime to test
-         *  @param[in] nChecks The times to check the prime.
          *
          *  @return True if bnPrime is prime
          *
          **/
-        bool Miller_Rabin(const LLC::CBigNum& bnPrime, uint32_t nChecks);
+        bool Miller_Rabin(const uint1024_t& nPrime);
+
+
+        /** SmallDivisors
+         *
+         *  Determine if the number passes small divisor test up to the first
+         *  eleven primes.
+         *
+         *  @param[in] nPrime The prime to test.
+         *
+         *  @return Returns True if nPrime passes small divisor tests, false otherwise.
+         *
+         **/
+        bool SmallDivisors(const uint1024_t& nPrime);
     }
 }
 

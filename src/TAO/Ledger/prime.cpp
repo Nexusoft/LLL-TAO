@@ -12,7 +12,9 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/Ledger/include/prime.h>
+#include <LLC/types/bignum.h>
 #include <openssl/bn.h>
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -22,7 +24,7 @@ namespace TAO
     namespace Ledger
     {
 
-        static const LLC::CBigNum bnPrimes[11] = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31 };
+        static const uint16_t nSmallPrimes[11] = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31 };
 
         /* Convert Double to unsigned int Representative. */
         uint32_t SetBits(double nDiff)
@@ -36,15 +38,15 @@ namespace TAO
 
 
         /* Determines the difficulty of the Given Prime Number. */
-        double GetPrimeDifficulty(const LLC::CBigNum& bnPrime, int32_t nChecks)
+        double GetPrimeDifficulty(const uint1024_t& bnPrime)
         {
             /* Return 0 if base is not prime. */
-            if(!PrimeCheck(bnPrime, nChecks))
+            if(!PrimeCheck(bnPrime))
                 return 0.0;
 
             /* Set temporary variables for the checks. */
-            LLC::CBigNum bnLast = bnPrime;
-            LLC::CBigNum bnNext = bnPrime + 2;
+            uint1024_t bnLast = bnPrime;
+            uint1024_t bnNext = bnPrime + 2;
 
             /* Keep track of the cluster size. */
             uint32_t nClusterSize = 1;
@@ -53,7 +55,7 @@ namespace TAO
             for( ; bnNext <= bnLast + 12; bnNext += 2)
             {
                 /* Check if this interval is prime. */
-                if(PrimeCheck(bnNext, nChecks))
+                if(PrimeCheck(bnNext))
                 {
                     bnLast = bnNext;
                     ++nClusterSize;
@@ -70,57 +72,114 @@ namespace TAO
 
 
         /* Gets the unsigned int representative of a decimal prime difficulty. */
-        uint32_t GetPrimeBits(const LLC::CBigNum& bnPrime)
+        uint32_t GetPrimeBits(const uint1024_t& bnPrime)
         {
-            return SetBits(GetPrimeDifficulty(bnPrime, 1));
+            return SetBits(GetPrimeDifficulty(bnPrime));
         }
 
 
         /* Breaks the remainder of last composite in Prime Cluster into an integer. */
-        uint32_t GetFractionalDifficulty(const LLC::CBigNum& bnComposite)
+        uint32_t GetFractionalDifficulty(const uint1024_t& nComposite)
     	{
-    		return ((bnComposite - FermatTest(bnComposite, 2) << 24) / bnComposite).getuint32();
+            LLC::CBigNum c(nComposite);
+            LLC::CBigNum a(nComposite - FermatTest(nComposite));
+
+            //uint1056_t c(nComposite);
+            //uint1056_t a(nComposite - FermatTest(nComposite));
+
+            //return ((nComposite - FermatTest(nComposite) << 24) / nComposite).getuint32();
+
+            return ((a << 24) / c).getuint32();
+
+            //return ((a << 24) / c).get(0);
+
+    		//return (((nComposite - FermatTest(nComposite)) << 24) / nComposite).get(0);
     	}
 
 
         /* Determines if given number is Prime. */
-        bool PrimeCheck(const LLC::CBigNum& bnTest, uint32_t nChecks)
+        bool PrimeCheck(const uint1024_t& nTest)
         {
+
             /* Check A: Small Prime Divisor Tests */
-            for(const auto& bnPrime : bnPrimes)
-                if(bnTest % bnPrime == 0)
-                    return false;
+            if(!SmallDivisors(nTest))
+                return false;
 
             /* Check B: Miller-Rabin Tests */
-            if(!Miller_Rabin(bnTest, nChecks))
+            if(!Miller_Rabin(nTest))
                 return false;
 
             /* Check C: Fermat Tests */
-            for(LLC::CBigNum bnBase = 2; bnBase < 2 + nChecks; ++bnBase)
-                if(FermatTest(bnTest, bnBase) != 1)
-                    return false;
+            if(FermatTest(nTest) != 1)
+                return false;
 
             return true;
         }
 
 
         /* Used after Miller-Rabin and Divisor tests to verify primality. */
-        LLC::CBigNum FermatTest(const LLC::CBigNum& bnPrime, const LLC::CBigNum& bnBase)
+        uint1024_t FermatTest(const uint1024_t& nPrime)
         {
             LLC::CAutoBN_CTX pctx;
+
+            LLC::CBigNum bnPrime(nPrime);
+            LLC::CBigNum bnBase(2);
             LLC::CBigNum bnExp = bnPrime - 1;
 
             LLC::CBigNum bnResult;
             BN_mod_exp(bnResult.getBN(), bnBase.getBN(), bnExp.getBN(), bnPrime.getBN(), pctx);
 
-            return bnResult;
+            return bnResult.getuint1024();
         }
 
 
         /* Wrapper for is_prime from OpenSSL */
-        bool Miller_Rabin(const LLC::CBigNum& bnPrime, uint32_t nChecks)
+        bool Miller_Rabin(const uint1024_t& nPrime)
         {
-            return (BN_is_prime_ex(bnPrime.getBN(), nChecks, nullptr, nullptr) == 1);
+            LLC::CBigNum bnPrime(nPrime);
+
+            return (BN_is_prime_ex(bnPrime.getBN(), 1, nullptr, nullptr) == 1);
+        }
+
+
+        /*  Determine if the number passes small divisor test up to the first
+         *  eleven primes. */
+        bool SmallDivisors(const uint1024_t& nTest)
+        {
+            if(nTest % nSmallPrimes[0] == 0)
+                return false;
+
+            if(nTest % nSmallPrimes[1] == 0)
+                return false;
+
+            if(nTest % nSmallPrimes[2] == 0)
+                return false;
+
+            if(nTest % nSmallPrimes[3] == 0)
+                return false;
+
+            if(nTest % nSmallPrimes[4] == 0)
+                return false;
+
+            if(nTest % nSmallPrimes[5] == 0)
+                return false;
+
+            if(nTest % nSmallPrimes[6] == 0)
+                return false;
+
+            if(nTest % nSmallPrimes[7] == 0)
+                return false;
+
+            if(nTest % nSmallPrimes[8] == 0)
+                return false;
+
+            if(nTest % nSmallPrimes[9] == 0)
+                return false;
+
+            if(nTest % nSmallPrimes[10] == 0)
+                return false;
+
+            return true;
         }
     }
 }

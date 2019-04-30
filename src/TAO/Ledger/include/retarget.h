@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_RETARGET_H
 #define NEXUS_TAO_LEDGER_INCLUDE_RETARGET_H
 
-#include <LLC/types/uint1024.h>
+#include <cstdint>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -80,7 +80,7 @@ namespace TAO
          *  @return the new bits required.
          *
          **/
-        uint32_t GetNextTargetRequired(const BlockState& state, int nChannel, bool fDebug = true);
+        uint32_t GetNextTargetRequired(const BlockState& state, uint32_t nChannel, bool fDebug = true);
 
 
         /** RetargetTrust
