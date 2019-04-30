@@ -131,11 +131,13 @@ std::atomic<uint32_t> nTotalFermat;
 
 void Fermat()
 {
-    uint1024_t hashNumber = uint1024_t("0x88a02d3f0a56dc24c556dbeef000346f48775715283e867edf235f50ab13064a5ef8ecd8e5dae8faeb66d9b67aac02849a010a788e94f1518aa1f301cbcbc2d487ed3b14eb1c1375176a8a6537133c73d6749a74c22c80562f5c77018fe98658cde746bb0291df35185f362280ebae32ba615418c7ce8bbd54791c5b63f82e88");
+    uint1024_t hashNumber = uint1024_t("0x010009f035e34e85a13fe2c51d56d96781ace0b2df31fecff9ff09094e7772db452d335fe59dfaab61a6bafcf399a5705e98a9b2e1b368e37d267f76693388ffe8255177a734eb77ceac385f0a994288f24bc2526d4c53499aaf270232eb9d31f6ee6c78627bbd490ac899c5a814d861acafd17f51882e68dc01f7330db013cc");
 
+    uint64_t nonce = uint64_t(5190024797402611181);
+
+    LLC::CBigNum bnPrime = LLC::CBigNum(hashNumber + nonce);
     while(true)
     {
-        LLC::CBigNum bnPrime = LLC::CBigNum(hashNumber);
         TAO::Ledger::GetPrimeDifficulty(bnPrime);
 
         ++nTotalFermat;
