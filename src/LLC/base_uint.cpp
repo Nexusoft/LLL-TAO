@@ -372,8 +372,8 @@ base_uint<BITS>& base_uint<BITS>::operator/=(const base_uint<BITS>& b)
     base_uint<BITS> div = b;     // make a copy, so we can shift.
     base_uint<BITS> num = *this; // make a copy, so we can subtract.
     *this = 0;                   // the quotient.
-    int num_bits = num.bits();
 
+    int num_bits = num.bits();
     int div_bits = div.bits();
 
     if (div_bits == 0)
@@ -406,31 +406,7 @@ base_uint<BITS>& base_uint<BITS>::operator/=(const base_uint<BITS>& b)
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator/=(uint64_t b)
 {
-    base_uint<BITS> div = b;         // make a copy, so we can shift.
-    base_uint<BITS> num = *this; // make a copy, so we can subtract.
-    *this = 0;                   // the quotient.
-    int num_bits = num.bits();
-    int div_bits = div.bits();
-    if (div_bits == 0)
-        throw std::domain_error("Division by zero");
-
-    if (div_bits > num_bits) // the result is certainly 0.
-        return *this;
-
-    int shift = num_bits - div_bits;
-    div <<= shift; // shift so that div and num align.
-
-    while (shift >= 0)
-    {
-        if (num >= div)
-        {
-            num -= div;
-            pn[shift >> 5] |= (1 << (shift & 31)); // set a bit of the result.
-        }
-
-        div >>= 1; // shift back.
-        --shift;
-    }
+    *this /= base_uint<BITS>(b);
 
     // num now contains the remainder of the division.
     return *this;
@@ -739,7 +715,7 @@ uint32_t base_uint<BITS>::getuint32() const
     if(bits() > 64)
         return std::numeric_limits<uint32_t>::max();
 
-    return get(0);
+    return static_cast<uint32_t>(Get64(0));
 }
 
 

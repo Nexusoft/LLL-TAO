@@ -81,19 +81,13 @@ namespace TAO
         /* Breaks the remainder of last composite in Prime Cluster into an integer. */
         uint32_t GetFractionalDifficulty(const uint1024_t& nComposite)
     	{
-            LLC::CBigNum c(nComposite);
-            LLC::CBigNum a(nComposite - FermatTest(nComposite));
+            //LLC::CBigNum a(nComposite);
+            //LLC::CBigNum b(FermatTest(nComposite));
 
-            //uint1056_t c(nComposite);
-            //uint1056_t a(nComposite - FermatTest(nComposite));
+            uint1056_t a(nComposite);
+            uint1056_t b(FermatTest(nComposite));
 
-            //return ((nComposite - FermatTest(nComposite) << 24) / nComposite).getuint32();
-
-            return ((a << 24) / c).getuint32();
-
-            //return ((a << 24) / c).get(0);
-
-    		//return (((nComposite - FermatTest(nComposite)) << 24) / nComposite).get(0);
+            return ( (a - b << 24) / a).getuint32();
     	}
 
 
@@ -106,8 +100,8 @@ namespace TAO
                 return false;
 
             /* Check B: Miller-Rabin Tests */
-            if(!Miller_Rabin(nTest))
-                return false;
+            //if(!Miller_Rabin(nTest))
+            //    return false;
 
             /* Check C: Fermat Tests */
             if(FermatTest(nTest) != 1)

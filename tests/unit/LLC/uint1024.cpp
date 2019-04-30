@@ -19,6 +19,20 @@ ________________________________________________________________________________
 
 using namespace LLC;
 
+TEST_CASE( "Base Uint Get Uint Tests", "[LLC]")
+{
+    uint1024_t a = std::numeric_limits<uint64_t>::max(); //GetRand();
+
+    CBigNum b(a);
+
+    REQUIRE(a.getuint32() == b.getuint32());
+    REQUIRE((a+1).getuint32() == (b+1).getuint32());
+    REQUIRE((a-1).getuint32() == (b-1).getuint32());
+
+    REQUIRE((a+2).getuint32() == (b+2).getuint32());
+
+}
+
 TEST_CASE( "Base Uint Compact Tests", "[LLC]" )
 {
     for(int i = 0; i < 10000; ++i)
@@ -119,7 +133,6 @@ TEST_CASE( "Base Uint Math Tests", "[LLC]")
         CBigNum a2(a1);
         CBigNum b2(b1);
 
-
         uint32_t r32 = GetRand(1024);
         uint64_t r64 = GetRand();
 
@@ -127,6 +140,8 @@ TEST_CASE( "Base Uint Math Tests", "[LLC]")
         REQUIRE( (a1 + b1) == (a2 + b2).getuint1024());
         REQUIRE( (a1 + r64) == (a2 + r64).getuint1024());
         REQUIRE( (r64 + b1) == (r64 + b2).getuint1024());
+
+        REQUIRE( (a1 + b1).getuint32() == (a2 + b2).getuint32());
 
         /* Subtraction (no overflow) */
         if(b1 <= a1)

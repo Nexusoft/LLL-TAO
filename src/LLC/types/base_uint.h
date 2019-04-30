@@ -62,10 +62,14 @@ public:
     template<uint32_t BITS2>
     base_uint(const base_uint<BITS2>& rhs)
     {
-        uint32_t nMinWidth = std::min((uint32_t)WIDTH, (uint32_t)rhs.WIDTH);
+        for(uint8_t i = 0; i < rhs.WIDTH; ++i)
+        {
+            if(i < WIDTH)
+                pn[i] = rhs.pn[i];
+        }
 
-        for(uint8_t i = 0; i < nMinWidth; ++i)
-            pn[i] = rhs.pn[i];
+        for(uint8_t i = rhs.WIDTH; i < WIDTH; ++i)
+            pn[i] = 0;
     }
 
 
@@ -81,10 +85,14 @@ public:
     template<uint32_t BITS2>
     base_uint& operator=(const base_uint<BITS2>& rhs)
     {
-        uint32_t nMinWidth = std::min((uint32_t)WIDTH, (uint32_t)rhs.WIDTH);
+        for(uint8_t i = 0; i < rhs.WIDTH; ++i)
+        {
+            if(i < WIDTH)
+                pn[i] = rhs.pn[i];
+        }
 
-        for (uint8_t i = 0; i < nMinWidth; ++i)
-            pn[i] = rhs.pn[i];
+        for(uint8_t i = rhs.WIDTH; i < WIDTH; ++i)
+            pn[i] = 0;
 
         return *this;
     }

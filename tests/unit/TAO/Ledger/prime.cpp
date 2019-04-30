@@ -121,27 +121,23 @@ uint32_t GetPrimeBits2(const LLC::CBigNum& bnPrime)
 
 using namespace LLC;
 
+
 TEST_CASE( "Prime Tests", "[Ledger]" )
 {
-
-    for(uint32_t i = 0; i < 10000; ++i)
+    for(uint32_t i = 0; i < 1000000; ++i)
     {
-        uint1024_t bn1 = GetRand1024();
-        bn1 |= 1; //make odd
+        uint1024_t nComposite = GetRand1024() |= 1;
 
-        CBigNum bn2(bn1);
+        uint1024_t bn1(nComposite);
+        CBigNum bn2(nComposite);
 
-        REQUIRE(TAO::Ledger::SmallDivisors(bn1) == SmallDivisors2(bn2));
+        //REQUIRE(TAO::Ledger::SmallDivisors(bn1) == SmallDivisors2(bn2));
 
+        REQUIRE(TAO::Ledger::PrimeCheck(bn1) == PrimeCheck2(bn2, 1));
 
-        REQUIRE( ((bn1 - TAO::Ledger::FermatTest(bn1)) << 24).getuint32() == ((bn2 - FermatTest2(bn2, 2)) << 24).getuint32());
+        //REQUIRE(TAO::Ledger::GetFractionalDifficulty(bn1) == GetFractionalDifficulty2(bn2));
 
-        REQUIRE(TAO::Ledger::GetFractionalDifficulty(bn1) == GetFractionalDifficulty2(bn2));
-
-        uint32_t p1 = TAO::Ledger::GetPrimeBits(bn1);
-        uint32_t p2 = GetPrimeBits2(bn2);
-
-        REQUIRE(p1 == p2);
+        //REQUIRE(TAO::Ledger::GetPrimeBits(bn1) == GetPrimeBits2(bn2));
     }
 
 }
