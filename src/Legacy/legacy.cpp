@@ -176,7 +176,7 @@ namespace Legacy
 
 
         /* Check the Proof of Work Claims. */
-        if (!TAO::Ledger::ChainState::Synchronizing() && fIsProofOfWork && !VerifyWork())
+        if (fIsProofOfWork && !VerifyWork())
             return debug::error(FUNCTION, "invalid proof of work");
 
 

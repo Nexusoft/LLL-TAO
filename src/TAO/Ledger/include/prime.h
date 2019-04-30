@@ -46,12 +46,11 @@ namespace TAO
          *  of Fermat Remainder from last Composite Number [0 - 1]
          *
          *  @param[in] bnPrime The prime to check.
-         *  @param[in] nChecks The check level
          *
          *  @return The double value of prime difficulty.
          *
          **/
-        double GetPrimeDifficulty(const LLC::CBigNum& bnPrime, int32_t nChecks);
+        double GetPrimeDifficulty(const LLC::CBigNum& bnPrime);
 
 
         /** GetPrimeBits
@@ -76,19 +75,6 @@ namespace TAO
          *
          **/
         uint32_t GetFractionalDifficulty(const LLC::CBigNum& bnComposite);
-
-
-        /** PrimeCheck
-         *
-         *  Determines if given number is Prime.
-         *
-         *	@param[in] bnTest The number to test for primality
-         *  @param[in] nChecks The number of times to check
-         *
-         *  @return True if number passes prime tests.
-         *
-         **/
-        bool PrimeCheck(const LLC::CBigNum& bnTest, uint32_t nChecks);
 
 
         /** FermatTest

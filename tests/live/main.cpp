@@ -35,6 +35,8 @@ ________________________________________________________________________________
 #include <LLD/keychain/hashtree.h>
 #include <LLD/cache/binary_lru.h>
 
+#include <TAO/Ledger/include/prime.h>
+
 #include <assert.h>
 
 
@@ -125,9 +127,51 @@ int32_t equal_safe2( Iter1 begin1, Iter1 end1, Iter2 begin2, Iter2 end2 )
     return 0;
 }
 
+std::atomic<uint32_t> nTotalFermat;
+
+void Fermat()
+{
+    uint1024_t hashNumber = uint1024_t("0x88a02d3f0a56dc24c556dbeef000346f48775715283e867edf235f50ab13064a5ef8ecd8e5dae8faeb66d9b67aac02849a010a788e94f1518aa1f301cbcbc2d487ed3b14eb1c1375176a8a6537133c73d6749a74c22c80562f5c77018fe98658cde746bb0291df35185f362280ebae32ba615418c7ce8bbd54791c5b63f82e88");
+
+    while(true)
+    {
+        LLC::CBigNum bnPrime = LLC::CBigNum(hashNumber);
+        TAO::Ledger::GetPrimeDifficulty(bnPrime);
+
+        ++nTotalFermat;
+    }
+}
+
 
 int main(int argc, char** argv)
 {
+
+    nTotalFermat = 0;
+
+    runtime::timer timer;
+    timer.Start();
+
+    std::thread t1 = std::thread(Fermat);
+    std::thread t2 = std::thread(Fermat);
+    std::thread t3 = std::thread(Fermat);
+    std::thread t4 = std::thread(Fermat);
+
+
+    while(true)
+    {
+        runtime::sleep(1000);
+
+        uint64_t nElapsed = timer.ElapsedMilliseconds();
+        debug::log(0, nTotalFermat.load(), " fermats in ", nElapsed, " milliseconds ", (nTotalFermat * 1000) / nElapsed, " per second");
+
+        timer.Reset();
+        nTotalFermat = 0;
+    }
+
+
+
+    return 0;
+
     debug::log(0, "Precomputing");
 
     uint256_t last = 0;
@@ -363,7 +407,7 @@ int main(int argc, char** argv)
                     std::vector<uint8_t> vKey2 = vFiles[nFile - 1][nBucket];
                     std::vector<uint8_t> vKey  = vKeyCompressed;
 
-                    int32_t nCompare = memory::compare((uint8_t*)&vKey[0], (uint8_t*)&vKey2[0], std::min(vKey.size(), vKey2.size()));
+                    memory::compare((uint8_t*)&vKey[0], (uint8_t*)&vKey2[0], std::min(vKey.size(), vKey2.size()));
 
                     --nFile;
                 }
@@ -400,7 +444,7 @@ int main(int argc, char** argv)
                     std::vector<uint8_t> vKey2 = vFiles[nFile - 1][nBucket];
                     std::vector<uint8_t> vKey  = vKeyCompressed;
 
-                    int32_t nCompare = memory::compare((uint8_t*)&vKey[0], (uint8_t*)&vKey2[0], std::min(vKey.size(), vKey2.size()));
+                    memory::compare((uint8_t*)&vKey[0], (uint8_t*)&vKey2[0], std::min(vKey.size(), vKey2.size()));
 
                     ++nFile;
                 }
