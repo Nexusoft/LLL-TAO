@@ -30,9 +30,11 @@ template<uint32_t BITS>
 class base_uint
 {
 protected:
+
+public:
+
     enum { WIDTH=BITS/32 };
     uint32_t pn[WIDTH];
-public:
 
     bool operator!() const
     {

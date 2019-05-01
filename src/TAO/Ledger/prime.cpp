@@ -14,8 +14,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/prime.h>
 #include <openssl/bn.h>
 
-#include <Util/include/debug.h>
-
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -24,7 +22,7 @@ namespace TAO
     namespace Ledger
     {
 
-        static const LLC::CBigNum bnPrimes[2] = { 3, 5 };
+        static const LLC::CBigNum bnPrimes[11] = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31 };
 
         /* Convert Double to unsigned int Representative. */
         uint32_t SetBits(double nDiff)
@@ -38,90 +36,24 @@ namespace TAO
 
 
         /* Determines the difficulty of the Given Prime Number. */
-        double GetPrimeDifficulty(const LLC::CBigNum& bnPrime)
+        double GetPrimeDifficulty(const LLC::CBigNum& bnPrime, int32_t nChecks)
         {
             /* Return 0 if base is not prime. */
-            if(FermatTest(bnPrime, 2) != 1)
+            if(!PrimeCheck(bnPrime, nChecks))
                 return 0.0;
-
-            std::vector<bool> bit_seive(128, 0);
-
-            /* Largest prime gap is +12 for dense clusters. */
-            LLC::CBigNum bnNext = bnPrime + 2;
-
 
             /* Set temporary variables for the checks. */
             LLC::CBigNum bnLast = bnPrime;
-
+            LLC::CBigNum bnNext = bnPrime + 2;
 
             /* Keep track of the cluster size. */
             uint32_t nClusterSize = 1;
 
             /* Largest prime gap is +12 for dense clusters. */
-            for(uint32_t nTotal = 0; bnNext <= bnLast + 12; bnNext += 2, nTotal += 2)
+            for( ; bnNext <= bnLast + 12; bnNext += 2)
             {
-                if(bit_seive[nTotal])
-                    continue;
-
-                if(bnNext % 3 == 0)
-                {
-                    //debug::log(0, "DIV 3 ", bnPrime.ToString());
-                    for(int i = nTotal; i < bit_seive.size(); i += 6)
-                        bit_seive[i] = true;
-
-                    continue;
-                }
-
-                if(bnNext % 5 == 0)
-                {
-                    for(int i = nTotal; i < bit_seive.size(); i += 10)
-                        bit_seive[i] = true;
-
-                    continue;
-                }
-
-                if(bnNext % 7 == 0)
-                {
-                    for(int i = nTotal; i < bit_seive.size(); i += 14)
-                        bit_seive[i] = true;
-
-                    continue;
-                }
-
-                if(bnNext % 11 == 0)
-                {
-                    for(int i = nTotal; i < bit_seive.size(); i += 22)
-                        bit_seive[i] = true;
-
-                    continue;
-                }
-
-                if(bnNext % 13 == 0)
-                {
-                    for(int i = nTotal; i < bit_seive.size(); i += 26)
-                        bit_seive[i] = true;
-
-                    continue;
-                }
-
-                if(bnNext % 17 == 0)
-                {
-                    for(int i = nTotal; i < bit_seive.size(); i += 34)
-                        bit_seive[i] = true;
-
-                    continue;
-                }
-
-                if(bnNext % 19 == 0)
-                {
-                    for(int i = nTotal; i < bit_seive.size(); i += 38)
-                        bit_seive[i] = true;
-
-                    continue;
-                }
-
                 /* Check if this interval is prime. */
-                if(FermatTest(bnNext, 2) == 1)
+                if(PrimeCheck(bnNext, nChecks))
                 {
                     bnLast = bnNext;
                     ++nClusterSize;
@@ -140,7 +72,7 @@ namespace TAO
         /* Gets the unsigned int representative of a decimal prime difficulty. */
         uint32_t GetPrimeBits(const LLC::CBigNum& bnPrime)
         {
-            return SetBits(GetPrimeDifficulty(bnPrime));
+            return SetBits(GetPrimeDifficulty(bnPrime, 1));
         }
 
 
@@ -149,6 +81,27 @@ namespace TAO
     	{
     		return ((bnComposite - FermatTest(bnComposite, 2) << 24) / bnComposite).getuint32();
     	}
+
+
+        /* Determines if given number is Prime. */
+        bool PrimeCheck(const LLC::CBigNum& bnTest, uint32_t nChecks)
+        {
+            /* Check A: Small Prime Divisor Tests */
+            for(const auto& bnPrime : bnPrimes)
+                if(bnTest % bnPrime == 0)
+                    return false;
+
+            /* Check B: Miller-Rabin Tests */
+            if(!Miller_Rabin(bnTest, nChecks))
+                return false;
+
+            /* Check C: Fermat Tests */
+            for(LLC::CBigNum bnBase = 2; bnBase < 2 + nChecks; ++bnBase)
+                if(FermatTest(bnTest, bnBase) != 1)
+                    return false;
+
+            return true;
+        }
 
 
         /* Used after Miller-Rabin and Divisor tests to verify primality. */
