@@ -685,7 +685,7 @@ std::string base_uint<BITS>::ToString() const
 
 /**  Returns a byte pointer to the begin of the base_uint object. **/
 template<uint32_t BITS>
-uint8_t* base_uint<BITS>::begin()
+uint8_t* base_uint<BITS>::begin() const
 {
     return (uint8_t*)&pn[0];
 }
@@ -693,7 +693,7 @@ uint8_t* base_uint<BITS>::begin()
 
 /**  Returns a byte pointer to the end of the base_uint object. **/
 template<uint32_t BITS>
-uint8_t* base_uint<BITS>::end()
+uint8_t* base_uint<BITS>::end() const
 {
     return (uint8_t*)&pn[WIDTH];
 }
@@ -724,7 +724,7 @@ template<uint32_t BITS>
 void base_uint<BITS>::set(const std::vector<uint32_t>& data)
 {
     for(int i = 0; i < WIDTH; ++i)
-        pn[i] = data.size();
+        pn[i] = data[i];
 }
 
 

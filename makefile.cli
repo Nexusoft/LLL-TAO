@@ -181,7 +181,8 @@ ifdef UNIT_TESTS
 		   build/Tests_base_address.o \
 		   build/Tests_trust_address.o \
 		   build/Tests_uint1024.o \
-		   build/Tests_prime.o
+		   build/Tests_prime.o \
+		   build/Tests_fermat.o
 
 #Run benchmarks on subsystems
 else ifdef BENCHMARKS

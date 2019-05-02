@@ -301,7 +301,7 @@ public:
      *  Returns a byte pointer to the begin of the base_uint object.
      *
      **/
-    uint8_t* begin();
+    uint8_t* begin() const;
 
 
     /** end
@@ -309,7 +309,7 @@ public:
      *  Returns a byte pointer to the end of the base_uint object.
      *
      **/
-    uint8_t* end();
+    uint8_t* end() const;
 
 
     /** get

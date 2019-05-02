@@ -124,20 +124,20 @@ using namespace LLC;
 
 TEST_CASE( "Prime Tests", "[Ledger]" )
 {
-    for(uint32_t i = 0; i < 1000000; ++i)
+    for(uint32_t i = 0; i < 1000; ++i)
     {
         uint1024_t nComposite = GetRand1024() |= 1;
 
         uint1024_t bn1(nComposite);
         CBigNum bn2(nComposite);
 
-        //REQUIRE(TAO::Ledger::SmallDivisors(bn1) == SmallDivisors2(bn2));
+        REQUIRE(TAO::Ledger::SmallDivisors(bn1) == SmallDivisors2(bn2));
 
         REQUIRE(TAO::Ledger::PrimeCheck(bn1) == PrimeCheck2(bn2, 1));
 
-        //REQUIRE(TAO::Ledger::GetFractionalDifficulty(bn1) == GetFractionalDifficulty2(bn2));
+        REQUIRE(TAO::Ledger::GetFractionalDifficulty(bn1) == GetFractionalDifficulty2(bn2));
 
-        //REQUIRE(TAO::Ledger::GetPrimeBits(bn1) == GetPrimeBits2(bn2));
+        REQUIRE(TAO::Ledger::GetPrimeBits(bn1) == GetPrimeBits2(bn2));
     }
 
 }
