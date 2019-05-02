@@ -181,8 +181,8 @@ namespace TAO
                     return debug::error(FUNCTION, "transaction is already spent");
 
                 /* Read the to account state. */
-                if(hashAccount != hashFrom)
-                    return debug::error(FUNCTION, "cannot return funds to self if differnet account");
+                //if(hashAccount != hashFrom) //NOTE: this rule is disabled for now. Return to self should be able to done to other accounts
+                //    return debug::error(FUNCTION, "cannot return funds to self if differnet account");
 
                 /* Get the debit amount. */
                 uint64_t nDebit;
