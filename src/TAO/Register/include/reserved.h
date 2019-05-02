@@ -45,7 +45,10 @@ namespace TAO
             "trust",
 
             /* Used to determine total stake for a register. */
-            "stake"
+            "stake",
+
+            /* Used for internal object register system memory. */
+            "system"
         };
 
 
