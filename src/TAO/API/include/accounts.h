@@ -102,9 +102,10 @@ namespace TAO
              **/
             bool Locked() const;
 
+
             /** CanTransact
              *
-             *  In sessionless API mode this method checks that the active sig chain has 
+             *  In sessionless API mode this method checks that the active sig chain has
              *  been unlocked to allow transactions.  If the account has not been specifically
              *  unlocked then we assume that they ARE allowed to transact, since the PIN would
              *  need to be provided in each API call.
@@ -112,9 +113,10 @@ namespace TAO
              **/
             bool CanTransact() const;
 
+
             /** CanMint
              *
-             *  In sessionless API mode this method checks that the active sig chain has 
+             *  In sessionless API mode this method checks that the active sig chain has
              *  been unlocked to allow minting.
              *
              **/
@@ -158,8 +160,8 @@ namespace TAO
 
             /** GetActivePin
              *
-             *  Returns the pin number for the currently logged in account. 
-             * 
+             *  Returns the pin number for the currently logged in account.
+             *
              *  @return the pin.
              *
              **/
@@ -167,11 +169,11 @@ namespace TAO
 
             /** GetPin
              *
-             *  If the API is running in sessionless mode this method will return the currently 
+             *  If the API is running in sessionless mode this method will return the currently
              *  active PIN (if logged in) or the pin from the params.  If not in sessionless mode
              *  then the method will return the pin from the params.  If no pin is available then
              *  an APIException is thrown
-             *  
+             *
              *  @return the pin.
              *
              **/
@@ -181,10 +183,10 @@ namespace TAO
              *
              *  If the API is running in sessionless mode this method will return the default
              *  session ID that is used to store the one and only session (ID 0). If the user is not
-             *  logged in than an APIException is thrown.  
-             *  If not in sessionless mode then the method will return the session from the params.  
+             *  logged in than an APIException is thrown.
+             *  If not in sessionless mode then the method will return the session from the params.
              *  If the session is not is available in the params then an APIException is thrown.
-             *  
+             *
              *  @return the pin.
              *
              **/

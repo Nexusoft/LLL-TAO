@@ -377,8 +377,8 @@ namespace LLD
          *
          *  Reads a new sequence from the ledger database
          *
-         *  @param[in] hashAddress The event address to write.
-         *  @param[in] nSequence The sequence to write.
+         *  @param[in] hashAddress The event address to read.
+         *  @param[out] nSequence The sequence to read.
          *
          *  @return True if the write was successful.
          *

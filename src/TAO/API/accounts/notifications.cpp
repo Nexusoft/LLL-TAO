@@ -78,6 +78,9 @@ namespace TAO
             /* Keep a running list of owned registers. */
             std::vector< std::pair<uint256_t, uint64_t> > vRegisters;
 
+            /* Keep track of claims to supress. */
+            std::map<uint512_t, uint8_t> mapClaims;
+
             /* Loop until genesis. */
             while(hashLast != 0)
             {
@@ -88,6 +91,14 @@ namespace TAO
 
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;
+
+                /* Get the claim hash. */
+                uint512_t hashClaim;
+                if(TAO::Register::Unpack(tx, hashClaim))
+                {
+                    mapClaims[hashClaim] = 0;
+                    continue;
+                }
 
                 /* Attempt to unpack a register script. */
                 TAO::Register::Object object;
@@ -134,6 +145,10 @@ namespace TAO
                     TAO::Ledger::Transaction tx;
                     if(!LLD::legDB->ReadEvent(hash.first, nSequence, tx))
                         break;
+
+                    /* Check claims against notifications. */
+                    if(mapClaims.count(tx.GetHash()))
+                        continue;
 
                     ++nTotal;
 
@@ -214,6 +229,10 @@ namespace TAO
                 TAO::Ledger::Transaction tx;
                 if(!LLD::legDB->ReadEvent(hashGenesis, nSequence, tx))
                     break;
+
+                /* Check claims against notifications. */
+                if(mapClaims.count(tx.GetHash()))
+                    continue;
 
                 ++nTotal;
 

@@ -96,7 +96,57 @@ namespace TAO
             {
             }
 
-            return true;
+            return false;
+        }
+
+
+        /** Unpack
+         *
+         *  Unpack a previous transaction from operation scripts.
+         *
+         **/
+        inline bool Unpack(const TAO::Ledger::Transaction& tx, uint512_t& hashPrevTx)
+        {
+
+            /* Start the stream at the beginning. */
+            tx.ssOperation.seek(0, STREAM::BEGIN);
+
+            /* Make sure no exceptions are thrown. */
+            try
+            {
+
+                /* Loop through the operations tx.ssOperation. */
+                while(!tx.ssOperation.end())
+                {
+                    uint8_t OPERATION;
+                    tx.ssOperation >> OPERATION;
+
+                    /* Check the current opcode. */
+                    switch(OPERATION)
+                    {
+
+                        /* Create a new register. */
+                        case TAO::Operation::OP::CREDIT:
+                        case TAO::Operation::OP::CLAIM:
+                        {
+                            /* Extract the address from the tx.ssOperation. */
+                            tx.ssOperation >> hashPrevTx;
+
+                            return true;
+                        }
+
+                        default:
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+            catch(const std::runtime_error& e)
+            {
+            }
+
+            return false;
         }
     }
 }

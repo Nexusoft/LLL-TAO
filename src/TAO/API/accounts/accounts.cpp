@@ -42,15 +42,15 @@ namespace TAO
             mapFunctions["logout"]              = Function(std::bind(&Accounts::Logout,          this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["lock"]                = Function(std::bind(&Accounts::Lock,            this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["unlock"]              = Function(std::bind(&Accounts::Unlock,          this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["transactions"]        = Function(std::bind(&Accounts::Transactions, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["notifications"]       = Function(std::bind(&Accounts::Notifications, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["transactions"]        = Function(std::bind(&Accounts::Transactions,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["notifications"]       = Function(std::bind(&Accounts::Notifications,   this, std::placeholders::_1, std::placeholders::_2));
         }
 
 
         /* Determine if a sessionless user is logged in. */
         bool Accounts::LoggedIn() const
         {
-            return !config::fAPISessions && mapSessions.count(0); 
+            return !config::fAPISessions && mapSessions.count(0);
         }
 
 
@@ -63,7 +63,7 @@ namespace TAO
             return false;
         }
 
-        /* In sessionless API mode this method checks that the active sig chain has 
+        /* In sessionless API mode this method checks that the active sig chain has
          * been unlocked to allow transactions.  If the account has not been specifically
          * unlocked then we assume that they ARE allowed to transact, since the PIN would
          * need to be provided in each API call */
@@ -75,7 +75,7 @@ namespace TAO
             return false;
         }
 
-        /* In sessionless API mode this method checks that the active sig chain has 
+        /* In sessionless API mode this method checks that the active sig chain has
          *  been unlocked to allow minting */
         bool Accounts::CanMint() const
         {
@@ -134,7 +134,7 @@ namespace TAO
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
             uint64_t nSessionToUse = config::fAPISessions ? nSession : 0;
-            
+
             /* Check if you are logged in. */
             if(!mapSessions.count(nSessionToUse))
                 return null_ptr;
@@ -148,7 +148,7 @@ namespace TAO
             return SecureString(pActivePIN->PIN().c_str());
         }
 
-        /* If the API is running in sessionless mode this method will return the currently 
+        /* If the API is running in sessionless mode this method will return the currently
          * active PIN (if logged in) or the pin from the params.  If not in sessionless mode
          * then the method will return the pin from the params.  If no pin is available then
          * an APIException is thrown */
@@ -164,14 +164,14 @@ namespace TAO
                 strPIN = params["pin"].get<std::string>().c_str();
             else
                 strPIN = accounts.GetActivePin();
-            
-            return strPIN; 
+
+            return strPIN;
         }
 
         /* If the API is running in sessionless mode this method will return the default
          * session ID that is used to store the one and only session (ID 0). If the user is not
-         * logged in than an APIException is thrown.  
-         * If not in sessionless mode then the method will return the session from the params.  
+         * logged in than an APIException is thrown.
+         * If not in sessionless mode then the method will return the session from the params.
          * If the session is not is available in the params then an APIException is thrown. */
         uint64_t Accounts::GetSession(const json::json params) const
         {
@@ -185,9 +185,9 @@ namespace TAO
                 if(params.find("session") == params.end())
                     throw APIException(-25, "Missing Session ID");
                 else
-                    nSession = std::stoull(params["session"].get<std::string>());    
+                    nSession = std::stoull(params["session"].get<std::string>());
             }
-            
+
             return nSession;
         }
     }
