@@ -67,8 +67,8 @@ namespace TAO
             if(txClaim.hashGenesis == tx.hashGenesis)
             {
                 /* Erase the previous event if claimed back to self. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->EraseEvent(hashTransfer))
-                    return debug::error(FUNCTION, "can't erase event for return to self");
+                //if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->EraseEvent(hashTransfer))
+                //    return debug::error(FUNCTION, "can't erase event for return to self");
             }
 
             /* Check the addresses match. */

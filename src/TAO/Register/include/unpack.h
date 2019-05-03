@@ -43,7 +43,7 @@ namespace TAO
          *  Unpack a state register declaration from operation scripts.
          *
          **/
-        inline bool Unpack(const TAO::Ledger::Transaction& tx, State& state)
+        inline bool Unpack(const TAO::Ledger::Transaction& tx, State &state, uint256_t &hashAddress)
         {
 
             /* Start the stream at the beginning. */
@@ -67,7 +67,6 @@ namespace TAO
                         case TAO::Operation::OP::REGISTER:
                         {
                             /* Extract the address from the tx.ssOperation. */
-                            uint256_t hashAddress;
                             tx.ssOperation >> hashAddress;
 
                             /* Extract the register type from tx.ssOperation. */

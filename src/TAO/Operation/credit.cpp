@@ -241,8 +241,8 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write new state");
 
                     /* Erase the event to the ledger database. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->EraseEvent(stateTo.hashOwner))
-                        return debug::error(FUNCTION, "failed to rollback event to register DB");
+                    //if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->EraseEvent(stateTo.hashOwner))
+                    //    return debug::error(FUNCTION, "failed to rollback event to register DB");
                 }
 
                 return true;

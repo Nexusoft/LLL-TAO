@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <tuple>
+
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/accounts.h>
@@ -76,10 +78,7 @@ namespace TAO
                 throw APIException(-28, "No transactions found");
 
             /* Keep a running list of owned registers. */
-            std::vector< std::pair<uint256_t, uint64_t> > vRegisters;
-
-            /* Keep track of claims to supress. */
-            std::map<uint512_t, uint8_t> mapClaims;
+            std::vector< std::tuple<uint256_t, uint256_t, uint64_t> > vRegisters;
 
             /* Loop until genesis. */
             while(hashLast != 0)
@@ -92,17 +91,12 @@ namespace TAO
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;
 
-                /* Get the claim hash. */
-                uint512_t hashClaim;
-                if(TAO::Register::Unpack(tx, hashClaim))
-                {
-                    mapClaims[hashClaim] = 0;
-                    continue;
-                }
+                /* Register address. */
+                uint256_t hashAddress;
 
                 /* Attempt to unpack a register script. */
                 TAO::Register::Object object;
-                if(!TAO::Register::Unpack(tx, object))
+                if(!TAO::Register::Unpack(tx, object, hashAddress))
                     continue;
 
                 /* Check that it is an account. */
@@ -123,7 +117,7 @@ namespace TAO
                     continue;
 
                 /* Push the token identifier to list to check. */
-                vRegisters.push_back(std::make_pair(hashToken, object.get<uint64_t>("balance")));
+                vRegisters.push_back(std::make_tuple(hashAddress, hashToken, object.get<uint64_t>("balance")));
             }
 
             /* Start with sequence 0 (chronological order). */
@@ -143,11 +137,11 @@ namespace TAO
 
                     /* Get the transaction from disk. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::legDB->ReadEvent(hash.first, nSequence, tx))
+                    if(!LLD::legDB->ReadEvent(std::get<1>(hash), nSequence, tx))
                         break;
 
                     /* Check claims against notifications. */
-                    if(mapClaims.count(tx.GetHash()))
+                    if(LLD::legDB->HasProof(std::get<0>(hash), tx.GetHash()))
                         continue;
 
                     ++nTotal;
@@ -164,7 +158,7 @@ namespace TAO
 
                     /* Read the object register. */
                     TAO::Register::Object object;
-                    if(!LLD::regDB->ReadState(hash.first, object))
+                    if(!LLD::regDB->ReadState(std::get<1>(hash), object))
                         continue;
 
                     json::json obj;
@@ -205,7 +199,7 @@ namespace TAO
                                 continue;
 
                             /* Calculate the partial debit amount. */
-                            obj["operation"]["amount"] = (obj["operation"]["amount"].get<uint64_t>() * hash.second) / object.get<uint64_t>("supply");
+                            obj["operation"]["amount"] = (obj["operation"]["amount"].get<uint64_t>() * std::get<2>(hash)) / object.get<uint64_t>("supply");
                         }
                     }
 
@@ -219,8 +213,7 @@ namespace TAO
             }
 
             /* Get notifications for personal genesis indexes. */
-            nSequence = 0;
-            while(!config::fShutdown)
+            for(uint32_t nSequence = 0; ; ++nSequence)
             {
                 /* Get the current page. */
                 uint32_t nCurrentPage = nTotal / nLimit;
@@ -230,8 +223,16 @@ namespace TAO
                 if(!LLD::legDB->ReadEvent(hashGenesis, nSequence, tx))
                     break;
 
+                /* Register address for unpacking. */
+                uint256_t hashAddress;
+
+                /* Attempt to unpack a register script. */
+                TAO::Register::Object object;
+                if(!TAO::Register::Unpack(tx, object, hashAddress))
+                    continue;
+
                 /* Check claims against notifications. */
-                if(mapClaims.count(tx.GetHash()))
+                if(LLD::legDB->HasProof(hashAddress, tx.GetHash()))
                     continue;
 
                 ++nTotal;
@@ -270,8 +271,6 @@ namespace TAO
 
                 ret.push_back(obj);
 
-                /* Iterate sequence forward. */
-                ++nSequence;
             }
 
             /* Check for size. */
