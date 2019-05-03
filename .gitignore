@@ -15,3 +15,4 @@ nexus
 .cproject
 .project
 /.settings/
+/tests/live/main.cpp
