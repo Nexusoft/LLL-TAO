@@ -15,5 +15,7 @@ ________________________________________________________________________________
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    /* This is the body for UNIT TESTS for prototyped code. */
+
     return 0;
 }
