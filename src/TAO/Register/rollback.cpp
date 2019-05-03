@@ -199,8 +199,8 @@ namespace TAO
                             if(txClaim.hashGenesis == tx.hashGenesis)
                             {
                                 /* Write the event. */
-                                if(!LLD::legDB->WriteEvent(hashTransfer, hashTx))
-                                    return debug::error(FUNCTION, "failed to write event");
+                                //if(!LLD::legDB->WriteEvent(hashTransfer, hashTx))
+                                //    return debug::error(FUNCTION, "failed to write event");
                             }
 
                             /* Erase the proof. */
@@ -353,8 +353,8 @@ namespace TAO
                                     return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
 
                                 /* Write the event. */
-                                if(!LLD::legDB->WriteEvent(stateTo.hashOwner, hashTx))
-                                    return debug::error(FUNCTION, "failed to write event");
+                                //if(!LLD::legDB->WriteEvent(stateTo.hashOwner, hashTx))
+                                //    return debug::error(FUNCTION, "failed to write event");
                             }
 
                             /* Verify the first register code. */

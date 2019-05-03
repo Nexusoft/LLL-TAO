@@ -399,6 +399,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check proof is active
             REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx));
 
+            /*
             {
                 //check event is discarded
                 uint32_t nSequence;
@@ -408,6 +409,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 TAO::Ledger::Transaction txEvent;
                 REQUIRE(!LLD::legDB->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
             }
+            */
 
             //rollback the transaction
             REQUIRE(Rollback(tx));
@@ -766,6 +768,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                     //check that proofs are removed
                     REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx));
 
+                    /*
                     {
                         //check event is discarded
                         uint32_t nSequence;
@@ -775,6 +778,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                         TAO::Ledger::Transaction txEvent;
                         REQUIRE(!LLD::legDB->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
                     }
+                    */
                 }
 
                 //rollback
