@@ -6,7 +6,7 @@ Accessing the Nexus API is a seamless and simple experience. To access the API, 
 
 ### Use a web browser with a URL based request:
 
-Make a GET request with the parameters in the URL as seen below.
+Make a **GET** request with the parameters in the URL as seen below.
 
 ```
 http://localhost:8080/<api>/<method>?<key>=<value>&<key1>=<value1>
@@ -14,11 +14,11 @@ http://localhost:8080/<api>/<method>?<key>=<value>&<key1>=<value1>
 
 The API uses form encoding, so you are free to use any characters you wish. The only thing to be aware of is when using
 a '+' character in the encoding, which acts as an escape character for a space as well as '%20'. The API will detect this
-behavior as long as the form encodes the + sign in form encoding. At times making a GET request, the web browser will
-assume that + is a space and not encode it, the same is true for '%' when making a GET request.
+behavior as long as the form encodes the + sign in form encoding. At times making a **GET** request, the web browser will
+assume that + is a space and not encode it, the same is true for '%' when making a **GET** request.
 
 
-### Use a web browser with a POST based request
+### Use a web browser with a **POST** based request
 
 The POST body contains parameters, and would go to an endpoint such as:
 ```
@@ -66,37 +66,23 @@ failure, it will look like this:
 Note that you will be parsing for the error key now, and there will be no results. This allows you the choice as a programmer to check for the existence of the "error" key to check for errors, or check for the existence of the "result" key to find if it executed successfully. The choice is yours how you handle it, just know that it is an either / or situation. You will get only one or the other.
 
 
-## Accounts API
+## Users API
 
-The accounts API is responsible for maintaining account level
+The Users API is responsible for maintaining user account level
 functions. DO NOT USE this API on a foreign node you are not the
 manager of. Your username and password are stored in secure
 allocators, but the remote endpoint can still gather your credentials
 when you submit an API call. This API is meant for a service node you
 control only.
 
-The Accounts API can be found in the following repo path:
+The Users API can be found in the following repo path:
 
-[LLL-TAO/docs/API/ACCOUNTS.MD](API/ACCOUNTS.MD)
+[LLL-TAO/docs/API/USERS.MD](API/USERS.MD)
 
-NOTE: Login sessions do not persist if you restart your node.
+**NOTE** : Login sessions do not persist if you restart your node.
 They are stored in secure allocator in memory only, do not cache
 them on disk otherwise you could open potential security issues.
 
-
-## Supply API
-
-The supply API is responsible for handling supply chain
-logistics. It's main aim is designed for managing the routes and
-movements along a supply chain, along with reviewing the history of
-events associated with changes of custody.
-
-The Supply API can be found in the following repo path:
-
-[LLL-TAO/docs/API/SUPPLY.MD](API/SUPPLY.MD)
-
-NOTE: some of the commands in this API require LOGIN. Make sure to use the
-accounts API to login before using LOGIN required commands.
 
 
 ## Assets API
@@ -123,6 +109,33 @@ tokens that are meant to be shares in a digital asset, or company (STO).
 The Tokens API can be found in the following repo path:
 
 [LLL-TAO/docs/API/TOKENS.MD](API/TOKENS.MD)
+
+NOTE: some of the commands in this API require LOGIN. Make sure to use the
+accounts API to login before using LOGIN required commands.
+
+
+## Ledger API
+
+The ledger API provides access to the ledger, primarily to create and retrieve blocks and transactions, but also to query for ledger state information. 
+
+The Ledger API can be found in the following repo path:
+
+[LLL-TAO/docs/API/LEDGER.MD](API/LEDGER.MD)
+
+NOTE: some of the commands in this API require LOGIN. Make sure to use the
+accounts API to login before using LOGIN required commands.
+
+
+## Supply API
+
+The supply API is responsible for handling supply chain
+logistics. It's main aim is designed for managing the routes and
+movements along a supply chain, along with reviewing the history of
+events associated with changes of custody.
+
+The Supply API can be found in the following repo path:
+
+[LLL-TAO/docs/API/SUPPLY.MD](API/SUPPLY.MD)
 
 NOTE: some of the commands in this API require LOGIN. Make sure to use the
 accounts API to login before using LOGIN required commands.
