@@ -109,12 +109,16 @@ namespace LLD
         while(vData.size() > nSize)
         {
             /* Loop half of the key to XOR elements. */
-            for(uint64_t i = 0; i < vData.size() / 2; ++i)
-                if(i * 2 < vData.size())
-                    vData[i] = vData[i] ^ vData[i * 2];
+            uint64_t nSize2 = (vData.size() >> 1);
+            for(uint64_t i = 0; i < nSize2; ++i)
+            {
+                uint64_t i2 = (i << 1);
+                if(i2 < (nSize2 << 1))
+                    vData[i] = vData[i] ^ vData[i2];
+            }
 
             /* Resize the container to half its size. */
-            vData.resize(std::max(uint16_t(vData.size() / 2), nSize));
+            vData.resize(std::max(uint16_t(nSize2), nSize));
         }
     }
 
