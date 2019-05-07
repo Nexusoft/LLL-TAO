@@ -11,6 +11,8 @@ file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/types/bignum.h>
+
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/difficulty.h>
@@ -142,7 +144,7 @@ namespace TAO
 
 
             /* Get the Difficulty Stored in Bignum Compact. */
-            uint1024_t bnNew;
+            LLC::CBigNum bnNew;
             bnNew.SetCompact(first.nBits);
 
 
@@ -194,13 +196,13 @@ namespace TAO
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
             if (!GetLastState(first, 1))
-                return bnProofOfWorkStart[1].get(0);
+                return bnProofOfWorkStart[1].getuint32();
 
 
             /* Get Last Block Index [2nd block back in Channel]. */
             BlockState last = first.Prev();
             if (!GetLastState(last, 1))
-                return bnProofOfWorkStart[1].get(0);
+                return bnProofOfWorkStart[1].getuint32();
 
 
             /* Standard Time Proportions */
@@ -304,13 +306,13 @@ namespace TAO
 
 
             /* Check for minimum value. */
-            if (nBits < bnProofOfWorkLimit[1].get(0))
-                nBits = bnProofOfWorkLimit[1].get(0);
+            if (nBits < bnProofOfWorkLimit[1].getuint32())
+                nBits = bnProofOfWorkLimit[1].getuint32();
 
 
             /* Handle for regression testing blocks. */
             if(config::GetBoolArg("-regtest"))
-                nBits = bnProofOfWorkLimit[1].get(0);
+                nBits = bnProofOfWorkLimit[1].getuint32();
 
 
             /* Debug output. */
@@ -437,7 +439,7 @@ namespace TAO
 
 
             /* Get the Difficulty Stored in Bignum Compact. */
-            uint1024_t bnNew;
+            LLC::CBigNum bnNew;
             bnNew.SetCompact(first.nBits);
 
 

@@ -234,7 +234,7 @@ namespace TAO
             if(nChannel == 1)
             {
                 /* Check prime minimum origins. */
-                if(nVersion >= 5 && ProofHash() < bnPrimeMinOrigins)
+                if(nVersion >= 5 && ProofHash() < bnPrimeMinOrigins.getuint1024())
                     return debug::error(FUNCTION, "prime origins below 1016-bits");
 
                 /* Check proof of work limits. */
@@ -252,7 +252,7 @@ namespace TAO
             {
 
                 /* Get the hash target. */
-                uint1024_t bnTarget;
+                LLC::CBigNum bnTarget;
                 bnTarget.SetCompact(nBits);
 
                 /* Check that the hash is within range. */
@@ -261,7 +261,7 @@ namespace TAO
 
 
                 /* Check that the that enough work was done on this block. */
-                if (ProofHash() > bnTarget)
+                if (ProofHash() > bnTarget.getuint1024())
                     return debug::error(FUNCTION, "proof-of-work hash below target");
 
                 return true;

@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/include/random.h>
+#include <LLC/types/bignum.h>
 
 #include <LLD/include/global.h>
 
@@ -328,7 +329,7 @@ namespace TAO
                 block.nHeight  = 0;
                 block.nChannel = 2;
                 block.nTime    = 1409456199;
-                block.nBits    = bnProofOfWorkLimit[2].GetCompact();
+                block.nBits    = LLC::CBigNum(bnProofOfWorkLimit[2]).GetCompact();
                 block.nNonce   = config::fTestNet ? 122999499 : 2196828850;
 
                 /* Ensure the hard coded merkle root is the same calculated merkle root. */

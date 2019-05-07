@@ -105,7 +105,7 @@ namespace LLP
 
             /* exit loop when the block is above minimum prime origins and less than
              1024-bit hashes */
-            if(nProofHash > TAO::Ledger::bnPrimeMinOrigins
+            if(nProofHash > TAO::Ledger::bnPrimeMinOrigins.getuint1024()
             && !nProofHash.high_bits(0x80000000))
                 break;
         }
