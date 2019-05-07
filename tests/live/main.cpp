@@ -11,11 +11,25 @@
 
 ____________________________________________________________________________________________*/
 
+#include <stdexcept>
+
+#include <Util/include/debug.h>
+
+#include <Util/include/memory.h>
+
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
     /* This is the body for UNIT TESTS for prototyped code. */
+
+    uint64_t nBase = 58384;
+
+    uint32_t nBase2 = 0;
+
+    memory::copy((uint8_t*)&nBase, (uint8_t*)&nBase + 4, (uint8_t*)&nBase2, (uint8_t*)&nBase2 + 4);
+
+    debug::log(0, nBase2);
 
 
     return 0;
