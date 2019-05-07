@@ -35,13 +35,12 @@ void Fermat2()
     uint1024_t bnPrime = hashNumber + nonce;
 
 
-
     while(true)
     {
 
         fermat_prime<32>((uint32_t *)bnPrime.begin());
 
-        ++nTotalFermat; 
+        ++nTotalFermat;
     }
 }
 

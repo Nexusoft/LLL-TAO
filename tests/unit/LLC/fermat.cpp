@@ -38,13 +38,14 @@ uint1024_t FermatTest(const uint1024_t &p)
     uint32_t e[32];
     uint32_t table[WINDOW_SIZE * 32];
 
+
     uint32_t *rr = (uint32_t *)r.begin();
     uint32_t *pp = (uint32_t *)p.begin();
 
     sub_ui<32>(e, pp, 1);
 
     pow2m<32>(rr, e, pp, table);
-    //pow2m<32>(rr, e, pp); 
+    //pow2m<32>(rr, e, pp);
 
     return r;
 }
@@ -57,10 +58,9 @@ TEST_CASE("Fermat Tests", "[LLC]" )
     uint64_t nonce = uint64_t(5190024797402611181);
 
     uint1024_t bn1 = hashNumber + nonce;
-    LLC::CBigNum bn2(bn1);
+    LLC::CBigNum bn2(bn1); 
 
     REQUIRE(FermatTest(bn1).GetHex() == FermatTest2(bn2).getuint1024().GetHex());
-
 
     for(uint32_t i = 0; i < 1000; ++i)
     {

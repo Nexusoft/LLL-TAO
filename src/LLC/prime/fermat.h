@@ -14,7 +14,7 @@ ________________________________________________________________________________
 
 
 
-#define WINDOW_BITS 6
+#define WINDOW_BITS 7
 #define WINDOW_SIZE (1 << WINDOW_BITS)
 
 template<uint8_t WORD_MAX>
@@ -136,54 +136,94 @@ inline uint32_t addmul_1(uint32_t *z, uint32_t *x, const uint32_t y)
     return c;
 }
 
-template<uint8_t WORD_MAX>
-inline uint32_t addsqr_1(uint32_t *z, uint32_t *x, const uint8_t i)
-{
-    uint64_t prod;
-    uint32_t c = 0;
 
-    //#pragma unroll
-    for(uint8_t j = i + 1; j < WORD_MAX; ++j)
-    {
-        prod = static_cast<uint64_t>(x[j]) * static_cast<uint64_t>(x[i]);
-        prod <<= 1;
-        prod += c;
-        prod += z[j];
-        z[j] = prod;
-        c = prod >> 32;
-    }
-
-    return c;
-}
 
 template<uint8_t WORD_MAX>
 inline void sqrredc(uint32_t *z, uint32_t *x, uint32_t *n, const uint32_t d, uint32_t *t)
 {
-    uint32_t m;//, c;
-    //uint64_t temp;
+    uint64_t prod;
+    uint32_t m;
+    uint32_t c;
 
-    assign_zero<WORD_MAX>(t);
-    t[WORD_MAX] = 0;
-    t[WORD_MAX+1] = 0;
+    uint8_t i;
+    uint8_t j;
 
-    for(uint8_t i = 0; i < WORD_MAX; ++i)
+    for(i = 0; i < (WORD_MAX<<1); ++i)
+        t[i] = 0;
+
+
+    for(i = 0; i < WORD_MAX; ++i)
     {
-        t[WORD_MAX] += addsqr_1<WORD_MAX>(t, x, i);
+        for(j = i + 1; j < WORD_MAX; ++j)
+        {
+            prod = static_cast<uint64_t>(x[j]) * static_cast<uint64_t>(x[i]) +
+                   static_cast<uint64_t>(t[i + j]) + c;
 
-        m = t[0]*d;
-
-        t[WORD_MAX] += addmul_1<WORD_MAX>(t, n, m);
-
-        //#pragma unroll
-        for(uint8_t j = 0; j <= WORD_MAX; ++j)
-            t[j] = t[j+1];
+            t[i + j] = prod;
+            c = prod >> 32;
+        }
+        t[WORD_MAX + i] = c;
+        c = 0;
     }
-    if(cmp_ge_n<WORD_MAX>(t, n))
-        sub_n<WORD_MAX>(t, t, n);
 
-    //#pragma unroll
-    for(uint8_t i = 0; i < WORD_MAX; ++i)
-        z[i] = t[i];
+
+    for(i = 0; i < (WORD_MAX<<1); ++i)
+    {
+        prod = (static_cast<uint64_t>(t[i]) << 1) + c;
+        t[i] = prod;
+        c = prod >> 32;
+    }
+
+
+    for(i = 0; i < WORD_MAX; ++i)
+    {
+        prod = static_cast<uint64_t>(x[i]) * static_cast<uint64_t>(x[i]) +
+               static_cast<uint64_t>(t[i + i]);
+
+        t[i + i] = prod;
+        c = prod >> 32;
+
+        for(j = i + 1; j < WORD_MAX; ++j)
+        {
+            prod = static_cast<uint64_t>(t[i + j]) + c;
+            t[i + j] = prod;
+            c = prod >> 32;
+        }
+
+        t[WORD_MAX + i] += c;
+
+    }
+
+
+    c = 0;
+
+    for(i = 0; i < WORD_MAX; ++i)
+    {
+        m = t[i] * d;
+
+        for(j = 0; j < WORD_MAX; ++j)
+        {
+            prod = static_cast<uint64_t>(t[i + j]) + m * static_cast<uint64_t>(n[j]) + c;
+            c = prod >> 32;
+            t[i + j] = prod;
+        }
+
+        j = i;
+
+        while(c != 0)
+        {
+            prod = static_cast<uint64_t>(t[WORD_MAX + j]) + c;
+            c = prod >> 32;
+            t[WORD_MAX + j] = prod;
+            ++j;
+        }
+    }
+
+
+    if(cmp_ge_n<WORD_MAX>(&t[WORD_MAX], n))
+        sub_n<WORD_MAX>(z, &t[WORD_MAX], n);
+    else
+        assign<WORD_MAX>(z, &t[WORD_MAX]);
 }
 
 
@@ -382,10 +422,6 @@ void calcBar(uint32_t *a, uint32_t *n, uint32_t *t)
         if(cmp_ge_n<WORD_MAX>(a, t))
             sub_n<WORD_MAX>(a, a, t);
     }
-
-    //lshift1<WORD_MAX>(b, a);     //calculate 2R mod N;
-    //if(cmp_ge_n<WORD_MAX>(b, n))
-    //    sub_n<WORD_MAX>(b, b, n);
 }
 
 
@@ -416,22 +452,25 @@ void calcTable(uint32_t *a, uint32_t *n, uint32_t *t, uint32_t *table)
 template<uint8_t WORD_MAX>
 void pow2m(uint32_t *X, uint32_t *Exp, uint32_t *N, uint32_t *table)
 {
-    uint32_t t[WORD_MAX + 2];
+    uint32_t t[WORD_MAX << 1];
     uint32_t wval = 0;
     uint32_t d = inv2adic(N[0]);
+
 
     calcBar<WORD_MAX>(X, N, t);
 
     calcTable<WORD_MAX>(X, N, t, table);
 
     uint32_t bits = bit_count<WORD_MAX>(Exp);
+    uint32_t start = (bits / WINDOW_BITS) * WINDOW_BITS;
 
     for(int16_t i = bits-1; i >= 0; --i)
     {
 
-        if(i != bits-1)
-            mulredc<WORD_MAX>(X, X, X, N, d, t);
-            //sqrredc<WORD_MAX>(X, X, N, d, t);
+        //if(i != bits-1)
+        if(i < start)
+            //mulredc<WORD_MAX>(X, X, X, N, d, t);
+            sqrredc<WORD_MAX>(X, X, N, d, t);
 
         wval <<= 1;
 
@@ -455,7 +494,7 @@ template<uint8_t WORD_MAX>
 void pow2m(uint32_t *X, uint32_t *Exp, uint32_t *N)
 {
     uint32_t A[WORD_MAX];
-    uint32_t t[WORD_MAX + 1];
+    uint32_t t[(WORD_MAX << 1) + 1];
 
     uint32_t d = inv2adic(N[0]);
 
@@ -465,8 +504,8 @@ void pow2m(uint32_t *X, uint32_t *Exp, uint32_t *N)
 
     for(int16_t i = bits-1; i >= 0; --i)
     {
-        mulredc<WORD_MAX>(X, X, X, N, d, t);
-        //sqrredc<WORD_MAX>(X, X, N, d, t);
+        //mulredc<WORD_MAX>(X, X, X, N, d, t);
+        sqrredc<WORD_MAX>(X, X, N, d, t);
 
         if(Exp[i>>5] & (1 << (i & 31)))
             mulredc<WORD_MAX>(X, X, A, N, d, t);

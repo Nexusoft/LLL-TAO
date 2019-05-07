@@ -124,7 +124,7 @@ using namespace LLC;
 
 TEST_CASE( "Prime Tests", "[Ledger]" )
 {
-    for(uint32_t i = 0; i < 1000; ++i)
+    for(uint32_t i = 0; i < 1000; ++i) 
     {
         uint1024_t nComposite = GetRand1024() |= 1;
 
