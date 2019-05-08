@@ -116,6 +116,21 @@ namespace LLD
         }
 
 
+        /** HasTrust
+         *
+         *  Check that a genesis doesn't already exist
+         *
+         *  @param[in] hashGenesis The genesis-id address.
+         *
+         *  @return True if write was successful, false otherwise.
+         *
+         **/
+        bool HasTrust(const uint256_t& hashGenesis)
+        {
+            return Exists(std::make_pair(std::string("genesis"), hashGenesis));
+        }
+
+
         /** WriteTrust
          *
          *  Write a genesis to a register address.

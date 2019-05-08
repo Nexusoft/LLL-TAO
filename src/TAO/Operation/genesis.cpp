@@ -32,6 +32,10 @@ namespace TAO
             if(TAO::Register::Reserved(hashAddress))
                 return debug::error(FUNCTION, "cannot create genesis from register with reserved address");
 
+            /* Check that a trust key exists. */
+            if(LLD::regDB->HasTrust(tx.hashGenesis))
+                return debug::error(FUNCTION, "cannot create genesis when already exists");
+
             /* Read the register from the database. */
             TAO::Register::Object account;
             TAO::Register::Object sys;
