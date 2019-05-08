@@ -100,6 +100,55 @@ namespace LLD
         }
 
 
+        /** IndexTrust
+         *
+         *  Index a genesis to a register address.
+         *
+         *  @param[in] hashGenesis The genesis-id address.
+         *  @param[in] hashRegister The state register to index to.
+         *
+         *  @return True if write was successful, false otherwise.
+         *
+         **/
+        bool IndexTrust(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+        {
+            return Index(std::make_pair(std::string("genesis"), hashGenesis), hashRegister);
+        }
+
+
+        /** ReadTrust
+         *
+         *  Index a genesis to a register address.
+         *
+         *  @param[in] hashGenesis The genesis-id address.
+         *  @param[in] state The state register to read.
+         *
+         *  @return True if read was successful, false otherwise.
+         *
+         **/
+        bool ReadTrust(const uint256_t& hashGenesis, TAO::Register::State& state)
+        {
+            return Read(std::make_pair(std::string("genesis"), hashGenesis), state);
+        }
+
+
+        /** EraseTrust
+         *
+         *  Erase a genesis from a register address.
+         *
+         *  @param[in] hashGenesis The genesis-id address.
+         *  @param[in] state The state register to read.
+         *
+         *  @return True if read was successful, false otherwise.
+         *
+         **/
+        bool EraseTrust(const uint256_t& hashGenesis)
+        {
+            return Erase(std::make_pair(std::string("genesis"), hashGenesis));
+        }
+
+
+
         /** WriteIdentifier
          *
          *  Writes a token identifier to the register database.
