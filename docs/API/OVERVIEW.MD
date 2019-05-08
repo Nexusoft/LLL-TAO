@@ -69,33 +69,34 @@ The commonly used resources are described below:
 1. `transaction` :
 
     A transaction is a cryptographic object that contains the contracts that operated on the registers.   
-    It is indexed by an uint512_t, so any index used must be sanitized to this format
+    It is indexed by an uint512_t, so any index used must be sanitized to this format.
 
 2. `block` :
 
     A block is a cryptographic object that contains the transactions in a specific sequence of time.  
     It is indexed by an uint1024_t, so any index used must be sanitized to this format.  
-    A block index is prepended with 0x to imply hexadecimal encoding.  
-    Other forms of encoding may be supported at later times, but for now, Base-16 is all that is allowed (Possibly Base58 at a later time as well)
+    A block index is prepended with 0x to imply hexadecimal encoding.
+    Base-16 encoding is all that is supported at present.
+    Other forms of encoding may be supported at a later time (possibly base-58).
 
 3. `account` :
 
     An account is an object register of the following types: trust or base.   
-    It is responsible for holding the state of a user account’s balance
+    It is responsible for holding the state of a user's account balance.
 
 4. `object` :
 
-    An object is a register with nType being REGISTER::OBJECT   
-    It is always parsed, and access to its data members given
+    An object is a register with nType being REGISTER::OBJECT.
+    An object is always parsed, and access to it's data members given.
 
 5. `token` :
 
-    A token is an object register of standard OBJECT::TOKEN   
-    It contains the domain parameters of a token such as supply or total number of significant digits
+    A token is an object register of standard OBJECT::TOKEN.   
+    It contains the domain parameters of a token such as supply or total number of significant digits.
 
 6. `asset` :
 
-    An asset is an object register of specialized type
+    An asset is an object register of a specialized type.
 
 
 
