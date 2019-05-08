@@ -1,7 +1,7 @@
 # Nexus API Overview
 -------------------------------------
 
-Nexus provides several API's to allow users and integrators to easily interact with the functionality of the Nexus software stack.  Each API is a logically grouped collection of methods that either interact with a specific part of the stack (e.g. ledger, registers), by functional area (accounts, assets, tokens), or by industry specific use case (supply, music).
+Nexus provides several APIs to allow users and developers to easily interact with the functionality of the Nexus software stack. Each API is a logically grouped collection of methods that either interact with a specific part of the stack (e.g. ledger, registers), by functional area (accounts, assets, tokens), or by industry specific use case (supply, music).
 
 
 ### Protocol
@@ -27,7 +27,7 @@ http://127.0.0.1:8080/ledger/get/block
 **NOTE**:  URI's are always in lowercase.
 
 ## Verbs (actions)
-The following list of verbs are used throughout the Nexus API's.  While the action is generic in nature (i.e. list, get, create), implementations of these actions will adhere to certain semantics or mandatory parameters regardless of the noun (resource).
+The following list of verbs are used throughout the Nexus APIs.  While the action is generic in nature (i.e. list, get, create), implementations of these actions will adhere to certain semantics or mandatory parameters regardless of the noun (resource).
 
 * `list`
    - Retrieves a sorted list of objects or data

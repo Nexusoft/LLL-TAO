@@ -1,13 +1,13 @@
-# Assets API 
+# Assets API
 -----------------------------------
 
-An asset is a user-defined data structure that is stored in an object register, owned by a particular signature chain.  Assets can hold one or more pieces of data and users can define the fields (name, data type, mutability) that data is stored in.  The assets API supports several formats for defining the object data structures giving users and integrators varying levels of functionality, including per-field type definition and mutability.  
+An asset is a user-defined data structure that is stored in an object register, owned by a particular signature chain. Assets can hold one or more pieces of data and users can define the fields (name, data type, mutability) that data is stored in. The assets API supports several formats for defining the object data structures giving users and developers varying levels of functionality, including per-field type definition and mutability.  
 
-The `basic` format allows callers to define an asset in terms of simple key-value pairs.  It assumes that all fields are read only, with the data type inferred by the default value that is provided when the asset is created.  `basic ` assets are always immutable and cannot be updated once created.
+The `basic` format allows callers to define an asset in terms of simple key-value pairs. It assumes that all fields are read-only, with the data type inferred by the default value that is provided when the asset is created. `basic ` assets are always immutable and cannot be updated once created.
 
-The `JSON`, `ANSI`, and `XML` formats allow callers to provide a detailed definition of the asset data structure, with each field defined with a specific data type and mutability.  Assets defined with one of the complex formats can be updated after their initial creation.  
+The `JSON`, `ANSI`, and `XML` formats allow callers to provide a detailed definition of the asset data structure, with each field defined with a specific data type and mutability. Assets defined with one of the complex formats can be updated after their initial creation.  
 
-The `raw` format differs from the other formats in that the asset data is not stored in object register, but instead is stored in a read-only state register.  The raw format is useful when integrators wish to store arbitrary binary data on the Nexus blockchain, without incurring the overhead of defining an object.  
+The `raw` format differs from the other formats in that the asset data is not stored in object register, but instead is stored in a read-only state register. The raw format is useful when developers wish to store arbitrary binary data on the Nexus blockchain, without incurring the overhead of defining an object.
 
 ***
 
@@ -24,35 +24,34 @@ This will create a new asset or object register.
 
 ### Parameters:
 
-`pin` : The PIN for this signature chain. 
+`pin` : The PIN for this signature chain.
 
-`session` : For multiuser API mode (configured with multiuser=1) the session is required to identify which session (sig chain) the asset should be created with. For single user API mode the session should not be supplied. 
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the asset should be created with. For single-user API mode the session should not be supplied.
 
-`name` : A name to identify the asset. A hash of the name will determine the register address.  If no name is provided, a random 256-bit register hash will be generated. 
+`name` : A name to identify the asset. A hash of the name will determine the register address. If no name is provided, a random 256-bit register hash will be generated.
 
-`format` : The format the caller is using to define the asset.  Values can be `basic` (the default), `raw`, `JSON`, `ANSI` (not currently supported), or `XML` (not currently supported).  This is optional field and the value `basic` is assumed if omitted.
+`format` : The format the caller is using to define the asset. Values can be `basic` (the default), `raw`, `JSON`, `ANSI` (not currently supported), or `XML` (not currently supported). This is an optional field and the value `basic` is assumed if omitted.
 
-`data` : if format = `raw` this field contains the hex-encoded data to be stored in this asset.  Raw assets are always read only.  All other preceding fields are ignored.
+`data` : If format is `raw`, then this field contains the hex-encoded data to be stored in this asset. Raw assets are always read-only. All other preceding fields are ignored.
 
-`<fieldname>=<value>` : if format = `basic`, the caller can provide additional fieldname=value pairs for each piece of data to store in the asset
+`<fieldname>=<value>` : If format is `basic`, then the caller can provide additional <fieldname>=<value> pairs for each piece of data to store in the asset.
 
-`json` : if format is `JSON` this field will hold the json definition of the asset as a list of JSON objects representing each field in the object, using the following format
+`json` : If format is `JSON`, then this field will hold the json definition of the asset as a list of JSON objects representing each field in the object. It uses the following format:
 
-- `name` : The name of the data field
-- `type` : The data type to use for this field.  Values can be `uint8`, `uint16`, `uint32`, `uint64`, `uint256`, `uint512`, `uint1024`, `string`, `bytes`
-- `value` : The default value of the field
-- `mutable` : Boolean field to indicate whether the field is writable (true) or read only (false)
+- `name` : The name of the data field.
+- `type` : The data type to use for this field. Values can be `uint8`, `uint16`, `uint32`, `uint64`, `uint256`, `uint512`, `uint1024`, `string`, or `bytes`.
+- `value` : The default value of the field.
+- `mutable` : The boolean field to indicate whether the field is writable (true) or read-only (false).
 
 
-`token_name` : The name of a token to use to tokenize the asset.  If provided, this will immediately tokenize the asset into fungible tokens that represent ownership of the asset.  `token_address` can be supplied as an alternative to `token_name` 
-
-`token_address` : The register address of a token to use to tokenize the asset.  If provided, this will immediately tokenize the asset into fungible tokens that represent ownership of the asset.  `token_name` can be supplied as an alternative to `token_address`
+`token_name` : The name of a token to use to tokenize the asset. If provided, this will immediately tokenize the asset into fungible tokens that represent ownership of the asset.
+`token_address` : The register address of a token to use to tokenize the asset. If provided, this will immediately tokenize the asset into fungible tokens that represent ownership of the asset.  `token_name` can be supplied as an alternative to `token_address`.
 
 
 ### Example:
 
 The following is an example of an asset defined using the `basic` format:   
-**NOTE**: In this example the asset is entirely read only and no fields can be updated
+**NOTE**: In this example the asset is entirely read-only and no fields can be updated.
 ```
 {
     "pin": "1234",
@@ -65,34 +64,34 @@ The following is an example of an asset defined using the `basic` format:
 }
 ```
 
-The following is an example of an asset definedusing the `JSON` format:   
-**NOTE**: In this example the shelf_location field is defined as mutable and can therefore be updated
+The following is an example of an asset defined using the `JSON` format:   
+**NOTE**: In this example the shelf_location field is defined as mutable and can therefore be updated.
 ```
 {
     "pin": "1234",
     "session": "16953804956473956578",
     "name": "watch",
     "format": "JSON",
-    "json" : 
+    "json" :
         {
             {
                 "name": "serial_number",
-                "type": uint32, 
+                "type": uint32,
                 "value": 123456789123456789,
                 "mutable" : "false"
-            }, 
+            },
             {
                 "name": "description",
-                "type": "string", 
+                "type": "string",
                 "value": "This is the description of my asset",
                 "mutable" : "false"
             },
             {
                 "name": "shelf_location",
-                "type": "string", 
+                "type": "string",
                 "value": "Aisle 9 Shelf 2",
                 "mutable" : "true"
-            }, 
+            },
         }
 }
 ```
@@ -110,9 +109,9 @@ The following is an example of an asset definedusing the `JSON` format:
 
 ### Return values:
 
-`txid` : The ID (hash) of the transaction that includes the asset creation
+`txid` : The ID (hash) of the transaction that includes the asset creation.
 
-`address` : The register address for this asset.  The address (or name that hashes to this address) is needed for downstream transactions / api methods for this asset.    
+`address` : The register address for this asset. The address (or name that hashes to this address) is needed for downstream transactions / api methods for this asset.    
 
 
 ****
@@ -120,7 +119,7 @@ The following is an example of an asset definedusing the `JSON` format:
 
 # `get/asset`
 
-This is the generic endpoint retrieving an asset from the object register.  The Assets API supports an alternative endpoint that can include the asset name (if known) in the URI.  For example `/assets/get/myasset` will resolve to `assets/get/asset?name=myasset`
+This is the generic endpoint retrieving an asset from the object register. The Assets API supports an alternative endpoint that can include the asset name (if known) in the URI.  For example `/assets/get/myasset` will resolve to `assets/get/asset?name=myasset`.
 
 
 ### Endpoint:
@@ -130,9 +129,9 @@ This is the generic endpoint retrieving an asset from the object register.  The 
 
 ### Parameters:
 
-`name` : The name identifying the asset.  Optional if address is provided
+`name` : The name identifying the asset. This is optional if the address is provided.
 
-`address` : The register address of the asset.  Optional if name is provided
+`address` : The register address of the asset. This is optional if the name is provided.
 
 
 ### Return value JSON object:
@@ -147,11 +146,11 @@ This is the generic endpoint retrieving an asset from the object register.  The 
 ```
 ### Return values:
 
-`timestamp` : The unix timestamp when the asset was last updated
+`timestamp` : The Unix timestamp of when the asset was last updated.
 
-`owner` : The genesis hash of the signature chain that owns this asset
+`owner` : The genesis hash of the signature chain that owns this asset.
 
-`<fieldname>=<value>` : key-value pair for each piece of data stored in the asset
+`<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
 
 
 ***
@@ -168,11 +167,11 @@ Retrieves the schema / object definition of an asset.
 
 ### Parameters:
 
-`name` : The name identifying the asset.  Optional if address is provided
+`name` : The name identifying the asset. This is optional if the address is provided.
 
-`address` : The register address of the asset.  Optional if name is provided
+`address` : The register address of the asset. This is optional if the name is provided.
 
-`format` : The format that the schema should be returned in.  Values can be `JSON` (the default), `ANSI` (not currently supported), or `XML` (not currently supported).  This is optional field and the value `JSON` is assumed if omitted.
+`format` : The format that the schema should be returned in. Values can be `JSON` (the default), `ANSI` (not currently supported), or `XML` (not currently supported). This is optional field and the value `JSON` is assumed if omitted.
 
 **NOTE**: If the asset was initially created using the `raw` format then this API method will error as there is no schema associated with a raw state register.  
 
@@ -180,48 +179,48 @@ Retrieves the schema / object definition of an asset.
 ```
 {
     "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
-    "json" : 
+    "json" :
         {
             {
                 "name": "serial_number",
-                "type": uint32, 
+                "type": uint32,
                 "value": 123456789123456789,
                 "mutable" : "false"
-            }, 
+            },
             {
                 "name": "description",
-                "type": "string", 
+                "type": "string",
                 "value": "This is the description of my asset",
                 "mutable" : "false"
             },
             {
                 "name": "shelf_location",
-                "type": "string", 
+                "type": "string",
                 "value": "Aisle 9 Shelf 2",
                 "mutable" : "true"
-            }, 
+            },
         }
 }
 ```
 
 ### Return values:
 
-`address` : The register address for this asset.  The address (or name that hashes to this address) is needed for downstream transactions / api methods for this asset.   
+`address` : The register address for this asset. The address (or name that hashes to this address) is needed for downstream transactions / api methods for this asset.   
 
 
-`json` : if format is `JSON` this field will hold the json definition of the asset as a list of JSON objects representing each field in the object, using the following format
+`json` : If format is `JSON`, then this field will hold the json definition of the asset as a list of JSON objects representing each field in the object. It uses the following format:
 
-- `name` : The name of the data field
-- `type` : The data type to use for this field.  Values can be `uint8`, `uint16`, `uint32`, `uint64`, `uint256`, `uint512`, `uint1024`, `string`, `bytes`
-- `value` : The current value of the field
-- `mutable` : Boolean field to indicate whether the field is writable (true) or read only (false)
+- `name` : The name of the data field.
+- `type` : The data type to use for this field. Values can be `uint8`, `uint16`, `uint32`, `uint64`, `uint256`, `uint512`, `uint1024`, `string`, or `bytes`.
+- `value` : The current value of the field.
+- `mutable` : The boolean field to indicate whether the field is writable (true) or read-only (false).
 
 
 ****
 
 # `transfer/asset`
 
-This will transfer ownership of an asset or digital item .
+This will transfer ownership of an asset or digital item.
 
 
 ### Endpoint:
@@ -231,17 +230,17 @@ This will transfer ownership of an asset or digital item .
 
 ### Parameters:
 
-`pin` : The PIN for this signature chain. 
+`pin` : The PIN for this signature chain.
 
-`session` : For multiuser API mode (configured with multiuser=1) the session is required to identify which session (sig chain) owns the asset. For single user API mode the session should not be supplied. 
+`session` : For multi-user API mode (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the asset. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the asset to be transferred.  Optional if address is provided
+`name` : The name identifying the asset to be transferred. This is optional if the address is provided.
 
-`address` : The register address of the asset to be transferred.  Optional if name is provided
+`address` : The register address of the asset to be transferred. This is optional if the name is provided.
 
-`username` : The username identifying the user account (sig chain) to transfer the asset to.  Optional if destination is provided
+`username` : The username identifying the user account (sig-chain) to transfer the asset to. This is optional if the destination is provided.
 
-`destination` : The genesis hash of the signature chain to transfer the the asset to. Optional if username is provided
+`destination` : The genesis hash of the signature chain to transfer the the asset to. This is optional if the username is provided.
 
 
 ### Return value JSON object:
@@ -254,7 +253,7 @@ This will transfer ownership of an asset or digital item .
 
 ### Return values:
 
-`txid` : The ID (hash) of the transaction that includes the asset transfer
+`txid` : The ID (hash) of the transaction that includes the asset transfer.
 
 `address` : The new register address for this asset.   
 
@@ -272,9 +271,9 @@ This will get the history of an asset or digital item as well as it's ownership.
 
 ### Parameters:
 
-`name` : The name identifying the asset.  Optional if address is provided
+`name` : The name identifying the asset. This is optional if the address is provided.
 
-`address` : The register address of the asset.  Optional if name is provided
+`address` : The register address of the asset. This is optional if the name is provided.
 
 
 ### Return value JSON object:
@@ -295,9 +294,9 @@ This will get the history of an asset or digital item as well as it's ownership.
 
 The return value is a JSON array of objects for each entry in the assets history:
 
-`owner` : The genesis hash of the signature chain that owns this asset
+`owner` : The genesis hash of the signature chain that owns this asset.
 
-`timestamp` : The unix timestamp when the asset was first created
+`timestamp` : The Unix timestamp of when the asset was first created.
 
 
 
@@ -314,17 +313,17 @@ This will tokenize an asset into fungible tokens that represent ownership.
 
 ### Parameters:
 
-`pin` : The PIN for this signature chain. 
+`pin` : The PIN for this signature chain.
 
-`session` : For multiuser API mode (configured with multiuser=1) the session is required to identify which session (sig chain) owns the asset. For single user API mode the session should not be supplied. 
+`session` : For multi-user API mode (configured with multiuser=1) the session is required to identify which session (sig chain) owns the asset. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the asset to be tokenized.  Optional if address is provided
+`name` : The name identifying the asset to be tokenized. This is optional if the address is provided.
 
-`address` : The register address of the asset to be tokenized.  Optional if name is provided
+`address` : The register address of the asset to be tokenized. This is optional if the name is provided.
 
-`token_name` : The name of a token to use to tokenize the asset.  `token_address` can be supplied as an alternative to `token_name` 
+`token_name` : The name of a token to use to tokenize the asset. `token_address` can be supplied as an alternative to `token_name`.
 
-`token_address` : The register address of a token to use to tokenize the asset.  `token_name` can be supplied as an alternative to `token_address`
+`token_address` : The register address of a token to use to tokenize the asset. `token_name` can be supplied as an alternative to `token_address`.
 
 
 ### Return value JSON object:
@@ -338,8 +337,6 @@ This will tokenize an asset into fungible tokens that represent ownership.
 
 ### Return values:
 
-`txid` : The ID (hash) of the transaction that includes the asset tokenization
+`txid` : The ID (hash) of the transaction that includes the asset tokenization.
 
-`address` : The register address for this asset.   
-
-
+`address` : The register address for this asset.

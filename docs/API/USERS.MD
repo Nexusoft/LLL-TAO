@@ -5,7 +5,7 @@
 
 # `create/user`
 
-This will create a new user account (signature chain) for use on the network.  The user account is secured by a combination of username, password, and PIN, 
+This will create a new user account (signature chain) for use on the network. The user account is secured by a combination of username, password, and PIN.
 
 
 ### Endpoint:
@@ -15,11 +15,11 @@ This will create a new user account (signature chain) for use on the network.  T
 
 ### Parameters:
 
-`username` : The username to be associated with this user.  The signature chain genesis (used to uniquely identify user accounts) is a hash of this username, therefore the username must be unique on the blockchain.  
+`username` : The username to be associated with this user. The signature chain genesis (used to uniquely identify user accounts) is a hash of this username, therefore the username must be unique on the blockchain.
 
 `password` : The password to be associated with this user.
 
-`PIN` : The PIN can be a combination of letters/numbers/symbols or could be tied into an external digital fingerprint.  The PIN is required for all API calls that modify a user account (such as sending or claiming transactions). 
+`PIN` : The PIN can be a combination of letters/numbers/symbols or could be tied into an external digital fingerprint. The PIN is required for all API calls that modify a user account (such as sending or claiming transactions).
 
 
 ### Return value JSON object:
@@ -39,23 +39,23 @@ This will create a new user account (signature chain) for use on the network.  T
 
 ### Return values:
 
-`genesis` : Signature chain genesis hash - this is a hash of the username used to create the user
+`genesis` : The signature chain genesis hash. This is a hash of the username used to create the user.
 
-`hash` : Hash of the transaction that created the user 
+`hash` : The hash of the transaction that created the user.
 
-`nexthash` : Hash of the next transaction in the sequence
+`nexthash` : The hash of the next transaction in the sequence.
 
-`prevhash` : Hash of the previous transaction in the sequence
+`prevhash` : The hash of the previous transaction in the sequence.
 
-`pubkey` : Public key
+`pubkey` : The public key.
 
-`signature` : Signature hash
+`signature` : The signature hash.
 
-`sequence` : Sequence number of this transaction within the signature chain 
+`sequence` : The sequence number of this transaction within the signature chain.
 
-`timestamp` : Unix timestamp when the transaction was created
+`timestamp` : The Unix timestamp of when the transaction was created.
 
-`version` : Serialization version of the transaction
+`version` : The serialization version of the transaction.
 
 
 ****
@@ -65,7 +65,7 @@ This will create a new user account (signature chain) for use on the network.  T
 
 This will start a session for your user account with this specific API instance. Username, password, and pin fields are mandatory for login.   
 
-The minting/transactions parameters are optional and, if supplied, allow the signature chain to be immediately used for mining/staking or creating transactions when not using multiuser API mode.  If the minting/transactions parameters are not supplied then you must either subsequently call unlock or provide the PIN number in in all subsequent API calls in order to use this signature chain.
+The minting/transactions parameters are optional and, if supplied, allow the signature chain to be immediately used for mining/staking or creating transactions when not using multi-user API mode. If the minting/transactions parameters are not supplied then you must either subsequently call unlock or provide the PIN number in in all subsequent API calls in order to use this signature chain.
 
 ### Endpoint:
 
@@ -78,9 +78,9 @@ The minting/transactions parameters are optional and, if supplied, allow the sig
 
 `password` : The password to be associated with this signature chain.
 
-`PIN` : The PIN for this signature chain
+`PIN` : The PIN for this signature chain.
 
-`minting` : This boolean value determines whether the user account can be used for minting (staking or mining)
+`minting` : This boolean value determines whether the user account can be used for minting (staking or mining).
 
 `transactions` : This boolean value determines whether the user account can be used for creating or claiming transactions.
 
@@ -95,10 +95,10 @@ The minting/transactions parameters are optional and, if supplied, allow the sig
 
 ### Return values:
 
-`genesis` : Signature chain genesis hash - this is a hash of the username used to create the user
+`genesis` : The signature chain genesis hash. This is a hash of the username used to create the user.
 
-`session` : When using multiuser API mode, an additional session value is returned 
-and must be supplied in subsequent API calls, to allow the managing of multiple login sessions 
+`session` : When using multi-user API mode, an additional session value is returned
+and must be supplied in subsequent API calls, to allow the managing of multiple login sessions.
 
 
 ****
@@ -117,7 +117,7 @@ in encrypted memory.
 
 ### Parameters:
 
-`session` : For multiuser API mode (configured with multiuser=1) the session is required to identify  which session you are logging out of. For single user API mode the session should not be supplied
+`session` : For multi-user API mode (configured with multiuser=1), the session is required to identify  which session you are logging out of. For single-user API mode the session should not be supplied.
 
 
 
@@ -135,7 +135,7 @@ in encrypted memory.
 # `lock/user`
 
 This will lock your signature chain, making it unavailable for use unless it is
-either unlocked or the PIN is passed in to all API requests.  Only available in single user API mode (multiuser=0)
+either unlocked or the PIN is passed in to all API requests. Only available in single-user API mode (multiuser=0).
 
 
 ### Endpoint:
@@ -160,9 +160,9 @@ NONE
 
 # `unlock/user`
 
-This will unlock your signature chain and cache the PIN in encrypted memory to be used for all subsequent API calls. This method is only available when using single user API mode (multiuser=0).    
+This will unlock your signature chain and cache the PIN in encrypted memory to be used for all subsequent API calls. This method is only available when using single-user API mode (multiuser=0).    
 
-The PIN field is mandatory for unlock.  The minting/transactions parameters are optional and, if supplied, allow the signature chain to be used for either mining/staking or creating transactions when in single user API mode.
+The PIN field is mandatory for unlock. The minting/transactions parameters are optional and, if supplied, allow the signature chain to be used for either mining/staking or creating transactions when in single-user API mode.
 
 **NOTE** : If the minting/transactions parameters are not supplied then it is assumed that the signature chain can be used for both.
 
@@ -175,9 +175,9 @@ The PIN field is mandatory for unlock.  The minting/transactions parameters are 
 ### Parameters:
 
 
-`PIN` : The PIN for this signature chain
+`PIN` : The PIN for this signature chain.
 
-`minting` : This boolean value determines whether the user account can be used for minting (staking or mining)
+`minting` : This boolean value determines whether the user account can be used for minting (staking or mining).
 
 `transactions` : This boolean value determines whether the user account can be used for creating or claiming transactions.
 
@@ -195,7 +195,7 @@ The PIN field is mandatory for unlock.  The minting/transactions parameters are 
 
 # `list/transactions`
 
-This will list off all of the transactions for the requested signature chain genesis or username (either can be used).  You DO NOT need to be logged in to use this command.  If you are using single user API mode and are logged in then neither username or genesis are required and it will return transactions for the currently logged in user.
+This will list off all of the transactions for the requested signature chain genesis or username (either can be used). You DO NOT need to be logged in to use this command. If you are using single-user API mode and are logged in, then neither username or genesis are required. It will return transactions for the currently logged in user.
 
 **NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
 
@@ -208,16 +208,16 @@ This will list off all of the transactions for the requested signature chain gen
 ### Parameters:
 
 
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied)
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
 
-`username` : The username identifying the signature chain (optional if genesis is supplied)
+`username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) transactions.  Default value is 0 if not supplied.
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
 
-`limit` : The number of transactions to return for the current page.  Default is 100
+`limit` : The number of transactions to return for the current page. The default is 100.
 
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
- - `default` : hash 
+ - `default` : hash
  - `summary` : type, version, sequence, timestamp, and operation.
  - `detail` : genesis, nexthash, prevhash, pubkey and signature.
 
@@ -242,29 +242,29 @@ This will list off all of the transactions for the requested signature chain gen
 
 ### Return values:
 
-`type` : Description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`)
+`type` : The description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`).
 
-`genesis` : Signature chain genesis hash
+`genesis` : The signature chain genesis hash.
 
-`hash` : Transaction hash
+`hash` : The transaction hash.
 
-`confirmations` : The number of confirmations that this transaction has obtained by the network
+`confirmations` : The number of confirmations that this transaction obtained by the network.
 
-`nexthash` : Hash of the next transaction in the sequence
+`nexthash` : The hash of the next transaction in the sequence.
 
-`prevhash` : Hash of the previous transaction in the sequence
+`prevhash` : the hash of the previous transaction in the sequence.
 
-`pubkey` : Public key
+`pubkey` : The public key.
 
-`signature` : Signature hash
+`signature` : The signature hash.
 
-`sequence` : Sequence number of this transaction within the signature chain 
+`sequence` : The sequence number of this transaction within the signature chain.
 
-`timestamp` : Unix timestamp when the transaction was created
+`timestamp` : The Unix timestamp of when the transaction was created.
 
-`version` : Serialization version of the transaction
+`version` : The serialization version of the transaction.
 
-`operation` : Description of the opcodes included in the transaction
+`operation` : The description of the opcodes included in the transaction.
 
 ****
 
@@ -283,11 +283,11 @@ This will list off all of the transactions sent to a particular genesis or usern
 
 ### Parameters:
 
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied)
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
 
-`username` : The username identifying the signature chain (optional if genesis is supplied)
+`username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) notifications.  Default value is 0 if not supplied.
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) notifications.  The default value is 0 if not supplied.
 
 `limit` : The number of notifications to return for the current page.  Default is 100
 
@@ -310,26 +310,24 @@ This will list off all of the transactions sent to a particular genesis or usern
 
 ### Return values:
 
-`genesis` : Signature chain genesis hash
+`genesis` : The signature chain genesis hash.
 
-`hash` : Transaction hash
+`hash` : The transaction hash.
 
-`nexthash` : Hash of the next transaction in the sequence
+`nexthash` : The hash of the next transaction in the sequence.
 
-`prevhash` : Hash of the previous transaction in the sequence
+`prevhash` : The hash of the previous transaction in the sequence.
 
-`pubkey` : Public key
+`pubkey` : The public key.
 
-`signature` : Signature hash
+`signature` : The signature hash.
 
-`sequence` : Sequence number of this transaction within the signature chain 
+`sequence` : The sequence number of this transaction within the signature chain.
 
-`timestamp` : Unix timestamp when the transaction was created
+`timestamp` : The Unix timestamp of when the transaction was created.
 
-`version` : Serialization version of the transaction
+`version` : The serialization version of the transaction.
 
-`operation` : Description of the opcodes included in the transaction
+`operation` : The description of the opcodes included in the transaction.
 
 ****
-
-

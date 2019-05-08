@@ -105,7 +105,7 @@ Output parameter description:
 
 ### Debit
 
-Deduct a token amount from owner’s object register and send it to owner of
+Deduct a token amount from owner’s object register and send it to the owner of
 another object register address.
 
 ```
@@ -190,5 +190,5 @@ The type can either be token or account. The type is required for this command.
 The name or address can be specified and is require for this command. This will
 give information about version and identifier in either case. If the type is an
 account, this will give information about token account balance. If the type is
-instead a token, this will give token information about max supply and current
+instead a token, this will give token information about the max supply and current
 supply.

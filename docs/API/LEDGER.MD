@@ -14,7 +14,7 @@ Retrieves the hash of the block for the given height.
 
 ### Parameters:
 
-`height` : The block height to retrieve the hash for. 
+`height` : The block height to retrieve the hash for.
 
 
 ### Return value JSON object:
@@ -26,7 +26,7 @@ Retrieves the hash of the block for the given height.
 
 ### Return values:
 
-`hash` : The hash of the block
+`hash` : The hash of the block.
 
 
 
@@ -42,19 +42,19 @@ Retrieves block data for the given block hash or height.
 
 ### Parameters:
 
-`hash` : The block hash to retrieve the block data for. 
+`hash` : The block hash to retrieve the block data for.
 
-`height` : The block height to retrieve the block data for. 
+`height` : The block height to retrieve the block data for.
 
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
  - `none` : no transaction data
- - `default` : hash 
+ - `default` : hash
  - `summary` : type, version, sequence, timestamp, and operation.
  - `detail` : genesis, nexthash, prevhash, pubkey and signature.
 
 
 **NOTE** : Either the hash or the height needs to be supplied, but not both.  
-Retrieving block data by height is only allowed if the daemon has been configured with `indexheight=1`
+Retrieving block data by height is only allowed if the daemon has been configured with `indexheight=1`.
 
 ### Return value JSON object:
 ```    
@@ -89,64 +89,64 @@ Retrieving block data by height is only allowed if the daemon has been configure
         }
     ]
 }
-    
+
 ```
 
 ### Return values:
 
-`hash` : The hash of the block
+`hash` : The hash of the block.
 
-`proofhash` : The proof hash of the block
+`proofhash` : The proof hash of the block.
 
-`size` : Block size in bytes
+`size` : The block size in bytes.
 
-`height` : Block height
+`height` : The block height.
 
-`channel` : Channel (1=Prime, 2=Hash, 3=Stake)
+`channel` : The block channel (0=Stake, 1=Prime, 2=Hash).
 
 `version` : Serialization version of this block
 
-`merkleroot` : Merkle root of the block transactions
+`merkleroot` : The hash merkle root of block transactions.
 
-`time` : Unified time the block was created
+`time` : The unified time the block was created.
 
-`nonce` : The solution nonce 
+`nonce` : The solution nonce
 
-`bits`
+`bits` : The compact representation for the block difficulty.
 
-`difficulty` : The channel specific difficulty 
+`difficulty` : The channel specific difficulty.
 
-`mint` : The value minted in this block
+`mint` : The value minted in this block.
 
-`previousblockhash` : Hash of the previous block in the chain
+`previousblockhash` : The hash of the previous block in the chain.
 
-`nextblockhash` : Hash of the next block in the chain, unless this is the last block in the chain. 
+`nextblockhash` : The hash of the next block in the chain, unless this is the last block in the chain.
 
-`tx` : Array of transactions included in this block
+`tx` : An array of transactions included in this block.
 
-`type` : Description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`)
+`type` : The description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`).
 
-`version` : Serialization version of the transaction
+`version` : The serialization version of the transaction.
 
-`sequence` : Sequence number of this transaction within the signature chain 
+`sequence` : The sequence number of this transaction within the signature chain.
 
-`timestamp` : Unix timestamp when the transaction was created
+`timestamp` : The Unix timestamp of when the transaction was created.
 
-`confirmations` : The number of confirmations that this transaction has obtained by the network
+`confirmations` : The number of confirmations that this transaction has obtained by the network.
 
-`genesis` : Signature chain genesis hash
+`genesis` : The signature chain genesis hash.
 
-`nexthash` : Hash of the next transaction in the sequence
+`nexthash` : The hash of the next transaction in the sequence.
 
-`prevhash` : Hash of the previous transaction in the sequence
+`prevhash` : The hash of the previous transaction in the sequence.
 
-`pubkey` : Public key
+`pubkey` : The public key.
 
-`signature` : Signature hash
+`signature` : The signature hash.
 
-`hash` : Transaction hash
+`hash` : The transaction hash.
 
-`operation` : Description of the opcodes included in the transaction
+`operation` : The description of the opcodes included in the transaction.
 
 ****
 
@@ -162,21 +162,21 @@ Retrieves an array of block data for a sequential range of blocks from a given h
 
 ### Parameters:
 
-`hash` : The block hash to retrieve the block data for. 
+`hash` : The block hash to retrieve the block data for.
 
 `height` : The block height to retrieve the block data for.
 
-`limit` : The number of blocks to return data for.  Optional (default 10), must be between 1 and 1000
+`limit` : The number of blocks to return data for.  This is optional (default 10). The limit must be between 1 and 1000.
 
-`verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
+`verbose` : This is optional, determines how much transaction data to include in the response. Supported values are :
  - `none` : no transaction data
- - `default` : hash 
+ - `default` : hash
  - `summary` : type, version, sequence, timestamp, and operation.
  - `detail` : genesis, nexthash, prevhash, pubkey and signature.
 
 
 **NOTE** : Either the hash or the height needs to be supplied, but not both.  
-Retrieving block data by height is only allowed if the daemon has been configured with `indexheight=1`
+Retrieving block data by height is only allowed if the daemon has been configured with `indexheight=1`.
 
 ### Return value JSON object:
 ```    
@@ -229,59 +229,59 @@ Retrieving block data by height is only allowed if the daemon has been configure
 
 ### Return values:
 
-`hash` : The hash of the block
+`hash` : The hash of the block.
 
-`proofhash` : The proof hash of the block
+`proofhash` : The proof hash of the block.
 
-`size` : Block size in bytes
+`size` : The block size in bytes.
 
-`height` : Block height
+`height` : The block height.
 
-`channel` : Channel (1=Prime, 2=Hash, 3=Stake)
+`channel` : The block channel (0=Stake, 1=Prime, 2=Hash).
 
-`version` : Serialization version of this block
+`version` : The serialization version of this block.
 
-`merkleroot` : Merkle root of the block transactions
+`merkleroot` : The hash merkle root of the block transactions.
 
-`time` : Unified time the block was created
+`time` : The unified time the block was created.
 
-`nonce` : The solution nonce 
+`nonce` : The solution nonce.
 
-`bits`
+`bits` : The compact representation for the block difficulty.
 
-`difficulty` : The channel specific difficulty 
+`difficulty` : The channel specific difficulty.
 
-`mint` : The value minted in this block
+`mint` : The value minted in this block.
 
-`previousblockhash` : Hash of the previous block in the chain
+`previousblockhash` : The hash of the previous block in the chain.
 
-`nextblockhash` : Hash of the next block in the chain, unless this is the last block in the chain. 
+`nextblockhash` : The hash of the next block in the chain, unless this is the last block in the chain.
 
-`tx` : Array of transactions included in this block
+`tx` : An array of transactions included in this block.
 
-`type` : Description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`)
+`type` : The description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`).
 
-`version` : Serialization version of the transaction
+`version` : The serialization version of the transaction.
 
-`sequence` : Sequence number of this transaction within the signature chain 
+`sequence` : The sequence number of this transaction within the signature chain.
 
-`timestamp` : Unix timestamp when the transaction was created
+`timestamp` : The Unix timestamp of when the transaction was created.
 
-`confirmations` : The number of confirmations that this transaction has obtained by the network
+`confirmations` : The number of confirmations that this transaction has obtained by the network.
 
-`genesis` : Signature chain genesis hash
+`genesis` : The signature chain genesis hash.
 
-`nexthash` : Hash of the next transaction in the sequence
+`nexthash` : The hash of the next transaction in the sequence.
 
-`prevhash` : Hash of the previous transaction in the sequence
+`prevhash` : The hash of the previous transaction in the sequence.
 
-`pubkey` : Public key
+`pubkey` : The public key.
 
-`signature` : Signature hash
+`signature` : The signature hash.
 
-`hash` : Transaction hash
+`hash` : The transaction hash.
 
-`operation` : Description of the opcodes included in the transaction
+`operation` : The description of the opcodes included in the transaction.
 
 ****
 
@@ -298,14 +298,14 @@ Retrieves transaction data for a given transaction hash.
 
 ### Parameters:
 
-`format` : Determines the format of the reuturn value.  Parameter value can be `JSON` (the default) or `raw`.  If `raw` is specified then the method returns a serialized, hex-encoded transaction that can subsequently be broadcast to the network via `/ledger/submit/transaction` 
+`format` : Determines the format of the return value.  Parameter value can be `JSON` (the default) or `raw`.  If `raw` is specified then the method returns a serialized, hex-encoded transaction that can subsequently be broadcast to the network via `/ledger/submit/transaction`.
 
-`hash` : The block hash to retrieve the block data for.  Ignored if `raw` format is requested 
+`hash` : The block hash to retrieve the block data for. This is ignored if `raw` format is requested.
 
-`verbose` : Optional, determines how much transaction data to include in the response. Ignored if `raw` format is requested.  Supported values are :
- - `default` : hash, type, version, sequence, timestamp, and operation 
- - `summary` : all of the above plus genesis, nexthash, and prevhash.
- - `detail` : all of the above plus pubkey and signature.
+`verbose` : Optional, determines how much transaction data to include in the response. This is ignored if `raw` format is requested.  Supported values are :
+ - `default` : hash, type, version, sequence, timestamp, and operation
+ - `summary` : all of the above plus genesis, nexthash, and prevhash
+ - `detail` : all of the above plus pubkey and signature
 
 
 ### Return value JSON object:
@@ -329,29 +329,29 @@ Retrieves transaction data for a given transaction hash.
 
 ### Return values:
 
-`hash` : Transaction hash
+`hash` : The transaction hash.
 
-`type` : Description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`)
+`type` : The description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`).
 
-`version` : Serialization version of the transaction
+`version` : The serialization version of the transaction.
 
-`sequence` : Sequence number of this transaction within the signature chain 
+`sequence` : The sequence number of this transaction within the signature chain.
 
-`timestamp` : Unix timestamp when the transaction was created
+`timestamp` : The Unix timestamp of when the transaction was created.
 
-`confirmations` : The number of confirmations that this transaction has obtained by the network
+`confirmations` : The number of confirmations that this transaction has obtained by the network.
 
-`genesis` : Signature chain genesis hash
+`genesis` : The signature chain genesis hash.
 
-`nexthash` : Hash of the next transaction in the sequence
+`nexthash` : The hash of the next transaction in the sequence.
 
-`prevhash` : Hash of the previous transaction in the sequence
+`prevhash` : The hash of the previous transaction in the sequence.
 
-`pubkey` : Public key
+`pubkey` : The public key.
 
-`signature` : Signature hash
+`signature` : The signature hash.
 
-`operation` : Description of the opcodes included in the transaction
+`operation` : The description of the opcodes included in the transaction.
 
 ****
 
@@ -368,7 +368,7 @@ Submits a transaction to be included in the mempool and broadcast to the network
 
 ### Parameters:
 
-`data` : The serialized, hex-encoded transaction data to be submitted 
+`data` : The serialized, hex-encoded transaction data to be submitted.
 
 
 ### Return value JSON object:
@@ -381,7 +381,7 @@ Submits a transaction to be included in the mempool and broadcast to the network
 
 ### Return values:
 
-`hash` : The tranaction hash, if successfully committed to the mempool / broadcast
+`hash` : The tranaction hash, if successfully committed to the mempool / broadcast.
 
 ***
 
@@ -418,33 +418,32 @@ NONE
     "totalConnections": 0
 }
 ```
-    
+
 
 ### Return values:
 
-`blocks` : The current block height
+`blocks` : The current block height.
 
-`timestamp` : Unix timestamp of the last block
+`timestamp` : The Unix timestamp of the last block.
 
-`stakeDifficulty` : The current difficulty of the stake channel
+`stakeDifficulty` : The current difficulty of the stake channel.
 
-`primeDifficulty` : The current difficulty of the prime channel
+`primeDifficulty` : The current difficulty of the prime channel.
 
-`hashDifficulty` : The current difficulty of the hash channel
+`hashDifficulty` : The current difficulty of the hash channel.
 
-`primeReserve` : The amount of NXS in the reserve balance for the prime channel
+`primeReserve` : The amount of NXS in the reserve balance for the prime channel.
 
-`hashReserve` : The amount of NXS in the reserve balance for the hash channel
+`hashReserve` : The amount of NXS in the reserve balance for the hash channel.
 
-`primeValue` : The block reward for the next prime block to be found
+`primeValue` : The block reward for the next prime block to be found.
 
-`hashValue` : The block reward for the next hash block to be found
+`hashValue` : The block reward for the next hash block to be found.
 
-`pooledtx` : The number of transactions currently in the mem pool
+`pooledtx` : The number of transactions currently in the mempool.
 
-`primesPerSecond` : Average number of primes per second currently being calculated by the whole network
+`primesPerSecond` : The average number of primes per second currently being calculated by the whole network.
 
-`hashPerSecond` : Average number of hashes per second currently being calculated by the whole network
+`hashPerSecond` : The average number of hashes per second currently being calculated by the whole network.
 
-`totalConnections` : Number of connections to the mining LLP of this node
-
+`totalConnections` : The number of connections to the mining LLP of this node.
