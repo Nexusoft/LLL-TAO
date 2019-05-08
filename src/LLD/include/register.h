@@ -116,6 +116,22 @@ namespace LLD
         }
 
 
+        /** WriteTrust
+         *
+         *  Write a genesis to a register address.
+         *
+         *  @param[in] hashGenesis The genesis-id address.
+         *  @param[in] state The state register to write.
+         *
+         *  @return True if write was successful, false otherwise.
+         *
+         **/
+        bool WriteTrust(const uint256_t& hashGenesis, const TAO::Register::State& state)
+        {
+            return Write(std::make_pair(std::string("genesis"), hashGenesis), state);
+        }
+
+
         /** ReadTrust
          *
          *  Index a genesis to a register address.
@@ -146,7 +162,6 @@ namespace LLD
         {
             return Erase(std::make_pair(std::string("genesis"), hashGenesis));
         }
-
 
 
         /** WriteIdentifier

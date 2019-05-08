@@ -244,28 +244,12 @@ namespace TAO
                             if(!tx.ssOperation.begin())
                                 return debug::error(FUNCTION, "trust opeartion has to be first");
 
-                            /* The account that is being staked. */
-                            uint256_t hashAccount;
-                            tx.ssOperation >> hashAccount;
-
                             /* The previous trust block. */
                             uint1024_t hashLastTrust;
                             tx.ssOperation >> hashLastTrust;
 
-                            /* Previous trust sequence number. */
-                            uint32_t nSequence;
-                            tx.ssOperation >> nSequence;
-
-                            /* The trust calculated. */
-                            uint64_t nTrust;
-                            tx.ssOperation >> nTrust;
-
-                            /* The total to be staked. */
-                            uint64_t  nStake;
-                            tx.ssOperation >> nStake;
-
                             /* Execute the operation method. */
-                            if(!Trust(hashAccount, hashLastTrust, nSequence, nTrust, nStake, nFlags, tx))
+                            if(!Trust(hashLastTrust, nFlags, tx))
                                 return false;
 
                             /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */

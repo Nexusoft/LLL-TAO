@@ -138,7 +138,6 @@ namespace TAO
             if(!sys.IsValid())
                 return debug::error(FUNCTION, "system memory address ", uint256_t(TAO::Register::SYSTEM::TRUST).ToString(), " is in invalid state");
 
-
             /* Write post-state checksum. */
             if((nFlags & TAO::Register::FLAGS::POSTSTATE))
             {
@@ -183,7 +182,7 @@ namespace TAO
                     tx.ssSystem >> nChecksum;
 
                     /* Check for matching post states. */
-                    if(nChecksum != account.GetHash())
+                    if(nChecksum != sys.GetHash())
                         return debug::error(FUNCTION, "system register script has invalid post-state");
                 }
 
