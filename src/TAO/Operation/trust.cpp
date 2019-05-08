@@ -17,6 +17,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/system.h>
 
+#include <TAO/Ledger/include/constants.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -26,7 +28,7 @@ namespace TAO
     {
 
         /* Commits funds from a coinbase transaction. */
-        bool Trust(const uint1024_t& hashLastTrust, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Trust(const uint512_t& hashLastTrust, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Read the register from the database. */
             TAO::Register::Object account;
@@ -91,9 +93,52 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to parse account object register");
 
             /* Calculate the new trust score. */
-            uint64_t nTrust = account.get<uint64_t>("trust");
+            uint64_t nTrustPrev = account.get<uint64_t>("trust");
 
-            //check trust should calculate new trust here
+            /* Get the last coinstake transaction. */
+            TAO::Ledger::Transaction txLast;
+            if(!LLD::legDB->ReadTx(hashLastTrust, txLast))
+                return debug::error(FUNCTION, "last producer not in database");
+
+            /* Check that the last trust was indexed. */
+            if(!LLD::legDB->HasIndex(hashLastTrust))
+                return debug::error(FUNCTION, "last producer not indexed");
+
+            /* Check the last transaction genesis. */
+            if(txLast.hashGenesis != tx.hashGenesis)
+                return debug::error(FUNCTION, "last transaction is not calling genesis");
+
+            //TODO: handle a previous block that is from before tritium activation time-lock
+
+            /* Enforce the minimum trust key interval of 120 blocks. */
+            //if(nHeight - stateLast.nHeight < (config::fTestNet ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL : TAO::Ledger::MAINNET_MINIMUM_INTERVAL))
+            //    return debug::error(FUNCTION, "trust key interval below minimum interval ", nHeight - stateLast.nHeight);
+
+            /* The time it has been since the last trust for this signature chain. */
+            uint32_t nTimespan = (tx.nTimestamp - txLast.nTimestamp);
+
+            /* Timespan less than required timespan is awarded the total seconds it took to find. */
+            uint64_t nTrust = 0;
+            if(nTimespan < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+                nTrust = nTrustPrev + nTimespan;
+
+            /* Timespan more than required timespan is penalized 3 times the time it took past the required timespan. */
+            else
+            {
+                /* Calculate the penalty for score (3x the time). */
+                uint32_t nPenalty = (nTimespan - (config::fTestNet ?
+                    TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN)) * 3;
+
+                /* Catch overflows and zero out if penalties are greater than previous score. */
+                if(nPenalty > nTrust)
+                    nTrust = 0;
+                else
+                    nTrust = nTrustPrev - nPenalty;
+            }
+
+            /* Set maximum trust score to seconds passed for interest rate. */
+            if(nTrust > (60 * 60 * 24 * 28 * 13))
+                nTrust = (60 * 60 * 24 * 28 * 13);
 
             /* Write the new trust to object register. */
             if(!account.Write("trust", nTrust))
@@ -121,7 +166,7 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to parse system object register");
 
             /* Write the system values. */
-            if(!sys.Write("trust", sys.get<uint64_t>("trust") + account.get<uint64_t>("trust")))
+            if(!sys.Write("trust", sys.get<uint64_t>("trust") + int64_t(nTrust - nTrustPrev)))
                 return debug::error(FUNCTION, "could not write new system register value.");
 
             /* Update the system register's timestamp. */

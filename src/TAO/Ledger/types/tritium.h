@@ -158,14 +158,6 @@ namespace TAO
             bool CheckStake() const;
 
 
-            /** CheckTrust
-             *
-             *  Check the calculated trust score meets published one.
-             *
-             **/
-            bool CheckTrust() const;
-
-
             /** BlockAge
              *
              *  Get the current block age of the trust key.

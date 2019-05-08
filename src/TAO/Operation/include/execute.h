@@ -245,7 +245,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "trust opeartion has to be first");
 
                             /* The previous trust block. */
-                            uint1024_t hashLastTrust;
+                            uint512_t hashLastTrust;
                             tx.ssOperation >> hashLastTrust;
 
                             /* Execute the operation method. */

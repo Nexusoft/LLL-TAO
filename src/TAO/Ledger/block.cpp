@@ -335,18 +335,6 @@ namespace TAO
             DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
             ss.reserve(256);
 
-            /* Trust Key is part of stake hash if not genesis. */
-            if(nHeight > 2392970 && fIsGenesis)
-            {
-                /* Genesis must hash a prvout of 0. */
-                uint512_t hashPrevout = 0;
-
-                /* Serialize the data to hash into a stream. */
-                ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << hashPrevout << nNonce;
-
-                return LLC::SK1024(ss.begin(), ss.end());
-            }
-
             /* Serialize the data to hash into a stream. */
             ss << nVersion << hashPrevBlock << nChannel << nHeight << nBits << hashGenesis << nNonce;
 
