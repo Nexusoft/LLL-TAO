@@ -1,4 +1,4 @@
-Nexus API Overview
+# Nexus API Overview
 -------------------------------------
 
 Nexus provides several API's to allow users and integrators to easily interact with the functionality of the Nexus software stack.  Each API is a logically grouped collection of methods that either interact with a specific part of the stack (e.g. ledger, registers), by functional area (accounts, assets, tokens), or by industry specific use case (supply, music).
