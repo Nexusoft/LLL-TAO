@@ -579,6 +579,14 @@ namespace TAO
                     if(LLD::legDB->HasIndex(hash))
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
 
+                    /* Check if is trust or genesis. */
+                    if(tx.IsTrust() || tx.IsGenesis())
+                    {
+                        //TODO: make sure this is in producer position
+                        if(!tx.CheckTrust(*this))
+                            return debug::error(FUNCTION, "Trust score is invalid");
+                    }
+
                     /* Verify the ledger layer. */
                     if(!TAO::Register::Verify(tx))
                         return debug::error(FUNCTION, "transaction register layer failed to verify");
@@ -587,8 +595,8 @@ namespace TAO
                     if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
                         return debug::error(FUNCTION, "transaction operation layer failed to execute");
 
-                    /* Check for genesis. */
-                    if(tx.IsGenesis())
+                    /* Check for first. */
+                    if(tx.IsFirst())
                     {
                         //Check for duplicate genesis
 
@@ -699,7 +707,7 @@ namespace TAO
                         return debug::error(FUNCTION, "transaction register layer failed to rollback");
 
                     /* Erase last for genesis. */
-                    if(tx.IsGenesis() && !LLD::legDB->EraseLast(tx.hashGenesis))
+                    if(tx.IsFirst() && !LLD::legDB->EraseLast(tx.hashGenesis))
                         return debug::error(FUNCTION, "failed to erase last hash");
 
                     /* Set the last hash to previous transaciton in sigchain. */

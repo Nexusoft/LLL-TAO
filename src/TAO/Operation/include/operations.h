@@ -161,13 +161,14 @@ namespace TAO
          *  Handles the locking of stake in a stake register.
          *
          *  @param[in] hashLastTrust The last trust transaction.
+         *  @param[in] nTrustScore The trust score for the operation..
          *  @param[in] nFlags The flag to determine if database state should be written.
          *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Trust(const uint512_t& hashLastTrust, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Genesis

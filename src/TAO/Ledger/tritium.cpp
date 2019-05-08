@@ -446,6 +446,19 @@ namespace TAO
         }
 
 
+        /* Get the score of the current trust block. */
+        bool TritiumBlock::TrustScore(uint64_t& nScore) const
+        {
+            /* Reset the operation stream. */
+            producer.ssOperation.seek(65, STREAM::BEGIN);
+
+            /* The current calculated trust score. */
+            producer.ssOperation >> nScore;
+
+            return true;
+        }
+
+
         /* Check the proof of stake calculations. */
         bool TritiumBlock::CheckStake() const
         {
@@ -455,9 +468,20 @@ namespace TAO
             if(StakeHash() > bnTarget.getuint1024())
                 return debug::error(FUNCTION, "proof of stake hash not meeting target");
 
+            /* Get the trust object register. */
+            TAO::Register::Object object;
+
+            /* Deserialize from the stream. */
+            producer.ssRegister.seek(1, STREAM::BEGIN);
+            producer.ssRegister >> object;
+
+            /* Parse the object. */
+            if(!object.Parse())
+                return debug::error(FUNCTION, "failed to parse object register from pre-state");
+
             /* Weight for Trust transactions combine block weight and stake weight. */
             double nTrustWeight = 0.0, nBlockWeight = 0.0;
-            uint32_t nTrustAge = 0, nBlockAge = 0;
+            uint64_t nTrustAge = 0, nBlockAge = 0, nStake = 0;
             if(producer.IsTrust())
             {
                 /* Get the score and make sure it all checks out. */
@@ -476,6 +500,8 @@ namespace TAO
                 nBlockWeight = std::min(10.0, (((9.0 * log(((2.0 * nBlockAge) /
                     ((config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))) + 1.0)) / log(3))) + 1.0);
 
+                /* Get stake from the object register stake balance. */
+                nStake = object.get<uint64_t>("stake");
             }
 
             /* Weight for Gensis transactions are based on your coin age. */
@@ -486,10 +512,7 @@ namespace TAO
                     return debug::error(FUNCTION, "genesis can't include transactions");
 
                 /* Calculate the Average Coinstake Age. */
-                uint64_t nCoinAge = 0;
-                //TODO: get the age of this transaction with genesis flags.
-                //if(!vtx[0].CoinstakeAge(nCoinAge))
-                //    return debug::error(FUNCTION, "failed to get coinstake age");
+                uint64_t nCoinAge = (uint64_t(nTime) - object.nTimestamp);
 
                 /* Genesis has to wait for one full trust key timespan. */
                 if(nCoinAge < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
@@ -497,12 +520,14 @@ namespace TAO
 
                 /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
                 nTrustWeight = std::min(10.0, (((9.0 * log(((2.0 * nCoinAge) / (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
+
+                /* Get stake from the object register stake balance. */
+                nStake = object.get<uint64_t>("balance");
             }
 
-            /* Check the energy efficiency requirements. */
-            uint64_t nStake = 0;
-            if(!producer.ExtractStake(nStake))
-                return debug::error(FUNCTION, "failed to extract the stake amount");
+            /* Check the stake balance. */
+            if(nStake == 0)
+                return debug::error(FUNCTION, "cannot stake if stake balance is zero");
 
             /* Calculate the energy efficiency thresholds. */
             double nThreshold = ((nTime - producer.nTimestamp) * 100.0) / nNonce;
@@ -530,7 +555,7 @@ namespace TAO
 
 
         /* Get the current block age of the trust key. */
-        bool TritiumBlock::BlockAge(uint32_t& nAge) const
+        bool TritiumBlock::BlockAge(uint64_t& nAge) const
         {
             /* No age for non proof of stake or non version 5 blocks */
             if(!IsProofOfStake() || nVersion < 5)
@@ -543,18 +568,20 @@ namespace TAO
                 return true;
             }
 
-            /* Version 5 - last trust block. */
-            uint1024_t hashLastBlock;
-            uint32_t   nSequence;
-            uint32_t   nTrustScore;
+            /* Reset the operation stream. */
+            producer.ssOperation.seek(1, STREAM::BEGIN);
 
-            /* Extract values from coinstake vin. */
-            if(!producer.ExtractTrust(hashLastBlock, nSequence, nTrustScore))
-                return debug::error(FUNCTION, "failed to extract values from script");
+            /* Get the previous producer. */
+            uint512_t hashLastTrust;
+            producer.ssOperation >> hashLastTrust;
 
-            /* Check that the previous block is in the block database. */
+            /* The current calculated trust score. */
+            uint64_t nTrustScore;
+            producer.ssOperation >> nTrustScore;
+
+            /* Check that the last trust block is in the block database. */
             TAO::Ledger::BlockState stateLast;
-            if(!LLD::legDB->ReadBlock(hashLastBlock, stateLast))
+            if(!LLD::legDB->ReadBlock(hashLastTrust, stateLast))
                 return debug::error(FUNCTION, "last block not in database");
 
             /* Check that the previous block is in the block database. */
@@ -587,32 +614,6 @@ namespace TAO
             return key.Verify(GetHash().GetBytes(), vchBlockSig);
         }
         #endif
-
-
-        /* Get the score of the current trust block. */
-        bool TritiumBlock::TrustScore(uint32_t& nScore) const
-        {
-            /* Genesis has an age 0. */
-            if(producer.IsGenesis())
-            {
-                nScore = 0;
-                return true;
-            }
-
-            /* Version 5 - last trust block. */
-            uint1024_t hashLastBlock;
-            uint32_t   nSequence;
-            uint32_t   nTrustScore;
-
-            /* Extract values from coinstake vin. */
-            if(!producer.ExtractTrust(hashLastBlock, nSequence, nTrustScore))
-                return debug::error(FUNCTION, "failed to extract values from script");
-
-            /* Get the score from extract process. */
-            nScore = nTrustScore;
-
-            return true;
-        }
 
 
         /* Prove that you staked a number of seconds based on weight */

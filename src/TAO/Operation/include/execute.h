@@ -248,8 +248,12 @@ namespace TAO
                             uint512_t hashLastTrust;
                             tx.ssOperation >> hashLastTrust;
 
+                            /* The current calculated trust score. */
+                            uint64_t nTrustScore;
+                            tx.ssOperation >> nTrustScore;
+
                             /* Execute the operation method. */
-                            if(!Trust(hashLastTrust, nFlags, tx))
+                            if(!Trust(hashLastTrust, nTrustScore, nFlags, tx))
                                 return false;
 
                             /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
