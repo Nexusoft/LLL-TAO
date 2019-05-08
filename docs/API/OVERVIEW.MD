@@ -10,10 +10,10 @@ The API server uses the HTTP protocol and supports both **GET** and **POST** req
 The API's use **JSON** (JavaScript Object Notation) as their primary data transport mechanism for both input and output.  However the API server also supports URL encoded requests (**application/x-www-form-urlencoded**).   
 
 ### Port
-By default the API server runs on port 8080, thought this can be changed by setting apiport=xxxx in your nexus.conf or starting your daemon with the -apiport=xxxx parameter
+By default the API server runs on port 8080. This can be changed by setting apiport=xxxx in your nexus.conf or starting your daemon with the -apiport=xxxx parameter.
 
 
-### Endpoint 
+### Endpoint
 
 Each API endpoint can be invoked through the following semantics:
 
@@ -27,11 +27,11 @@ http://127.0.0.1:8080/ledger/get/block
 **NOTE**:  URI's are always in lowercase.
 
 ## Verbs (actions)
-The following list of verbs are used throughout the Nexus API's.  Where the action is generic in nature (i.e. list, get, create), implementations of these actions will adhere to certain semantics or mandatory parameters regardless of the noun (resource)
+The following list of verbs are used throughout the Nexus API's.  While the action is generic in nature (i.e. list, get, create), implementations of these actions will adhere to certain semantics or mandatory parameters regardless of the noun (resource).
 
 * `list`
    - Retrieves a sorted list of objects or data
-   - Sorting is always youngest to oldest
+   - Sorting is always newest to oldest
    - Supported parameters:
      - **page** + **limit** (where the start point is known) *or* **index** + **limit**
      - **verbose** to indicate the verbosity of the data returned.  Values can be **default**, **summary**, or **detail**
@@ -41,9 +41,9 @@ The following list of verbs are used throughout the Nexus API's.  Where the acti
    - Retrieves a single object or piece of data
    - Supported parameters:
      - **format** indicates the format of the returned data (where applicable). Values can be **RAW**, **JSON**, **XML**
-       
+
 * `create`
-   - Creates a single resource / object 
+   - Creates a single resource / object
    - Supported parameters:
      - **format** indicates the format of the data being provided to create the item / object (where applicable). Values can be **RAW**, **JSON**, **XML**, **ANSI C**, and **PYTHON**
 * `debit`
@@ -66,12 +66,12 @@ Within each API endpoint, a noun is used to describe the resource or object upon
 
 The commonly used resources are described below:
 
-1. `transaction` : 
-    
+1. `transaction` :
+
     A transaction is a cryptographic object that contains the contracts that operated on the registers.   
     It is indexed by an uint512_t, so any index used must be sanitized to this format
 
-2. `block` : 
+2. `block` :
 
     A block is a cryptographic object that contains the transactions in a specific sequence of time.  
     It is indexed by an uint1024_t, so any index used must be sanitized to this format.  
@@ -83,20 +83,20 @@ The commonly used resources are described below:
     An account is an object register of the following types: trust or base.   
     It is responsible for holding the state of a user account’s balance
 
-4. `object` : 
+4. `object` :
 
     An object is a register with nType being REGISTER::OBJECT   
     It is always parsed, and access to its data members given
 
-5. `token` : 
+5. `token` :
 
     A token is an object register of standard OBJECT::TOKEN   
     It contains the domain parameters of a token such as supply or total number of significant digits
 
-6. `asset` : 
+6. `asset` :
 
     An asset is an object register of specialized type
-    
+
 
 
 ## Error Handling
@@ -104,7 +104,7 @@ The commonly used resources are described below:
 In the event that an API call results in an error, a JSON object will be returned with the following format:
 ```
 {
-    "error" : 
+    "error" :
     {
         "code" : -123,
         "message" : An error has occurred"
@@ -112,7 +112,7 @@ In the event that an API call results in an error, a JSON object will be returne
 }
 ```
 
-Error Codes 
+Error Codes
 
 | Code   | Message   |
 | :-----:| :-------- |
@@ -122,6 +122,3 @@ Error Codes
 
 
 **THIS LIST IS NOT UP TO DATE AND OUR ERROR CODES / MESSAGES NEED TO BE UPDATED THROUGHOUT THE CODE**
-
-
-
