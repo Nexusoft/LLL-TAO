@@ -212,6 +212,7 @@ namespace TAO
                 }
             }
 
+
             /* Get notifications for personal genesis indexes. */
             for(uint32_t nSequence = 0; ; ++nSequence)
             {
@@ -223,12 +224,9 @@ namespace TAO
                 if(!LLD::legDB->ReadEvent(hashGenesis, nSequence, tx))
                     break;
 
-                /* Register address for unpacking. */
-                uint256_t hashAddress;
-
                 /* Attempt to unpack a register script. */
-                TAO::Register::Object object;
-                if(!TAO::Register::Unpack(tx, object, hashAddress))
+                uint256_t hashAddress;
+                if(!TAO::Register::Unpack(tx, hashAddress))
                     continue;
 
                 /* Check claims against notifications. */

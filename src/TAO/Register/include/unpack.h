@@ -43,7 +43,7 @@ namespace TAO
          *  Unpack a state register declaration from operation scripts.
          *
          **/
-        inline bool Unpack(const TAO::Ledger::Transaction& tx, State &state, uint256_t &hashAddress)
+        bool Unpack(const TAO::Ledger::Transaction& tx, State &state, uint256_t &hashAddress)
         {
 
             /* Start the stream at the beginning. */
@@ -101,10 +101,60 @@ namespace TAO
 
         /** Unpack
          *
+         *  Unpack a state register declaration from operation scripts.
+         *
+         **/
+        bool Unpack(const TAO::Ledger::Transaction& tx, uint256_t &hashAddress)
+        {
+
+            /* Start the stream at the beginning. */
+            tx.ssOperation.seek(0, STREAM::BEGIN);
+
+            /* Make sure no exceptions are thrown. */
+            try
+            {
+
+                /* Loop through the operations tx.ssOperation. */
+                while(!tx.ssOperation.end())
+                {
+                    uint8_t OPERATION;
+                    tx.ssOperation >> OPERATION;
+
+                    /* Check the current opcode. */
+                    switch(OPERATION)
+                    {
+
+                        /* Create a new register. */
+                        case TAO::Operation::OP::DEBIT:
+                        case TAO::Operation::OP::TRANSFER:
+                        {
+                            /* Extract the address from the tx.ssOperation. */
+                            tx.ssOperation >> hashAddress;
+
+                            return true;
+                        }
+
+                        default:
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+            catch(const std::runtime_error& e)
+            {
+            }
+
+            return false;
+        }
+
+
+        /** Unpack
+         *
          *  Unpack a previous transaction from operation scripts.
          *
          **/
-        inline bool Unpack(const TAO::Ledger::Transaction& tx, uint512_t& hashPrevTx)
+        bool Unpack(const TAO::Ledger::Transaction& tx, uint512_t& hashPrevTx)
         {
 
             /* Start the stream at the beginning. */
