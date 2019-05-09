@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <Util/include/hex.h>
 
 #include <Util/include/args.h>
+#include <functional>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -32,6 +33,46 @@ namespace TAO
 
         /** List of users in API. **/
         Users users;
+
+
+        /** Default Constructor. **/
+        Users::Users()
+        : mapSessions()
+        , pActivePIN()
+        , MUTEX()
+        , EVENTS_MUTEX()
+        , EVENTS_THREAD()
+        , CONDITION()
+        , fEvent(false)
+        {
+            Initialize();
+
+            EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
+        }
+
+
+        /** Destructor. **/
+        Users::~Users()
+        {
+            /* Iterate through the sessions map and delete any sig chains that are still active */
+            for( auto& session : mapSessions)
+            {
+                /* Check that is hasn't already been destroyed before freeing it*/
+                if( !session.second.IsNull())
+                    session.second.free();
+            }
+            /* Clear the sessions map of all entries */
+            mapSessions.clear();
+
+            if( !pActivePIN.IsNull())
+                pActivePIN.free();
+
+
+            /* Join events processing thread. */
+
+            NotifyEvent();
+            EVENTS_THREAD.join();
+        }
 
 
         /* Standard initialization function. */
@@ -63,6 +104,7 @@ namespace TAO
             return false;
         }
 
+
         /* In sessionless API mode this method checks that the active sig chain has
          * been unlocked to allow transactions.  If the account has not been specifically
          * unlocked then we assume that they ARE allowed to transact, since the PIN would
@@ -74,6 +116,7 @@ namespace TAO
 
             return false;
         }
+
 
         /* In sessionless API mode this method checks that the active sig chain has
          *  been unlocked to allow minting */
@@ -142,11 +185,13 @@ namespace TAO
             return mapSessions[nSessionToUse];
         }
 
+
         /* Returns the pin number for the currently logged in account. */
         SecureString Users::GetActivePin() const
         {
             return SecureString(pActivePIN->PIN().c_str());
         }
+
 
         /* If the API is running in sessionless mode this method will return the currently
          * active PIN (if logged in) or the pin from the params.  If not in sessionless mode
@@ -167,6 +212,7 @@ namespace TAO
 
             return strPIN;
         }
+
 
         /* If the API is running in sessionless mode this method will return the default
          * session ID that is used to store the one and only session (ID 0). If the user is not
@@ -190,5 +236,6 @@ namespace TAO
 
             return nSession;
         }
+
     }
 }

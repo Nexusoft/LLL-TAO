@@ -68,7 +68,7 @@ namespace TAO
             {
                 /* Check the memory pool and compare hashes. */
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
-                    throw APIException(-26, "Account doesn't exists");
+                    throw APIException(-26, "Account doesn't exist");
 
                 /* Get the memory pool tranasction. */
                 if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))

@@ -20,6 +20,11 @@ ________________________________________________________________________________
 
 #include <Util/include/mutex.h>
 #include <Util/include/memory.h>
+#include <condition_variable>
+#include <thread>
+#include <atomic>
+
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -36,6 +41,9 @@ namespace TAO
          **/
         class Users : public Base
         {
+
+        private:
+
             /** The signature chain for login and logout. */
             mutable std::map<uint64_t, memory::encrypted_ptr<TAO::Ledger::SignatureChain>> mapSessions;
 
@@ -47,34 +55,32 @@ namespace TAO
             /** The mutex for locking. **/
             mutable std::mutex MUTEX;
 
+
+            /** The mutex for events processing. **/
+            mutable std::mutex EVENTS_MUTEX;
+
+
+            /** The sigchain events processing thread. **/
+            std::thread EVENTS_THREAD;
+
+
+            /** The condition variable to awaken sleeping events thread. **/
+            std::condition_variable CONDITION;
+
+
+            /** the events flag for active oustanding events. **/
+            std::atomic<bool> fEvent;
+
+
         public:
 
+
             /** Default Constructor. **/
-            Users()
-            : mapSessions()
-            , pActivePIN()
-            , MUTEX()
-            {
-                Initialize();
-            }
+            Users();
 
 
             /** Destructor. **/
-            ~Users()
-            {
-                /* Iterate through the sessions map and delete any sig chains that are still active */
-                for( auto& session : mapSessions)
-                {
-                    /* Check that is hasn't already been destroyed before freeing it*/
-                    if( !session.second.IsNull())
-                        session.second.free();
-                }
-                /* Clear the sessions map of all entries */
-                mapSessions.clear();
-
-                if( !pActivePIN.IsNull())
-                    pActivePIN.free();
-            }
+            ~Users();
 
 
             /** Initialize.
@@ -85,7 +91,7 @@ namespace TAO
             void Initialize() final;
 
 
-            /** LoggedIn Function
+            /** LoggedIn
              *
              *  Determine if a sessionless user is logged in.
              *
@@ -93,7 +99,7 @@ namespace TAO
             bool LoggedIn() const;
 
 
-            /** Locked Function
+            /** Locked
              *
              *  Determine if the currently active sig chain is locked.
              *
@@ -156,6 +162,7 @@ namespace TAO
              **/
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& GetAccount(uint64_t nSession) const;
 
+
             /** GetActivePin
              *
              *  Returns the pin number for the currently logged in account.
@@ -164,6 +171,7 @@ namespace TAO
              *
              **/
             SecureString GetActivePin() const;
+
 
             /** GetPin
              *
@@ -176,6 +184,7 @@ namespace TAO
              *
              **/
             SecureString GetPin(const json::json params) const;
+
 
             /** GetSession
              *
@@ -254,7 +263,7 @@ namespace TAO
             json::json Logout(const json::json& params, bool fHelp);
 
 
-            /** CreateAccount
+            /** Create
              *
              *  Create's a user account.
              *
@@ -291,6 +300,24 @@ namespace TAO
              *
              **/
             json::json Notifications(const json::json& params, bool fHelp);
+
+
+            /** EventsThread
+             *
+             *  Background thread to handle/suppress sigchain notifications.
+             *
+             **/
+             void EventsThread();
+
+
+             /** NotifyEvent
+              *
+              *  Notifies the events processor that an event has occurred so it
+              *  can check and update it's state.
+              *
+              **/
+              void NotifyEvent();
+
         };
 
         extern Users users;
