@@ -255,6 +255,24 @@ namespace TAO
         }
 
 
+        /* Get a list of field names for this Object. */
+        std::vector<std::string> Object::GetFieldNames() const
+        {
+            /* Declare the vector of field names to return */
+            std::vector<std::string> vFieldNames;
+
+            /* Check the map for empty. */
+            if(mapData.empty())
+                debug::error(FUNCTION, "object is not parsed");
+
+            /* Iterate data map and pull field names out into return vector */
+            for(const auto& fieldName : mapData)
+                vFieldNames.push_back( fieldName.first);
+
+            return vFieldNames;
+        }
+
+
         /* Get the type enumeration from the object register. */
         bool Object::Type(const std::string& strName, uint8_t& nType) const
         {

@@ -109,6 +109,16 @@ namespace TAO
             bool Parse();
 
 
+            /** GetFieldNames
+             *
+             *  Get a list of field names for this Object.
+             *
+             *  @return Vector of field name strings.
+             *
+             **/
+            std::vector<std::string> GetFieldNames() const;
+
+
             /** Type
              *
              *  Get the type enumeration from the object register.

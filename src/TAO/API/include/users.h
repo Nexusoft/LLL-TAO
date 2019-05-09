@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_API_INCLUDE_ACCOUNTS_H
-#define NEXUS_TAO_API_INCLUDE_ACCOUNTS_H
 
 #include <TAO/API/types/base.h>
 
@@ -31,12 +29,12 @@ namespace TAO
     namespace API
     {
 
-        /** Accounts API Class
+        /** Users API Class
          *
-         *  Manages the function pointers for all Accounts commands.
+         *  Manages the function pointers for all Users commands.
          *
          **/
-        class Accounts : public Base
+        class Users : public Base
         {
             /** The signature chain for login and logout. */
             mutable std::map<uint64_t, memory::encrypted_ptr<TAO::Ledger::SignatureChain>> mapSessions;
@@ -52,7 +50,7 @@ namespace TAO
         public:
 
             /** Default Constructor. **/
-            Accounts()
+            Users()
             : mapSessions()
             , pActivePIN()
             , MUTEX()
@@ -62,7 +60,7 @@ namespace TAO
 
 
             /** Destructor. **/
-            ~Accounts()
+            ~Users()
             {
                 /* Iterate through the sessions map and delete any sig chains that are still active */
                 for( auto& session : mapSessions)
@@ -200,7 +198,7 @@ namespace TAO
              **/
             std::string GetName() const final
             {
-                return "Accounts";
+                return "Users";
             }
 
 
@@ -295,8 +293,6 @@ namespace TAO
             json::json Notifications(const json::json& params, bool fHelp);
         };
 
-        extern Accounts accounts;
+        extern Users users;
     }
 }
-
-#endif

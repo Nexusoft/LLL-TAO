@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/include/accounts.h>
+#include <TAO/API/include/users.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -30,7 +30,7 @@ namespace TAO
     {
 
         /* Create's a user account. */
-        json::json Accounts::Create(const json::json& params, bool fHelp)
+        json::json Users::Create(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

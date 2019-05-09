@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/include/accounts.h>
+#include <TAO/API/include/users.h>
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Register/include/unpack.h>
@@ -36,7 +36,7 @@ namespace TAO
     {
 
         /* Get a user's account. */
-        json::json Accounts::Notifications(const json::json& params, bool fHelp)
+        json::json Users::Notifications(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

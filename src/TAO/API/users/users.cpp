@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/include/accounts.h>
+#include <TAO/API/include/users.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
@@ -30,32 +30,32 @@ namespace TAO
     namespace API
     {
 
-        /** List of accounts in API. **/
-        Accounts accounts;
+        /** List of users in API. **/
+        Users users;
 
 
         /* Standard initialization function. */
-        void Accounts::Initialize()
+        void Users::Initialize()
         {
-            mapFunctions["create"]              = Function(std::bind(&Accounts::Create,          this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["login"]               = Function(std::bind(&Accounts::Login,           this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["logout"]              = Function(std::bind(&Accounts::Logout,          this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["lock"]                = Function(std::bind(&Accounts::Lock,            this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["unlock"]              = Function(std::bind(&Accounts::Unlock,          this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["transactions"]        = Function(std::bind(&Accounts::Transactions,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["notifications"]       = Function(std::bind(&Accounts::Notifications,   this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["create/user"]              = Function(std::bind(&Users::Create,          this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["login/user"]               = Function(std::bind(&Users::Login,           this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["logout/user"]              = Function(std::bind(&Users::Logout,          this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["lock/user"]                = Function(std::bind(&Users::Lock,            this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["unlock/user"]              = Function(std::bind(&Users::Unlock,          this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/transactions"]        = Function(std::bind(&Users::Transactions,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/notifications"]       = Function(std::bind(&Users::Notifications,   this, std::placeholders::_1, std::placeholders::_2));
         }
 
 
         /* Determine if a sessionless user is logged in. */
-        bool Accounts::LoggedIn() const
+        bool Users::LoggedIn() const
         {
             return !config::fAPISessions && mapSessions.count(0);
         }
 
 
-        /* Determine if the accounts are locked. */
-        bool Accounts::Locked() const
+        /* Determine if the Users are locked. */
+        bool Users::Locked() const
         {
             if(config::fAPISessions || pActivePIN.IsNull() || pActivePIN->PIN().empty())
                 return true;
@@ -67,7 +67,7 @@ namespace TAO
          * been unlocked to allow transactions.  If the account has not been specifically
          * unlocked then we assume that they ARE allowed to transact, since the PIN would
          * need to be provided in each API call */
-        bool Accounts::CanTransact() const
+        bool Users::CanTransact() const
         {
             if(config::fAPISessions || pActivePIN.IsNull() || pActivePIN->CanTransact())
                 return true;
@@ -77,7 +77,7 @@ namespace TAO
 
         /* In sessionless API mode this method checks that the active sig chain has
          *  been unlocked to allow minting */
-        bool Accounts::CanMint() const
+        bool Users::CanMint() const
         {
             if(config::fAPISessions || (!pActivePIN.IsNull() && pActivePIN->CanMint()))
                 return true;
@@ -87,7 +87,7 @@ namespace TAO
 
 
         /* Returns a key from the account logged in. */
-        uint512_t Accounts::GetKey(uint32_t nKey, SecureString strSecret, uint64_t nSession) const
+        uint512_t Users::GetKey(uint32_t nKey, SecureString strSecret, uint64_t nSession) const
         {
             LOCK(MUTEX);
 
@@ -107,7 +107,7 @@ namespace TAO
 
 
         /* Returns the genesis ID from the account logged in. */
-        uint256_t Accounts::GetGenesis(uint64_t nSession) const
+        uint256_t Users::GetGenesis(uint64_t nSession) const
         {
             LOCK(MUTEX);
 
@@ -128,7 +128,7 @@ namespace TAO
 
         /* Returns the sigchain the account logged in. */
         static memory::encrypted_ptr<TAO::Ledger::SignatureChain> null_ptr;
-        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Accounts::GetAccount(uint64_t nSession) const
+        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Users::GetAccount(uint64_t nSession) const
         {
             LOCK(MUTEX);
 
@@ -143,7 +143,7 @@ namespace TAO
         }
 
         /* Returns the pin number for the currently logged in account. */
-        SecureString Accounts::GetActivePin() const
+        SecureString Users::GetActivePin() const
         {
             return SecureString(pActivePIN->PIN().c_str());
         }
@@ -152,18 +152,18 @@ namespace TAO
          * active PIN (if logged in) or the pin from the params.  If not in sessionless mode
          * then the method will return the pin from the params.  If no pin is available then
          * an APIException is thrown */
-        SecureString Accounts::GetPin(const json::json params) const
+        SecureString Users::GetPin(const json::json params) const
         {
             /* Check for pin parameter. */
             SecureString strPIN;
-            bool fNeedPin = accounts.Locked();
+            bool fNeedPin = users.Locked();
 
             if( fNeedPin && params.find("pin") == params.end() )
                 throw APIException(-25, "Missing PIN");
             else if( fNeedPin)
                 strPIN = params["pin"].get<std::string>().c_str();
             else
-                strPIN = accounts.GetActivePin();
+                strPIN = users.GetActivePin();
 
             return strPIN;
         }
@@ -173,12 +173,12 @@ namespace TAO
          * logged in than an APIException is thrown.
          * If not in sessionless mode then the method will return the session from the params.
          * If the session is not is available in the params then an APIException is thrown. */
-        uint64_t Accounts::GetSession(const json::json params) const
+        uint64_t Users::GetSession(const json::json params) const
         {
             /* Check for session parameter. */
             uint64_t nSession = 0; // ID 0 is used for sessionless API
 
-            if( !config::fAPISessions && !accounts.LoggedIn())
+            if( !config::fAPISessions && !users.LoggedIn())
                 throw APIException(-25, "User not logged in");
             else if(config::fAPISessions)
             {

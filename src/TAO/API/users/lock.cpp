@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/accounts.h>
+#include <TAO/API/include/users.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -22,7 +22,7 @@ namespace TAO
     {
 
         /* Lock an account for mining (TODO: make this much more secure) */
-        json::json Accounts::Lock(const json::json& params, bool fHelp)
+        json::json Users::Lock(const json::json& params, bool fHelp)
         {
             /* Restrict Unlock / Lock to sessionless API */
             if(config::fAPISessions)

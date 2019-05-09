@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/include/accounts.h>
+#include <TAO/API/include/users.h>
 #include <Util/include/args.h>
 
 #include <TAO/Ledger/types/transaction.h>
@@ -29,7 +29,7 @@ namespace TAO
     {
 
         /* Unlock an account for mining (TODO: make this much more secure) */
-        json::json Accounts::Unlock(const json::json& params, bool fHelp)
+        json::json Users::Unlock(const json::json& params, bool fHelp)
         {
             /* Restrict Unlock to sessionless API */
             if(config::fAPISessions)
