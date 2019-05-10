@@ -74,6 +74,75 @@ namespace TAO
         }
 
 
+        /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
+        *  map directly to a function in the target API.  Insted this method can be overriden to
+        *  parse the incoming URL and route to a different/generic method handler, adding parameter
+        *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset 
+        *  added to the jsonParams
+        *  The return json contains the modifed method URL to be called.
+        */
+        std::string Users::RewriteURL( const std::string& strMethod, json::json& jsonParams ) 
+        { 
+            std::string strMethodRewritten = strMethod;
+
+            
+            /* route create/myusername to create/user?username=myusername */
+            /* check to see if this method is a create/myusername format. i.e. it starts with get/ */
+            if(strMethod.find("create/") == 0)
+            {
+                /* get the user name from after the create/ */
+                std::string strUserName = strMethod.substr(7);
+
+                strMethodRewritten = "create/user";
+                jsonParams["username"] = strUserName;
+            }
+            /* route login/myusername to login/user?username=myusername */
+            /* check to see if this method is a login/myusername format. i.e. it starts with get/ */
+            else if(strMethod.find("login/") == 0)
+            {
+                /* get the user name from after the login/ */
+                std::string strUserName = strMethod.substr(6);
+
+                strMethodRewritten = "login/user";
+                jsonParams["username"] = strUserName;
+            }
+            /* route logout/myusername to logout/user?username=myusername */
+            /* check to see if this method is a logout/myusername format. i.e. it starts with get/ */
+            else if(strMethod.find("logout/") == 0)
+            {
+                /* get the user name from after the logout/ */
+                std::string strUserName = strMethod.substr(7);
+
+                strMethodRewritten = "logout/user";
+                jsonParams["username"] = strUserName;
+            }
+            /* route lock/myusername to lock/user?username=myusername */
+            /* check to see if this method is a lock/myusername format. i.e. it starts with get/ */
+            else if(strMethod.find("lock/") == 0)
+            {
+                /* get the user name from after the lock/ */
+                std::string strUserName = strMethod.substr(5);
+
+                strMethodRewritten = "lock/user";
+                jsonParams["username"] = strUserName;
+            }
+            /* route unlock/myusername to unlock/user?username=myusername */
+            /* check to see if this method is a unlock/myusername format. i.e. it starts with get/ */
+            else if(strMethod.find("unlock/") == 0)
+            {
+                /* get the user name from after the unlock/ */
+                std::string strUserName = strMethod.substr(7);
+
+                strMethodRewritten = "unlock/user";
+                jsonParams["username"] = strUserName;
+            }
+
+            
+            return strMethodRewritten; 
+            
+        }
+
+
         /* Standard initialization function. */
         void Users::Initialize()
         {

@@ -33,6 +33,7 @@ namespace TAO
          */
         class PinUnlock
         {
+        public:
             /* Enumeration of allowable actions that can be performed on an unlocked signature chain */
             enum UnlockActions
             {
@@ -42,8 +43,6 @@ namespace TAO
 
                 ALL = TRANSACTIONS | MINTING
             };
-
-        public:
 
             /** Default constructor. **/
             PinUnlock()

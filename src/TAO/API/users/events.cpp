@@ -44,7 +44,7 @@ namespace TAO
                 if(config::fShutdown.load())
                     return;
 
-                if(!CanTransact())
+                if(!LoggedIn() || Locked() || !CanTransact())
                     continue;
 
                 /* Get the session to be used for this API call */
