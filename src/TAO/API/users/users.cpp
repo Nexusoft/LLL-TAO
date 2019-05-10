@@ -47,7 +47,7 @@ namespace TAO
         {
             Initialize();
 
-            EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
+            //EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
         }
 
 
@@ -70,7 +70,7 @@ namespace TAO
 
             /* Join events processing thread. */
             NotifyEvent();
-            EVENTS_THREAD.join();
+            //EVENTS_THREAD.join();
         }
 
 
