@@ -18,18 +18,21 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
+
+#include <TAO/API/include/users.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/timelocks.h>
-#include <TAO/Ledger/types/tritium.h> 
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/types/object.h>
+#include <TAO/Register/include/unpack.h>
 
 #include <Util/include/args.h>
 #include <Util/include/config.h>
@@ -38,17 +41,19 @@ ________________________________________________________________________________
 #include <Util/include/runtime.h>
 
 
-namespace Legacy
+/* Global TAO namespace. */
+namespace TAO
 {
 
-    /* Define constants for use by minter */
-
+    /* Ledger namespace. */
+    namespace Ledger
+    {
 
     /* Initialize static variables */
     std::atomic<bool> TritiumMinter::fisStarted(false);
     std::atomic<bool> TritiumMinter::fstopMinter(false);
 
-    std::thread TritiumMinter::minterThread;
+    std::thread TritiumMinter::tritiumMinterThread;
 
 
     TritiumMinter& TritiumMinter::GetInstance()
@@ -89,23 +94,16 @@ namespace Legacy
         }
 
         /* Verify that account is unlocked and can mint. */
-        if (TAO::API::accounts.Locked())
+        if (!CheckUser())
         {
-            debug::error(FUNCTION, "Cannot start stake minter for locked account.");
+            debug::log(0, FUNCTION, "Cannot start stake minter.");
             return false;
         }
-
-        if (!TAO::API::accounts.CanMint())
-        {
-            debug::error(FUNCTION, "Account has not been unlocked for minting.");
-            return nullptr;
-        }
-
 
         /* Ensure stop flag is reset or thread will immediately exit */
         TritiumMinter::fstopMinter.store(false);
 
-        TritiumMinter::minterThread = std::thread(TritiumMinter::TritiumMinterThread, this);
+        TritiumMinter::tritiumMinterThread = std::thread(TritiumMinter::TritiumMinterThread, this);
 
         TritiumMinter::fisStarted.store(true);
 
@@ -124,7 +122,7 @@ namespace Legacy
             TritiumMinter::fstopMinter.store(true);
 
             /* Wait for minter thread to stop */
-            TritiumMinter::minterThread.join();
+            TritiumMinter::tritiumMinterThread.join();
 
             TritiumMinter::fisStarted.store(false);
             TritiumMinter::fstopMinter.store(false);
@@ -132,6 +130,27 @@ namespace Legacy
         }
 
         return false;
+    }
+
+
+    /* Verify user account unlocked for minting. */
+    bool TritiumMinter::CheckUser()
+    {
+        /* Check whether unlocked account available. */
+        if (TAO::API::users.Locked())
+        {
+            debug::log(0, FUNCTION, "No unlocked account available for staking");
+            return false;
+        }
+
+        /* Check that the account is unlocked for minting */
+        if (!TAO::API::users.CanMint())
+        {
+            debug::log(0, FUNCTION, "Account has not been unlocked for minting");
+            return false;
+        }
+
+        return true;
     }
 
 
@@ -171,50 +190,8 @@ namespace Legacy
     }
 
 
-    /* Retrieve the active signature chain and PIN. */
-    bool TritiumMinter::FindUser(memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, SecureString& strPIN);
-    {
-        static const uint64_t stakingSession = (uint64_t)0; //Session 0 required to contain unlocked account that can mint. Active PIN must correspond to this account.
-
-        /*
-         * The stake minter should only be started if the user account is unlocked and available for minting (checked in StartStakeMinter).
-         * If later locked, the stake minter should then be stopped by the account locking process. Given proper coding, these methods 
-         * to find the user account should always succeed. 
-         *
-         * Thus, any failure here is likely the result of a coding error. It is logged as an error and the stake minter should be 
-         * suspended pending stop/shutdown.
-         */
-
-        /* Check whether unlocked account available. */
-        if (TAO::API::accounts.Locked())
-        {
-            debug::error(FUNCTION, "No unlocked account available for staking");
-            return false;
-        }
-
-        /* Check that the account is unlocked for minting */
-        if (!TAO::API::accounts.CanMint())
-        {
-            debug::error(0, FUNCTION, "Account has not been unlocked for minting");
-            return false;
-        }
-
-        /* Attempt to get the user signature chain. */
-        user = TAO::API::accounts.GetAccount(stakingSession);
-        if (!user)
-        {
-            debug::error(0, FUNCTION, "Stake minter could not retrieve the unlocked signature chain.");
-            return false;
-        }
-
-        strPIN = TAO::API::accounts.GetActivePin();
-
-        return true;
-    }
-
-
     /*  Retrieves the most recent stake transaction for a user account. */
-    bool TritiumMinter::FindTrustAccount(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString strPIN)
+    bool TritiumMinter::FindTrustAccount(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user)
     {
 
         /*
@@ -253,7 +230,7 @@ namespace Legacy
             if(!LLD::legDB->ReadLast(user->Genesis(), hashLast))
                 return false;
 
-            /* Loop until find trust account register creation or reach first transaction on user acount (hashLast == 0). */
+            /* Loop until find trust account register operation or reach first transaction on user acount (hashLast == 0). */
             while (hashLast != 0)
             {
                 /* Get the transaction for the current hashLast. */
@@ -267,8 +244,8 @@ namespace Legacy
 
                 if (TAO::Register::Unpack(tx, reg, hashAddressTemp))
                 {
-                    /* Transaction contains a register operation. Check whether it is the user's trust account register */
-                    if (reg.Parse() && reg.Standard() == OBJECTS::TRUST)
+                    /* Transaction contains a register operation. Check if it is the trust account register for the user account */
+                    if (reg.Parse() && reg.Standard() == TAO::Register::OBJECTS::TRUST)
                     {
                         /* Found the trust account register transaction */
                         hashAddress = hashAddressTemp;
@@ -315,12 +292,12 @@ namespace Legacy
             if (nStakeUpdate > 0)
             {
                 /* Cannot transfer more into stake than current trust account balance */
-                nStakeUpdate = std::min(nStakeUpdate, (int64_t)trustAccount.get<uint64_t>("balance"))
+                nStakeUpdate = std::min(nStakeUpdate, (int64_t)trustAccount.get<uint64_t>("balance"));
             }
             else if (nStakeUpdate < 0)
             {
                 /* Cannot transfer more from stake than current stake balance */
-                nStakeUpdate = std::min(nStakeUpdate, (int64_t)trustAccount.get<uint64_t>("stake"))
+                nStakeUpdate = std::min(nStakeUpdate, (int64_t)trustAccount.get<uint64_t>("stake"));
             }
 
             return;
@@ -337,7 +314,7 @@ namespace Legacy
 
 
     /* Record that a stake update request has been completed. */
-    void TritiumMinter::FindStakeUpdate()
+    void TritiumMinter::ApplyStakeUpdate()
     {
 /*TODO - Check for any specific transfer to/from stake and record it as applied */
 
@@ -345,7 +322,7 @@ namespace Legacy
 
 
     /* Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process. */
-    bool TritiumMinter::CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString strPIN)
+    bool TritiumMinter::CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
     {
         /* Use appropriate settings for Testnet or Mainnet */
         static const uint64_t nTrustMax = (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX);
@@ -379,14 +356,14 @@ namespace Legacy
         {
             /* Get the last stake block for the trust account. */
             TAO::Ledger::Transaction txStakePrev;
-            if (!FindLastStake(user->Genesis(), txStakePrev))
+            if (!FindLastStake(user, txStakePrev))
                 return debug::error(FUNCTION, "Failed to get last stake for trust account");
 
             TAO::Ledger::BlockState stateStakePrev;
             if(!LLD::legDB->ReadBlock(txStakePrev.GetHash(), stateStakePrev))
                 return debug::error(FUNCTION, "Failed to get last block for trust account");
 
-            if (trust account staking balance == 0)
+            if (trustAccount.get<uint64_t>("balance") == 0 && nStakeUpdate == 0)
             {
                 /* Wallet has no balance, or balance unavailable for staking. Increase sleep time to wait for balance. */
                 nSleepTime = 5000;
@@ -431,10 +408,10 @@ namespace Legacy
             else
             {
                 /* Calculate the penalty for score (3x the time). */
-                uint32_t nPenalty = (nBlockAge - nBlockAgeMax) * 3;
+                uint64_t nPenalty = (nBlockAge - nBlockAgeMax) * (uint64_t)3;
 
                 /* Trust back to zero if penalties more than previous score. */
-                nTrust = std::max((nTrustPrev - nPenalty), 0)
+                nTrust = std::max((nTrustPrev - nPenalty), (uint64_t)0);
             }
 
             /* Determine the previous and current stake amounts */
@@ -496,7 +473,7 @@ namespace Legacy
             return debug::error(FUNCTION, "transaction operation layer failed to execute");
 
         /* Sign the block producer */
-        block.producer.Sign(user->Generate(candidateBlock.producer.nSequence, strPIN));
+        candidateBlock.producer.Sign(user->Generate(candidateBlock.producer.nSequence, strPIN));
 
         /* Reset sleep time on successful completion */
         if (nSleepTime == 5000)
@@ -610,7 +587,7 @@ namespace Legacy
 
 
     /* Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block */
-    void TritiumMinter::MineProofOfStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString strPIN)
+    void TritiumMinter::MineProofOfStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
     {
         /* Calculate the minimum Required Energy Efficiency Threshold.
          * Minter can only mine Proof of Stake when current threshold exceeds this value.
@@ -682,10 +659,10 @@ namespace Legacy
     }
 
 
-    bool TritiumMinter::ProcessMinedBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString strPIN)
+    bool TritiumMinter::ProcessMinedBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
     {
         /* Add the transactions into the block from memory pool, but only if not Genesis (Genesis block for trust account has no transactions except coinstake producer). */
-        if (!IsGenesis)
+        if (!isGenesis)
             AddTransactions(candidateBlock);
 
         /* Build the Merkle Root. */
@@ -708,10 +685,11 @@ namespace Legacy
 
         /* Check the stake. */
         if (!candidateBlock.CheckStake())
-            return debug::error(FUNCTION, "Check state failed");
+            return debug::error(FUNCTION, "Check stake failed");
 
         /* Check the trust. */
-        if (!candidateBlock.CheckTrust())
+        TAO::Ledger::BlockState candidateBlockStake(candidateBlock);
+        if (!candidateBlock.producer.CheckTrust(candidateBlockStake))
             return debug::error(FUNCTION, "Check trust failed");
 
         /* Check block for difficulty requirement. */
@@ -739,9 +717,14 @@ namespace Legacy
          * to set the new best chain. This final method relays the new block to the
          * network.
          */
-        TritiumNode::Process(candidateBlock, nullptr);
-            return debug::error(FUNCTION, "Generated block not accepted");
+        if (!LLP::TritiumNode::Process(candidateBlock, nullptr))
+        {
+            debug::log(0, FUNCTION, "Generated block not accepted");
+            return false;
+        }
 
+        ApplyStakeUpdate();
+        
         if (isGenesis)
             isGenesis = false;
 
@@ -750,11 +733,11 @@ namespace Legacy
 
 
     /* Sign a candidate block after it is successfully mined. */
-    bool TritiumMinter::SignBlock()
+    bool TritiumMinter::SignBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
     {
         /* Get the sigchain and the PIN. */
         /* Sign the submitted block */
-        std::vector<uint8_t> vBytes = user->Generate(pBlock->producer.nSequence, strPIN).GetBytes();
+        std::vector<uint8_t> vBytes = user->Generate(candidateBlock.producer.nSequence, strPIN).GetBytes();
         LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
         /* Generate the EC Key and new block signature. */
@@ -765,14 +748,17 @@ namespace Legacy
         #endif
 
         if (!key.SetSecret(vchSecret, true))
-            return debug::error(FUNCTION, "TritiumMinter: Unable to set key for signing Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+            return debug::error(FUNCTION, "TritiumMinter: Unable to set key for signing Tritium Block ", 
+                                candidateBlock.hashMerkleRoot.ToString().substr(0, 20));
 
         if (!candidateBlock.GenerateSignature(key))
-            return debug::error(FUNCTION, "TritiumMinter: Unable to sign Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+            return debug::error(FUNCTION, "TritiumMinter: Unable to sign Tritium Block ",
+                                candidateBlock.hashMerkleRoot.ToString().substr(0, 20));
 
         /* Ensure the signed block is a valid signature */
         if (!candidateBlock.VerifySignature(key))
-            return debug::error(FUNCTION, "TritiumMinter: Failed verifying Tritium Block signature ", hashMerkleRoot.ToString().substr(0, 20));
+            return debug::error(FUNCTION, "TritiumMinter: Failed verifying Tritium Block signature ",
+                                candidateBlock.hashMerkleRoot.ToString().substr(0, 20));
 
         return true;
      }
@@ -787,7 +773,7 @@ namespace Legacy
         bool fLocalTestnet = config::fTestNet && config::GetBoolArg("-nodns", false);
 
         /* If the system is still syncing/connecting on startup, wait to run minter */
-        while ((TAO::Ledger::ChainState::Synchronizing() || (LLP::LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
+        while ((TAO::Ledger::ChainState::Synchronizing() || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
                 && !TritiumMinter::fstopMinter.load() && !config::fShutdown.load())
         {
             runtime::sleep(pTritiumMinter->nSleepTime);
@@ -813,18 +799,25 @@ namespace Legacy
             /* Save the current best block hash immediately in case it changes while we do setup */
             pTritiumMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
 
-            /* Get the active, unlocked sigchain. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user;
-            SecureString strPIN;
-
-            if (!FindUser(user, strPIN))
+            /* Check that user account still unlocked for minting (locking should stop minter, but still verify) */
+            if (!pTritiumMinter->CheckUser())
                 break;
+
+            /* Get the active, unlocked sigchain. Requires session 0 */
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = TAO::API::users.GetAccount(0);
+            if (!user)
+            {
+                debug::error(0, FUNCTION, "Stake minter could not retrieve the unlocked signature chain.");
+                break;
+            }
+
+            SecureString strPIN = TAO::API::users.GetActivePin();
 
             /* Retrieve the latest trust account data */
             if (!pTritiumMinter->FindTrustAccount(user))
                 break;
 
-            FindStakeUpdate();
+            pTritiumMinter->FindStakeUpdate();
             
             /* Set up the candidate block the minter is attempting to mine */
             if (!pTritiumMinter->CreateCandidateBlock(user, strPIN))
@@ -839,7 +832,7 @@ namespace Legacy
 
         }
 
-        /* If break because cannot continue (FindUser or FindTrust failed) must wait for stop or shutdown */
+        /* If break because cannot continue (error retrieving user account or FindTrust failed) must wait for stop or shutdown */
         while (!TritiumMinter::fstopMinter.load() && !config::fShutdown.load())
             runtime::sleep(pTritiumMinter->nSleepTime);
 
@@ -850,4 +843,5 @@ namespace Legacy
         /* Stop has been issued. Now thread can end. */
     }
 
+    }
 }

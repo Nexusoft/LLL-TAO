@@ -16,8 +16,10 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_TYPES_TRITIUM_MINTER_H
 
 #include <TAO/Ledger/types/base_minter.h>
+#include <TAO/Ledger/types/sigchain.h> 
+#include <TAO/Ledger/types/tritium.h> 
 
-#include <TAO/Register/include/object.h>
+#include <TAO/Register/types/object.h>
 
 #include <Util/include/allocators.h>
 #include <Util/include/memory.h>
@@ -179,10 +181,20 @@ namespace TAO
         , candidateBlock()
         , isGenesis(false)
         , nStakeUpdate(0)
-        , nTrustScore(0)
+        , nTrust(0)
         , nBlockAge(0)
         {
         }
+
+
+        /** CheckUser
+        *
+        *  Verify user account unlocked for minting.
+        *
+        *  @return true if the user account can stake
+        *
+        **/
+        bool CheckUser();
 
 
         /** FindLastStake
@@ -196,19 +208,6 @@ namespace TAO
         *
         **/
         bool FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, TAO::Ledger::Transaction& tx);
-
-
-        /** FindUser
-        *
-        *  Retrieve the active signature chain and PIN to use for staking.
-        *
-        *  @param[out] user - the currently active signature chain
-        *  @param[out] strPIN - active pin corresponding to the sig chain
-        *
-        *  @return true if the user account was successfully retrieved
-        *
-        **/
-        bool FindUser(memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, SecureString& strPIN);
 
 
         /** FindTrust

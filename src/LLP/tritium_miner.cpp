@@ -23,6 +23,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/difficulty.h>
+
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
