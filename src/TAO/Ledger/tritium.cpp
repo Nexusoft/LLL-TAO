@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <cmath>
 
+#include <LLC/types/bignum.h>
+
 #include <LLD/include/global.h>
 
 #include <LLP/packets/tritium.h>
@@ -695,6 +697,30 @@ namespace TAO
 
             return true;
         }
+
+
+        /* Verify the Proof of Work satisfies network requirements. */
+        bool TritiumBlock::VerifyWork() const
+        {
+            /* This override adds support for verifying the stake hash on the staking channel */
+            if (nChannel == 0)
+            {
+                LLC::CBigNum bnTarget;
+                bnTarget.SetCompact(nBits);
+
+                /* Check that the hash is within range. */
+                if (bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[nChannel])
+                    return debug::error(FUNCTION, "Proof of stake hash not in range");
+
+                if (StakeHash() > bnTarget.getuint1024())
+                    return debug::error(FUNCTION, "Proof of stake not meeting target");
+
+                return true;
+            }
+
+            return Block::VerifyWork();
+        }
+
 
         /* Sign the block with the key that found the block. */
         #if defined USE_FALCON

@@ -52,9 +52,9 @@ namespace Legacy
 
     LegacyMinter& LegacyMinter::GetInstance()
     {
-        static LegacyMinter LegacyMinter;
+        static LegacyMinter legacyMinter;
 
-        return LegacyMinter;
+        return legacyMinter;
     }
 
 

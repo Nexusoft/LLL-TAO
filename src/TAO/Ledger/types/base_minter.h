@@ -160,7 +160,7 @@ namespace TAO
         uint1024_t hashLastBlock;
 
 
-        /** Time to sleep between candidate blocks. **/
+        /** Time (in milliseconds) to sleep between candidate blocks. **/
         uint64_t nSleepTime;
 
 
@@ -184,6 +184,7 @@ namespace TAO
         StakeMinter()
         : hashLastBlock(0)
         , nSleepTime(1000)
+        , fIsWaitPeriod(false)
         , nTrustWeight(0.0)
         , nBlockWeight(0.0)
         , nStakeRate(0.0)

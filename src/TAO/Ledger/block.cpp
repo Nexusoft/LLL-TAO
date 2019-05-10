@@ -267,7 +267,7 @@ namespace TAO
                 return true;
             }
 
-            return debug::error(FUNCTION, "invalid proof-of-work channel: ", nChannel);
+            return debug::error(FUNCTION, "Invalid channel: ", nChannel);
         }
 
 

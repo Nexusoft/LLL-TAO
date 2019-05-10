@@ -182,6 +182,16 @@ namespace TAO
             bool TrustScore(uint32_t& nScore) const;
 
 
+            /** VerifyWork
+             *
+             *  Verify the work was completed by miners as advertised.
+             *
+             *  @return True if work is valid, false otherwise.
+             *
+             **/
+            bool VerifyWork() const override;
+
+
             #if defined USE_FALCON
             /** Generate Signature
              *
