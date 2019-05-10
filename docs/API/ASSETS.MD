@@ -14,7 +14,7 @@ The `raw` format differs from the other formats in that the asset data is not st
 
 # `create/asset`
 
-This will create a new asset or object register.    
+This will create a new asset or object register. The API supports an alternative endpoint that can include the new asset name in the URI.  For example `/assets/create/myasset` will resolve to `assets/create/asset?name=myasset`.   
 
 
 ### Endpoint:
