@@ -55,21 +55,20 @@ namespace TAO
         Users::~Users()
         {
             /* Iterate through the sessions map and delete any sig chains that are still active */
-            for( auto& session : mapSessions)
+            for(auto& session : mapSessions)
             {
                 /* Check that is hasn't already been destroyed before freeing it*/
                 if( !session.second.IsNull())
                     session.second.free();
             }
+
             /* Clear the sessions map of all entries */
             mapSessions.clear();
-
-            if( !pActivePIN.IsNull())
+            if(!pActivePIN.IsNull())
                 pActivePIN.free();
 
 
             /* Join events processing thread. */
-
             NotifyEvent();
             EVENTS_THREAD.join();
         }

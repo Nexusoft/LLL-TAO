@@ -103,6 +103,31 @@ namespace TAO
                             if(!TAO::Ledger::mempool.Accept(tx))
                                 throw APIException(-26, "Failed to accept");
                         }
+                        else if(notification["operation"]["OP"] == "TRANSFER")
+                        {
+                            /* Create the transaction. */
+                            TAO::Ledger::Transaction tx;
+                            if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
+                                throw APIException(-25, "Failed to create transaction");
+
+                            uint512_t hashTx;
+                            hashTx.SetHex(notification["hash"]);
+
+                            /* Submit the payload object. */
+                            tx << uint8_t(TAO::Operation::OP::CLAIM) << hashTx;
+
+                            /* Execute the operations layer. */
+                            if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
+                                throw APIException(-26, "Operations failed to execute");
+
+                            /* Sign the transaction. */
+                            if(!tx.Sign(users.GetKey(tx.nSequence, strPIN, users.GetSession(params))))
+                                throw APIException(-26, "Ledger failed to sign transaction");
+
+                            /* Execute the operations layer. */
+                            if(!TAO::Ledger::mempool.Accept(tx))
+                                throw APIException(-26, "Failed to accept");
+                        }
                     }
 
                     debug::log(0, ret.dump(4));
