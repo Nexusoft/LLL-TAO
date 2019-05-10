@@ -15,32 +15,28 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_MINTER_H
 #define NEXUS_LEGACY_TYPES_MINTER_H
 
-
-#include <atomic>
-#include <thread>
-
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/reservekey.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/Ledger/types/base_minter.h>
 #include <Legacy/types/trustkey.h>
 
-#include <Util/include/mutex.h>
+#include <atomic>
+#include <thread>
 
 
 namespace Legacy
 {
-    /** @class StakeMinter
+    /** @class LegacyMinter
       *
       * This class performs all operations for mining legacy blocks on the Proof of Stake channel.
-      * Initializing the StakeMinter by calling GetInstance() the first time will start
-      * the stake minter thread, which uses the private methods of the StakeMinter to perform
-      * Proof of Stake.
+      * Intialize the LegacyMinter by calling GetInstance() the first time. 
       *
       * Staking does not start, though, until StartStakeMinter() is called for the first time.
-      * This retrieves a wallet reference and begins staking for the wallet.
+      * This retrieves a wallet reference and begins staking for the current legacy wallet.
       *
       * The trust key and balance from the wallet will be used for Proof of Stake.
       * Mined PoS blocks will add coinstake transactions to this wallet and move balance
@@ -51,28 +47,28 @@ namespace Legacy
       * and restarted by calling StartStakeMinter() again.
       *
       **/
-    class StakeMinter final
+    class LegacyMinter final : public TAO::Ledger::StakeMinter
     {
     public:
         /** Copy constructor deleted **/
-        StakeMinter(const StakeMinter&) = delete;
+        LegacyMinter(const LegacyMinter&) = delete;
 
         /** Copy assignment deleted **/
-        StakeMinter& operator=(const StakeMinter&) = delete;
+        LegacyMinter& operator=(const LegacyMinter&) = delete;
 
 
         /** Destructor **/
-        ~StakeMinter();
+        ~LegacyMinter();
 
 
         /** GetInstance
           *
-          * Retrieves the StakeMinter.
+          * Retrieves the LegacyMinter.
           *
-          * @return reference to the StakeMinter instance
+          * @return reference to the LegacyMinter instance
           *
           **/
-        static StakeMinter& GetInstance();
+        static LegacyMinter& GetInstance();
 
 
         /** IsStarted
@@ -82,68 +78,7 @@ namespace Legacy
           * @return true if the stake minter is started, false otherwise
           *
           */
-        bool IsStarted() const;
-
-
-        /** GetBlockWeight
-          *
-          * Retrieves the current internal value for the block weight metric.
-          *
-          * @return value of current block weight
-          *
-          */
-        double GetBlockWeight() const;
-
-
-        /** GetBlockWeight
-          *
-          * Retrieves the block weight metric as a percentage of maximum.
-          *
-          * @return the current block weight percentage
-          *
-          */
-        double GetBlockWeightPercent() const;
-
-
-        /** GetTrustWeight
-          *
-          * Retrieves the current internal value for the trust weight metric.
-          *
-          * @return value of current trust weight
-          *
-          */
-        double GetTrustWeight() const;
-
-
-        /** GetTrustWeight
-          *
-          * Retrieves the trust weight metric as a percentage of maximum.
-          *
-          * @return the current trust weight percentage
-          *
-          */
-        double GetTrustWeightPercent() const;
-
-
-        /** GetStakeRate
-          *
-          * Retrieves the current staking reward rate (previously, interest rate)
-          *
-          * @return the current stake rate
-          *
-          */
-        double GetStakeRate() const;
-
-
-        /** IsWaitPeriod
-          *
-          * Checks whether the stake minter is waiting for average coin
-          * age to reach the required minimum before staking Genesis.
-          *
-          * @return true if minter is waiting on coin age, false otherwise
-          *
-          */
-        bool IsWaitPeriod() const;
+        bool IsStarted() const override;
 
 
         /** StartStakeMinter
@@ -159,11 +94,11 @@ namespace Legacy
           *
           * In general, this method should be called when the wallet is unlocked.
           *
-          * If the system is configured not to run the StakeMinter, this method will return false.
-          * By default, the StakeMinter will run for non-server, and won't run for server/daemon.
+          * If the system is configured not to run the LegacyMinter, this method will return false.
+          * By default, the LegacyMinter will run for non-server, and won't run for server/daemon.
           * These defaults can be changed using the -stake setting.
           *
-          * After calling this method, the StakeMinter thread may stay in suspended state if
+          * After calling this method, the LegacyMinter thread may stay in suspended state if
           * the local node is synchronizing, or if it does not have any connections, yet.
           * In that case, it will automatically begin when sync is complete and connections
           * are available.
@@ -171,7 +106,7 @@ namespace Legacy
           * @return true if the stake minter was started, false if it was already running or not started
           *
           */
-        bool StartStakeMinter();
+        bool StartStakeMinter() override;
 
 
         /** StopStakeMinter
@@ -186,7 +121,7 @@ namespace Legacy
           * @return true if the stake minter was stopped, false if it was already stopped
           *
           */
-        bool StopStakeMinter();
+        bool StopStakeMinter() override;
 
 
     private:
@@ -218,44 +153,13 @@ namespace Legacy
         LegacyBlock candidateBlock;
 
 
-        /** Hash of the best chain when the minter began attempting to mine its current candidate.
-         *  If current hashBestChain changes, the minter must start over with a new candidate.
-         **/
-        uint1024_t hashLastBlock;
-
-
-        /** Time to sleep between candidate blocks. **/
-        uint64_t nSleepTime;
-
-
-        /** true when the minter is waiting for coin age to reach the minimum required to begin staking for Genesis **/
-        std::atomic<bool> fIsWaitPeriod;
-
-
-        /** The current trust weight for the trust key in the minter (value ranges from 1 - 90) **/
-        std::atomic<double> nTrustWeight;
-
-
-        /** The current block weight for the trust key in the minter (value ranges from 1 - 10) **/
-        std::atomic<double> nBlockWeight;
-
-
-        /** The current staking rate (previously, interest rate) for calculating staking rewards **/
-        std::atomic<double> nStakeRate;
-
-
         /** Default constructor **/
-        StakeMinter()
-        : pStakingWallet(nullptr)
+        LegacyMinter()
+        : StakeMinter()
+        , pStakingWallet(nullptr)
         , trustKey(TAO::Ledger::TrustKey())
         , pReservedTrustKey(nullptr)
         , candidateBlock(LegacyBlock())
-        , hashLastBlock(0)
-        , nSleepTime(1000)
-        , fIsWaitPeriod(false)
-        , nTrustWeight(0.0)
-        , nBlockWeight(0.0)
-        , nStakeRate(0.0)
         {
         }
 
@@ -310,7 +214,7 @@ namespace Legacy
         bool ProcessMinedBlock();
 
 
-        /** StakeMinterThread
+        /** LegacyMinterThread
          *
          *  Method run on its own thread to oversee stake minter operation using the methods in the
          *  stake minter instance. The thread will continue running after initialized, but operation can
@@ -319,10 +223,10 @@ namespace Legacy
          *  On shutdown, the thread will cease operation and wait for the stake minter
          *  destructor to tell it to exit/join.
          *
-         *  @param[in] pStakeMinter - the minter thread will use this instance to perform all the stake minter work
+         *  @param[in] pLegacyMinter - the minter thread will use this instance to perform all the stake minter work
          *
          **/
-        static void StakeMinterThread(StakeMinter* pStakeMinter);
+        static void LegacyMinterThread(LegacyMinter* pLegacyMinter);
 
     };
 }

@@ -73,7 +73,11 @@ namespace TAO
 
 
         /** Mainnet maturity for blocks. */
-        const uint32_t NEXUS_MATURITY_BLOCKS   = 100;
+        const uint32_t NEXUS_MATURITY_BLOCKS = 100;
+
+
+        /** Stake reward rate is annual. Define one year (364 days) of time for reward calculations **/
+        const uint32_t ONE_YEAR = 60 * 60 * 24 * 28 * 13;
 
 
         /** nVersion 4 and earlier trust keys expire after 24 hours. **/
@@ -84,27 +88,35 @@ namespace TAO
         const uint32_t TRUST_KEY_TIMESPAN = 60 * 60 * 24 * 3;
 
 
-        /** Timespan of trust key for testnet. (30 minutes) **/
-        const uint32_t TRUST_KEY_TIMESPAN_TESTNET = 60 * 30;
+        /** Timespan of trust key for testnet. (3 hours) **/
+        const uint32_t TRUST_KEY_TIMESPAN_TESTNET = 60 * 60 * 3;
 
 
         /** The maximum allowed value for trust score (364 days). **/
         const uint32_t TRUST_SCORE_MAX = 60 * 60 * 24 * 28 * 13;
 
 
-        /** The maximum allowed value for trust score for testnet (140 hrs - ratio of MAX/TIMESPAN is same for Testnet at Mainnet) **/
-        const uint32_t TRUST_SCORE_MAX_TESTNET = 60 * 30 * 28 * 10;
+        /** The maximum allowed value for trust score for testnet (364 hrs) **/
+        const uint32_t TRUST_SCORE_MAX_TESTNET = 60 * 60 * 28 * 13;
 
 
         /** The base value for calculating trust weight (84 days) **/
         const uint32_t TRUST_WEIGHT_BASE = 60 * 60 * 24 * 28 * 3;
 
 
-        /** The base value for calculating Testnet trust weight (14 hours) **/
-        const uint32_t TRUST_WEIGHT_BASE_TESTNET = 60 * 30 * 28;
+        /** The base value for calculating Testnet trust weight (84 hours) **/
+        const uint32_t TRUST_WEIGHT_BASE_TESTNET = 60 * 60 * 28 * 3;
 
 
-        /** Minimum span between trust blocks testnet. **/
+        /** Minimum average coin age to stake Genesis **/
+        const uint32_t MINIMUM_GENESIS_COIN_AGE = TRUST_KEY_TIMESPAN;
+
+
+        /** Minimum average coin age to stake Genesis on Testnet (10 minutes) **/
+        const uint32_t MINIMUM_GENESIS_COIN_AGE_TESTNET = 60 * 10;
+
+
+        /** Minimum span between trust blocks testnet **/
         const uint32_t TESTNET_MINIMUM_INTERVAL = 10;
 
 

@@ -36,7 +36,7 @@ ________________________________________________________________________________
 #include <Legacy/include/money.h>
 #include <Legacy/include/signature.h>
 #include <Legacy/include/enum.h> // For GMF_SEND
-#include <Legacy/types/minter.h>
+#include <Legacy/types/legacy_minter.h>
 #include <Legacy/types/script.h>
 
 #include <Legacy/wallet/crypter.h>
@@ -460,7 +460,7 @@ namespace Legacy
         LLC::RandAddSeedPerfmon();
 
         /* If it is running, stop stake minter before encrypting wallet */
-        StakeMinter::GetInstance().StopStakeMinter();
+        LegacyMinter::GetInstance().StopStakeMinter();
 
         /* Fill keying material (unencrypted key value) and new master key salt with random data using OpenSSL RAND_bytes */
         vMasterKey.resize(WALLET_CRYPTO_KEY_SIZE);
@@ -570,8 +570,8 @@ namespace Legacy
         /* Cannot lock unencrypted key store. This will enable encryption if not enabled already. */
         if (IsCrypted() && CryptoKeyStore::Lock())
         {
-            /* Upon successful lock, stop the stake minter */
-            StakeMinter::GetInstance().StopStakeMinter();
+            /* Upon successful lock, stop the stake minter if it is running */
+            LegacyMinter::GetInstance().StopStakeMinter();
 
             return true;
         }
@@ -630,7 +630,7 @@ namespace Legacy
                     }
 
                     /* Whether unlocked fully or for minting only, start the stake minter if configured */
-                    StakeMinter::GetInstance().StartStakeMinter();
+                    LegacyMinter::GetInstance().StartStakeMinter();
 
                     return true;
                 }

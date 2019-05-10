@@ -11,8 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/types/legacy_minter.h>
+
 #include <Legacy/include/create.h>
-#include <Legacy/types/minter.h>
 #include <Legacy/types/address.h>
 #include <Legacy/wallet/addressbook.h>
 
@@ -43,22 +44,22 @@ namespace Legacy
 
 
     /* Initialize static variables */
-    std::atomic<bool> StakeMinter::fisStarted(false);
-    std::atomic<bool> StakeMinter::fstopMinter(false);
+    std::atomic<bool> LegacyMinter::fisStarted(false);
+    std::atomic<bool> LegacyMinter::fstopMinter(false);
 
-    std::thread StakeMinter::minterThread;
+    std::thread LegacyMinter::minterThread;
 
 
-    StakeMinter& StakeMinter::GetInstance()
+    LegacyMinter& LegacyMinter::GetInstance()
     {
-        static StakeMinter stakeMinter;
+        static LegacyMinter legacyMinter;
 
-        return stakeMinter;
+        return legacyMinter;
     }
 
 
     /* Destructor - Returns reserve key if not used */
-    StakeMinter::~StakeMinter()
+    LegacyMinter::~LegacyMinter()
     {
         if (pReservedTrustKey != nullptr)
         {
@@ -73,85 +74,41 @@ namespace Legacy
 
 
     /* Tests whether or not the stake minter is currently running. */
-    bool StakeMinter::IsStarted() const
+    bool LegacyMinter::IsStarted() const
     {
-        return StakeMinter::fisStarted.load();
-    }
-
-
-    /* Retrieves the current internal value for the block weight metric. */
-    double StakeMinter::GetBlockWeight() const
-    {
-        return nBlockWeight.load();
-    }
-
-
-    /* Retrieves the current block weight metric as a percentage of maximum. */
-    double StakeMinter::GetBlockWeightPercent() const
-    {
-        return (nBlockWeight.load() / 10.0);
-    }
-
-
-    /* Retrieves the current internal value for the trust weight metric. */
-    double StakeMinter::GetTrustWeight() const
-    {
-        return nTrustWeight.load();
-    }
-
-
-    /* Retrieves the current trust weight metric as a percentage of maximum. */
-    double StakeMinter::GetTrustWeightPercent() const
-    {
-        return (nTrustWeight.load() / 90.0);
-    }
-
-
-    /* Retrieves the current staking reward rate (previously, interest rate) */
-    double StakeMinter::GetStakeRate() const
-    {
-        return nStakeRate.load();
-    }
-
-
-    /* Checks whether the stake minter is waiting for average coin
-     * age to reach the required minimum before staking Genesis.
-     */
-    bool StakeMinter::IsWaitPeriod() const
-    {
-        return fIsWaitPeriod.load();
+        return LegacyMinter::fisStarted.load();
     }
 
 
     /* Start the stake minter. */
-    bool StakeMinter::StartStakeMinter()
+    bool LegacyMinter::StartStakeMinter()
     {
-        if (StakeMinter::fisStarted.load())
+        if (LegacyMinter::fisStarted.load())
         {
-        	debug::error(FUNCTION, "Attempt to start Stake Minter when already started.");
-        	return false;
+            debug::log(0, FUNCTION, "Attempt to start Stake Minter when already started.");
+            return false;
         }
 
         /* Disable stake minter if not in beta mode. */
         if(!config::GetBoolArg("-beta"))
         {
-            debug::error(FUNCTION, "Stake minter disabled if not in -beta mode");
+            debug::log(0, FUNCTION, "Stake minter disabled if not in -beta mode");
 
             return false;
         }
 
-    	/* Check that stake minter is configured to run.
-    	 * Stake Minter default is to run for non-server and not to run for server
-    	 */
-    	if ((!config::fServer && !config::GetBoolArg("-stake", true)) || (config::fServer && !config::GetBoolArg("-stake", false)))
-    	{
-    		debug::log(2, "Stake Minter not configured. Startup cancelled.");
+        /* Check that stake minter is configured to run.
+         * Stake Minter default is to run for non-server and not to run for server
+         */
+        if ((!config::fServer && !config::GetBoolArg("-stake", true)) || (config::fServer && !config::GetBoolArg("-stake", false)))
+        {
+            debug::log(2, "Stake Minter not configured. Startup cancelled.");
 
-    		return false;
-    	}
+            return false;
+        }
 
-		if (pStakingWallet == nullptr)
-			pStakingWallet = &(Wallet::GetInstance());
+        if (pStakingWallet == nullptr)
+            pStakingWallet = &(Wallet::GetInstance());
 
         /* Wallet should be unlocked. */
         if(pStakingWallet->IsLocked())
@@ -161,26 +118,29 @@ namespace Legacy
             return false;
         }
 
-		/* Ensure stop flag is reset or thread will immediately exit */
-		StakeMinter::fstopMinter.store(false);
+        /* Ensure stop flag is reset or thread will immediately exit */
+        LegacyMinter::fstopMinter.store(false);
 
-		StakeMinter::minterThread = std::thread(StakeMinter::StakeMinterThread, this);
+        LegacyMinter::minterThread = std::thread(LegacyMinter::LegacyMinterThread, this);
 
-		StakeMinter::fisStarted.store(true);
+        LegacyMinter::fisStarted.store(true);
 
-		return true;
+        return true;
     }
 
 
     /* Stop the stake minter. */
-    bool StakeMinter::StopStakeMinter()
+    bool LegacyMinter::StopStakeMinter()
     {
-        if (StakeMinter::fisStarted.load())
+        if (LegacyMinter::fisStarted.load())
         {
             debug::log(0, FUNCTION, "Shutting down Stake Minter");
 
-        	StakeMinter::fstopMinter.store(true);
-            StakeMinter::minterThread.join();
+            /* Set signal flag to tell minter thread to stop */
+            LegacyMinter::fstopMinter.store(true);
+
+            /* Wait for minter thread to stop */
+            LegacyMinter::minterThread.join();
 
             if (pReservedTrustKey != nullptr)
             {
@@ -190,8 +150,8 @@ namespace Legacy
                 pReservedTrustKey = nullptr;
             }
 
-            StakeMinter::fisStarted.store(false);
-            StakeMinter::fstopMinter.store(false);
+            LegacyMinter::fisStarted.store(false);
+            LegacyMinter::fstopMinter.store(false);
             return true;
         }
 
@@ -202,7 +162,7 @@ namespace Legacy
     /*  Gets the trust key for the current wallet. If none exists, retrieves a new
      *  key from the key pool to use as the trust key for Genesis.
      */
-    void StakeMinter::FindTrustKey()
+    void LegacyMinter::FindTrustKey()
     {
         trustKey.SetNull();
 
@@ -231,13 +191,17 @@ namespace Legacy
         /* Scan for trust key within the trust database if none found in wallet.
          * Should only have to do this if new wallet (no trust key), or converting old wallet that doesn't have its key cached yet.
          */
-        if(trustKey.IsNull())
+        if (trustKey.IsNull())
         {
             /* Retrieve all the trust key public keys from the trust db */
             std::vector< std::vector<uint8_t> > vchTrustKeyList = LLD::trustDB->GetKeys();
 
             for (const auto& vchHashKey : vchTrustKeyList)
             {
+                /* It can take some time to check all trust keys, so cancel process if shutdown flag tripped */
+                if (config::fShutdown.load())
+                    break;
+
                 /* Read the full trust key from the trust db */
                 uint576_t cKey;
                 cKey.SetBytes(vchHashKey);
@@ -271,7 +235,6 @@ namespace Legacy
 
                     debug::log(0, FUNCTION, "Found Trust Key matching current wallet");
                 }
-
             }
         }
 
@@ -288,7 +251,7 @@ namespace Legacy
 
 
     /* Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process. */
-    bool StakeMinter::CreateCandidateBlock()
+    bool LegacyMinter::CreateCandidateBlock()
     {
         /* Use appropriate settings for Testnet or Mainnet */
         static const uint32_t nMaxTrustScore = config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
@@ -305,9 +268,7 @@ namespace Legacy
                                                         ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL
                                                         : TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
 
-        /* Create the block to work on.
-         * Don't just reset old block. May still have a reference to it floating around in process of relaying it.
-         */
+        /* Create the block to work on */
         candidateBlock = LegacyBlock();
 
         ReserveKey dummyReserveKey(pStakingWallet); //Reserve key not used by CreateLegacyBlock for nChannel=0
@@ -355,15 +316,24 @@ namespace Legacy
             candidateBlock.vtx[0].vin[0].prevout.hash = trustKey.GetHash();
 
             /* Get the last stake block for this trust key. */
-            TAO::Ledger::BlockState prevBlockState = TAO::Ledger::ChainState::stateBest.load();
-            if (!TAO::Ledger::GetLastTrust(trustKey, prevBlockState))
+            TAO::Ledger::BlockState prevTrustBlockState = TAO::Ledger::ChainState::stateBest.load();
+            if (!TAO::Ledger::GetLastTrust(trustKey, prevTrustBlockState))
                 return debug::error(FUNCTION, "Failed to get last trust for trust key");
 
-            /* Enforce the minimum staking transaction interval. */
-            if ((candidateBlock.nHeight - prevBlockState.nHeight) < nMinimumInterval)
+            /* Enforce the minimum staking transaction interval. (current height is candidate height - 1) */
+            uint32_t nCurrentInterval = (candidateBlock.nHeight - 1) - prevTrustBlockState.nHeight;
+            if (nCurrentInterval < nMinimumInterval)
             {
                 /* Below minimum interval for generating stake blocks. Increase sleep time until can continue normally. */
                 nSleepTime = 5000; //5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown)
+
+                /* Update log every 60 iterations (5 minutes) */
+                if ((nWaitCounter % 60) == 0)
+                    debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ", 
+                               (nMinimumInterval - nCurrentInterval), " blocks remaining until staking available.");
+
+                ++nWaitCounter;
+
                 return false;
             }
 
@@ -372,8 +342,8 @@ namespace Legacy
             uint32_t nScore = 0;
             uint32_t nPrevScore = 0;
 
-            /* Handle if previous block was a genesis. */
-            if (prevBlockState.vtx[0].first != TAO::Ledger::TYPE::LEGACY_TX)
+            /* Validate that previous trust block was a legacy coinstake */
+            if (prevTrustBlockState.vtx[0].first != TAO::Ledger::TYPE::LEGACY_TX)
             {
                 debug::error(FUNCTION, "Trust key for Legacy Stake Minter does not have Legacy transaction in Genesis coinstake.");
 
@@ -381,11 +351,12 @@ namespace Legacy
             }
 
             /* Retrieve the previous coinstake transaction */
-            uint512_t prevCoinstakeTxHash = prevBlockState.vtx[0].second;
+            uint512_t prevCoinstakeTxHash = prevTrustBlockState.vtx[0].second;
             Transaction prevCoinstakeTx;
             if (!LLD::legacyDB->ReadTx(prevCoinstakeTxHash, prevCoinstakeTx))
                 return debug::error(FUNCTION, "Failed to read previous coinstake for trust key");
 
+            /* Handle if previous trust was Genesis */
             if (prevCoinstakeTx.IsGenesis())
             {
                 nSequence   = 1;
@@ -404,7 +375,7 @@ namespace Legacy
             }
 
             /* Calculate time since the last trust block for this trust key (block age = age of previous trust block). */
-            uint32_t nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - prevBlockState.GetBlockTime();
+            uint32_t nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - prevTrustBlockState.GetBlockTime();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
             if (nBlockAge <= nMaxBlockAge)
@@ -417,7 +388,7 @@ namespace Legacy
                 uint32_t nPenalty = (nBlockAge - nMaxBlockAge) * 3;
 
                 /* Catch overflows and zero out if penalties are greater than previous score. */
-                if(nPenalty < nPrevScore)
+                if (nPenalty < nPrevScore)
                     nScore = nPrevScore - nPenalty;
                 else
                     nScore = 0;
@@ -429,7 +400,7 @@ namespace Legacy
 
             /* Serialize previous trust block hash, new sequence, and new trust score into vin. */
             DataStream scriptPub(candidateBlock.vtx[0].vin[0].scriptSig, SER_NETWORK, LLP::PROTOCOL_VERSION);
-            scriptPub << prevBlockState.GetHash() << nSequence << nScore;
+            scriptPub << prevTrustBlockState.GetHash() << nSequence << nScore;
 
             /* Set the script sig (Script doesn't support serializing all types needed) */
             candidateBlock.vtx[0].vin[0].scriptSig.clear();
@@ -459,14 +430,14 @@ namespace Legacy
 
             /* Update log every 60 iterations (5 minutes) */
             if ((nWaitCounter % 60) == 0)
-                debug::log(0, FUNCTION, "Wallet has no balance or no spendable inputs available.");
+                debug::log(0, FUNCTION, "Stake Minter: Wallet has no balance or no spendable inputs available.");
 
             ++nWaitCounter;
 
             return false;
         }
         else if (nSleepTime == 5000) {
-            /* Reset sleep time after inputs become available. */
+            /* Normal stake operation now available. Reset sleep time and wait counter. */
             nSleepTime = 1000;
             nWaitCounter = 0;
         }
@@ -481,19 +452,18 @@ namespace Legacy
 
 
     /* Calculates the Trust Weight and Block Weight values for the current trust key and candidate block. */
-    bool StakeMinter::CalculateWeights()
+    bool LegacyMinter::CalculateWeights()
     {
         static const double LOG3 = log(3); // Constant for use in calculations
 
         /* Use appropriate settings for Testnet or Mainnet */
         static const uint32_t nTrustWeightBase = config::fTestNet ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
         static const uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
-        static const uint32_t nMinimumCoinAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
+        static const uint32_t nMinimumCoinAge = config::fTestNet ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE;
 
-        /* Use local variables for calculations, then set instance variables with a lock scope at the end */
+        /* Use local variables for calculations, then set instance variables at the end */
         double nCurrentTrustWeight = 0.0;
         double nCurrentBlockWeight = 0.0;
-        bool fNewIsWaitPeriod = false;
 
         static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
@@ -518,18 +488,19 @@ namespace Legacy
                 return false;
             }
 
-            /* Trust Weight continues to grow with Trust Score until it reaches max of 90.0
-             * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet), while requiring close to a year to reach maximum.
+            /* Trust Weight base is time for 50% score. Weight continues to grow with Trust Score until it reaches max of 90.0
+             * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base), 
+             * while requiring close to a year to reach maximum.
              */
             double nTrustWeightRatio = (double)nTrustScore / (double)nTrustWeightBase;
             nCurrentTrustWeight = std::min(90.0, (44.0 * log((2.0 * nTrustWeightRatio) + 1.0) / LOG3) + 1.0);
 
-            /* Block Weight reaches maximum of 10.0 when Block Age equals the defined timespan */
+            /* Block Weight reaches maximum of 10.0 when Block Age equals the defined timespan for max age */
             double nBlockAgeRatio = (double)nBlockAge / (double)nMaxBlockAge;
             nCurrentBlockWeight = std::min(10.0, (9.0 * log((2.0 * nBlockAgeRatio) + 1.0) / LOG3) + 1.0);
         }
 
-        /* Weights for Genesis transactions only uses trust weight with its value based on average coin age. */
+        /* Weights for Genesis transactions only use trust weight with its value based on average coin age. */
         else
         {
             uint64_t nCoinAge;
@@ -545,7 +516,7 @@ namespace Legacy
             if (nCoinAge < nMinimumCoinAge)
             {
                 /* Record that stake minter is in wait period */
-                fNewIsWaitPeriod = true;
+                fIsWaitPeriod.store(true);
 
                 /* Increase sleep time to wait for coin age to meet requirement (can't sleep too long or will hang until wakes up on shutdown) */
                 nSleepTime = 5000;
@@ -553,27 +524,28 @@ namespace Legacy
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
                 {
-					uint32_t nRemainingWaitTime = (nMinimumCoinAge - nCoinAge) / 60; //minutes
+                    uint32_t nRemainingWaitTime = (nMinimumCoinAge - nCoinAge) / 60; //minutes
 
-					debug::log(0, FUNCTION, "Average coin age is immature. ", nRemainingWaitTime, " minutes remaining until staking available.");
+                    debug::log(0, FUNCTION, "Stake Minter: Average coin age is immature. ", 
+                               nRemainingWaitTime, " minutes remaining until staking available.");
                 }
 
                 ++nWaitCounter;
 
                 return false;
             }
-            else
+            else if (nSleepTime == 5000)
             {
                 /* Reset wait period setting */
-                fNewIsWaitPeriod = false;
+                fIsWaitPeriod.store(false);
 
                 /* Reset sleep time after coin age meets requirement. */
                 nSleepTime = 1000;
                 nWaitCounter = 0;
             }
 
-            /* Trust Weight For Genesis is based on Coin Age, grows more slowly than post-Genesis Trust Weight,
-             * and only reaches a maximum of 10.0 after average Coin Age reaches 84 days.
+            /* Trust Weight For Genesis is based on Coin Age. Genesis trust weight is less than normal trust weight,
+             * only reaching a maximum of 10.0 after average Coin Age reaches 84 days (Mainnet base).
              */
             double nGenesisTrustRatio = (double)nCoinAge / (double)nTrustWeightBase;
             nCurrentTrustWeight = std::min(10.0, (9.0 * log((2.0 * nGenesisTrustRatio) + 1.0) / LOG3) + 1.0);
@@ -582,17 +554,16 @@ namespace Legacy
             nCurrentBlockWeight = 0.0;
         }
 
-    		/* Update instance settings */
-    		nBlockWeight.store(nCurrentBlockWeight);
-    		nTrustWeight.store(nCurrentTrustWeight);
-    		fIsWaitPeriod.store(fNewIsWaitPeriod);
+            /* Update instance settings */
+            nBlockWeight.store(nCurrentBlockWeight);
+            nTrustWeight.store(nCurrentTrustWeight);
 
         return true;
     }
 
 
     /* Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block */
-    void StakeMinter::MineProofOfStake()
+    void LegacyMinter::MineProofOfStake()
     {
         /* Calculate the minimum Required Energy Efficiency Threshold.
          * Minter can only mine Proof of Stake when current threshold exceeds this value.
@@ -615,7 +586,7 @@ namespace Legacy
         /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
          * or network generates a new block (minter must start over with new candidate)
          */
-        while (!StakeMinter::fstopMinter.load() && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
+        while (!LegacyMinter::fstopMinter.load() && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
         {
             /* Update the block time for difficulty accuracy. */
             candidateBlock.UpdateTime();
@@ -628,10 +599,13 @@ namespace Legacy
                 continue;
             }
 
-            /* Calculate the new Efficiency Threshold for the next nonce. */
+            /* Calculate the new Efficiency Threshold for the next nonce. 
+             * To stake, this value must be larger than required threshhold.
+             * Block time increases the value while nonce decreases it.
+             */
             double nThreshold = (nCurrentBlockTime * 100.0) / candidateBlock.nNonce;
 
-            /* If energy efficiency requirement exceeds threshold, wait and keep trying with the same nonce value until it threshold increases */
+            /* If threshhold is not larger than required, wait and keep trying with the same nonce value until threshold increases */
             if(nThreshold < nRequired)
             {
                 runtime::sleep(10);
@@ -660,7 +634,7 @@ namespace Legacy
     }
 
 
-    bool StakeMinter::ProcessMinedBlock()
+    bool LegacyMinter::ProcessMinedBlock()
     {
         /* Add the transactions into the block from memory pool, but only if not Genesis (Genesis block for trust key has no transactions except coinstake). */
         if (!candidateBlock.vtx[0].IsGenesis())
@@ -685,8 +659,9 @@ namespace Legacy
         if (!candidateBlock.CheckStake())
             return debug::error(FUNCTION, "Check state failed");
 
-        /* Check the stake. */
-        if (!candidateBlock.vtx[0].CheckTrust(TAO::Ledger::ChainState::stateBest.load()))
+        /* Check the trust. */
+        TAO::Ledger::BlockState candidateBlockStake(candidateBlock);
+        if (!candidateBlock.vtx[0].CheckTrust(candidateBlockStake))
             return debug::error(FUNCTION, "Check trust failed");
 
         /* Check the work for the block.
@@ -730,56 +705,56 @@ namespace Legacy
 
 
     /* Method run on its own thread to oversee stake minter operation. */
-    void StakeMinter::StakeMinterThread(StakeMinter* pStakeMinter)
+    void LegacyMinter::LegacyMinterThread(LegacyMinter* pLegacyMinter)
     {
 
         debug::log(0, FUNCTION, "Stake Minter Started");
-        pStakeMinter->nSleepTime = 5000;
+        pLegacyMinter->nSleepTime = 5000;
         bool fLocalTestnet = config::fTestNet && config::GetBoolArg("-nodns", false);
 
         /* If the system is still syncing/connecting on startup, wait to run minter */
         while ((TAO::Ledger::ChainState::Synchronizing() || (LLP::LEGACY_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
-        		&& !StakeMinter::fstopMinter.load() && !config::fShutdown.load())
+                && !LegacyMinter::fstopMinter.load() && !config::fShutdown.load())
         {
-            runtime::sleep(pStakeMinter->nSleepTime);
+            runtime::sleep(pLegacyMinter->nSleepTime);
         }
 
         /* Check stop/shutdown status after wait ends */
-        if (StakeMinter::fstopMinter.load() || config::fShutdown.load())
+        if (LegacyMinter::fstopMinter.load() || config::fShutdown.load())
             return;
 
         debug::log(0, FUNCTION, "Stake Minter Initialized");
-        pStakeMinter->FindTrustKey();
+        pLegacyMinter->FindTrustKey();
 
-        pStakeMinter->nSleepTime = 1000;
+        pLegacyMinter->nSleepTime = 1000;
 
         /* Minting thread will continue repeating this loop until shutdown */
-        while (!StakeMinter::fstopMinter.load() && !config::fShutdown.load())
+        while (!LegacyMinter::fstopMinter.load() && !config::fShutdown.load())
         {
-            runtime::sleep(pStakeMinter->nSleepTime);
+            runtime::sleep(pLegacyMinter->nSleepTime);
 
             /* Check stop/shutdown status after wakeup */
-            if (StakeMinter::fstopMinter.load() || config::fShutdown.load())
-            	continue;
+            if (LegacyMinter::fstopMinter.load() || config::fShutdown.load())
+                continue;
 
             /* Save the current best block hash immediately in case it changes while we do setup */
-            pStakeMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
+            pLegacyMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
 
             /* Set up the candidate block the minter is attempting to mine */
-            if (!pStakeMinter->CreateCandidateBlock())
+            if (!pLegacyMinter->CreateCandidateBlock())
                 continue;
 
             /* Updates weights for new candidate block */
-            if (!pStakeMinter->CalculateWeights())
+            if (!pLegacyMinter->CalculateWeights())
                 continue;
 
             /* Attempt to mine the current proof of stake block */
-            pStakeMinter->MineProofOfStake();
+            pLegacyMinter->MineProofOfStake();
 
         }
 
         /* If get here because fShutdown set, have to wait for join. Join is issued in StopStakeMinter, which needs to be called by shutdown process, too. */
-        while (!StakeMinter::fstopMinter.load())
+        while (!LegacyMinter::fstopMinter.load())
             runtime::sleep(100);
 
 

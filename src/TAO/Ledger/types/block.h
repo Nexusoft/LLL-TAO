@@ -273,7 +273,7 @@ namespace TAO
              *  @return True if work is valid, false otherwise.
              *
              **/
-            bool VerifyWork() const;
+            virtual bool VerifyWork() const;
 
 
             /** GenerateSignature
