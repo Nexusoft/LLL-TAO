@@ -17,18 +17,9 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <TAO/Operation/include/stream.h>
-#include <TAO/Operation/include/enum.h>
-#include <TAO/Operation/include/operations.h>
-
 #include <TAO/Register/types/state.h>
 
 #include <TAO/Ledger/types/transaction.h>
-
-#include <Util/include/hex.h>
-#include <Util/include/debug.h>
-
-#include <cstring>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -40,163 +31,56 @@ namespace TAO
 
         /** Unpack
          *
-         *  Unpack a state register declaration from operation scripts.
+         *  Unpack a state register from operation scripts.
+         *
+         *  @param[in] tx - the transaction to unpack
+         *  @param[out] state - the unpacked register
+         *  @param[out] hashAddress - the register address
+         *
+         *  @return true if register unpacked successfully
          *
          **/
-        bool Unpack(const TAO::Ledger::Transaction& tx, State &state, uint256_t &hashAddress)
-        {
-
-            /* Start the stream at the beginning. */
-            tx.ssOperation.seek(0, STREAM::BEGIN);
-
-            /* Make sure no exceptions are thrown. */
-            try
-            {
-
-                /* Loop through the operations tx.ssOperation. */
-                while(!tx.ssOperation.end())
-                {
-                    uint8_t OPERATION;
-                    tx.ssOperation >> OPERATION;
-
-                    /* Check the current opcode. */
-                    switch(OPERATION)
-                    {
-
-                        /* Create a new register. */
-                        case TAO::Operation::OP::REGISTER:
-                        {
-                            /* Extract the address from the tx.ssOperation. */
-                            tx.ssOperation >> hashAddress;
-
-                            /* Extract the register type from tx.ssOperation. */
-                            uint8_t nType;
-                            tx.ssOperation >> nType;
-
-                            /* Extract the register data from the tx.ssOperation. */
-                            std::vector<uint8_t> vchData;
-                            tx.ssOperation >> vchData;
-
-                            /* Set the owner of this register. */
-                            if(!LLD::regDB->ReadState(hashAddress, state))
-                                return false;
-
-                            return true;
-                        }
-
-                        default:
-                        {
-                            return false;
-                        }
-                    }
-                }
-            }
-            catch(const std::runtime_error& e)
-            {
-            }
-
-            return false;
-        }
+        bool Unpack(const TAO::Ledger::Transaction& tx, State &state, uint256_t &hashAddress);
 
 
         /** Unpack
          *
-         *  Unpack a state register declaration from operation scripts.
+         *  Unpack a source register address from operation scripts.
+         *
+         *  @param[in] tx - the transaction to unpack
+         *  @param[out] hashAddress - one or more op code values (combine multiple with bitwise | )
+         *
+         *  @return true if the address unpacked successfully
          *
          **/
-        bool Unpack(const TAO::Ledger::Transaction& tx, uint256_t &hashAddress)
-        {
-
-            /* Start the stream at the beginning. */
-            tx.ssOperation.seek(0, STREAM::BEGIN);
-
-            /* Make sure no exceptions are thrown. */
-            try
-            {
-
-                /* Loop through the operations tx.ssOperation. */
-                while(!tx.ssOperation.end())
-                {
-                    uint8_t OPERATION;
-                    tx.ssOperation >> OPERATION;
-
-                    /* Check the current opcode. */
-                    switch(OPERATION)
-                    {
-
-                        /* Create a new register. */
-                        case TAO::Operation::OP::DEBIT:
-                        case TAO::Operation::OP::TRANSFER:
-                        {
-                            /* Extract the address from the tx.ssOperation. */
-                            tx.ssOperation >> hashAddress;
-
-                            return true;
-                        }
-
-                        default:
-                        {
-                            return false;
-                        }
-                    }
-                }
-            }
-            catch(const std::runtime_error& e)
-            {
-            }
-
-            return false;
-        }
+        bool Unpack(const TAO::Ledger::Transaction& tx, uint256_t &hashAddress);
 
 
         /** Unpack
          *
          *  Unpack a previous transaction from operation scripts.
          *
+         *  @param[in] tx - the transaction to unpack
+         *  @param[out] hashPrevTx 
+         *
+         *  @return true if the previous tx hash was unpacked successfully
+         *
          **/
-        bool Unpack(const TAO::Ledger::Transaction& tx, uint512_t& hashPrevTx)
-        {
+        bool Unpack(const TAO::Ledger::Transaction& tx, uint512_t& hashPrevTx);
 
-            /* Start the stream at the beginning. */
-            tx.ssOperation.seek(0, STREAM::BEGIN);
 
-            /* Make sure no exceptions are thrown. */
-            try
-            {
+        /** Unpack
+         *
+         *  Unpack a previous transaction and test for the operation it contains.
+         *
+         *  @param[in] tx - the transaction to unpack
+         *  @param[in] opCodes - one or more op code values (combine multiple with bitwise | )
+         *
+         *  @return true if the transaction contains a requested op code
+         *
+         **/
+        bool Unpack(const TAO::Ledger::Transaction& tx, const uint8_t opCodes);
 
-                /* Loop through the operations tx.ssOperation. */
-                while(!tx.ssOperation.end())
-                {
-                    uint8_t OPERATION;
-                    tx.ssOperation >> OPERATION;
-
-                    /* Check the current opcode. */
-                    switch(OPERATION)
-                    {
-
-                        /* Create a new register. */
-                        case TAO::Operation::OP::CREDIT:
-                        case TAO::Operation::OP::CLAIM:
-                        {
-                            /* Extract the address from the tx.ssOperation. */
-                            tx.ssOperation >> hashPrevTx;
-
-                            return true;
-                        }
-
-                        default:
-                        {
-                            return false;
-                        }
-                    }
-                }
-            }
-            catch(const std::runtime_error& e)
-            {
-            }
-
-            return false;
-        }
     }
 }
 
