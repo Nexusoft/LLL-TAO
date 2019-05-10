@@ -24,22 +24,23 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-        
+
 
         /** PinUnlock
          *
-         *  Encapsulates the PIN to unlock and allowable actions that can be performed on a signature chain 
+         *  Encapsulates the PIN to unlock and allowable actions that can be performed on a signature chain
          *
          */
         class PinUnlock
         {
-        public:
             /* Enumeration of allowable actions that can be performed on an unlocked signature chain */
-            enum UnlockActions {
-                TRANSACTIONS    = 0x1,
-                MINTING = 0x2,
-                NONE = 0,
-                ALL = TRANSACTIONS | MINTING 
+            enum UnlockActions
+            {
+                TRANSACTIONS    = (1 << 1),
+                MINTING         = (1 << 2),
+                NONE            = (0 << 0),
+
+                ALL = TRANSACTIONS | MINTING
             };
 
         public:
@@ -67,9 +68,12 @@ namespace TAO
             *  @return True if the PIN can be used for transactions.
             *
             **/
-            bool CanTransact() const { return nUnlockedActions & TRANSACTIONS;}
-            
-            
+            bool CanTransact() const
+            {
+                return nUnlockedActions & TRANSACTIONS;
+            }
+
+
             /** CanMint
             *
             *  Determins if the PIN can be used for minting.
@@ -77,9 +81,12 @@ namespace TAO
             *  @return True if the PIN can be used for minting.
             *
             **/
-            bool CanMint() const { return nUnlockedActions & MINTING;}
-            
-            
+            bool CanMint() const
+            {
+                return nUnlockedActions & MINTING;
+            }
+
+
             /** PIN
             *
             *  Accessor for the PIN string.
@@ -87,11 +94,13 @@ namespace TAO
             *  @return the PIN.
             *
             **/
-            SecureString PIN() const { return strPIN;}
+            SecureString PIN() const
+            {
+                return strPIN;
+            }
 
 
         protected:
-
 
             /* Bitmask of actions that can be performed on the sigchain when unlocked  */
             uint8_t nUnlockedActions;
@@ -99,12 +108,6 @@ namespace TAO
             /** The PIN to unlock a signature chain. **/
             SecureString strPIN;
 
-
-            
-
-
-
         };
     }
 }
-

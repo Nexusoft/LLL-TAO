@@ -45,7 +45,7 @@ namespace TAO
         private:
 
             /** The signature chain for login and logout. */
-            mutable std::map<uint64_t, memory::encrypted_ptr<TAO::Ledger::SignatureChain>> mapSessions;
+            mutable std::map<uint64_t, memory::encrypted_ptr<TAO::Ledger::SignatureChain> > mapSessions;
 
 
             /** The active pin for sessionless API use **/
