@@ -220,7 +220,7 @@ Retrieves the schema / object definition of an asset.
 
 # `update/asset`
 
-This is the generic endpoint for updating one or more values in an asset.  The API supports an alternative endpoint that can include the asset name (if known) in the URI.  For example `/assets/update/myasset` will resolve to `assets/update/asset?name=myasset`. 
+This is the generic endpoint for updating one or more values in an asset.  The API supports an alternative endpoint that can include the asset name (if known) in the URI.  For example `/assets/update/myasset` will resolve to `assets/update/asset?name=myasset`.
 
 **NOTE** Only assets created using `JSON`, `ANSI`, or `XML` an be updated, and only those data fields that were defined as mutable. `raw` and `basic` format assets are always created as read-only (immutable).
 
@@ -272,7 +272,7 @@ The following is an example JSON payload to update two fields in an asset called
 
 `txid` : The ID (hash) of the transaction that includes the asset update.
 
-`address` : The register address for this asset. 
+`address` : The register address for this asset.
 
 
 ****
@@ -376,7 +376,7 @@ This will tokenize an asset into fungible tokens that represent ownership.  This
 
 `session` : For multi-user API mode (configured with multiuser=1) the session is required to identify which session (sig chain) owns the asset. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the asset to be tokenized. This is optional if the address is provided.
+`asset_name` : The name identifying the asset to be tokenized. This is optional if the address is provided.
 
 `address` : The register address of the asset to be tokenized. This is optional if the name is provided.
 

@@ -18,7 +18,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
-#include <Util/include/args.h>
 #include <Util/include/debug.h>
 
 
@@ -30,7 +29,7 @@ namespace TAO
         /*  Background thread to handle/suppress sigchain notifications. */
         void Users::EventsThread()
         {
-            while(!config::fShutdown.load())
+            while(!fShutdown.load())
             {
                 //uint32_t nSequence = 0;
 
@@ -39,9 +38,9 @@ namespace TAO
 
                 /* Wait for the events processing thread to be woken up (such as a login) */
                 std::unique_lock<std::mutex> lk(EVENTS_MUTEX);
-                CONDITION.wait_for(lk, std::chrono::milliseconds(1000), [this]{ return fEvent.load() || config::fShutdown.load();});
+                CONDITION.wait_for(lk, std::chrono::milliseconds(1000), [this]{ return fEvent.load() || fShutdown.load();});
 
-                if(config::fShutdown.load())
+                if(fShutdown.load())
                     return;
 
                 if(!LoggedIn() || Locked() || !CanTransact())

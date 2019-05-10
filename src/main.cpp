@@ -59,9 +59,15 @@ int main(int argc, char** argv)
 {
     uint16_t port = 0;
 
+
+    /* Initialize system logging. */
+    if(!debug::init())
+        printf("Unable to initalize system logging\n");
+
     /* Setup the timer timer. */
     runtime::timer timer;
     timer.Start();
+
 
     /* Handle all the signals with signal handler method. */
     SetupSignals();
@@ -95,11 +101,6 @@ int main(int argc, char** argv)
             return TAO::API::CommandLineRPC(argc, argv, i);
         }
     }
-
-
-    /* Initialize system logging. */
-    if(!debug::init())
-        printf("Unable to initalize system logging\n");
 
 
     /* Log system startup now, after branching to API/RPC where appropriate */
