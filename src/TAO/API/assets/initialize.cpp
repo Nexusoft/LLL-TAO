@@ -56,12 +56,33 @@ namespace TAO
                 jsonParams["name"] = strAssetName;
             }
             
+            /* route create/myasset to create/asset?name=myasset */
+            /* check to see if this method is a create/myasset format. i.e. it starts with tokenize/ */
+            else if(strMethod.find("create/") == 0)
+            {
+                /* get the asset name from after the create/ */
+                std::string strAssetName = strMethod.substr(7);
+
+                strMethodRewritten = "create/asset";
+                jsonParams["name"] = strAssetName;
+            }
+
+            /* route update/myasset to update/asset?name=myasset */
+            /* check to see if this method is a update/myasset format. i.e. it starts with tokenize/ */
+            else if(strMethod.find("update/") == 0)
+            {
+                /* get the asset name from after the update/ */
+                std::string strAssetName = strMethod.substr(7);
+
+                strMethodRewritten = "update/asset";
+                jsonParams["name"] = strAssetName;
+            }
 
             /* route transfer/myasset to transfer/asset?name=myasset */
             /* check to see if this method is a transfer/myasset format. i.e. it starts with tokenize/ */
             else if(strMethod.find("transfer/") == 0)
             {
-                /* get the asset name from after the get/ */
+                /* get the asset name from after the transfer/ */
                 std::string strAssetName = strMethod.substr(9);
 
                 strMethodRewritten = "transfer/asset";
@@ -69,14 +90,13 @@ namespace TAO
             }
 
             
-            /* route transfer/myasset to tokenize/asset?name=myasset */
+            /* route tokenize/myasset to tokenize/asset?name=myasset */
             /* check to see if this method is a tokenize/myasset format. i.e. it starts with tokenize/ */
             else if(strMethod.find("tokenize/") == 0)
             {
-                /* get the asset name from after the get/ */
+                /* get the asset name from after the tokenize/ */
                 std::string strAssetName = strMethod.substr(9);
                 
-
                 strMethodRewritten = "tokenize/asset";
                 jsonParams["name"] = strAssetName;
             }
@@ -90,6 +110,7 @@ namespace TAO
         void Assets::Initialize()
         {
             mapFunctions["create/asset"]             = Function(std::bind(&Assets::Create,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["update/asset"]             = Function(std::bind(&Assets::Update,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get/asset"]                = Function(std::bind(&Assets::Get,       this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["transfer/asset"]           = Function(std::bind(&Assets::Transfer,  this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/history"]            = Function(std::bind(&Assets::History,   this, std::placeholders::_1, std::placeholders::_2));

@@ -310,6 +310,7 @@ OBJS+=  build/LLC_skein.o \
         build/API_users_events.o \
 		build/API_assets_initialize.o \
 		build/API_assets_create.o \
+		build/API_assets_update.o \
 		build/API_assets_get.o \
 		build/API_assets_history.o \
 		build/API_assets_tokenize.o \

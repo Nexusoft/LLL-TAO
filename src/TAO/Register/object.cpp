@@ -413,7 +413,7 @@ namespace TAO
                 return debug::error(FUNCTION, "string size mismatch");
 
             /* Check for memory overflows. */
-            if(nReadPos + nSize >= vchState.size())
+            if(nReadPos + nSize > vchState.size())
                 return debug::error(FUNCTION, "performing an over-write");
 
             /* Copy the bytes into the object. */
@@ -455,7 +455,7 @@ namespace TAO
                 return debug::error(FUNCTION, "bytes size mismatch");
 
             /* Check for memory overflows. */
-            if(nReadPos + nSize >= vchState.size())
+            if(nReadPos + nSize > vchState.size())
                 return debug::error(FUNCTION, "performing an over-write");
 
             /* Copy the bytes into the object. */

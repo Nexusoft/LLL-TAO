@@ -101,6 +101,19 @@ namespace TAO
             json::json Get(const json::json& params, bool fHelp);
 
 
+            /** Update
+             *
+             *  Update the data in an asset
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Update(const json::json& params, bool fHelp);
+
+
             /** Transfer
              *
              *  Transfer an asset or digital item.

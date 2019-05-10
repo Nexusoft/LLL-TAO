@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/assets.h>
+#include <TAO/API/include/utils.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -47,7 +48,7 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-23, "Missing memory address");
+                throw APIException(-23, "Missing name / address");
 
 
             /* Check to see whether the caller has requested a specific data field to return */
@@ -60,103 +61,13 @@ namespace TAO
                created as a raw format asset */
             TAO::Register::Object object;
             if(!LLD::regDB->ReadState(hashRegister, object))
-                throw APIException(-24, "No state found");
+                throw APIException(-24, "Asset not found");
+
+            /* parse object so that the data fields can be accessed */
+            object.Parse();
             
-            if(object.nType == TAO::Register::REGISTER::RAW)
-            {
-                /* Build the response JSON for the raw format asset. */
-                ret["timestamp"]  = object.nTimestamp;
-                ret["owner"]      = object.hashOwner.ToString();
-
-                /* raw state assets only have one data member containing the raw hex-encoded data*/
-                std::string data;
-                object >> data;
-                ret["data"] = data;
-            }
-            else if(object.nType == TAO::Register::REGISTER::OBJECT)
-            {
-                
-                /* Build the response JSON. */
-                if(strDataField.empty())
-                {
-                    ret["timestamp"]  = object.nTimestamp;
-                    ret["owner"]      = object.hashOwner.ToString();
-                }
-                /* parse object */
-                object.Parse();
-                
-                /* Get List of field names in this asset object */
-                std::vector<std::string> vFieldNames = object.GetFieldNames();
-
-                /* Declare type and data variables for unpacking the Object fields */
-                uint8_t nType;
-                uint8_t nUint8;
-                uint16_t nUint16;
-                uint32_t nUint32;
-                uint64_t nUint64;
-                uint256_t nUint256;
-                uint512_t nUint512;
-                uint1024_t nUint1024;
-                std::string strValue;
-
-                for( const auto& strFieldName : vFieldNames)
-                {
-                    /* Only return requested data field if one was specifically requested */
-                    if(!strDataField.empty() && strDataField != strFieldName)
-                        continue;
-
-                    /* First get the type*/
-                    object.Type(strFieldName, nType);
-
-                    if(nType == TAO::Register::TYPES::UINT8_T )
-                    {
-                        object.Read<uint8_t>(strFieldName, nUint8);
-                        ret[strFieldName] = nUint8;
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT16_T )
-                    {
-                        object.Read<uint16_t>(strFieldName, nUint16);
-                        ret[strFieldName] = nUint16;
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT32_T )
-                    {
-                        object.Read<uint32_t>(strFieldName, nUint32);
-                        ret[strFieldName] = nUint32;
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT64_T )
-                    {
-                        object.Read<uint64_t>(strFieldName, nUint64);
-                        ret[strFieldName] = nUint64;
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT256_T )
-                    {
-                        object.Read<uint256_t>(strFieldName, nUint256);
-                        ret[strFieldName] = nUint256.GetHex();
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT512_T )
-                    {
-                        object.Read<uint512_t>(strFieldName, nUint512);
-                        ret[strFieldName] = nUint512.GetHex();
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT1024_T )
-                    {
-                        object.Read<uint1024_t>(strFieldName, nUint1024);
-                        ret[strFieldName] = nUint1024.GetHex();
-                    }
-                    else if(nType == TAO::Register::TYPES::STRING || nType == TAO::Register::TYPES::BYTES)
-                    {
-                        object.Read<std::string>(strFieldName, strValue);
-                        ret[strFieldName] = strValue;
-                    }
-                    
-                }
-            
-                
-            }
-            else
-            {
-                throw APIException(-24, "Specified name/address is not an asset.");
-            }
+            /* Convert the object to JSON */
+            ret = TAO::API::ObjectRegisterToJSON(object, strDataField);
             
             return ret;
         }

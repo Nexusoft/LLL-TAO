@@ -237,7 +237,7 @@ namespace TAO
                     return debug::error(FUNCTION, "type mismatch");
 
                 /* Get the expected size. */
-                if(nReadPos + sizeof(value) >= vchState.size())
+                if(nReadPos + sizeof(value) > vchState.size())
                     return debug::error(FUNCTION, "performing an over-write");
 
                 /* Copy the bytes into the object. */
