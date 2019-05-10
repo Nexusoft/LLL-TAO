@@ -240,6 +240,14 @@ namespace TAO
             bool IsProofOfWork() const;
 
 
+            /** IsPrivate
+             *
+             *  @return True if the block is private block.
+             *
+             **/
+            bool IsPrivate() const;
+
+
             /** BuildMerkleTree
              *
              *  Build the merkle tree from the transaction list.

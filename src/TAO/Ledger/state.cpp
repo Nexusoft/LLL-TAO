@@ -148,7 +148,10 @@ namespace TAO
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
             if(!statePrev)
+            {
+                debug::log(0, "Previous ", hashPrevBlock.ToString());
                 return debug::error(FUNCTION, "previous block state not found");
+            }
 
             /* Compute the Chain Trust */
             nChainTrust = statePrev.nChainTrust + GetBlockTrust();

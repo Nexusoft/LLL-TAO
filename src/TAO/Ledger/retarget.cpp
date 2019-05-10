@@ -82,6 +82,9 @@ namespace TAO
             else if(nChannel == 2)
                 return RetargetHash(state, fDebug);
 
+            else if(nChannel == 3)
+                return state.nBits;
+
             return 0;
         }
 

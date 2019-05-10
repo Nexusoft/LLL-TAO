@@ -180,6 +180,13 @@ namespace TAO
         }
 
 
+        /* Check flags for PoW block. */
+        bool Block::IsPrivate() const
+        {
+            return nChannel == 3;
+        }
+
+
         /* Generate the Merkle Tree from uint512_t hashes. */
         uint512_t Block::BuildMerkleTree(std::vector<uint512_t> vMerkleTree) const
         {
