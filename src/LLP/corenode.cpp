@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <LLP/types/corenode.h>
 
 #include <TAO/API/types/exception.h>
-#include <TAO/API/include/accounts.h>
+#include <TAO/API/include/users.h>
 #include <TAO/API/include/assets.h>
 #include <TAO/API/include/supply.h>
 #include <TAO/API/include/ledger.h>
@@ -46,7 +46,7 @@ namespace LLP
         std::string strAPI = INCOMING.strRequest.substr(1, npos - 1);
 
         /* Extract the method to invoke. */
-        std::string METHOD = INCOMING.strRequest.substr(npos + 1);
+        std::string METHOD = INCOMING.strRequest.substr(npos + 1);   
 
         /* Extract the parameters. */
         json::json ret;
@@ -117,8 +117,8 @@ namespace LLP
             /* Execute the api and methods. */
             if(strAPI == "supply")
                 ret = { {"result", TAO::API::supply.Execute(METHOD, params) } };
-            else if(strAPI == "accounts")
-                ret = { {"result", TAO::API::accounts.Execute(METHOD, params) } };
+            else if(strAPI == "users")
+                ret = { {"result", TAO::API::users.Execute(METHOD, params) } };
             else if(strAPI == "assets")
                 ret = { {"result", TAO::API::assets.Execute(METHOD, params) } };
             else if(strAPI == "ledger")

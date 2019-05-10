@@ -33,8 +33,8 @@ namespace LLD
      *
      *  This class is responsible for managing the keys to the sector database.
      *
-     *  It contains a Binary Hash Tree with a minimum complexity of O(1).
-     *  It uses a binary search tree based on index to iterate trhough files and binary Positions
+     *  It contains a Binary Hash Map with a minimum complexity of O(1).
+     *  It uses a linked file list based on index to iterate trhough files and binary Positions
      *  when there is a collision that is found.
      *
      **/
@@ -89,14 +89,15 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashTree(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND);
+        BinaryHashTree(const std::string& strBaseLocationIn, const uint8_t nFlagsIn = FLAGS::APPEND);
 
 
         /** Default Constructor **/
-        BinaryHashTree(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn = FLAGS::APPEND);
+        BinaryHashTree(const std::string& strBaseLocationIn, const uint32_t nTotalBuckets, const uint32_t nMaxCacheSize, const uint8_t nFlagsIn = FLAGS::APPEND);
+
 
         /** Copy Assignment Operator **/
-        BinaryHashTree& operator=(BinaryHashTree map);
+        BinaryHashTree& operator=(const BinaryHashTree& map);
 
 
         /** Copy Constructor **/
@@ -132,7 +133,7 @@ namespace LLD
          *  Calculates a bucket to be used for the hashmap allocation.
          *
          *  @param[in] vKey The key object to calculate with.
-         *Hashmap
+         *
          *  @return The bucket assigned to the key.
          *
          **/
@@ -158,20 +159,6 @@ namespace LLD
          *
          **/
         bool Get(const std::vector<uint8_t>& vKey, SectorKey &cKey);
-
-
-        /** Get
-         *
-         *  Read a key index from the disk hashmaps.
-         *  This method iterates all maps to find all keys.
-         *
-         *  @param[in] vKey The binary data of the key.
-         *  @param[out] vKeys The list of keys to return.
-         *
-         *  @return True if the key was found, false otherwise.
-         *
-         **/
-        bool Get(const std::vector<uint8_t>& vKey, std::vector<SectorKey>& vKeys);
 
 
         /** Put

@@ -14,17 +14,21 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
-#include <TAO/API/include/accounts.h>
+#include <TAO/API/include/users.h>
 #include <TAO/API/include/assets.h>
 
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/templates/datastream.h>
+
+#include <Util/include/convert.h>
+#include <Util/include/base64.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -40,23 +44,20 @@ namespace TAO
             json::json ret;
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = accounts.GetPin(params);
+            SecureString strPIN = users.GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = accounts.GetSession(params);
-
-            /* Check for data parameter. */
-            if(params.find("data") == params.end())
-                throw APIException(-25, "Missing data");
+            uint64_t nSession = users.GetSession(params);
 
             /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if( !accounts.CanTransact())
+            if( !users.CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
+
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
@@ -78,19 +79,176 @@ namespace TAO
             else
                 hashRegister = LLC::GetRand256();
 
-            /* Test the payload feature. */
-            DataStream ssData(SER_REGISTER, 1);
-            ssData << params["data"].get<std::string>();
 
-            /* Submit the payload object. */
-            tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::STATE::READONLY << ssData.Bytes();
+            /* Check for format parameter. */
+            std::string strFormat = "basic"; // default to basic format if no foramt is specified
+            if(params.find("format") != params.end())
+                strFormat = params["format"].get<std::string>();
+            
+            // parse the incoming asset definition based on the specified format
+            if( strFormat == "raw")
+            {
+                /* If format = raw then use a raw state register rather than an object */
+                if(params.find("data") == params.end())
+                    throw APIException(-25, "Missing data parameter");
 
+                /* Serialise the incoming data into a state register*/
+                DataStream ssData(SER_REGISTER, 1);
+                ssData << params["data"].get<std::string>();
+
+                /* Submit the payload object. */
+                tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::REGISTER::RAW << ssData.Bytes();
+
+            }
+            else if( strFormat == "basic")
+            {
+                /* declare the object register to hold the asset data*/
+                TAO::Register::Object asset;
+
+                /* Track the number of fields so that we can check there is at least one */
+                int nFieldCount = 0;
+                
+                /* Iterate through the paramers and infer the type for each value */
+                for (auto it = params.begin(); it != params.end(); ++it)
+                {
+                    /* Skip any incoming parameters that are keywords used by this API method*/
+                    if( it.key() == "pin" 
+                        || it.key() == "session"
+                        || it.key() == "name"
+                        || it.key() == "format"
+                        || it.key() == "token_name"
+                        || it.key() == "token_value")
+                    {
+                        continue;
+                    }
+
+                    if( it->is_string())
+                    {
+                        nFieldCount++;
+
+                        std::string strValue = it->get<std::string>();
+                        asset << it.key()  << uint8_t(TAO::Register::TYPES::STRING) << strValue;
+                    }
+                    else
+                    {
+                        throw APIException(-25, "Non-string types not supported in basic format.");
+                    }
+                     
+
+                }
+
+                if(nFieldCount == 0)
+                    throw APIException(-25, "Missing asset value fields");
+
+                /* Submit the payload object. */
+                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
+
+            }
+            else if( strFormat == "JSON")
+            {
+                /* If format = JSON then grab the asset definition from the json field */
+                if(params.find("json") == params.end())
+                    throw APIException(-25, "Missing json parameter");
+
+                if(!params["json"].is_array())
+                    throw APIException(-25, "json field must be an array");
+
+                /* declare the object register to hold the asset data*/
+                TAO::Register::Object asset;
+
+                json::json jsonAssetDefinition = params["json"];
+
+                /* Track the number of fields so that we can check there is at least one */
+                int nFieldCount = 0;
+
+                /* Iterate through each field definition */
+                for (auto it = jsonAssetDefinition.begin(); it != jsonAssetDefinition.end(); ++it)
+                {
+                    /* Check that the required fields have been provided*/ 
+                    if(it->find("name") == it->end())
+                        throw APIException(-25, "Missing name field in json defintion");
+                    
+                    if(it->find("type") == it->end())
+                        throw APIException(-25, "Missing type field in json defintion");
+
+                    if(it->find("value") == it->end())
+                        throw APIException(-25, "Missing value field in json defintion");
+
+                    if(it->find("mutable") == it->end())
+                        throw APIException(-25, "Missing mutable field in json defintion");
+
+                    /* Parse the values out of the definition json*/
+                    std::string strName = (*it)["name"].get<std::string>();
+                    std::string strType = (*it)["type"].get<std::string>();
+                    std::string strValue = (*it)["value"].get<std::string>();
+                    bool fMutable = (*it)["mutable"].get<std::string>() == "true";
+
+                    /* Add the field to the Object based on the user defined type. 
+                       NOTE: all numeric values <= 64-bit are converted from string to the corresponding type.
+                       Numeric values > 64-bit are assumed to be in hex and are converted via the uintXXX constructor */
+                    
+                    /* Serialize the data field name */
+                    asset << strName;
+
+                    /* Add the mutable flag if defined */
+                    if(fMutable)
+                        asset << uint8_t(TAO::Register::TYPES::MUTABLE);
+
+                    /* lastly add the data type and initial value*/
+                    if( strType == "uint8")
+                        asset << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(stoul(strValue));
+                    else if( strType == "uint16")
+                        asset << uint8_t(TAO::Register::TYPES::UINT16_T) << uint16_t(stoul(strValue));
+                    else if( strType == "uint32")
+                        asset << uint8_t(TAO::Register::TYPES::UINT32_T) << uint32_t(stoul(strValue));
+                    else if( strType == "uint64")
+                        asset << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(stoul(strValue));
+                    else if( strType == "uint256")
+                        asset << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(strValue);
+                    else if( strType == "uint512")
+                        asset << uint8_t(TAO::Register::TYPES::UINT512_T) << uint512_t(strValue);
+                    else if( strType == "uint1024")
+                        asset << uint8_t(TAO::Register::TYPES::UINT1024_T) << uint1024_t(strValue);
+                    else if( strType == "string")
+                        asset << uint8_t(TAO::Register::TYPES::STRING) << strValue;
+                    else if( strType == "bytes")
+                    {
+                        bool fInvalid = false;
+                        std::vector<unsigned char> vchBytes = encoding::DecodeBase64(strValue.c_str(), &fInvalid);
+
+                        if (fInvalid)
+                            throw APIException(-5, "Malformed base64 encoding");   
+
+                        asset << uint8_t(TAO::Register::TYPES::BYTES) << vchBytes;
+                    }
+                        
+
+                    nFieldCount++;
+                }
+
+                if(nFieldCount == 0)
+                    throw APIException(-25, "Missing asset field definitions");
+
+                /* Submit the payload object. */
+                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
+
+
+            }
+            else
+            {
+                throw APIException(-25, "Unsupported format specified");
+            }
+            
+
+
+
+    
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
                 throw APIException(-26, "Operations failed to execute");
 
             /* Sign the transaction. */
-            if(!tx.Sign(accounts.GetKey(tx.nSequence, strPIN, nSession)))
+            if(!tx.Sign(users.GetKey(tx.nSequence, strPIN, nSession)))
                 throw APIException(-26, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

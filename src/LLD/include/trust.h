@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <TAO/Ledger/types/trustkey.h>
+#include <Legacy/types/trustkey.h>
 
 
 namespace LLD

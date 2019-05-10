@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 
 #include <TAO/API/include/ledger.h>
-#include <TAO/API/include/accounts.h>
+#include <TAO/API/include/users.h>
 
 #include <LLC/include/eckey.h>
 
@@ -40,18 +40,18 @@ namespace TAO
         json::json Ledger::Create(const json::json& params, bool fHelp)
         {
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = accounts.GetPin(params);
+            SecureString strPIN = users.GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = accounts.GetSession(params);
+            uint64_t nSession = users.GetSession(params);
 
             /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if( !accounts.CanTransact())
+            if( !users.CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
 
             /* Create the block object. */
@@ -60,7 +60,7 @@ namespace TAO
                 throw APIException(-26, "Failed to create block");
 
             /* Get the secret from new key. */
-            std::vector<uint8_t> vBytes = accounts.GetKey(block.producer.nSequence, strPIN, nSession).GetBytes();
+            std::vector<uint8_t> vBytes = users.GetKey(block.producer.nSequence, strPIN, nSession).GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Generate the EC Key. */

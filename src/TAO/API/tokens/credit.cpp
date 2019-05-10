@@ -14,7 +14,9 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
-#include <TAO/API/include/accounts.h>
+#include <LLD/include/global.h>
+
+#include <TAO/API/include/users.h>
 #include <TAO/API/include/tokens.h>
 
 #include <TAO/Operation/include/execute.h>
@@ -40,10 +42,10 @@ namespace TAO
             json::json ret;
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = accounts.GetPin(params);
+            SecureString strPIN = users.GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = accounts.GetSession(params);
+            uint64_t nSession = users.GetSession(params);
 
             /* Check for txid parameter. */
             if(params.find("txid") == params.end())
@@ -54,12 +56,12 @@ namespace TAO
                 throw APIException(-25, "Missing Amount");
 
             /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if( !accounts.CanTransact())
+            if(!users.CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
@@ -86,10 +88,12 @@ namespace TAO
             else
                 throw APIException(-22, "Missing to account");
 
-            /* Get the optional proof (for joint credits). */
-            uint256_t hashProof = user->Genesis();
-            
+            /* Get the transaction id. */
+            uint512_t hashTx;
+            hashTx.SetHex(params["txid"].get<std::string>());
+
             /* Check for data parameter. */
+            uint256_t hashProof;
             if(params.find("name_proof") != params.end())
             {
                 /* Get the address from the name. */
@@ -100,23 +104,41 @@ namespace TAO
             }
             else if(params.find("proof") != params.end())
                 hashProof.SetHex(params["proof"].get<std::string>());
+            else
+            {
+                /* Read the previous transaction. */
+                TAO::Ledger::Transaction txPrev;
+                if(!LLD::legDB->ReadTx(hashTx, txPrev))
+                    throw APIException(-23, "Previous transaction not found");
 
-            /* Get the transaction id. */
-            uint512_t hashTx;
-            hashTx.SetHex(params["txid"].get<std::string>());
+                /* Read the type from previous transaction */
+                uint8_t nType;
+                txPrev.ssOperation >> nType;
+
+                /* Check type. */
+                if(nType != TAO::Operation::OP::DEBIT)
+                    throw APIException(-32, "Previous transaction not debit");
+
+                /* Get the hashFrom from the previous transaction. */
+                uint256_t hashFrom;
+                txPrev.ssOperation >> hashFrom;
+
+                /* Assign hash proof to hash to. */
+                hashProof = hashFrom;
+            }
 
             /* Get the credit. */
             uint64_t nAmount = std::stoull(params["amount"].get<std::string>());
 
             /* Submit the payload object. */
-            tx << (uint8_t)TAO::Operation::OP::CREDIT << hashTx << hashProof << hashTo << nAmount;
+            tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashProof << hashTo << nAmount;
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
                 throw APIException(-26, "Operations failed to execute");
 
             /* Sign the transaction. */
-            if(!tx.Sign(accounts.GetKey(tx.nSequence, strPIN, nSession)))
+            if(!tx.Sign(users.GetKey(tx.nSequence, strPIN, nSession)))
                 throw APIException(-26, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

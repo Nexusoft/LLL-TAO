@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 
-#include <TAO/Register/include/object.h>
+#include <TAO/Register/types/object.h>
 
 
 /* Global TAO namespace. */
@@ -23,13 +23,64 @@ namespace TAO
     namespace Register
     {
 
-        /** Parse
-         *
-         *  Parses out the data members of an object register.
-         *
-         **/
+        /* Get's the standard object type. */
+        uint8_t Object::Standard() const
+        {
+            /* Set the return value. */
+            uint8_t nType = OBJECTS::NONSTANDARD;
+
+            /* Search object register for key types. */
+            if(Check("identifier", TYPES::UINT32_T, false) && Check("balance", TYPES::UINT64_T, true))
+            {
+                /* Set the return value. */
+                nType = OBJECTS::ACCOUNT;
+
+                /* Make the supply immutable for now (add continued distribution later). */
+                if(Check("supply", TYPES::UINT64_T, false) && Check("digits", TYPES::UINT64_T, false))
+                {
+                    /* Set the return value. */
+                    nType = OBJECTS::TOKEN;
+                }
+                else if(Check("trust", TYPES::UINT64_T, true) && Check("stake", TYPES::UINT64_T, true))
+                {
+                    /* Set the return value. */
+                    nType = OBJECTS::TRUST;
+                }
+            }
+
+            return nType;
+        }
+
+
+        /* Get's the standard object base type. */
+        uint8_t Object::Base() const
+        {
+            /* Set the return value. */
+            uint8_t nType = OBJECTS::NONSTANDARD;
+
+            /* Search object register for key types. */
+            if(Check("identifier", TYPES::UINT32_T, false) && Check("balance", TYPES::UINT64_T, true))
+            {
+                /* Set the return value. */
+                nType = OBJECTS::ACCOUNT;
+            }
+
+            return nType;
+        }
+
+
+        /* Parses out the data members of an object register. */
         bool Object::Parse()
         {
+            /* Check the map for empty. */
+            if(!mapData.empty())
+                return debug::error(FUNCTION, "object is already parsed");
+
+            /* Ensure that object register is of proper type. */
+            if(this->nType != REGISTER::OBJECT
+            && this->nType != REGISTER::SYSTEM)
+                return false;
+
             /* Reset the read position. */
             nReadPos   = 0;
 
@@ -196,7 +247,7 @@ namespace TAO
 
                     /* Fail if types are unknown. */
                     default:
-                        return false;
+                        return debug::error(FUNCTION, "invalid types ", uint32_t(nType));
                 }
             }
 
@@ -204,9 +255,31 @@ namespace TAO
         }
 
 
+        /* Get a list of field names for this Object. */
+        std::vector<std::string> Object::GetFieldNames() const
+        {
+            /* Declare the vector of field names to return */
+            std::vector<std::string> vFieldNames;
+
+            /* Check the map for empty. */
+            if(mapData.empty())
+                debug::error(FUNCTION, "object is not parsed");
+
+            /* Iterate data map and pull field names out into return vector */
+            for(const auto& fieldName : mapData)
+                vFieldNames.push_back( fieldName.first);
+
+            return vFieldNames;
+        }
+
+
         /* Get the type enumeration from the object register. */
         bool Object::Type(const std::string& strName, uint8_t& nType) const
         {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                return debug::error(FUNCTION, "object is not parsed");
+
             /* Check that the name exists in the object. */
             if(!mapData.count(strName))
                 return false;
@@ -225,9 +298,39 @@ namespace TAO
         }
 
 
+        /* Check the type enumeration from the object register. */
+        bool Object::Check(const std::string& strName, const uint8_t nType, bool fMutable) const
+        {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                return debug::error(FUNCTION, "object is not parsed");
+
+            /* Check that the name exists in the object. */
+            if(!mapData.count(strName))
+                return false;
+
+            /* Find the binary position of value. */
+            nReadPos = mapData[strName].first;
+
+            /* Deserialize the type specifier. */
+            uint8_t nCheck;
+            *this >> nCheck;
+
+            /* Check for unsupported type enums. */
+            if(nType != nCheck)
+                return false;
+
+            return (fMutable == mapData[strName].second);
+        }
+
+
         /*  Get the size of value in object register. */
         uint64_t Object::Size(const std::string& strName) const
         {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                return debug::error(FUNCTION, "object is not parsed");
+
             /* Get the type for given name. */
             uint8_t nType;
             if(!Type(strName, nType))
@@ -281,6 +384,10 @@ namespace TAO
         /* Write into the object register a value of type bytes. */
         bool Object::Write(const std::string& strName, const std::string& strValue)
         {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                return debug::error(FUNCTION, "object is not parsed");
+
             /* Check that the name exists in the object. */
             if(!mapData.count(strName))
                 return false;
@@ -306,10 +413,10 @@ namespace TAO
                 return debug::error(FUNCTION, "string size mismatch");
 
             /* Check for memory overflows. */
-            if(nReadPos + nSize >= vchState.size())
+            if(nReadPos + nSize > vchState.size())
                 return debug::error(FUNCTION, "performing an over-write");
 
-            /* CnTypey the bytes into the object. */
+            /* Copy the bytes into the object. */
             std::copy((uint8_t*)&strValue[0], (uint8_t*)&strValue[0] + strValue.size(), (uint8_t*)&vchState[nReadPos]);
 
             return true;
@@ -319,6 +426,10 @@ namespace TAO
         /* Write into the object register a value of type bytes. */
         bool Object::Write(const std::string& strName, const std::vector<uint8_t>& vData)
         {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                return debug::error(FUNCTION, "object is not parsed");
+
             /* Check that the name exists in the object. */
             if(!mapData.count(strName))
                 return false;
@@ -344,10 +455,10 @@ namespace TAO
                 return debug::error(FUNCTION, "bytes size mismatch");
 
             /* Check for memory overflows. */
-            if(nReadPos + nSize >= vchState.size())
+            if(nReadPos + nSize > vchState.size())
                 return debug::error(FUNCTION, "performing an over-write");
 
-            /* CnTypey the bytes into the object. */
+            /* Copy the bytes into the object. */
             std::copy((uint8_t*)&vData[0], (uint8_t*)&vData[0] + vData.size(), (uint8_t*)&vchState[nReadPos]);
 
             return true;

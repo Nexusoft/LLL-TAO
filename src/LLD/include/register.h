@@ -20,8 +20,8 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <TAO/Register/include/state.h>
-#include <TAO/Register/include/object.h>
+#include <TAO/Register/types/state.h>
+#include <TAO/Register/types/object.h>
 #include <TAO/Register/include/enum.h>
 
 
@@ -97,6 +97,85 @@ namespace LLD
         bool EraseState(const uint256_t& hashRegister)
         {
             return Erase(std::make_pair(std::string("state"), hashRegister));
+        }
+
+
+        /** IndexTrust
+         *
+         *  Index a genesis to a register address.
+         *
+         *  @param[in] hashGenesis The genesis-id address.
+         *  @param[in] hashRegister The state register to index to.
+         *
+         *  @return True if write was successful, false otherwise.
+         *
+         **/
+        bool IndexTrust(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+        {
+            return Index(std::make_pair(std::string("genesis"), hashGenesis), hashRegister);
+        }
+
+
+        /** HasTrust
+         *
+         *  Check that a genesis doesn't already exist
+         *
+         *  @param[in] hashGenesis The genesis-id address.
+         *
+         *  @return True if write was successful, false otherwise.
+         *
+         **/
+        bool HasTrust(const uint256_t& hashGenesis)
+        {
+            return Exists(std::make_pair(std::string("genesis"), hashGenesis));
+        }
+
+
+        /** WriteTrust
+         *
+         *  Write a genesis to a register address.
+         *
+         *  @param[in] hashGenesis The genesis-id address.
+         *  @param[in] state The state register to write.
+         *
+         *  @return True if write was successful, false otherwise.
+         *
+         **/
+        bool WriteTrust(const uint256_t& hashGenesis, const TAO::Register::State& state)
+        {
+            return Write(std::make_pair(std::string("genesis"), hashGenesis), state);
+        }
+
+
+        /** ReadTrust
+         *
+         *  Index a genesis to a register address.
+         *
+         *  @param[in] hashGenesis The genesis-id address.
+         *  @param[in] state The state register to read.
+         *
+         *  @return True if read was successful, false otherwise.
+         *
+         **/
+        bool ReadTrust(const uint256_t& hashGenesis, TAO::Register::State& state)
+        {
+            return Read(std::make_pair(std::string("genesis"), hashGenesis), state);
+        }
+
+
+        /** EraseTrust
+         *
+         *  Erase a genesis from a register address.
+         *
+         *  @param[in] hashGenesis The genesis-id address.
+         *  @param[in] state The state register to read.
+         *
+         *  @return True if read was successful, false otherwise.
+         *
+         **/
+        bool EraseTrust(const uint256_t& hashGenesis)
+        {
+            return Erase(std::make_pair(std::string("genesis"), hashGenesis));
         }
 
 

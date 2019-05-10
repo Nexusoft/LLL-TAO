@@ -15,10 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/operations.h>
 
-#include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/state.h>
-#include <TAO/Register/objects/account.h>
-#include <TAO/Register/objects/token.h>
+#include <TAO/Register/types/object.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -29,18 +27,27 @@ namespace TAO
     {
 
         /* Authorizes funds from an account to an account */
-        bool Debit(const uint256_t &hashFrom, const uint256_t &hashTo, const uint64_t nAmount, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Debit(const uint256_t& hashFrom, const uint256_t& hashTo, const uint64_t nAmount,
+                   const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashFrom))
+                return debug::error(FUNCTION, "cannot debit from register with reserved address");
+
+            /* Check for debit to and from same account. */
+            if(hashFrom == hashTo)
+                return debug::error(FUNCTION, "cannot debit to the same address as from");
+
             /* Read the register from the database. */
-            TAO::Register::State state;
+            TAO::Register::Object account;
 
             /* Write pre-states. */
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
-                if(!LLD::regDB->ReadState(hashFrom, state))
+                if(!LLD::regDB->ReadState(hashFrom, account))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashFrom.ToString());
 
-                tx.ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
+                tx.ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << account;
             }
 
             /* Get pre-states on write. */
@@ -55,62 +62,42 @@ namespace TAO
                     return debug::error(FUNCTION, "register script not in pre-state");
 
                 /* Get the pre-state. */
-                tx.ssRegister >> state;
+                tx.ssRegister >> account;
             }
 
             /* Check ownership of register. */
-            if(state.hashOwner != hashCaller)
-                return debug::error(FUNCTION, hashCaller.ToString(), " caller not authorized to debit from register");
+            if(account.hashOwner != tx.hashGenesis)
+                return debug::error(FUNCTION, tx.hashGenesis.ToString(), " caller not authorized to debit from register");
 
-            /* Check for account object register. */
-            if(state.nType == TAO::Register::STATE::ACCOUNT)
-            {
-                /* Get the account object from register. */
-                TAO::Register::Account account;
-                state >> account;
+            //TODO: sanitize the account to and ensure that it will be creditable
 
-                /* Check the balance of the from account. */
-                if(nAmount > account.nBalance)
-                    return debug::error(FUNCTION, hashFrom.ToString(), " account doesn't have sufficient balance");
+            /* Parse the account object register. */
+            if(!account.Parse())
+                return debug::error(FUNCTION, "failed to parse account object register");
 
-                /* Change the state of account register. */
-                account.nBalance -= nAmount;
+            /* Check for standard types. */
+            if(account.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                return debug::error(FUNCTION, "cannot debit from non-standard object register");
 
-                /* Clear the state of register. */
-                state.ClearState();
-                state.nTimestamp = tx.nTimestamp;
-                state << account;
-            }
+            /* Check the account balance. */
+            if(nAmount > account.get<uint64_t>("balance"))
+                return debug::error(FUNCTION, hashFrom.ToString(), " account doesn't have sufficient balance");
 
-            /* Check for token object register. */
-            else if(state.nType == TAO::Register::STATE::TOKEN)
-            {
-                /* Get the account object from register. */
-                TAO::Register::Token token;
-                state >> token;
+            /* Write the new balance to object register. */
+            if(!account.Write("balance", account.get<uint64_t>("balance") - nAmount))
+                return debug::error(FUNCTION, "balance could not be written to object register");
 
-                /* Check the balance of the from account. */
-                if(nAmount > token.nBalance)
-                    return debug::error(FUNCTION, hashFrom.ToString(), " token doesn't have sufficient balance");
-
-                /* Change the state of token register. */
-                token.nBalance -= nAmount;
-
-                /* Clear the state of register. */
-                state.ClearState();
-                state.nTimestamp = tx.nTimestamp;
-                state << token;
-            }
-            else
-                return debug::error(FUNCTION, hashFrom.ToString(), " is not a valid object register");
+            /* Update the state register's timestamp. */
+            account.nTimestamp = tx.nTimestamp;
+            account.SetChecksum();
 
             /* Check that the register is in a valid state. */
-            if(!state.IsValid())
+            if(!account.IsValid())
                 return debug::error(FUNCTION, "memory address ", hashFrom.ToString(), " is in invalid state");
 
             /* Write post-state checksum. */
             if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
+                tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << account.GetHash();
 
             /* Verify the post-state checksum. */
             if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -128,25 +115,21 @@ namespace TAO
                 tx.ssRegister >> nChecksum;
 
                 /* Check for matching post states. */
-                if(nChecksum != state.GetHash())
+                if(nChecksum != account.GetHash())
                     return debug::error(FUNCTION, "register script has invalid post-state");
 
+                /* Read the register from the database. */
+                TAO::Register::State stateTo;
+                if(!LLD::regDB->ReadState(hashTo, stateTo))
+                    return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
+
                 /* Write the register to the database. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashFrom, state))
+                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashFrom, account))
                     return debug::error(FUNCTION, "failed to write new state");
 
-                /* Write the notification foreign index. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) || (nFlags & TAO::Register::FLAGS::MEMPOOL)) //TODO: possibly add some checks for invalid stateTo (wrong token ID)
-                {
-                    /* Read the register from the database. */
-                    TAO::Register::State stateTo;
-                    if(!LLD::regDB->ReadState(hashTo, stateTo))
-                        return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
-
-                    /* Write the event to the ledger database. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteEvent(stateTo.hashOwner, tx.GetHash()))
-                        return debug::error(FUNCTION, "failed to rollback event to register DB");
-                }
+                /* Write the event to the ledger database. */
+                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteEvent(stateTo.hashOwner, tx.GetHash()))
+                    return debug::error(FUNCTION, "failed to rollback event to register DB");
             }
 
             return true;

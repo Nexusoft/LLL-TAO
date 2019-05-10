@@ -13,6 +13,10 @@
 // start catch.hpp
 
 
+//modification to catch to grab last error on unit testing
+#include <Util/include/debug.h>
+
+
 #define CATCH_VERSION_MAJOR 2
 #define CATCH_VERSION_MINOR 7
 #define CATCH_VERSION_PATCH 0
@@ -13419,6 +13423,7 @@ public:
         if (stats.totals.assertions.total() > 0) {
             printResultType();
             printOriginalExpression();
+            printLastError();
             printReconstructedExpression();
         } else {
             stream << '\n';
@@ -13438,6 +13443,17 @@ private:
             Colour colourGuard(Colour::OriginalExpression);
             stream << "  ";
             stream << result.getExpressionInMacro();
+            stream << '\n';
+        }
+    }
+    void printLastError() const {
+        std::string strError = debug::GetLastError();
+        if (strError != std::string("")) {
+            stream << "with last internal error:\n";
+            stream << "  ";
+            Colour colourGuard(Colour::Error);
+            stream << "ERROR: ";
+            stream << strError;
             stream << '\n';
         }
     }
@@ -14668,7 +14684,7 @@ int main (int argc, char * const argv[]) {
 // If CATCH_CONFIG_PREFIX_ALL is not defined then the CATCH_ prefix is not required
 #else
 
-#define REQUIRE( ... ) INTERNAL_CATCH_TEST( "REQUIRE", Catch::ResultDisposition::Normal, __VA_ARGS__  )
+#define REQUIRE( ... ) debug::strLastError = ""; INTERNAL_CATCH_TEST( "REQUIRE", Catch::ResultDisposition::Normal, __VA_ARGS__  )
 #define REQUIRE_FALSE( ... ) INTERNAL_CATCH_TEST( "REQUIRE_FALSE", Catch::ResultDisposition::Normal | Catch::ResultDisposition::FalseTest, __VA_ARGS__ )
 
 #define REQUIRE_THROWS( ... ) INTERNAL_CATCH_THROWS( "REQUIRE_THROWS", Catch::ResultDisposition::Normal, __VA_ARGS__ )
@@ -14931,4 +14947,3 @@ using Catch::Detail::Approx;
 // end catch_reenable_warnings.h
 // end catch.hpp
 #endif // TWOBLUECUBES_SINGLE_INCLUDE_CATCH_HPP_INCLUDED
-

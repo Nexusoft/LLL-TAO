@@ -21,7 +21,7 @@
 
 #include <LLD/include/global.h>
 
-#include <TAO/Register/include/object.h>
+#include <TAO/Register/types/object.h>
 
 #include <cmath>
 
@@ -29,17 +29,11 @@
 
 
 
-TEST_CASE( "Validation Script Operation Tests", "[validation]" )
+TEST_CASE( "Validation Script Tests", "[operation]" )
 {
     using namespace TAO::Operation;
 
     Stream ssOperation;
-
-
-
-
-
-
     ssOperation << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)7u << (uint8_t) OP::MUL << (uint8_t) OP::TYPES::UINT32_T << (uint32_t)9u << (uint8_t) OP::EQUALS << (uint8_t)OP::TYPES::UINT32_T << (uint32_t)63u;
 
 
@@ -60,7 +54,6 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
     state << hash2;
 
 
-    LLD::regDB = new LLD::RegisterDB();
     REQUIRE(LLD::regDB->Write(hash, state));
     REQUIRE(LLD::regDB->Write(hashFrom, state));
 
@@ -408,7 +401,7 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
                << std::string("identifier") << uint8_t(TYPES::STRING) << std::string("NXS");
 
        object.hashOwner = LLC::GetRand256();
-       object.nType     = TAO::Register::STATE::OBJECT;
+       object.nType     = TAO::Register::REGISTER::OBJECT;
 
 
        std::string strObject = "register-vanity";
@@ -418,8 +411,8 @@ TEST_CASE( "Validation Script Operation Tests", "[validation]" )
 
 
       ssOperation.SetNull();
-      ssOperation << (uint8_t)OP::TYPES::STRING << strObject << (uint8_t)OP::CRYPTO::SK256
-                  << (uint8_t)OP::EQUALS << (uint8_t)OP::TYPES::UINT256_T << hashObject;
+      ssOperation << uint8_t(OP::TYPES::STRING) << strObject << uint8_t(OP::CRYPTO::SK256)
+                  << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT256_T) << hashObject;
 
       {
           Validate script = Validate(ssOperation, tx);

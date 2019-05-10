@@ -7,8 +7,9 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/cache/binary_key.h>
+#include <LLD/hash/xxh3.h>
+
 #include <Util/include/mutex.h>
-#include <openssl/md5.h>
 
 namespace LLD
 {
@@ -89,13 +90,8 @@ namespace LLD
     /*  Find a bucket for cache key management. */
     uint32_t KeyLRU::Bucket(const std::vector<uint8_t>& vKey) const
     {
-        /* Get an MD5 digest. */
-        uint8_t digest[MD5_DIGEST_LENGTH];
-        MD5((uint8_t*)&vKey[0], vKey.size(), (uint8_t*)&digest);
-
-        /* Copy bytes into the bucket. */
-        uint64_t nBucket;
-        std::copy((uint8_t*)&digest[0], (uint8_t*)&digest[0] + 8, (uint8_t*)&nBucket);
+        /* Get an xxHash. */
+        uint64_t nBucket = XXH64(&vKey[0], vKey.size(), 0);
 
         return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
     }

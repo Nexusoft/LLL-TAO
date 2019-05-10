@@ -93,51 +93,13 @@ enum
     SER_GENESISHASH     = (1 << 22)
 };
 
-
-/* Use this in the source file to keep dependencies clean */
-#define SERIALIZE_SOURCE(classname, statements)                                \
-    uint64_t classname::GetSerializeSize(uint32_t nSerType, uint32_t nSerVersion) const  \
-    {                                                                          \
-        CSerActionGetSerializeSize ser_action;                                 \
-        const bool fGetSize = true;                                            \
-        const bool fWrite = false;                                             \
-        const bool fRead = false;                                              \
-        uint64_t nSerSize = 0;                                                 \
-        ser_streamplaceholder s;                                               \
-        assert(fGetSize||fWrite||fRead); /* suppress warning */                \
-        s.nSerType = nSerType;                                                 \
-        s.nSerVersion = nSerVersion;                                           \
-        {statements}                                                           \
-        return nSerSize;                                                       \
-    }                                                                          \
-    template<typename Stream>                                                  \
-    void classname::Serialize(Stream& s, uint32_t nSerType, uint32_t nSerVersion) const  \
-    {                                                                          \
-        CSerActionSerialize ser_action;                                        \
-        const bool fGetSize = false;                                           \
-        const bool fWrite = true;                                              \
-        const bool fRead = false;                                              \
-        uint32_t nSerSize = 0;                                                 \
-        assert(fGetSize||fWrite||fRead); /* suppress warning */                \
-        {statements}                                                           \
-    }                                                                          \
-    template<typename Stream>                                                  \
-    void classname::Unserialize(Stream& s, uint32_t nSerType, uint32_t nSerVersion)      \
-    {                                                                          \
-        CSerActionUnserialize ser_action;                                      \
-        const bool fGetSize = false;                                           \
-        const bool fWrite = false;                                             \
-        const bool fRead = true;                                               \
-        uint32_t nSerSize = 0;                                                 \
-        assert(fGetSize||fWrite||fRead); /* suppress warning */                \
-        {statements}                                                           \
-    }
-
+/* Used to suppress unused variable warnings. */
+#define _unused(x) ((void)(x))
 
 /* This should be used in header only files with complete types
  * best to avoid the use of it if not needed, kept for back-compatability */
 #define IMPLEMENT_SERIALIZE(statements)                                        \
-    uint64_t GetSerializeSize(uint32_t nSerType, uint32_t nSerVersion) const             \
+    uint64_t GetSerializeSize(uint32_t nSerType, uint32_t nSerVersion) const   \
     {                                                                          \
         CSerActionGetSerializeSize ser_action;                                 \
         const bool fGetSize = true;                                            \
@@ -145,32 +107,38 @@ enum
         const bool fRead = false;                                              \
         uint64_t nSerSize = 0;                                                 \
         ser_streamplaceholder s;                                               \
-        assert(fGetSize||fWrite||fRead); /* suppress warning */                \
+        _unused(fGetSize); /* suppress warning */                              \
+        _unused(fWrite);   /* suppress warning */                              \
+        _unused(fRead);    /* suppress warning */                              \
         s.nSerType = nSerType;                                                 \
         s.nSerVersion = nSerVersion;                                           \
         {statements}                                                           \
         return nSerSize;                                                       \
     }                                                                          \
     template<typename Stream>                                                  \
-    void Serialize(Stream& s, uint32_t nSerType, uint32_t nSerVersion) const             \
+    void Serialize(Stream& s, uint32_t nSerType, uint32_t nSerVersion) const   \
     {                                                                          \
         CSerActionSerialize ser_action;                                        \
         const bool fGetSize = false;                                           \
         const bool fWrite = true;                                              \
         const bool fRead = false;                                              \
         uint64_t nSerSize = 0;                                                 \
-        assert(fGetSize||fWrite||fRead); /* suppress warning */                \
+        _unused(fGetSize); /* suppress warning */                              \
+        _unused(fWrite);   /* suppress warning */                              \
+        _unused(fRead);    /* suppress warning */                              \
         {statements}                                                           \
     }                                                                          \
     template<typename Stream>                                                  \
-    void Unserialize(Stream& s, uint32_t nSerType, uint32_t nSerVersion)                 \
+    void Unserialize(Stream& s, uint32_t nSerType, uint32_t nSerVersion)       \
     {                                                                          \
         CSerActionUnserialize ser_action;                                      \
         const bool fGetSize = false;                                           \
         const bool fWrite = false;                                             \
         const bool fRead = true;                                               \
         uint64_t nSerSize = 0;                                                 \
-        assert(fGetSize||fWrite||fRead); /* suppress warning */                \
+        _unused(fGetSize); /* suppress warning */                              \
+        _unused(fWrite);   /* suppress warning */                              \
+        _unused(fRead);    /* suppress warning */                              \
         {statements}                                                           \
     }
 

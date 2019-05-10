@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <vector>
 
 #include <TAO/Operation/include/stream.h>
-#include <TAO/Register/include/stream.h>
+#include <TAO/Register/types/stream.h>
 
 #include <Util/include/runtime.h>
 
@@ -29,6 +29,7 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+        class BlockState;
 
         /** Transaction
          *
@@ -48,6 +49,10 @@ namespace TAO
 
             /** The register pre-states. **/
             TAO::Register::Stream  ssRegister;
+
+
+            /** The critical system level pre-states and post-states. **/
+            TAO::Register::Stream  ssSystem;
 
 
             /** The transaction version. **/
@@ -88,6 +93,7 @@ namespace TAO
 
                 /* Register layer. */
                 READWRITE(ssRegister);
+                READWRITE(ssSystem);
 
                 /* Ledger layer */
                 READWRITE(nVersion);
@@ -106,6 +112,7 @@ namespace TAO
             Transaction()
             : ssOperation()
             , ssRegister()
+            , ssSystem()
             , nVersion(1)
             , nSequence(0)
             , nTimestamp(runtime::unifiedtimestamp())
@@ -143,28 +150,6 @@ namespace TAO
             bool IsValid() const;
 
 
-            /** ExtractTrust
-             *
-             *  Extract the trust data from the input script.
-             *
-             *  @param[out] hashLastBlock The last block to extract.
-             *  @param[out] nSequence The sequence number of proof of stake blocks.
-             *  @param[out] nTrustScore The trust score to extract.
-             *
-             **/
-            bool ExtractTrust(uint1024_t& hashLastBlock, uint32_t& nSequence, uint32_t& nTrustScore) const;
-
-
-            /** ExtractStake
-             *
-             *  Extract the stake data from the input script.
-             *
-             *  @param[out] nStake The amount being staked.
-             *
-             **/
-            bool ExtractStake(uint64_t& nStake) const;
-
-
             /** IsCoinbase
              *
              *  Determines if the transaction is a coinbase transaction.
@@ -193,6 +178,29 @@ namespace TAO
              *
              **/
             bool IsGenesis() const;
+
+
+            /** IsFirst
+             *
+             *  Determines if the transaction is the first transaction
+             *  in a signature chain
+             *
+             *  @return true if transaction is first
+             *
+             **/
+            bool IsFirst() const;
+
+
+            /** CheckTrust
+             *
+             *  Determines if the published trust score is accurate.
+             *
+             *  @param[in] state The block state to check trust from.
+             *
+             *  @return true if the trust is valid.
+             *
+             **/
+            bool CheckTrust(const TAO::Ledger::BlockState& state) const;
 
 
             /** GetHash
@@ -251,6 +259,7 @@ namespace TAO
              *
              **/
             std::string ToStringShort() const;
+
 
             /** GetTxTypeString
              *

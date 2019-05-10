@@ -16,10 +16,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/operations.h>
 #include <TAO/Operation/include/enum.h>
 
-#include <TAO/Register/include/state.h>
-#include <TAO/Register/include/enum.h>
-#include <TAO/Register/objects/token.h>
-#include <TAO/Register/objects/account.h>
+#include <TAO/Register/types/object.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -30,11 +28,12 @@ namespace TAO
     {
 
         /* Creates a new register if it doesn't exist. */
-        bool Register(const uint256_t &hashAddress, const uint8_t nType, const std::vector<uint8_t> &vchData, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Register(const uint256_t& hashAddress, const uint8_t nType, const std::vector<uint8_t>& vchData,
+                      const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
-            /* Check for wildcard reserved values. */
-            if(hashAddress == OP::WILDCARD)
-                return debug::error(FUNCTION, "cannot create register with WILDCARD address");
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAddress))
+                return debug::error(FUNCTION, "cannot create register with reserved address");
 
             /* Check that the register doesn't exist yet. */
             if(LLD::regDB->HasState(hashAddress))
@@ -42,83 +41,97 @@ namespace TAO
 
             /* Set the owner of this register. */
             TAO::Register::State state;
-            state.nVersion  = 1;
-            state.nType     = nType;
-            state.hashOwner = hashCaller;
+            state.nVersion   = 1;
+            state.nType      = nType;
+            state.hashOwner  = tx.hashGenesis;
+            state.nTimestamp = tx.nTimestamp;
+
+            /* Set the data in the state register. */
+            state.SetState(vchData);
 
             /* Check register types specific rules. */
-            switch(nType)
+            if(nType == TAO::Register::REGISTER::OBJECT)
             {
+                /* Create the object register. */
+                TAO::Register::Object object = TAO::Register::Object(state);
 
-                case TAO::Register::STATE::ACCOUNT:
+                /* Parse the object register. */
+                if(!object.Parse())
+                    return debug::error(FUNCTION, "object register failed to parse");
+
+                /* Grab the object standard to check values. */
+                uint8_t nStandard = object.Standard();
+
+                /* Switch based on standard types. */
+                switch(nStandard)
                 {
-                    /* Create an account object. */
-                    TAO::Register::Account acct;
 
-                    /* Setup a stream to deserialize the data. */
-                    DataStream ssData(vchData, SER_REGISTER, state.nVersion);
-                    ssData >> acct;
-
-                    /* Check that the size is correct. */
-                    if(vchData.size() != acct.GetSerializeSize(SER_REGISTER, state.nVersion))
-                        return debug::error(FUNCTION, "unexpected account register size ", vchData.size());
-
-                    /* Check the account version. */
-                    if(acct.nVersion != 1)
-                        return debug::error(FUNCTION, "unexpected account version ", acct.nVersion);
-
-                    /* Check the account balance. */
-                    if(acct.nBalance != 0)
-                        return debug::error(FUNCTION, "account can't be created with non-zero balance ", acct.nBalance);
-
-                    /* Check that token identifier hasn't been claimed. */
-                    if(acct.nIdentifier != 0 && !LLD::regDB->HasIdentifier(acct.nIdentifier, nFlags))
-                        return debug::error(FUNCTION, "account can't be created with no identifier ", acct.nIdentifier);
-
-                    break;
-                }
-
-                case TAO::Register::STATE::TOKEN:
-                {
-                    /* Create an account object. */
-                    TAO::Register::Token token;
-
-                    /* Setup a stream to deserialize the data. */
-                    DataStream ssData(vchData, SER_REGISTER, state.nVersion);
-                    ssData >> token;
-
-                    /* Check that the size is correct. */
-                    if(vchData.size() != token.GetSerializeSize(SER_REGISTER, state.nVersion))
-                        return debug::error(FUNCTION, "unexpected token register size ", vchData.size());
-
-                    /* Check the account version. */
-                    if(token.nVersion != 1)
-                        return debug::error(FUNCTION, "unexpected token version ", token.nVersion);
-
-                    /* Check that token identifier hasn't been claimed. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) || (nFlags & TAO::Register::FLAGS::MEMPOOL))
+                    /* Check default values for creating a standard account. */
+                    case TAO::Register::OBJECTS::ACCOUNT:
                     {
-                        /* Check the claimed register address to identifier. */
-                        uint256_t hashClaimed = 0;
-                        if(token.nIdentifier == 0 || (LLD::regDB->ReadIdentifier(token.nIdentifier, hashClaimed, nFlags) && hashClaimed != hashAddress))
-                            return debug::error(FUNCTION, "token can't be created with reserved identifier ", token.nIdentifier);
+                        /* Check the account balance. */
+                        if(object.get<uint64_t>("balance") != 0)
+                            return debug::error(FUNCTION, "account can't be created with non-zero balance ", object.get<uint64_t>("balance"));
 
-                        /* Write the new identifier to database. */
-                        if(!LLD::regDB->WriteIdentifier(token.nIdentifier, hashAddress, nFlags))
-                            return debug::error(FUNCTION, "failed to commit token register identifier to disk");
+                        /* Check that token identifier hasn't been claimed. */
+                        if(object.get<uint32_t>("identifier") != 0 && !LLD::regDB->HasIdentifier(object.get<uint32_t>("identifier"), nFlags))
+                            return debug::error(FUNCTION, "account can't be created with no identifier ", object.get<uint32_t>("identifier"));
+
+                        break;
                     }
 
-                    /* Check that the current supply and max supply are the same. */
-                    if(token.nMaxSupply != token.nBalance)
-                        return debug::error(FUNCTION, "token current supply and max supply can't mismatch");
 
-                    break;
+                    /* Check default values for creating a standard account. */
+                    case TAO::Register::OBJECTS::TRUST:
+                    {
+                        /* Check the account balance. */
+                        if(object.get<uint64_t>("balance") != 0)
+                            return debug::error(FUNCTION, "trust account can't be created with non-zero balance ", object.get<uint64_t>("balance"));
+
+                        /* Check the account balance. */
+                        if(object.get<uint64_t>("stake") != 0)
+                            return debug::error(FUNCTION, "trust account can't be created with non-zero balance ", object.get<uint64_t>("balance"));
+
+                        /* Check the account balance. */
+                        if(object.get<uint64_t>("trust") != 0)
+                            return debug::error(FUNCTION, "trust account can't be created with non-zero trust ", object.get<uint64_t>("trust"));
+
+                        /* Check that token identifier hasn't been claimed. */
+                        if(object.get<uint32_t>("identifier") != 0)
+                            return debug::error(FUNCTION, "trust account can't be created with non-default identifier ", object.get<uint32_t>("identifier"));
+
+                        break;
+                    }
+
+
+                    /* Check default values for creating a standard token. */
+                    case TAO::Register::OBJECTS::TOKEN:
+                    {
+                        /* Check for reserved native token. */
+                        if(object.get<uint32_t>("identifier") == 0)
+                            return debug::error(FUNCTION, "token can't be created with reserved identifier ", object.get<uint32_t>("identifier"));
+
+                        /* Check that token identifier hasn't been claimed. */
+                        if((nFlags & TAO::Register::FLAGS::WRITE) || (nFlags & TAO::Register::FLAGS::MEMPOOL))
+                        {
+                            /* Check the claimed register address to identifier. */
+                            uint256_t hashClaimed = 0;
+                            if(LLD::regDB->ReadIdentifier(object.get<uint32_t>("identifier"), hashClaimed, nFlags))
+                                return debug::error(FUNCTION, "token can't be created with reserved identifier ", object.get<uint32_t>("identifier"));
+
+                            /* Write the new identifier to database. */
+                            if(!LLD::regDB->WriteIdentifier(object.get<uint32_t>("identifier"), hashAddress, nFlags))
+                                return debug::error(FUNCTION, "failed to commit token register identifier to disk");
+                        }
+
+                        /* Check that the current supply and max supply are the same. */
+                        if(object.get<uint64_t>("supply") != object.get<uint64_t>("balance"))
+                            return debug::error(FUNCTION, "token current supply and balance can't mismatch");
+
+                        break;
+                    }
                 }
             }
-
-            /* Set the state from binary data. */
-            state.nTimestamp = tx.nTimestamp;
-            state.SetState(vchData);
 
             /* Check the state change is correct. */
             if(!state.IsValid())

@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_CACHE_TEMPLATE_LRU_H
 #define NEXUS_LLD_CACHE_TEMPLATE_LRU_H
 
+#include <LLD/hash/xxh3.h>
+
 #include <Util/include/mutex.h>
 
 #include <cstdint>
@@ -207,23 +209,49 @@ namespace LLD
         /** Bucket
          *
          *  Find a bucket for cache key management.
+         *  This is an overload for vector specific rules.
          *
          *  @param[in] Key The key to get bucket for.
          *
          **/
-        uint32_t Bucket(const KeyType &Key) const
+        uint32_t Bucket(const std::vector<uint8_t>& Key) const
         {
-            /* Get the bytes from the type object. */
-            std::vector<uint8_t> vKey;
-            vKey.insert(vKey.end(), (uint8_t*)&Key, (uint8_t*)&Key + sizeof(Key));
-            uint64_t s = vKey.size();
+            /* Get an xxHash. */
+            uint64_t nBucket = XXH64((uint8_t*)&Key[0], Key.size(), 0);
 
-            /* Find the bucket through creating an uint64_t from available bytes. */
-            uint64_t nBucket = 0;
-            for(uint64_t i = 0; i < s && i < 8; ++i)
-                nBucket += vKey[i] << (8 * i);
+            return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
+        }
 
-            /* Round robin to find the bucket. */
+
+        /** Bucket
+         *
+         *  Find a bucket for cache key management.
+         *  This is an overload for string specific rules.
+         *
+         *  @param[in] Key The key to get bucket for.
+         *
+         **/
+        uint32_t Bucket(const std::string& Key) const
+        {
+            /* Get an xxHash. */
+            uint64_t nBucket = XXH64((uint8_t*)&Key[0], Key.size(), 0);
+
+            return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
+        }
+
+
+        /** Bucket
+         *
+         *  Find a bucket for cache key management.
+         *
+         *  @param[in] Key The key to get bucket for.
+         *
+         **/
+        uint32_t Bucket(const KeyType& Key) const
+        {
+            /* Get an xxHash. */
+            uint64_t nBucket = XXH64((uint8_t*)&Key, sizeof(Key), 0);
+
             return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
         }
 

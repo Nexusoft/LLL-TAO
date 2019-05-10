@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <TAO/Register/include/state.h>
+#include <TAO/Register/types/state.h>
 #include <TAO/Ledger/types/transaction.h>
 
 

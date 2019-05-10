@@ -25,10 +25,10 @@ namespace TAO
 
         /** STATE
          *
-         *  Object registers that are available for use.
+         *  State registers that are available for use.
          *
          **/
-        struct STATE
+        struct REGISTER
         {
             enum
             {
@@ -44,14 +44,56 @@ namespace TAO
                 /* This type of register is just raw data that can be changed. */
                 RAW      = 0x03,
 
-                /* This type of register has its dadta fields enforced by operations layer. */
+                /* This type of register has its data fields enforced by operations layer. */
                 OBJECT   = 0x04,
 
                 /* This type of register handles general accounts and DEBITS / CREDITS */
-                ACCOUNT  = 0x05,
+                SYSTEM   = 0x05,
+            };
+        };
 
-                /* This type of register to hold token parameters. */
-                TOKEN    = 0x06,
+
+        /** SYSTEM
+         *
+         *  System registers with reserved indexes.
+         *
+         **/
+        struct SYSTEM
+        {
+            enum
+            {
+                /* RESERVED can't be used as system register. */
+                RESERVED  = 0x00,
+
+                /* This type of register is a system register holding global trust. */
+                TRUST     = 0x01,
+
+                /* LIMIT is defined as 256 values. */
+                LIMIT     = 0xff
+            };
+        };
+
+
+        /** OBJECT
+         *
+         *  Object registers that are available and standardized.
+         *
+         **/
+        struct OBJECTS
+        {
+            enum
+            {
+                /* Non-Standard Object (User Defined Type). */
+                NONSTANDARD  = 0x00,
+
+                /* Account Object Register. */
+                ACCOUNT      = 0x01,
+
+                /* Token Object Register. */
+                TOKEN        = 0x02,
+
+                /* Trust Object Register. */
+                TRUST        = 0x03
             };
         };
 

@@ -535,9 +535,9 @@ namespace LLD
          assert(pTransaction);
 
          /* Restore erase data. */
-         for(const auto& item : pTransaction->mapEraseData)
-             if(!pSectorKeys->Restore(item.first))
-                 assert(debug::error(FUNCTION, "failed to rollback erase"));
+         //for(const auto& item : pTransaction->mapEraseData)
+             //if(!pSectorKeys->Restore(item.first))
+            //     assert(debug::error(FUNCTION, "failed to rollback erase"));
 
         /* Erase all the transactions. */
         for(const auto& item : pTransaction->mapTransactions)
@@ -781,7 +781,8 @@ namespace LLD
 
 
     /* Explicity instantiate all template instances needed for compiler. */
-    template class SectorDatabase<BinaryFileMap, BinaryLRU>;
-    template class SectorDatabase<BinaryHashMap, BinaryLRU>;
+    template class SectorDatabase<BinaryFileMap,  BinaryLRU>;
+    template class SectorDatabase<BinaryHashMap,  BinaryLRU>;
+    template class SectorDatabase<BinaryHashTree, BinaryLRU>;
 
 }

@@ -46,7 +46,7 @@ namespace TAO
         bool Transaction::IsValid() const
         {
             /* Read the previous transaction from disk. */
-            if(!IsGenesis())
+            if(!IsFirst())
             {
                 TAO::Ledger::Transaction tx;
                 if(!LLD::legDB->ReadTx(hashPrevTx, tx))
@@ -64,6 +64,16 @@ namespace TAO
                 if(tx.hashGenesis != hashGenesis)
                     return debug::error(FUNCTION, "previous genesis ", tx.hashGenesis.ToString().substr(0, 20), " mismatch ",  hashGenesis.ToString().substr(0, 20));
             }
+            else
+            {
+                /* System memory cannot be allocated on first. */
+                if(ssSystem.size() != 0)
+                    return debug::error(FUNCTION, "no system memory available on genesis");
+            }
+
+            /* Check for Trust. */
+            if(!IsTrust() && ssSystem.size() != 0)
+                return debug::error(FUNCTION, "no system memory available when not trust");
 
             /* Checks for coinbase. */
             if(IsCoinbase())
@@ -100,44 +110,6 @@ namespace TAO
         }
 
 
-        /* Extract the trust data from the input script. */
-        bool Transaction::ExtractTrust(uint1024_t& hashLastBlock, uint32_t& nSequence, uint32_t& nTrustScore) const
-        {
-            /* Don't extract trust if not coinstake. */
-            if(!IsTrust())
-                return debug::error(FUNCTION, "not proof of stake");
-
-            /* Seek the stream to the beginning. */
-            ssOperation.seek(1, STREAM::BEGIN);
-
-            /* The account that is being staked. */
-            uint256_t hashAccount;
-            ssOperation >> hashAccount;
-
-            /* Deserialize the values from stream. */
-            ssOperation >> hashLastBlock >> nSequence >> nTrustScore;
-
-            return true;
-        }
-
-
-        /* Extract the stake data from the input script. */
-        bool Transaction::ExtractStake(uint64_t& nStake) const
-        {
-            /* Don't extract trust if not coinstake. */
-            if(!IsTrust())
-                return debug::error(FUNCTION, "not proof of stake");
-
-            /* Seek the stream to the beginning. */
-            ssOperation.seek(169, STREAM::BEGIN);
-
-            /* Deserialize the values from stream. */
-            ssOperation >> nStake;
-
-            return true;
-        }
-
-
         /* Determines if the transaction is a coinbase transaction. */
         bool Transaction::IsCoinbase() const
         {
@@ -161,7 +133,108 @@ namespace TAO
         /* Determines if the transaction is a genesis transaction */
         bool Transaction::IsGenesis() const
         {
+            if(ssOperation.size() == 0)
+                return false;
+
+            return ssOperation.get(0) == TAO::Operation::OP::GENESIS;
+        }
+
+
+        /* Determines if the transaction is a genesis transaction */
+        bool Transaction::IsFirst() const
+        {
             return (nSequence == 0 && hashPrevTx == 0);
+        }
+
+
+        /* Get the score of the current trust block. */
+        bool Transaction::CheckTrust(const TAO::Ledger::BlockState& state) const
+        {
+            /* Reset the operation stream. */
+            ssOperation.seek(1, STREAM::BEGIN);
+
+            /* Get the previous producer. */
+            uint512_t hashLastTrust;
+            ssOperation >> hashLastTrust;
+
+            /* The current calculated trust score. */
+            uint64_t nTrustScore;
+            ssOperation >> nTrustScore;
+
+            /* Check that the last trust block is in the block database. */
+            TAO::Ledger::BlockState stateLast;
+            if(!LLD::legDB->ReadBlock(hashLastTrust, stateLast))
+                return debug::error(FUNCTION, "last block not in database");
+
+            /* Check that the previous block is in the block database. */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::legDB->ReadBlock(state.hashPrevBlock, statePrev))
+                return debug::error(FUNCTION, "prev block not in database");
+
+            /* Get the last coinstake transaction. */
+            Transaction txLast;
+            if(!LLD::legDB->ReadTx(hashLastTrust, txLast))
+                return debug::error(FUNCTION, "last state coinstake tx not found");
+
+            /* Enforce the minimum trust key interval of 120 blocks. */
+            const uint32_t nMinimumInterval = config::fTestNet ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
+                                                               : TAO::Ledger::MAINNET_MINIMUM_INTERVAL;
+
+            /* Check the proper intervals. */
+            if(state.nHeight - stateLast.nHeight < nMinimumInterval)
+                return debug::error(FUNCTION, "trust key interval below minimum interval ", state.nHeight - stateLast.nHeight);
+
+            /* Set the previous transaction trust score. */
+            uint64_t nScorePrev = 0;
+
+            /* Set the trust score for calculating. */
+            uint64_t nScore     = 0;
+
+            /* If previous block is genesis, set previous score to 0. */
+            if(txLast.IsGenesis())
+            {
+                /* Genesis results in a previous score of 0. */
+                nScorePrev = 0;
+            }
+
+            /* The time it has been since the last trust block for this trust key. */
+            uint32_t nTimespan = (statePrev.GetBlockTime() - stateLast.GetBlockTime());
+
+            /* Timespan less than required timespan is awarded the total seconds it took to find. */
+            if(nTimespan < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+                nScore = nScorePrev + nTimespan;
+
+            /* Timespan more than required timespan is penalized 3 times the time it took past the required timespan. */
+            else
+            {
+                /* Calculate the penalty for score (3x the time). */
+                uint32_t nPenalty = (nTimespan - (config::fTestNet ?
+                    TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN)) * 3;
+
+                /* Catch overflows and zero out if penalties are greater than previous score. */
+                if(nPenalty > nScorePrev)
+                    nScore = 0;
+                else
+                    nScore = (nScorePrev - nPenalty);
+            }
+
+            /* Set maximum trust score to seconds passed for interest rate. */
+            if(nScore > TAO::Ledger::TRUST_SCORE_MAX)
+                nScore = TAO::Ledger::TRUST_SCORE_MAX;
+
+            /* Debug output. */
+            debug::log(2, FUNCTION,
+                "score=", nScore, ", ",
+                "prev=", nScorePrev, ", ",
+                "timespan=", nTimespan, ", ",
+                "change=", (int32_t)(nScore - nScorePrev), ")"
+            );
+
+            /* Check that published score in this block is equivilent to calculated score. */
+            if(nTrustScore != nScore)
+                return debug::error(FUNCTION, "published trust score ", nTrustScore, " not meeting calculated score ", nScore);
+
+            return true;
         }
 
 
@@ -262,6 +335,8 @@ namespace TAO
             std::string txtype = "tritium ";
             if(IsCoinbase())
                 txtype += "base";
+            else if(IsFirst())
+                txtype += "first";
             else if(IsTrust())
                 txtype += "trust";
             else if(IsGenesis())

@@ -102,7 +102,7 @@ namespace LLD
     /*  Dump Key to Debug Console. */
     void SectorKey::Print() const
     {
-        debug::log(0, "SectorKey(nState=", nState,
+        debug::log(0, "SectorKey(nState=", uint32_t(nState),
         ", nLength=", nLength,
         ", nSectorFile=", nSectorFile,
         ", nSectorSize=", nSectorSize,

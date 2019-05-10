@@ -113,6 +113,7 @@ namespace TAO
             /** Default Destructor **/
             virtual ~TritiumBlock();
 
+
             /** Clone
             *
             *  Allows polymorphic copying of blocks
@@ -123,7 +124,10 @@ namespace TAO
             *  @return A pointer to a copy of this TritiumBlock.
             *
             **/
-            virtual TritiumBlock* Clone() const override {return new TritiumBlock(*this);};
+            virtual TritiumBlock* Clone() const override
+            {
+                return new TritiumBlock(*this);
+            };
 
 
             /** SetNull
@@ -158,20 +162,12 @@ namespace TAO
             bool CheckStake() const;
 
 
-            /** CheckTrust
-             *
-             *  Check the calculated trust score meets published one.
-             *
-             **/
-            bool CheckTrust() const;
-
-
             /** BlockAge
              *
              *  Get the current block age of the trust key.
              *
              **/
-            bool BlockAge(uint32_t& nAge) const;
+            bool BlockAge(uint64_t& nAge) const;
 
 
             /** TrustScore
@@ -179,7 +175,7 @@ namespace TAO
              *  Get the score of the current trust block.
              *
              **/
-            bool TrustScore(uint32_t& nScore) const;
+            bool TrustScore(uint64_t& nScore) const;
 
 
             /** VerifyWork

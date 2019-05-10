@@ -14,14 +14,14 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
-#include <TAO/API/include/accounts.h>
+#include <TAO/API/include/users.h>
 #include <TAO/API/include/tokens.h>
 
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/objects/account.h>
-#include <TAO/Register/objects/token.h>
+#include <TAO/Register/include/create.h>
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -42,10 +42,10 @@ namespace TAO
             json::json ret;
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = accounts.GetPin(params);
+            SecureString strPIN = users.GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = accounts.GetSession(params);
+            uint64_t nSession = users.GetSession(params);
 
             /* Check for identifier parameter. */
             if(params.find("identifier") == params.end())
@@ -55,14 +55,13 @@ namespace TAO
             if(params.find("type") == params.end())
                 throw APIException(-25, "Missing Type");
 
-
             /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = accounts.GetAccount(nSession);
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if( !accounts.CanTransact())
+            if(!users.CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
@@ -87,20 +86,12 @@ namespace TAO
 
             if(params["type"].get<std::string>() == "account")
             {
-                /* Create a token object. */
-                TAO::Register::Account account;
-
-                /* Fill in the token parameters. */
-                account.nVersion     = 1;
-                account.nIdentifier  = stoi(params["identifier"].get<std::string>());
-                account.nBalance     = 0;
-
-                /* Create the serialiation stream. */
-                DataStream ssData(SER_REGISTER, 1);
-                ssData << account;
+                /* Create an account object register. */
+                TAO::Register::Object account = TAO::Register::CreateAccount(stoul(params["identifier"].get<std::string>()));
 
                 /* Submit the payload object. */
-                tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::STATE::ACCOUNT << ssData.Bytes();
+                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
+
             }
             else if(params["type"].get<std::string>() == "token")
             {
@@ -108,21 +99,13 @@ namespace TAO
                 if(params.find("supply") == params.end())
                     throw APIException(-25, "Missing Supply");
 
-                /* Create a token object. */
-                TAO::Register::Token token;
-
-                /* Fill in the token parameters. */
-                token.nVersion       = 1;
-                token.nIdentifier    = stoi(params["identifier"].get<std::string>());
-                token.nMaxSupply     = std::stoull(params["supply"].get<std::string>());
-                token.nBalance = token.nMaxSupply;
-
-                /* Create the serialiation stream. */
-                DataStream ssData(SER_REGISTER, 1);
-                ssData << token;
+                /* Create a token object register. */
+                TAO::Register::Object token = TAO::Register::CreateToken(stoul(params["identifier"].get<std::string>()),
+                                                                         std::stoull(params["supply"].get<std::string>()),
+                                                                         1000000);
 
                 /* Submit the payload object. */
-                tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::STATE::TOKEN << ssData.Bytes();
+                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();
             }
             else
                 throw APIException(-27, "Unknown object register");
@@ -132,7 +115,7 @@ namespace TAO
                 throw APIException(-26, "Operations failed to execute");
 
             /* Sign the transaction. */
-            if(!tx.Sign(accounts.GetKey(tx.nSequence, strPIN, nSession)))
+            if(!tx.Sign(users.GetKey(tx.nSequence, strPIN, nSession)))
                 throw APIException(-26, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

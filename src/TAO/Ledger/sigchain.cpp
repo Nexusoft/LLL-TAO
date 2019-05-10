@@ -104,7 +104,8 @@ namespace TAO
          */
         uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strSecret, bool fCache) const
         {
-            { LOCK(MUTEX);
+            {
+                LOCK(MUTEX);
 
                 /* Handle cache to stop exhaustive hash key generation. */
                 if(fCache && nKeyID == pairCache.first)
@@ -188,7 +189,9 @@ namespace TAO
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
 
             /* Set the cache items. */
-            { LOCK(MUTEX);
+            {
+                LOCK(MUTEX);
+
                 if(fCache)
                 {
                     pairCache.first  = nKeyID;

@@ -42,6 +42,37 @@ namespace memory
     int32_t compare(const uint8_t *a, const uint8_t *b, const uint64_t size);
 
 
+    /** copy
+     *
+     *  Copies from two sets of iteratos and checks the sizes for potential buffer
+     *  overflows.
+     *
+     *  @param[in] src_begin The source beginning iterator
+     *  @param[in] src_end The source ending iterator
+     *  @param[in] dst_begin The destination beginning iterator
+     *  @param[in] dst_end The destination ending iterator
+     *
+     **/
+    template<typename Type>
+    void copy(const Type* src_begin, const Type* src_end , const Type* dst_begin, const Type* dst_end)
+    {
+        /* Check the source iterators. */
+        if(src_end < src_begin)
+            throw std::domain_error("src end iterator less than src begin");
+
+        /* Check the destination iterators. */
+        if(dst_end < dst_begin)
+            throw std::domain_error("dst end iterator less than dst begin");
+
+        /* Check the sizes. */
+        if(src_end - src_begin != dst_end - dst_begin)
+            throw std::domain_error("src size mismatch with dst size");
+
+        /* Copy the data. */
+        std::copy((Type*)src_begin, (Type*)src_end, (Type*)dst_begin);
+    }
+
+
     /** atomic
      *
      *  Protects an object inside with a mutex.
@@ -727,8 +758,8 @@ namespace memory
 
         /** IsNull
         *
-        *  Determines if the internal data for this encrypted pointer is nullptr 
-        *  
+        *  Determines if the internal data for this encrypted pointer is nullptr
+        *
         *  @return True, if the internal data for this encrypted pointer is nullptr.
         *
         **/
@@ -736,7 +767,7 @@ namespace memory
        {
             RLOCK(MUTEX);
 
-            return data == nullptr; 
+            return data == nullptr;
        }
 
 

@@ -7,7 +7,7 @@
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To the Voice of the People
+            "Man often becomes what he believes himself to be." - Mahatma Gandhi
 
 ____________________________________________________________________________________________*/
 
@@ -50,8 +50,6 @@ namespace TAO
          **/
         inline bool Execute(TAO::Ledger::Transaction& tx, uint8_t nFlags)
         {
-            /* Get the caller. */
-            uint256_t hashOwner = tx.hashGenesis;
 
             /* Start the stream at the beginning. */
             tx.ssOperation.seek(0, STREAM::BEGIN);
@@ -86,7 +84,7 @@ namespace TAO
                             tx.ssOperation >> vchData;
 
                             /* Execute the operation method. */
-                            if(!Write(hashAddress, vchData, hashOwner, nFlags, tx))
+                            if(!Write(hashAddress, vchData, nFlags, tx))
                                 return false;
 
                             break;
@@ -105,7 +103,7 @@ namespace TAO
                             tx.ssOperation >> vchData;
 
                             /* Execute the operation method. */
-                            if(!Append(hashAddress, vchData, hashOwner, nFlags, tx))
+                            if(!Append(hashAddress, vchData, nFlags, tx))
                                 return false;
 
                             break;
@@ -128,7 +126,7 @@ namespace TAO
                             tx.ssOperation >> vchData;
 
                             /* Execute the operation method. */
-                            if(!Register(hashAddress, nType, vchData, hashOwner, nFlags, tx))
+                            if(!Register(hashAddress, nType, vchData, nFlags, tx))
                                 return false;
 
                             break;
@@ -147,7 +145,22 @@ namespace TAO
                             tx.ssOperation >> hashTransfer;
 
                             /* Execute the operation method. */
-                            if(!Transfer(hashAddress, hashTransfer, hashOwner, nFlags, tx))
+                            if(!Transfer(hashAddress, hashTransfer, nFlags, tx))
+                                return false;
+
+                            break;
+                        }
+
+
+                        /* Transfer ownership of a register to another signature chain. */
+                        case OP::CLAIM:
+                        {
+                            /* The transaction that this transfer is claiming. */
+                            uint512_t hashTx;
+                            tx.ssOperation >> hashTx;
+
+                            /* Execute the operation method. */
+                            if(!Claim(hashTx, nFlags, tx))
                                 return false;
 
                             break;
@@ -167,7 +180,7 @@ namespace TAO
                             tx.ssOperation >> nAmount;
 
                             /* Execute the operation method. */
-                            if(!Debit(hashAddress, hashTransfer, nAmount, hashOwner, nFlags, tx))
+                            if(!Debit(hashAddress, hashTransfer, nAmount, nFlags, tx))
                                 return false;
 
                             break;
@@ -194,7 +207,7 @@ namespace TAO
                             tx.ssOperation >> nCredit;
 
                             /* Execute the operation method. */
-                            if(!Credit(hashTx, hashProof, hashAccount, nCredit, hashOwner, nFlags, tx))
+                            if(!Credit(hashTx, hashProof, hashAccount, nCredit, nFlags, tx))
                                 return false;
 
                             break;
@@ -231,33 +244,44 @@ namespace TAO
                             if(!tx.ssOperation.begin())
                                 return debug::error(FUNCTION, "trust opeartion has to be first");
 
-                            /* The account that is being staked. */
-                            uint256_t hashAccount;
-                            tx.ssOperation >> hashAccount;
-
                             /* The previous trust block. */
-                            uint1024_t hashLastTrust;
+                            uint512_t hashLastTrust;
                             tx.ssOperation >> hashLastTrust;
 
-                            /* Previous trust sequence number. */
-                            uint32_t nSequence;
-                            tx.ssOperation >> nSequence;
-
-                            /* The trust calculated. */
-                            uint64_t nTrust;
-                            tx.ssOperation >> nTrust;
-
-                            /* The total to be staked. */
-                            uint64_t  nStake;
-                            tx.ssOperation >> nStake;
+                            /* The current calculated trust score. */
+                            uint64_t nTrustScore;
+                            tx.ssOperation >> nTrustScore;
 
                             /* Execute the operation method. */
-                            if(!Trust(hashAccount, hashLastTrust, nSequence, nTrust, nStake, hashOwner, nFlags, tx))
+                            if(!Trust(hashLastTrust, nTrustScore, nFlags, tx))
                                 return false;
 
                             /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
                             if(!tx.ssOperation.end())
                                 return debug::error(FUNCTION, "trust can't have extra data");
+
+                            break;
+                        }
+
+
+                        /* Coinstake operation. Requires an account. */
+                        case OP::GENESIS:
+                        {
+                            /* Ensure that it as beginning of the tx.ssOperation. */
+                            if(!tx.ssOperation.begin())
+                                return debug::error(FUNCTION, "genesis opeartion has to be first");
+
+                            /* The account that is being staked. */
+                            uint256_t hashAccount;
+                            tx.ssOperation >> hashAccount;
+
+                            /* Execute the operation method. */
+                            if(!Genesis(hashAccount, nFlags, tx))
+                                return false;
+
+                            /* Ensure that it as end of tx.ssOperation. */
+                            if(!tx.ssOperation.end())
+                                return debug::error(FUNCTION, "genesis can't have extra data");
 
                             break;
                         }
@@ -275,19 +299,32 @@ namespace TAO
                             tx.ssOperation >> hashProof;
 
                             /* Execute the operation method. */
-                            if(!Authorize(hashTx, hashProof, hashOwner, nFlags, tx))
+                            if(!Authorize(hashTx, hashProof, nFlags, tx))
                                 return false;
 
                             break;
                         }
 
 
-                        case OP::VOTE:
+                        case OP::ACK:
                         {
                             /* The object register to tally the votes for. */
                             uint256_t hashRegister;
 
-                            //TODO: OP::VOTE -> tally in a voter object register (create object on first vote)
+                            //TODO: OP::ACK -> tally trust to object register "trust" field.
+                            //tally stake to object register "stake" field
+
+                            break;
+                        }
+
+
+                        case OP::NACK:
+                        {
+                            /* The object register to tally the votes for. */
+                            uint256_t hashRegister;
+
+                            //TODO: OP::NACK -> remove trust from LLD
+                            //remove stake from object register "stake" field
 
                             break;
                         }
@@ -300,6 +337,9 @@ namespace TAO
 
                         //    break;
                         //}
+
+                        default:
+                            return debug::error(FUNCTION, "operations reached invalid stream state");
                     }
                 }
             }

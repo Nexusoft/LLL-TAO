@@ -95,6 +95,7 @@ namespace LLD
         /** Default Constructor **/
         BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn = FLAGS::APPEND);
 
+
         /** Copy Assignment Operator **/
         BinaryHashMap& operator=(BinaryHashMap map);
 

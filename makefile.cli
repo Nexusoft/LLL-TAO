@@ -175,15 +175,27 @@ ifdef UNIT_TESTS
 	OBJS = build/Tests_main.o \
 	       build/Tests_aes.o \
 	       build/Tests_testvm.o \
+		   build/Tests_objects.o \
+		   build/Tests_system.o \
+		   build/Tests_rollback.o \
 		   build/Tests_block.o \
 		   build/Tests_sigchain.o \
+		   build/Tests_register.o \
+		   build/Tests_debit.o \
+		   build/Tests_trust.o \
+		   build/Tests_write.o \
 		   build/Tests_validate.o
+
+	DEFS += -DUNIT_TESTS
 
 #Run benchmarks on subsystems
 else ifdef BENCHMARKS
 	OBJS = build/Benchmarks_main.o \
 		   build/Benchmarks_validate.o \
 		   build/Benchmarks_object.o \
+		   build/Benchmarks_binary_lru.o \
+		   build/Benchmarks_binary_key.o \
+		   build/Benchmarks_template_lru.o \
 		   build/Benchmarks_sigchain.o
 
 #Live tests for prototyping new code
@@ -228,6 +240,7 @@ OBJS+=  build/LLC_skein.o \
 	    build/LLD_binary_lru.o \
 		build/LLD_binary_key.o \
 	    build/LLD_sector.o \
+		build/LLD_xxhash.o \
 		build/LLP_base_address.o \
 	    build/LLP_base_connection.o \
 	    build/LLP_connection.o \
@@ -258,7 +271,6 @@ OBJS+=  build/LLC_skein.o \
 		build/Ledger_checkpoints.o \
 		build/Ledger_create.o \
 		build/Ledger_difficulty.o \
-		build/Ledger_locator.o \
 		build/Ledger_mempool.o \
 		build/Ledger_prime.o \
 		build/Ledger_sigchain.o \
@@ -266,12 +278,12 @@ OBJS+=  build/LLC_skein.o \
 		build/Ledger_supply.o \
 		build/Ledger_transaction.o \
 		build/Ledger_tritium.o \
-		build/Ledger_trust.o \
-		build/Ledger_trustkey.o \
 		build/Register_rollback.o \
 		build/Register_basevm.o \
+		build/Register_create.o \
 		build/Register_object.o \
 		build/Register_state.o \
+		build/Register_system.o \
 		build/Register_verify.o \
 		build/Operation_append.o \
 		build/Operation_authorize.o \
@@ -280,21 +292,25 @@ OBJS+=  build/LLC_skein.o \
 		build/Operation_debit.o \
 		build/Operation_register.o \
 		build/Operation_transfer.o \
+		build/Operation_claim.o \
 		build/Operation_trust.o \
+		build/Operation_genesis.o \
 		build/Operation_validate.o \
 		build/Operation_write.o \
 		build/API_cmd.o \
 		build/API_utils_utils.o \
-		build/API_accounts_accounts.o \
-		build/API_accounts_create.o \
-		build/API_accounts_lock.o \
-		build/API_accounts_login.o \
-		build/API_accounts_logout.o \
-		build/API_accounts_notifications.o \
-		build/API_accounts_transactions.o \
-		build/API_accounts_unlock.o \
+		build/API_users_users.o \
+		build/API_users_create.o \
+		build/API_users_lock.o \
+		build/API_users_login.o \
+		build/API_users_logout.o \
+		build/API_users_notifications.o \
+		build/API_users_transactions.o \
+		build/API_users_unlock.o \
+        build/API_users_events.o \
 		build/API_assets_initialize.o \
 		build/API_assets_create.o \
+		build/API_assets_update.o \
 		build/API_assets_get.o \
 		build/API_assets_history.o \
 		build/API_assets_tokenize.o \
@@ -344,6 +360,8 @@ OBJS+=  build/LLC_skein.o \
 		build/Legacy_secret.o \
 		build/Legacy_signature.o \
 		build/Legacy_transaction.o \
+		build/Legacy_trust.o \
+		build/Legacy_trustkey.o \
 		build/Legacy_txin.o \
 		build/Legacy_txout.o \
 		build/Legacy_wallet.o \
@@ -442,6 +460,9 @@ build/LLC_%.o: ./src/LLC/falcon/%.c $(HEADERS)
 build/LLD_%.o: ./src/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
+build/LLD_%.o: ./src/LLD/hash/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
 build/LLP_%.o: ./src/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
@@ -451,7 +472,7 @@ build/API_%.o: ./src/TAO/API/%.cpp $(HEADERS)
 build/API_utils_%.o: ./src/TAO/API/utils/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_accounts_%.o: ./src/TAO/API/accounts/%.cpp $(HEADERS)
+build/API_users_%.o: ./src/TAO/API/users/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_assets_%.o: ./src/TAO/API/assets/%.cpp $(HEADERS)
@@ -658,6 +679,13 @@ build/LLD_%.o: src/LLD/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
+build/LLD_%.o: src/LLD/hash/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
 build/LLP_%.o: src/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
@@ -679,7 +707,7 @@ build/API_utils_%.o: src/TAO/API/utils/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_accounts_%.o: src/TAO/API/accounts/%.cpp $(HEADERS)
+build/API_users_%.o: src/TAO/API/users/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1011,6 +1039,13 @@ build/LLD_%.o: src/LLD/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
+build/LLD_%.o: src/LLD/hash/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
 build/LLP_%.o: src/LLP/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
@@ -1032,7 +1067,7 @@ build/API_utils_%.o: src/TAO/API/utils/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_accounts_%.o: src/TAO/API/accounts/%.cpp
+build/API_users_%.o: src/TAO/API/users/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

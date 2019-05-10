@@ -1,6 +1,6 @@
 #include <Util/include/runtime.h>
 
-#include <TAO/Register/include/object.h>
+#include <TAO/Register/types/object.h>
 
 #include <unit/catch2/catch.hpp>
 

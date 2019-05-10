@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/assets.h>
+#include <TAO/API/include/utils.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -47,23 +48,27 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-23, "Missing memory address");
+                throw APIException(-23, "Missing name / address");
 
-            /* Get the history. */
-            TAO::Register::State state;
-            if(!LLD::regDB->ReadState(hashRegister, state))
-                throw APIException(-24, "No state found");
 
-            /* Build the response JSON. */
-            ret["timestamp"]  = state.nTimestamp;
-            ret["owner"]      = state.hashOwner.ToString();
+            /* Check to see whether the caller has requested a specific data field to return */
+            std::string strDataField = "";
+            if(params.find("datafield") != params.end())
+                strDataField =  params["datafield"].get<std::string>();
 
-            /* If the data type is string. */
-            std::string data;
-            state >> data;
+            /* Get the asset from the register DB.  We can read it as an Object.  
+               If this fails then we try to read it as a base State type and assume it was
+               created as a raw format asset */
+            TAO::Register::Object object;
+            if(!LLD::regDB->ReadState(hashRegister, object))
+                throw APIException(-24, "Asset not found");
 
-            ret["metadata"] = data;
-
+            /* parse object so that the data fields can be accessed */
+            object.Parse();
+            
+            /* Convert the object to JSON */
+            ret = TAO::API::ObjectRegisterToJSON(object, strDataField);
+            
             return ret;
         }
     }

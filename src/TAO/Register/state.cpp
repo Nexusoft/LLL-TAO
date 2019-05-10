@@ -11,7 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Register/include/state.h>
+#include <TAO/Register/types/state.h>
+#include <TAO/Register/include/enum.h>
 
 #include <Util/templates/datastream.h>
 
@@ -82,6 +83,14 @@ namespace TAO
             /* Check the timestamp. */
             if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION, "register timestamp too far in the future");
+
+            /* Check register version. */
+            if(nVersion != 1) //TODO: make this a global constant
+                return debug::error(FUNCTION, "register can't have version other than 1");
+
+            /* System register specific checks. */
+            if(nType == REGISTER::SYSTEM && hashOwner != 0)
+                return debug::error(FUNCTION, "system register cannot have an owner");
 
             return true;
         }

@@ -27,7 +27,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
-#include <TAO/Ledger/include/trust.h>
+#include <Legacy/include/trust.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h> //for LEGACY_TX enum
 

@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/operations.h>
-#include <TAO/Register/include/state.h>
+#include <TAO/Register/types/state.h>
 #include <TAO/Register/include/enum.h>
 
 /* Global TAO namespace. */
@@ -26,7 +26,8 @@ namespace TAO
     {
 
         /* Writes data to a register. */
-        bool Authorize(const uint512_t &hashTx, const uint256_t &hashProof, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Authorize(const uint512_t& hashTx, const uint256_t& hashProof,
+                       const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
 
             //read the proof

@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <Util/include/json.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Register/types/object.h>
 #include <Legacy/types/transaction.h>
 
 
@@ -76,6 +77,19 @@ namespace TAO
         *
         **/
         json::json OperationToJSON(const TAO::Operation::Stream& ssOperation);
+
+
+        /** ObjectRegisterToJSON
+        *
+        *  Converts an Object Register to formattted JSON
+        *
+        *  @param[in] object The Object Register to convert
+        *  @param[in] strDataField An optional data field to filter the response on
+        *
+        *  @return the formatted JSON object
+        *
+        **/
+        json::json ObjectRegisterToJSON(const TAO::Register::Object object, const std::string strDataField);
 
     }
 }

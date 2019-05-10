@@ -20,9 +20,9 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <TAO/Register/include/state.h>
+#include <TAO/Register/types/state.h>
 #include <TAO/Ledger/types/transaction.h>
-#include <TAO/Ledger/types/trustkey.h>
+#include <Legacy/types/trustkey.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Register/include/enum.h>
@@ -377,8 +377,8 @@ namespace LLD
          *
          *  Reads a new sequence from the ledger database
          *
-         *  @param[in] hashAddress The event address to write.
-         *  @param[in] nSequence The sequence to write.
+         *  @param[in] hashAddress The event address to read.
+         *  @param[out] nSequence The sequence to read.
          *
          *  @return True if the write was successful.
          *
@@ -433,7 +433,7 @@ namespace LLD
             if(!WriteSequence(hashAddress, nSequence - 1))
                 return false;
 
-            return Erase(std::make_pair(hashAddress, nSequence));
+            return Erase(std::make_pair(hashAddress, nSequence - 1));
         }
 
 
@@ -562,6 +562,34 @@ namespace LLD
             }
 
             return Exists(std::make_pair(hashProof, hashTransaction));
+        }
+
+
+        /** EraseProof
+         *
+         *  Remove a temporal proof from the database.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTransaction The transaction hash that proof is being spent for.
+         *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
+        {
+            /* Memory mode for pre-database commits. */
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+            {
+                LOCK(MEMORY_MUTEX); //TODO: these shoudl really be in the memory pool structures
+                //(they cause conflicts in MEMPOOL | WRITE)
+
+                /* Erase memory proof if they exist. */
+                if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
+                   mapProofs.erase(std::make_pair(hashProof, hashTransaction));
+            }
+
+            return Erase(std::make_pair(hashProof, hashTransaction));
         }
 
 

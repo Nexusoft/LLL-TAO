@@ -15,8 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/tokens.h>
 
-#include <TAO/Register/objects/account.h>
-#include <TAO/Register/objects/token.h>
+#include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -30,10 +29,6 @@ namespace TAO
         json::json Tokens::Get(const json::json& params, bool fHelp)
         {
             json::json ret;
-
-            /* Check for identifier parameter. */
-            if(params.find("type") == params.end())
-                throw APIException(-25, "Missing Type");
 
             /* Get the Register ID. */
             uint256_t hashRegister = 0;
@@ -57,37 +52,34 @@ namespace TAO
                 throw APIException(-23, "Missing memory address");
 
             /* Get the history. */
-            TAO::Register::State state;
-            if(!LLD::regDB->ReadState(hashRegister, state))
-                throw APIException(-24, "No state found");
+            TAO::Register::Object object;
+            if(!LLD::regDB->ReadState(hashRegister, object))
+                throw APIException(-24, "No object found");
 
-            /* Build the response JSON. */
-            if(params["type"].get<std::string>() == "account")
+            /* Parse the object register. */
+            if(!object.Parse())
+                throw APIException(-24, "Object failed to parse");
+
+            /* Get the object standard. */
+            uint8_t nStandard = object.Standard();
+
+            /* Check the object standard. */
+            if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
             {
-                /* Create a token object. */
-                TAO::Register::Account account;
+                ret["identifier"] = object.get<uint32_t>("identifier");
+                ret["balance"]    = object.get<uint64_t>("balance");
 
-                /* De-Serialie the account.. */
-                state >> account;
-
-                /* Build response. */
-                ret["version"]    = account.nVersion;
-                ret["identifier"] = account.nIdentifier;
-                ret["balance"]    = account.nBalance;
+                //TODO: handle the digits value
+                //read token object register by identifier
+                //divide the balance by this total figures element
             }
-            else if(params["type"].get<std::string>() == "token")
+            else if(nStandard == TAO::Register::OBJECTS::TOKEN)
             {
-                /* Create a token object. */
-                TAO::Register::Token token;
-
-                /* De-Serialie the token. */
-                state >> token;
-
-                /* Build response. */
-                ret["version"]          = token.nVersion;
-                ret["identifier"]       = token.nIdentifier;
-                ret["maxsupply"]        = token.nMaxSupply;
-                ret["currentsupply"]    = token.nBalance;
+                ret["identifier"]       = object.get<uint32_t>("identifier");
+                ret["balance"]          = object.get<uint64_t>("balance");
+                ret["maxsupply"]        = object.get<uint64_t>("supply");
+                ret["currentsupply"]    = object.get<uint64_t>("supply")
+                                        - object.get<uint64_t>("balance");
             }
             else
                 throw APIException(-27, "Unknown object register");

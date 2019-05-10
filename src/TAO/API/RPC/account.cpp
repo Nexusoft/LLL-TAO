@@ -487,7 +487,7 @@ namespace TAO
             if (params.size() > 4)
                 strComment = params[4].get<std::string>();
 
-            /* Check for accounts. */
+            /* Check for users. */
             if((strFrom != "default" || strFrom != "") && !Find(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap(), strFrom))
                 throw APIException(-5, debug::safe_printstr(strFrom, " from account doesn't exist."));
 
@@ -1437,7 +1437,7 @@ namespace TAO
         Returns the total amount of unspent Nexus for given address. This is a more accurate command than Get Balance */
         /* TODO: Account balance based on unspent outputs in the core.
             This will be good to determine the actual balance based on the registry of the current addresses
-            Associated with the specific accounts. This needs to be fixed properly so thaat the wallet accounting
+            Associated with the specific users. This needs to be fixed properly so thaat the wallet accounting
             is done properly.
 
             Second TODO: While at this the wallet core code needs to be reworked in orcder to mitigate the issue of

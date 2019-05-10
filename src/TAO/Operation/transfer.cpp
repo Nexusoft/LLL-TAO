@@ -14,7 +14,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/operations.h>
-#include <TAO/Register/include/state.h>
+
+#include <TAO/Register/types/state.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -25,23 +27,49 @@ namespace TAO
     {
 
         /* Transfers a register between sigchains. */
-        bool Transfer(const uint256_t &hashAddress, const uint256_t &hashTransfer, const uint256_t &hashCaller, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Transfer(const uint256_t& hashAddress, const uint256_t& hashTransfer,
+                      const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAddress))
+                return debug::error(FUNCTION, "cannot transfer register with reserved address");
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashTransfer))
+                return debug::error(FUNCTION, "cannot transfer register to reserved address");
+
             /* Read the register from the database. */
             TAO::Register::State state = TAO::Register::State();
             if(!LLD::regDB->ReadState(hashAddress, state))
                 return debug::error(FUNCTION, "Register ", hashAddress.ToString(), " doesn't exist in register DB");
 
             /* Make sure that you won the rights to register first. */
-            if(state.hashOwner != hashCaller)
-                return debug::error(FUNCTION, hashCaller.ToString(), " not authorized to transfer register");
+            if(state.hashOwner != tx.hashGenesis)
+                return debug::error(FUNCTION, tx.hashGenesis.ToString(), " not authorized to transfer register");
 
             /* Check that you aren't sending to yourself. */
             if(state.hashOwner == hashTransfer)
-                return debug::error(FUNCTION, hashCaller.ToString(), " cannot transfer to self when already owned");
+                return debug::error(FUNCTION, tx.hashGenesis.ToString(), " cannot transfer to self when already owned");
+
+            /* Check if transfer is to a register. */
+            TAO::Register::Object object;
+            if(LLD::regDB->ReadState(hashTransfer, object))
+            {
+                /* Parse the object. */
+                if(!object.Parse())
+                    return debug::error(FUNCTION, "couldn't parse object register");
+
+                /* Check for token. */
+                if(object.Standard() != TAO::Register::OBJECTS::TOKEN)
+                    return debug::error(FUNCTION, "cannot transfer to non-token");
+
+                /* Set the owner. */
+                state.hashOwner = hashTransfer;
+            }
+            else
+                state.hashOwner  = 0; //register custody is in SYSTEM ownership until claimed
 
             /* Set the new owner of the register. */
-            state.hashOwner = hashTransfer;
             state.nTimestamp = tx.nTimestamp;
             state.SetChecksum();
 
@@ -77,12 +105,9 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to write new state");
 
                 /* Write the notification foreign index. */
-                if(nFlags & TAO::Register::FLAGS::WRITE) //TODO: possibly add some checks for invalid stateTo (wrong token ID)
-                {
-                    /* Write the event to the ledger database. */
-                    if(!LLD::legDB->WriteEvent(hashTransfer, tx.GetHash()))
-                        return debug::error(FUNCTION, "failed to commit event to ledger DB");
-                }
+                if(nFlags & TAO::Register::FLAGS::WRITE && !LLD::legDB->WriteEvent(hashTransfer, tx.GetHash()))
+                    return debug::error(FUNCTION, "failed to commit event to ledger DB");
+
             }
 
             return true;
