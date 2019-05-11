@@ -74,12 +74,12 @@ namespace TAO
          *  Unpack a previous transaction and test for the operation it contains.
          *
          *  @param[in] tx - the transaction to unpack
-         *  @param[in] opCodes - one or more op code values (combine multiple with bitwise | )
+         *  @param[in] opCode - op code value to test
          *
-         *  @return true if the transaction contains a requested op code
+         *  @return true if the transaction contains the requested op code
          *
          **/
-        bool Unpack(const TAO::Ledger::Transaction& tx, const uint8_t opCodes);
+        bool Unpack(const TAO::Ledger::Transaction& tx, const uint8_t opCode);
 
     }
 }

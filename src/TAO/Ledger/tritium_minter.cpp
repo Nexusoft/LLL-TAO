@@ -157,9 +157,6 @@ namespace TAO
     /*  Retrieves the most recent stake transaction for a user account */
     bool TritiumMinter::FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, TAO::Ledger::Transaction& tx)
     {
-        /* Last stake transaction will use one of these op codes */
-        static const uint8_t stakingOpCodes = TAO::Operation::OP::TRUST | TAO::Operation::OP::GENESIS;
-
         uint512_t hashLast = 0;
 
         /* Get the most recent tx hash for the user account. */
@@ -175,7 +172,7 @@ namespace TAO
                 return false;
 
             /* Test whether the transaction contains a staking operation */
-            if (TAO::Register::Unpack(txCheck, stakingOpCodes))
+            if (TAO::Register::Unpack(txCheck, TAO::Operation::OP::TRUST) || TAO::Register::Unpack(txCheck, TAO::Operation::OP::GENESIS))
             {
                 /* Found last stake transaction. */
                 tx = txCheck;
