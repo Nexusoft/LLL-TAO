@@ -124,6 +124,7 @@ namespace filesystem
      **/
     std::string system_complete(const std::string &path);
 
+
     /** GetPidFile
     *
     *  Returns the full pathname of the PID file

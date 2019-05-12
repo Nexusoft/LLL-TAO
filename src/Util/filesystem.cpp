@@ -32,7 +32,7 @@ ________________________________________________________________________________
 #include <sys/stat.h>
 
 #ifdef WIN32
-#include <shlwapi.h> 
+#include <shlwapi.h>
 
 /* Set up defs properly before including windows.h */
 #ifndef _WIN32_WINNT
@@ -196,7 +196,7 @@ namespace filesystem
         if (!PathIsRelativeA(path.c_str()))
         {
             /* Path is absolute */
-            fullPath = path; 
+            fullPath = path;
         }
         else
         {

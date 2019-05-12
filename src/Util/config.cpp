@@ -86,31 +86,6 @@ namespace config
     }
 
 
-    /* Setup PID file for Linux users. */
-    void CreatePidFile(const std::string &path, pid_t pid)
-    {
-        FILE* file = fopen(path.c_str(), "w");
-        if (file)
-        {
-        #ifndef WIN32
-            fprintf(file, "%d", pid);
-        #else
-            /* For some reason, PRI64d fails with warning here because %I non-ANSI compliant,
-               but it doesn't give this warning in other places except for config.cpp
-               perhaps because this is fprintf (debug::log for example does not use printf).
-
-               Consider re-writing this to use << operator
-
-               If we just change to llu, then Linux gives warnings, so instead use a
-               conditional compile and get warnings out of both */
-            fprintf(file, "%llu", pid);
-        #endif
-
-            fclose(file);
-        }
-    }
-
-
     #ifdef WIN32
 
     /* Get the system folder path to the special Appdata directory */
@@ -177,17 +152,6 @@ namespace config
         pathConfigFile.append(GetArg("-conf", "nexus.conf"));
 
         return pathConfigFile;
-    }
-
-
-    /* Get the Location of the PID File. */
-    std::string GetPidFile()
-    {
-        std::string pathPidFile(GetDataDir());
-
-        pathPidFile.append(GetArg("-pid", "nexus.pid"));
-
-        return pathPidFile;
     }
 
 
