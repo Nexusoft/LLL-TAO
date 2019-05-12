@@ -170,13 +170,21 @@ namespace debug
         /* Log command line parameters (which can override conf file settings) */
         std::string cmdLineParms = "";
 
-        for (int i = 1; i < argc; i++)
+        for (const auto& arg : config::mapArgs)
         {
-
-            if (std::string(argv[i]).compare(0, 12, "-rpcpassword") == 0)
-                cmdLineParms += "-rpcpassword=xxxxx ";
+            cmdLineParms += arg.first;
+            if(arg.second.empty())
+            {
+                cmdLineParms += " ";
+                continue;
+            }
             else
-                cmdLineParms += std::string(argv[i]) + " ";
+                cmdLineParms += "=";
+
+            if (arg.first.compare(0, 12, "-rpcpassword") == 0)
+                cmdLineParms += "XXXXXXXX ";
+            else
+                cmdLineParms += arg.second + " ";
         }
 
         if (cmdLineParms == "")

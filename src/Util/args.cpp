@@ -63,53 +63,42 @@ namespace config
     /* Parse the Argument Parameters */
     void ParseParameters(int argc, const char*const argv[])
     {
-        //mapArgs.clear();
-        //mapMultiArgs.clear();
+        LOCK(ARGS_MUTEX);
+
         for (int i = 1; i < argc; ++i)
         {
-            char psz[10000];
-            memset( psz, 0, 10000);
-
-            uint16_t len = static_cast<uint16_t>(std::strlen(argv[i]));
-            len = std::min(len, static_cast<uint16_t>(10000));
-            std::copy((uint8_t *)argv[i], (uint8_t *)argv[i] + len, (uint8_t *)psz);
-
-            char* pszValue = (char*)"";
-            if (strchr(psz, '='))
-            {
-                pszValue = strchr(psz, '=');
-                *pszValue++ = '\0';
-            }
-            #ifdef WIN32
-            _strlwr(psz);
-            if (psz[0] == '/')
-                psz[0] = '-';
-            #endif
-            if (psz[0] != '-')
+            /* Check for arguments value. */
+            std::string strArg = std::string(argv[i]);
+            if (strArg[0] != '-')
                 break;
 
-            mapArgs[psz] = pszValue;
-            mapMultiArgs[psz].push_back(pszValue);
-        }
+            /* Compress '--' value into '-' */
+            if (strArg[1] == '-')
+                strArg.erase(0, 1);
 
-        for(const auto& entry : mapArgs)
-        {
-            std::string name = entry.first;
+            /* Find value split. */
+            std::string::size_type pos = strArg.find("=");
 
-            //  interpret --foo as -foo (as long as both are not set)
-            if (name.find("--") == 0)
-            {
-                std::string singleDash(name.begin()+1, name.end());
-                if (mapArgs.count(singleDash) == 0)
-                    mapArgs[singleDash] = entry.second;
+            /* Parse key and value. */
+            std::string strKey = strArg.substr(0, pos);
+            std::string strVal = "";
 
-                name = singleDash;
-            }
+            /* Add value if not boolean. */
+            if(pos != strArg.npos)
+                strVal = strArg.substr(pos + 1);
 
-            // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
-            InterpretNegativeSetting(name, mapArgs);
+            /* Build args map. */
+            mapArgs[strKey] = strVal;
+            mapMultiArgs[strKey].push_back(strVal);
+
+            /* Interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set */
+            InterpretNegativeSetting(strKey, mapArgs);
+
+
+                        printf("ARG %s\n", strArg.c_str());
         }
     }
+
 
     /* Return string argument or default value */
     std::string GetArg(const std::string& strArg, const std::string& strDefault)
@@ -121,6 +110,7 @@ namespace config
 
         return strDefault;
     }
+
 
     /* Return integer argument or default value. */
     int64_t GetArg(const std::string& strArg, int64_t nDefault)
@@ -148,6 +138,7 @@ namespace config
         return fDefault;
     }
 
+
     /* Set an argument if it doesn't already have a value */
     bool SoftSetArg(const std::string& strArg, const std::string& strValue)
     {
@@ -160,6 +151,7 @@ namespace config
         return true;
     }
 
+
     /* Set a boolean argument if it doesn't already have a value */
     bool SoftSetBoolArg(const std::string& strArg, bool fValue)
     {
@@ -168,6 +160,7 @@ namespace config
         else
             return SoftSetArg(strArg, std::string("0"));
     }
+
 
     /* Caches some of the common arguments into global variables for quick/easy access */
     void CacheArgs()
