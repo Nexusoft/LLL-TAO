@@ -238,69 +238,6 @@ namespace debug
     void InitializeLog(int argc, char** argv);
 
 
-    /** LogStackTrace
-     *
-     *  Prints and logs the stack trace of the code execution call stack up to
-     *  the point where this function is called to debug.log
-     *
-     **/
-    void LogStackTrace();
-
-
-    /** LogException
-     *
-     *  Prints and logs the exception with the named calling thread.
-     *
-     *  @param[in] pex The pointer to the exception that has been thrown.
-     *  @param[in] pszThread The name of the calling thread that threw the exception.
-     *
-     **/
-    void LogException(std::exception* pex, const char* pszThread);
-
-
-    /** PrintException
-     *
-     *  Prints the exception with the named calling thread and throws it
-     *
-     *  @param[in] pex The pointer to the exception that has been thrown.
-     *  @param[in] pszThread The name of the calling thread that threw the exception.
-     *
-     **/
-    void PrintException(std::exception* pex, const char* pszThread);
-
-
-    /** PrintExceptionContinue
-     *
-     *  Prints the exception with the named calling thread but does not throw it.
-     *
-     *  @param[in] pex The pointer to the exception that has been thrown.
-     *  @param[in] pszThread The name of the calling thread that threw the exception.
-     *
-     **/
-    void PrintExceptionContinue(std::exception* pex, const char* pszThread);
-
-
-    /** GetFilesize
-     *
-     *  Gets the size of the file in bytes.
-     *
-     *  @param[in] file The file pointer of the file get get the size of.
-     *
-     *  @return The size of the file
-     *
-     **/
-    int GetFilesize(FILE* file);
-
-
-    /** ShrinkDebugFile
-     *
-     *  Shrinks the size of the debug.log file if it has grown exceptionally large.
-     *  It keeps some of the end of the file with most recent log history before
-     *  shrinking it down.
-     *
-     **/
-    void ShrinkDebugFile(std::string debugPath = config::GetDataDir() + "debug.log");
-
     /** GetLastError
     *
     *  Gets the last error string logged via debug::error and clears the last error
