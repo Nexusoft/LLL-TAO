@@ -15,6 +15,7 @@ The first of the three updates in the TAO Framework. Tritium will include the fo
 * Legacy Mode
 * Contract Layers
 * API / SDK
+* Hybrid Mode
 * Ambassador DAO
 * LISP
 * Interface / Wallet
