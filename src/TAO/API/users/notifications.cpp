@@ -60,17 +60,17 @@ namespace TAO
             /* Check for paged parameter. */
             uint32_t nPage = 0;
             if(params.find("page") != params.end())
-                nPage = atoi(params["page"].get<std::string>().c_str());
+                nPage = std::stoul(params["page"].get<std::string>().c_str());
 
             /* Check for username parameter. */
             uint32_t nLimit = 100;
             if(params.find("limit") != params.end())
-                nLimit = atoi(params["limit"].get<std::string>().c_str());
+                nLimit = std::stoul(params["limit"].get<std::string>().c_str());
 
             /* Get verbose levels. */
             uint32_t nVerbose = 0;
             if(params.find("verbose") != params.end())
-                nVerbose = atoi(params["verbose"].get<std::string>().c_str());
+                nVerbose = std::stoul(params["verbose"].get<std::string>().c_str());
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;

@@ -92,7 +92,7 @@ namespace TAO
         /* Retrieves the blockhash for the given height. */
         json::json Ledger::BlockHash(const json::json& params, bool fHelp)
         {
-            /* Check that the node is configured to index blocks by height */ 
+            /* Check that the node is configured to index blocks by height */
             if(!config::GetBoolArg("-indexheight"))
             {
                 throw APIException(-25, "getblockhash requires the daemon to be started with the -indexheight flag.");
@@ -103,12 +103,12 @@ namespace TAO
                 throw APIException(-25, "Missing height");
 
             /* Check that the height parameter is numeric*/
-            std::string strHeight = params["height"].get<std::string>(); 
+            std::string strHeight = params["height"].get<std::string>();
 
             if( !IsAllDigit(strHeight))
                 throw APIException(-25, "Invalid height parameter");
-            
-            /* Convert the incoming height string to an int*/                
+
+            /* Convert the incoming height string to an int*/
             uint32_t nHeight = std::stoul(strHeight);
 
             /* Check that the requested height is within our chain range*/
@@ -137,20 +137,20 @@ namespace TAO
             /* Declare the BlockState to load from the DB */
             TAO::Ledger::BlockState blockState;
 
-            /* look up by height*/ 
+            /* look up by height*/
             if(params.find("height") != params.end())
-            { 
-                /* Check that the node is configured to index blocks by height */ 
+            {
+                /* Check that the node is configured to index blocks by height */
                 if( !config::GetBoolArg("-indexheight"))
                     throw APIException(-25, "getblock by height requires the daemon to be started with the -indexheight flag.");
-            
+
                 /* Check that the height parameter is numeric*/
-                std::string strHeight = params["height"].get<std::string>(); 
+                std::string strHeight = params["height"].get<std::string>();
 
                 if( !IsAllDigit(strHeight))
                     throw APIException(-25, "Invalid height parameter");
 
-                /* Convert the incoming height string to an int*/                
+                /* Convert the incoming height string to an int*/
                 uint32_t nHeight = std::stoul(strHeight);
 
                 /* Check that the requested height is within our chain range*/
@@ -171,10 +171,10 @@ namespace TAO
                 if(!LLD::legDB->ReadBlock(blockHash, blockState))
                     throw APIException(-25, "Block not found");
             }
-            
-            int nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
-            if( params.count("txverbose") > 0 && IsAllDigit(params["txverbose"].get<std::string>())) 
-                nTransactionVerbosity = atoi(params["txverbose"].get<std::string>().c_str());
+
+            uint32_t nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
+            if( params.count("txverbose") > 0 && IsAllDigit(params["txverbose"].get<std::string>()))
+                nTransactionVerbosity = std::stoul(params["txverbose"].get<std::string>().c_str());
 
             json::json ret = TAO::API::BlockToJSON(blockState, nTransactionVerbosity);
 
@@ -204,20 +204,20 @@ namespace TAO
                 if( nCount < 1 || nCount > 1000 )
                     throw APIException(-25, "Invalid count parameter");
             }
-            /* look up by height*/ 
+            /* look up by height*/
             if(params.find("height") != params.end())
-            { 
-                /* Check that the node is configured to index blocks by height */ 
+            {
+                /* Check that the node is configured to index blocks by height */
                 if( !config::GetBoolArg("-indexheight"))
                     throw APIException(-25, "getblock by height requires the daemon to be started with the -indexheight flag.");
-            
+
                 /* Check that the height parameter is numeric*/
-                std::string strHeight = params["height"].get<std::string>(); 
+                std::string strHeight = params["height"].get<std::string>();
 
                 if( !IsAllDigit(strHeight))
                     throw APIException(-25, "Invalid height parameter");
 
-                /* Convert the incoming height string to an int*/                
+                /* Convert the incoming height string to an int*/
                 uint32_t nHeight = std::stoul(strHeight);
 
                 /* Check that the requested height is within our chain range*/
@@ -238,13 +238,13 @@ namespace TAO
                 if(!LLD::legDB->ReadBlock(blockHash, blockState))
                     throw APIException(-25, "Block not found");
             }
-            
-            /* Get the transaction verbosity level from the request*/
-            int nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
-            if( params.count("txverbose") > 0 && IsAllDigit(params["txverbose"].get<std::string>())) 
-                nTransactionVerbosity = atoi(params["txverbose"].get<std::string>().c_str());
 
-            /* Declare the JSON array to return */ 
+            /* Get the transaction verbosity level from the request*/
+            uint32_t nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
+            if( params.count("txverbose") > 0 && IsAllDigit(params["txverbose"].get<std::string>()))
+                nTransactionVerbosity = std::stoul(params["txverbose"].get<std::string>().c_str());
+
+            /* Declare the JSON array to return */
             json::json ret = json::json::array();
 
             /* Iterate through nCount number of blocks*/
