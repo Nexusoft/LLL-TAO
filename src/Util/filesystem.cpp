@@ -69,7 +69,8 @@ namespace filesystem
     /* Determines if the file or folder from the specified path exists. */
     bool exists(const std::string &path)
     {
-        if(access(path.c_str(), F_OK) != -1)
+        std::ifstream sourceFile(path, std::ios::in);
+        if(sourceFile.is_open())
             return true;
 
         return false;
