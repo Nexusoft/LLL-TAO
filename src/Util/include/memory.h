@@ -248,7 +248,6 @@ namespace memory
         : MUTEX(MUTEX_IN)
         , data(pData)
         {
-            MUTEX.lock();
         }
 
 
@@ -399,6 +398,8 @@ namespace memory
          **/
         lock_proxy<TypeName> operator->()
         {
+            MUTEX.lock();
+
             return lock_proxy<TypeName>(data, MUTEX);
         }
 
@@ -542,9 +543,6 @@ namespace memory
         , data(pdata)
         , nRefs(nRefsIn)
         {
-            /* Lock the mutex. */
-            MUTEX.lock();
-
             /* Decrypt memory on first proxy. */
             if(nRefs == 0)
                 encrypt(data, false);
@@ -752,6 +750,8 @@ namespace memory
          **/
         decrypted_proxy<TypeName> operator->() const
         {
+            MUTEX.lock();
+            
             return decrypted_proxy<TypeName>(data, MUTEX, nRefs);
         }
 

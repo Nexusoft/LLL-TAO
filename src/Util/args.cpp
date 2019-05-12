@@ -93,9 +93,6 @@ namespace config
 
             /* Interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set */
             InterpretNegativeSetting(strKey, mapArgs);
-
-
-                        printf("ARG %s\n", strArg.c_str());
         }
     }
 
