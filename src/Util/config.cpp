@@ -35,14 +35,8 @@ namespace config
             return; /* No nexus.conf file is OK */
 
         std::string line;
-
-        while(!streamConfig.eof())
+        while(std::getline(streamConfig, line))
         {
-            std::getline(streamConfig, line);
-
-            if(streamConfig.eof())
-                break;
-
             size_t i = line.find('=');
             if(i == std::string::npos)
                 continue;
