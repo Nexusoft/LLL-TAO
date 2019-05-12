@@ -149,11 +149,11 @@ namespace config
         pathRet = MyGetSpecialFolderPath(CSIDL_APPDATA, true);
         pathRet.append("\\" + strName + "\\");
     #else
-        char* pszHome = getenv("HOME");
-        if (pszHome == nullptr || strlen(pszHome) == 0)
+        std::string strHome = std::string(getenv("HOME"));
+        if (strHome == "" || strHome.size() == 0)
             pathRet = "/";
         else
-            pathRet = pszHome;
+            pathRet = strHome;
     #ifdef MAC_OSX
         // Mac
         pathRet.append("/Library/Application Support");
