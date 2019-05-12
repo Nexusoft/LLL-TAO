@@ -11,32 +11,39 @@ The core base upgrades utilizing the LLL as base templates for Tritium, Amine, a
 
 The first of the three updates in the TAO Framework. Tritium will include the following feature sets:
 
-* Tritium Transactions / Signature Chains
-* Advanced Contracts (Phase 1)
-* LISP Integration (Optional)
-* L1 Locking Groups (LISP IP Multicast)
-* Twin Blocks (No more Orphans)
+* Trust System
+* Legacy Mode
+* Contract Layers
+* API / SDK
+* Ambassador DAO
+* LISP
+* Interface / Wallet
 
 ### Amine
 
 The second of the three updates in the TAO Framework. Amine will include the following feature sets:
 
-* L1 Ledger Sharding Channels
-* L2 Ledger Sharding Groups
-* Advanced Contracts (Phase 2)
-* IP Multicast Groups over LISP (L1, L2, and L3)
-* L1 and L2 Trust Locking and Reputation
+* pBFT + Reputation Channels (L1)
+* Network Data Sharding
+* LLD Global File System
+* Domain Specific Languages
+* DAO Voting Groups
+* pBFT + PoS Trust Network (L2)
+* LISP Multicast Links for (L1) and (L2)
+* Application Store
 
 ### Obsidian
 
 The third of the three updates in the TAO Framework. Obsidian will include the following feature sets:
 
-* L3 Ledger Sharding Cubes
-* L3 Distributed Mining Pool
-* L3 Trust Locking and Reputation
-* Distributed Autonomous Community
-* Ambassador / Developer Contracts
-* Advanced Contracts (Phase 3)
+* Extended Data Sharding
+* Decentralized Mining Pool (L3)
+* Miner Reputation to improve BFT
+* Extending DAO Voting Groups
+* DAO: L1 Voting Group
+* DAO: L2 Voting Group
+* DAO: L3 Voting Group
+* LISP Multicast Links for L3
 
 
 ## LISP (Locator / Identifier Separation Protocol)
