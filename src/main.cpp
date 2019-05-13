@@ -11,10 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
 
 #include <LLP/include/global.h>
-#include <LLP/include/network.h>
 #include <LLP/types/corenode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/legacy_miner.h>
@@ -23,36 +21,17 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/include/rpc.h>
 #include <TAO/API/include/cmd.h>
-#include <TAO/API/include/supply.h>
-#include <TAO/API/include/users.h>
 #include <TAO/Ledger/include/create.h>
-#include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/types/sigchain.h>
-#include <TAO/Ledger/types/mempool.h>
-#include <TAO/Operation/include/execute.h>
 
-#include <Util/include/args.h>
-#include <Util/include/config.h>
-#include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
-#include <Util/include/memory.h>
-#include <Util/include/runtime.h>
 #include <Util/include/signals.h>
-#include <Util/include/version.h>
 #include <Util/include/daemon.h>
 
 #include <Legacy/include/ambassador.h>
 #include <Legacy/types/legacy_minter.h>
-#include <Legacy/wallet/db.h>
 #include <Legacy/wallet/wallet.h>
-#include <Legacy/wallet/walletdb.h>
 
-#include <cstdint>
-#include <string>
-#include <vector>
 
 
 int main(int argc, char** argv)
@@ -72,11 +51,6 @@ int main(int argc, char** argv)
 
     /* Parse out the parameters */
     config::ParseParameters(argc, argv);
-
-
-    /* Initialize system logging. */
-    if(!debug::init())
-        printf("Unable to initalize system logging\n");
 
 
     /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
@@ -99,6 +73,11 @@ int main(int argc, char** argv)
             return TAO::API::CommandLineRPC(argc, argv, i);
         }
     }
+
+
+    /* Initialize system logging. */
+    if(!debug::init())
+        printf("Unable to initalize system logging\n");
 
 
     /* Log system startup now, after branching to API/RPC where appropriate */
