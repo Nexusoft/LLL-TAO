@@ -59,7 +59,11 @@ int main(int argc, char** argv)
 
     /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
     if (!LLP::NetworkStartup())
-        debug::error("Failed initializing network resources");
+    {
+        printf("ERROR: Failed initializing network resources");
+
+        return 0;
+    }
 
 
     /* Handle Commandline switch */

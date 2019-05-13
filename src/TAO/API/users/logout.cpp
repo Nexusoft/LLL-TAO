@@ -44,20 +44,25 @@ namespace TAO
             /* For sessionless API use the active sig chain which is stored in session 0 */
             uint64_t nSession = config::fAPISessions ? std::stoull(params["session"].get<std::string>()) : 0;
 
-            if(!mapSessions.count(nSession))
-                throw APIException(-1, "Already logged out");
+            /* Delete the sigchan. */
+            {
+                LOCK(MUTEX);
+
+                if(!mapSessions.count(nSession))
+                    throw APIException(-1, "Already logged out");
+
+                memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[nSession];
+                user.free();
+
+                /* Erase the session. */
+                mapSessions.erase(nSession);
+                if(!pActivePIN.IsNull())
+                    pActivePIN.free();
+
+            }
 
             /* Set the return value. */
             ret["genesis"] = GetGenesis(nSession).ToString();
-
-            /* Delete the sigchan. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[nSession];
-            user.free();
-
-            /* Erase the session. */
-            mapSessions.erase(nSession);
-            if( !pActivePIN.IsNull())
-                    pActivePIN.free();
 
             return ret;
         }

@@ -48,13 +48,19 @@ namespace TAO
 
             /* Check for unlock actions */
             uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to ALL actions
-            if(params.find("minting") != params.end() && (params["minting"].get<std::string>() == "1" || params["minting"].get<std::string>() == "true"))
+            if (params.find("minting") != params.end()
+            && (params["minting"].get<std::string>() == "1"
+            || params["minting"].get<std::string>() == "true"))
                 nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::MINTING;
-            if(params.find("transactions") != params.end() && (params["transactions"].get<std::string>() == "1" || params["transactions"].get<std::string>() == "true"))
+
+            if (params.find("transactions") != params.end()
+            && (params["transactions"].get<std::string>() == "1"
+            || params["transactions"].get<std::string>() == "true"))
                 nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
+
             /* If no unlock actions have been specifically set then default it to all */
-            if( nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::NONE)
-                nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::ALL;
+            if (nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::NONE)
+                nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::ALL;
 
             /* Get the sigchain from map of users. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[0];
@@ -95,8 +101,9 @@ namespace TAO
                 throw APIException(-28, "Invalid PIN");
 
             /* Extract the PIN. */
-            if( !pActivePIN.IsNull())
-                    pActivePIN.free();
+            if(!pActivePIN.IsNull())
+                pActivePIN.free();
+
             pActivePIN = new TAO::Ledger::PinUnlock( params["pin"].get<std::string>().c_str(), nUnlockedActions);
 
             return true;

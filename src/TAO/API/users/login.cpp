@@ -48,12 +48,17 @@ namespace TAO
             /* Check for pin parameter. */
             if(params.find("pin") == params.end())
                 throw APIException(-24, "Missing PIN");
-                
+
             /* Check for unlock actions */
             uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to no actions
-            if(params.find("minting") != params.end() && (params["minting"].get<std::string>() == "1" || params["minting"].get<std::string>() == "true"))
+            if(params.find("minting") != params.end()
+            && (params["minting"].get<std::string>() == "1"
+            || params["minting"].get<std::string>() == "true"))
                 nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::MINTING;
-            if(params.find("transactions") != params.end() && (params["transactions"].get<std::string>() == "1" || params["transactions"].get<std::string>() == "true"))
+
+            if(params.find("transactions") != params.end()
+            && (params["transactions"].get<std::string>() == "1"
+            || params["transactions"].get<std::string>() == "true"))
                 nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
 
 
@@ -100,38 +105,43 @@ namespace TAO
                 throw APIException(-28, "Invalid credentials");
 
             /* Check the sessions. */
-            for(auto session = mapSessions.begin(); session != mapSessions.end(); ++ session)
-            {
-                if(hashGenesis == session->second->Genesis())
+            { LOCK(MUTEX);
+                for(auto session = mapSessions.begin(); session != mapSessions.end(); ++ session)
                 {
-                    user.free();
+                    if(hashGenesis == session->second->Genesis())
+                    {
+                        user.free();
 
-                    ret["genesis"] = hashGenesis.ToString();
-                    if( config::fAPISessions)
-                        ret["session"] = debug::safe_printstr(std::dec, session->first);
+                        ret["genesis"] = hashGenesis.ToString();
+                        if(config::fAPISessions)
+                            ret["session"] = debug::safe_printstr(std::dec, session->first);
 
-                    return ret;
+                        return ret;
+                    }
                 }
             }
 
             /* Extract the PIN, if supplied, and if the user has specified to remain unlocked for minting or transacting */
-            if( !config::fAPISessions  && nUnlockedActions != TAO::Ledger::PinUnlock::UnlockActions::NONE )
+            if(!config::fAPISessions && nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::NONE)
             {
-                if( !pActivePIN.IsNull())
+                if(!pActivePIN.IsNull())
                     pActivePIN.free();
+
                 pActivePIN = new TAO::Ledger::PinUnlock(params["pin"].get<std::string>().c_str(), nUnlockedActions);
             }
-            
+
 
             /* Set the return value. */
             /* For sessionless API use the active sig chain which is stored in session 0 */
             uint64_t nSession = config::fAPISessions ? LLC::GetRand() : 0;
             ret["genesis"] = hashGenesis.ToString();
-            if( config::fAPISessions)
+            if(config::fAPISessions)
                 ret["session"] = debug::safe_printstr(std::dec, nSession);
 
             /* Setup the account. */
-            mapSessions.emplace(nSession, std::move(user));
+            { LOCK(MUTEX);
+                mapSessions.emplace(nSession, std::move(user));
+            }
 
             return ret;
         }
