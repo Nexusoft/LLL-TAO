@@ -73,14 +73,6 @@ namespace debug
     };
 
 
-    /** init
-     *
-     *  Open the debug log file.
-     *
-     **/
-    bool init(std::string debugPath = config::GetDataDir() + "debug.log");
-
-
     /** shutdown
      *
      *  Close the debug log file.

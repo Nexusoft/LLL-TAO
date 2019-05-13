@@ -75,11 +75,6 @@ int main(int argc, char** argv)
     }
 
 
-    /* Initialize system logging. */
-    if(!debug::init())
-        printf("Unable to initalize system logging\n");
-
-
     /* Log system startup now, after branching to API/RPC where appropriate */
     debug::InitializeLog(argc, argv);
 

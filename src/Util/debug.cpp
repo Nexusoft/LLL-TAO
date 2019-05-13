@@ -114,6 +114,16 @@ namespace debug
     /* Write startup information into the log file */
     void InitializeLog(int argc, char** argv)
     {
+        /* Initialize the logging file stream. */
+        ssFile.open(config::GetDataDir() + "debug.log", std::ios::app | std::ios::in | std::ios::out);
+        if(!ssFile.is_open())
+        {
+            printf("Unable to initalize system logging\n");
+
+            return;
+        }
+
+        /* Log the Operating System. */
         log(0, "Startup time ", convert::DateTimeStrFormat(runtime::timestamp()));
         log(0, version::CLIENT_VERSION_BUILD_STRING);
 
@@ -128,6 +138,7 @@ namespace debug
     #endif
 
 
+        /* Log the configuration file parameters. */
         std::string pathConfigFile = config::GetConfigFile();
         if (!filesystem::exists(pathConfigFile))
             log(0, "No configuration file");
@@ -169,7 +180,6 @@ namespace debug
 
         /* Log command line parameters (which can override conf file settings) */
         std::string cmdLineParms = "";
-
         for (const auto& arg : config::mapArgs)
         {
             cmdLineParms += arg.first;
@@ -194,16 +204,6 @@ namespace debug
 
         log(0, "");
         log(0, "");
-    }
-
-
-    /*  Open the debug log file. */
-    bool init(std::string debugPath)
-    {
-        LOCK(DEBUG_MUTEX);
-
-        ssFile.open(debugPath, std::ios::app | std::ios::in | std::ios::out);
-        return ssFile.is_open();
     }
 
 
