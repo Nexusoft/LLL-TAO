@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 #include <Legacy/types/transaction.h>
 
+#include <LLC/hash/argon2.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -25,6 +26,28 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
+
+        /** NamespaceHash
+         *
+         *  Generates a lightweight argon2 hash of the namespace string.
+         *
+         *  @return The 256 bit hash of this key in the series.
+         **/
+        uint256_t NamespaceHash(const SecureString& strNamespace);
+
+
+        /** RegisterAddressFromName
+         *
+         *  Resolves a register address from a name.  
+         *  The register address is a hash of the fully-namespaced name in the format of namespacehash:objecttype:name. 
+         *
+         *  @param[in] params The json request params
+         *  @param[in] strObjectType The object type to include in the string to build the register hash from 
+         *  @param[in] strObjectName The name parameter to use in the register hash  
+         *  
+         *  @return The 256 bit hash of the object name.
+         **/
+        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectType, const std::string& strObjectName );
 
         /** BlockToJSON
         *

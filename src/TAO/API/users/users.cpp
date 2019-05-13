@@ -286,20 +286,31 @@ namespace TAO
 
         /* If the API is running in sessionless mode this method will return the default
          * session ID that is used to store the one and only session (ID 0). If the user is not
-         * logged in than an APIException is thrown.
+         * logged in than an APIException is thrown, if fThrow is true.
          * If not in sessionless mode then the method will return the session from the params.
-         * If the session is not is available in the params then an APIException is thrown. */
-        uint64_t Users::GetSession(const json::json params) const
+         * If the session is not is available in the params then an APIException is thrown, if fThrow is true. */
+        uint64_t Users::GetSession(const json::json params, bool fThrow) const
         {
             /* Check for session parameter. */
             uint64_t nSession = 0; // ID 0 is used for sessionless API
 
             if( !config::fAPISessions && !users.LoggedIn())
-                throw APIException(-25, "User not logged in");
+            {
+                if(fThrow)
+                    throw APIException(-25, "User not logged in");
+                else
+                    return -1;
+            }
             else if(config::fAPISessions)
             {
                 if(params.find("session") == params.end())
-                    throw APIException(-25, "Missing Session ID");
+                {
+                    if( fThrow)
+                        throw APIException(-25, "Missing Session ID");
+                    else
+                        return -1;
+                    
+                }
                 else
                     nSession = std::stoull(params["session"].get<std::string>());
             }

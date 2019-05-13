@@ -205,5 +205,12 @@ namespace TAO
 
             return hashKey;
         }
+
+
+        /* Returns the username for this sig chain */
+        const SecureString& SignatureChain::UserName() const 
+        {
+            return strUsername;
+        }
     }
 }

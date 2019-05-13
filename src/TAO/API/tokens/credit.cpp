@@ -18,6 +18,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/users.h>
 #include <TAO/API/include/tokens.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/execute.h>
 
@@ -75,11 +76,8 @@ namespace TAO
             /* Check for data parameter. */
             if(params.find("name_to") != params.end())
             {
-                /* Get the address from the name. */
-                std::string strName = GetName() + ":" + params["name_to"].get<std::string>();
-
-                /* Build the address from an SK256 hash of API:NAME. */
-                hashTo = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+                /* If name_to is provided then use this to deduce the register address */
+                hashTo = RegisterAddressFromName( params, "token", params["name_to"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
@@ -96,11 +94,8 @@ namespace TAO
             uint256_t hashProof;
             if(params.find("name_proof") != params.end())
             {
-                /* Get the address from the name. */
-                std::string strName = GetName() + ":" + params["name_proof"].get<std::string>();
-
-                /* Build the address from an SK256 hash of API:NAME. */
-                hashProof = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+                /* If name_proof is provided then use this to deduce the register address */
+                hashProof = RegisterAddressFromName( params, "token", params["name_proof"].get<std::string>());
             }
             else if(params.find("proof") != params.end())
                 hashProof.SetHex(params["proof"].get<std::string>());

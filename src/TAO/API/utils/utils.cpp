@@ -29,6 +29,8 @@ ________________________________________________________________________________
 
 #include <Legacy/include/evaluate.h>
 
+#include <TAO/API/include/users.h>
+
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
@@ -43,6 +45,128 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
+
+        /* Generates a lightweight argon2 hash of the namespace string.*/
+        uint256_t NamespaceHash(const SecureString& strNamespace)
+        {
+            /* Generate the Secret Phrase */
+            std::vector<uint8_t> vNamespace(strNamespace.begin(), strNamespace.end());
+
+            // low-level API
+            std::vector<uint8_t> vHash(32);
+            std::vector<uint8_t> vSalt(16); 
+
+            /* Create the hash context. */
+            argon2_context context =
+            {
+                /* Hash Return Value. */
+                &vHash[0],
+                32,
+
+                /* Password input data. */
+                &vNamespace[0],
+                static_cast<uint32_t>(vNamespace.size()),
+
+                /* The salt for usernames */
+                &vSalt[0],
+                static_cast<uint32_t>(vSalt.size()),
+
+                /* Optional secret data */
+                NULL, 0,
+
+                /* Optional associated data */
+                NULL, 0,
+
+                /* Computational Cost. */
+                10,
+
+                /* Memory Cost (4 MB). */
+                (1 << 12),
+
+                /* The number of threads and lanes */
+                1, 1,
+
+                /* Algorithm Version */
+                ARGON2_VERSION_13,
+
+                /* Custom memory allocation / deallocation functions. */
+                NULL, NULL,
+
+                /* By default only internal memory is cleared (pwd is not wiped) */
+                ARGON2_DEFAULT_FLAGS
+            };
+
+            /* Run the argon2 computation. */
+            int32_t nRet = argon2id_ctx(&context);
+            if(nRet != ARGON2_OK)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
+
+            /* Set the bytes for the key. */
+            uint256_t hashKey;
+            hashKey.SetBytes(vHash);
+
+            return hashKey;
+        }
+
+
+        /* Resolves a register address from a name.  
+        *  The register address is a hash of the fully-namespaced name in the format of namespacehash:objecttype:name. */
+        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectName, const std::string& strObjectType)
+        {
+            uint256_t hashRegister = 0;
+
+            /* In order to resolve an object name to a register address we also need to know the namespace. 
+            *  This must either be provided by the caller explicitly in a namespace parameter or by passing 
+            *  the name in the format namespace:name.  However since the default namespace is the username
+            *  of the sig chain that created the object, if no namespace is explicitly provided we will 
+            *  also try using the username of currently logged in sig chain */
+            std::string strName = strObjectName;
+            std::string strNamespace = "";
+
+            /* First check to see if the name parameter has been provided in the namespace:name format*/
+            size_t nPos = strName.find(":");
+            
+            if(nPos != std::string::npos)
+            {
+                strNamespace = strName.substr(0, nPos);
+                strName = strName.substr(nPos+1);
+            }
+            /* if not then check for the explicit namespace parameter*/
+            else if(params.find("namespace") != params.end())
+            {
+                strNamespace = params["namespace"].get<std::string>();
+            }
+            /* if neither of those then check to see if there is an active session to access the sig chain */
+            else 
+            {
+                /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can 
+                   throw a missing namespace exception if no valid session could be found */
+                uint64_t nSession = users.GetSession(params, false);
+
+                /* Get the account. */
+                memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
+                if(!user)
+                    throw APIException(-23, "Missing namespace parameter");
+                
+                strNamespace = user->UserName().c_str();
+            }
+            
+            
+
+            /* Get the namespace hash to use for this object. */
+            uint256_t nNamespaceHash = NamespaceHash(SecureString(strNamespace.c_str()));
+
+            /* register address is a hash of a name in the format of namespacehash:objecttype:name */
+            std::string strRegisterName = nNamespaceHash.ToString() +":" +strObjectType +":" +strName;
+            
+
+            /* Build the address from an SK256 hash of register name. */
+            hashRegister = LLC::SK256(std::vector<uint8_t>(strRegisterName.begin(), strRegisterName.end()));
+
+            return hashRegister;
+
+        }
+
 
         /* Converts the block to formatted JSON */
         json::json BlockToJSON(const TAO::Ledger::BlockState& block,  uint32_t nTransactionVerbosity)

@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/users.h>
 #include <TAO/API/include/assets.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/execute.h>
 
@@ -63,23 +64,20 @@ namespace TAO
             /* Get the register address. */
             uint256_t hashRegister = 0;
 
-            /* Check for data parameter. */
-            if(params.find("asset_name") != params.end())
+            /* Check whether the caller has provided the asset name parameter. */
+            if(params.find("name") != params.end())
             {
-                /* Get the address from the name. */
-                std::string strName = GetName() + ":" + params["asset_name"].get<std::string>();
-
-                /* Build the address from an SK256 hash of API:NAME. */
-                hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+                /* If name is provided then use this to deduce the register address */
+                hashRegister = RegisterAddressFromName( params, "asset", params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("asset_address") != params.end())
-                hashRegister.SetHex(params["asset_address"]);
+            else if(params.find("address") != params.end())
+                hashRegister.SetHex(params["address"]);
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-23, "Missing memory address");
+                throw APIException(-23, "Missing asset address");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);

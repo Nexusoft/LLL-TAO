@@ -376,7 +376,7 @@ This will tokenize an asset into fungible tokens that represent ownership.  This
 
 `session` : For multi-user API mode (configured with multiuser=1) the session is required to identify which session (sig chain) owns the asset. For single-user API mode the session should not be supplied.
 
-`asset_name` : The name identifying the asset to be tokenized. This is optional if the address is provided.
+`name` : The name identifying the asset to be tokenized. This is optional if the address is provided.
 
 `address` : The register address of the asset to be tokenized. This is optional if the name is provided.
 

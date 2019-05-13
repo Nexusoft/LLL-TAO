@@ -198,10 +198,14 @@ namespace TAO
              *  If not in sessionless mode then the method will return the session from the params.
              *  If the session is not is available in the params then an APIException is thrown.
              *
+             *  @param[in] jsonParams The json array of parameters being passed to this method.
+             *  @param[in] fThrow Flag to indicate whether this method should throw an exception 
+             *             if a valid session ID cannot be found.
+             * 
              *  @return the pin.
              *
              **/
-            uint64_t GetSession(const json::json params) const;
+            uint64_t GetSession(const json::json params, bool fThrow = true) const;
 
 
 

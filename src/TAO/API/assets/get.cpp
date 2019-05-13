@@ -32,14 +32,11 @@ namespace TAO
             /* Get the Register ID. */
             uint256_t hashRegister = 0;
 
-            /* Check for data parameter. */
+            /* Check whether the caller has provided the asset name parameter. */
             if(params.find("name") != params.end())
             {
-                /* Get the address from the name. */
-                std::string strName = GetName() + ":" + params["name"].get<std::string>();
-
-                /* Build the address from an SK256 hash of API:NAME. */
-                hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+                /* If name is provided then use this to deduce the register address */
+                hashRegister = RegisterAddressFromName( params, "asset", params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */

@@ -151,6 +151,15 @@ namespace TAO
              *  @return The 512 bit hash of this key in the series.
              **/
             uint512_t Generate(const uint32_t nKeyID, const SecureString& strSecret, bool fCache = true) const;
+
+
+            /** UserName
+             *
+             *  Returns the username for this sig chain
+             *
+             *  @return The SecureString containing the username for this sig chain
+             **/
+            const SecureString& UserName() const;
         };
     }
 }

@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/tokens.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -36,11 +37,8 @@ namespace TAO
             /* Check for data parameter. */
             if(params.find("name") != params.end())
             {
-                /* Get the address from the name. */
-                std::string strName = GetName() + ":" + params["name"].get<std::string>();
-
-                /* Build the address from an SK256 hash of API:NAME. */
-                hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+                /* If name is provided then use this to deduce the register address */
+                hashRegister = RegisterAddressFromName( params, "token", params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
