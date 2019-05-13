@@ -31,7 +31,7 @@ namespace version
     const std::string CLIENT_DATE(__DATE__ " " __TIME__);
 
     /* The version number */
-    const std::string CLIENT_VERSION_STRING = debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH, ".", CLIENT_BUILD);
+    const std::string CLIENT_VERSION_STRING = debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH);
 
 
     /* The interface used Qt, CLI, or Tritium) */
@@ -44,11 +44,9 @@ namespace version
     #endif
 
 
-    /* The database type used (LevelDB, Berkeley DB, or Lower Level Database) */
+    /* The database type used (Berkeley DB, or Lower Level Database) */
     #if defined USE_LLD
         const std::string CLIENT_DATABASE("[LLD]");
-    #elif defined USE_LEVELDB
-        const std::string CLIENT_DATABASE("[LVD]");
     #else
         const std::string CLIENT_DATABASE("[BDB]");
     #endif
