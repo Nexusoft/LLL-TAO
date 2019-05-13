@@ -106,15 +106,15 @@ namespace TAO
 
             /* Check the sessions. */
             { LOCK(MUTEX);
-                for(auto session = mapSessions.begin(); session != mapSessions.end(); ++ session)
+                for(const auto& session : mapSessions)
                 {
-                    if(hashGenesis == session->second->Genesis())
+                    if(hashGenesis == session.second->Genesis())
                     {
                         user.free();
 
                         ret["genesis"] = hashGenesis.ToString();
                         if(config::fAPISessions)
-                            ret["session"] = debug::safe_printstr(std::dec, session->first);
+                            ret["session"] = debug::safe_printstr(std::dec, session.first);
 
                         return ret;
                     }
