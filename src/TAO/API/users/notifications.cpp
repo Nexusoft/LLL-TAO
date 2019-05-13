@@ -108,7 +108,7 @@ namespace TAO
                     continue;
 
                 /* Skip over identifier 0. */
-                if(object.get<uint32_t>("identifier") == 0)
+                if(!object.Check("identifier", TAO::Register::TYPES::UINT32_T, false) || object.get<uint32_t>("identifier") == 0)
                     continue;
 
                 /* Get the token address. */
