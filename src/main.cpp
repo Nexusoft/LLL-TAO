@@ -57,13 +57,6 @@ ________________________________________________________________________________
 
 int main(int argc, char** argv)
 {
-    uint16_t port = 0;
-
-
-    /* Initialize system logging. */
-    if(!debug::init())
-        printf("Unable to initalize system logging\n");
-
     /* Setup the timer timer. */
     runtime::timer timer;
     timer.Start();
@@ -79,6 +72,11 @@ int main(int argc, char** argv)
 
     /* Parse out the parameters */
     config::ParseParameters(argc, argv);
+
+
+    /* Initialize system logging. */
+    if(!debug::init())
+        printf("Unable to initalize system logging\n");
 
 
     /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
@@ -190,6 +188,7 @@ int main(int argc, char** argv)
 
 
     /** Handle the beta server. */
+    uint16_t port = 0;
     if(!config::GetBoolArg(std::string("-beta")))
     {
         /* Get the port for Tritium Server. */
