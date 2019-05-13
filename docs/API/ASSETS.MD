@@ -129,7 +129,9 @@ This is the generic endpoint for retrieving an asset from the object register. T
 
 ### Parameters:
 
-`name` : The name identifying the asset. This is optional if the address is provided.
+`name` : The name identifying the asset. This is optional if the address is provided.  The name should be in namespace:name format
+
+`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.  
 
 `address` : The register address of the asset. This is optional if the name is provided.
 
@@ -167,7 +169,9 @@ Retrieves the schema / object definition of an asset.
 
 ### Parameters:
 
-`name` : The name identifying the asset. This is optional if the address is provided.
+`name` : The name identifying the asset. This is optional if the address is provided.  The name should be in namespace:name format
+
+`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
 
 `address` : The register address of the asset. This is optional if the name is provided.
 
@@ -236,7 +240,9 @@ This is the generic endpoint for updating one or more values in an asset.  The A
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the asset should be created with. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the asset to update. This is optional if the address is provided.
+`name` : The name identifying the asset to update. This is optional if the address is provided.  The name should be in namespace:name format
+
+`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
 
 `address` : The register address of the asset to update. This is optional if the name is provided.
 
@@ -293,7 +299,9 @@ This will transfer ownership of an asset or digital item.  This is a generic end
 
 `session` : For multi-user API mode (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the asset. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the asset to be transferred. This is optional if the address is provided.
+`name` : The name identifying the asset to be transferred. This is optional if the address is provided.  The name should be in namespace:name format
+
+`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
 
 `address` : The register address of the asset to be transferred. This is optional if the name is provided.
 
@@ -330,7 +338,9 @@ This will get the history of an asset or digital item as well as it's ownership.
 
 ### Parameters:
 
-`name` : The name identifying the asset. This is optional if the address is provided.
+`name` : The name identifying the asset. This is optional if the address is provided.  The name should be in namespace:name format
+
+`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
 
 `address` : The register address of the asset. This is optional if the name is provided.
 
@@ -376,7 +386,9 @@ This will tokenize an asset into fungible tokens that represent ownership.  This
 
 `session` : For multi-user API mode (configured with multiuser=1) the session is required to identify which session (sig chain) owns the asset. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the asset to be tokenized. This is optional if the address is provided.
+`name` : The name identifying the asset to be tokenized. This is optional if the address is provided.  The name should be in namespace:name format
+
+`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
 
 `address` : The register address of the asset to be tokenized. This is optional if the name is provided.
 

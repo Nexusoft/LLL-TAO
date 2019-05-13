@@ -171,7 +171,10 @@ Input parameter description:
 <type>:
     Must be either "token" or "account" for the token register type.
 <name>:
-    A token name supplied on the token/create API call.   
+    A token name supplied on the token/create API call.   The name should be in namespace:name format
+
+`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+  
 <address>:
     A token object register address returned from the token/create API call.     
 ```
