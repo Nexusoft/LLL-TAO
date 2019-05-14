@@ -303,11 +303,15 @@ namespace TAO
 
                                 /* Verify the register's prestate. */
                                 State state;
-                                tx.ssRegister  >> state;
+                                tx.ssRegister >> state;
 
                                 /* Write the register from database. */
                                 if(!LLD::regDB->WriteState(hashAccount, state))
                                     return debug::error(FUNCTION, "failed to rollback to pre-state");
+
+                                /* Erase the genesis to account indexing. */
+                                if(!LLD::regDB->EraseTrust(tx.hashGenesis))
+                                    return debug::error(FUNCTION, "failed to erase the trust account index");
                             }
 
                             /* Scope the system register pre-state verification. */
