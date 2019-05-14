@@ -351,7 +351,9 @@ namespace TAO
                 runtime::timer TIMER;
                 TIMER.Start();
                 TAO::Ledger::TritiumBlock block;
-                if(!TAO::Ledger::CreateBlock(user, std::string("1234").c_str(), 2, block))
+
+
+                if(!TAO::Ledger::CreateBlock(user, SecureString("1234"), 2, block))
                     continue;
 
                 /* Get the secret from new key. */
@@ -384,4 +386,4 @@ namespace TAO
         }
 
     }
-} 
+}

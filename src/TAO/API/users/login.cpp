@@ -77,7 +77,7 @@ namespace TAO
                 {
                     user.free();
 
-                    throw APIException(-26, "Account doesn't exists");
+                    throw APIException(-26, "Account doesn't exist");
                 }
 
                 /* Get the memory pool tranasction. */
