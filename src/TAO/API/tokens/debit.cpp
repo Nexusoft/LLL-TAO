@@ -56,7 +56,7 @@ namespace TAO
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if( !users.CanTransact())
+            if(!users.CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
@@ -70,12 +70,11 @@ namespace TAO
             /* If name_to is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
             if(params.find("name_to") != params.end())
-                hashTo = RegisterAddressFromName( params, "token", params["name_to"].get<std::string>());
+                hashTo = RegisterAddressFromName(params, "token", params["name_to"].get<std::string>());
             else if(params.find("address_to") != params.end())
                 hashTo.SetHex(params["address_to"].get<std::string>());
             else
                 throw APIException(-22, "Missing to recipient");
-
 
             /* Get the transaction id. */
             uint256_t hashFrom = 0;
@@ -83,7 +82,7 @@ namespace TAO
             /* If name_from is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
             if(params.find("name_from") != params.end())
-                hashFrom = RegisterAddressFromName( params, "token", params["name_from"].get<std::string>());
+                hashFrom = RegisterAddressFromName(params, "token", params["name_from"].get<std::string>());
             else if(params.find("address_from") != params.end())
                 hashFrom.SetHex(params["address_from"].get<std::string>());
             else
@@ -108,7 +107,7 @@ namespace TAO
                 throw APIException(-26, "Failed to accept");
 
             /* Build a JSON response object. */
-            ret["txid"]  = tx.GetHash().ToString();
+            ret["txid"] = tx.GetHash().ToString();
 
             return ret;
         }
