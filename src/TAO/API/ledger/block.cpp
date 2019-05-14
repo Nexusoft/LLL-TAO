@@ -174,7 +174,7 @@ namespace TAO
 
             uint32_t nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
             if( params.count("txverbose") > 0 && IsAllDigit(params["txverbose"].get<std::string>()))
-                nTransactionVerbosity = std::stoul(params["txverbose"].get<std::string>().c_str());
+                nTransactionVerbosity = std::stoul(params["txverbose"].get<std::string>());
 
             json::json ret = TAO::API::BlockToJSON(blockState, nTransactionVerbosity);
 
@@ -242,7 +242,7 @@ namespace TAO
             /* Get the transaction verbosity level from the request*/
             uint32_t nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
             if( params.count("txverbose") > 0 && IsAllDigit(params["txverbose"].get<std::string>()))
-                nTransactionVerbosity = std::stoul(params["txverbose"].get<std::string>().c_str());
+                nTransactionVerbosity = std::stoul(params["txverbose"].get<std::string>());
 
             /* Declare the JSON array to return */
             json::json ret = json::json::array();

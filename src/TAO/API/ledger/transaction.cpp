@@ -42,7 +42,7 @@ namespace TAO
 
             uint32_t nTransactionVerbosity = 2; /* Default to verbosity 2 which includes the hash and basic data */
             if( params.count("txverbose") > 0 && IsAllDigit(params["txverbose"].get<std::string>()))
-                nTransactionVerbosity = std::stoul(params["txverbose"].get<std::string>().c_str());
+                nTransactionVerbosity = std::stoul(params["txverbose"].get<std::string>());
 
 
             /* keep the verbosity level no less than 2.  Also translate a calling level of 1 to 2 (add 1 to it)
