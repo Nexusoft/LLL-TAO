@@ -54,7 +54,7 @@ namespace TAO
 
             // low-level API
             std::vector<uint8_t> vHash(32);
-            std::vector<uint8_t> vSalt(16); 
+            std::vector<uint8_t> vSalt(16);
 
             /* Create the hash context. */
             argon2_context context =
@@ -109,37 +109,38 @@ namespace TAO
         }
 
 
-        /* Resolves a register address from a name.  
+        /* Resolves a register address from a name.
         *  The register address is a hash of the fully-namespaced name in the format of namespacehash:objecttype:name. */
         uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectName, const std::string& strObjectType)
         {
             uint256_t hashRegister = 0;
 
-            /* In order to resolve an object name to a register address we also need to know the namespace. 
-            *  This must either be provided by the caller explicitly in a namespace parameter or by passing 
+            /* In order to resolve an object name to a register address we also need to know the namespace.
+            *  This must either be provided by the caller explicitly in a namespace parameter or by passing
             *  the name in the format namespace:name.  However since the default namespace is the username
-            *  of the sig chain that created the object, if no namespace is explicitly provided we will 
+            *  of the sig chain that created the object, if no namespace is explicitly provided we will
             *  also try using the username of currently logged in sig chain */
             std::string strName = strObjectName;
             std::string strNamespace = "";
 
             /* First check to see if the name parameter has been provided in the namespace:name format*/
             size_t nPos = strName.find(":");
-            
             if(nPos != std::string::npos)
             {
                 strNamespace = strName.substr(0, nPos);
                 strName = strName.substr(nPos+1);
             }
-            /* if not then check for the explicit namespace parameter*/
+
+            /* If not then check for the explicit namespace parameter*/
             else if(params.find("namespace") != params.end())
             {
                 strNamespace = params["namespace"].get<std::string>();
             }
-            /* if neither of those then check to see if there is an active session to access the sig chain */
-            else 
+
+            /* If neither of those then check to see if there is an active session to access the sig chain */
+            else
             {
-                /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can 
+                /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can
                    throw a missing namespace exception if no valid session could be found */
                 uint64_t nSession = users.GetSession(params, false);
 
@@ -147,24 +148,20 @@ namespace TAO
                 memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
                 if(!user)
                     throw APIException(-23, "Missing namespace parameter");
-                
+
                 strNamespace = user->UserName().c_str();
             }
-            
-            
 
             /* Get the namespace hash to use for this object. */
             uint256_t nNamespaceHash = NamespaceHash(SecureString(strNamespace.c_str()));
 
             /* register address is a hash of a name in the format of namespacehash:objecttype:name */
-            std::string strRegisterName = nNamespaceHash.ToString() +":" +strObjectType +":" +strName;
-            
+            std::string strRegisterName = nNamespaceHash.ToString() + ":" + strObjectType + ":" + strName;
 
             /* Build the address from an SK256 hash of register name. */
             hashRegister = LLC::SK256(std::vector<uint8_t>(strRegisterName.begin(), strRegisterName.end()));
 
             return hashRegister;
-
         }
 
 
@@ -601,14 +598,14 @@ namespace TAO
             }
             else if(object.nType == TAO::Register::REGISTER::OBJECT)
             {
-                
+
                 /* Build the response JSON. */
                 if(strDataField.empty())
                 {
                     ret["timestamp"]  = object.nTimestamp;
                     ret["owner"]      = object.hashOwner.ToString();
                 }
-                
+
                 /* Get List of field names in this asset object */
                 std::vector<std::string> vFieldNames = object.GetFieldNames();
 
@@ -678,10 +675,10 @@ namespace TAO
                         object.Read<std::vector<unsigned char>>(strFieldName, vchBytes);
                         ret[strFieldName] = encoding::EncodeBase64(&vchBytes[0], vchBytes.size()) ;
                     }
-                    
+
                 }
-            
-                
+
+
             }
             else
             {
