@@ -92,10 +92,10 @@ int main(int argc, char** argv)
 
 
     /* Create directories if they don't exist yet. */
-    if(!filesystem::exists(config::GetDataDir(false)) &&
-        filesystem::create_directory(config::GetDataDir(false)))
+    if(!filesystem::exists(config::GetDataDir()) &&
+        filesystem::create_directory(config::GetDataDir()))
     {
-        debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir(false));
+        debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
     }
 
 
@@ -351,7 +351,7 @@ int main(int argc, char** argv)
     }
 
 
-    /* Cleanup the local database. */
+    /* Cleanup the trust database. */
     if(LLD::trustDB)
     {
         debug::log(0, FUNCTION, "Shutting down trustDB");
