@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/create.h>
+#include <TAO/Register/include/system.h>
 
 #include <TAO/Ledger/types/transaction.h>
 
@@ -880,6 +881,25 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         }
     }
 
+
+    //initialize the SYSTEM
+    TAO::Register::Initialize();
+
+
+    //check system values
+    {
+        Object stateSystem;
+        REQUIRE(LLD::regDB->ReadState(uint256_t(TAO::Register::SYSTEM::TRUST), stateSystem));
+
+        //parse register
+        REQUIRE(stateSystem.Parse());
+
+        //check balance
+        REQUIRE(stateSystem.get<uint64_t>("trust") == 0);
+
+        //check balance
+        REQUIRE(stateSystem.get<uint64_t>("stake") == 0);
+    }
 
 
     //create a trust register from inputs spent on coinbase
