@@ -93,7 +93,7 @@ int main(int argc, char** argv)
 
     /* Create directories if they don't exist yet. */
     if(!filesystem::exists(config::GetDataDir()) &&
-        filesystem::create_directory(config::GetDataDir()))
+        filesystem::create_directories(config::GetDataDir()))
     {
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
     }
