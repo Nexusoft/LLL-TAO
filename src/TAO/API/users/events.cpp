@@ -85,6 +85,15 @@ namespace TAO
                             hashTx.SetHex(notification["hash"]);
 
                             uint256_t hashTo;
+                            // get identifer from notification (you need to add identifier to notification JSON)
+                            // check event processor config to see if we have an account or register address configured for identifier X
+                            // if so then use that to process this debit...
+                            //2 = jack:savings OR 2=asdfasdfsdfsdf
+                            // if they have configured a register address then set hashTo from that address
+                            // if they have configured an account name then we need to generate the register address from that name
+                            //  - register address is namespacehash:token:name
+                            //  - namespacehash is argon2 hash of username
+                            //  - Look at RegisterAddressFromName() method as you can probably use that
                             hashTo.SetHex(notification["operation"]["transfer"]);
 
                             /* Submit the payload object. */
