@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy_minter.h>
 
 #include <Legacy/include/create.h>
+#include <Legacy/include/trust.h>
 #include <Legacy/types/address.h>
 #include <Legacy/wallet/addressbook.h>
 
@@ -27,7 +28,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
-#include <Legacy/include/trust.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h> //for LEGACY_TX enum
 
@@ -205,7 +205,7 @@ namespace Legacy
                 /* Read the full trust key from the trust db */
                 uint576_t cKey;
                 cKey.SetBytes(vchHashKey);
-                TAO::Ledger::TrustKey trustKeyCheck;
+                TrustKey trustKeyCheck;
 
                 if (!LLD::trustDB->ReadTrustKey(cKey, trustKeyCheck))
                     continue;
@@ -220,7 +220,7 @@ namespace Legacy
                     TAO::Ledger::BlockState blockStateCheck = TAO::Ledger::ChainState::stateBest.load();
 
                     /* Check for keys that are expired version 4. */
-                    if (TAO::Ledger::GetLastTrust(trustKeyCheck, blockStateCheck) && blockStateCheck.nVersion < 5)
+                    if (GetLastTrust(trustKeyCheck, blockStateCheck) && blockStateCheck.nVersion < 5)
                     {
                         /* Expired pre-v5 Trust Key. Do not use. */
                         debug::log(2, FUNCTION, "Found expired version 4 trust key in wallet. Not using.");
@@ -285,7 +285,7 @@ namespace Legacy
             cKey.SetBytes(trustKey.vchPubKey);
 
             /* Check that the database still has key. */
-            TAO::Ledger::TrustKey keyCheck;
+            TrustKey keyCheck;
             if(!LLD::trustDB->ReadTrustKey(cKey, keyCheck))
             {
                 debug::error(FUNCTION, "Trust key was disconnected");
@@ -317,7 +317,7 @@ namespace Legacy
 
             /* Get the last stake block for this trust key. */
             TAO::Ledger::BlockState prevTrustBlockState = TAO::Ledger::ChainState::stateBest.load();
-            if (!TAO::Ledger::GetLastTrust(trustKey, prevTrustBlockState))
+            if (!GetLastTrust(trustKey, prevTrustBlockState))
                 return debug::error(FUNCTION, "Failed to get last trust for trust key");
 
             /* Enforce the minimum staking transaction interval. (current height is candidate height - 1) */
@@ -681,8 +681,8 @@ namespace Legacy
             cKey.SetBytes(pReservedTrustKey->GetReservedKey());
 
             /* Create new trust key with Genesis block hash, Genesis tx hash, and Genesis time based on current block */
-            TAO::Ledger::TrustKey trustKeyNew(pReservedTrustKey->GetReservedKey(), candidateBlock.GetHash(),
-                                              candidateBlock.vtx[0].GetHash(), candidateBlock.GetBlockTime());
+            TrustKey trustKeyNew(pReservedTrustKey->GetReservedKey(), candidateBlock.GetHash(),
+                                    candidateBlock.vtx[0].GetHash(), candidateBlock.GetBlockTime());
 
             /* Add trust key to trust db */
             LLD::trustDB->WriteTrustKey(cKey, trustKeyNew);

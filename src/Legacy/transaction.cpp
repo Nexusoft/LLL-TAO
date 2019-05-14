@@ -18,16 +18,18 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 
 #include <Legacy/types/transaction.h>
-#include <Legacy/include/money.h>
-#include <Legacy/types/script.h>
-#include <Legacy/types/legacy.h>
-#include <Legacy/include/signature.h>
+
 #include <Legacy/include/evaluate.h>
+#include <Legacy/include/money.h>
+#include <Legacy/include/signature.h>
+#include <Legacy/include/trust.h>
+
+#include <Legacy/types/legacy.h>
+#include <Legacy/types/script.h>
+#include <Legacy/types/trustkey.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
-#include <Legacy/include/trust.h>
-#include <Legacy/types/trustkey.h>
 
 #include <Util/include/runtime.h>
 
@@ -376,7 +378,7 @@ namespace Legacy
         if(!IsGenesis() || block.nVersion >= 6)
         {
             /* Read the trust key from the disk. */
-            TAO::Ledger::TrustKey trustKey;
+            Legacy::TrustKey trustKey;
             if(LLD::trustDB->ReadTrustKey(cKey, trustKey))
                 nStakeRate = trustKey.StakeRate(block, nTime);
 
@@ -820,11 +822,11 @@ namespace Legacy
             cKey.SetBytes(vTrustKey);
 
             /* Handle Genesis Transaction Rules. Genesis is checked after Trust Key Established. */
-            TAO::Ledger::TrustKey trustKey;
+            Legacy::TrustKey trustKey;
             if(IsGenesis())
             {
                 /* Create the Trust Key from Genesis Transaction Block. */
-                trustKey = TAO::Ledger::TrustKey(vTrustKey, state.GetHash(), GetHash(), state.GetBlockTime());
+                trustKey = Legacy::TrustKey(vTrustKey, state.GetHash(), GetHash(), state.GetBlockTime());
 
                 /* Check the genesis transaction. */
                 if(!trustKey.CheckGenesis(state))
@@ -838,7 +840,7 @@ namespace Legacy
                 if(!LLD::trustDB->ReadTrustKey(cKey, trustKey))
                 {
                     /* FindGenesis will set hashPrevBlock to genesis block. Don't want to change that here, so use temp hash */
-                    if(!TAO::Ledger::FindGenesis(cKey, state.hashPrevBlock, trustKey))
+                    if(!FindGenesis(cKey, state.hashPrevBlock, trustKey))
                         return debug::error(FUNCTION, "no trust without genesis");
                 }
 
@@ -1061,7 +1063,7 @@ namespace Legacy
         else if(stateLast.nVersion < 5)
         {
             /* Check the trust pool - this should only execute once transitioning from version 4 to version 5 trust keys. */
-            TAO::Ledger::TrustKey trustKey;
+            Legacy::TrustKey trustKey;
             if(!LLD::trustDB->ReadTrustKey(cKey, trustKey))
                 return debug::error(FUNCTION, "couldn't find the genesis");
 

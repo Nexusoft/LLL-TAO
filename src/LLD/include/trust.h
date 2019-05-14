@@ -56,7 +56,7 @@ namespace LLD
          *  @return True if the trust key was successfully written, false otherwise.
          *
          **/
-        bool WriteTrustKey(const uint576_t& hashKey, const TAO::Ledger::TrustKey& key)
+        bool WriteTrustKey(const uint576_t& hashKey, const Legacy::TrustKey& key)
         {
             return Write(hashKey, key);
         }
@@ -72,7 +72,7 @@ namespace LLD
          *  @return True if the trust key was successfully written, false otherwise.
          *
          **/
-        bool ReadTrustKey(const uint576_t& hashKey, TAO::Ledger::TrustKey& key)
+        bool ReadTrustKey(const uint576_t& hashKey, Legacy::TrustKey& key)
         {
             return Read(hashKey, key);
         }

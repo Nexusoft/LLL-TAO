@@ -153,7 +153,7 @@ namespace TAO
             std::vector<json::json> trustKeyList;
 
             /* Map will store trust keys, keyed by stake rate, sorted in descending order */
-            std::multimap<double, TAO::Ledger::TrustKey, std::greater<double> > mapTrustKeys;
+            std::multimap<double, Legacy::TrustKey, std::greater<double> > mapTrustKeys;
 
             /* Retrieve all raw trust database keys from keychain */
             const std::vector<std::vector<uint8_t> >& vKeys = LLD::trustDB->GetKeys();
@@ -167,7 +167,7 @@ namespace TAO
                 ssKey >> trustKeyHash;
 
                 /* Use trust key hash to retrieve trust key */
-                TAO::Ledger::TrustKey trustKey;
+                Legacy::TrustKey trustKey;
                 if (!LLD::trustDB->ReadTrustKey(trustKeyHash, trustKey))
                     continue;
 
