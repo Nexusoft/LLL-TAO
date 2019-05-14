@@ -238,25 +238,47 @@ namespace TAO
                         /* Coinstake operation. Requires an account. */
                         case TAO::Operation::OP::TRUST:
                         {
-                            /* The account that is being staked. */
-                            uint256_t hashAccount;
-                            tx.ssOperation >> hashAccount;
+                            /* Skip ahead in operation stream. */
+                            tx.ssOperation.seek(72);
 
-                            /* The previous trust block. */
-                            uint1024_t hashLastTrust;
-                            tx.ssOperation >> hashLastTrust;
+                            /* Scope the register pre-state verification. */
+                            {
+                                /* Verify the first register code. */
+                                uint8_t nState;
+                                tx.ssRegister  >> nState;
 
-                            /* Previous trust sequence number. */
-                            uint32_t nSequence;
-                            tx.ssOperation >> nSequence;
+                                /* Check the state is prestate. */
+                                if(nState != STATES::PRESTATE)
+                                    return debug::error(FUNCTION, "register state not in pre-state");
 
-                            /* The previous trust calculated. */
-                            uint64_t nLastTrust;
-                            tx.ssOperation >> nLastTrust;
+                                /* Verify the register's prestate. */
+                                State state;
+                                tx.ssRegister  >> state;
 
-                            /* The total to be staked. */
-                            uint64_t  nStake;
-                            tx.ssOperation >> nStake;
+                                /* Write the register from database. */
+                                if(!LLD::regDB->WriteTrust(tx.hashGenesis, state))
+                                    return debug::error(FUNCTION, "failed to rollback to pre-state");
+                            }
+
+                            /* Scope the system register pre-state verification. */
+                            {
+                                /* Get the system pre-state. */
+                                uint8_t nState;
+                                tx.ssSystem  >> nState;
+
+                                /* Check the state is prestate. */
+                                if(nState != STATES::PRESTATE)
+                                    return debug::error(FUNCTION, "register state not in pre-state");
+
+                                /* Verify the register's prestate. */
+                                State state;
+                                tx.ssSystem  >> state;
+
+                                /* Write the register to database. */
+                                if(!LLD::regDB->WriteState(uint256_t(SYSTEM::TRUST), state))
+                                    return debug::error(FUNCTION, "failed to rollback to pre-state");
+                            }
+
 
                             break;
                         }
@@ -265,8 +287,47 @@ namespace TAO
                         /* Coinstake operation. Requires an account. */
                         case TAO::Operation::OP::GENESIS:
                         {
-                            /* Genesis doesn't have anything to roll back. */
-                            tx.ssOperation.seek(40);
+                            /* Scope the register pre-state verification. */
+                            {
+                                /* Verify the first register code. */
+                                uint8_t nState;
+                                tx.ssRegister  >> nState;
+
+                                /* Check the state is prestate. */
+                                if(nState != STATES::PRESTATE)
+                                    return debug::error(FUNCTION, "register state not in pre-state");
+
+                                /* The account that is being staked. */
+                                uint256_t hashAccount;
+                                tx.ssOperation >> hashAccount;
+
+                                /* Verify the register's prestate. */
+                                State state;
+                                tx.ssRegister  >> state;
+
+                                /* Write the register from database. */
+                                if(!LLD::regDB->WriteTrust(tx.hashGenesis, state))
+                                    return debug::error(FUNCTION, "failed to rollback to pre-state");
+                            }
+
+                            /* Scope the system register pre-state verification. */
+                            {
+                                /* Get the system pre-state. */
+                                uint8_t nState;
+                                tx.ssSystem  >> nState;
+
+                                /* Check the state is prestate. */
+                                if(nState != STATES::PRESTATE)
+                                    return debug::error(FUNCTION, "register state not in pre-state");
+
+                                /* Verify the register's prestate. */
+                                State state;
+                                tx.ssSystem  >> state;
+
+                                /* Write the register to database. */
+                                if(!LLD::regDB->WriteState(uint256_t(SYSTEM::TRUST), state))
+                                    return debug::error(FUNCTION, "failed to rollback to pre-state");
+                            }
 
                             break;
                         }

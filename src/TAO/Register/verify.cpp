@@ -153,6 +153,9 @@ namespace TAO
                         /* Coinstake operation. Requires an account. */
                         case TAO::Operation::OP::TRUST:
                         {
+                            /* Skip ahead in operation stream. */
+                            tx.ssOperation.seek(72);
+                            
                             /* Scope the register pre-state verification. */
                             {
                                 /* Verify the first register code. */
