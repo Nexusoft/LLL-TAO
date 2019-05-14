@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <sys/stat.h>
 #endif
 
+
 /** Daemonize
  *
  *  Daemonize by forking the parent process

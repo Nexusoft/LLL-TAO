@@ -19,29 +19,14 @@ ________________________________________________________________________________
 #include <vector>
 
 #include <Util/include/debug.h>
-#include <LLC/hash/macro.h>
-#include <LLP/include/network.h>
 
-/* buffer for determing hex value of ASCII table */
-const signed char phexdigit[256] =
+
+const char hexmap[16] =
 {
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    0,1,2,3,4,5,6,7,8,9,-1,-1,-1,-1,-1,-1,
-    -1,0xa,0xb,0xc,0xd,0xe,0xf,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,0xa,0xb,0xc,0xd,0xe,0xf,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    '0', '1', '2', '3', '4', '5', '6', '7',
+    '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
 };
+
 
 /** IsHex
  *
@@ -52,16 +37,7 @@ const signed char phexdigit[256] =
  *  @return True if the string is all hex, false otherwise
  *
  **/
-inline bool IsHex(const std::string& str)
-{
-    uint64_t s = str.size();
-    for(uint64_t i = 0; i < s; ++i)
-    {
-        if (phexdigit[ (uint8_t) str[i] ] < 0)
-            return false;
-    }
-    return (s > 0) && (s % 2 == 0);
-}
+bool IsHex(const std::string& str);
 
 
 /** HexChar
@@ -73,19 +49,7 @@ inline bool IsHex(const std::string& str)
  *  @return The char to return.
  *
  **/
-inline char HexChar(const char* psz)
-{
-    int8_t c = phexdigit[(uint8_t)*psz++];
-    if (c == -1)
-        return 0;
-    uint8_t n = static_cast<uint8_t>(c << 4);
-    c = phexdigit[(uint8_t)*psz++];
-    if (c == -1)
-        return 0;
-    n |= static_cast<uint8_t>(c);
-
-    return n;
-}
+char HexChar(const char* psz);
 
 
 /** ParseHex
@@ -97,31 +61,8 @@ inline char HexChar(const char* psz)
  *  @return The vector of hex strings
  *
  **/
-inline std::vector<uint8_t> ParseHex(const char* psz)
-{
-    // convert hex dump to vector
-    std::vector<uint8_t> vch;
-    for(;;)
-    {
-        while (isspace(*psz))
-            ++psz;
+std::vector<uint8_t> ParseHex(const char* psz);
 
-        int8_t c = phexdigit[(uint8_t)*psz++];
-
-        if (c == -1)
-            break;
-
-        uint8_t n = static_cast<uint8_t>(c << 4);
-        c = phexdigit[(uint8_t)*psz++];
-
-        if (c == -1)
-            break;
-
-        n |= static_cast<uint8_t>(c);
-        vch.push_back(n);
-    }
-    return vch;
-}
 
 /** ParseHex
  *
@@ -132,10 +73,8 @@ inline std::vector<uint8_t> ParseHex(const char* psz)
  *  @return The vector of hex strings
  *
  **/
-inline std::vector<uint8_t> ParseHex(const std::string& str)
-{
-    return ParseHex(str.c_str());
-}
+std::vector<uint8_t> ParseHex(const std::string& str);
+
 
 /** HexStr
  *
@@ -149,11 +88,10 @@ inline std::vector<uint8_t> ParseHex(const std::string& str)
  *
  **/
 template<typename T>
-std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
+std::string HexStr(const T itbegin, const T itend, bool fSpaces = false)
 {
     std::vector<char> rv;
-    static char hexmap[16] = { '0', '1', '2', '3', '4', '5', '6', '7',
-                            '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+
     rv.reserve((itend-itbegin)*3);
 
     int nTotal = 0;
@@ -171,6 +109,7 @@ std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
     return std::string(rv.begin(), rv.end());
 }
 
+
 /** HexStr
  *
  *  Builds a hex string from data in a vector.
@@ -181,10 +120,8 @@ std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
  *  @return The newly created hex string
  *
  **/
-inline std::string HexStr(const std::vector<uint8_t>& vch, bool fSpaces=false)
-{
-    return HexStr(vch.begin(), vch.end(), fSpaces);
-}
+std::string HexStr(const std::vector<uint8_t>& vch, bool fSpaces = false);
+
 
 /** PrintHex
  *
@@ -196,10 +133,11 @@ inline std::string HexStr(const std::vector<uint8_t>& vch, bool fSpaces=false)
  *
  **/
 template<typename T>
-inline void PrintHex(const T pbegin, const T pend, bool fSpaces=true)
+inline void PrintHex(const T pbegin, const T pend, bool fSpaces = true)
 {
     debug::log(0, HexStr(pbegin, pend, fSpaces));
 }
+
 
 /** PrintHex
  *
@@ -210,10 +148,8 @@ inline void PrintHex(const T pbegin, const T pend, bool fSpaces=true)
  *  @param[in] fSpaces The flag for if there should be spaces.
  *
  **/
-inline void PrintHex(const std::vector<uint8_t>& vch, bool fSpaces=true)
-{
-    debug::log(0, HexStr(vch, fSpaces));
-}
+void PrintHex(const std::vector<uint8_t>& vch, bool fSpaces = true);
+
 
 /** HexBits
  *
@@ -223,14 +159,6 @@ inline void PrintHex(const std::vector<uint8_t>& vch, bool fSpaces=true)
  *
  * @return The newly created hex string
  **/
-inline std::string HexBits(unsigned int nBits)
-{
-    union {
-        int32_t nBits;
-        char cBits[4];
-    } uBits;
-    uBits.nBits = htonl((int32_t)nBits);
-    return HexStr(BEGIN(uBits.cBits), END(uBits.cBits));
-}
+std::string HexBits(uint32_t nBits);
 
 #endif

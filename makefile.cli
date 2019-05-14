@@ -183,7 +183,8 @@ ifdef UNIT_TESTS
 		   build/Tests_debit.o \
 		   build/Tests_trust.o \
 		   build/Tests_write.o \
-		   build/Tests_validate.o
+		   build/Tests_validate.o \
+           build/Tests_hex.o
 
 	DEFS += -DUNIT_TESTS
 
@@ -345,6 +346,7 @@ OBJS+=  build/LLC_bignum.o \
 		build/Util_config.o \
 		build/Util_datastream.o \
 		build/Util_debug.o \
+        build/Util_hex.o \
 		build/Util_filesystem.o \
 		build/Util_memory.o \
 		build/Util_signals.o \
@@ -378,7 +380,7 @@ OBJS+=  build/LLC_bignum.o \
 		build/Legacy_txout.o \
 		build/Legacy_wallet.o \
 		build/Legacy_walletdb.o \
-		build/Legacy_wallettx.o 
+		build/Legacy_wallettx.o
 
 ###############################################################################
 ifeq ($(detected_OS),Windows)
