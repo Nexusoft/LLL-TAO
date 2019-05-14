@@ -33,6 +33,7 @@ ________________________________________________________________________________
 
 #ifdef WIN32
 #include <shlwapi.h>
+#include <direct.h>
 
 /* Set up defs properly before including windows.h */
 #ifndef _WIN32_WINNT
@@ -54,13 +55,18 @@ namespace filesystem
 {
 
     /* Removes a file or folder from the specified path. */
-    bool remove(const std::string &path)
+    bool remove(const std::string& path)
     {
-        if(exists(path) == false)
+        if(!exists(path))
             return false;
 
-        if(std::remove(path.c_str()) == 0)
+        #ifdef WIN32
+        if(_rmdir(debug::safe_printstr("rm -rf ", path).c_str()) != -1) //TODO: @scottsimon36 test this for windoze
             return true;
+        #else
+        if(system(debug::safe_printstr("rm -rf ", path).c_str()) == 0)
+            return true;
+        #endif
 
         return false;
     }

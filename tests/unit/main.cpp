@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <Util/include/filesystem.h>
 #include <Util/include/args.h>
 
 TEST_CASE("Arguments Tests", "[args]")
@@ -25,6 +26,16 @@ TEST_CASE("Arguments Tests", "[args]")
 
     REQUIRE(config::fTestNet == true);
     REQUIRE(config::GetArg("-testnet", 0) == 92349234);
+
+    //get the data directory
+    std::string strPath = config::GetDataDir();
+
+    //test the filesystem remove and also clear from previous unit tests
+    if(filesystem::exists(strPath))
+    {
+        REQUIRE(filesystem::remove(strPath));
+        REQUIRE(!filesystem::exists(strPath));
+    }
 
     /* Create the database instances. */
     LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
