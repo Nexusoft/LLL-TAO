@@ -27,7 +27,7 @@ namespace TAO
             /* Restrict Unlock / Lock to sessionless API */
             if(config::fAPISessions)
                 throw APIException(-23, "Lock not supported for session-based API");
-            
+
             /* Check if already unlocked. */
             if(!pActivePIN.IsNull() && pActivePIN->PIN() == "")
                 throw APIException(-26, "Account already locked");
@@ -36,7 +36,7 @@ namespace TAO
             /* Clear the pin */
             LOCK(MUTEX);
 
-            pActivePIN.free() ;
+            pActivePIN.free();
 
             return true;
         }

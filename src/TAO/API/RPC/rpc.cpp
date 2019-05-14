@@ -102,7 +102,7 @@ namespace TAO
         /* Allows derived API's to check the values in the parameters array for the method being called.
         *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
         *  for the method being called */
-        json::json RPC::SanitizeParams( const std::string& strMethod, const json::json& jsonParams )
+        json::json RPC::SanitizeParams(const std::string& strMethod, const json::json& jsonParams)
         {
             json::json jsonSanitizedParams = jsonParams;
 
@@ -143,7 +143,6 @@ namespace TAO
             if (strMethod == "sendmany"                && n > 2) convert::StringValueTo<uint64_t>(jsonSanitizedParams[2]);
             if (strMethod == "addmultisigaddress"      && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[0]);
 
-
             return jsonSanitizedParams;
         }
 
@@ -173,31 +172,26 @@ namespace TAO
 
             if (fHelp || jsonParams.size() > 1)
                 return std::string(
-                    "help [command]"
-                    " - List commands, or get help for a command.");
+                    "help [command] - List commands, or get help for a command.");
 
             std::string strCommand = "";
 
-            if(!jsonParams.is_null() && jsonParams.size() > 0 )
+            if(!jsonParams.is_null() && jsonParams.size() > 0)
                 strCommand = jsonParams.at(0);
 
-            if( strCommand.length() > 0)
+            if(strCommand.length() > 0)
             {
-                if( mapFunctions.find(strCommand) == mapFunctions.end())
+                if(mapFunctions.find(strCommand) == mapFunctions.end())
                     throw APIException(-32601, debug::safe_printstr("Method not found: ", strCommand));
                 else
-                {
                     ret = mapFunctions[strCommand].Execute(jsonParams, true).get<std::string>();
-                }
             }
             else
             {
                 // iterate through all registered commands and build help list to return
                 std::string strHelp = "";
                 for(auto& pairFunctionEntry : mapFunctions)
-                {
                     strHelp += pairFunctionEntry.second.Execute(jsonParams, true).get<std::string>() + "\n";
-                }
 
                 ret = strHelp;
             }

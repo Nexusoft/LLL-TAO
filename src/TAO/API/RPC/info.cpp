@@ -50,8 +50,7 @@ namespace TAO
         {
             if (fHelp || params.size() != 0)
                 return std::string(
-                    "getinfo"
-                    " - Returns an object containing various state info.");
+                    "getinfo - Returns an object containing various state info.");
 
             json::json obj;
             obj["version"] = version::CLIENT_VERSION_BUILD_STRING;
@@ -97,7 +96,7 @@ namespace TAO
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
 
             // get the EID's if using LISP
-            if( LLP::EIDS.size() > 0)
+            if(LLP::EIDS.size() > 0)
             {
                 json::json jsonEIDs = json::json::array();
                 for(const auto& eid : LLP::EIDS)
@@ -118,8 +117,8 @@ namespace TAO
                 obj["locked"] = Legacy::Wallet::GetInstance().IsLocked();
                 if( !Legacy::Wallet::GetInstance().IsLocked())
                 {
-                    if( (uint64_t) Legacy::Wallet::GetInstance().GetWalletUnlockTime() > 0 )
-                        obj["unlocked_until"] = (uint64_t) Legacy::Wallet::GetInstance().GetWalletUnlockTime() ;
+                    if((uint64_t) Legacy::Wallet::GetInstance().GetWalletUnlockTime() > 0)
+                        obj["unlocked_until"] = (uint64_t) Legacy::Wallet::GetInstance().GetWalletUnlockTime();
 
                     obj["minting_only"] = Legacy::fWalletUnlockMintOnly;
                 }
@@ -139,8 +138,7 @@ namespace TAO
 
             if (fHelp || params.size() != 0)
                     return std::string(
-                        "getpeerinfo"
-                        " - Returns data about each connected network node.");
+                        "getpeerinfo - Returns data about each connected network node.");
 
             std::vector<LLP::TrustAddress> vLegacyInfo;
             std::vector<LLP::TrustAddress> vTritiumInfo;
@@ -203,13 +201,13 @@ namespace TAO
         {
             if (fHelp || params.size() != 0)
                 return std::string(
-                    "getmininginfo"
-                    " - Returns an object containing mining-related information.");
+                    "getmininginfo - Returns an object containing mining-related information.");
 
             // Prime
             uint64_t nPrimePS = 0;
             uint64_t nHashRate = 0;
-            if( TAO::Ledger::ChainState::nBestHeight.load() && TAO::Ledger::ChainState::stateBest.load() != TAO::Ledger::ChainState::stateGenesis)
+            if(TAO::Ledger::ChainState::nBestHeight.load()
+            && TAO::Ledger::ChainState::stateBest.load() != TAO::Ledger::ChainState::stateGenesis)
             {
                 double nPrimeAverageDifficulty = 0.0;
                 unsigned int nPrimeAverageTime = 0;
@@ -228,7 +226,7 @@ namespace TAO
                     nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
 
                 }
-                if( nTotal > 0)
+                if(nTotal > 0)
                 {
                     nPrimeAverageDifficulty /= nTotal;
                     nPrimeAverageTime /= nTotal;
@@ -252,7 +250,7 @@ namespace TAO
                 blockState = TAO::Ledger::ChainState::stateBest.load();
 
                 bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
-                for(;  (nHTotal < 1440 && bLastStateFound); nHTotal ++)
+                for(;  (nHTotal < 1440 && bLastStateFound); ++nHTotal)
                 {
                     uint64_t nLastBlockTime = blockState.GetBlockTime();
                     blockState = blockState.Prev();
@@ -263,7 +261,7 @@ namespace TAO
 
                 }
                 // protect against getmininginfo being called before hash channel start block
-                if( nHTotal > 0)
+                if(nHTotal > 0)
                 {
                     nHashAverageDifficulty /= nHTotal;
                     nHashAverageTime /= nHTotal;

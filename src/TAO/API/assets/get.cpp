@@ -50,10 +50,11 @@ namespace TAO
 
             /* Check to see whether the caller has requested a specific data field to return */
             std::string strDataField = "";
+            
             if(params.find("datafield") != params.end())
                 strDataField =  params["datafield"].get<std::string>();
 
-            /* Get the asset from the register DB.  We can read it as an Object.  
+            /* Get the asset from the register DB.  We can read it as an Object.
                If this fails then we try to read it as a base State type and assume it was
                created as a raw format asset */
             TAO::Register::Object object;
@@ -62,10 +63,10 @@ namespace TAO
 
             /* parse object so that the data fields can be accessed */
             object.Parse();
-            
+
             /* Convert the object to JSON */
             ret = TAO::API::ObjectRegisterToJSON(object, strDataField);
-            
+
             return ret;
         }
     }

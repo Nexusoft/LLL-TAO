@@ -36,7 +36,10 @@ namespace TAO
         public:
 
             /** Default Constructor. **/
-            RPC() { Initialize(); }
+            RPC()
+            {
+                Initialize();
+            }
 
 
             /** Virtual destructor. **/
@@ -77,7 +80,7 @@ namespace TAO
             *  @return the sanitized json parameters array.
             *
             **/
-            virtual json::json SanitizeParams( const std::string& strMethod, const json::json& jsonParams );
+            virtual json::json SanitizeParams(const std::string& strMethod, const json::json& jsonParams);
 
 
             /** Echo
@@ -104,7 +107,7 @@ namespace TAO
              *  @return JSON containing the help list
              *
              **/
-            json::json Help( const json::json& params, bool fHelp);
+            json::json Help(const json::json& params, bool fHelp);
 
 
             /** Stop

@@ -30,9 +30,7 @@ namespace TAO
         json::json RPC::Stop(const json::json& params, bool fHelp)
         {
             if (fHelp || params.size() != 0)
-                return std::string(
-                    "stop"
-                    " - Stop Nexus server.");
+                return std::string("stop - Stop Nexus server.");
             // Shutdown will take long enough that the response should get back
             Shutdown();
             return "Nexus server stopping";
@@ -55,14 +53,13 @@ namespace TAO
         {
             if(fHelp || params.size() != 0)
                 return std::string(
-                    "reset"
-                    " - Restart all node connections");
+                    "reset - Restart all node connections");
 
             // read in any config file changes
             config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
 
             //disconnect all nodes currently active
-            if(LLP::LEGACY_SERVER )
+            if(LLP::LEGACY_SERVER)
             {
                 LLP::LEGACY_SERVER->DisconnectAll();
 

@@ -72,7 +72,7 @@ namespace TAO
             if(params.find("name") != params.end())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = RegisterAddressFromName( params, "asset", params["name"].get<std::string>());
+                hashRegister = RegisterAddressFromName(params, "asset", params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
@@ -89,7 +89,7 @@ namespace TAO
             if(params.find("format") != params.end())
                 strFormat = params["format"].get<std::string>();
 
-            /* Get the asset from the register DB.  We can read it as an Object.  
+            /* Get the asset from the register DB.  We can read it as an Object.
                If this fails then we try to read it as a base State type and assume it was
                created as a raw format asset */
             TAO::Register::Object asset;
@@ -98,21 +98,21 @@ namespace TAO
 
             /* parse object so that the data fields can be accessed */
             asset.Parse();
-            
+
             /* Declare operation stream to serialize all of the field updates*/
             TAO::Operation::Stream operationStream;
 
-            if( strFormat == "JSON")
+            if(strFormat == "JSON")
             {
                 /* Iterate through each field definition */
                 for (auto it = params.begin(); it != params.end(); ++it)
                 {
                     /* Skip any incoming parameters that are keywords used by this API method*/
-                    if( it.key() == "pin" 
-                        || it.key() == "session"
-                        || it.key() == "name"
-                        || it.key() == "address"
-                        || it.key() == "format")
+                    if(it.key() == "pin"
+                       || it.key() == "session"
+                       || it.key() == "name"
+                       || it.key() == "address"
+                       || it.key() == "format")
                     {
                         continue;
                     }
@@ -125,38 +125,38 @@ namespace TAO
 
                         /* Check that the data field exists in the asset */
                         uint8_t nType = TAO::Register::TYPES::UNSUPPORTED;
-                        if( !asset.Type(strDataField, nType))
+                        if(!asset.Type(strDataField, nType))
                             throw APIException(-25, debug::safe_printstr( "Field not found in asset: ", strDataField));
 
-                        if( !asset.Check(strDataField, nType, true))
+                        if(!asset.Check(strDataField, nType, true))
                             throw APIException(-25, debug::safe_printstr( "Field not mutable in asset: ", strDataField));
 
                         /* Convert the incoming value to the correct type and write it into the asset object */
                         if( nType == TAO::Register::TYPES::UINT8_T)
                             operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT8_T) << uint8_t(stol(strValue));
-                        else if( nType == TAO::Register::TYPES::UINT16_T)
+                        else if(nType == TAO::Register::TYPES::UINT16_T)
                             operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT16_T) << uint16_t(stol(strValue));
-                        else if( nType == TAO::Register::TYPES::UINT32_T)
+                        else if(nType == TAO::Register::TYPES::UINT32_T)
                             operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT32_T) << uint32_t(stol(strValue));
-                        else if( nType == TAO::Register::TYPES::UINT64_T)
+                        else if(nType == TAO::Register::TYPES::UINT64_T)
                             operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT64_T) << uint64_t(stol(strValue));
-                        else if( nType == TAO::Register::TYPES::UINT256_T)
+                        else if(nType == TAO::Register::TYPES::UINT256_T)
                             operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << uint256_t(strValue);
-                        else if( nType == TAO::Register::TYPES::UINT512_T)
+                        else if(nType == TAO::Register::TYPES::UINT512_T)
                             operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT512_T) << uint512_t(strValue);
-                        else if( nType == TAO::Register::TYPES::UINT1024_T)
+                        else if(nType == TAO::Register::TYPES::UINT1024_T)
                             operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT1024_T) << uint1024_t(strValue);
-                        else if( nType == TAO::Register::TYPES::STRING)
+                        else if(nType == TAO::Register::TYPES::STRING)
                             operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::STRING) << strValue;
-                        else if( nType == TAO::Register::TYPES::BYTES)
+                        else if(nType == TAO::Register::TYPES::BYTES)
                         {
                             bool fInvalid = false;
                             std::vector<unsigned char> vchBytes = encoding::DecodeBase64(strValue.c_str(), &fInvalid);
 
                             if (fInvalid)
-                                throw APIException(-5, "Malformed base64 encoding");   
+                                throw APIException(-5, "Malformed base64 encoding");
 
-                            operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::BYTES) << vchBytes;                     
+                            operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::BYTES) << vchBytes;
                         }
                     }
                     else
@@ -170,11 +170,11 @@ namespace TAO
             }
 
             //run the write operations.
-            if(!TAO::Operation::Write(hashRegister, operationStream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx) )
+            if(!TAO::Operation::Write(hashRegister, operationStream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx))
                 throw APIException(-26, "Operations failed to execute");
             if(!TAO::Operation::Write(hashRegister, operationStream.Bytes(), TAO::Register::FLAGS::WRITE, tx))
                 throw APIException(-26, "Operations failed to execute");
-        
+
             /* Sign the transaction. */
             if(!tx.Sign(users.GetKey(tx.nSequence, strPIN, nSession)))
                 throw APIException(-26, "Ledger failed to sign transaction");
@@ -187,7 +187,7 @@ namespace TAO
             ret["txid"]  = tx.GetHash().ToString();
             ret["address"] = hashRegister.ToString();
 
-            
+
             return ret;
         }
     }

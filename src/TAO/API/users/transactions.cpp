@@ -94,7 +94,7 @@ namespace TAO
                 if(nCurrentPage > nPage)
                     break;
 
-                if( nTotal > nLimit)
+                if(nTotal > nLimit)
                     break;
 
                 TAO::Ledger::BlockState blockState;
@@ -102,7 +102,7 @@ namespace TAO
                 if(!LLD::legDB->ReadBlock(tx.GetHash(), blockState))
                     throw APIException(-25, "Block not found");
 
-                json::json obj = TAO::API::TransactionToJSON( tx, blockState, nVerbose);
+                json::json obj = TAO::API::TransactionToJSON(tx, blockState, nVerbose);
 
                 ret.push_back(obj);
             }

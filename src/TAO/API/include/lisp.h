@@ -34,7 +34,10 @@ namespace TAO
         public:
 
             /** Default Constructor. **/
-            Lisp() { Initialize(); }
+            Lisp()
+            {
+                Initialize();
+            }
 
 
             /** Initialize.
@@ -55,7 +58,7 @@ namespace TAO
                 return "Lisp";
             }
 
-     
+
             /** EIDs
              *
              *  Queries the lisp api and returns the EID's for this node
@@ -68,7 +71,7 @@ namespace TAO
              **/
             json::json EIDs(const json::json& params, bool fHelp);
 
-            
+
 
         };
 

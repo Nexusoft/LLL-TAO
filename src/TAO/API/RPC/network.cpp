@@ -48,8 +48,7 @@ namespace TAO
         {
             if (fHelp || params.size() != 0)
                 return std::string(
-                    "getnetworkhashps"
-                    " - Get network hashrate for the hashing channel.");
+                    "getnetworkhashps - Get network hashrate for the hashing channel.");
 
             /* This constant was determined by finding the time it takes to find hash of given difficulty at a given hash rate.
              * It is the total hashes per second required to find a hash of difficulty 1.0 every second.
@@ -59,14 +58,15 @@ namespace TAO
             int nHTotal = 0;
             unsigned int nHashAverageTime = 0;
             double nHashAverageDifficulty = 0.0;
-            if( TAO::Ledger::ChainState::nBestHeight.load() > 0 && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
+            if(TAO::Ledger::ChainState::nBestHeight.load() > 0
+            && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
             {
                 uint64_t nTimeConstant = 276758250000;
 
                 TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest.load();
 
                 bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
-                for(;  (nHTotal < 1440 && bLastStateFound); nHTotal ++)
+                for(; (nHTotal < 1440 && bLastStateFound); ++nHTotal)
                 {
                     uint64_t nLastBlockTime = blockState.GetBlockTime();
                     blockState = blockState.Prev();
@@ -74,21 +74,20 @@ namespace TAO
 
                     nHashAverageTime += (nLastBlockTime - blockState.GetBlockTime());
                     nHashAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 2));
-
                 }
                 // protect against getmininginfo being called before hash channel start block
-                if( nHTotal > 0)
+                if(nHTotal > 0)
                 {
                     nHashAverageDifficulty /= nHTotal;
                     nHashAverageTime /= nHTotal;
 
                     /* Calculate the hashrate based on nTimeConstant. */
-                    nHashRate = (uint64_t) ((nTimeConstant / nHashAverageTime) * nHashAverageDifficulty);
+                    nHashRate = (uint64_t)((nTimeConstant / nHashAverageTime) * nHashAverageDifficulty);
                 }
             }
 
             json::json obj;
-            obj["averagetime"] =  (int) nHashAverageTime;
+            obj["averagetime"] =  (int)nHashAverageTime;
             obj["averagedifficulty"] = nHashAverageDifficulty;
             obj["hashrate"] = nHashRate;
 
@@ -109,16 +108,16 @@ namespace TAO
              */
             uint64_t nPrimePS = 0;
             double nPrimeAverageDifficulty = 0.0;
-            unsigned int nPrimeAverageTime = 0;
-            if( TAO::Ledger::ChainState::nBestHeight.load() > 0 && TAO::Ledger::ChainState::stateBest.load() != TAO::Ledger::ChainState::stateGenesis)
+            uint32_t nPrimeAverageTime = 0;
+            if(TAO::Ledger::ChainState::nBestHeight.load() > 0 && TAO::Ledger::ChainState::stateBest.load() != TAO::Ledger::ChainState::stateGenesis)
             {
 
-                unsigned int nPrimeTimeConstant = 2480;
-                int nTotal = 0;
+                uint32_t nPrimeTimeConstant = 2480;
+                uint32_t nTotal = 0;
                 TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest.load();
 
                 bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
-                for(; (nTotal < 1440 && bLastStateFound); nTotal ++)
+                for(; (nTotal < 1440 && bLastStateFound); ++nTotal)
                 {
                     uint64_t nLastBlockTime = blockState.GetBlockTime();
                     blockState = blockState.Prev();
@@ -136,11 +135,8 @@ namespace TAO
                 nPrimePS = (uint64_t)((nPrimeTimeConstant / nPrimeAverageTime) * std::pow(50.0, (nPrimeAverageDifficulty - 3.0)));
             }
 
-
-
-
             json::json obj;
-            obj["averagetime"] = (int) nPrimeAverageTime;
+            obj["averagetime"] = (int)nPrimeAverageTime;
             obj["averagedifficulty"] = nPrimeAverageDifficulty;
             obj["primespersecond"] = nPrimePS;
 
@@ -151,19 +147,16 @@ namespace TAO
         json::json RPC::GetNetworkTrustKeys(const json::json& params, bool fHelp)
         {
             if (fHelp || params.size() != 0)
-                return std::string(
-                    "getnetworktrustkeys"
-                    " - List all the Trust Keys on the Network");
-
+                return std::string("getnetworktrustkeys - List all the Trust Keys on the Network");
 
             json::json response;
             std::vector<json::json> trustKeyList;
 
             /* Map will store trust keys, keyed by stake rate, sorted in descending order */
-            std::multimap<double, TAO::Ledger::TrustKey, std::greater<double>> mapTrustKeys;
+            std::multimap<double, TAO::Ledger::TrustKey, std::greater<double> > mapTrustKeys;
 
             /* Retrieve all raw trust database keys from keychain */
-            const std::vector< std::vector<uint8_t> >& vKeys = LLD::trustDB->GetKeys();
+            const std::vector<std::vector<uint8_t> >& vKeys = LLD::trustDB->GetKeys();
 
             /* Search through the trust keys. */
             for (const auto& key : vKeys)
@@ -189,7 +182,7 @@ namespace TAO
             }
 
             /* Now have map of all trust keys. Assemble into response data */
-            for (auto& item : mapTrustKeys)
+            for(auto& item : mapTrustKeys)
             {
                 json::json obj;
                 Legacy::NexusAddress address;
@@ -211,7 +204,7 @@ namespace TAO
         /* Returns the number of blocks in the longest block chain */
         json::json RPC::GetBlockCount(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 0)
+            if(fHelp || params.size() != 0)
                 return std::string(
                     "getblockcount"
                     " - Returns the number of blocks in the longest block chain.");
@@ -225,8 +218,7 @@ namespace TAO
         {
             if (fHelp || params.size() != 0)
                 return std::string(
-                    "getblocknumber"
-                    " - Deprecated.  Use getblockcount.");
+                    "getblocknumber - Deprecated.  Use getblockcount.");
 
             return (int)TAO::Ledger::ChainState::nBestHeight.load();
         }
@@ -236,8 +228,7 @@ namespace TAO
         {
             if (fHelp || params.size() != 0)
                 return std::string(
-                    "getdifficulty"
-                    " - Returns difficulty as a multiple of the minimum difficulty.");
+                    "getdifficulty - Returns difficulty as a multiple of the minimum difficulty.");
 
             TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest.load();
             bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 0);
@@ -279,7 +270,7 @@ namespace TAO
                     " This is to prevent error from Gregorian Figures.");
 
             json::json obj;
-            unsigned int nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
+            uint32_t nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
 
             obj["chainAge"] = (int)nMinutes;
 
@@ -313,7 +304,7 @@ namespace TAO
                     " Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp");
 
             json::json obj;
-            unsigned int nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
+            uint32_t nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
 
             obj["chainAge"] = (int)nMinutes;
             obj["miners"] = Legacy::SatoshisToAmount(TAO::Ledger::CompoundSubsidy(nMinutes, 0));
@@ -373,7 +364,7 @@ namespace TAO
 
         }
 
-        
+
 
         /* getblock <hash> [txinfo]"
         *  txinfo optional to print more detailed tx info."

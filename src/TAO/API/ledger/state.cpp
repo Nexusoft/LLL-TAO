@@ -65,7 +65,7 @@ namespace TAO
                     nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
 
                 }
-                /* If we have at least 1 prime block, work out the averages*/ 
+                /* If we have at least 1 prime block, work out the averages*/
                 if( nTotal > 0)
                 {
                     nPrimeAverageDifficulty /= nTotal;
@@ -93,7 +93,7 @@ namespace TAO
                 bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
 
                 /* Take a max of 1440 samples, which equates to ~20 hours*/
-                for(;  (nHTotal < 1440 && bLastStateFound); nHTotal ++)
+                for(; (nHTotal < 1440 && bLastStateFound); ++nHTotal)
                 {
                     /* Get the block time for this block so that we can work out the time between successive hash blocks */
                     uint64_t nLastBlockTime = blockState.GetBlockTime();
@@ -107,8 +107,8 @@ namespace TAO
 
                 }
                 /* protect against getmininginfo being called before hash channel start block */
-                /* If we have at least 1 hash block, work out the averages */ 
-                if( nHTotal > 0)
+                /* If we have at least 1 hash block, work out the averages */
+                if(nHTotal > 0)
                 {
                     nHashAverageDifficulty /= nHTotal;
                     nHashAverageTime /= nHTotal;

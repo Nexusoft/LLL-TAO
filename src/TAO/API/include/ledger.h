@@ -36,7 +36,10 @@ namespace TAO
         public:
 
             /** Default Constructor. **/
-            Ledger() { Initialize(); }
+            Ledger()
+            {
+                Initialize();
+            }
 
 
             /** Initialize.
@@ -99,7 +102,7 @@ namespace TAO
 
             /** Blocks
              *
-             *  Retrieves the block data for a sequential range of blocks 
+             *  Retrieves the block data for a sequential range of blocks
              *  starting at a given hash or height.
              *
              *  @param[in] params The parameters from the API call.
@@ -123,7 +126,7 @@ namespace TAO
              **/
             json::json Transaction(const json::json& params, bool fHelp);
 
-            
+
             /** MiningInfo
             *
             *  Returns an object containing mining-related information

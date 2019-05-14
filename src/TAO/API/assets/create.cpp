@@ -88,9 +88,9 @@ namespace TAO
             std::string strFormat = "basic"; // default to basic format if no foramt is specified
             if(params.find("format") != params.end())
                 strFormat = params["format"].get<std::string>();
-            
+
             // parse the incoming asset definition based on the specified format
-            if( strFormat == "raw")
+            if(strFormat == "raw")
             {
                 /* If format = raw then use a raw state register rather than an object */
                 if(params.find("data") == params.end())
@@ -104,19 +104,19 @@ namespace TAO
                 tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::REGISTER::RAW << ssData.Bytes();
 
             }
-            else if( strFormat == "basic")
+            else if(strFormat == "basic")
             {
                 /* declare the object register to hold the asset data*/
                 TAO::Register::Object asset;
 
                 /* Track the number of fields so that we can check there is at least one */
                 int nFieldCount = 0;
-                
+
                 /* Iterate through the paramers and infer the type for each value */
                 for (auto it = params.begin(); it != params.end(); ++it)
                 {
                     /* Skip any incoming parameters that are keywords used by this API method*/
-                    if( it.key() == "pin" 
+                    if( it.key() == "pin"
                         || it.key() == "session"
                         || it.key() == "name"
                         || it.key() == "format"
@@ -126,18 +126,18 @@ namespace TAO
                         continue;
                     }
 
-                    if( it->is_string())
+                    if(it->is_string())
                     {
                         nFieldCount++;
 
                         std::string strValue = it->get<std::string>();
-                        asset << it.key()  << uint8_t(TAO::Register::TYPES::STRING) << strValue;
+                        asset << it.key() << uint8_t(TAO::Register::TYPES::STRING) << strValue;
                     }
                     else
                     {
                         throw APIException(-25, "Non-string types not supported in basic format.");
                     }
-                     
+
 
                 }
 
@@ -148,7 +148,7 @@ namespace TAO
                 tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
 
             }
-            else if( strFormat == "JSON")
+            else if(strFormat == "JSON")
             {
                 /* If format = JSON then grab the asset definition from the json field */
                 if(params.find("json") == params.end())
@@ -168,10 +168,10 @@ namespace TAO
                 /* Iterate through each field definition */
                 for (auto it = jsonAssetDefinition.begin(); it != jsonAssetDefinition.end(); ++it)
                 {
-                    /* Check that the required fields have been provided*/ 
+                    /* Check that the required fields have been provided*/
                     if(it->find("name") == it->end())
                         throw APIException(-25, "Missing name field in json defintion");
-                    
+
                     if(it->find("type") == it->end())
                         throw APIException(-25, "Missing type field in json defintion");
 
@@ -187,10 +187,10 @@ namespace TAO
                     std::string strValue = (*it)["value"].get<std::string>();
                     bool fMutable = (*it)["mutable"].get<std::string>() == "true";
 
-                    /* Add the field to the Object based on the user defined type. 
+                    /* Add the field to the Object based on the user defined type.
                        NOTE: all numeric values <= 64-bit are converted from string to the corresponding type.
                        Numeric values > 64-bit are assumed to be in hex and are converted via the uintXXX constructor */
-                    
+
                     /* Serialize the data field name */
                     asset << strName;
 
@@ -221,11 +221,11 @@ namespace TAO
                         std::vector<unsigned char> vchBytes = encoding::DecodeBase64(strValue.c_str(), &fInvalid);
 
                         if (fInvalid)
-                            throw APIException(-5, "Malformed base64 encoding");   
+                            throw APIException(-5, "Malformed base64 encoding");
 
                         asset << uint8_t(TAO::Register::TYPES::BYTES) << vchBytes;
                     }
-                        
+
 
                     nFieldCount++;
                 }
@@ -242,11 +242,11 @@ namespace TAO
             {
                 throw APIException(-25, "Unsupported format specified");
             }
-            
 
 
 
-    
+
+
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
                 throw APIException(-26, "Operations failed to execute");

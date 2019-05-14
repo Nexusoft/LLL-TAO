@@ -459,7 +459,7 @@ namespace TAO
         template<typename key, typename value>
         bool Find(std::map<key, value> map, value search)
         {
-            for(typename std::map<key, value>::iterator it = map.begin(); it != map.end(); it++)
+            for(typename std::map<key, value>::iterator it = map.begin(); it != map.end(); ++it)
                 if(it->second == search)
                     return true;
 
@@ -480,7 +480,7 @@ namespace TAO
             int64_t nAmount = Legacy::AmountToSatoshis(params[2]);
 
             // unused parameter, used to be nMinDepth, keep type-checking it though
-            if (params.size() > 3 && !params[3].is_number() )
+            if (params.size() > 3 && !params[3].is_number())
                 throw APIException(-3, "Invalid minconf value");
 
             std::string strComment;
@@ -570,12 +570,12 @@ namespace TAO
         * requires wallet passphrase to be set with walletpassphrase first*/
         json::json RPC::SendMany(const json::json& params, bool fHelp)
         {
-            if (Legacy::Wallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4 ))
+            if (Legacy::Wallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
                 return std::string(
                     "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
                     " - amounts are double-precision floating point numbers"
                     " requires wallet passphrase to be set with walletpassphrase first");
-            if (!Legacy::Wallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4 ))
+            if (!Legacy::Wallet::GetInstance().IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
                 return std::string(
                     "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
                     "amounts are double-precision floating point numbers");
@@ -1100,7 +1100,7 @@ namespace TAO
 
             /* Get the available addresses from the wallet */
             std::map<Legacy::NexusAddress, int64_t> mapAddresses;
-            if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((unsigned int)runtime::unifiedtimestamp(), mapAddresses))
+            if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
                 throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
             /* Find all the addresses in the list */
@@ -1139,7 +1139,7 @@ namespace TAO
 
             /* Get the available addresses from the wallet */
             std::map<Legacy::NexusAddress, int64_t> mapAddresses;
-            if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((unsigned int)runtime::unifiedtimestamp(), mapAddresses))
+            if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
                 throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
             /* Find all the addresses in the list */
@@ -1147,7 +1147,7 @@ namespace TAO
             {
                 if(Legacy::Wallet::GetInstance().GetAddressBook().HasAddress(entry.first))
                 {
-                    std::string strAccount = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(entry.first) ;
+                    std::string strAccount = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(entry.first);
                     if(strAccount == "")
                         strAccount = "default";
 
@@ -1166,7 +1166,8 @@ namespace TAO
             }
 
             json::json ret;
-            for(const auto& accountBalance :  mapAccountBalances) {
+            for(const auto& accountBalance :  mapAccountBalances)
+            {
                 ret[accountBalance.first] = Legacy::SatoshisToAmount(accountBalance.second);
             }
 
@@ -1208,7 +1209,7 @@ namespace TAO
                     throw APIException(-8, "Invalid parameter");
             }
 
-            int depth = nBlockHeight ? (1 + TAO::Ledger::ChainState::nBestHeight.load() - nBlockHeight) : -1;
+            int32_t depth = nBlockHeight ? (1 + TAO::Ledger::ChainState::nBestHeight.load() - nBlockHeight) : -1;
 
             json::json transactions = json::json::array();
 
@@ -1415,11 +1416,11 @@ namespace TAO
                 strPrefix = params[0].get<std::string>();
 
             LLC::ECKey key;
-            int nCount = 0;
+            uint32_t nCount = 0;
             do
             {
                 key.MakeNewKey(false);
-                nCount++;
+                ++nCount;
             } while (nCount < 10000 && strPrefix != HexStr(key.GetPubKey()).substr(0, strPrefix.size()));
 
             if (strPrefix != HexStr(key.GetPubKey()).substr(0, strPrefix.size()))
@@ -1453,13 +1454,15 @@ namespace TAO
             std::set<Legacy::NexusAddress> setAddresses;
             if (params.size() > 0)
             {
-                for(int i = 0; i < params.size(); i++)
+                for(uint32_t i = 0; i < params.size(); ++i)
                 {
                     Legacy::NexusAddress address(params[i].get<std::string>());
-                    if (!address.IsValid()) {
+                    if (!address.IsValid())
+                    {
                         throw APIException(-5, std::string("Invalid Nexus address: ")+params[i].get<std::string>());
                     }
-                    if (setAddresses.count(address)){
+                    if (setAddresses.count(address))
+                    {
                         throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+params[i].get<std::string>());
                     }
                    setAddresses.insert(address);
@@ -1528,13 +1531,13 @@ namespace TAO
                 nMaxDepth = params[1];
 
             std::set<Legacy::NexusAddress> setAddress;
-            if (params.size() > 2)
+            if(params.size() > 2)
             {
-                if( !params[2].is_array())
-                    throw APIException(-8, std::string("Invalid address array format") );
+                if(!params[2].is_array())
+                    throw APIException(-8, std::string("Invalid address array format"));
 
                 json::json inputs = params[2];
-                for (unsigned int i = 0; i < inputs.size(); i++)
+                for(uint32_t i = 0; i < inputs.size(); ++i)
                 {
                     Legacy::NexusAddress address(inputs[i].get<std::string>());
                     if (!address.IsValid())
@@ -1549,10 +1552,10 @@ namespace TAO
 
             json::json results = json::json::array();
             std::vector<Legacy::Output> vecOutputs;
-            Legacy::Wallet::GetInstance().AvailableCoins((unsigned int)runtime::unifiedtimestamp(), vecOutputs, false);
+            Legacy::Wallet::GetInstance().AvailableCoins((uint32_t)runtime::unifiedtimestamp(), vecOutputs, false);
             for(const Legacy::Output& out : vecOutputs)
             {
-                if (out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
+                if(out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
                     continue;
 
                 if(!setAddress.empty())

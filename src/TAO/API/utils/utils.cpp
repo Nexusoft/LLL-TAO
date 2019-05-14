@@ -166,7 +166,7 @@ namespace TAO
 
 
         /* Converts the block to formatted JSON */
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block,  uint32_t nTransactionVerbosity)
+        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
         {
             /* Decalre the response object*/
             json::json result;
@@ -198,7 +198,7 @@ namespace TAO
                 json::json txinfo = json::json::array();
 
                 /* Iterate through each transaction hash in the block vtx*/
-                for (const auto& vtx : block.vtx)
+                for(const auto& vtx : block.vtx)
                 {
                     if(vtx.first == TAO::Ledger::TYPE::TRITIUM_TX)
                     {
@@ -222,7 +222,6 @@ namespace TAO
                             json::json txdata = TransactionToJSON(tx, block, nTransactionVerbosity);
 
                             txinfo.push_back(txdata);
-
                         }
                     }
                 }
@@ -234,17 +233,17 @@ namespace TAO
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON( TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
+        json::json TransactionToJSON(TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
         {
             /* Declare JSON object to return */
             json::json txdata;
 
             /* Always add the hash if level 1 and up*/
-            if( nTransactionVerbosity >= 1)
+            if(nTransactionVerbosity >= 1)
                 txdata["hash"] = tx.GetHash().ToString();
 
             /* Basic TX info for level 2 and up */
-            if (nTransactionVerbosity >= 2)
+            if(nTransactionVerbosity >= 2)
             {
                 txdata["type"] = tx.GetTxTypeString();
                 txdata["version"] = tx.nVersion;
@@ -284,11 +283,11 @@ namespace TAO
             txdata["hash"] = tx.GetHash().GetHex();
 
             /* Basic TX info for level 1 and up */
-            if (nTransactionVerbosity > 0)
+            if(nTransactionVerbosity > 0)
             {
                 txdata["type"] = tx.GetTxTypeString();
                 txdata["timestamp"] = tx.nTime;
-                txdata["amount"] = Legacy::SatoshisToAmount( tx.GetValueOut());
+                txdata["amount"] = Legacy::SatoshisToAmount(tx.GetValueOut());
                 txdata["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
                 /* Don't add inputs for coinbase or coinstake transactions */
@@ -343,7 +342,6 @@ namespace TAO
             /* Make sure no exceptions are thrown. */
             try
             {
-
                 /* Loop through the operations ssOperation. */
                 while(!ssOperation.end())
                 {
@@ -353,7 +351,6 @@ namespace TAO
                     /* Check the current opcode. */
                     switch(OPERATION)
                     {
-
                         /* Record a new state to the register. */
                         case TAO::Operation::OP::WRITE:
                         {
@@ -621,7 +618,7 @@ namespace TAO
                 std::string strValue;
                 std::vector<unsigned char> vchBytes;
 
-                for( const auto& strFieldName : vFieldNames)
+                for(const auto& strFieldName : vFieldNames)
                 {
                     /* Only return requested data field if one was specifically requested */
                     if(!strDataField.empty() && strDataField != strFieldName)
@@ -630,37 +627,37 @@ namespace TAO
                     /* First get the type*/
                     object.Type(strFieldName, nType);
 
-                    if(nType == TAO::Register::TYPES::UINT8_T )
+                    if(nType == TAO::Register::TYPES::UINT8_T)
                     {
                         object.Read<uint8_t>(strFieldName, nUint8);
                         ret[strFieldName] = nUint8;
                     }
-                    else if(nType == TAO::Register::TYPES::UINT16_T )
+                    else if(nType == TAO::Register::TYPES::UINT16_T)
                     {
                         object.Read<uint16_t>(strFieldName, nUint16);
                         ret[strFieldName] = nUint16;
                     }
-                    else if(nType == TAO::Register::TYPES::UINT32_T )
+                    else if(nType == TAO::Register::TYPES::UINT32_T)
                     {
                         object.Read<uint32_t>(strFieldName, nUint32);
                         ret[strFieldName] = nUint32;
                     }
-                    else if(nType == TAO::Register::TYPES::UINT64_T )
+                    else if(nType == TAO::Register::TYPES::UINT64_T)
                     {
                         object.Read<uint64_t>(strFieldName, nUint64);
                         ret[strFieldName] = nUint64;
                     }
-                    else if(nType == TAO::Register::TYPES::UINT256_T )
+                    else if(nType == TAO::Register::TYPES::UINT256_T)
                     {
                         object.Read<uint256_t>(strFieldName, nUint256);
                         ret[strFieldName] = nUint256.GetHex();
                     }
-                    else if(nType == TAO::Register::TYPES::UINT512_T )
+                    else if(nType == TAO::Register::TYPES::UINT512_T)
                     {
                         object.Read<uint512_t>(strFieldName, nUint512);
                         ret[strFieldName] = nUint512.GetHex();
                     }
-                    else if(nType == TAO::Register::TYPES::UINT1024_T )
+                    else if(nType == TAO::Register::TYPES::UINT1024_T)
                     {
                         object.Read<uint1024_t>(strFieldName, nUint1024);
                         ret[strFieldName] = nUint1024.GetHex();
@@ -677,13 +674,9 @@ namespace TAO
                     }
 
                 }
-
-
             }
             else
-            {
                 throw APIException(-24, "Specified name/address is not an asset.");
-            }
 
             return ret;
         }

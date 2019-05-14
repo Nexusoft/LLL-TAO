@@ -199,9 +199,9 @@ namespace TAO
              *  If the session is not is available in the params then an APIException is thrown.
              *
              *  @param[in] jsonParams The json array of parameters being passed to this method.
-             *  @param[in] fThrow Flag to indicate whether this method should throw an exception 
+             *  @param[in] fThrow Flag to indicate whether this method should throw an exception
              *             if a valid session ID cannot be found.
-             * 
+             *
              *  @return the pin.
              *
              **/
@@ -224,7 +224,7 @@ namespace TAO
             *  @return the API method URL
             *
             **/
-            std::string RewriteURL( const std::string& strMethod, json::json& jsonParams ) override;
+            std::string RewriteURL(const std::string& strMethod, json::json& jsonParams) override;
 
 
             /** GetName

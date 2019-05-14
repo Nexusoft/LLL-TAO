@@ -38,16 +38,16 @@ namespace TAO
 
         /** RegisterAddressFromName
          *
-         *  Resolves a register address from a name.  
-         *  The register address is a hash of the fully-namespaced name in the format of namespacehash:objecttype:name. 
+         *  Resolves a register address from a name.
+         *  The register address is a hash of the fully-namespaced name in the format of namespacehash:objecttype:name.
          *
          *  @param[in] params The json request params
-         *  @param[in] strObjectType The object type to include in the string to build the register hash from 
-         *  @param[in] strObjectName The name parameter to use in the register hash  
-         *  
+         *  @param[in] strObjectType The object type to include in the string to build the register hash from
+         *  @param[in] strObjectName The name parameter to use in the register hash
+         *
          *  @return The 256 bit hash of the object name.
          **/
-        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectType, const std::string& strObjectName );
+        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectType, const std::string& strObjectName);
 
         /** BlockToJSON
         *

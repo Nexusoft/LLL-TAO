@@ -68,7 +68,7 @@ namespace TAO
 
             /* Get the transaction either from disk or mempool.
                First try to see if it is a tritium tx in the leger db*/
-            if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::legDB->ReadTx(hash, txTritium) )
+            if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::legDB->ReadTx(hash, txTritium))
             {
                 ret = TAO::API::TransactionToJSON (txTritium, blockState, nTransactionVerbosity);
             }

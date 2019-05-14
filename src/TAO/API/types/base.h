@@ -43,7 +43,10 @@ namespace TAO
 
 
             /** Default Constructor **/
-            Base() : fInitialized(false) { }
+            Base()
+            : fInitialized(false)
+            {
+            }
 
 
             /** Default destructor **/
@@ -89,9 +92,9 @@ namespace TAO
                 json::json jsonParamsUpdated = jsonParams;
                 std::string strMethodToCall = strMethod;
 
-                 /* If the incoming method is not in the function map then 
-                   give derived API's the opportunity to rewrite the URL to one that does*/   
-                if( mapFunctions.find(strMethodToCall) == mapFunctions.end())
+                 /* If the incoming method is not in the function map then
+                   give derived API's the opportunity to rewrite the URL to one that does*/
+                if(mapFunctions.find(strMethodToCall) == mapFunctions.end())
                     strMethodToCall = RewriteURL(strMethod, jsonParamsUpdated);
 
                 if(mapFunctions.find(strMethodToCall) != mapFunctions.end())
@@ -106,7 +109,7 @@ namespace TAO
             *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
             *  map directly to a function in the target API.  Insted this method can be overriden to
             *  parse the incoming URL and route to a different/generic method handler, adding parameter
-            *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset 
+            *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
             *  added to the jsonParams
             *  The return json contains the modifed method URL to be called.
             *
@@ -116,7 +119,10 @@ namespace TAO
             *  @return the API method URL
             *
             **/
-            virtual std::string RewriteURL( const std::string& strMethod, json::json& jsonParams ) { return strMethod; };
+            virtual std::string RewriteURL(const std::string& strMethod, json::json& jsonParams)
+            {
+                return strMethod;
+            };
 
 
 
@@ -132,7 +138,10 @@ namespace TAO
             *  @return the sanitized json parameters array.
             *
             **/
-            virtual json::json SanitizeParams( const std::string& strMethod, const json::json& jsonParams ) { return jsonParams; };
+            virtual json::json SanitizeParams(const std::string& strMethod, const json::json& jsonParams)
+            {
+                return jsonParams;
+            };
 
         protected:
 

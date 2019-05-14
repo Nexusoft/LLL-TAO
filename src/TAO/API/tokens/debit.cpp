@@ -67,14 +67,10 @@ namespace TAO
             /* Submit the transaction payload. */
             uint256_t hashTo = 0;
 
-            /* Check for data parameter. */
+            /* If name_to is provided then use this to deduce the register address,
+             * otherwise try to find the raw hex encoded address. */
             if(params.find("name_to") != params.end())
-            {
-                /* If name_to is provided then use this to deduce the register address */
                 hashTo = RegisterAddressFromName( params, "token", params["name_to"].get<std::string>());
-            }
-
-            /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address_to") != params.end())
                 hashTo.SetHex(params["address_to"].get<std::string>());
             else
@@ -84,14 +80,10 @@ namespace TAO
             /* Get the transaction id. */
             uint256_t hashFrom = 0;
 
-            /* Check for data parameter. */
+            /* If name_from is provided then use this to deduce the register address,
+             * otherwise try to find the raw hex encoded address. */
             if(params.find("name_from") != params.end())
-            {
-                /* If name_from is provided then use this to deduce the register address */
                 hashFrom = RegisterAddressFromName( params, "token", params["name_from"].get<std::string>());
-            }
-
-            /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address_from") != params.end())
                 hashFrom.SetHex(params["address_from"].get<std::string>());
             else

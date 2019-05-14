@@ -36,7 +36,10 @@ namespace TAO
         public:
 
             /** Default Constructor. **/
-            Supply() { Initialize(); }
+            Supply()
+            {
+                Initialize();
+            }
 
 
             /** Initialize.

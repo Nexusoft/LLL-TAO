@@ -35,12 +35,16 @@ namespace TAO
 
             /** Default Constructor **/
             APIException(int32_t nCode, const char* strMessage)
-            : json::detail::exception(nCode, strMessage) {}
+            : json::detail::exception(nCode, strMessage)
+            {
+            }
 
 
             /** Default Constructor **/
             APIException(int32_t nCode, const std::string& strMessage)
-            : json::detail::exception(nCode, strMessage.c_str()) {}
+            : json::detail::exception(nCode, strMessage.c_str())
+            {
+            }
 
 
             /** ToJSON
@@ -55,13 +59,13 @@ namespace TAO
                 json::json jsonError;
                 jsonError["code"] = id;
 
-                std::string strMessage = std::string(what()); 
+                std::string strMessage = std::string(what());
 
                 /* If a global error message has been logged via debug::error then include this in the JSON*/
                 if( !debug::strLastError.empty())
                     strMessage += ". " + debug::GetLastError();
 
-                jsonError["message"] = strMessage; 
+                jsonError["message"] = strMessage;
 
                 return jsonError;
             }

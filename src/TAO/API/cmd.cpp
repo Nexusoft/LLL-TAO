@@ -123,7 +123,6 @@ namespace TAO
                 if(!apiNode.Connected())
                 {
                     debug::log(0, "Connection Terminated");
-
                     return 0;
                 }
 
@@ -131,7 +130,6 @@ namespace TAO
                 if(apiNode.Errors())
                 {
                     debug::log(0, "Socket Error");
-
                     return 0;
                 }
 
@@ -139,7 +137,6 @@ namespace TAO
                 if(apiNode.Timeout(120))
                 {
                     debug::log(0, "Socket Timeout");
-
                     return 0;
                 }
 
@@ -198,7 +195,13 @@ namespace TAO
                     parameters.push_back(argv[i]);
             }
             /* Build the HTTP Header. */
-            json::json body = { {"method", argv[argn]}, {"params", parameters}, {"id", 1} };
+            json::json body =
+            {
+                {"method", argv[argn]},
+                {"params", parameters},
+                {"id", 1}
+            };
+
             std::string strContent = body.dump();
             std::string strReply = debug::safe_printstr(
                     "POST / HTTP/1.1\r\n",
@@ -261,7 +264,7 @@ namespace TAO
             /* Dump the response to the console. */
             int nRet = 0;
             std::string strPrint = "";
-            if( rpcNode.INCOMING.strContent.length() > 0)
+            if(rpcNode.INCOMING.strContent.length() > 0)
             {
                 json::json ret = json::json::parse(rpcNode.INCOMING.strContent);
 
@@ -272,8 +275,7 @@ namespace TAO
                 }
                 else
                 {
-
-                    if( ret["result"].is_string())
+                    if(ret["result"].is_string())
                         strPrint = ret["result"].get<std::string>();
                     else
                         strPrint = ret["result"].dump(4);
@@ -289,8 +291,6 @@ namespace TAO
             debug::log(0, strPrint);
 
             return nRet;
-
-            return 0;
         }
     }
 }

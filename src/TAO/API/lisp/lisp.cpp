@@ -39,17 +39,17 @@ namespace TAO
         /* Standard initialization function. */
         void Lisp::Initialize()
         {
-            mapFunctions["eids"]              = Function(std::bind(&Lisp::EIDs,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["eids"] = Function(std::bind(&Lisp::EIDs, this, std::placeholders::_1, std::placeholders::_2));
         }
 
-        
+
 
         /* Queries the lisp api and returns the EID's for this node. */
         json::json Lisp::EIDs(const json::json& params, bool fHelp)
         {
             json::json jsonRet;
 
-            if( LLP::EIDS.size() > 0)
+            if(LLP::EIDS.size() > 0)
             {
                 json::json jsonEIDs = json::json::array();
 
@@ -85,7 +85,7 @@ namespace TAO
 
         }
 
-    
+
     }
 
 }

@@ -34,7 +34,7 @@ namespace TAO
         *  Safely copies wallet.dat to destination, which can be a directory or a path with filename */
         json::json RPC::BackupWallet(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 1)
+            if(fHelp || params.size() != 1)
             {
                 return std::string(
                     "backupwallet <destination>"
@@ -43,7 +43,7 @@ namespace TAO
 
             std::string strDest = params[0].get<std::string>();
             std::string result;
-            if (Legacy::WalletDB::BackupWallet(Legacy::Wallet::GetInstance(), strDest))
+            if(Legacy::WalletDB::BackupWallet(Legacy::Wallet::GetInstance(), strDest))
                 result = "Wallet backup completed";
             else
                 result = "Wallet backup unsuccessful";
@@ -56,17 +56,17 @@ namespace TAO
         *   Fills the keypool, requires wallet passphrase to be set */
         json::json RPC::KeypoolRefill(const json::json& params, bool fHelp)
         {
-            if ((fHelp || params.size() > 0))
+            if((fHelp || params.size() > 0))
                 return std::string(
                     "keypoolrefill"
                     " - Fills the keypool, requires wallet passphrase to be set.");
 
-            if (Legacy::Wallet::GetInstance().IsLocked())
+            if(Legacy::Wallet::GetInstance().IsLocked())
                 throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
             Legacy::Wallet::GetInstance().GetKeyPool().TopUpKeyPool(true);
 
-            if (Legacy::Wallet::GetInstance().GetKeyPool().GetKeyPoolSize() < config::GetArg("-keypool", 100))
+            if(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyPoolSize() < config::GetArg("-keypool", 100))
                 throw APIException(-4, "Error refreshing keypool.");
 
             return "";
@@ -80,16 +80,16 @@ namespace TAO
         *  mintonly is optional true/false allowing only block minting. timeout is ignored if mintonly is true / 1*/
         json::json RPC::WalletPassphrase(const json::json& params, bool fHelp)
         {
-            if (fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && ( params.size() < 1 || params.size() > 3)))
+            if(fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && ( params.size() < 1 || params.size() > 3)))
                 return std::string(
                     "walletpassphrase <passphrase> [timeout] [mintonly]"
                     " - Stores the wallet decryption key in memory for [timeout] seconds."
                     " mintonly is optional true/false allowing only block minting. timeout is ignored if mintonly is true / 1");
 
-            if (!Legacy::Wallet::GetInstance().IsLocked())
+            if(!Legacy::Wallet::GetInstance().IsLocked())
                 throw APIException(-17, "Error: Wallet is already unlocked, use walletlock first if need to change unlock settings.");
 
-            if (!Legacy::Wallet::GetInstance().IsCrypted())
+            if(!Legacy::Wallet::GetInstance().IsCrypted())
                 throw APIException(-15, "Error: running with an unencrypted wallet, but walletpassphrase was called.");
 
             // Note that the walletpassphrase is stored in params[0]
@@ -97,19 +97,19 @@ namespace TAO
             strWalletPass.reserve(100);
             strWalletPass = params[0].get<std::string>().c_str();
 
-            if (strWalletPass.length() > 0)
+            if(strWalletPass.length() > 0)
             {
                 uint32_t nLockSeconds = 0;
-                if (params.size() > 1)
+                if(params.size() > 1)
                     nLockSeconds = (uint32_t)params[1];
 
                 // Nexus: if user OS account compromised prevent trivial sendmoney commands
-                if (params.size() > 2)
+                if(params.size() > 2)
                     Legacy::fWalletUnlockMintOnly = (bool)params[2];
                 else
                     Legacy::fWalletUnlockMintOnly = false;
 
-                if (!Legacy::Wallet::GetInstance().Unlock(strWalletPass, nLockSeconds))
+                if(!Legacy::Wallet::GetInstance().Unlock(strWalletPass, nLockSeconds))
                     throw APIException(-14, "Error: The wallet passphrase entered was incorrect.");
 
                 // asynchronously top up the keypool while we have the wallet unlocked.
@@ -132,12 +132,12 @@ namespace TAO
         *  Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>*/
         json::json RPC::WalletPassphraseChange(const json::json& params, bool fHelp)
         {
-            if (fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && params.size() != 2))
+            if(fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && params.size() != 2))
                 return std::string(
                     "walletpassphrasechange <oldpassphrase> <newpassphrase>"
                     " - Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
 
-            if (!Legacy::Wallet::GetInstance().IsCrypted())
+            if(!Legacy::Wallet::GetInstance().IsCrypted())
                 throw APIException(-15, "Error: running with an unencrypted wallet, but walletpassphrasechange was called.");
 
             SecureString strOldWalletPass;
@@ -148,12 +148,12 @@ namespace TAO
             strNewWalletPass.reserve(100);
             strNewWalletPass = params[1].get<std::string>().c_str();
 
-            if (strOldWalletPass.length() < 1 || strNewWalletPass.length() < 1)
+            if(strOldWalletPass.length() < 1 || strNewWalletPass.length() < 1)
                 return std::string(
                     "walletpassphrasechange <oldpassphrase> <newpassphrase>"
                     " - Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>.");
 
-            if (!Legacy::Wallet::GetInstance().ChangeWalletPassphrase(strOldWalletPass, strNewWalletPass))
+            if(!Legacy::Wallet::GetInstance().ChangeWalletPassphrase(strOldWalletPass, strNewWalletPass))
                 throw APIException(-14, "Error: The wallet passphrase entered was incorrect.");
 
             return "";
@@ -166,14 +166,14 @@ namespace TAO
         *  before being able to call any methods which require the wallet to be unlocked */
         json::json RPC::WalletLock(const json::json& params, bool fHelp)
         {
-            if (fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && params.size() != 0))
+            if(fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && params.size() != 0))
                 return std::string(
                     "walletlock"
                     " - Removes the wallet encryption key from memory, locking the wallet."
                     " After calling this method, you will need to call walletpassphrase again"
                     " before being able to call any methods which require the wallet to be unlocked.");
 
-            if (!Legacy::Wallet::GetInstance().IsCrypted())
+            if(!Legacy::Wallet::GetInstance().IsCrypted())
                 throw APIException(-15, "Error: running with an unencrypted wallet, but walletlock was called.");
 
             {
@@ -187,24 +187,24 @@ namespace TAO
         *  Encrypts the wallet with <passphrase>. */
         json::json RPC::EncryptWallet(const json::json& params, bool fHelp)
         {
-            if (fHelp || (!Legacy::Wallet::GetInstance().IsCrypted() && params.size() != 1))
+            if(fHelp || (!Legacy::Wallet::GetInstance().IsCrypted() && params.size() != 1))
                 return std::string(
                     "encryptwallet <passphrase>"
                     " - Encrypts the wallet with <passphrase>.");
 
-            if (Legacy::Wallet::GetInstance().IsCrypted())
+            if(Legacy::Wallet::GetInstance().IsCrypted())
                 throw APIException(-15, "Error: running with an encrypted wallet, but encryptwallet was called.");
 
             SecureString strWalletPass;
             strWalletPass.reserve(100);
             strWalletPass = params[0].get<std::string>().c_str();
 
-            if (strWalletPass.length() < 1)
+            if(strWalletPass.length() < 1)
                 return std::string(
                     "encryptwallet <passphrase>"
                     " - Encrypts the wallet with <passphrase>.");
 
-            if (!Legacy::Wallet::GetInstance().EncryptWallet(strWalletPass))
+            if(!Legacy::Wallet::GetInstance().EncryptWallet(strWalletPass))
                 throw APIException(-16, "Error: Failed to encrypt the wallet.");
 
             return "wallet encrypted";
@@ -214,10 +214,8 @@ namespace TAO
         *  Check wallet for integrity */
         json::json RPC::CheckWallet(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() > 0)
-                return std::string(
-                    "checkwallet"
-                    " - Check wallet for integrity.");
+            if(fHelp || params.size() > 0)
+                return std::string("checkwallet - Check wallet for integrity.");
 
             uint32_t nMismatchSpent;
             int64_t nBalanceInQuestion;
@@ -238,10 +236,8 @@ namespace TAO
         *  List all the Trust Keys this Node owns */
         json::json RPC::ListTrustKeys(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() > 0)
-                return std::string(
-                    "listtrustkeys"
-                    " - List all the Trust Keys this Node owns.");
+            if(fHelp || params.size() > 0)
+                return std::string("listtrustkeys - List all the Trust Keys this Node owns.");
 
         //     Object result;
         //     LLD::CTrustDB trustdb("cr");
@@ -267,16 +263,14 @@ namespace TAO
         *  Repair wallet if checkwallet reports any problem */
         json::json RPC::RepairWallet(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() > 0)
-                return std::string(
-                    "repairwallet"
-                    " - Repair wallet if checkwallet reports any problem.");
+            if(fHelp || params.size() > 0)
+                return std::string("repairwallet - Repair wallet if checkwallet reports any problem.");
 
             uint32_t nMismatchSpent;
             int64_t nBalanceInQuestion;
             Legacy::Wallet::GetInstance().FixSpentCoins(nMismatchSpent, nBalanceInQuestion);
             json::json result;
-            if (nMismatchSpent == 0)
+            if(nMismatchSpent == 0)
                 result["wallet check passed"] = true;
             else
             {
@@ -291,10 +285,8 @@ namespace TAO
         *  Rescans the database for relevant wallet transactions */
         json::json RPC::Rescan(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 0)
-                return std::string(
-                    "rescan"
-                    " - Rescans the database for relevant wallet transactions.");
+            if(fHelp || params.size() != 0)
+                return std::string("rescan - Rescans the database for relevant wallet transactions.");
 
             Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
 
@@ -306,21 +298,26 @@ namespace TAO
         *  Adds a private key (as returned by dumpprivkey) to your wallet */
         json::json RPC::ImportPrivKey(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() < 1 || params.size() > 2)
+            if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(
                     "importprivkey <PrivateKey> [label]"
                     " - Adds a private key (as returned by dumpprivkey) to your wallet.");
 
             std::string strSecret = params[0];
             std::string strLabel = "";
-            if (params.size() > 1)
+
+            if(params.size() > 1)
                 strLabel = params[1];
+
             Legacy::NexusSecret vchSecret;
             bool fGood = vchSecret.SetString(strSecret);
 
-            if (!fGood) throw APIException(-5,"Invalid private key");
+            if(!fGood)
+                throw APIException(-5,"Invalid private key");
+
             if (Legacy::Wallet::GetInstance().IsLocked())
                 throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+
             if (Legacy::fWalletUnlockMintOnly)
                 throw APIException(-102, "Wallet is unlocked for minting only.");
 
@@ -331,41 +328,42 @@ namespace TAO
             Legacy::NexusAddress vchAddress = Legacy::NexusAddress(key.GetPubKey());
 
             {
-
                 Legacy::Wallet::GetInstance().MarkDirty();
                 Legacy::Wallet::GetInstance().GetAddressBook().SetAddressBookName(vchAddress, strLabel);
 
-                if (!Legacy::Wallet::GetInstance().AddKey(key))
+                if(!Legacy::Wallet::GetInstance().AddKey(key))
                     throw APIException(-4,"Error adding key to wallet");
             }
 
-
             return "";
-
         }
 
         /* dumpprivkey <NexusAddress>
         *  Reveals the private key corresponding to <NexusAddress> */
         json::json RPC::DumpPrivKey(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 1)
+            if(fHelp || params.size() != 1)
                 return std::string(
                     "dumpprivkey <NexusAddress>"
                     " - Reveals the private key corresponding to <NexusAddress>.");
 
             std::string strAddress = params[0];
             Legacy::NexusAddress address;
-            if (!address.SetString(strAddress))
+            if(!address.SetString(strAddress))
                 throw APIException(-5, "Invalid Nexus address");
-            if (Legacy::Wallet::GetInstance().IsLocked())
+
+            if(Legacy::Wallet::GetInstance().IsLocked())
                 throw APIException(-13, "Error: Please unlock the wallet with walletpassphrase first.");
-            if (Legacy::fWalletUnlockMintOnly) // Nexus: no dumpprivkey in mint-only mode
+
+            if(Legacy::fWalletUnlockMintOnly) // Nexus: no dumpprivkey in mint-only mode
                 throw APIException(-102, "Wallet is unlocked for minting only.");
 
             LLC::CSecret vchSecret;
             bool fCompressed;
-            if (!Legacy::Wallet::GetInstance().GetSecret(address, vchSecret, fCompressed))
+
+            if(!Legacy::Wallet::GetInstance().GetSecret(address, vchSecret, fCompressed))
                 throw APIException(-4,"Private key for address " + strAddress + " is not known");
+
             return Legacy::NexusSecret(vchSecret, fCompressed).ToString();
         }
 
@@ -374,7 +372,7 @@ namespace TAO
         *  You need to list the imported keys in a JSON array of {[account],[privatekey]} */
         json::json RPC::ImportKeys(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() < 1)
+            if(fHelp || params.size() < 1)
             {
                 return std::string(
                     "importkeys"
@@ -382,10 +380,12 @@ namespace TAO
                     " You need to list the imported keys in a JSON array of {[account],[privatekey]}");
             }
             /** Make sure the Wallet is Unlocked fully before proceeding. **/
-            if (Legacy::Wallet::GetInstance().IsLocked())
+            if(Legacy::Wallet::GetInstance().IsLocked())
                 throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
-            if (Legacy::fWalletUnlockMintOnly)
+
+            if(Legacy::fWalletUnlockMintOnly)
                 throw APIException(-102, "Wallet is unlocked for minting only.");
+
             if(!params[0].is_object())
                 throw APIException(-8, "Invalid import list format.");
 
@@ -397,7 +397,7 @@ namespace TAO
             json::json response;
 
             /** Import the Keys one by One. **/
-            for (json::json::iterator it = jsonImportArray.begin(); it != jsonImportArray.end(); ++it)
+            for(json::json::iterator it = jsonImportArray.begin(); it != jsonImportArray.end(); ++it)
             {
                 Legacy::NexusSecret vchSecret;
                 if(!vchSecret.SetString(it.value()))
@@ -416,10 +416,9 @@ namespace TAO
                     Legacy::Wallet::GetInstance().MarkDirty();
                     Legacy::Wallet::GetInstance().GetAddressBook().SetAddressBookName(vchAddress, it.key());
 
-                    if (!Legacy::Wallet::GetInstance().AddKey(key))
+                    if(!Legacy::Wallet::GetInstance().AddKey(key))
                     {
                         response[it.key()] = "Code -4 Error Adding to Wallet";
-
                         continue;
                     }
                 }
@@ -442,9 +441,10 @@ namespace TAO
                     " This will allow the importing and exporting of private keys much easier");
 
             /** Disallow the exporting of private keys if the encryption key is not available in the memory. **/
-            if (Legacy::Wallet::GetInstance().IsLocked())
+            if(Legacy::Wallet::GetInstance().IsLocked())
                 throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
-            if (Legacy::fWalletUnlockMintOnly) // Nexus: no dumpprivkey in mint-only mode
+
+            if(Legacy::fWalletUnlockMintOnly) // Nexus: no dumpprivkey in mint-only mode
                 throw APIException(-102, "Wallet is unlocked for minting only.");
 
             /** Compile the list of available Nexus Addresses and their according Balances. **/
@@ -456,12 +456,12 @@ namespace TAO
                 JSON object format is a reflection of the import and export options. **/
             json::json ret = json::json::array();
             json::json entry;
-            for (std::map<Legacy::NexusAddress, int64_t>::iterator it = mapAddresses.begin(); it != mapAddresses.end(); ++it)
+            for(std::map<Legacy::NexusAddress, int64_t>::iterator it = mapAddresses.begin(); it != mapAddresses.end(); ++it)
             {
                 /** Extract the Secret key from the Wallet. **/
                 LLC::CSecret vchSecret;
                 bool fCompressed;
-                if (!Legacy::Wallet::GetInstance().GetSecret(it->first, vchSecret, fCompressed))
+                if(!Legacy::Wallet::GetInstance().GetSecret(it->first, vchSecret, fCompressed))
                     throw APIException(-4,"Private key for address " + it->first.ToString() + " is not known");
 
                 /** Extract the account name from the address book. **/

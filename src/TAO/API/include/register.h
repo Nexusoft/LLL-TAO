@@ -36,7 +36,10 @@ namespace TAO
         public:
 
             /** Default Constructor. **/
-            Register() { Initialize(); }
+            Register()
+            {
+                Initialize();
+            }
 
 
             /** Initialize.

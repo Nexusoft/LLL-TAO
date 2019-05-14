@@ -26,25 +26,25 @@ namespace TAO
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
         *  map directly to a function in the target API.  Insted this method can be overriden to
         *  parse the incoming URL and route to a different/generic method handler, adding parameter
-        *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset 
+        *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
         *  added to the jsonParams
         *  The return json contains the modifed method URL to be called.
         */
-        std::string Assets::RewriteURL( const std::string& strMethod, json::json& jsonParams ) 
-        { 
+        std::string Assets::RewriteURL(const std::string& strMethod, json::json& jsonParams)
+        {
             std::string strMethodRewritten = strMethod;
 
-            
+
             /* route get/myasset to get/asset?name=myasset */
             /* check to see if this method is a get/myasset format. i.e. it starts with get/ */
             if(strMethod.find("get/") == 0)
             {
                 /* get the asset name from after the get/ */
                 std::string strAssetName = strMethod.substr(4);
-                
+
                 /* Check to see whether there is a datafield after the asset name, i.e. get/myasset/somefield */
                 std::string::size_type pos = strAssetName.find("/");
-                
+
                 if(pos != std::string::npos)
                 {
                     std::string strFieldName = strAssetName.substr(pos +1);
@@ -55,7 +55,7 @@ namespace TAO
                 strMethodRewritten = "get/asset";
                 jsonParams["name"] = strAssetName;
             }
-            
+
             /* route create/myasset to create/asset?name=myasset */
             /* check to see if this method is a create/myasset format. i.e. it starts with tokenize/ */
             else if(strMethod.find("create/") == 0)
@@ -89,20 +89,20 @@ namespace TAO
                 jsonParams["name"] = strAssetName;
             }
 
-            
+
             /* route tokenize/myasset to tokenize/asset?name=myasset */
             /* check to see if this method is a tokenize/myasset format. i.e. it starts with tokenize/ */
             else if(strMethod.find("tokenize/") == 0)
             {
                 /* get the asset name from after the tokenize/ */
                 std::string strAssetName = strMethod.substr(9);
-                
+
                 strMethodRewritten = "tokenize/asset";
                 jsonParams["name"] = strAssetName;
             }
 
-            return strMethodRewritten; 
-            
+            return strMethodRewritten;
+
         }
 
 

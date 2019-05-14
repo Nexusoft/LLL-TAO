@@ -65,9 +65,9 @@ namespace TAO
 
             /* Clear the sessions map of all entries */
             mapSessions.clear();
+
             if(!pActivePIN.IsNull())
                 pActivePIN.free();
-
 
             /* Set the shutdown flag and join events processing thread. */
             fShutdown = true;
@@ -86,7 +86,6 @@ namespace TAO
         std::string Users::RewriteURL( const std::string& strMethod, json::json& jsonParams )
         {
             std::string strMethodRewritten = strMethod;
-
 
             /* route create/myusername to create/user?username=myusername */
             /* check to see if this method is a create/myusername format. i.e. it starts with get/ */
@@ -139,9 +138,7 @@ namespace TAO
                 jsonParams["username"] = strUserName;
             }
 
-
             return strMethodRewritten;
-
         }
 
 
@@ -229,7 +226,7 @@ namespace TAO
 
             if(!mapSessions.count(nSessionToUse))
             {
-                if( config::fAPISessions)
+                if(config::fAPISessions)
                     throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
                 else
                     throw APIException(-1, "User not logged in");
@@ -273,9 +270,9 @@ namespace TAO
             SecureString strPIN;
             bool fNeedPin = users.Locked();
 
-            if( fNeedPin && params.find("pin") == params.end() )
+            if(fNeedPin && params.find("pin") == params.end())
                 throw APIException(-25, "Missing PIN");
-            else if( fNeedPin)
+            else if(fNeedPin)
                 strPIN = params["pin"].get<std::string>().c_str();
             else
                 strPIN = users.GetActivePin();
@@ -294,7 +291,7 @@ namespace TAO
             /* Check for session parameter. */
             uint64_t nSession = 0; // ID 0 is used for sessionless API
 
-            if( !config::fAPISessions && !users.LoggedIn())
+            if(!config::fAPISessions && !users.LoggedIn())
             {
                 if(fThrow)
                     throw APIException(-25, "User not logged in");
@@ -305,11 +302,10 @@ namespace TAO
             {
                 if(params.find("session") == params.end())
                 {
-                    if( fThrow)
+                    if(fThrow)
                         throw APIException(-25, "Missing Session ID");
                     else
                         return -1;
-                    
                 }
                 else
                     nSession = std::stoull(params["session"].get<std::string>());
@@ -317,6 +313,5 @@ namespace TAO
 
             return nSession;
         }
-
     }
 }

@@ -61,7 +61,7 @@ namespace TAO
             *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
             *  map directly to a function in the target API.  Insted this method can be overriden to
             *  parse the incoming URL and route to a different/generic method handler, adding parameter
-            *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset 
+            *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
             *  added to the jsonParams
             *  The return json contains the modifed method URL to be called.
             *
@@ -71,7 +71,7 @@ namespace TAO
             *  @return the API method URL
             *
             **/
-            std::string RewriteURL( const std::string& strMethod, json::json& jsonParams ) override;
+            std::string RewriteURL(const std::string& strMethod, json::json& jsonParams) override;
 
 
 

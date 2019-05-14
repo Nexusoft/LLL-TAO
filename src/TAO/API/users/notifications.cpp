@@ -44,16 +44,14 @@ namespace TAO
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
 
-            /* Watch for destination genesis. */
+            /* Watch for destination genesis. If no specific genesis or username
+             * have been provided then fall back to the active sigchain. */
             if(params.find("genesis") != params.end())
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else if(!config::fAPISessions && mapSessions.count(0))
-            {
-                /* If no specific genesis or username have been provided then fall back to the active sig chain */
                 hashGenesis = mapSessions[0]->Genesis();
-            }
             else
                 throw APIException(-25, "Missing Genesis or Username");
 
@@ -78,7 +76,7 @@ namespace TAO
                 throw APIException(-28, "No transactions found");
 
             /* Keep a running list of owned registers. */
-            std::vector< std::tuple<uint256_t, uint256_t, uint64_t> > vRegisters;
+            std::vector<std::tuple<uint256_t, uint256_t, uint64_t> > vRegisters;
 
             /* Loop until genesis. */
             while(hashLast != 0)
@@ -203,8 +201,6 @@ namespace TAO
                         }
                     }
 
-
-
                     ret.push_back(obj);
 
                     /* Iterate sequence forward. */
@@ -264,6 +260,7 @@ namespace TAO
                     obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                     obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                 }
+                
                 obj["hash"]       = tx.GetHash().ToString();
                 obj["operation"]  = OperationToJSON(tx.ssOperation);
 

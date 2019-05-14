@@ -105,7 +105,9 @@ namespace TAO
                 throw APIException(-28, "Invalid credentials");
 
             /* Check the sessions. */
-            { LOCK(MUTEX);
+            {
+                LOCK(MUTEX);
+
                 for(const auto& session : mapSessions)
                 {
                     if(hashGenesis == session.second->Genesis())

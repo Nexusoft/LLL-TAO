@@ -34,18 +34,13 @@ namespace TAO
             /* Get the Register ID. */
             uint256_t hashRegister = 0;
 
-            /* Check for data parameter. */
+            /* If name is provided then use this to deduce the register address,
+             * otherwise try to find the raw hex encoded address.
+             * Fail if no required parameters supplied. */
             if(params.find("name") != params.end())
-            {
-                /* If name is provided then use this to deduce the register address */
-                hashRegister = RegisterAddressFromName( params, "token", params["name"].get<std::string>());
-            }
-
-            /* Otherwise try to find the raw hex encoded address. */
+                hashRegister = RegisterAddressFromName(params, "token", params["name"].get<std::string>());
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"].get<std::string>());
-
-            /* Fail if no required parameters supplied. */
             else
                 throw APIException(-23, "Missing memory address");
 
