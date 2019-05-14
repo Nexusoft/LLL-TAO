@@ -102,7 +102,11 @@ namespace TAO
                 if(!LLD::legDB->ReadBlock(tx.GetHash(), blockState))
                     throw APIException(-25, "Block not found");
 
+                /* Get the transaction JSON data. */
                 json::json obj = TAO::API::TransactionToJSON( tx, blockState, nVerbose);
+
+                /* Add the operations to transaction json. */
+                obj["operation"]     = OperationToJSON(tx.ssOperation);
 
                 ret.push_back(obj);
             }
