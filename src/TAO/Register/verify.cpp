@@ -153,7 +153,121 @@ namespace TAO
                         /* Coinstake operation. Requires an account. */
                         case TAO::Operation::OP::TRUST:
                         {
-                            tx.ssOperation.seek(180);
+                            /* Scope the register pre-state verification. */
+                            {
+                                /* Verify the first register code. */
+                                uint8_t nState;
+                                tx.ssRegister  >> nState;
+
+                                /* Check the state is prestate. */
+                                if(nState != STATES::PRESTATE)
+                                    return debug::error(FUNCTION, "register state not in pre-state");
+
+                                /* Read the register from database. */
+                                State dbstate;
+                                if(!LLD::regDB->ReadTrust(tx.hashGenesis, dbstate))
+                                    return debug::error(FUNCTION, "register pre-state doesn't exist");
+
+                                /* Check the ownership. */
+                                if(dbstate.hashOwner != tx.hashGenesis)
+                                    return debug::error(FUNCTION, "cannot generate pre-state if not owner");
+
+                                /* Verify the register's prestate. */
+                                State prestate;
+                                tx.ssRegister  >> prestate;
+
+                                /* Check that the pre-states match. */
+                                if(dbstate != prestate)
+                                    return debug::error(FUNCTION, "register pre-state mismatch to db-state");
+                            }
+
+                            /* Scope the system register pre-state verification. */
+                            {
+                                /* Get the system pre-state. */
+                                uint8_t nState;
+                                tx.ssSystem  >> nState;
+
+                                /* Check the state is prestate. */
+                                if(nState != STATES::PRESTATE)
+                                    return debug::error(FUNCTION, "register state not in pre-state");
+
+                                /* Read the register from database. */
+                                State dbstate;
+                                if(!LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), dbstate))
+                                    return debug::error(FUNCTION, "register pre-state doesn't exist");
+
+                                /* Verify the register's prestate. */
+                                State prestate;
+                                tx.ssSystem  >> prestate;
+
+                                /* Check that the pre-states match. */
+                                if(dbstate != prestate)
+                                    return debug::error(FUNCTION, "register pre-state mismatch to db-state");
+                            }
+
+
+                            break;
+                        }
+
+
+                        /* Coinstake operation. Requires an account. */
+                        case TAO::Operation::OP::GENESIS:
+                        {
+                            /* Scope the register pre-state verification. */
+                            {
+                                /* Verify the first register code. */
+                                uint8_t nState;
+                                tx.ssRegister  >> nState;
+
+                                /* Check the state is prestate. */
+                                if(nState != STATES::PRESTATE)
+                                    return debug::error(FUNCTION, "register state not in pre-state");
+
+                                /* The account that is being staked. */
+                                uint256_t hashAccount;
+                                tx.ssOperation >> hashAccount;
+
+                                /* Read the register from database. */
+                                State dbstate;
+                                if(!LLD::regDB->ReadState(hashAccount, dbstate))
+                                    return debug::error(FUNCTION, "register pre-state doesn't exist");
+
+                                /* Check the ownership. */
+                                if(dbstate.hashOwner != tx.hashGenesis)
+                                    return debug::error(FUNCTION, "cannot generate pre-state if not owner");
+
+                                /* Verify the register's prestate. */
+                                State prestate;
+                                tx.ssRegister  >> prestate;
+
+                                /* Check that the pre-states match. */
+                                if(dbstate != prestate)
+                                    return debug::error(FUNCTION, "register pre-state mismatch to db-state");
+                            }
+
+                            /* Scope the system register pre-state verification. */
+                            {
+                                /* Get the system pre-state. */
+                                uint8_t nState;
+                                tx.ssSystem  >> nState;
+
+                                /* Check the state is prestate. */
+                                if(nState != STATES::PRESTATE)
+                                    return debug::error(FUNCTION, "register state not in pre-state");
+
+                                /* Read the register from database. */
+                                State dbstate;
+                                if(!LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), dbstate))
+                                    return debug::error(FUNCTION, "register pre-state doesn't exist");
+
+                                /* Verify the register's prestate. */
+                                State prestate;
+                                tx.ssSystem  >> prestate;
+
+                                /* Check that the pre-states match. */
+                                if(dbstate != prestate)
+                                    return debug::error(FUNCTION, "register pre-state mismatch to db-state");
+                            }
 
                             break;
                         }
