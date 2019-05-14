@@ -306,7 +306,7 @@ namespace TAO
                                 tx.ssRegister  >> state;
 
                                 /* Write the register from database. */
-                                if(!LLD::regDB->WriteTrust(tx.hashGenesis, state))
+                                if(!LLD::regDB->WriteState(hashAccount, state))
                                     return debug::error(FUNCTION, "failed to rollback to pre-state");
                             }
 
