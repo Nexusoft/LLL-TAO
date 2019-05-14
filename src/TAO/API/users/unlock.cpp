@@ -104,7 +104,7 @@ namespace TAO
             if(!pActivePIN.IsNull())
                 pActivePIN.free();
 
-            pActivePIN = new TAO::Ledger::PinUnlock( params["pin"].get<std::string>().c_str(), nUnlockedActions);
+            pActivePIN = new TAO::Ledger::PinUnlock(params["pin"].get<std::string>().c_str(), nUnlockedActions);
 
             return true;
         }

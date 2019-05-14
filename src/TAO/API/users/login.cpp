@@ -49,8 +49,9 @@ namespace TAO
             if(params.find("pin") == params.end())
                 throw APIException(-24, "Missing PIN");
 
-            /* Check for unlock actions */
-            uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to no actions
+            /* Check for unlock actions (Default no actions) */
+            uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE;
+
             if(params.find("minting") != params.end()
             && (params["minting"].get<std::string>() == "1"
             || params["minting"].get<std::string>() == "true"))
@@ -76,7 +77,6 @@ namespace TAO
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
                 {
                     user.free();
-
                     throw APIException(-26, "Account doesn't exist");
                 }
 
@@ -124,7 +124,7 @@ namespace TAO
             }
 
             /* Extract the PIN, if supplied, and if the user has specified to remain unlocked for minting or transacting */
-            if(!config::fAPISessions && nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::NONE)
+            if(!config::fAPISessions && nUnlockedActions != TAO::Ledger::PinUnlock::UnlockActions::NONE)
             {
                 if(!pActivePIN.IsNull())
                     pActivePIN.free();
@@ -132,16 +132,16 @@ namespace TAO
                 pActivePIN = new TAO::Ledger::PinUnlock(params["pin"].get<std::string>().c_str(), nUnlockedActions);
             }
 
-
-            /* Set the return value. */
             /* For sessionless API use the active sig chain which is stored in session 0 */
             uint64_t nSession = config::fAPISessions ? LLC::GetRand() : 0;
             ret["genesis"] = hashGenesis.ToString();
+
             if(config::fAPISessions)
                 ret["session"] = debug::safe_printstr(std::dec, nSession);
 
             /* Setup the account. */
-            { LOCK(MUTEX);
+            {
+                LOCK(MUTEX);
                 mapSessions.emplace(nSession, std::move(user));
             }
 

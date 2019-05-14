@@ -72,6 +72,7 @@ namespace TAO
             {
             }
 
+
             /** AddUnchecked.
              *
              *  Add a transaction to the memory pool without validation checks.
@@ -145,7 +146,7 @@ namespace TAO
              *  @return true if pool contained transaction.
              *
              **/
-            bool Get(uint256_t hashGenesis, TAO::Ledger::Transaction& tx) const;
+            bool Get(const uint256_t& hashGenesis, TAO::Ledger::Transaction& tx) const;
 
 
             /** Get
@@ -183,7 +184,7 @@ namespace TAO
              *  @return true if transaction in mempool.
              *
              **/
-            bool Has(uint256_t hashGenesis) const;
+            bool Has(const uint256_t& hashGenesis) const;
 
 
             /** HasLegacy

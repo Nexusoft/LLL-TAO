@@ -147,7 +147,7 @@ namespace TAO
         }
 
 
-        /* Create a new block object from the chain.*/
+        /* Create a new block object from the chain. */
         static memory::atomic<TAO::Ledger::TritiumBlock> blockCache[3];
         bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce)
         {
@@ -249,12 +249,7 @@ namespace TAO
         }
 
 
-        /** Create Genesis
-         *
-         *  Creates the genesis block
-         *
-         *
-         **/
+        /*  Creates the genesis block. */
         bool CreateGenesis()
         {
             uint1024_t genesisHash = TAO::Ledger::ChainState::Genesis();

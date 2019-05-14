@@ -13,9 +13,9 @@ ________________________________________________________________________________
 
 #pragma once
 
+#include <Util/include/allocators.h>
 #include <string>
 
-#include <Util/include/allocators.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -45,21 +45,22 @@ namespace TAO
                 ALL = TRANSACTIONS | MINTING
             };
 
+
             /** Default constructor. **/
             PinUnlock()
             : nUnlockedActions(UnlockActions::NONE)
             , strPIN()
             {
-
             }
+
 
             /** Constructor with pin and actions. **/
             PinUnlock(const SecureString& PIN, uint8_t UnlockedActions)
             : nUnlockedActions(UnlockedActions)
             , strPIN(PIN)
             {
-
             }
+
 
             /** CanTransact
             *

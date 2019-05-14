@@ -134,8 +134,9 @@ namespace TAO
             return true;
         }
 
+
         /* Get by genesis. */
-        bool Mempool::Get(uint256_t hashGenesis, TAO::Ledger::Transaction& tx) const
+        bool Mempool::Get(const uint256_t& hashGenesis, TAO::Ledger::Transaction& tx) const
         {
             LOCK(MUTEX);
 
@@ -153,7 +154,6 @@ namespace TAO
         }
 
 
-
         /* Checks if a transaction exists. */
         bool Mempool::Has(const uint512_t& hashTx) const
         {
@@ -164,7 +164,7 @@ namespace TAO
 
 
         /* Checks if a genesis exists. */
-        bool Mempool::Has(uint256_t hashGenesis) const
+        bool Mempool::Has(const uint256_t& hashGenesis) const
         {
             LOCK(MUTEX);
 

@@ -83,7 +83,7 @@ namespace TAO
         *  added to the jsonParams
         *  The return json contains the modifed method URL to be called.
         */
-        std::string Users::RewriteURL( const std::string& strMethod, json::json& jsonParams )
+        std::string Users::RewriteURL(const std::string& strMethod, json::json& jsonParams)
         {
             std::string strMethodRewritten = strMethod;
 
