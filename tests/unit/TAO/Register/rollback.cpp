@@ -1072,12 +1072,62 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         }
 
 
-        //handle an OP::TRUST
+        //handle an OP::TRUST NOTE: intended failure
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;
             tx.hashGenesis = hashGenesis;
-            tx.nSequence   = 2;
+            tx.nSequence   = 3;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx << uint8_t(OP::TRUST) << hashTx << uint64_t(555);
+
+            //generate the prestates and poststates
+            REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //check register values
+            {
+                Object trust;
+                REQUIRE(LLD::regDB->ReadState(hashTrust, trust));
+
+                //parse register
+                REQUIRE(trust.Parse());
+
+                //check balance
+                REQUIRE(trust.get<uint64_t>("balance") == 5000);
+
+                //check balance
+                REQUIRE(trust.get<uint64_t>("stake") == 0);
+
+                //check for trust index
+                REQUIRE(!LLD::regDB->HasTrust(hashGenesis));
+            }
+
+
+            //check system values
+            {
+                Object sys;
+                REQUIRE(LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), sys));
+
+                //parse register
+                REQUIRE(sys.Parse());
+
+                //check balance
+                REQUIRE(sys.get<uint64_t>("trust") == 0);
+
+                //check balance
+                REQUIRE(sys.get<uint64_t>("stake") == 0);
+            }
+        }
+
+
+        //handle an OP::GENESIS
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 4;
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
@@ -1089,7 +1139,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //commit to disk
             REQUIRE(Execute(tx, FLAGS::WRITE));
 
-            //set the tx hash
+            //set trust hash
             hashTx = tx.GetHash();
 
             //check register values
@@ -1105,6 +1155,9 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                 //check balance
                 REQUIRE(trust.get<uint64_t>("stake") == 5000);
+
+                //check for trust index
+                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trust));
             }
 
 
@@ -1118,6 +1171,112 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                 //check balance
                 REQUIRE(sys.get<uint64_t>("trust") == 0);
+
+                //check balance
+                REQUIRE(sys.get<uint64_t>("stake") == 5000);
+            }
+        }
+
+
+        //handle an OP::TRUST
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 5;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx << uint8_t(OP::TRUST) << hashTx << uint64_t(555);
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //commit to disk
+            REQUIRE(Execute(tx, FLAGS::WRITE));
+
+            //check register values
+            {
+                Object trust;
+                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trust));
+
+                //parse register
+                REQUIRE(trust.Parse());
+
+                //check balance
+                REQUIRE(trust.get<uint64_t>("balance") == 0);
+
+                //check balance
+                REQUIRE(trust.get<uint64_t>("stake") == 5000);
+
+                //check trust
+                REQUIRE(trust.get<uint64_t>("trust") == 555);
+            }
+
+
+            //check system values
+            {
+                Object sys;
+                REQUIRE(LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), sys));
+
+                //parse register
+                REQUIRE(sys.Parse());
+
+                //check balance
+                REQUIRE(sys.get<uint64_t>("trust") == 555);
+
+                //check balance
+                REQUIRE(sys.get<uint64_t>("stake") == 5000);
+            }
+        }
+
+
+        //handle an OP::TRUST
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 6;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx << uint8_t(OP::TRUST) << hashTx << uint64_t(333);
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //commit to disk
+            REQUIRE(Execute(tx, FLAGS::WRITE));
+
+            //check register values
+            {
+                Object trust;
+                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trust));
+
+                //parse register
+                REQUIRE(trust.Parse());
+
+                //check balance
+                REQUIRE(trust.get<uint64_t>("balance") == 0);
+
+                //check balance
+                REQUIRE(trust.get<uint64_t>("stake") == 5000);
+
+                //check trust
+                REQUIRE(trust.get<uint64_t>("trust") == 333);
+            }
+
+
+            //check system values
+            {
+                Object sys;
+                REQUIRE(LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), sys));
+
+                //parse register
+                REQUIRE(sys.Parse());
+
+                //check balance
+                REQUIRE(sys.get<uint64_t>("trust") == 333);
 
                 //check balance
                 REQUIRE(sys.get<uint64_t>("stake") == 5000);
