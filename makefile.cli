@@ -305,6 +305,7 @@ OBJS+=  build/LLC_skein.o \
 		build/API_ledger_transaction.o \
 		build/API_ledger_state.o \
 		build/API_lisp_lisp.o \
+		build/API_system_system.o \
 		build/API_RPC_account.o \
 		build/API_RPC_daemon.o \
 		build/API_RPC_info.o \
@@ -468,6 +469,9 @@ build/API_ledger_%.o: ./src/TAO/API/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_lisp_%.o: ./src/TAO/API/lisp/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_system_%.o: ./src/TAO/API/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_RPC_%.o: ./src/TAO/API/RPC/%.cpp $(HEADERS)
@@ -716,6 +720,13 @@ build/API_ledger_%.o: src/TAO/API/ledger/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_lisp_%.o: src/TAO/API/lisp/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_system_%.o: src/TAO/API/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1069,6 +1080,13 @@ build/API_ledger_%.o: src/TAO/API/ledger/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_lisp_%.o: src/TAO/API/lisp/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_system_%.o: src/TAO/API/system/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
