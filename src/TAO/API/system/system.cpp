@@ -59,22 +59,22 @@ namespace TAO
             /* Declare return JSON object */
             json::json jsonRet;
 
-            /* The daemon version*/
+            /* The daemon version */
             jsonRet["version"] = version::CLIENT_VERSION_BUILD_STRING;
             
-            /* The LLP version*/
+            /* The LLP version */
             jsonRet["protocolversion"] = LLP::PROTOCOL_VERSION;
             
-            /* Legacy wallet version*/
+            /* Legacy wallet version */
             jsonRet["walletversion"] = Legacy::Wallet::GetInstance().GetVersion();
             
-            /* Current unified time as reported by this node*/
+            /* Current unified time as reported by this node. */
             jsonRet["timestamp"] =  (int)runtime::unifiedtimestamp();
 
-            /* If this node is running on the testnet then this shows the testnet number*/
+            /* If this node is running on the testnet then this shows the testnet number. */
             jsonRet["testnet"] = config::GetArg("-testnet", 0);
 
-            /* Whether this node is running in private mode */
+            /* Whether this node is running in private mode. */
             jsonRet["private"] = config::GetBoolArg("-private");
 
             /* The current block height of this node */
@@ -83,21 +83,21 @@ namespace TAO
             /* Only include the sync information when not running in private mode as there is nothing to sync in private */
             if(!config::GetBoolArg("-private"))
             {
-                /* Flag indicating whether this node is currently syncrhonizing*/
+                /* Flag indicating whether this node is currently syncrhonizing. */
                 jsonRet["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
 
                 /* The percentage complete when synchronizing */
                 jsonRet["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
             }
-            /* Number of transactions in the node's mempool*/
+            /* Number of transactions in the node's mempool. */
             jsonRet["txtotal"] =(int)Legacy::Wallet::GetInstance().mapWallet.size();
 
-            /* Number of peer connections*/
+            /* Number of peer connections. */
             if(LLP::TRITIUM_SERVER  && LLP::TRITIUM_SERVER->pAddressManager)
                 jsonRet["connections"] = LLP::TRITIUM_SERVER->pAddressManager->Count(LLP::ConnectState::CONNECTED);
 
 
-            // The EID's of this node if using LISP
+            /* The EID's of this node if using LISP. */
             if( LLP::EIDS.size() > 0)
             {
                 json::json jsonEIDs = json::json::array();
@@ -136,13 +136,13 @@ namespace TAO
 
                 /* The IP address of the peer.  This could be an EID*/
                 obj["address"]  = addr.ToString();
-                /* Whether the IP address is IPv4 or IPv6 */
+                /* Whether the IP address is IPv4 or IPv6. */
                 obj["version"]  = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
-                /* The last known block height of the peer.  This may not be accurate as peers only broadcast their current height periodically */
+                /* The last known block height of the peer.  This may not be accurate as peers only broadcast their current height periodically. */
                 obj["height"]   = addr.nHeight;
-                /* The calculated network latency between this node and the peer */
+                /* The calculated network latency between this node and the peer. */
                 obj["latency"]  = debug::safe_printstr(addr.nLatency, " ms");
-                /* Unix timestamp of the last time this node had any communications with the peer */
+                /* Unix timestamp of the last time this node had any communications with the peer. */
                 obj["lastseen"] = addr.nLastSeen;
                 /* The number of connections successfully established with this peer since this node started */
                 obj["connects"] = addr.nConnected;

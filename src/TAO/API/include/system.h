@@ -71,7 +71,7 @@ namespace TAO
 
             /** GetInfo
              *
-             *  Reurns information about the peers currently connected to this node
+             *  Returns information about the peers currently connected to this node
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
