@@ -36,6 +36,9 @@ namespace TAO
             /* Start the register stream at the beginning. */
             tx.ssRegister.seek(0, STREAM::BEGIN);
 
+            /* Start the system stream at the beginning. */
+            tx.ssSystem.seek(0, STREAM::BEGIN);
+
             /* Make sure no exceptions are thrown. */
             try
             {
@@ -155,7 +158,7 @@ namespace TAO
                         {
                             /* Skip ahead in operation stream. */
                             tx.ssOperation.seek(72);
-                            
+
                             /* Scope the register pre-state verification. */
                             {
                                 /* Verify the first register code. */

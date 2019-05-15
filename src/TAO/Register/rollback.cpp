@@ -37,6 +37,9 @@ namespace TAO
             /* Start the register stream at the beginning. */
             tx.ssRegister.seek(0, STREAM::BEGIN);
 
+            /* Start the system stream at the beginning. */
+            tx.ssSystem.seek(0, STREAM::BEGIN);
+
             /* Make sure no exceptions are thrown. */
             try
             {
