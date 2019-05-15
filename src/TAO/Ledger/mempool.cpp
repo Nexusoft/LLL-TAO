@@ -159,7 +159,7 @@ namespace TAO
         {
             LOCK(MUTEX);
 
-            return mapLedger.count(hashTx);
+            return mapLedger.count(hashTx) || mapLegacy.count(hashTx);
         }
 
 
