@@ -406,6 +406,10 @@ namespace TAO
                 /* Check that the producer is a valid transaction. */
                 if(!producer.IsValid())
                     return debug::error(FUNCTION, "producer transaction is invalid");
+
+                /* Check producer for correct genesis. */
+                if(producer.hashGenesis != uint256_t("0xb5a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41"))
+                    return debug::error(FUNCTION, "invalid genesis generated");
             }
 
 
