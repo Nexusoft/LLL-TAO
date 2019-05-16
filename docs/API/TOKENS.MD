@@ -44,7 +44,7 @@ Create a new token object register. The API supports an alternative endpoint tha
 
 `pin` : The PIN for this signature chain.
 
-`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the asset should be created with. For single-user API mode the session should not be supplied.
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the token should be created with. For single-user API mode the session should not be supplied.
 
 `name` : A name to identify the token. A hash of the name will determine the register address. If no name is provided, a random 256-bit register hash will be generated.
 
@@ -187,7 +187,7 @@ Additionally the API supports passing a field name in the URL after the token na
 
 # `create/account`
 
-Create a new token account for receiving tokens. The API supports an alternative endpoint that can include the token name in the URI.  For example `/tokens/create/account/savings` will resolve to `tokens/create/account?name=savings`.   
+Create a new token account for receiving tokens. The API supports an alternative endpoint that can include the account name in the URI.  For example `/tokens/create/account/savings` will resolve to `tokens/create/account?name=savings`.   
 
 
 ### Endpoint:
@@ -199,7 +199,7 @@ Create a new token account for receiving tokens. The API supports an alternative
 
 `pin` : The PIN for this signature chain.
 
-`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the asset should be created with. For single-user API mode the session should not be supplied.
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the token account should be created with. For single-user API mode the session should not be supplied.
 
 `name` : A name to identify the token account. A hash of the name will determine the register address. If no name is provided, a random 256-bit register hash will be generated.
 
@@ -242,7 +242,7 @@ This example creates a token account called "savings" for a token identified by 
 
 ### Return values:
 
-`txid` : The ID (hash) of the transaction that includes the token creation.
+`txid` : The ID (hash) of the transaction that includes the account creation.
 
 `address` : The register address for this token account. The address (or name that hashes to this address) is needed when creating crediting or debiting the account.    
 
@@ -251,7 +251,7 @@ This example creates a token account called "savings" for a token identified by 
 
 # `debit/account`
 
-Deduct a token amount from a token account and send it to another token account. The API supports an alternative endpoint that can include the token name in the URI.  For example `/tokens/debit/account/savings` will resolve to `tokens/debit/account?name=savings`.   
+Deduct a token amount from a token account and send it to another token account. The API supports an alternative endpoint that can include the account name in the URI.  For example `/tokens/debit/account/savings` will resolve to `tokens/debit/account?name=savings`.   
 
 
 ### Endpoint:
@@ -263,7 +263,7 @@ Deduct a token amount from a token account and send it to another token account.
 
 `pin` : The PIN for this signature chain.
 
-`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the token owner. For single-user API mode the session should not be supplied.
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) that owns the token account. For single-user API mode the session should not be supplied.
 
 `name` : The name identifying the token account to debit. This is optional if the address is provided.  The name should be in namespace:name format
 
@@ -318,13 +318,13 @@ Increment an amount received from another token account to an account owned by y
 
 `pin` : The PIN for this signature chain.
 
-`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the token owner. For single-user API mode the session should not be supplied.
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the token account. For single-user API mode the session should not be supplied.
 
 `name` : The name identifying the token to credit. This is optional if the address is provided.  The name should be in namespace:name format
 
 `namespace` : The namespace that the the account was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
 
-`address` : The register address of the token to credit. This is optional if the name is provided.
+`address` : The register address of the account to credit. This is optional if the name is provided.
 
 `amount` : The amount of tokens to credit.
 
@@ -338,7 +338,7 @@ The following example shows the json payload for a credit of 10 tokens to an acc
 {
     "pin": "1234",
     "session": "16953804956473956578",
-    "name": "jack:savings",
+    "name": "bob:savings",
     "amount": 10,
     "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
 }
