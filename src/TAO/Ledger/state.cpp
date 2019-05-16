@@ -579,6 +579,10 @@ namespace TAO
                     if(LLD::legDB->HasIndex(hash))
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
 
+                    /* Check that previous transaction is indexed. */
+                    if(!LLD::legDB->HasIndex(tx.hashPrevTx))
+                        return debug::error(FUNCTION, "previous transaction not indexed");
+
                     /* Check if is trust or genesis. */
                     if(tx.IsTrust() || tx.IsGenesis())
                     {
