@@ -164,10 +164,10 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                uint32_t(config::GetArg("-argon2", 12)),
+                std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
 
                 /* Memory Cost (64 MB). */
-                (1 << 16),
+                uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))),
 
                 /* The number of threads and lanes */
                 1, 1,
