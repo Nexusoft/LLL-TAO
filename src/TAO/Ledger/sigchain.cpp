@@ -67,7 +67,7 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                uint32_t(config::GetArg("-argon2", 12)),
+                12,
 
                 /* Memory Cost (64 MB). */
                 (1 << 16),
