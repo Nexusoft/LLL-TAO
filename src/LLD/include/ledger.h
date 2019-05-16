@@ -20,12 +20,20 @@ ________________________________________________________________________________
 #include <LLD/templates/sector.h>
 
 #include <TAO/Register/types/state.h>
-
-#include <TAO/Ledger/types/transaction.h>
-#include <TAO/Ledger/types/state.h>
 #include <TAO/Register/include/enum.h>
 
 #include <Util/include/memory.h>
+
+
+/** Forward declarations **/
+namespace TAO
+{
+    namespace Ledger
+    {
+        class BlockState;
+        class Transaction;
+    }
+}
 
 
 namespace LLD
@@ -40,7 +48,7 @@ namespace LLD
     {
         std::mutex MEMORY_MUTEX;
 
-        std::map< std::pair<uint256_t, uint512_t>, uint32_t > mapProofs;
+        std::map<std::pair<uint256_t, uint512_t>, uint32_t> mapProofs;
 
 
     public:
@@ -196,11 +204,12 @@ namespace LLD
          *  to the chain height.
          *
          *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] state The block state of the block the transaction belongs to.
          *
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool RepairIndex(const uint512_t& hashTransaction, TAO::Ledger::BlockState state);
+        bool RepairIndex(const uint512_t& hashTransaction, const TAO::Ledger::BlockState &state);
 
 
         /** RepairIndexHeight
@@ -275,7 +284,7 @@ namespace LLD
          *  @return True if the write was successful.
          *
          **/
-        bool ReadSequence(const uint256_t& hashAddress, uint32_t& nSequence);
+        bool ReadSequence(const uint256_t& hashAddress, uint32_t &nSequence);
 
 
         /** WriteEvent
@@ -315,7 +324,7 @@ namespace LLD
          *  @return True if the write was successful.
          *
          **/
-        bool ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, TAO::Ledger::Transaction& tx);
+        bool ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, TAO::Ledger::Transaction &tx);
 
 
         /** WriteLast

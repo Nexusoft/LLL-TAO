@@ -36,12 +36,11 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LegacyDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase(std::string("legacy"), nFlags) {}
+        LegacyDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE);
 
 
         /** Default Destructor **/
-        virtual ~LegacyDB() {}
+        virtual ~LegacyDB();
 
 
         /** WriteTx
@@ -54,10 +53,7 @@ namespace LLD
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool WriteTx(const uint512_t& hashTransaction, const Legacy::Transaction& tx)
-        {
-            return Write(std::make_pair(std::string("tx"), hashTransaction), tx);
-        }
+        bool WriteTx(const uint512_t& hashTransaction, const Legacy::Transaction& tx);
 
 
         /** ReadTx
@@ -70,10 +66,7 @@ namespace LLD
          *  @return True if the transaction was successfully read, false otherwise.
          *
          **/
-        bool ReadTx(const uint512_t& hashTransaction, Legacy::Transaction& tx)
-        {
-            return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
-        }
+        bool ReadTx(const uint512_t& hashTransaction, Legacy::Transaction& tx);
 
 
         /** EraseTx
@@ -85,10 +78,7 @@ namespace LLD
          *  @return True if the transaction was successfully erased, false otherwise.
          *
          **/
-        bool EraseTx(const uint512_t& hashTransaction)
-        {
-            return Erase(std::make_pair(std::string("tx"), hashTransaction));
-        }
+        bool EraseTx(const uint512_t& hashTransaction);
 
 
         /** HasTx
@@ -100,10 +90,7 @@ namespace LLD
          *  @return True if the transaction exists, false otherwise.
          *
          **/
-        bool HasTx(const uint512_t& hashTransaction)
-        {
-            return Exists(std::make_pair(std::string("tx"), hashTransaction));
-        }
+        bool HasTx(const uint512_t& hashTransaction);
 
 
         /** WriteSpend
@@ -116,10 +103,7 @@ namespace LLD
          *  @return True if the spend is written, false otherwise.
          *
          **/
-        bool WriteSpend(const uint512_t& hashTransaction, uint32_t nOutput)
-        {
-            return Write(std::make_pair(hashTransaction, nOutput));
-        }
+        bool WriteSpend(const uint512_t& hashTransaction, uint32_t nOutput);
 
 
         /** EraseSpend
@@ -132,10 +116,7 @@ namespace LLD
          *  @return True if the spend is erased, false otherwise.
          *
          **/
-        bool EraseSpend(const uint512_t& hashTransaction, uint32_t nOutput)
-        {
-            return Erase(std::make_pair(hashTransaction, nOutput));
-        }
+        bool EraseSpend(const uint512_t& hashTransaction, uint32_t nOutput);
 
 
         /** IsSpent
@@ -148,10 +129,8 @@ namespace LLD
          *  @return True if the output is spent, false otherwise.
          *
          **/
-        bool IsSpent(const uint512_t& hashTransaction, uint32_t nOutput)
-        {
-            return Exists(std::make_pair(hashTransaction, nOutput));
-        }
+        bool IsSpent(const uint512_t& hashTransaction, uint32_t nOutput);
+        
     };
 }
 

@@ -13,7 +13,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/ledger.h>
 
+#include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/types/state.h>
 
 namespace LLD
 {
@@ -117,36 +119,42 @@ namespace LLD
     /*  Recover if an index is not found.
      *  Fixes a corrupted database with a linear search for the hash tx up
      *  to the chain height. */
-    bool LedgerDB::RepairIndex(const uint512_t& hashTransaction, TAO::Ledger::BlockState state)
+    bool LedgerDB::RepairIndex(const uint512_t& hashTransaction, const TAO::Ledger::BlockState &state)
     {
         debug::log(0, FUNCTION, "repairing index for ", hashTransaction.ToString().substr(0, 20));
 
+        TAO::Ledger::BlockState currState = state;
+        uint1024_t hashBlock;
+
         /* Loop until it is found. */
-        while(!config::fShutdown.load() && !state.IsNull())
+        while(!config::fShutdown.load() && !currState.IsNull())
         {
             /* Give debug output of status. */
-            if(state.nHeight % 100000 == 0)
-                debug::log(0, FUNCTION, "repairing index..... ", state.nHeight);
+            if(currState.nHeight % 100000 == 0)
+                debug::log(0, FUNCTION, "repairing index..... ", currState.nHeight);
+
+            /* Get the hash of the current block. */
+            hashBlock = currState.GetHash();
 
             /* Check the state vtx size. */
-            if(state.vtx.size() == 0)
-                debug::error(FUNCTION, "block ", state.GetHash().ToString().substr(0, 20), " has no transactions");
+            if(currState.vtx.size() == 0)
+                debug::error(FUNCTION, "block ", hashBlock.ToString().substr(0, 20), " has no transactions");
 
             /* Check for the transaction. */
-            for(const auto& tx : state.vtx)
+            for(const auto& tx : currState.vtx)
             {
                 /* If the transaction is found, write the index. */
                 if(tx.second == hashTransaction)
                 {
                     /* Repair the index once it is found. */
-                    if(!IndexBlock(hashTransaction, state.GetHash()))
+                    if(!IndexBlock(hashTransaction, hashBlock))
                         return false;
 
                     return true;
                 }
             }
 
-            state = state.Prev();
+            currState = currState.Prev();
         }
 
         return false;
