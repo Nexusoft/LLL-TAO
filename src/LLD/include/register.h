@@ -69,11 +69,12 @@ namespace LLD
             {
                 LOCK(MEMORY_MUTEX);
 
+                /* Set the state in the memory map. */
                 mapStates[hashRegister] = state;
 
                 return true;
             }
-            else
+            else if(nFlags & TAO::Register::FLAGS::WRITE)
             {
                 LOCK(MEMORY_MUTEX);
 
