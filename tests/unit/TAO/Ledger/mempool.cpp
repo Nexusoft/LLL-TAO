@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/system.h>
+#include <TAO/Register/include/verify.h>
 
 #include <TAO/Ledger/types/mempool.h>
 
@@ -466,6 +467,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             for(auto& tx : vTx)
             {
                 LLD::legDB->WriteTx(tx.GetHash(), tx);
+                REQUIRE(Verify(tx, FLAGS::WRITE));
                 REQUIRE(Execute(tx, FLAGS::WRITE));
                 REQUIRE(TAO::Ledger::mempool.Remove(tx.GetHash()));
             }
