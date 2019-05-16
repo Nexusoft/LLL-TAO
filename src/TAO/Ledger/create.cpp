@@ -50,18 +50,29 @@ namespace TAO
         /* Create a new transaction object from signature chain. */
         bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin, TAO::Ledger::Transaction& tx)
         {
-
             /* Get the genesis id of the sigchain. */
-            //uint256_t hashGenesis = user->Genesis();
+            uint256_t hashGenesis = user->Genesis();
+
+            /* Last sigchain transaction. */
+            uint512_t hashLast = 0;
 
             /* Check mempool for other transactions. */
+            TAO::Ledger::Transaction txPrev;
+            if(mempool.Get(hashGenesis, txPrev))
+            {
+                /* Build new transaction object. */
+                tx.nSequence   = txPrev.nSequence + 1;
+                tx.hashGenesis = txPrev.hashGenesis;
+                tx.hashPrevTx  = txPrev.GetHash();
+                tx.NextHash(user->Generate(tx.nSequence + 1, pin));
+
+                return true;
+            }
 
             /* Get the last transaction. */
-            uint512_t hashLast = 0;
-            if(LLD::legDB->ReadLast(user->Genesis(), hashLast))
+            else if(LLD::legDB->ReadLast(user->Genesis(), hashLast))
             {
                 /* Get previous transaction */
-                TAO::Ledger::Transaction txPrev;
                 if(!LLD::legDB->ReadTx(hashLast, txPrev))
                     return debug::error(FUNCTION, "no prev tx ", hashLast.ToString(), " in ledger db");
 

@@ -276,6 +276,16 @@ namespace TAO
              void print() const;
 
 
+             /** ToString
+             *
+             *  Create a transaction string
+             *
+             *  @return The string value to return;
+             *
+             **/
+            std::string ToString() const;
+
+
              /** ToStringShort
              *
              *  Short form of the debug output.

@@ -102,6 +102,95 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //commit to disk
             REQUIRE(TAO::Ledger::mempool.Accept(tx));
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+        }
+
+        {
+            //set address
+            uint256_t hashAddress = LLC::GetRand256();
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 2;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object account = CreateAccount(11);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << account.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //commit to disk
+            REQUIRE(TAO::Ledger::mempool.Accept(tx));
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+        }
+
+
+        {
+            //set address
+            uint256_t hashAddress = LLC::GetRand256();
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 3;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object account = CreateAccount(11);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << account.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //commit to disk
+            REQUIRE(TAO::Ledger::mempool.Accept(tx));
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+        }
+
+
+        {
+            //list of mempool transctions
+            std::vector<TAO::Ledger::Transaction> vTx;
+
+            //check mempool sequencing
+            REQUIRE(TAO::Ledger::mempool.Get(hashGenesis, vTx));
+
+            //commit memory pool transactions to disk
+            for(auto& tx : vTx)
+            {
+                REQUIRE(Execute(tx, FLAGS::WRITE));
+            }
         }
     }
 }

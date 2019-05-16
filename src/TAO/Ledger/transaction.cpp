@@ -307,10 +307,12 @@ namespace TAO
         }
 
 
-        /* Debug output - use ANSI colors. TODO: turn ansi colors on or off with a commandline flag */
-        void Transaction::print() const
+        /* Create a transaction string. */
+        std::string Transaction::ToString() const
         {
-            debug::log(0, IsGenesis() ? "Genesis" : "Tritium", "(",
+            return debug::safe_printstr
+            (
+                IsGenesis() ? "Genesis" : "Tritium", "(",
                 "nVersion = ", nVersion, ", ",
                 "nSequence = ", nSequence, ", ",
                 "nTimestamp = ", nTimestamp, ", ",
@@ -321,7 +323,15 @@ namespace TAO
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",
                 "hash = ", GetHash().ToString().substr(0, 20), ", ",
                 "register.size() = ", ssRegister.size(), ", ",
-                "operation.size() = ", ssOperation.size(), ")" );
+                "operation.size() = ", ssOperation.size(), ")"
+            );
+        }
+
+
+        /* Debug Output. */
+        void Transaction::print() const
+        {
+            debug::log(0, ToString());
         }
 
         /* Short form of the debug output. */
