@@ -32,7 +32,7 @@ namespace LLP
     : mapTrustAddress()
     , mapBanned()
     , mapDNS()
-    , mut()
+    , MUTEX()
     , pDatabase(nullptr)
     , nPort(port)
     {
@@ -60,7 +60,7 @@ namespace LLP
     /*  Determine if the address manager has any addresses in it. */
     bool AddressManager::IsEmpty() const
     {
-        LOCK(mut);
+        LOCK(MUTEX);
 
         return mapTrustAddress.empty();
     }
@@ -73,7 +73,7 @@ namespace LLP
 
         /* Critical section: Get the flagged trust addresses. */
         {
-            LOCK(mut);
+            LOCK(MUTEX);
             get_addresses(vTrustAddr, flags);
         }
 
@@ -92,7 +92,7 @@ namespace LLP
     /* Gets a list of trust addresses from the manager. */
     void AddressManager::GetAddresses(std::vector<TrustAddress> &vTrustAddr, const uint8_t flags)
     {
-        LOCK(mut);
+        LOCK(MUTEX);
         get_addresses(vTrustAddr, flags);
     }
 
@@ -100,7 +100,7 @@ namespace LLP
     /* Gets the trust address count that have the specified flags */
     uint32_t AddressManager::Count(const uint8_t flags)
     {
-        LOCK(mut);
+        LOCK(MUTEX);
         return count(flags);
     }
 
@@ -117,7 +117,7 @@ namespace LLP
 
         uint64_t hash = addr.GetHash();
 
-        LOCK(mut);
+        LOCK(MUTEX);
 
         /* Reject banned addresses. */
         if(is_banned(hash))
@@ -165,7 +165,7 @@ namespace LLP
 
             AddAddress(lookup_address, state);
 
-            LOCK(mut);
+            LOCK(MUTEX);
 
             /* Associate a DNS name with an address. */
             mapDNS[lookup_address.GetHash()] = addrs[i];
@@ -177,7 +177,7 @@ namespace LLP
     void AddressManager::RemoveAddress(const BaseAddress &addr)
     {
         /* Ensure thread safety while removing address. */
-        LOCK(mut);
+        LOCK(MUTEX);
         remove_address(addr);
     }
 
@@ -198,7 +198,7 @@ namespace LLP
     bool AddressManager::Has(const BaseAddress &addr) const
     {
         uint64_t hash = addr.GetHash();
-        LOCK(mut);
+        LOCK(MUTEX);
 
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
@@ -213,7 +213,7 @@ namespace LLP
     {
         uint64_t hash = addr.GetHash();
         uint8_t state = static_cast<uint8_t>(ConnectState::NEW);
-        LOCK(mut);
+        LOCK(MUTEX);
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
             state = it->second.nState;
@@ -226,7 +226,7 @@ namespace LLP
     void AddressManager::SetLatency(uint32_t lat, const BaseAddress &addr)
     {
         uint64_t hash = addr.GetHash();
-        LOCK(mut);
+        LOCK(MUTEX);
 
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
@@ -245,7 +245,7 @@ namespace LLP
     void AddressManager::SetHeight(uint32_t height, const BaseAddress &addr)
     {
         uint64_t hash = addr.GetHash();
-        LOCK(mut);
+        LOCK(MUTEX);
 
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())
@@ -277,7 +277,7 @@ namespace LLP
 
         /* Critical section: Get address info for the selected flags. */
         {
-            LOCK(mut);
+            LOCK(MUTEX);
             get_addresses(vAddresses, flags);
         }
 
@@ -308,7 +308,7 @@ namespace LLP
     /* Print the current state of the address manager. */
     std::string AddressManager::ToString()
     {
-        LOCK(mut);
+        LOCK(MUTEX);
         std::string strRet = debug::safe_printstr(
              "C=", count(ConnectState::CONNECTED),
             " D=", count(ConnectState::DROPPED),
@@ -327,7 +327,7 @@ namespace LLP
     /*  Set the port number for all addresses in the manager. */
     void AddressManager::SetPort(uint16_t port)
     {
-        LOCK(mut);
+        LOCK(MUTEX);
 
         nPort = port;
 
@@ -341,7 +341,7 @@ namespace LLP
     void AddressManager::Ban(const BaseAddress &addr, uint32_t banTime)
     {
         uint64_t hash = addr.GetHash();
-        LOCK(mut);
+        LOCK(MUTEX);
 
         /* Store the hash in the map for banned addresses */
         mapBanned[hash] = banTime;
@@ -353,7 +353,7 @@ namespace LLP
     bool AddressManager::GetDNSName(const BaseAddress &addr, std::string &dns)
     {
         uint64_t hash = addr.GetHash();
-        LOCK(mut);
+        LOCK(MUTEX);
 
         /* Attempt to find the DNS string. */
         auto it = mapDNS.find(hash);
@@ -372,7 +372,7 @@ namespace LLP
     void AddressManager::ReadDatabase()
     {
         {
-            LOCK(mut);
+            LOCK(MUTEX);
 
             /* Make sure the map is empty. */
             mapTrustAddress.clear();
@@ -455,7 +455,7 @@ namespace LLP
         //    return;
         //}
 
-        //LOCK(mut);
+        //LOCK(MUTEX);
 
         //if(!mapTrustAddress.size())
         //  return;
