@@ -15,8 +15,8 @@ The `raw` format differs from the other formats in that the object data is not s
 
 The following methods are currently supported by this API
 
-[`create/schema`](#create/schema)   
-[`get/schema`](#get/schema)   
+[`create/schema`](#createschema)   
+[`get/schema`](#getschema)   
 
 -----------------------------------
 ***

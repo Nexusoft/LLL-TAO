@@ -18,12 +18,12 @@ The logic for resolving the shortcut to either a name or address is that if the 
 
 The following methods are currently supported by this API
 
-[`create/item`](#create/item)   
-[`get/item`](#get/item)   
-[`update/item`](#update/item)   
-[`transfer/item`](#transfer/item)   
-[`claim/item`](#claim/item)   
-[`list/item/history`](#list/item/history)   
+[`create/item`](#createitem)   
+[`get/item`](#getitem)   
+[`update/item`](#updateitem)   
+[`transfer/item`](#transferitem)   
+[`claim/item`](#claimitem)   
+[`list/item/history`](#listitemhistory)   
 
 
 

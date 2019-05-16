@@ -7,12 +7,12 @@ The Ledger API provides users with access to data held by the ledger such as blo
 
 The following methods are currently supported by this API
 
-[`get/blockhash`](#get/blockhash)  
-[`get/block`](#get/block)   
-[`list/blocks`](#list/blocks)   
-[`get/transaction`](#get/transaction)  
-[`submit/transaction`](#submit/transaction)  
-[`get/mininginfo`](#get/mininginfo)  
+[`get/blockhash`](#getblockhash)  
+[`get/block`](#getblock)   
+[`list/blocks`](#listblocks)   
+[`get/transaction`](#gettransaction)  
+[`submit/transaction`](#submittransaction)  
+[`get/mininginfo`](#getmininginfo)  
  
 
 -----------------------------------

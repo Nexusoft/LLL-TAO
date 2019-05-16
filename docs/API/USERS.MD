@@ -16,16 +16,16 @@ Similarly `/users/list/accounts/myusername` is a shortcut to `users/list/account
 
 The following methods are currently supported by this API
 
-[`create/user`](#create/user)  
-[`login/user`](#login/user)   
-[`logout/user`](#logout/user)   
-[`unlock/user`](#unlock/user)  
-[`lock/user`](#lock/user)  
-[`list/transactions`](#list/transactions)    
-[`list/notifications`](#list/notifications)    
-[`list/assets`](#list/assets)    
-[`list/accounts`](#list/accounts)    
-[`list/tokens`](#list/tokens)    
+[`create/user`](#createuser)  
+[`login/user`](#loginuser)   
+[`logout/user`](#logoutuser)   
+[`unlock/user`](#unlockuser)  
+[`lock/user`](#lockuser)  
+[`list/transactions`](#listtransactions)    
+[`list/notifications`](#listnotifications)    
+[`list/assets`](#listassets)    
+[`list/accounts`](#listaccounts)    
+[`list/tokens`](#listtokens)    
  
 
 -----------------------------------

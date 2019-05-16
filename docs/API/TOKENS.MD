@@ -19,13 +19,13 @@ The logic for resolving the shortcut to either a name or address is that if the 
 
 The following methods are currently supported by this API
 
-[`create/token`](#create/token)   
-[`debit/token`](#debit/token)      
-[`get/token`](#get/token)   
-[`create/account`](#create/account)   
-[`debit/account`](#debit/account)   
-[`credit/account`](#credit/account)   
-[`get/account`](#get/account)   
+[`create/token`](#createtoken)   
+[`debit/token`](#debittoken)      
+[`get/token`](#gettoken)   
+[`create/account`](#createaccount)   
+[`debit/account`](#debitaccount)   
+[`credit/account`](#creditaccount)   
+[`get/account`](#getaccount)   
 
 -----------------------------------
 ***

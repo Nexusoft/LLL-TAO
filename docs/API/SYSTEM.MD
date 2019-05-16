@@ -8,9 +8,9 @@ The System API provides public access to information about this node.  This incl
 
 The following methods are currently supported by this API
 
-[`get/info`](#get/info)   
-[`list/peers`](#list/peers)   
-[`get/lisp-eids`](#get/lisp-eids)   
+[`get/info`](#getinfo)   
+[`list/peers`](#listpeers)   
+[`get/lisp-eids`](#getlisp-eids)   
 
 -----------------------------------
 ***

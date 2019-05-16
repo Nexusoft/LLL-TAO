@@ -19,11 +19,11 @@ The logic for resolving the shortcut to either a name or address is that if the 
 
 The following methods are currently supported by this API
 
-[`create/account`](#create/account)   
-[`debit/account`](#debit/account)   
-[`credit/account`](#credit/account)   
-[`get/account`](#get/account)   
-[`list/accounts`](#list/accounts)   
+[`create/account`](#createaccount)   
+[`debit/account`](#debitaccount)   
+[`credit/account`](#creditaccount)   
+[`get/account`](#getaccount)   
+[`list/accounts`](#listaccounts)   
 
 -----------------------------------
 ***

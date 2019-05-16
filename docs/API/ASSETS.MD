@@ -24,13 +24,13 @@ The logic for resolving the shortcut to either a name or address is that if the 
 
 The following methods are currently supported by this API
 
-[`create/asset`](#create/asset)   
-[`get/asset`](#get/asset)   
-[`update/asset`](#update/asset)   
-[`transfer/asset`](#transfer/asset)   
-[`claim/asset`](#claim/asset)   
-[`list/asset/history`](#list/asset/history)   
-[`tokenize/asset`](#tokenize/asset)
+[`create/asset`](#createasset)   
+[`get/asset`](#getasset)   
+[`update/asset`](#updateasset)   
+[`transfer/asset`](#transferasset)   
+[`claim/asset`](#claimasset)   
+[`list/asset/history`](#listassethistory)   
+[`tokenize/asset`](#tokenizeasset)
 
 -----------------------------------
 ***
