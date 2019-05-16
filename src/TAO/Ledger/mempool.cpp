@@ -60,20 +60,24 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
-            LOCK(MUTEX);
-
             /* Runtime calculations. */
             runtime::timer time;
             time.Start();
 
-            /* Check the mempool. */
-            if(mapLedger.count(hashTx))
-                return false;
-
-            /* The next hash that is being claimed. */
+            /* Get ehe next hash being claimed. */
             uint256_t hashClaim = tx.PrevHash();
-            if(mapPrevHashes.count(hashClaim))
-                return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.ToString().substr(0, 20));
+
+            {
+                LOCK(MUTEX);
+
+                /* Check the mempool. */
+                if(mapLedger.count(hashTx))
+                    return false;
+
+                /* The next hash that is being claimed. */
+                if(mapPrevHashes.count(hashClaim))
+                    return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.ToString().substr(0, 20));
+            }
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.IsCoinbase())
@@ -97,11 +101,16 @@ namespace TAO
 
             /* Calculate the future potential states. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
-                return false;//debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
+                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
 
             /* Add to the map. */
-            mapLedger[hashTx] = tx;
-            mapPrevHashes[hashClaim] = hashTx;
+            {
+                LOCK(MUTEX);
+
+                /* Set the internal memory. */
+                mapLedger[hashTx] = tx;
+                mapPrevHashes[hashClaim] = hashTx;
+            }
 
             /* Debug output. */
             debug::log(2, FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");

@@ -74,8 +74,13 @@ namespace TAO
                             return debug::error(FUNCTION, "account can't be created with non-zero balance ", object.get<uint64_t>("balance"));
 
                         /* Check that token identifier hasn't been claimed. */
-                        if(object.get<uint32_t>("identifier") != 0 && !LLD::regDB->HasIdentifier(object.get<uint32_t>("identifier"), nFlags))
-                            return debug::error(FUNCTION, "account can't be created with no identifier ", object.get<uint32_t>("identifier"));
+                        if((nFlags & TAO::Register::FLAGS::WRITE) || (nFlags & TAO::Register::FLAGS::MEMPOOL))
+                        {
+                            /* Check that token identifier hasn't been claimed. */
+                            if(object.get<uint32_t>("identifier") != 0 && !LLD::regDB->HasIdentifier(object.get<uint32_t>("identifier"), nFlags))
+                                return debug::error(FUNCTION, "account can't be created with no identifier ", object.get<uint32_t>("identifier"));
+
+                        }
 
                         break;
                     }

@@ -38,18 +38,20 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
         LLD::regDB->EraseIdentifier(11);
 
         //create object
-        uint256_t hashToken = LLC::GetRand256();
         uint256_t hashGenesis  = LLC::GetRand256();
+        uint512_t hashPrivKey1  = LLC::GetRand512();
+        uint512_t hashPrivKey2  = LLC::GetRand512();
 
-        uint512_t hashPrivKey  = LLC::GetRand512();
-
+        uint512_t hashPrevTx;
         {
+            uint256_t hashToken = LLC::GetRand256();
+
             //create the transaction object
             TAO::Ledger::Transaction tx;
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey);
+            tx.NextHash(hashPrivKey2);
 
             //create object
             Object token = CreateToken(11, 1000, 100);
@@ -61,7 +63,42 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
 
             //sign
-            tx.Sign(hashPrivKey);
+            tx.Sign(hashPrivKey1);
+
+            //commit to disk
+            REQUIRE(TAO::Ledger::mempool.Accept(tx));
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+        }
+
+        {
+            //set address
+            uint256_t hashAddress = LLC::GetRand256();
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 1;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object account = CreateAccount(11);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << account.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
 
             //commit to disk
             REQUIRE(TAO::Ledger::mempool.Accept(tx));
