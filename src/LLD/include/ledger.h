@@ -47,7 +47,12 @@ namespace LLD
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase(std::string("ledger"), nFlagsIn) { }
+        : SectorDatabase(std::string("ledger"), nFlagsIn)
+        , MEMORY_MUTEX()
+        , mapProofs()
+        {
+            
+        }
 
 
         /** Default Destructor **/

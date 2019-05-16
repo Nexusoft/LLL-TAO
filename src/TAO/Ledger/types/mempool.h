@@ -64,7 +64,8 @@ namespace TAO
 
             /** Default Constructor. **/
             Mempool()
-            : mapLegacy()
+            : MUTEX()
+            , mapLegacy()
             , mapLedger()
             , mapPrevHashes()
             , mapInputs()
