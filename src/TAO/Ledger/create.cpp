@@ -51,6 +51,11 @@ namespace TAO
         bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin, TAO::Ledger::Transaction& tx)
         {
 
+            /* Get the genesis id of the sigchain. */
+            //uint256_t hashGenesis = user->Genesis();
+
+            /* Check mempool for other transactions. */
+
             /* Get the last transaction. */
             uint512_t hashLast = 0;
             if(LLD::legDB->ReadLast(user->Genesis(), hashLast))

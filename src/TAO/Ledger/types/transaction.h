@@ -140,6 +140,28 @@ namespace TAO
             }
 
 
+            /** Operator Overload >
+             *
+             *  Used for sorting transactions by sequence.
+             *
+             **/
+             bool operator> (const Transaction& tx)
+             {
+                 return nSequence > tx.nSequence;
+             }
+
+
+             /** Operator Overload <
+              *
+              *  Used for sorting transactions by sequence.
+              *
+              **/
+              bool operator< (const Transaction& tx)
+              {
+                  return nSequence < tx.nSequence;
+              }
+
+
             /** IsValid
              *
              *  Determines if the transaction is a valid transaciton and passes ledger level checks.

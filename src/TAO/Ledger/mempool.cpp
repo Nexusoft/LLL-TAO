@@ -136,21 +136,38 @@ namespace TAO
 
 
         /* Get by genesis. */
-        bool Mempool::Get(const uint256_t& hashGenesis, TAO::Ledger::Transaction& tx) const
+        bool Mempool::Get(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTx) const
         {
             LOCK(MUTEX);
 
             /* Check through the ledger map for the genesis. */
             for(const auto& txMap : mapLedger)
             {
+                /* Check for Genesis. */
                 if(txMap.second.hashGenesis == hashGenesis)
-                {
-                    tx = txMap.second;
-                    return true;
-                }
+                    vTx.push_back(txMap.second);
+
             }
 
-            return false;
+            /* Sort the list by sequence numbers. */
+            std::sort(vTx.begin(), vTx.end());
+
+            return (vTx.size() > 0);
+        }
+
+
+        /* Gets a transaction by genesis. */
+        bool Mempool::Get(const uint256_t& hashGenesis, TAO::Ledger::Transaction &tx) const
+        {
+            /* Get the list of transactions by genesis. */
+            std::vector<TAO::Ledger::Transaction> vTx;
+            if(!Get(hashGenesis, vTx))
+                return false;
+
+            /* Return last item in list (newest). */
+            tx = vTx.back();
+
+            return true;
         }
 
 
