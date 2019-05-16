@@ -84,34 +84,39 @@ They are stored in secure allocator in memory only, do not cache
 them on disk otherwise you could open potential security issues.
 
 
+## Finance API
+
+The Finance API provides methods for sending and receiving NXS coins (tokens) between users / accounts, creating accounts, and managing staking.
+
+The Finance API can be found in the following repo path:
+
+[LLL-TAO/docs/API/FINANCE.MD](API/FINANCE.MD)
+
+NOTE: some of the commands in this API require LOGIN. Make sure to use the users API to login before using LOGIN required commands.
+
+
 
 ## Assets API
 
 The assets API is designed for managing of digital assets, by recording
-meta-data that represents the specific asset. It also provides functionality
-to tokenize the assets themselves, in relation to having an asset owned by
-many individuals.
+meta-data that represents the specific asset. It also provides functionality to tokenize the assets themselves, in relation to having an asset owned by many individuals.
 
 The Assets API can be found in the following repo path:
 
 [LLL-TAO/docs/API/ASSETS.MD](API/ASSETS.MD)
 
-NOTE: some of the commands in this API require LOGIN. Make sure to use the
-accounts API to login before using LOGIN required commands.
+NOTE: some of the commands in this API require LOGIN. Make sure to use the users API to login before using LOGIN required commands.
 
 
 ## Tokens API
 
-The tokens API allows you to create tokens and accounts, in order to send
-and receive tokens with one another. This is also a prerequisite to creating
-tokens that are meant to be shares in a digital asset, or company (STO).
+The tokens API allows you to create tokens and accounts, in order to send and receive tokens with one another. This is also a prerequisite to creating tokens that are meant to be shares in a digital asset, or company (STO).
 
 The Tokens API can be found in the following repo path:
 
 [LLL-TAO/docs/API/TOKENS.MD](API/TOKENS.MD)
 
-NOTE: some of the commands in this API require LOGIN. Make sure to use the
-accounts API to login before using LOGIN required commands.
+NOTE: some of the commands in this API require LOGIN. Make sure to use the users API to login before using LOGIN required commands.
 
 
 ## Ledger API
@@ -122,8 +127,6 @@ The Ledger API can be found in the following repo path:
 
 [LLL-TAO/docs/API/LEDGER.MD](API/LEDGER.MD)
 
-NOTE: some of the commands in this API require LOGIN. Make sure to use the
-accounts API to login before using LOGIN required commands.
 
 
 ## Supply API
@@ -137,16 +140,13 @@ The Supply API can be found in the following repo path:
 
 [LLL-TAO/docs/API/SUPPLY.MD](API/SUPPLY.MD)
 
-NOTE: some of the commands in this API require LOGIN. Make sure to use the
-accounts API to login before using LOGIN required commands.
+NOTE: some of the commands in this API require LOGIN. Make sure to use the users API to login before using LOGIN required commands.
 
 
-## Lisp API
+## System API
 
-The lisp API provides information on the lisp configuration and status for this node.
-The purpose of this API is to offer a summarized and simplified wrapper around the lispers.net API,
-which itself must be running on the local node at localhost:9090/lisp
+The System API provides public access to information about this node.  This includes data such as the version of software the node is running, ledger and mempool state, node IP address, and connected peers.
 
-The Lisp API can be found in the following repo path:
+The System API can be found in the following repo path:
 
-[LLL-TAO/docs/API/LISP.MD](API/SUPPLY.MD)
+[LLL-TAO/docs/API/SYSTEM.MD](API/SYSTEM.MD)

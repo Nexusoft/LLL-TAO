@@ -1,15 +1,16 @@
 # System API
 -----------------------------------
 
-The System API provides public access to information about this node.  This includes data such as the version of software the node is running, ledger and mempool state, node IP address, and connected peers,  
+The System API provides public access to information about this node.  This includes data such as the version of software the node is running, ledger and mempool state, node IP address, and connected peers. 
 
 
 ## `Methods`
 
 The following methods are currently supported by this API
 
-[`get/info`](#get/info)   
-[`list/peers`](#list/peers)   
+[`get/info`](#getinfo)   
+[`list/peers`](#listpeers)   
+[`get/lisp-eids`](#getlisp-eids)   
 
 -----------------------------------
 ***
@@ -146,4 +147,36 @@ Returns a summary of information about the peers currently connected to this nod
 `score` : The score value assigned to this peer based on latency and other connection statistics. 
 
 
-****
+***
+
+# `get\lisp-eids`
+
+This will return the LISP Endpoint Indentifers (EID's) currently configured for this node.
+
+
+### Endpoint:
+
+`/objects/get/lisp-eids`
+
+
+### Parameters:
+
+NONE
+
+### Return value JSON object:
+```
+{
+"eids": 
+    [
+        "240.231.221.134/32",
+        "fe00::231:221:134/128"
+    ]
+}
+```
+
+### Return values:
+
+`eids` : The array of LISP EID's currently configured for this node.
+
+
+***

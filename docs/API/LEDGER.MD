@@ -1,6 +1,22 @@
-# Ledger API Methods
+# Ledger API 
 -----------------------------------
 
+The Ledger API provides users with access to data held by the ledger such as blocks and transactions.
+
+## `Methods`
+
+The following methods are currently supported by this API
+
+[`get/blockhash`](#getblockhash)  
+[`get/block`](#getblock)   
+[`list/blocks`](#listblocks)   
+[`get/transaction`](#gettransaction)  
+[`submit/transaction`](#submittransaction)  
+[`get/mininginfo`](#getmininginfo)  
+ 
+
+-----------------------------------
+****
 
 # `get/blockhash`
 
