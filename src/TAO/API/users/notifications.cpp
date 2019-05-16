@@ -106,7 +106,8 @@ namespace TAO
                     continue;
 
                 /* Skip over identifier 0. */
-                if(!object.Check("identifier", TAO::Register::TYPES::UINT32_T, false) || object.get<uint32_t>("identifier") == 0)
+                if(!object.Check("identifier", TAO::Register::TYPES::UINT32_T, false)
+                || object.get<uint32_t>("identifier") == 0)
                     continue;
 
                 /* Get the token address. */
@@ -260,7 +261,7 @@ namespace TAO
                     obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                     obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                 }
-                
+
                 obj["hash"]       = tx.GetHash().ToString();
                 obj["operation"]  = OperationToJSON(tx.ssOperation);
 

@@ -112,7 +112,7 @@ another object register address.
 <method>:
 /tokens/debit
 
-    <key>=<value> parameter pairs:
+<key>=<value> parameter pairs:
 name=<name>
 address=<address>
 amount=<token-decrement>
@@ -120,8 +120,7 @@ to-name=<receive-name> or to-address=<receive-address>
 session=<session-id>
 pin=<pin>
 
-Input parameter description:
-<name>:
+Input parameter descrip>:
     A token name supplied on the token/create API call.        
 <address>:
     A token object register address returned from the token/create API call.
@@ -174,7 +173,7 @@ Input parameter description:
     A token name supplied on the token/create API call.   The name should be in namespace:name format
 
 `namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
-  
+
 <address>:
     A token object register address returned from the token/create API call.     
 ```

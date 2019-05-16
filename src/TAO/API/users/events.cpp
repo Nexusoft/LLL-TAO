@@ -29,12 +29,16 @@ namespace TAO
         /*  Background thread to handle/suppress sigchain notifications. */
         void Users::EventsThread()
         {
+            uint512_t hashTx;
+            uint256_t hashFrom;
+            uint256_t hashTo;
+            uint64_t nAmount = 0;
+            uint64_t nSession = 0;
+            uint32_t nSequence = 0;
+
+
             while(!fShutdown.load())
             {
-                //uint32_t nSequence = 0;
-
-                //TODO: keep track of
-
 
                 /* Wait for the events processing thread to be woken up (such as a login) */
                 std::unique_lock<std::mutex> lk(EVENTS_MUTEX);
@@ -43,12 +47,14 @@ namespace TAO
                 if(fShutdown.load())
                     return;
 
+                debug::log(0, FUNCTION);
+
                 if(!LoggedIn() || Locked() || !CanTransact())
                     continue;
 
                 /* Get the session to be used for this API call */
                 json::json params;
-                uint64_t nSession = users.GetSession(params);
+                nSession = users.GetSession(params);
 
                 /* Get the account. */
                 memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
@@ -67,24 +73,21 @@ namespace TAO
 
                     for(const auto& notification : ret)
                     {
-                        if(notification["operation"]["OP"] == "DEBIT")
+                        if(notification["operation"]["OP"] == "DEBIT"
+                        || notification["operation"]["OP"] == "COINBASE")
                         {
                             /* Create the transaction. */
                             TAO::Ledger::Transaction tx;
                             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                                 throw APIException(-25, "Failed to create transaction");
 
-                            /* Check for data parameter. */
-                            uint256_t hashProof;
-                            hashProof.SetHex(notification["operation"]["address"]);
+                            /* Set the transaction, to and from hashes. */
+                            hashTx.SetHex(notification["hash"]);
+                            hashFrom.SetHex(notification["operation"]["address"]);
+                            hashTo.SetHex(notification["operation"]["transfer"]);
 
                             /* Get the credit. */
-                            uint64_t nAmount = notification["operation"]["amount"];
-
-                            uint512_t hashTx;
-                            hashTx.SetHex(notification["hash"]);
-
-                            uint256_t hashTo;
+                            nAmount = notification["operation"]["amount"];
 
 
                             // get identifer from notification (you need to add identifier to notification JSON)
@@ -98,10 +101,10 @@ namespace TAO
                             //  - Look at RegisterAddressFromName() method as you can probably use that
 
 
-                            hashTo.SetHex(notification["operation"]["transfer"]);
+
 
                             /* Submit the payload object. */
-                            tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashProof << hashTo << nAmount;
+                            tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashFrom << hashTo << nAmount;
 
                             /* Execute the operations layer. */
                             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
@@ -122,7 +125,7 @@ namespace TAO
                             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                                 throw APIException(-25, "Failed to create transaction");
 
-                            uint512_t hashTx;
+
                             hashTx.SetHex(notification["hash"]);
 
                             /* Submit the payload object. */
@@ -143,8 +146,6 @@ namespace TAO
                     }
 
                     debug::log(0, ret.dump(4));
-
-
                 }
                 catch(const APIException& e)
                 {
@@ -163,10 +164,6 @@ namespace TAO
 
                 /* Use the local DB cache for scanning events to any owned register address */
 
-
-                /* Respond to all TRANSFER notifications with CLAIM. */
-                //debug::log(0, FUNCTION, "Respond to TRANSFER notifications with CLAIM");
-                //debug::log(0, FUNCTION, "Respond to DEBIT notifications with CREDIT");
 
 
                 /* Respond to all DEBIT notifications with CREDIT. */

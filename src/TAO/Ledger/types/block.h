@@ -91,7 +91,7 @@ namespace TAO
              *  @param[in] nChannelIn The channel this block is being created for
              *  @param[in] nHeightIn The height this block is being created at.
              *
-            **/
+             **/
             Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn);
 
 
@@ -103,13 +103,13 @@ namespace TAO
             virtual ~Block();
 
             /** Clone
-            *
-            *  Allows polymorphic copying of blocks
-            *  Derived classes should override this and return an instance of the derived type.
-            *
-            *  @return A pointer to a copy of this Block.
-            *
-            **/
+             *
+             *  Allows polymorphic copying of blocks
+             *  Derived classes should override this and return an instance of the derived type.
+             *
+             *  @return A pointer to a copy of this Block.
+             *
+             **/
             virtual Block* Clone() const {return new Block(*this);};
 
 
@@ -153,7 +153,7 @@ namespace TAO
              *
              *  @return The channel assigned. (uint32_t)
              *
-             */
+             **/
             uint32_t GetChannel() const;
 
 
