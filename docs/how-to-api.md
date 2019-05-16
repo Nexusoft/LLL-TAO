@@ -141,12 +141,10 @@ NOTE: some of the commands in this API require LOGIN. Make sure to use the
 accounts API to login before using LOGIN required commands.
 
 
-## Lisp API
+## System API
 
-The lisp API provides information on the lisp configuration and status for this node.
-The purpose of this API is to offer a summarized and simplified wrapper around the lispers.net API,
-which itself must be running on the local node at localhost:9090/lisp
+The System API provides public access to information about this node.  This includes data such as the version of software the node is running, ledger and mempool state, node IP address, and connected peers.
 
-The Lisp API can be found in the following repo path:
+The System API can be found in the following repo path:
 
-[LLL-TAO/docs/API/LISP.MD](API/SUPPLY.MD)
+[LLL-TAO/docs/API/SYSTEM.MD](API/SYSTEM.MD)

@@ -4,16 +4,16 @@
 Nexus provides several APIs to allow users and developers to easily interact with the functionality of the Nexus software stack. Each API is a logically grouped collection of methods that either interact with a specific part of the stack (e.g. ledger, registers), by functional area (accounts, assets, tokens), or by industry specific use case (supply, music).
 
 
-### Protocol
-The API server uses the HTTP protocol and supports both **GET** and **POST** request methods.  
+### `Protocol`
+The API server uses the `HTTP` protocol and supports both **`GET`** and **`POST`** request methods.  
 
-The API's use **JSON** (JavaScript Object Notation) as their primary data transport mechanism for both input and output.  However the API server also supports URL encoded requests (**application/x-www-form-urlencoded**).   
+The API's use **`JSON`** (JavaScript Object Notation) as their primary data transport mechanism for both input and output.  However the API server also supports URL encoded requests (**`application/x-www-form-urlencoded`**).   
 
-### Port
-By default the API server runs on port 8080. This can be changed by setting apiport=xxxx in your nexus.conf or starting your daemon with the -apiport=xxxx parameter.
+### `Port`
+By default the API server runs on port 8080. This can be changed by setting `apiport=xxxx` in your nexus.conf or starting your daemon with the `-apiport=xxxx` parameter.
 
 
-### Endpoint
+### `Endpoint`
 
 Each API endpoint can be invoked through the following semantics:
 
@@ -26,26 +26,28 @@ http://127.0.0.1:8080/ledger/get/block
 
 **NOTE**:  URI's are always in lowercase.
 
-## Verbs (actions)
+****
+
+## `Verbs (actions)`
 The following list of verbs are used throughout the Nexus APIs.  While the action is generic in nature (i.e. list, get, create), implementations of these actions will adhere to certain semantics or mandatory parameters regardless of the noun (resource).
 
 * `list`
    - Retrieves a sorted list of objects or data
    - Sorting is always newest to oldest
    - Supported parameters:
-     - **page** + **limit** (where the start point is known) *or* **index** + **limit**
-     - **verbose** to indicate the verbosity of the data returned.  Values can be **default**, **summary**, or **detail**
-     - **format** indicates the format of the returned data (where applicable). Values can be **RAW**, **JSON**, **XML**   
+     - `page` + `limit` (where the start point is known) *or* `index` + `limit`
+     - `verbose` to indicate the verbosity of the data returned.  Values can be `default`, `summary`, or `detail`
+     - `format` indicates the format of the returned data (where applicable). Values can be `raw`, `JSON`, `XML`   
 
 * `get`
    - Retrieves a single object or piece of data
    - Supported parameters:
-     - **format** indicates the format of the returned data (where applicable). Values can be **RAW**, **JSON**, **XML**
+     - `format` indicates the format of the returned data (where applicable). Values can be `raw`, `JSON`, `XML`
 
 * `create`
    - Creates a single resource / object
    - Supported parameters:
-     - **format** indicates the format of the data being provided to create the item / object (where applicable). Values can be **RAW**, **JSON**, **XML**, **ANSI C**, and **PYTHON**
+     - `format` indicates the format of the data being provided to create the item / object (where applicable). Values can be `basic`, `raw`, `JSON`, `XML`, and `ANSI C`
 * `debit`
 * `create`
 * `transfer`
@@ -59,8 +61,9 @@ The following list of verbs are used throughout the Nexus APIs.  While the actio
 * `lock`
 * `subscribe`
 
+****
 
-## Nouns (resources)
+## `Nouns (resources)`
 
 Within each API endpoint, a noun is used to describe the resource or object upon which the action is taking place.  
 
@@ -99,8 +102,8 @@ The commonly used resources are described below:
     An asset is an object register of a specialized type.
 
 
-
-## Error Handling
+****
+## `Error Handling`
 
 In the event that an API call results in an error, a JSON object will be returned with the following format:
 ```

@@ -42,14 +42,14 @@ namespace TAO
                 /* get the asset name from after the get/ */
                 std::string strAssetName = strMethod.substr(4);
 
-                /* Check to see whether there is a datafield after the asset name, i.e. get/myasset/somefield */
+                /* Check to see whether there is a fieldname after the asset name, i.e. get/asset/myasset/somefield */
                 std::string::size_type pos = strAssetName.find("/");
 
                 if(pos != std::string::npos)
                 {
                     std::string strFieldName = strAssetName.substr(pos +1);
                     strAssetName = strAssetName.substr(0, pos);
-                    jsonParams["datafield"] = strFieldName;
+                    jsonParams["fieldname"] = strFieldName;
                 }
 
                 strMethodRewritten = "get/asset";

@@ -5,16 +5,40 @@ An asset is a user-defined data structure that is stored in an object register, 
 
 The `basic` format allows callers to define an asset in terms of simple key-value pairs. It assumes that all fields are read-only and all values are stored using the string data type. `basic ` assets are always immutable and cannot be updated once created.
 
-The `JSON`, `ANSI`, and `XML` formats allow callers to provide a detailed definition of the asset data structure, with each field defined with a specific data type and mutability. Assets defined with one of the complex formats can be updated after their initial creation.  
+The `JSON`, `ANSI`, and `XML` ~formats allow callers to provide a detailed definition of the asset data structure, with each field defined with a specific data type and mutability. Assets defined with one of the complex formats can be updated after their initial creation.  
 
 The `raw` format differs from the other formats in that the asset data is not stored in object register, but instead is stored in a read-only state register. The raw format is useful when developers wish to store arbitrary binary data on the Nexus blockchain, without incurring the overhead of defining an object.
 
+## `Named Shortcuts`
+
+For each API method we support an alternative endpoint that includes the asset name or register address at the end of the the URI.  This shortcut removes the need to include the asset name or address as an additional parameter.  
+
+For example `assets/create/asset/myasset` is a shortcut to `assets/create/asset?name=myasset`.
+
+Similarly `assets/get/asset/5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9` is a shortcut to `assets/get/asset?address=5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9` 
+
+The logic for resolving the shortcut to either a name or address is that if the data is 64 characters of hexadecimal then it will be assumed to be a register address.  Otherwise it will be considered a name.  
+
+
+## `Methods`
+
+The following methods are currently supported by this API
+
+[`create/asset`](#create/asset)   
+[`get/asset`](#get/asset)   
+[`update/asset`](#update/asset)   
+[`transfer/asset`](#transfer/asset)   
+[`claim/asset`](#claim/asset)   
+[`list/asset/history`](#list/asset/history)   
+[`tokenize/asset`](#tokenize/asset)
+
+-----------------------------------
 ***
 
 
 # `create/asset`
 
-This will create a new asset or object register. The API supports an alternative endpoint that can include the new asset name in the URI.  For example `/assets/create/myasset` will resolve to `assets/create/asset?name=myasset`.   
+This will create a new asset or object register. The API supports an alternative endpoint that can include the new asset name in the URI.  For example `/assets/create/asset/myasset` will resolve to `assets/create/asset?name=myasset`.   
 
 
 ### Endpoint:
@@ -119,7 +143,9 @@ The following is an example of an asset defined using the `JSON` format:
 
 # `get/asset`
 
-This is the generic endpoint for retrieving an asset from the object register. The Assets API supports an alternative endpoint that can include the asset name (if known) in the URI.  For example `/assets/get/myasset` will resolve to `assets/get/asset?name=myasset`.
+This is the generic endpoint for retrieving an asset from the object register. The Assets API supports an alternative endpoint that can include the asset name (if known) in the URI.  For example `/assets/get/asset/myasset` will resolve to `assets/get/asset?name=myasset`.
+
+Additionally the API supports passing a field name in the URL after the asset name, which will populate the `fieldname` parameter in the request.  For example `/assets/get/asset/myasset/description` will resolve to `assets/get/asset?name=myasset&fieldname=description`
 
 
 ### Endpoint:
@@ -135,11 +161,13 @@ This is the generic endpoint for retrieving an asset from the object register. T
 
 `address` : The register address of the asset. This is optional if the name is provided.
 
+`fieldname`: This optional field can be used to filter the response to return only a single field from the asset.
+
 
 ### Return value JSON object:
 ```
 {
-    "timestamp": "1553227128"
+    "timestamp": "1553227128",
     "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
     "serial_number": "123456789123456789",
     "description": "This is the description of my asset",
@@ -158,73 +186,10 @@ This is the generic endpoint for retrieving an asset from the object register. T
 ***
 
 
-# `get/schema`
-
-Retrieves the schema / object definition of an asset.  
-
-### Endpoint:
-
-`/assets/get/schema`
-
-
-### Parameters:
-
-`name` : The name identifying the asset. This is optional if the address is provided.  The name should be in namespace:name format
-
-`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
-
-`address` : The register address of the asset. This is optional if the name is provided.
-
-`format` : The format that the schema should be returned in. Values can be `JSON` (the default), `ANSI` (not currently supported), or `XML` (not currently supported). This is optional field and the value `JSON` is assumed if omitted.
-
-**NOTE**: If the asset was initially created using the `raw` format then this API method will error as there is no schema associated with a raw state register.  
-
-### Return value JSON object:
-```
-{
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
-    "json" :
-        [
-            {
-                "name": "serial_number",
-                "type": "uint32",
-                "value": "123456789123456789",
-                "mutable" : "false"
-            },
-            {
-                "name": "description",
-                "type": "string",
-                "value": "This is the description of my asset",
-                "mutable" : "false"
-            },
-            {
-                "name": "shelf_location",
-                "type": "string",
-                "value": "Aisle 9 Shelf 2",
-                "mutable" : "true"
-            },
-        ]
-}
-```
-
-### Return values:
-
-`address` : The register address for this asset. The address (or name that hashes to this address) is needed for downstream transactions / api methods for this asset.   
-
-`json` : If format is `JSON`, then this field will hold the json definition of the asset as an array of JSON objects representing each field in the object. It uses the following format:
-
-- `name` : The name of the data field.
-- `type` : The data type to use for this field. Values can be `uint8`, `uint16`, `uint32`, `uint64`, `uint256`, `uint512`, `uint1024`, `string`, or `bytes`.
-- `value` : The current value of the field.
-- `mutable` : The boolean field to indicate whether the field is writable (true) or read-only (false).
-
-
-***
-
 
 # `update/asset`
 
-This is the generic endpoint for updating one or more values in an asset.  The API supports an alternative endpoint that can include the asset name (if known) in the URI.  For example `/assets/update/myasset` will resolve to `assets/update/asset?name=myasset`.
+This is the generic endpoint for updating one or more values in an asset.  The API supports an alternative endpoint that can include the asset name (if known) or register address in the URI.  For example `/assets/update/asset/myasset` will resolve to `assets/update/asset?name=myasset`.
 
 **NOTE** Only assets created using `JSON`, `ANSI`, or `XML` an be updated, and only those data fields that were defined as mutable. `raw` and `basic` format assets are always created as read-only (immutable).
 
@@ -285,7 +250,7 @@ The following is an example JSON payload to update two fields in an asset called
 
 # `transfer/asset`
 
-This will transfer ownership of an asset or digital item.  This is a generic endpoint requiring the asset name or address to be passed as parameters. The API supports an alternative endpoint that can include the asset name (if known) in the URI.  For example `/assets/transfer/myasset` will resolve to `assets/transfer/asset?name=myasset`.  
+This will transfer ownership of an asset or digital item.  This is a generic endpoint requiring the asset name or address to be passed as parameters. The API supports an alternative endpoint that can include the asset name (if known) or register address in the URI.  For example `/assets/transfer/asset/myasset` will resolve to `assets/transfer/asset?name=myasset`.  
 
 
 ### Endpoint:
@@ -326,14 +291,48 @@ This will transfer ownership of an asset or digital item.  This is a generic end
 
 ****
 
+# `claim/asset`
 
-# `list/history`
+Assets that have been transferred need to be claimed by the recipient before the transfer is complete.  This method creates the claim transaction .  This is a generic endpoint requiring the transaction ID (hash) of the corresponding transfer transaction to be passed as a parameter. The API supports an alternative endpoint that can include the transaction ID in the URI.  For example `/assets/transfer/asset/27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1` will resolve to `assets/transfer/asset?txid=27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1`.
 
-This will get the history of an asset or digital item as well as it's ownership.
 
 ### Endpoint:
 
-`/assets/list/history`
+`/assets/claim/asset`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the asset. For single-user API mode the session should not be supplied.
+
+`txid` : The transaction ID (hash) of the corresponding asset transfer transaction for which you are claiming.
+
+
+### Return value JSON object:
+```
+{
+    "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
+    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+}
+```
+
+### Return values:
+
+`txid` : The ID (hash) of the transaction that includes the asset transfer.
+
+`address` : The new register address for this asset.   
+
+****
+
+# `list/asset/history`
+
+This will get the history of an asset or digital item as well as it's ownership.The API supports an alternative endpoint that can include the asset name (if known) or register address in the URI.  For example `/assets/list/asset/history/myasset` will resolve to `assets/list/asset/history?name=myasset`.  
+
+### Endpoint:
+
+`/assets/list/asset/history`
 
 
 ### Parameters:
@@ -373,7 +372,7 @@ The return value is a JSON array of objects for each entry in the assets history
 
 # `tokenize/asset`
 
-This will tokenize an asset into fungible tokens that represent ownership.  This is a generic endpoint requiring the asset name or address to be passed as parameters. The API supports an alternative endpoint that can include the asset name (if known) in the URI.  For example `/assets/tokenize/myasset` will resolve to `assets/tokenize/asset?name=myasset`.  
+This will tokenize an asset into fungible tokens that represent ownership.  This is a generic endpoint requiring the asset name or address to be passed as parameters. The API supports an alternative endpoint that can include the asset name (if known) or register address in the URI.  For example `/assets/tokenize/asset/myasset` will resolve to `assets/tokenize/asset?name=myasset`.  
 
 ### Endpoint:
 
