@@ -208,7 +208,7 @@ namespace TAO
 
 
         /* Returns the username for this sig chain */
-        const SecureString& SignatureChain::UserName() const 
+        const SecureString& SignatureChain::UserName() const
         {
             return strUsername;
         }
