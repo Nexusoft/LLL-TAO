@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <Legacy/include/create.h>
 #include <Legacy/types/legacy.h>

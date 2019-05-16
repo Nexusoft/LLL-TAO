@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/ledger.h>
 
+#include <TAO/Ledger/include/chainstate.h>
+
 namespace LLD
 {
 

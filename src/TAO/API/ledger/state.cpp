@@ -13,14 +13,18 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+
 #include <TAO/API/include/ledger.h>
 
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/types/state.h>
-#include <Legacy/include/money.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <LLP/include/global.h>
+
+#include <Legacy/include/money.h>
+
 
 /* Global TAO namespace. */
 namespace TAO

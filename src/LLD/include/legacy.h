@@ -17,7 +17,6 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
 #include <Legacy/types/transaction.h>

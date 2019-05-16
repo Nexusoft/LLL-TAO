@@ -20,13 +20,12 @@ ________________________________________________________________________________
 #include <LLD/templates/sector.h>
 
 #include <TAO/Register/types/state.h>
-#include <TAO/Ledger/types/transaction.h>
 
+#include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/state.h>
-#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Register/include/enum.h>
 
-#include <Legacy/types/trustkey.h>
+#include <Util/include/memory.h>
 
 
 namespace LLD

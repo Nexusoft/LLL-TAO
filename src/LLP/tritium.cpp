@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 #include <LLP/include/inv.h>
 
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/runtime.h>
@@ -458,7 +459,7 @@ namespace LLP
 
                 break;
             }
-            
+
 
             case GET_INVENTORY:
             {

@@ -11,15 +11,17 @@
 
 ____________________________________________________________________________________________*/
 
-#include <cmath>
-#include <limits>
-
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/validate.h>
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
+
+#include <TAO/Ledger/include/chainstate.h>
+
+#include <cmath>
+#include <limits>
 
 namespace TAO
 {
