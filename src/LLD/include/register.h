@@ -55,6 +55,11 @@ namespace LLD
         /** WriteState
          *
          *  Writes a state register to the register database.
+         *  If MEMPOOL flag is set, this will write state into a temporary
+         *  memory to handle register state sequencing before blocks commit
+         *
+         *  If WRITE flag is set, this will erase the temporary memory state
+         *  and commit the state to disk
          *
          *  @param[in] hashRegister The register address.
          *  @param[in] state The state register to write.
@@ -366,8 +371,18 @@ namespace LLD
          *  @return True if any states were found, false otherwise.
          *
          **/
-        bool GetStates(const uint256_t& hashRegister, std::vector<TAO::Register::State>& states)
+        bool GetStates(const uint256_t& hashRegister, std::vector<TAO::Register::State>& states, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
+            /* Memory mode for pre-database commits. */
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Set the state in the memory map. */
+                if(mapStates.count(hashRegister))
+                    states.push_back(mapStates[hashRegister]);
+            }
+
             /* Serialize the key to search for. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << std::make_pair(std::string("state"), hashRegister);
