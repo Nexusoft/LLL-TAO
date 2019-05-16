@@ -1,0 +1,402 @@
+/*__________________________________________________________________________________________
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+
+            (c) Copyright The Nexus Developers 2014 - 2019
+
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+            "ad vocem populi" - To the Voice of the People
+
+____________________________________________________________________________________________*/
+
+#include <LLD/include/ledger.h>
+
+namespace LLD
+{
+
+    /** The Database Constructor. To determine file location and the Bytes per Record. **/
+    LedgerDB::LedgerDB(uint8_t nFlagsIn)
+    : SectorDatabase(std::string("ledger"), nFlagsIn)
+    , MEMORY_MUTEX()
+    , mapProofs()
+    {
+    }
+
+
+    /** Default Destructor **/
+    LedgerDB::~LedgerDB()
+    {
+    }
+
+
+    /* Writes the best chain pointer to the ledger DB. */
+    bool LedgerDB::WriteBestChain(const uint1024_t& hashBest)
+    {
+        return Write(std::string("hashbestchain"), hashBest);
+    }
+
+
+    /* Reads the best chain pointer from the ledger DB. */
+    bool LedgerDB::ReadBestChain(uint1024_t& hashBest)
+    {
+        return Read(std::string("hashbestchain"), hashBest);
+    }
+
+
+    /* Reads the best chain pointer from the ledger DB. */
+    bool LedgerDB::ReadBestChain(memory::atomic<uint1024_t>& atomicBest)
+    {
+        uint1024_t hashBest = 0;
+        if(!Read(std::string("hashbestchain"), hashBest))
+            return false;
+
+        atomicBest.store(hashBest);
+        return true;
+    }
+
+
+    /* Writes a transaction to the ledger DB. */
+    bool LedgerDB::WriteTx(const uint512_t& hashTransaction, const TAO::Ledger::Transaction& tx)
+    {
+        return Write(hashTransaction, tx);
+    }
+
+
+    /* Reads a transaction from the ledger DB. */
+    bool LedgerDB::ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx)
+    {
+        return Read(hashTransaction, tx);
+    }
+
+
+    /* Erases a transaction from the ledger DB. */
+    bool LedgerDB::EraseTx(const uint512_t& hashTransaction)
+    {
+        return Erase(hashTransaction);
+    }
+
+
+    /* Determine if a transaction has already been indexed. */
+    bool LedgerDB::HasIndex(const uint512_t& hashTransaction)
+    {
+        return Exists(std::make_pair(std::string("index"), hashTransaction));
+    }
+
+
+    /* Index a transaction hash to a block in keychain. */
+    bool LedgerDB::IndexBlock(const uint512_t& hashTransaction, const uint1024_t& hashBlock)
+    {
+        return Index(std::make_pair(std::string("index"), hashTransaction), hashBlock);
+    }
+
+
+    /* Index a block height to a block in keychain. */
+    bool LedgerDB::IndexBlock(const uint32_t& nBlockHeight, const uint1024_t& hashBlock)
+    {
+        return Index(std::make_pair(std::string("height"), nBlockHeight), hashBlock);
+    }
+
+
+    /* Erase a foreign index form the keychain */
+    bool LedgerDB::EraseIndex(const uint512_t& hashTransaction)
+    {
+        return Erase(std::make_pair(std::string("index"), hashTransaction));
+    }
+
+    /* Erase a foreign index form the keychain */
+    bool LedgerDB::EraseIndex(const uint32_t& nBlockHeight)
+    {
+        return Erase(std::make_pair(std::string("height"), nBlockHeight));
+    }
+
+
+    /*  Recover if an index is not found.
+     *  Fixes a corrupted database with a linear search for the hash tx up
+     *  to the chain height. */
+    bool LedgerDB::RepairIndex(const uint512_t& hashTransaction, TAO::Ledger::BlockState state)
+    {
+        debug::log(0, FUNCTION, "repairing index for ", hashTransaction.ToString().substr(0, 20));
+
+        /* Loop until it is found. */
+        while(!config::fShutdown.load() && !state.IsNull())
+        {
+            /* Give debug output of status. */
+            if(state.nHeight % 100000 == 0)
+                debug::log(0, FUNCTION, "repairing index..... ", state.nHeight);
+
+            /* Check the state vtx size. */
+            if(state.vtx.size() == 0)
+                debug::error(FUNCTION, "block ", state.GetHash().ToString().substr(0, 20), " has no transactions");
+
+            /* Check for the transaction. */
+            for(const auto& tx : state.vtx)
+            {
+                /* If the transaction is found, write the index. */
+                if(tx.second == hashTransaction)
+                {
+                    /* Repair the index once it is found. */
+                    if(!IndexBlock(hashTransaction, state.GetHash()))
+                        return false;
+
+                    return true;
+                }
+            }
+
+            state = state.Prev();
+        }
+
+        return false;
+    }
+
+
+    /*  Recover the block height index.
+     *  Adds or fixes th block height index by iterating forward from the genesis block */
+    bool LedgerDB::RepairIndexHeight()
+    {
+        runtime::timer timer;
+        timer.Start();
+        debug::log(0, FUNCTION, "block height index missing or incomplete");
+
+        /* Get the best block state to start from. */
+        TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateGenesis;
+
+        /* Loop until it is found. */
+        while(!config::fShutdown.load() && !state.IsNull())
+        {
+            /* Give debug output of status. */
+            if(state.nHeight % 100000 == 0)
+                debug::log(0, FUNCTION, "repairing block height index..... ", state.nHeight);
+
+            if(!IndexBlock(state.nHeight, state.GetHash()))
+                return false;
+
+            state = state.Next();
+        }
+
+        uint32_t nElapsed = timer.Elapsed();
+        timer.Stop();
+        debug::log(0, FUNCTION, "Block height indexing complete in ", nElapsed, "s");
+
+        return true;
+    }
+
+
+    /* Reads a block state from disk from a tx index. */
+    bool LedgerDB::ReadBlock(const uint512_t& hashTransaction, TAO::Ledger::BlockState& state)
+    {
+        return Read(std::make_pair(std::string("index"), hashTransaction), state);
+    }
+
+
+    /* Reads a block state from disk from a tx index. */
+    bool LedgerDB::ReadBlock(const uint32_t& nBlockHeight, TAO::Ledger::BlockState& state)
+    {
+        return Read(std::make_pair(std::string("height"), nBlockHeight), state);
+    }
+
+
+    /* Checks LedgerDB if a transaction exists. */
+    bool LedgerDB::HasTx(const uint512_t& hashTransaction)
+    {
+        return Exists(hashTransaction);
+    }
+
+
+    /* Writes a new sequence event to the ledger database. */
+    bool LedgerDB::WriteSequence(const uint256_t& hashAddress, const uint32_t nSequence)
+    {
+        return Write(std::make_pair(std::string("sequence"), hashAddress), nSequence);
+    }
+
+
+    /* Reads a new sequence from the ledger database */
+    bool LedgerDB::ReadSequence(const uint256_t& hashAddress, uint32_t& nSequence)
+    {
+        return Read(std::make_pair(std::string("sequence"), hashAddress), nSequence);
+    }
+
+
+    /* Write a new event to the ledger database of current txid. */
+    bool LedgerDB::WriteEvent(const uint256_t& hashAddress, const uint512_t& hashTx)
+    {
+        /* Get the current sequence number. */
+        uint32_t nSequence = 0;
+        ReadSequence(hashAddress, nSequence); //don't check for failed sequence read here since it will always fail on first run
+
+        /* Write the new sequence number iterated by one. */
+        if(!WriteSequence(hashAddress, nSequence + 1))
+            return false;
+
+        return Index(std::make_pair(hashAddress, nSequence), hashTx);
+    }
+
+
+    /* Erase an event from the ledger database. */
+    bool LedgerDB::EraseEvent(const uint256_t& hashAddress)
+    {
+        /* Get the current sequence number. */
+        uint32_t nSequence = 0;
+        if(!ReadSequence(hashAddress, nSequence))
+            return false;
+
+        /* Write the new sequence number iterated by one. */
+        if(!WriteSequence(hashAddress, nSequence - 1))
+            return false;
+
+        return Erase(std::make_pair(hashAddress, nSequence - 1));
+    }
+
+
+    /*  Reads a new event to the ledger database of foreign index.
+     *  This is responsible for knowing foreign sigchain events that correlate to your own. */
+    bool LedgerDB::ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, TAO::Ledger::Transaction& tx)
+    {
+        return Read(std::make_pair(hashAddress, nSequence), tx);
+    }
+
+
+    /* Writes the last txid of sigchain to disk indexed by genesis. */
+    bool LedgerDB::WriteLast(const uint256_t& hashGenesis, const uint512_t& hashLast)
+    {
+        return Write(std::make_pair(std::string("last"), hashGenesis), hashLast);
+    }
+
+
+    /* Erase the last txid of sigchain to disk indexed by genesis. */
+    bool LedgerDB::EraseLast(const uint256_t& hashGenesis)
+    {
+        return Erase(std::make_pair(std::string("last"), hashGenesis));
+    }
+
+
+    /* Reads the last txid of sigchain to disk indexed by genesis. */
+    bool LedgerDB::ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast)
+    {
+        return Read(std::make_pair(std::string("last"), hashGenesis), hashLast);
+    }
+
+
+    /* Writes a proof to disk. Proofs are used to keep track of spent temporal proofs. */
+    bool LedgerDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags)
+    {
+        /* Memory mode for pre-database commits. */
+        if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Write the new proof state. */
+            mapProofs[std::make_pair(hashProof, hashTransaction)] = 0;
+            return true;
+        }
+        else
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Erase memory proof if they exist. */
+            if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
+               mapProofs.erase(std::make_pair(hashProof, hashTransaction));
+        }
+
+        return Write(std::make_pair(hashProof, hashTransaction));
+    }
+
+
+    /* Checks if a proof exists. Proofs are used to keep track of spent temporal proofs. */
+    bool LedgerDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags)
+    {
+        /* Memory mode for pre-database commits. */
+        if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+        {
+            LOCK(MEMORY_MUTEX); //TODO: these shoudl really be in the memory pool structures
+            //(they cause conflicts in MEMPOOL | WRITE)
+
+            /* If exists in memory, return true. */
+            if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
+                return true;
+        }
+
+        return Exists(std::make_pair(hashProof, hashTransaction));
+    }
+
+
+    /* Remove a temporal proof from the database. */
+    bool LedgerDB::EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags)
+    {
+        /* Memory mode for pre-database commits. */
+        if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+        {
+            LOCK(MEMORY_MUTEX); //TODO: these shoudl really be in the memory pool structures
+            //(they cause conflicts in MEMPOOL | WRITE)
+
+            /* Erase memory proof if they exist. */
+            if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
+               mapProofs.erase(std::make_pair(hashProof, hashTransaction));
+        }
+
+        return Erase(std::make_pair(hashProof, hashTransaction));
+    }
+
+
+    /* Writes a block state object to disk. */
+    bool LedgerDB::WriteBlock(const uint1024_t& hashBlock, const TAO::Ledger::BlockState& state)
+    {
+        return Write(hashBlock, state);
+    }
+
+
+    /* Reads a block state object from disk. */
+    bool LedgerDB::ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState& state)
+    {
+        return Read(hashBlock, state);
+    }
+
+
+    /* Reads a block state object from disk for an atomic object. */
+    bool LedgerDB::ReadBlock(const uint1024_t& hashBlock, memory::atomic<TAO::Ledger::BlockState>& atomicState)
+    {
+        TAO::Ledger::BlockState state;
+        if(!Read(hashBlock, state))
+            return false;
+
+        atomicState.store(state);
+        return true;
+    }
+
+
+    /* Checks if there is a block state object on disk. */
+    bool LedgerDB::HasBlock(const uint1024_t& hashBlock)
+    {
+        return Exists(hashBlock);
+    }
+
+
+    /* Erase a block from disk. */
+    bool LedgerDB::EraseBlock(const uint1024_t& hashBlock)
+    {
+        return Erase(hashBlock);
+    }
+
+
+    /* Checks if a genesis transaction exists. */
+    bool LedgerDB::HasGenesis(const uint256_t& hashGenesis)
+    {
+        return Exists(std::make_pair(std::string("genesis"), hashGenesis));
+    }
+
+
+    /* Writes a genesis transaction-id to disk. */
+    bool LedgerDB::WriteGenesis(const uint256_t& hashGenesis, const uint512_t& hashTransaction)
+    {
+        return Write(std::make_pair(std::string("genesis"), hashGenesis), hashTransaction);
+    }
+
+
+    /* Reads a genesis transaction-id from disk. */
+    bool LedgerDB::ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTransaction)
+    {
+        return Read(std::make_pair(std::string("genesis"), hashGenesis), hashTransaction);
+    }
+
+}

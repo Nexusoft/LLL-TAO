@@ -15,11 +15,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_INCLUDE_ADDRESS_H
 #define NEXUS_LLD_INCLUDE_ADDRESS_H
 
-#include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
-
 #include <LLP/include/trust_address.h>
-
 
 namespace LLD
 {
@@ -35,12 +32,11 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase(std::string("addr/") + std::to_string(port), nFlags) { }
+        AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE);
 
 
         /** Default Destructor **/
-        virtual ~AddressDB() {}
+        virtual ~AddressDB();
 
 
         /** WriteTrustAddress
@@ -53,10 +49,7 @@ namespace LLD
          *  @return True if the write is successful, false otherwise.
          *
          **/
-        bool WriteTrustAddress(uint64_t key, const LLP::TrustAddress &addr)
-        {
-            return Write(std::make_pair(std::string("addr"), key), addr);
-        }
+        bool WriteTrustAddress(uint64_t key, const LLP::TrustAddress &addr);
 
 
         /** ReadTrustAddress
@@ -69,10 +62,7 @@ namespace LLD
          *  @return True if the read is successful, false otherwise.
          *
          **/
-        bool ReadTrustAddress(uint64_t key, LLP::TrustAddress &addr)
-        {
-            return Read(std::make_pair(std::string("addr"), key), addr);
-        }
+        bool ReadTrustAddress(uint64_t key, LLP::TrustAddress &addr);
 
 
         /** WriteThisAddress
@@ -85,10 +75,7 @@ namespace LLD
          *  @return True if the write is successful, false otherwise.
          *
          **/
-        bool WriteThisAddress(uint64_t key, const LLP::BaseAddress &this_addr)
-        {
-            return Write(std::make_pair(std::string("this"), key), this_addr);
-        }
+        bool WriteThisAddress(uint64_t key, const LLP::BaseAddress &this_addr);
 
 
         /** ReadThisAddress
@@ -101,10 +88,7 @@ namespace LLD
          *  @return True if the read is successful, false otherwise.
          *
          **/
-        bool ReadThisAddress(uint64_t key, LLP::BaseAddress &this_addr)
-        {
-            return Read(std::make_pair(std::string("this"), key), this_addr);
-        }
+        bool ReadThisAddress(uint64_t key, LLP::BaseAddress &this_addr);
 
 
         /** WriteLastUpdate
@@ -114,11 +98,7 @@ namespace LLD
          *  @return True if the read is successful, false otherwise.
          *
          **/
-        bool WriteLastUpdate()
-        {
-            uint64_t nUpdated = runtime::timestamp();
-            return Write(std::string("updated"), nUpdated);
-        }
+        bool WriteLastUpdate();
 
 
         /** ReadLastUpdate
@@ -130,10 +110,7 @@ namespace LLD
          *  @return True if the read is successful, false otherwise.
          *
          **/
-        bool ReadLastUpdate(uint64_t& nUpdated)
-        {
-            return Read(std::string("updated"), nUpdated);
-        }
+        bool ReadLastUpdate(uint64_t& nUpdated);
     };
 }
 
