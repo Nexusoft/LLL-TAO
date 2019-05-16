@@ -106,12 +106,12 @@ namespace LLD
 
                 /* Check for state in memory map. */
                 if(!mapStates.count(hashRegister))
-                    return false;
+                {
+                    /* Get the state from memory map. */
+                    state = mapStates[hashRegister];
 
-                /* Get the state from memory map. */
-                state = mapStates[hashRegister];
-
-                return true;
+                    return true;
+                }
             }
 
             return Read(std::make_pair(std::string("state"), hashRegister), state);
