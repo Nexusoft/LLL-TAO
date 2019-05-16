@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/system.h>
 
-#include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -31,15 +31,17 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
     using namespace TAO::Operation;
 
 
-    //check a debit from token
+    //create a list of transactions
     {
+
         //cleanup
         LLD::regDB->EraseIdentifier(11);
 
         //create object
         uint256_t hashToken = LLC::GetRand256();
-        uint256_t hashAccount  = LLC::GetRand256();
         uint256_t hashGenesis  = LLC::GetRand256();
+
+        uint512_t hashPrivKey  = LLC::GetRand512();
 
         {
             //create the transaction object
@@ -47,6 +49,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey);
 
             //create object
             Object token = CreateToken(11, 1000, 100);
@@ -57,62 +60,11 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
 
-            //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
-        }
-
-
-        {
-            //create the transaction object
-            TAO::Ledger::Transaction tx;
-            tx.hashGenesis = hashGenesis;
-            tx.nSequence   = 1;
-            tx.nTimestamp  = runtime::timestamp();
-
-            //create object
-            Object account = CreateAccount(11);
-
-            //payload
-            tx << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
-
-            //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            //sign
+            tx.Sign(hashPrivKey);
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
-        }
-
-
-        {
-            //create the transaction object
-            TAO::Ledger::Transaction tx;
-            tx.hashGenesis = hashGenesis;
-            tx.nSequence   = 2;
-            tx.nTimestamp  = runtime::timestamp();
-
-            //payload
-            tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
-
-            //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
-
-            //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
-
-            //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
-
-            //check register values
-            {
-                Object token;
-                REQUIRE(LLD::regDB->ReadState(hashToken, token));
-
-                //parse register
-                REQUIRE(token.Parse());
-
-                //check balance
-                REQUIRE(token.get<uint64_t>("balance") == 500);
-            }
+            REQUIRE(TAO::Ledger::mempool.Accept(tx));
         }
     }
 }

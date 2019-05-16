@@ -40,7 +40,7 @@ namespace TAO
             /* Write pre-states. */
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
-                if(!LLD::regDB->ReadState(hashAddress, state))
+                if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
 
                 tx.ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
@@ -109,7 +109,7 @@ namespace TAO
                     return debug::error(FUNCTION, "register script has invalid post-state");
 
                 /* Write the register to the database. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
+                if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
                     return debug::error(FUNCTION, "failed to write new state");
             }
 

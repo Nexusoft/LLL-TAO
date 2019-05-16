@@ -179,7 +179,6 @@ ifdef UNIT_TESTS
 		   build/Tests_rollback.o \
 		   build/Tests_block.o \
 		   build/Tests_mempool.o \
-		   build/Tests_sigchain.o \
 		   build/Tests_register.o \
 		   build/Tests_debit.o \
 		   build/Tests_trust.o \

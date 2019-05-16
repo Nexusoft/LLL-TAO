@@ -44,7 +44,7 @@ namespace TAO
             /* Write pre-states. */
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
-                if(!LLD::regDB->ReadState(hashFrom, account))
+                if(!LLD::regDB->ReadState(hashFrom, account, nFlags))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashFrom.ToString());
 
                 tx.ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << account;
@@ -124,7 +124,7 @@ namespace TAO
                     return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
 
                 /* Write the register to the database. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashFrom, account))
+                if(!LLD::regDB->WriteState(hashFrom, account, nFlags))
                     return debug::error(FUNCTION, "failed to write new state");
 
                 /* Write the event to the ledger database. */

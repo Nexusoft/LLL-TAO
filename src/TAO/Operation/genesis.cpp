@@ -45,7 +45,7 @@ namespace TAO
             {
                 /* Set the register pre-states. */
                 {
-                    if(!LLD::regDB->ReadState(hashAddress, account))
+                    if(!LLD::regDB->ReadState(hashAddress, account, nFlags))
                         return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
 
                     tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << account;
@@ -190,6 +190,10 @@ namespace TAO
                         return debug::error(FUNCTION, "system register script has invalid post-state");
                 }
 
+                /* Write the register to the database. */
+                if(!LLD::regDB->WriteState(hashAddress, account, nFlags))
+                    return debug::error(FUNCTION, "failed to write new state");
+
                 /* Update the register database with the index. */
                 if((nFlags & TAO::Register::FLAGS::WRITE))
                 {
@@ -199,10 +203,6 @@ namespace TAO
 
                     /* Write the register to the database. */
                     if(!LLD::regDB->WriteState(uint256_t(TAO::Register::SYSTEM::TRUST), sys))
-                        return debug::error(FUNCTION, "failed to write new state");
-
-                    /* Write the register to the database. */
-                    if(!LLD::regDB->WriteState(hashAddress, account))
                         return debug::error(FUNCTION, "failed to write new state");
                 }
 

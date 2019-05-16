@@ -36,7 +36,7 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot create register with reserved address");
 
             /* Check that the register doesn't exist yet. */
-            if(LLD::regDB->HasState(hashAddress))
+            if(LLD::regDB->HasState(hashAddress, nFlags))
                 return debug::error(FUNCTION, "cannot allocate register of same memory address ", hashAddress.ToString());
 
             /* Set the owner of this register. */
@@ -161,7 +161,7 @@ namespace TAO
                     return debug::error(FUNCTION, "register script ", std::hex, nChecksum, " has invalid post-state ", std::hex, state.GetHash());
 
                 /* Write the register to the database. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
+                if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
                     return debug::error(FUNCTION, "failed to write new state");
             }
 

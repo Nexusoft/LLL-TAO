@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <TAO/Register/types/state.h>
 #include <TAO/Register/include/system.h>
 
+#include <TAO/Ledger/types/mempool.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -36,7 +38,9 @@ namespace TAO
 
             /* Read the claimed transaction. */
             TAO::Ledger::Transaction txClaim;
-            if(!LLD::legDB->ReadTx(hashTx, txClaim))
+
+            /* Check for memory pool. */
+            if(!TAO::Ledger::mempool.Get(hashTx, txClaim) && !LLD::legDB->ReadTx(hashTx, txClaim))
                 return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist");
 
             /* Extract the state from tx. */
@@ -56,7 +60,7 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot claim register with reserved address");
 
             /* Check if this transfer is already claimed. */
-            if(LLD::legDB->HasProof(hashAddress, hashTx))
+            if(LLD::legDB->HasProof(hashAddress, hashTx, nFlags))
                 return debug::error(FUNCTION, "transfer is already claimed");
 
             /* Read the register transfer recipient. */
@@ -77,7 +81,7 @@ namespace TAO
 
             /* Read the register from the database. */
             TAO::Register::State state = TAO::Register::State();
-            if(!LLD::regDB->ReadState(hashAddress, state))
+            if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                 return debug::error(FUNCTION, "Register ", hashAddress.ToString(), " doesn't exist in register DB");
 
             /* Make sure the register claim is in SYSTEM pending from a transfer. */
@@ -117,11 +121,11 @@ namespace TAO
                     return debug::error(FUNCTION, "register script has invalid post-state");
 
                 /* Write the register to the database. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
+                if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
                     return debug::error(FUNCTION, "failed to write new state");
 
                 /* Write the proof to the database. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteProof(hashAddress, hashTx))
+                if(!LLD::legDB->WriteProof(hashAddress, hashTx, nFlags))
                     return debug::error(FUNCTION, "failed to write new state");
             }
 

@@ -39,7 +39,7 @@ namespace TAO
             {
                 /* Set the register pre-states. */
                 {
-                    if(!LLD::regDB->ReadTrust(tx.hashGenesis, account))
+                    if(!LLD::regDB->ReadTrust(tx.hashGenesis, account)) //TODO: memory states for this index
                         return debug::error(FUNCTION, "trust address doesn't exist ", tx.hashGenesis.ToString());
 
                     tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << account;

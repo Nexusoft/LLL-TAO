@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
 
+#include <TAO/Ledger/types/mempool.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -37,7 +39,9 @@ namespace TAO
 
             /* Read the claimed transaction. */
             TAO::Ledger::Transaction txSpend;
-            if(!LLD::legDB->ReadTx(hashTx, txSpend))
+
+            /* Check for memory pool. */
+            if(!TAO::Ledger::mempool.Get(hashTx, txSpend) && !LLD::legDB->ReadTx(hashTx, txSpend))
                 return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist");
 
             /* Extract the state from tx. */
@@ -50,7 +54,7 @@ namespace TAO
             /* Write pre-states. */
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
-                if(!LLD::regDB->ReadState(hashAccount, account))
+                if(!LLD::regDB->ReadState(hashAccount, account, nFlags))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashAccount.ToString());
 
                 tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << account;
@@ -146,11 +150,11 @@ namespace TAO
                         return debug::error(FUNCTION, "register script has invalid post-state");
 
                     /* Write the proof spend. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteProof(hashProof, hashTx, nFlags))
+                    if(!LLD::legDB->WriteProof(hashProof, hashTx, nFlags))
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAccount, account))
+                    if(!LLD::regDB->WriteState(hashAccount, account, nFlags))
                         return debug::error(FUNCTION, "failed to write new state");
                 }
 
@@ -229,7 +233,7 @@ namespace TAO
 
                     /* Read the register from the database. */
                     TAO::Register::State stateTo;
-                    if(!LLD::regDB->ReadState(hashTo, stateTo))
+                    if(!LLD::regDB->ReadState(hashTo, stateTo, nFlags))
                         return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
 
                     /* Write the proof spend. */
@@ -237,7 +241,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAccount, account))
+                    if(!LLD::regDB->WriteState(hashAccount, account, nFlags))
                         return debug::error(FUNCTION, "failed to write new state");
 
                     /* Erase the event to the ledger database. */
@@ -271,7 +275,7 @@ namespace TAO
 
                 /* Read the state from. */
                 TAO::Register::Object accountFrom;
-                if(!LLD::regDB->ReadState(hashFrom, accountFrom))
+                if(!LLD::regDB->ReadState(hashFrom, accountFrom, nFlags))
                     return debug::error(FUNCTION, "can't read state from");
 
                 /* Parse the account from. */
@@ -334,7 +338,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAccount, account))
+                    if(!LLD::regDB->WriteState(hashAccount, account, nFlags))
                         return debug::error(FUNCTION, "failed to write new state");
                 }
             }
@@ -346,7 +350,7 @@ namespace TAO
 
                 /* Get the state register of this register's owner. */
                 TAO::Register::Object tokenOwner;
-                if(!LLD::regDB->ReadState(stateTo.hashOwner, tokenOwner))
+                if(!LLD::regDB->ReadState(stateTo.hashOwner, tokenOwner, nFlags))
                     return debug::error(FUNCTION, "credit from raw object can't be without owner");
 
                 /* Parse the owner object register. */
@@ -359,7 +363,7 @@ namespace TAO
 
                 /* Check the state register that is being used as proof from creditor. */
                 TAO::Register::Object accountProof;
-                if(!LLD::regDB->ReadState(hashProof, accountProof))
+                if(!LLD::regDB->ReadState(hashProof, accountProof, nFlags))
                     return debug::error(FUNCTION, "temporal proof register is not found");
 
                 /* Compare the last timestamp update to transaction timestamp. */
@@ -402,7 +406,7 @@ namespace TAO
 
                 /* Read the state from. */
                 TAO::Register::Object accountFrom;
-                if(!LLD::regDB->ReadState(hashFrom, accountFrom))
+                if(!LLD::regDB->ReadState(hashFrom, accountFrom, nFlags))
                     return debug::error(FUNCTION, "can't read state from");
 
                 /* Parse the account from. */
@@ -457,7 +461,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAccount, account))
+                    if(!LLD::regDB->WriteState(hashAccount, account, nFlags))
                         return debug::error(FUNCTION, "failed to write new state");
                 }
             }

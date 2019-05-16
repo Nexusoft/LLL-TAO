@@ -88,16 +88,16 @@ namespace TAO
                 return debug::error(FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " too far in the future");
 
             /* Check that the transaction is in a valid state. */
-            if(!tx.IsValid())
+            if(!tx.IsValid(TAO::Register::FLAGS::MEMPOOL))
                 return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " is invalid");
 
             /* Verify the Ledger Pre-States. */
-            if(!TAO::Register::Verify(tx))
+            if(!TAO::Register::Verify(tx, TAO::Register::FLAGS::MEMPOOL))
                 return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " register verification failed");
 
             /* Calculate the future potential states. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
+                return false;//debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
 
             /* Add to the map. */
             mapLedger[hashTx] = tx;

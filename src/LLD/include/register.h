@@ -105,7 +105,7 @@ namespace LLD
                 LOCK(MEMORY_MUTEX);
 
                 /* Check for state in memory map. */
-                if(!mapStates.count(hashRegister))
+                if(mapStates.count(hashRegister))
                 {
                     /* Get the state from memory map. */
                     state = mapStates[hashRegister];
@@ -136,13 +136,8 @@ namespace LLD
                 LOCK(MEMORY_MUTEX);
 
                 /* Check for state in memory map. */
-                if(!mapStates.count(hashRegister))
-                    return false;
-
-                /* Erase the state from memory map. */
-                mapStates.erase(hashRegister);
-
-                return true;
+                if(mapStates.count(hashRegister))
+                    mapStates.erase(hashRegister);
             }
 
             return Erase(std::make_pair(std::string("state"), hashRegister));
@@ -249,7 +244,7 @@ namespace LLD
 
                 return true;
             }
-            else
+            else if(nFlags & TAO::Register::FLAGS::WRITE)
             {
                 LOCK(MEMORY_MUTEX);
 
@@ -346,6 +341,16 @@ namespace LLD
          **/
         bool HasState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
+            /* Memory mode for pre-database commits. */
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Check for state in memory map. */
+                if(mapStates.count(hashRegister))
+                    return true;
+            }
+
             return Exists(std::make_pair(std::string("state"), hashRegister));
         }
 

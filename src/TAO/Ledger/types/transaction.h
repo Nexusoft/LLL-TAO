@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/stream.h>
 #include <TAO/Register/types/stream.h>
+#include <TAO/Register/include/enum.h>
 
 #include <Util/include/runtime.h>
 
@@ -166,10 +167,12 @@ namespace TAO
              *
              *  Determines if the transaction is a valid transaciton and passes ledger level checks.
              *
+             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *
              *  @return true if transaction is valid.
              *
              **/
-            bool IsValid() const;
+            bool IsValid(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
 
 
             /** IsCoinbase
@@ -242,7 +245,7 @@ namespace TAO
              *  @param[in] hashSecret The secret phrase to generate the keys.
              *
              **/
-            void NextHash(uint512_t hashSecret);
+            void NextHash(const uint512_t& hashSecret);
 
 
             /** PrevHash
@@ -262,7 +265,7 @@ namespace TAO
              *  @param[in] hashSecret The secret phrase to generate the keys.
              *
              **/
-             bool Sign(uint512_t hashSecret);
+             bool Sign(const uint512_t& hashSecret);
 
 
              /** print

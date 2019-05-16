@@ -31,6 +31,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -43,14 +44,21 @@ namespace TAO
     {
 
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
-        bool Transaction::IsValid() const
+        bool Transaction::IsValid(const uint8_t nFlags) const
         {
             /* Read the previous transaction from disk. */
             if(!IsFirst())
             {
+                /* Previous transaction. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadTx(hashPrevTx, tx))
-                    return debug::error(FUNCTION, "failed to read previous transaction");
+
+                /* Check for memory pool. */
+                if((nFlags & TAO::Register::FLAGS::MEMPOOL) && !mempool.Get(hashPrevTx, tx))
+                    return debug::error(FUNCTION, "failed to read previous transaction from memory");
+
+                /* Check for disk write. */
+                else if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->ReadTx(hashPrevTx, tx))
+                    return debug::error(FUNCTION, "failed to read previous transaction from disk");
 
                 /* Check the previous next hash that is being claimed. */
                 if(tx.hashNext != PrevHash())
@@ -249,7 +257,7 @@ namespace TAO
 
 
         /* Sets the Next Hash from the key */
-        void Transaction::NextHash(uint512_t hashSecret)
+        void Transaction::NextHash(const uint512_t& hashSecret)
         {
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
@@ -277,7 +285,7 @@ namespace TAO
 
 
         /* Signs the transaction with the private key and sets the public key */
-        bool Transaction::Sign(uint512_t hashSecret)
+        bool Transaction::Sign(const uint512_t& hashSecret)
         {
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
