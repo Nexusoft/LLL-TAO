@@ -592,7 +592,7 @@ namespace TAO
                     }
 
                     /* Verify the ledger layer. */
-                    if(!TAO::Register::Verify(tx))
+                    if(!TAO::Register::Verify(tx, TAO::Register::FLAGS::WRITE))
                         return debug::error(FUNCTION, "transaction register layer failed to verify");
 
                     /* Execute the operations layers. */

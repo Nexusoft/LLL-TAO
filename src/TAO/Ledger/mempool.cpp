@@ -77,6 +77,8 @@ namespace TAO
                 /* The next hash that is being claimed. */
                 if(mapPrevHashes.count(hashClaim))
                     return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.ToString().substr(0, 20));
+
+                //TODO: add mapConflcts map to soft-ban conflicting blocks
             }
 
             /* Check for duplicate coinbase or coinstake. */
@@ -101,7 +103,7 @@ namespace TAO
 
             /* Calculate the future potential states. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
-                return false; //debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
+                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
 
             /* Add to the map. */
             {
