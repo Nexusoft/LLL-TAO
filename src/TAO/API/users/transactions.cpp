@@ -97,12 +97,16 @@ namespace TAO
                 if(nTotal > nLimit)
                     break;
 
-                TAO::Ledger::BlockState blockState;
                 /* Read the block state from the the ledger DB using the transaction hash index */
+                TAO::Ledger::BlockState blockState;
                 if(!LLD::legDB->ReadBlock(tx.GetHash(), blockState))
                     throw APIException(-25, "Block not found");
 
+                /* Get the transaction JSON. */
                 json::json obj = TAO::API::TransactionToJSON(tx, blockState, nVerbose);
+
+                /* Add the operations to transaction json. */
+                obj["operation"]     = OperationToJSON(tx.ssOperation);
 
                 ret.push_back(obj);
             }

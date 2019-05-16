@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/timelocks.h>
 
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -163,8 +164,8 @@ namespace TAO
         }
 
 
-        /* Create a new block object from the chain. */
-        static memory::atomic<TAO::Ledger::TritiumBlock> blockCache[3];
+        /* Create a new block object from the chain.*/
+        static memory::atomic<TAO::Ledger::TritiumBlock> blockCache[4];
         bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce)
         {
             /* Set the block to null. */
@@ -173,19 +174,35 @@ namespace TAO
             /* Handle if the block is cached. Staking channel (channel 0) should never be cached, as it should only call CreateBlock when stateBest changes*/
             if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].load().hashPrevBlock && nChannel != 0)
             {
+
                 /* Set the block to cached block. */
                 block = blockCache[nChannel].load();
 
-                /* Create coinbase transaction. */
-                block.producer.ssOperation.SetNull();
-                block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
+                /* Use the extra nonce if block is coinbase. */
+                if(nChannel != 0 && nChannel != 3)
+                {
+                    /* Create coinbase transaction. */
+                    block.producer.ssOperation.SetNull();
+                    block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
 
-                /* The total to be credited. */
-                uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
-                block.producer << nCredit;
+                    /* The total to be credited. */
+                    uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
+                    block.producer << nCredit;
 
-                /* The extra nonce to coinbase. */
-                block.producer << nExtraNonce;
+                    /* The extra nonce to coinbase. */
+                    block.producer << nExtraNonce;
+                }
+                else if(nChannel == 3)
+                {
+                    /* Create an authorize producer. */
+                    block.producer << uint8_t(TAO::Operation::OP::AUTHORIZE);
+
+                    /* Get the sigchain txid. */
+                    block.producer << block.producer.hashPrevTx;
+
+                    /* Set the genesis operation. */
+                    block.producer << block.producer.hashGenesis;
+                }
 
                 /* Sign the producer transaction. */
                 block.producer.Sign(user->Generate(block.producer.nSequence, pin));
@@ -227,7 +244,9 @@ namespace TAO
 
                      /* The remainder of Coinstake transaction not configured here. Stake minter must handle it depending on whether Genesis or Trust. */
                 }
-                else
+
+                /* Create the Coinbase Transaction if the Channel specifies. */
+                else if(nChannel < 3)
                 {
                     /* Create coinbase transaction. */
                     block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
@@ -238,13 +257,24 @@ namespace TAO
 
                     /* The extra nonce to coinbase. */
                     block.producer << nExtraNonce;
-
-                    /* Sign the producer transaction. */
-                    block.producer.Sign(user->Generate(block.producer.nSequence, pin));
-
-                    /* Add the transactions to the block. */
-                    AddTransactions(block);
                 }
+                else if(nChannel == 3)
+                {
+                    /* Create an authorize producer. */
+                    block.producer << uint8_t(TAO::Operation::OP::AUTHORIZE);
+
+                    /* Get the sigchain txid. */
+                    block.producer << block.producer.hashPrevTx;
+
+                    /* Set the genesis operation. */
+                    block.producer << block.producer.hashGenesis;
+                }
+
+                /* Sign the producer transaction. */
+                block.producer.Sign(user->Generate(block.producer.nSequence, pin));
+
+                /* Add the transactions to the block. */
+                AddTransactions(block);
 
                 /** Populate the Block Data. **/
                 block.hashPrevBlock   = stateBest.GetHash();
@@ -254,7 +284,7 @@ namespace TAO
                 block.nNonce          = 1;
                 block.nTime           = static_cast<uint32_t>(std::max(stateBest.GetBlockTime() + 1, runtime::unifiedtimestamp()));
 
-                if (nChannel != 0)
+                if(nChannel != 0)
                 {
                     /* Store the cached block. */
                     blockCache[nChannel].store(block);
@@ -295,7 +325,7 @@ namespace TAO
                 block.nHeight  = 0;
                 block.nChannel = 2;
                 block.nTime    = 1409456199;
-                block.nBits    = bnProofOfWorkLimit[2].GetCompact();
+                block.nBits    = LLC::CBigNum(bnProofOfWorkLimit[2]).GetCompact();
                 block.nNonce   = config::fTestNet ? 122999499 : 2196828850;
 
                 /* Ensure the hard coded merkle root is the same calculated merkle root. */
@@ -339,14 +369,52 @@ namespace TAO
         /* Handles the creation of a private block chain. */
         void ThreadGenerator()
         {
-            if(!config::GetBoolArg("-private"))
+            if(!config::GetBoolArg("-private") || !config::mapArgs.count("-generate"))
                 return;
+
+            /* Get the account. */
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
+                new TAO::Ledger::SignatureChain("generate", config::GetArg("-generate", "").c_str());
+
+            /* Get the genesis ID. */
+            uint256_t hashGenesis = user->Genesis();
+
+            /* Check for duplicates in ledger db. */
+            TAO::Ledger::Transaction txPrev;
+            if(LLD::legDB->HasGenesis(hashGenesis))
+            {
+                /* Get the last transaction. */
+                uint512_t hashLast;
+                if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+                {
+                    debug::error(FUNCTION, "No previous transaction found... closing");
+
+                    return;
+                }
+
+                /* Get previous transaction */
+                if(!LLD::legDB->ReadTx(hashLast, txPrev))
+                {
+                    debug::error(FUNCTION, "No previous transaction found... closing");
+
+                    return;
+                }
+
+                /* Genesis Transaction. */
+                TAO::Ledger::Transaction tx;
+                tx.NextHash(user->Generate(txPrev.nSequence + 1, "1234", false));
+
+                /* Check for consistency. */
+                if(txPrev.hashNext != tx.hashNext)
+                {
+                    debug::error(FUNCTION, "Invalid credentials... closing");
+
+                    return;
+                }
+            }
 
             /* Startup Debug. */
             debug::log(0, FUNCTION, "Generator Thread Started...");
-
-            /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain("user", "pass");
 
             std::mutex MUTEX;
             while(!config::fShutdown.load())
@@ -361,10 +429,9 @@ namespace TAO
                 /* Create the block object. */
                 runtime::timer TIMER;
                 TIMER.Start();
+
                 TAO::Ledger::TritiumBlock block;
-
-
-                if(!TAO::Ledger::CreateBlock(user, SecureString("1234"), 2, block))
+                if(!TAO::Ledger::CreateBlock(user, "1234", 3, block))
                     continue;
 
                 /* Get the secret from new key. */

@@ -55,7 +55,7 @@ namespace TAO
                 return "System";
             }
 
-     
+
             /** GetInfo
              *
              *  Reurns a summary of node and ledger information for the currently running node
@@ -81,7 +81,7 @@ namespace TAO
              **/
             json::json ListPeers(const json::json& params, bool fHelp);
 
-            
+
 
         };
 

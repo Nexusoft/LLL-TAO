@@ -47,8 +47,6 @@ namespace TAO
                 if(fShutdown.load())
                     return;
 
-                debug::log(0, FUNCTION);
-
                 if(!LoggedIn() || Locked() || !CanTransact())
                     continue;
 

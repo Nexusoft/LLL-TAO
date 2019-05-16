@@ -173,6 +173,8 @@ HEADERS= $(wildcard *.h)
 ifdef UNIT_TESTS
 	OBJS = build/Tests_main.o \
 		   build/Tests_aes.o \
+		   #build/Tests_uint1024.o \
+		   build/Tests_fermat.o \
 		   build/Tests_testvm.o \
 		   build/Tests_objects.o \
 		   build/Tests_system.o \
@@ -207,7 +209,8 @@ else
 	OBJS = build/main.o
 endif
 
-OBJS+=  build/LLC_bignum.o \
+OBJS+=  build/LLC_base_uint.o \
+		build/LLC_bignum.o \
 		build/LLC_eckey.o \
 		build/LLC_flkey.o \
 		build/LLC_random.o \
@@ -321,6 +324,7 @@ OBJS+=  build/LLC_bignum.o \
 		build/Ledger_locator.o \
 		build/Ledger_mempool.o \
 		build/Ledger_prime.o \
+		build/Ledger_retarget.o \
 		build/Ledger_sigchain.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \

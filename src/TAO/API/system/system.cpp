@@ -51,7 +51,7 @@ namespace TAO
             mapFunctions["list/peers"] = Function(std::bind(&System::ListPeers,    this, std::placeholders::_1, std::placeholders::_2));
         }
 
-        
+
 
         /* Reurns a summary of node and ledger information for the currently running node. */
         json::json System::GetInfo(const json::json& params, bool fHelp)
@@ -61,13 +61,13 @@ namespace TAO
 
             /* The daemon version*/
             jsonRet["version"] = version::CLIENT_VERSION_BUILD_STRING;
-            
+
             /* The LLP version*/
             jsonRet["protocolversion"] = LLP::PROTOCOL_VERSION;
-            
+
             /* Legacy wallet version*/
             jsonRet["walletversion"] = Legacy::Wallet::GetInstance().GetVersion();
-            
+
             /* Current unified time as reported by this node*/
             jsonRet["timestamp"] =  (int)runtime::unifiedtimestamp();
 
@@ -79,7 +79,7 @@ namespace TAO
 
             /* The current block height of this node */
             jsonRet["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
-            
+
             /* Only include the sync information when not running in private mode as there is nothing to sync in private */
             if(!config::GetBoolArg("-private"))
             {
@@ -136,29 +136,37 @@ namespace TAO
 
                 /* The IP address of the peer.  This could be an EID*/
                 obj["address"]  = addr.ToString();
+
                 /* Whether the IP address is IPv4 or IPv6 */
                 obj["version"]  = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
+
                 /* The last known block height of the peer.  This may not be accurate as peers only broadcast their current height periodically */
                 obj["height"]   = addr.nHeight;
+
                 /* The calculated network latency between this node and the peer */
                 obj["latency"]  = debug::safe_printstr(addr.nLatency, " ms");
+
                 /* Unix timestamp of the last time this node had any communications with the peer */
                 obj["lastseen"] = addr.nLastSeen;
+
                 /* The number of connections successfully established with this peer since this node started */
                 obj["connects"] = addr.nConnected;
+
                 /* The number of connections dropped with this peer since this node started */
                 obj["drops"]    = addr.nDropped;
+
                 /* The number of failed connection attempts to this peer since this node started */
                 obj["fails"]    = addr.nFailed;
+                
                 /* The score value assigned to this peer based on latency and other connection statistics.   */
                 obj["score"]    = addr.Score();
-                
+
                 jsonRet.push_back(obj);
             }
 
             return jsonRet;
         }
-    
+
     }
 
 }

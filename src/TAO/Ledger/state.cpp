@@ -149,7 +149,10 @@ namespace TAO
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
             if(!statePrev)
+            {
+                debug::log(0, "Previous ", hashPrevBlock.ToString());
                 return debug::error(FUNCTION, "previous block state not found");
+            }
 
             /* Compute the Chain Trust */
             nChainTrust = statePrev.nChainTrust + GetBlockTrust();
@@ -581,7 +584,7 @@ namespace TAO
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
 
                     /* Check that previous transaction is indexed. */
-                    if(!LLD::legDB->HasIndex(tx.hashPrevTx))
+                    if(!tx.IsFirst() && !LLD::legDB->HasIndex(tx.hashPrevTx))
                         return debug::error(FUNCTION, "previous transaction not indexed");
 
                     /* Check if is trust or genesis. */

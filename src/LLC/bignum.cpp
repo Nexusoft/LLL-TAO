@@ -487,9 +487,11 @@ namespace LLC
         if (nSize <= 4)
             return std::vector<uint8_t>();
         std::vector<uint8_t> vch(nSize);
-        BN_bn2mpi(m_BN, &vch[0]);
-        vch.erase(vch.begin(), vch.begin() + 4);
+
+
+        BN_bn2mpi(m_BN, vch.data());
         std::reverse(vch.begin(), vch.end());
+        vch.erase(vch.end() - 4, vch.end());
         return vch;
     }
 

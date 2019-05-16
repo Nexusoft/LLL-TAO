@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <LLP/include/global.h>
 #include <LLP/include/base_address.h>

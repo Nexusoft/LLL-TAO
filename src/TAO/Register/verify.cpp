@@ -361,6 +361,28 @@ namespace TAO
                             break;
                         }
 
+
+                        /* Authorize is enabled in private mode only. */
+                        case TAO::Operation::OP::AUTHORIZE:
+                        {
+                            /* Seek through the stream. */
+                            tx.ssOperation.seek(64);
+
+                            /* Extract the genesis. */
+                            uint256_t hashGenesis;
+                            tx.ssOperation >> hashGenesis;
+
+                            /* Check and enforce private mode. */
+                            if(!config::GetBoolArg("-private"))
+                                return debug::error(FUNCTION, "cannot use authorize when not in private mode");
+
+                            /* Check genesis. */
+                            if(hashGenesis != uint256_t("0xb5a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41"))
+                                return debug::error(FUNCTION, "invalid genesis generated");
+
+                            break;
+                        }
+
                         default:
                             return debug::error(FUNCTION, "invalid code for register verification");
                     }

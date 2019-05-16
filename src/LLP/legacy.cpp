@@ -672,7 +672,7 @@ namespace LLP
                     else
                     {
                         /* Get the inventory hash. */
-                        hashTx    = hashBlock.getuint512();
+                        hashTx = hashBlock;
 
                         /* Check for transaction. */
                         if(!cacheInventory.Has(hashTx)
@@ -774,7 +774,7 @@ namespace LLP
                 }
                 else if (nInvType == LLP::MSG_TX_LEGACY)
                 {
-                    hashTx = hashBlock.getuint512();
+                    hashTx = hashBlock;
 
                     Legacy::Transaction tx;
                     if(!TAO::Ledger::mempool.Get(hashTx, tx) && !LLD::legacyDB->ReadTx(hashTx, tx))
@@ -893,11 +893,11 @@ namespace LLP
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
     {
-        if(!block.Check())
-            return false;
+        uint1024_t hash = block.GetHash();
 
         /* Check if the block is valid. */
-        uint1024_t hash = block.GetHash();
+        if(!block.Check())
+            return false;
 
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
@@ -1006,21 +1006,18 @@ namespace LLP
         }
 
         /* Process orphan if found. */
-        uint1024_t nOrphanHash;
         std::unique_lock<std::mutex> lock(ORPHAN_MUTEX);
         while(mapLegacyOrphans.count(hash))
         {
-            Legacy::LegacyBlock& orphan = mapLegacyOrphans[hash];
+            uint1024_t hashPrev = mapLegacyOrphans[hash].GetHash();
 
-            nOrphanHash = orphan.GetHash();
-            debug::log(0, FUNCTION, "processing ORPHAN prev=", nOrphanHash.ToString().substr(0, 20), " size=", mapLegacyOrphans.size());
+            debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.ToString().substr(0, 20), " size=", mapLegacyOrphans.size());
 
-            uint1024_t hashOrphan = hash;
-            if(!orphan.Accept())
+            if(!mapLegacyOrphans[hash].Accept())
                 return true;
 
-            hash = nOrphanHash;
-            mapLegacyOrphans.erase(hashOrphan);
+            mapLegacyOrphans.erase(hash);
+            hash = hashPrev;
         }
 
         return true;

@@ -167,7 +167,7 @@ namespace LLP
         /* Attempt to unlock the account. */
          if(TAO::API::users.Locked())
             return debug::error(FUNCTION, "No unlocked account available");
-            
+
         else
             PIN = TAO::API::users.GetActivePin();
 

@@ -16,8 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LEGACY_TYPES_ADDRESS_H
 
 #include <Util/include/base58.h>
-
-class uint256_t;
+#include <LLC/types/uint1024.h>
 
 namespace Legacy
 {

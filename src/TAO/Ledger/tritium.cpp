@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -121,9 +122,8 @@ namespace TAO
 
 
             /* Make sure the Block was Created within Active Channel. */
-            if (GetChannel() > 2)
+            if (GetChannel() > (config::GetBoolArg("-private") ? 3 : 2))
                 return debug::error(FUNCTION, "channel out of Range.");
-
 
             /* Check that the time was within range. */
             if (GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
@@ -141,7 +141,7 @@ namespace TAO
 
 
             /* Check the Proof of Work Claims. */
-            if (!config::GetBoolArg("-private") && IsProofOfWork() && !VerifyWork())
+            if (IsProofOfWork() && !VerifyWork())
                return debug::error(FUNCTION, "invalid proof of work");
 
 
@@ -166,8 +166,12 @@ namespace TAO
 
 
             /* Check the producer transaction. */
-            if(nHeight > 0 && GetChannel() > 0 && !producer.IsCoinbase())
+            if(nHeight > 0 && IsProofOfWork() && !producer.IsCoinbase())
                 return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
+
+            /* Check the producer transaction. */
+            if(nHeight > 0 && IsPrivate() && !producer.IsPrivate())
+                return debug::error(FUNCTION, "producer transaction has to be authorize for proof of work");
 
 
             /* Check the producer transaction. */
@@ -400,6 +404,16 @@ namespace TAO
                 /* Check the proof of stake. */
                 if(!CheckStake())
                     return debug::error(FUNCTION, "proof of stake is invalid");
+            }
+            else if (IsPrivate())
+            {
+                /* Check that the producer is a valid transaction. */
+                if(!producer.IsValid())
+                    return debug::error(FUNCTION, "producer transaction is invalid");
+
+                /* Check producer for correct genesis. */
+                if(producer.hashGenesis != uint256_t("0xb5a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41"))
+                    return debug::error(FUNCTION, "invalid genesis generated");
             }
 
 

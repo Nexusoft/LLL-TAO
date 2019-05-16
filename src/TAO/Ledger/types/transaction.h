@@ -195,6 +195,16 @@ namespace TAO
             bool IsTrust() const;
 
 
+            /** IsPrivate
+             *
+             *  Determines if the transaction is for a private block.
+             *
+             *  @return true if transaction is a coinbase.
+             *
+             **/
+            bool IsPrivate() const;
+
+
             /** IsGenesis
              *
              *  Determines if the transaction is a genesis transaction

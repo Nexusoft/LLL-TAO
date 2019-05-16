@@ -128,6 +128,16 @@ namespace TAO
         }
 
 
+        /* Determines if the transaction is for a private block. */
+        bool Transaction::IsPrivate() const
+        {
+            if(ssOperation.size() == 0)
+                return false;
+
+            return ssOperation.get(0) == TAO::Operation::OP::AUTHORIZE;
+        }
+
+
         /* Determines if the transaction is a coinstake transaction. */
         bool Transaction::IsTrust() const
         {
