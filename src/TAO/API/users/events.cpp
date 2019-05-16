@@ -34,7 +34,7 @@ namespace TAO
             uint256_t hashTo;
             uint64_t nAmount = 0;
             uint64_t nSession = 0;
-            uint32_t nSequence = 0;
+            //uint32_t nSequence = 0;
 
 
             while(!fShutdown.load())
