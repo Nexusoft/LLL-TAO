@@ -77,6 +77,4 @@ namespace LLD
     {
         return Exists(std::make_pair(hashTransaction, nOutput));
     }
-
-
 }

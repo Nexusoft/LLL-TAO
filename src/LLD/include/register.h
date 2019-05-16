@@ -17,12 +17,10 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <TAO/Register/types/state.h>
-#include <TAO/Register/types/object.h>
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/state.h>
 
 
 namespace LLD
@@ -44,12 +42,11 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        RegisterDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::APPEND)
-        : SectorDatabase("registers", nFlags) {}
+        RegisterDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::APPEND);
 
 
         /** Default Destructor **/
-        virtual ~RegisterDB() {}
+        virtual ~RegisterDB();
 
 
         /** WriteState
@@ -67,29 +64,7 @@ namespace LLD
          *  @return True if write was successful, false otherwise.
          *
          **/
-        bool WriteState(const uint256_t& hashRegister, const TAO::Register::State& state, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
-        {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Set the state in the memory map. */
-                mapStates[hashRegister] = state;
-
-                return true;
-            }
-            else if(nFlags & TAO::Register::FLAGS::WRITE)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Remove the memory state if writing the disk state. */
-                if(mapStates.count(hashRegister))
-                    mapStates.erase(hashRegister);
-            }
-
-            return Write(std::make_pair(std::string("state"), hashRegister), state);
-        }
+        bool WriteState(const uint256_t& hashRegister, const TAO::Register::State& state, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** ReadState
@@ -102,26 +77,7 @@ namespace LLD
          *  @return True if read was successful, false otherwise.
          *
          **/
-        bool ReadState(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
-        {
-            /* Memory mode for pre-database commits. */
-            if((nFlags & TAO::Register::FLAGS::MEMPOOL)
-            || (nFlags & TAO::Register::FLAGS::PRESTATE))
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Check for state in memory map. */
-                if(mapStates.count(hashRegister))
-                {
-                    /* Get the state from memory map. */
-                    state = mapStates[hashRegister];
-
-                    return true;
-                }
-            }
-
-            return Read(std::make_pair(std::string("state"), hashRegister), state);
-        }
+        bool ReadState(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** EraseState
@@ -134,20 +90,7 @@ namespace LLD
          *  @return True if erase was successful, false otherwise.
          *
          **/
-        bool EraseState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
-        {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Check for state in memory map. */
-                if(mapStates.count(hashRegister))
-                    mapStates.erase(hashRegister);
-            }
-
-            return Erase(std::make_pair(std::string("state"), hashRegister));
-        }
+        bool EraseState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** IndexTrust
@@ -160,10 +103,7 @@ namespace LLD
          *  @return True if write was successful, false otherwise.
          *
          **/
-        bool IndexTrust(const uint256_t& hashGenesis, const uint256_t& hashRegister)
-        {
-            return Index(std::make_pair(std::string("genesis"), hashGenesis), std::make_pair(std::string("state"), hashRegister));
-        }
+        bool IndexTrust(const uint256_t& hashGenesis, const uint256_t& hashRegister);
 
 
         /** HasTrust
@@ -175,10 +115,7 @@ namespace LLD
          *  @return True if write was successful, false otherwise.
          *
          **/
-        bool HasTrust(const uint256_t& hashGenesis)
-        {
-            return Exists(std::make_pair(std::string("genesis"), hashGenesis));
-        }
+        bool HasTrust(const uint256_t& hashGenesis);
 
 
         /** WriteTrust
@@ -191,10 +128,7 @@ namespace LLD
          *  @return True if write was successful, false otherwise.
          *
          **/
-        bool WriteTrust(const uint256_t& hashGenesis, const TAO::Register::State& state)
-        {
-            return Write(std::make_pair(std::string("genesis"), hashGenesis), state);
-        }
+        bool WriteTrust(const uint256_t& hashGenesis, const TAO::Register::State& state);
 
 
         /** ReadTrust
@@ -207,10 +141,7 @@ namespace LLD
          *  @return True if read was successful, false otherwise.
          *
          **/
-        bool ReadTrust(const uint256_t& hashGenesis, TAO::Register::State& state)
-        {
-            return Read(std::make_pair(std::string("genesis"), hashGenesis), state);
-        }
+        bool ReadTrust(const uint256_t& hashGenesis, TAO::Register::State& state);
 
 
         /** EraseTrust
@@ -223,10 +154,7 @@ namespace LLD
          *  @return True if read was successful, false otherwise.
          *
          **/
-        bool EraseTrust(const uint256_t& hashGenesis)
-        {
-            return Erase(std::make_pair(std::string("genesis"), hashGenesis));
-        }
+        bool EraseTrust(const uint256_t& hashGenesis);
 
 
         /** WriteIdentifier
@@ -239,28 +167,7 @@ namespace LLD
          *  @return True if write was successful, false otherwise.
          *
          **/
-        bool WriteIdentifier(const uint32_t nIdentifier, const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
-        {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                mapIdentifiers[nIdentifier] = hashRegister;
-
-                return true;
-            }
-            else if(nFlags & TAO::Register::FLAGS::WRITE)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Remove the memory state if writing the disk state. */
-                if(mapIdentifiers.count(nIdentifier))
-                    mapIdentifiers.erase(nIdentifier);
-            }
-
-            return Write(std::make_pair(std::string("token"), nIdentifier), hashRegister);
-        }
+        bool WriteIdentifier(const uint32_t nIdentifier, const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** EraseIdentifier
@@ -272,10 +179,7 @@ namespace LLD
          *  @return True if write was successful, false otherwise.
          *
          **/
-        bool EraseIdentifier(const uint32_t nIdentifier)
-        {
-            return Erase(std::make_pair(std::string("token"), nIdentifier));
-        }
+        bool EraseIdentifier(const uint32_t nIdentifier);
 
 
         /** ReadIdentifier
@@ -289,24 +193,7 @@ namespace LLD
          *  @return True if read was successful, false otherwise.
          *
          **/
-        bool ReadIdentifier(const uint32_t nIdentifier, uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
-        {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Return the state if it is found. */
-                if(mapIdentifiers.count(nIdentifier))
-                {
-                    hashRegister = mapIdentifiers[nIdentifier];
-
-                    return true;
-                }
-            }
-
-            return Read(std::make_pair(std::string("token"), nIdentifier), hashRegister);
-        }
+        bool ReadIdentifier(const uint32_t nIdentifier, uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** HasIdentifier
@@ -319,20 +206,7 @@ namespace LLD
          *  @return True if it exists, false otherwise.
          *
          **/
-        bool HasIdentifier(const uint32_t nIdentifier, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
-        {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Return the state if it is found. */
-                if(mapIdentifiers.count(nIdentifier))
-                    return true;
-            }
-
-            return Exists(std::make_pair(std::string("token"), nIdentifier));
-        }
+        bool HasIdentifier(const uint32_t nIdentifier, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** HasState
@@ -345,20 +219,7 @@ namespace LLD
          *  @return True if it exists, false otherwise.
          *
          **/
-        bool HasState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
-        {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Check for state in memory map. */
-                if(mapStates.count(hashRegister))
-                    return true;
-            }
-
-            return Exists(std::make_pair(std::string("state"), hashRegister));
-        }
+        bool HasState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** GetStates
@@ -371,43 +232,8 @@ namespace LLD
          *  @return True if any states were found, false otherwise.
          *
          **/
-        bool GetStates(const uint256_t& hashRegister, std::vector<TAO::Register::State>& states, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
-        {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
+        bool GetStates(const uint256_t& hashRegister, std::vector<TAO::Register::State>& states, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
-                /* Set the state in the memory map. */
-                if(mapStates.count(hashRegister))
-                    states.push_back(mapStates[hashRegister]);
-            }
-
-            /* Serialize the key to search for. */
-            DataStream ssKey(SER_LLD, DATABASE_VERSION);
-            ssKey << std::make_pair(std::string("state"), hashRegister);
-
-            /* Get the list of sector keys. */
-            std::vector<SectorKey> vKeys;
-            if(!pSectorKeys->Get(ssKey.Bytes(), vKeys))
-                return false;
-
-            /* Iterate the list of keys. */
-            for(const auto& key : vKeys)
-            {
-                std::vector<uint8_t> vData;
-                if(!Get(key, vData))
-                    continue;
-
-                TAO::Register::State state;
-                DataStream ssData(vData, SER_LLD, DATABASE_VERSION);
-                ssData >> state;
-
-                states.push_back(state);
-            }
-
-            return (states.size() > 0);
-        }
     };
 
 }

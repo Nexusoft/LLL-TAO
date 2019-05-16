@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */

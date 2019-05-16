@@ -29,6 +29,7 @@ namespace LLD
         BinaryKey(const std::vector<uint8_t>& vKeyIn);
     };
 
+
     /** Default constructor **/
     BinaryKey::BinaryKey(const std::vector<uint8_t>& vKeyIn)
     : pprev(nullptr)

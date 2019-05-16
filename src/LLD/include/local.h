@@ -17,11 +17,17 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
-#include <TAO/Register/types/state.h>
-#include <TAO/Ledger/types/transaction.h>
+
+/** Forward declarations **/
+namespace TAO
+{
+    namespace Ledger
+    {
+        class Transaction;
+    }
+}
 
 
 namespace LLD
@@ -34,16 +40,15 @@ namespace LLD
    **/
     class LocalDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
     {
+
     public:
 
-
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LocalDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase(std::string("local"), nFlags) {}
+        LocalDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE);
 
 
         /** Default Destructor **/
-        virtual ~LocalDB() {}
+        virtual ~LocalDB();
 
 
         /** WriteGenesis
@@ -56,10 +61,7 @@ namespace LLD
          *  @return True if the genesis is written, false otherwise.
          *
          **/
-        bool WriteGenesis(const uint256_t& hashGenesis, const TAO::Ledger::Transaction& tx)
-        {
-            return Write(std::make_pair(std::string("genesis"), hashGenesis), tx);
-        }
+        bool WriteGenesis(const uint256_t& hashGenesis, const TAO::Ledger::Transaction& tx);
 
 
         /** ReadGenesis
@@ -72,10 +74,7 @@ namespace LLD
          *  @return True if the genesis was read, false otherwise.
          *
          **/
-        bool ReadGenesis(const uint256_t& hashGenesis, TAO::Ledger::Transaction &tx)
-        {
-            return Read(std::make_pair(std::string("genesis"), hashGenesis), tx);
-        }
+        bool ReadGenesis(const uint256_t& hashGenesis, TAO::Ledger::Transaction &tx);
 
 
         /** HasGenesis
@@ -87,10 +86,7 @@ namespace LLD
          *  @return True if the genesis exists, false otherwise.
          *
          **/
-        bool HasGenesis(const uint256_t& hashGenesis)
-        {
-            return Exists(std::make_pair(std::string("genesis"), hashGenesis));
-        }
+        bool HasGenesis(const uint256_t& hashGenesis);
 
 
         /** WriteLast
@@ -103,10 +99,7 @@ namespace LLD
          *  @return True if the last was successfully written, false otherwise.
          *
          **/
-        bool WriteLast(const uint256_t& hashGenesis, const uint512_t& hashLast)
-        {
-            return Write(std::make_pair(std::string("last"), hashGenesis), hashLast);
-        }
+        bool WriteLast(const uint256_t& hashGenesis, const uint512_t& hashLast);
 
 
         /** ReadLast
@@ -119,10 +112,8 @@ namespace LLD
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool ReadLast(const uint256_t& hashGenesis, uint512_t &hashLast)
-        {
-            return Read(std::make_pair(std::string("last"), hashGenesis), hashLast);
-        }
+        bool ReadLast(const uint256_t& hashGenesis, uint512_t &hashLast);
+
     };
 }
 

@@ -11,21 +11,24 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLP/types/tritium.h>
-
-#include <TAO/Operation/include/execute.h>
-#include <Legacy/wallet/wallet.h>
 #include <LLC/include/random.h>
 
 #include <LLD/include/global.h>
 
+#include <LLP/types/tritium.h>
 #include <LLP/include/global.h>
 #include <LLP/templates/events.h>
 #include <LLP/include/manager.h>
 #include <LLP/include/inv.h>
 
+#include <TAO/Operation/include/execute.h>
+
+#include <TAO/Register/types/object.h>
+
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>
+
+#include <Legacy/wallet/wallet.h>
 
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>

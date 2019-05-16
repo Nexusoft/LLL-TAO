@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <cmath>
-
 #include <LLC/types/bignum.h>
 
 #include <LLD/include/global.h>
@@ -20,6 +18,8 @@ ________________________________________________________________________________
 #include <LLP/packets/tritium.h>
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
+
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/state.h>
@@ -34,6 +34,8 @@ ________________________________________________________________________________
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
+
+#include <cmath>
 
 /* Global TAO namespace. */
 namespace TAO

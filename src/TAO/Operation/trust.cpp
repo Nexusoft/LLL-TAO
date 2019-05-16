@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/operations.h>
 
+#include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
 
 #include <TAO/Ledger/include/constants.h>

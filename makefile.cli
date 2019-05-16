@@ -234,6 +234,9 @@ OBJS+=  build/LLC_bignum.o \
         build/LLD_address.o \
         build/LLD_ledger.o \
         build/LLD_legacy.o \
+        build/LLD_local.o \
+        build/LLD_register.o \
+        build/LLD_trust.o \
 		build/LLD_binary_key.o \
 		build/LLD_binary_lru.o \
 		build/LLD_filemap.o \
