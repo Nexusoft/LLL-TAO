@@ -11,10 +11,11 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/rpc.h>
+
 
 #include <Legacy/include/money.h>
 #include <Legacy/types/address.h>
+#include <Legacy/types/trustkey.h>
 
 #include <LLD/include/global.h>
 
@@ -26,15 +27,11 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/tritium.h>
 
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/rpc.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
-
-#include <functional>
-#include <map>
-#include <string>
-#include <vector>
 
 /* Global TAO namespace. */
 namespace TAO
