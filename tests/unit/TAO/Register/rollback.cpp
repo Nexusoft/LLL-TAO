@@ -30,6 +30,28 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
     using namespace TAO::Register;
     using namespace TAO::Operation;
 
+
+    //create dummy block
+    uint1024_t hashBlock = 0;
+    {
+        TAO::Ledger::BlockState state;
+        state.nVersion       = 7;
+        state.hashPrevBlock  = 0;
+        state.nChannel       = 1;
+        state.nHeight        = 5;
+        state.hashMerkleRoot = 555;
+        state.nBits          = 333;
+        state.nNonce         = 222;
+        state.nTime          = 999;
+
+        //set hash
+        hashBlock = state.GetHash();
+
+        //write to disk
+        LLD::legDB->WriteBlock(hashBlock, state);
+    }
+
+
     //rollback a token object register
     {
         //create the transaction object
@@ -222,6 +244,9 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         //write transaction
         REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
+        //write index
+        REQUIRE(LLD::legDB->IndexBlock(tx.GetHash(), hashBlock));
+
         //commit to disk
         REQUIRE(Execute(tx, FLAGS::WRITE));
 
@@ -294,6 +319,9 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+
+            //write index
+            REQUIRE(LLD::legDB->IndexBlock(tx.GetHash(), hashBlock));
 
             //commit to disk
             REQUIRE(Execute(tx, FLAGS::WRITE));
@@ -460,6 +488,9 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
+            //write index
+            REQUIRE(LLD::legDB->IndexBlock(tx.GetHash(), hashBlock));
+
             //commit to disk
             REQUIRE(Execute(tx, FLAGS::WRITE));
 
@@ -565,6 +596,9 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
+            //write index
+            REQUIRE(LLD::legDB->IndexBlock(tx.GetHash(), hashBlock));
+
             //commit to disk
             REQUIRE(Execute(tx, FLAGS::WRITE));
 
@@ -666,6 +700,9 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                 //write transaction
                 REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+
+                //write index
+                REQUIRE(LLD::legDB->IndexBlock(tx.GetHash(), hashBlock));
 
                 //commit to disk
                 REQUIRE(Execute(tx, FLAGS::WRITE));
@@ -923,6 +960,9 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+
+            //write index
+            REQUIRE(LLD::legDB->IndexBlock(tx.GetHash(), hashBlock));
 
             //set the hash
             hashTx = tx.GetHash();

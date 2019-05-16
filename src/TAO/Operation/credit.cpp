@@ -40,8 +40,12 @@ namespace TAO
             /* Read the claimed transaction. */
             TAO::Ledger::Transaction txSpend;
 
-            /* Check for memory pool. */
-            if(!TAO::Ledger::mempool.Get(hashTx, txSpend) && !LLD::legDB->ReadTx(hashTx, txSpend))
+            /* Check disk of writing new block. */
+            if((nFlags & TAO::Register::FLAGS::WRITE) && (!LLD::legDB->ReadTx(hashTx, txSpend) || !LLD::legDB->HasIndex(hashTx)))
+                return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist or not indexed");
+
+            /* Check mempool or disk if not writing. */
+            else if(!TAO::Ledger::mempool.Get(hashTx, txSpend) && !LLD::legDB->ReadTx(hashTx, txSpend))
                 return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist");
 
             /* Extract the state from tx. */
