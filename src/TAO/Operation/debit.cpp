@@ -120,7 +120,7 @@ namespace TAO
 
                 /* Read the register from the database. */
                 TAO::Register::State stateTo;
-                if(!LLD::regDB->ReadState(hashTo, stateTo))
+                if(!LLD::regDB->ReadState(hashTo, stateTo, nFlags))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
 
                 /* Write the register to the database. */
@@ -129,7 +129,7 @@ namespace TAO
 
                 /* Write the event to the ledger database. */
                 if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteEvent(stateTo.hashOwner, tx.GetHash()))
-                    return debug::error(FUNCTION, "failed to rollback event to register DB");
+                    return debug::error(FUNCTION, "failed to write event in register DB");
             }
 
             return true;

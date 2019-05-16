@@ -100,7 +100,8 @@ namespace LLD
         bool ReadState(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
             /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if((nFlags & TAO::Register::FLAGS::MEMPOOL)
+            || (nFlags & TAO::Register::FLAGS::PRESTATE))
             {
                 LOCK(MEMORY_MUTEX);
 

@@ -101,7 +101,7 @@ namespace TAO
 
             /* Calculate the future potential states. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
+                return false; //debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
 
             /* Add to the map. */
             {
