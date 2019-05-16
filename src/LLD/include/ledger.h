@@ -17,15 +17,23 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
 #include <TAO/Register/types/state.h>
-#include <TAO/Ledger/types/transaction.h>
-#include <Legacy/types/trustkey.h>
-#include <TAO/Ledger/types/state.h>
-#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Register/include/enum.h>
+
+#include <Util/include/memory.h>
+
+
+/** Forward declarations **/
+namespace TAO
+{
+    namespace Ledger
+    {
+        class BlockState;
+        class Transaction;
+    }
+}
 
 
 namespace LLD
@@ -40,18 +48,18 @@ namespace LLD
     {
         std::mutex MEMORY_MUTEX;
 
-        std::map< std::pair<uint256_t, uint512_t>, uint32_t > mapProofs;
+        std::map<std::pair<uint256_t, uint512_t>, uint32_t> mapProofs;
+
 
     public:
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase(std::string("ledger"), nFlagsIn) { }
+        LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE);
 
 
         /** Default Destructor **/
-        virtual ~LedgerDB() {}
+        virtual ~LedgerDB();
 
 
         /** WriteBestChain
@@ -63,10 +71,7 @@ namespace LLD
          *  @return True if the write was successful, false otherwise.
          *
          **/
-        bool WriteBestChain(const uint1024_t& hashBest)
-        {
-            return Write(std::string("hashbestchain"), hashBest);
-        }
+        bool WriteBestChain(const uint1024_t& hashBest);
 
 
         /** ReadBestChain
@@ -78,10 +83,7 @@ namespace LLD
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBestChain(uint1024_t& hashBest)
-        {
-            return Read(std::string("hashbestchain"), hashBest);
-        }
+        bool ReadBestChain(uint1024_t& hashBest);
 
 
         /** ReadBestChain
@@ -93,15 +95,7 @@ namespace LLD
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBestChain(memory::atomic<uint1024_t>& atomicBest)
-        {
-            uint1024_t hashBest = 0;
-            if(!Read(std::string("hashbestchain"), hashBest))
-                return false;
-
-            atomicBest.store(hashBest);
-            return true;
-        }
+        bool ReadBestChain(memory::atomic<uint1024_t>& atomicBest);
 
 
         /** WriteTx
@@ -114,10 +108,7 @@ namespace LLD
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool WriteTx(const uint512_t& hashTransaction, const TAO::Ledger::Transaction& tx)
-        {
-            return Write(hashTransaction, tx);
-        }
+        bool WriteTx(const uint512_t& hashTransaction, const TAO::Ledger::Transaction& tx);
 
 
         /** ReadTx
@@ -130,10 +121,7 @@ namespace LLD
          *  @return True if the transaction was successfully read, false otherwise.
          *
          **/
-        bool ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx)
-        {
-            return Read(hashTransaction, tx);
-        }
+        bool ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx);
 
 
         /** EraseTx
@@ -145,10 +133,7 @@ namespace LLD
          *  @return True if the transaction was successfully erased, false otherwise.
          *
          **/
-        bool EraseTx(const uint512_t& hashTransaction)
-        {
-            return Erase(hashTransaction);
-        }
+        bool EraseTx(const uint512_t& hashTransaction);
 
 
         /** HasIndex
@@ -160,10 +145,7 @@ namespace LLD
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool HasIndex(const uint512_t& hashTransaction)
-        {
-            return Exists(std::make_pair(std::string("index"), hashTransaction));
-        }
+        bool HasIndex(const uint512_t& hashTransaction);
 
 
         /** IndexBlock
@@ -176,10 +158,7 @@ namespace LLD
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool IndexBlock(const uint512_t& hashTransaction, const uint1024_t& hashBlock)
-        {
-            return Index(std::make_pair(std::string("index"), hashTransaction), hashBlock);
-        }
+        bool IndexBlock(const uint512_t& hashTransaction, const uint1024_t& hashBlock);
 
 
         /** IndexBlock
@@ -192,10 +171,7 @@ namespace LLD
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool IndexBlock(const uint32_t& nBlockHeight, const uint1024_t& hashBlock)
-        {
-            return Index(std::make_pair(std::string("height"), nBlockHeight), hashBlock);
-        }
+        bool IndexBlock(const uint32_t& nBlockHeight, const uint1024_t& hashBlock);
 
 
         /** EraseIndex
@@ -207,10 +183,7 @@ namespace LLD
          *  @return True if the index was erased, false otherwise.
          *
          **/
-        bool EraseIndex(const uint512_t& hashTransaction)
-        {
-            return Erase(std::make_pair(std::string("index"), hashTransaction));
-        }
+        bool EraseIndex(const uint512_t& hashTransaction);
 
         /** EraseIndex
          *
@@ -221,10 +194,7 @@ namespace LLD
          *  @return True if the index was erased, false otherwise.
          *
          **/
-        bool EraseIndex(const uint32_t& nBlockHeight)
-        {
-            return Erase(std::make_pair(std::string("height"), nBlockHeight));
-        }
+        bool EraseIndex(const uint32_t& nBlockHeight);
 
 
         /** RepairIndex
@@ -234,44 +204,13 @@ namespace LLD
          *  to the chain height.
          *
          *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] state The block state of the block the transaction belongs to.
          *
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool RepairIndex(const uint512_t& hashTransaction, TAO::Ledger::BlockState state)
-        {
-            debug::log(0, FUNCTION, "repairing index for ", hashTransaction.ToString().substr(0, 20));
+        bool RepairIndex(const uint512_t& hashTransaction, const TAO::Ledger::BlockState &state);
 
-            /* Loop until it is found. */
-            while(!config::fShutdown.load() && !state.IsNull())
-            {
-                /* Give debug output of status. */
-                if(state.nHeight % 100000 == 0)
-                    debug::log(0, FUNCTION, "repairing index..... ", state.nHeight);
-
-                /* Check the state vtx size. */
-                if(state.vtx.size() == 0)
-                    debug::error(FUNCTION, "block ", state.GetHash().ToString().substr(0, 20), " has no transactions");
-
-                /* Check for the transaction. */
-                for(const auto& tx : state.vtx)
-                {
-                    /* If the transaction is found, write the index. */
-                    if(tx.second == hashTransaction)
-                    {
-                        /* Repair the index once it is found. */
-                        if(!IndexBlock(hashTransaction, state.GetHash()))
-                            return false;
-
-                        return true;
-                    }
-                }
-
-                state = state.Prev();
-            }
-
-            return false;
-        }
 
         /** RepairIndexHeight
          *
@@ -281,34 +220,7 @@ namespace LLD
          *  @return True if the index was successfully written, false otherwise.
          *
          **/
-        bool RepairIndexHeight()
-        {
-            runtime::timer timer;
-            timer.Start();
-            debug::log(0, FUNCTION, "block height index missing or incomplete");
-
-            /* Get the best block state to start from. */
-            TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateGenesis;
-
-            /* Loop until it is found. */
-            while(!config::fShutdown.load() && !state.IsNull())
-            {
-                /* Give debug output of status. */
-                if(state.nHeight % 100000 == 0)
-                    debug::log(0, FUNCTION, "repairing block height index..... ", state.nHeight);
-
-                if(!IndexBlock(state.nHeight, state.GetHash()))
-                    return false;
-
-                state = state.Next();
-            }
-
-            uint32_t nElapsed = timer.Elapsed();
-            timer.Stop();
-            debug::log(0, FUNCTION, "Block height indexing complete in ", nElapsed, "s");
-
-            return true;
-        }
+        bool RepairIndexHeight();
 
 
         /** ReadBlock
@@ -321,10 +233,8 @@ namespace LLD
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBlock(const uint512_t& hashTransaction, TAO::Ledger::BlockState& state)
-        {
-            return Read(std::make_pair(std::string("index"), hashTransaction), state);
-        }
+        bool ReadBlock(const uint512_t& hashTransaction, TAO::Ledger::BlockState& state);
+
 
         /** ReadBlock
          *
@@ -336,10 +246,7 @@ namespace LLD
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBlock(const uint32_t& nBlockHeight, TAO::Ledger::BlockState& state)
-        {
-            return Read(std::make_pair(std::string("height"), nBlockHeight), state);
-        }
+        bool ReadBlock(const uint32_t& nBlockHeight, TAO::Ledger::BlockState& state);
 
 
         /** HasTx
@@ -351,10 +258,7 @@ namespace LLD
          *  @return True if the transaction exists, false otherwise.
          *
          **/
-        bool HasTx(const uint512_t& hashTransaction)
-        {
-            return Exists(hashTransaction);
-        }
+        bool HasTx(const uint512_t& hashTransaction);
 
 
         /** WriteSequence
@@ -367,10 +271,7 @@ namespace LLD
          *  @return True if the write was successful.
          *
          **/
-        bool WriteSequence(const uint256_t& hashAddress, const uint32_t nSequence)
-        {
-            return Write(std::make_pair(std::string("sequence"), hashAddress), nSequence);
-        }
+        bool WriteSequence(const uint256_t& hashAddress, const uint32_t nSequence);
 
 
         /** ReadSequence
@@ -383,10 +284,7 @@ namespace LLD
          *  @return True if the write was successful.
          *
          **/
-        bool ReadSequence(const uint256_t& hashAddress, uint32_t& nSequence)
-        {
-            return Read(std::make_pair(std::string("sequence"), hashAddress), nSequence);
-        }
+        bool ReadSequence(const uint256_t& hashAddress, uint32_t &nSequence);
 
 
         /** WriteEvent
@@ -399,18 +297,7 @@ namespace LLD
          *  @return True if the write was successful.
          *
          **/
-        bool WriteEvent(const uint256_t& hashAddress, const uint512_t& hashTx)
-        {
-            /* Get the current sequence number. */
-            uint32_t nSequence = 0;
-            ReadSequence(hashAddress, nSequence); //don't check for failed sequence read here since it will always fail on first run
-
-            /* Write the new sequence number iterated by one. */
-            if(!WriteSequence(hashAddress, nSequence + 1))
-                return false;
-
-            return Index(std::make_pair(hashAddress, nSequence), hashTx);
-        }
+        bool WriteEvent(const uint256_t& hashAddress, const uint512_t& hashTx);
 
 
         /** EraseEvent
@@ -422,19 +309,7 @@ namespace LLD
          *  @return True if the write was successful.
          *
          **/
-        bool EraseEvent(const uint256_t& hashAddress)
-        {
-            /* Get the current sequence number. */
-            uint32_t nSequence = 0;
-            if(!ReadSequence(hashAddress, nSequence))
-                return false;
-
-            /* Write the new sequence number iterated by one. */
-            if(!WriteSequence(hashAddress, nSequence - 1))
-                return false;
-
-            return Erase(std::make_pair(hashAddress, nSequence - 1));
-        }
+        bool EraseEvent(const uint256_t& hashAddress);
 
 
         /** ReadEvent
@@ -449,10 +324,7 @@ namespace LLD
          *  @return True if the write was successful.
          *
          **/
-        bool ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, TAO::Ledger::Transaction& tx)
-        {
-            return Read(std::make_pair(hashAddress, nSequence), tx);
-        }
+        bool ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, TAO::Ledger::Transaction &tx);
 
 
         /** WriteLast
@@ -465,10 +337,7 @@ namespace LLD
          *  @return True if the last was successfully written, false otherwise.
          *
          **/
-        bool WriteLast(const uint256_t& hashGenesis, const uint512_t& hashLast)
-        {
-            return Write(std::make_pair(std::string("last"), hashGenesis), hashLast);
-        }
+        bool WriteLast(const uint256_t& hashGenesis, const uint512_t& hashLast);
 
 
         /** EraseLast
@@ -480,10 +349,7 @@ namespace LLD
          *  @return True if the last was successfully written, false otherwise.
          *
          **/
-        bool EraseLast(const uint256_t& hashGenesis)
-        {
-            return Erase(std::make_pair(std::string("last"), hashGenesis));
-        }
+        bool EraseLast(const uint256_t& hashGenesis);
 
 
         /** ReadLast
@@ -496,10 +362,7 @@ namespace LLD
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast)
-        {
-            return Read(std::make_pair(std::string("last"), hashGenesis), hashLast);
-        }
+        bool ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast);
 
 
         /** WriteProof
@@ -513,29 +376,7 @@ namespace LLD
          *  @return True if the last was successfully written, false otherwise.
          *
          **/
-        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
-        {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Write the new proof state. */
-                mapProofs[std::make_pair(hashProof, hashTransaction)] = 0;
-
-                return true;
-            }
-            else if(nFlags & TAO::Register::FLAGS::WRITE)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Erase memory proof if they exist. */
-                if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
-                   mapProofs.erase(std::make_pair(hashProof, hashTransaction));
-            }
-
-            return Write(std::make_pair(hashProof, hashTransaction));
-        }
+        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** HasProof
@@ -549,20 +390,7 @@ namespace LLD
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
-        {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* If exists in memory, return true. */
-                if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
-                    return true;
-            }
-
-            return Exists(std::make_pair(hashProof, hashTransaction));
-        }
+        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** EraseProof
@@ -576,20 +404,7 @@ namespace LLD
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE)
-        {
-            /* Memory mode for pre-database commits. */
-            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                LOCK(MEMORY_MUTEX);
-
-                /* Erase memory proof if they exist. */
-                if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
-                   mapProofs.erase(std::make_pair(hashProof, hashTransaction));
-            }
-
-            return Erase(std::make_pair(hashProof, hashTransaction));
-        }
+        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** WriteBlock
@@ -602,10 +417,7 @@ namespace LLD
          *  @return True if the write was successful, false otherwise.
          *
          **/
-        bool WriteBlock(const uint1024_t& hashBlock, const TAO::Ledger::BlockState& state)
-        {
-            return Write(hashBlock, state);
-        }
+        bool WriteBlock(const uint1024_t& hashBlock, const TAO::Ledger::BlockState& state);
 
 
         /** ReadBlock
@@ -618,10 +430,7 @@ namespace LLD
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState& state)
-        {
-            return Read(hashBlock, state);
-        }
+        bool ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState& state);
 
 
         /** ReadBlock
@@ -634,15 +443,7 @@ namespace LLD
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBlock(const uint1024_t& hashBlock, memory::atomic<TAO::Ledger::BlockState>& atomicState)
-        {
-            TAO::Ledger::BlockState state;
-            if(!Read(hashBlock, state))
-                return false;
-
-            atomicState.store(state);
-            return true;
-        }
+        bool ReadBlock(const uint1024_t& hashBlock, memory::atomic<TAO::Ledger::BlockState>& atomicState);
 
 
         /** HasBlock
@@ -654,10 +455,7 @@ namespace LLD
          *  @return True if it exists, false otherwise.
          *
          **/
-        bool HasBlock(const uint1024_t& hashBlock)
-        {
-            return Exists(hashBlock);
-        }
+        bool HasBlock(const uint1024_t& hashBlock);
 
 
         /** EraseBlock
@@ -669,10 +467,7 @@ namespace LLD
          *  @return True if it exists, false otherwise.
          *
          **/
-        bool EraseBlock(const uint1024_t& hashBlock)
-        {
-            return Erase(hashBlock);
-        }
+        bool EraseBlock(const uint1024_t& hashBlock);
 
 
         /** HasGenesis
@@ -684,10 +479,7 @@ namespace LLD
          *  @return True if the genesis exists, false otherwise.
          *
          **/
-        bool HasGenesis(const uint256_t& hashGenesis)
-        {
-            return Exists(std::make_pair(std::string("genesis"), hashGenesis));
-        }
+        bool HasGenesis(const uint256_t& hashGenesis);
 
 
         /** WriteGenesis
@@ -700,10 +492,7 @@ namespace LLD
          *  @return True if the genesis is written, false otherwise.
          *
          **/
-        bool WriteGenesis(const uint256_t& hashGenesis, const uint512_t& hashTransaction)
-        {
-            return Write(std::make_pair(std::string("genesis"), hashGenesis), hashTransaction);
-        }
+        bool WriteGenesis(const uint256_t& hashGenesis, const uint512_t& hashTransaction);
 
 
         /** ReadGenesis
@@ -716,10 +505,8 @@ namespace LLD
          *  @return True if the genesis was read, false otherwise.
          *
          **/
-        bool ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTransaction)
-        {
-            return Read(std::make_pair(std::string("genesis"), hashGenesis), hashTransaction);
-        }
+        bool ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTransaction);
+
     };
 }
 

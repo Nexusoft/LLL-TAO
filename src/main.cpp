@@ -23,6 +23,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/cmd.h>
 #include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/filesystem.h>
 #include <Util/include/signals.h>
