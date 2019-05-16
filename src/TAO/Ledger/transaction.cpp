@@ -52,9 +52,13 @@ namespace TAO
                 /* Previous transaction. */
                 TAO::Ledger::Transaction tx;
 
-                /* Check for memory pool. */
-                if(!mempool.Get(hashPrevTx, tx) && !LLD::legDB->ReadTx(hashPrevTx, tx))
-                    return debug::error(FUNCTION, "failed to read previous transaction from disk");
+                /* Check disk of writing new block. */
+                if((nFlags & TAO::Register::FLAGS::WRITE) && (!LLD::legDB->ReadTx(hashPrevTx, tx) || !LLD::legDB->HasIndex(hashPrevTx)))
+                    return debug::error(FUNCTION, hashPrevTx.ToString(), " tx doesn't exist or not indexed");
+
+                /* Check mempool or disk if not writing. */
+                else if(!TAO::Ledger::mempool.Get(hashPrevTx, tx) && !LLD::legDB->ReadTx(hashPrevTx, tx))
+                    return debug::error(FUNCTION, hashPrevTx.ToString(), " tx doesn't exist");
 
                 /* Check the previous next hash that is being claimed. */
                 if(tx.hashNext != PrevHash())
