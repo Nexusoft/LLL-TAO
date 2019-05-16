@@ -112,7 +112,7 @@ namespace LLD
          **/
         bool IndexTrust(const uint256_t& hashGenesis, const uint256_t& hashRegister)
         {
-            return Index(std::make_pair(std::string("genesis"), hashGenesis), hashRegister);
+            return Index(std::make_pair(std::string("genesis"), hashGenesis), std::make_pair(std::string("state"), hashRegister));
         }
 
 

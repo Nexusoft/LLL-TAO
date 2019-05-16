@@ -351,7 +351,7 @@ int main(int argc, char** argv)
     }
 
 
-    /* Cleanup the local database. */
+    /* Cleanup the trust database. */
     if(LLD::trustDB)
     {
         debug::log(0, FUNCTION, "Shutting down trustDB");
