@@ -53,11 +53,7 @@ namespace TAO
                 TAO::Ledger::Transaction tx;
 
                 /* Check for memory pool. */
-                if((nFlags & TAO::Register::FLAGS::MEMPOOL) && !mempool.Get(hashPrevTx, tx))
-                    return debug::error(FUNCTION, "failed to read previous transaction from memory");
-
-                /* Check for disk write. */
-                else if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->ReadTx(hashPrevTx, tx))
+                if(!mempool.Get(hashPrevTx, tx) && !LLD::legDB->ReadTx(hashPrevTx, tx))
                     return debug::error(FUNCTION, "failed to read previous transaction from disk");
 
                 /* Check the previous next hash that is being claimed. */
