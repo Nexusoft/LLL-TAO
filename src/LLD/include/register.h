@@ -62,8 +62,26 @@ namespace LLD
          *  @return True if write was successful, false otherwise.
          *
          **/
-        bool WriteState(const uint256_t& hashRegister, const TAO::Register::State& state)
+        bool WriteState(const uint256_t& hashRegister, const TAO::Register::State& state, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
+            /* Memory mode for pre-database commits. */
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                mapStates[hashRegister] = state;
+
+                return true;
+            }
+            else
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Remove the memory state if writing the disk state. */
+                if(mapStates.count(hashRegister))
+                    mapStates.erase(hashRegister);
+            }
+
             return Write(std::make_pair(std::string("state"), hashRegister), state);
         }
 
@@ -78,8 +96,23 @@ namespace LLD
          *  @return True if read was successful, false otherwise.
          *
          **/
-        bool ReadState(const uint256_t& hashRegister, TAO::Register::State& state)
+        bool ReadState(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
+            /* Memory mode for pre-database commits. */
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Check for state in memory map. */
+                if(!mapStates.count(hashRegister))
+                    return false;
+
+                /* Get the state from memory map. */
+                state = mapStates[hashRegister];
+
+                return true;
+            }
+
             return Read(std::make_pair(std::string("state"), hashRegister), state);
         }
 
@@ -94,8 +127,23 @@ namespace LLD
          *  @return True if erase was successful, false otherwise.
          *
          **/
-        bool EraseState(const uint256_t& hashRegister)
+        bool EraseState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE)
         {
+            /* Memory mode for pre-database commits. */
+            if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+            {
+                LOCK(MEMORY_MUTEX);
+
+                /* Check for state in memory map. */
+                if(!mapStates.count(hashRegister))
+                    return false;
+
+                /* Erase the state from memory map. */
+                mapStates.erase(hashRegister);
+
+                return true;
+            }
+
             return Erase(std::make_pair(std::string("state"), hashRegister));
         }
 

@@ -28,7 +28,7 @@ namespace TAO
     {
 
         /* Verify the pre-states of a register to current network state. */
-        bool Verify(TAO::Ledger::Transaction tx)
+        bool Verify(const TAO::Ledger::Transaction& tx, const uint8_t nFlags)
         {
             /* Start the stream at the beginning. */
             tx.ssOperation.seek(0, STREAM::BEGIN);
@@ -74,7 +74,7 @@ namespace TAO
 
                             /* Read the register from database. */
                             State dbstate;
-                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate, nFlags))
                                 return debug::error(FUNCTION, "register pre-state doesn't exist");
 
                             /* Check the ownership. */
@@ -128,7 +128,7 @@ namespace TAO
 
                             /* Read the register from database. */
                             State dbstate;
-                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate, nFlags))
                                 return debug::error(FUNCTION, "register pre-state doesn't exist");
 
                             /* Check the ownership. */
@@ -299,7 +299,7 @@ namespace TAO
 
                             /* Read the register from database. */
                             State dbstate;
-                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate, nFlags))
                                 return debug::error(FUNCTION, "register pre-state doesn't exist");
 
                             /* Check the ownership. */
@@ -344,7 +344,7 @@ namespace TAO
 
                             /* Read the register from database. */
                             State dbstate;
-                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate, nFlags))
                                 return debug::error(FUNCTION, "register pre-state doesn't exist");
 
                             /* Check the ownership. */
