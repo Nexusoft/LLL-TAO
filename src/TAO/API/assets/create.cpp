@@ -56,7 +56,7 @@ namespace TAO
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if( !users.CanTransact())
+            if(!users.CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
 
 
@@ -110,25 +110,26 @@ namespace TAO
                 TAO::Register::Object asset;
 
                 /* Track the number of fields so that we can check there is at least one */
-                int nFieldCount = 0;
+                uint32_t nFieldCount = 0;
 
                 /* Iterate through the paramers and infer the type for each value */
-                for (auto it = params.begin(); it != params.end(); ++it)
+                for(auto it = params.begin(); it != params.end(); ++it)
                 {
                     /* Skip any incoming parameters that are keywords used by this API method*/
-                    if( it.key() == "pin"
-                        || it.key() == "session"
-                        || it.key() == "name"
-                        || it.key() == "format"
-                        || it.key() == "token_name"
-                        || it.key() == "token_value")
+                    if(it.key() == "pin"
+                    || it.key() == "session"
+                    || it.key() == "name"
+                    || it.key() == "format"
+                    || it.key() == "token_name"
+                    || it.key() == "token_value")
                     {
                         continue;
                     }
 
+                    /* Handle switch for string types in BASIC encoding */
                     if(it->is_string())
                     {
-                        nFieldCount++;
+                        ++nFieldCount;
 
                         std::string strValue = it->get<std::string>();
                         asset << it.key() << uint8_t(TAO::Register::TYPES::STRING) << strValue;
@@ -137,8 +138,6 @@ namespace TAO
                     {
                         throw APIException(-25, "Non-string types not supported in basic format.");
                     }
-
-
                 }
 
                 if(nFieldCount == 0)
@@ -166,7 +165,7 @@ namespace TAO
                 int nFieldCount = 0;
 
                 /* Iterate through each field definition */
-                for (auto it = jsonAssetDefinition.begin(); it != jsonAssetDefinition.end(); ++it)
+                for(auto it = jsonAssetDefinition.begin(); it != jsonAssetDefinition.end(); ++it)
                 {
                     /* Check that the required fields have been provided*/
                     if(it->find("name") == it->end())
@@ -182,8 +181,8 @@ namespace TAO
                         throw APIException(-25, "Missing mutable field in json defintion");
 
                     /* Parse the values out of the definition json*/
-                    std::string strName = (*it)["name"].get<std::string>();
-                    std::string strType = (*it)["type"].get<std::string>();
+                    std::string strName =  (*it)["name"].get<std::string>();
+                    std::string strType =  (*it)["type"].get<std::string>();
                     std::string strValue = (*it)["value"].get<std::string>();
                     bool fMutable = (*it)["mutable"].get<std::string>() == "true";
 
@@ -199,23 +198,23 @@ namespace TAO
                         asset << uint8_t(TAO::Register::TYPES::MUTABLE);
 
                     /* lastly add the data type and initial value*/
-                    if( strType == "uint8")
+                    if(strType == "uint8")
                         asset << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(stoul(strValue));
-                    else if( strType == "uint16")
+                    else if(strType == "uint16")
                         asset << uint8_t(TAO::Register::TYPES::UINT16_T) << uint16_t(stoul(strValue));
-                    else if( strType == "uint32")
+                    else if(strType == "uint32")
                         asset << uint8_t(TAO::Register::TYPES::UINT32_T) << uint32_t(stoul(strValue));
-                    else if( strType == "uint64")
+                    else if(strType == "uint64")
                         asset << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(stoul(strValue));
-                    else if( strType == "uint256")
+                    else if(strType == "uint256")
                         asset << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(strValue);
-                    else if( strType == "uint512")
+                    else if(strType == "uint512")
                         asset << uint8_t(TAO::Register::TYPES::UINT512_T) << uint512_t(strValue);
-                    else if( strType == "uint1024")
+                    else if(strType == "uint1024")
                         asset << uint8_t(TAO::Register::TYPES::UINT1024_T) << uint1024_t(strValue);
-                    else if( strType == "string")
+                    else if(strType == "string")
                         asset << uint8_t(TAO::Register::TYPES::STRING) << strValue;
-                    else if( strType == "bytes")
+                    else if(strType == "bytes")
                     {
                         bool fInvalid = false;
                         std::vector<unsigned char> vchBytes = encoding::DecodeBase64(strValue.c_str(), &fInvalid);
@@ -226,8 +225,8 @@ namespace TAO
                         asset << uint8_t(TAO::Register::TYPES::BYTES) << vchBytes;
                     }
 
-
-                    nFieldCount++;
+                    /* Increment total fields. */
+                    ++nFieldCount;
                 }
 
                 if(nFieldCount == 0)
@@ -235,17 +234,11 @@ namespace TAO
 
                 /* Submit the payload object. */
                 tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
-
-
             }
             else
             {
                 throw APIException(-25, "Unsupported format specified");
             }
-
-
-
-
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))

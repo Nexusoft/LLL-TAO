@@ -383,6 +383,16 @@ namespace TAO
                             break;
                         }
 
+
+                        /* Claim doesn't need register verification. */
+                        case TAO::Operation::OP::CLAIM:
+                        {
+                            /* Seek through the stream. */
+                            tx.ssOperation.seek(64);
+                            
+                            break;
+                        }
+
                         default:
                             return debug::error(FUNCTION, "invalid code for register verification");
                     }

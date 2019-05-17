@@ -42,7 +42,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        RegisterDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::APPEND);
+        RegisterDB(uint8_t nFlags = FLAGS::CREATE);
 
 
         /** Default Destructor **/

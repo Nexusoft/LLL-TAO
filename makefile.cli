@@ -299,6 +299,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_supply_history.o \
 		build/API_supply_initialize.o \
 		build/API_supply_transfer.o \
+		build/API_supply_claim.o \
 		build/API_supply_updateitem.o \
 		build/API_tokens_create.o \
 		build/API_tokens_credit.o \
