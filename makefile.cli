@@ -338,6 +338,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Operation_coinbase.o \
 		build/Operation_credit.o \
 		build/Operation_debit.o \
+        build/Operation_execute.o \
 		build/Operation_genesis.o \
 		build/Operation_register.o \
 		build/Operation_transfer.o \

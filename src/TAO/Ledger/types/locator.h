@@ -41,11 +41,8 @@ namespace TAO
 
 
             /** Default constructor. **/
-            Locator()
-            : vHave()
-            {
+            Locator();
 
-            }
 
             /** Constructor
              *
@@ -74,15 +71,11 @@ namespace TAO
              *  @param[in] vHaveIn The list of hashes to use.
              *
              **/
-            Locator(const std::vector<uint1024_t>& vHaveIn)
-            : vHave(vHaveIn)
-            {
-            }
+            Locator(const std::vector<uint1024_t>& vHaveIn);
+
 
             /** Destructor **/
-            ~Locator()
-            {
-            }
+            ~Locator();
 
 
             /** Set Null
@@ -90,10 +83,7 @@ namespace TAO
              *  Set the object to null.
              *
              **/
-            void SetNull()
-            {
-                vHave.clear();
-            }
+            void SetNull();
 
 
             /** Is Null
@@ -103,10 +93,7 @@ namespace TAO
              *  @return true if object is in null state.
              *
              **/
-            bool IsNull() const
-            {
-                return vHave.empty();
-            }
+            bool IsNull() const;
 
 
             /** Set

@@ -25,6 +25,13 @@ namespace TAO
     namespace Ledger
     {
 
+        /** Default constructor. **/
+        Locator::Locator()
+        : vHave()
+        {
+
+        }
+
         /* Set a locator from block state. */
         Locator::Locator(const TAO::Ledger::BlockState& state)
         : vHave()
@@ -51,6 +58,33 @@ namespace TAO
 
             /* On success, check back the blocks. */
             Set(state);
+        }
+
+
+        /*  Constructor - Set a locator from list of hashes. */
+        Locator::Locator(const std::vector<uint1024_t>& vHaveIn)
+        : vHave(vHaveIn)
+        {
+        }
+
+
+        /** Destructor **/
+        Locator::~Locator()
+        {
+        }
+
+
+        /* Set the object to null. */
+        void Locator::SetNull()
+        {
+            vHave.clear();
+        }
+
+
+        /* Flag to determine if object is null. */
+        bool Locator::IsNull() const
+        {
+            return vHave.empty();
         }
 
 

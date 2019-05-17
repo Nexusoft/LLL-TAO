@@ -35,6 +35,24 @@ namespace TAO
 
         Mempool mempool;
 
+
+        /** Default Constructor. **/
+        Mempool::Mempool()
+        : MUTEX()
+        , mapLegacy()
+        , mapLedger()
+        , mapPrevHashes()
+        , mapInputs()
+        {
+        }
+
+
+        /** Default Destructor. **/
+        Mempool::~Mempool()
+        {
+        }
+
+
         /* Add a transaction to the memory pool without validation checks. */
         bool Mempool::AddUnchecked(const TAO::Ledger::Transaction& tx)
         {

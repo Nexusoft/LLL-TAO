@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/users.h>
 
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Ledger/include/create.h>

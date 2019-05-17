@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/users.h>
 #include <TAO/API/include/supply.h>
 
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/verify.h>

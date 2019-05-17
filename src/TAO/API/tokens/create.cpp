@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/tokens.h>
 #include <TAO/API/include/utils.h>
 
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>

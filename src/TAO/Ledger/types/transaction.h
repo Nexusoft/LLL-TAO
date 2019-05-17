@@ -32,6 +32,7 @@ namespace TAO
     {
         class BlockState;
 
+
         /** Transaction
          *
          *  A Tritium Transaction.
@@ -132,7 +133,8 @@ namespace TAO
              *  @param[in] obj The object to serialize into ledger data
              *
              **/
-            template<typename Type> Transaction& operator<<(const Type& obj)
+            template<typename Type>
+            Transaction& operator<<(const Type& obj)
             {
                 /* Serialize to the stream. */
                 ssOperation << obj;
