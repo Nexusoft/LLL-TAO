@@ -59,7 +59,7 @@ namespace TAO
 
 
             /* Special testnet rule. */
-            if(config::fTestNet)
+            if(config::fTestNet.load())
                 return (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60) && (runtime::unifiedtimestamp() - nLastTime < 30);
 
             /* Check if block has been created within 20 minutes. */
@@ -69,8 +69,8 @@ namespace TAO
         /* Flag to tell if initial blocks are downloading. */
         double ChainState::PercentSynchronized()
         {
-            uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 20 * 60) - (config::fTestNet ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK);
-            uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - static_cast<uint64_t>(config::fTestNet ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
+            uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 20 * 60) - (config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK);
+            uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - static_cast<uint64_t>(config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
 
             return (100.0 * nSyncAge) / nChainAge;
         }
@@ -232,7 +232,7 @@ namespace TAO
 
 
             /* Debug logging. */
-            debug::log(0, FUNCTION, config::fTestNet? "Test" : "Nexus", " Network: genesis=", Genesis().ToString().substr(0, 20),
+            debug::log(0, FUNCTION, config::fTestNet.load() ? "Test" : "Nexus", " Network: genesis=", Genesis().ToString().substr(0, 20),
             " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", hashBestChain.load().ToString().substr(0, 20),
             " checkpoint=", hashCheckpoint.load().ToString().substr(0, 20)," height=", std::dec, stateBest.load().nHeight);
 
@@ -251,7 +251,7 @@ namespace TAO
         /* Get the hash of the genesis block. */
         uint1024_t ChainState::Genesis()
         {
-            return config::fTestNet ? TAO::Ledger::hashGenesisTestnet : TAO::Ledger::hashGenesis;
+            return config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : TAO::Ledger::hashGenesis;
         }
     }
 }

@@ -57,7 +57,7 @@ namespace TAO
             obj["version"] = version::CLIENT_VERSION_BUILD_STRING;
             obj["protocolversion"] = LLP::PROTOCOL_VERSION;
             obj["walletversion"] = Legacy::Wallet::GetInstance().GetVersion();
-            obj["testnet"] = config::fTestNet;
+            obj["testnet"] = config::fTestNet.load();
             obj["balance"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetBalance());
             obj["unconfirmedbalance"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetUnconfirmedBalance());
             obj["newmint"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetNewMint());
@@ -94,7 +94,7 @@ namespace TAO
             obj["syncaverage"] = (int)LLP::LegacyNode::nFastSyncAverage;
             obj["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
 
-            obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
+            obj["proxy"] = (config::fUseProxy.load() ? LLP::addrProxy.ToString() : std::string());
 
             // get the EID's if using LISP
             if(LLP::EIDS.size() > 0)
@@ -110,7 +110,7 @@ namespace TAO
 
 
 
-            obj["testnet"] = config::fTestNet;
+            obj["testnet"] = config::fTestNet.load();
             obj["keypoololdest"] = (int64_t)Legacy::Wallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
             obj["keypoolsize"] = Legacy::Wallet::GetInstance().GetKeyPool().GetKeyPoolSize();
             if (Legacy::Wallet::GetInstance().IsCrypted())

@@ -29,18 +29,18 @@ namespace config
     extern std::string strMiscWarning;
 
     extern std::atomic<bool> fShutdown;
-    extern bool fDebug;
-    extern bool fPrintToConsole;
-    extern bool fDaemon;
-    extern bool fClient;
-    extern bool fServer;
-    extern bool fCommandLine;
-    extern bool fTestNet;
-    extern bool fListen;
-    extern bool fUseProxy;
-    extern bool fAllowDNS;
-    extern bool fLogTimestamps;
-    extern bool fAPISessions;
+    extern std::atomic<bool> fDebug;
+    extern std::atomic<bool> fPrintToConsole;
+    extern std::atomic<bool> fDaemon;
+    extern std::atomic<bool> fClient;
+    extern std::atomic<bool> fServer;
+    extern std::atomic<bool> fCommandLine;
+    extern std::atomic<bool> fTestNet;
+    extern std::atomic<bool> fListen;
+    extern std::atomic<bool> fUseProxy;
+    extern std::atomic<bool> fAllowDNS;
+    extern std::atomic<bool> fLogTimestamps;
+    extern std::atomic<bool> fAPISessions;
 
 
     /** InterpretNegativeSetting
@@ -88,7 +88,7 @@ namespace config
      *  @return command-line argument (0 if invalid number) or default value.
      *
      **/
-    int64_t  GetArg(const std::string& strArg, int64_t  nDefault);
+    int64_t GetArg(const std::string& strArg, int64_t  nDefault);
 
 
     /** GetBoolArg
@@ -128,6 +128,7 @@ namespace config
      *
      **/
     bool SoftSetBoolArg(const std::string& strArg, bool fValue);
+
 
     /** CacheArgs
     *

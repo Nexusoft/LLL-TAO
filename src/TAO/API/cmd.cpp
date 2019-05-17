@@ -221,7 +221,7 @@ namespace TAO
             LLP::RPCNode rpcNode;
 
             std::string strAddr = config::GetArg("-rpcconnect", "127.0.0.1");
-            uint16_t port = config::GetArg("-rpcport",config::fTestNet? 8336 : 9336);
+            uint16_t port = config::GetArg("-rpcport",config::fTestNet.load() ? 8336 : 9336);
 
             LLP::BaseAddress addr(strAddr, port);
 

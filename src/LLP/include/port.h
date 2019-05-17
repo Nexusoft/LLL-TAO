@@ -58,7 +58,7 @@ namespace LLP
      *  @return Returns a 16-bit port number for core mainnet or testnet.
      *
      **/
-    inline uint16_t GetCorePort(const bool testnet = config::fTestNet)
+    inline uint16_t GetCorePort(const bool testnet = config::fTestNet.load())
     {
         return testnet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT;
     }
@@ -73,7 +73,7 @@ namespace LLP
      *  @return Returns a 16-bit port number for mining mainnet or testnet.
      *
      **/
-    inline uint16_t GetMiningPort(const bool testnet = config::fTestNet)
+    inline uint16_t GetMiningPort(const bool testnet = config::fTestNet.load())
     {
         return testnet ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT;
     }
@@ -88,7 +88,7 @@ namespace LLP
      *  @return Returns a 16-bit port number for mining mainnet or testnet.
      *
      **/
-    inline uint16_t GetDefaultPort(const bool testnet = config::fTestNet)
+    inline uint16_t GetDefaultPort(const bool testnet = config::fTestNet.load())
     {
         return testnet ? TESTNET_PORT : MAINNET_PORT;
     }

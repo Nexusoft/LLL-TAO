@@ -77,7 +77,7 @@ namespace TAO
                 return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " not accepting nLockTime beyond 2038 yet");
 
             /* Rather not work on nonstandard transactions (unless -testnet) */
-            if (!config::fTestNet && !tx.IsStandard())
+            if (!config::fTestNet.load() && !tx.IsStandard())
                 return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " nonstandard transaction type");
 
             /* Check previous inputs. */

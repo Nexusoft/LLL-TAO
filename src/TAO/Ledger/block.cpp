@@ -82,7 +82,7 @@ namespace TAO
         /* Set the block state to null. */
         void Block::SetNull()
         {
-            nVersion = config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION;
+            nVersion = config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION;
             hashPrevBlock = 0;
             hashMerkleRoot = 0;
             nChannel = 0;

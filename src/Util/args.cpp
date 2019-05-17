@@ -28,19 +28,18 @@ namespace config
     std::map<uint32_t, std::vector<std::string> > mapIPFilters;
 
     std::atomic<bool> fShutdown(false);
-
-    bool fDebug = false;
-    bool fPrintToConsole = false;
-    bool fDaemon = false;
-    bool fServer = false;
-    bool fClient = false;
-    bool fCommandLine = false;
-    bool fTestNet = false;
-    bool fListen = false;
-    bool fUseProxy = false;
-    bool fAllowDNS = false;
-    bool fLogTimestamps = false;
-    bool fAPISessions = false;
+    std::atomic<bool> fDebug(false);
+    std::atomic<bool> fPrintToConsole(false);
+    std::atomic<bool> fDaemon(false);
+    std::atomic<bool> fServer(false);
+    std::atomic<bool> fClient(false);
+    std::atomic<bool> fCommandLine(false);
+    std::atomic<bool> fTestNet(false);
+    std::atomic<bool> fListen(false);
+    std::atomic<bool> fUseProxy(false);
+    std::atomic<bool> fAllowDNS(false);
+    std::atomic<bool> fLogTimestamps(false);
+    std::atomic<bool> fAPISessions(false);
 
     std::mutex ARGS_MUTEX;
 
@@ -165,8 +164,8 @@ namespace config
         fDebug                  = GetBoolArg("-debug", false);
         fPrintToConsole         = GetBoolArg("-printtoconsole", false);
         fDaemon                 = GetBoolArg("-daemon", false);
-        fServer                 = fDaemon || GetBoolArg("-server", false);
-        fTestNet                = (GetArg("-testnet", 0) > 0);
+        fServer                 = fDaemon.load() || GetBoolArg("-server", false);
+        fTestNet                = GetArg("-testnet", 0) > 0;
         fListen                 = GetBoolArg("-listen", true);
         //fUseProxy               = GetBoolArg("-proxy")
         fAllowDNS               = GetBoolArg("-allowdns", true);

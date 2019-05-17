@@ -352,7 +352,7 @@ namespace Legacy
     bool Transaction::CoinstakeReward(const TAO::Ledger::BlockState& block, uint64_t& nStakeReward) const
     {
         /* Use appropriate settings for Testnet or Mainnet */
-        uint32_t nMaxTrustScore = config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
+        uint32_t nMaxTrustScore = config::fTestNet.load() ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
 
         /* Check that the transaction is Coinstake. */
         if(!IsCoinStake())
@@ -645,7 +645,7 @@ namespace Legacy
             txtype += "genesis";
         else
             txtype += "user";
-        
+
         return txtype;
     }
 
@@ -902,7 +902,7 @@ namespace Legacy
                         return debug::error(FUNCTION, "failed to read previous tx block");
 
                 /* Check the maturity. */
-                if((state.nHeight - statePrev.nHeight) < (config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
+                if((state.nHeight - statePrev.nHeight) < (config::fTestNet.load() ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
                     return debug::error(FUNCTION, "tried to spend immature balance ", (state.nHeight - statePrev.nHeight));
             }
 
@@ -1020,7 +1020,7 @@ namespace Legacy
             return debug::error(FUNCTION, "last state coinstake tx not found");
 
         /* Enforce the minimum trust key interval of 120 blocks. */
-        const uint32_t nMinimumInterval = config::fTestNet
+        const uint32_t nMinimumInterval = config::fTestNet.load()
                                             ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
                                             : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
                                                 ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY
@@ -1097,14 +1097,14 @@ namespace Legacy
         uint32_t nTimespan = (statePrev.GetBlockTime() - stateLast.GetBlockTime());
 
         /* Timespan less than required timespan is awarded the total seconds it took to find. */
-        if(nTimespan < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+        if(nTimespan < (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
             nScore = nScorePrev + nTimespan;
 
         /* Timespan more than required timespan is penalized 3 times the time it took past the required timespan. */
         else
         {
             /* Calculate the penalty for score (3x the time). */
-            uint32_t nPenalty = (nTimespan - (config::fTestNet ?
+            uint32_t nPenalty = (nTimespan - (config::fTestNet.load() ?
                 TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN)) * 3;
 
             /* Catch overflows and zero out if penalties are greater than previous score. */

@@ -173,7 +173,7 @@ namespace TAO
                     continue;
 
                 /* Ignore trust keys that are inactive (no blocks within timespan) */
-                if (trustKey.nLastBlockTime + (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 3 : TAO::Ledger::TRUST_KEY_TIMESPAN * 3)
+                if (trustKey.nLastBlockTime + (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 3 : TAO::Ledger::TRUST_KEY_TIMESPAN * 3)
                     < TAO::Ledger::ChainState::stateBest.load().GetBlockTime())
                     continue;
 

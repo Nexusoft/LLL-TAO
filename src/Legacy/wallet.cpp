@@ -192,7 +192,7 @@ namespace Legacy
         {
             /* Lock wallet so WalletDB can load all data into it */
             //LOCK(cs_wallet);
-            
+
             uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
 
             if (nLoadWalletRet != DB_LOAD_OK)
@@ -1897,7 +1897,7 @@ namespace Legacy
                 continue;
 
             /* Do not add coins to Genesis block if age less than trust timestamp */
-            uint32_t nMinimumCoinAge = (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN);
+            uint32_t nMinimumCoinAge = (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN);
             if (block.vtx[0].IsGenesis() && (block.vtx[0].nTime - walletTx.nTime) < nMinimumCoinAge)
                 continue;
 

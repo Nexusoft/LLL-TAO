@@ -78,7 +78,7 @@ namespace TAO
             return debug::error(0, FUNCTION, "Attempt to start Stake Minter when already started.");
 
         /* Disable stake minter if not in sessionless mode. */
-        if (config::fAPISessions)
+        if (config::fAPISessions.load())
         {
             debug::log(0, FUNCTION, "Stake minter disabled when use API sessions (multiuser).");
             return false;
@@ -194,7 +194,7 @@ namespace TAO
         /*
          * Every user account should have a corresponding trust account created with its first transaction.
          * Upon staking Genesis, that account is indexed into the register DB and is directly retrievable.
-         * Pre-Genesis, we have to find its creation in the account transaction history. 
+         * Pre-Genesis, we have to find its creation in the account transaction history.
          *
          * If this process fails in any way, the user account has no trust account available and cannot stake.
          * This is logged as an error and the stake minter should be suspended pending stop/shutdown.
@@ -322,14 +322,14 @@ namespace TAO
     bool TritiumMinter::CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
     {
         /* Use appropriate settings for Testnet or Mainnet */
-        static const uint64_t nTrustMax = (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX);
-        static const uint64_t nBlockAgeMax = (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN);
+        static const uint64_t nTrustMax = (uint64_t)(config::fTestNet.load() ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX);
+        static const uint64_t nBlockAgeMax = (uint64_t)(config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN);
         static const uint32_t stakingChannel = (uint32_t)0;
 
         static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
         /* New Mainnet interval will go into effect with activation of v7. Can't be static so it goes live immediately (can update after activation) */
-        const uint32_t nMinimumInterval = config::fTestNet
+        const uint32_t nMinimumInterval = config::fTestNet.load()
                                             ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
                                             : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
                                                 ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY
@@ -383,7 +383,7 @@ namespace TAO
 
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
-                    debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ", 
+                    debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ",
                                (nMinimumInterval - nCurrentInterval), " blocks remaining until staking available.");
 
                 ++nWaitCounter;
@@ -414,7 +414,7 @@ namespace TAO
             /* Determine the previous and current stake amounts */
             uint64_t nStakePrev = trustAccount.get<uint64_t>("stake");
             uint64_t nStake = nStakePrev + nStakeUpdate;
-            
+
             /* Removing stake balance incurs trust penalty */
             if (nTrust > 0 && nStake < nStakePrev)
             {
@@ -499,9 +499,9 @@ namespace TAO
         static const double LOG3 = log(3); // Constant for use in calculations
 
         /* Use appropriate settings for Testnet or Mainnet */
-        static const uint32_t nTrustWeightBase = config::fTestNet ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
-        static const uint32_t nBlockAgeMax = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
-        static const uint32_t nCoinAgeMin = config::fTestNet ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE;
+        static const uint32_t nTrustWeightBase = config::fTestNet.load() ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
+        static const uint32_t nBlockAgeMax = config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
+        static const uint32_t nCoinAgeMin = config::fTestNet.load() ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE;
 
         /* Use local variables for calculations, then set instance variables at the end */
         double nTrustWeightCurrent = 0.0;
@@ -513,7 +513,7 @@ namespace TAO
         if (!isGenesis)
         {
             /* Trust Weight base is time for 50% score. Weight continues to grow with Trust Score until it reaches max of 90.0
-             * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base), 
+             * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base),
              * while requiring close to a year to reach maximum.
              */
             double nTrustWeightRatio = (double)nTrust / (double)nTrustWeightBase;
@@ -547,7 +547,7 @@ namespace TAO
                 {
                     uint32_t nRemainingWaitTime = (nCoinAgeMin - nCoinAge) / 60; //minutes
 
-                    debug::log(0, FUNCTION, "Stake Minter: Age of stake balance is immature. ", 
+                    debug::log(0, FUNCTION, "Stake Minter: Age of stake balance is immature. ",
                                nRemainingWaitTime, " minutes remaining until staking available.");
                 }
 
@@ -621,7 +621,7 @@ namespace TAO
                 continue;
             }
 
-            /* Calculate the new Efficiency Threshold for the next nonce. 
+            /* Calculate the new Efficiency Threshold for the next nonce.
              * To stake, this value must be larger than required threshhold.
              * Block time increases the value while nonce decreases it.
              */
@@ -708,7 +708,7 @@ namespace TAO
             return false;
         }
 
-        /* Process the block and relay to network if it gets accepted into main chain. 
+        /* Process the block and relay to network if it gets accepted into main chain.
          * This method will call TritiumBlock::Accept() and BlockState::Index()
          * After all is approved, BlockState::Index() will call BlockState::SetBest()
          * to set the new best chain. This final method relays the new block to the
@@ -721,7 +721,7 @@ namespace TAO
         }
 
         ApplyStakeUpdate();
-        
+
         if (isGenesis)
             isGenesis = false;
 
@@ -745,7 +745,7 @@ namespace TAO
         #endif
 
         if (!key.SetSecret(vchSecret, true))
-            return debug::error(FUNCTION, "TritiumMinter: Unable to set key for signing Tritium Block ", 
+            return debug::error(FUNCTION, "TritiumMinter: Unable to set key for signing Tritium Block ",
                                 candidateBlock.hashMerkleRoot.ToString().substr(0, 20));
 
         if (!candidateBlock.GenerateSignature(key))
@@ -767,7 +767,7 @@ namespace TAO
 
         debug::log(0, FUNCTION, "Stake Minter Started");
         pTritiumMinter->nSleepTime = 5000;
-        bool fLocalTestnet = config::fTestNet && config::GetBoolArg("-nodns", false);
+        bool fLocalTestnet = config::fTestNet.load() && config::GetBoolArg("-nodns", false);
 
         /* If the system is still syncing/connecting on startup, wait to run minter */
         while ((TAO::Ledger::ChainState::Synchronizing() || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
@@ -815,7 +815,7 @@ namespace TAO
                 break;
 
             pTritiumMinter->FindStakeUpdate();
-            
+
             /* Set up the candidate block the minter is attempting to mine */
             if (!pTritiumMinter->CreateCandidateBlock(user, strPIN))
                 continue;

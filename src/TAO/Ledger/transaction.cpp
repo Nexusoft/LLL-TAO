@@ -195,7 +195,7 @@ namespace TAO
                 return debug::error(FUNCTION, "last state coinstake tx not found");
 
             /* Enforce the minimum trust key interval of 120 blocks. */
-            const uint32_t nMinimumInterval = config::fTestNet ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
+            const uint32_t nMinimumInterval = config::fTestNet.load() ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
                                                                : TAO::Ledger::MAINNET_MINIMUM_INTERVAL;
 
             /* Check the proper intervals. */
@@ -219,14 +219,14 @@ namespace TAO
             uint32_t nTimespan = (statePrev.GetBlockTime() - stateLast.GetBlockTime());
 
             /* Timespan less than required timespan is awarded the total seconds it took to find. */
-            if(nTimespan < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+            if(nTimespan < (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
                 nScore = nScorePrev + nTimespan;
 
             /* Timespan more than required timespan is penalized 3 times the time it took past the required timespan. */
             else
             {
                 /* Calculate the penalty for score (3x the time). */
-                uint32_t nPenalty = (nTimespan - (config::fTestNet ?
+                uint32_t nPenalty = (nTimespan - (config::fTestNet.load() ?
                     TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN)) * 3;
 
                 /* Catch overflows and zero out if penalties are greater than previous score. */

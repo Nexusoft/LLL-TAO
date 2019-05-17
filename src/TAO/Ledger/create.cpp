@@ -219,14 +219,14 @@ namespace TAO
                 const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
 
                 /* Modulate the Block Versions if they correspond to their proper time stamp */
-                if(runtime::unifiedtimestamp() >= (config::fTestNet ?
+                if(runtime::unifiedtimestamp() >= (config::fTestNet.load() ?
                     TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] :
                     NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-                    block.nVersion = config::fTestNet ?
+                    block.nVersion = config::fTestNet.load() ?
                     TESTNET_BLOCK_CURRENT_VERSION :
                     NETWORK_BLOCK_CURRENT_VERSION; // --> New Block Versin Activation Switch
                 else
-                    block.nVersion = config::fTestNet ?
+                    block.nVersion = config::fTestNet.load() ?
                     TESTNET_BLOCK_CURRENT_VERSION - 1 :
                     NETWORK_BLOCK_CURRENT_VERSION - 1;
 
@@ -326,7 +326,7 @@ namespace TAO
                 block.nChannel = 2;
                 block.nTime    = 1409456199;
                 block.nBits    = LLC::CBigNum(bnProofOfWorkLimit[2]).GetCompact();
-                block.nNonce   = config::fTestNet ? 122999499 : 2196828850;
+                block.nNonce   = config::fTestNet.load() ? 122999499 : 2196828850;
 
                 /* Ensure the hard coded merkle root is the same calculated merkle root. */
                 assert(block.hashMerkleRoot == uint512_t("0x8a971e1cec5455809241a3f345618a32dc8cb3583e03de27e6fe1bb4dfa210c413b7e6e15f233e938674a309df5a49db362feedbf96f93fb1c6bfeaa93bd1986"));

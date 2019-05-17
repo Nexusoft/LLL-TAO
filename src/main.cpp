@@ -171,7 +171,7 @@ int main(int argc, char** argv)
     if(!config::GetBoolArg(std::string("-beta")))
     {
         /* Get the port for Tritium Server. */
-        port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? (8888 + (config::GetArg("-testnet", 0) - 1)) : 9888));
+        port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (8888 + (config::GetArg("-testnet", 0) - 1)) : 9888));
 
         /* Initialize the Tritium Server. */
         LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(port);
@@ -182,7 +182,7 @@ int main(int argc, char** argv)
     else
     {
         /* Get the port for Legacy Server. */
-        port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? (8323 + (config::GetArg("-testnet", 0) - 1)) : 9323));
+        port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (8323 + (config::GetArg("-testnet", 0) - 1)) : 9323));
 
         /* Initialize the Legacy Server. */
         LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(port);
@@ -210,7 +210,7 @@ int main(int argc, char** argv)
 
 
     /* Get the port for the Core API Server. */
-    port = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet? 8336 : 9336));
+    port = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? 8336 : 9336));
 
     /* Set up RPC server */
     LLP::RPC_SERVER = new LLP::Server<LLP::RPCNode>(

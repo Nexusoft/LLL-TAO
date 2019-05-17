@@ -165,7 +165,7 @@ namespace Legacy
 
 
         /* Do not allow blocks to be accepted above the current block version. */
-        if(nVersion == 0 || nVersion > (config::fTestNet ?
+        if(nVersion == 0 || nVersion > (config::fTestNet.load() ?
             TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION : TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION))
             return debug::error(FUNCTION, "invalid block version");
 
@@ -182,41 +182,41 @@ namespace Legacy
 
         /* Check the Network Launch Time-Lock. */
         if (nHeight > 0 && nBlockTime <=
-            (config::fTestNet ? TAO::Ledger::NEXUS_TESTNET_TIMELOCK : TAO::Ledger::NEXUS_NETWORK_TIMELOCK))
+            (config::fTestNet.load() ? TAO::Ledger::NEXUS_TESTNET_TIMELOCK : TAO::Ledger::NEXUS_NETWORK_TIMELOCK))
             return debug::error(FUNCTION, "block created before network time-lock");
 
 
         /* Check the Current Channel Time-Lock. */
-        if (nHeight > 0 && nBlockTime < (config::fTestNet ?
+        if (nHeight > 0 && nBlockTime < (config::fTestNet.load() ?
             TAO::Ledger::CHANNEL_TESTNET_TIMELOCK[nChannel] :
             TAO::Ledger::CHANNEL_NETWORK_TIMELOCK[nChannel]))
             return debug::error(FUNCTION, "block created before channel time-lock, please wait ",
-                (config::fTestNet ?
+                (config::fTestNet.load() ?
                 TAO::Ledger::CHANNEL_TESTNET_TIMELOCK[nChannel] :
                 TAO::Ledger::CHANNEL_NETWORK_TIMELOCK[nChannel]) - nUnifiedTimeStamp, " seconds");
 
 
         /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
-        if (nVersion > 1 && nVersion == (config::fTestNet ?
+        if (nVersion > 1 && nVersion == (config::fTestNet.load() ?
             TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 1 :
             TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 1) &&
-            (nBlockTime - 3600) > (config::fTestNet ?
+            (nBlockTime - 3600) > (config::fTestNet.load() ?
             TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2] :
             TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 2]))
             return debug::error(FUNCTION, "version ", nVersion, " blocks have been obsolete for ",
-                (nUnifiedTimeStamp - (config::fTestNet ?
+                (nUnifiedTimeStamp - (config::fTestNet.load() ?
                 TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2] :
                 TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
 
         /* Check the Current Version Block Time-Lock. */
-        if (nVersion >= (config::fTestNet ?
+        if (nVersion >= (config::fTestNet.load() ?
             TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION :
             TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION) && nBlockTime <=
-            (config::fTestNet ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2] :
+            (config::fTestNet.load() ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2] :
             TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 2]))
             return debug::error(FUNCTION, "version ", nVersion, " blocks are not accepted for ",
-                (nUnifiedTimeStamp - (config::fTestNet ?
+                (nUnifiedTimeStamp - (config::fTestNet.load() ?
                 TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2] :
                 TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
@@ -231,7 +231,7 @@ namespace Legacy
                 return debug::error(FUNCTION, "coinbase too small");
 
             /* Check the ambassador and developer addresses. */
-            if(!config::fTestNet)
+            if(!config::fTestNet.load())
             {
                 /* Check the ambassador signatures. */
                 if (!VerifyAddressList(vtx[0].vout[nSize - 2].scriptPubKey,
@@ -561,7 +561,7 @@ namespace Legacy
 
             /* Block Weight Reaches Maximum At Trust Key Expiration. */
             nBlockWeight = std::min(10.0, (((9.0 * log(((2.0 * nBlockAge) /
-                ((config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))) + 1.0)) / LOG3)) + 1.0);
+                ((config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))) + 1.0)) / LOG3)) + 1.0);
 
         }
 
@@ -578,7 +578,7 @@ namespace Legacy
                 return debug::error(FUNCTION, "failed to get coinstake age");
 
             /* Genesis has to wait for one full trust key timespan. */
-            if(nCoinAge < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+            if(nCoinAge < (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
                 return debug::error(FUNCTION, "genesis age is immature");
 
             /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */

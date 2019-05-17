@@ -432,7 +432,7 @@ namespace LLP
             timer.Start();
 
             /* Update the Seed addresses. */
-            AddSeedAddresses(config::fTestNet);
+            AddSeedAddresses(config::fTestNet.load());
 
             /* Write that DNS was updated. */
             pDatabase->WriteLastUpdate();
