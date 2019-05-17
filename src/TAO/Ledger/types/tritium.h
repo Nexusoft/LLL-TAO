@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <LLC/include/flkey.h>
 #endif
 
+#include <TAO/Register/types/stream.h>
+
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/transaction.h>
 
@@ -63,6 +65,14 @@ namespace TAO
             Transaction producer;
 
 
+            /** System Script
+             *
+             *  The critical system level pre-states and post-states.
+             *
+             **/
+            TAO::Register::Stream  ssSystem;
+
+
             /** The transaction history.
              *  uint8_t = TransactionType (per enum)
              *  uint512_t = Tx hash
@@ -85,6 +95,7 @@ namespace TAO
                 READWRITE(vchBlockSig);
 
                 READWRITE(producer);
+                READWRITE(ssSystem);
                 READWRITE(vtx);
             )
 
@@ -97,6 +108,7 @@ namespace TAO
             TritiumBlock(const Block& block)
             : Block(block)
             , producer()
+            , ssSystem()
             , vtx(0)
             {
 

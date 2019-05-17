@@ -53,10 +53,6 @@ namespace TAO
             TAO::Register::Stream  ssRegister;
 
 
-            /** The critical system level pre-states and post-states. **/
-            TAO::Register::Stream  ssSystem;
-
-
             /** The transaction version. **/
             uint32_t nVersion;
 
@@ -95,7 +91,6 @@ namespace TAO
 
                 /* Register layer. */
                 READWRITE(ssRegister);
-                READWRITE(ssSystem);
 
                 /* Ledger layer */
                 READWRITE(nVersion);
@@ -114,7 +109,6 @@ namespace TAO
             Transaction()
             : ssOperation()
             , ssRegister()
-            , ssSystem()
             , nVersion(1)
             , nSequence(0)
             , nTimestamp(runtime::unifiedtimestamp())

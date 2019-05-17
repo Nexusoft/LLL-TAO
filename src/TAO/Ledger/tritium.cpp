@@ -50,6 +50,7 @@ namespace TAO
         TritiumBlock::TritiumBlock()
         : Block()
         , producer()
+        , ssSystem()
         , vtx()
         {
             SetNull();
@@ -60,6 +61,7 @@ namespace TAO
         TritiumBlock::TritiumBlock(const TritiumBlock& block)
         : Block(block)
         , producer(block.producer)
+        , ssSystem(block.ssSystem)
         , vtx(block.vtx)
         {
         }
@@ -69,6 +71,7 @@ namespace TAO
         TritiumBlock::TritiumBlock(const BlockState& state)
         : Block(state)
         , producer()
+        , ssSystem(state.ssSystem)
         , vtx(state.vtx)
         {
             vtx.erase(vtx.begin());
@@ -215,7 +218,29 @@ namespace TAO
 
             /* Only do producer transaction on non genesis. */
             if(nHeight > 0)
-                vHashes.push_back(producer.GetHash());
+            {
+                /* Get producer hash. */
+                uint512_t hashProducer = producer.GetHash();
+
+                /* Add producer to merkle tree list. */
+                vHashes.push_back(hashProducer);
+
+                /* Add producer to unique transactions. */
+                uniqueTx.insert(hashProducer);
+
+                /* Calculate merkle root with system memory. */
+                if(!ssSystem.size() != 0)
+                {
+                    /* Get the hash of the system register. */
+                    uint512_t hashSystem = LLC::SK512(ssSystem.Bytes());
+
+                    /* Add system hash to merkle tree list. */
+                    vHashes.push_back(hashSystem);
+
+                    /* Add system hash to unique hashes. */
+                    uniqueTx.insert(hashSystem);
+                }
+            }
 
 
             /* Get the signature operations for legacy tx's. */
@@ -225,7 +250,6 @@ namespace TAO
             /* Check all the transactions. */
             for(const auto& proof : vtx)
             {
-
                 /* Insert txid into set to check for duplicates. */
                 uniqueTx.insert(proof.second);
 
@@ -289,7 +313,7 @@ namespace TAO
 
 
             /* Check for duplicate txid's. */
-            if (uniqueTx.size() != vtx.size())
+            if (uniqueTx.size() != vHashes.size())
                 return debug::error(FUNCTION, "duplicate transaction");
 
 

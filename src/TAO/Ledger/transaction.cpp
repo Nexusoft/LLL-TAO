@@ -72,16 +72,6 @@ namespace TAO
                 if(tx.hashGenesis != hashGenesis)
                     return debug::error(FUNCTION, "previous genesis ", tx.hashGenesis.ToString().substr(0, 20), " mismatch ",  hashGenesis.ToString().substr(0, 20));
             }
-            else
-            {
-                /* System memory cannot be allocated on first. */
-                if(ssSystem.size() != 0)
-                    return debug::error(FUNCTION, "no system memory available on genesis");
-            }
-
-            /* Check for Trust. */
-            if(!IsTrust() && ssSystem.size() != 0)
-                return debug::error(FUNCTION, "no system memory available when not trust");
 
             /* Checks for coinbase. */
             if(IsCoinbase())

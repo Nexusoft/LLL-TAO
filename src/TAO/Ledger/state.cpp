@@ -79,6 +79,7 @@ namespace TAO
         /** Default Constructor. **/
         BlockState::BlockState(const TritiumBlock& block)
         : Block(block)
+        , ssSystem()
         , vtx()
         , nChainTrust(0)
         , nMoneySupply(0)
@@ -91,13 +92,15 @@ namespace TAO
             vtx.push_back(std::make_pair(TYPE::TRITIUM_TX, block.producer.GetHash()));
             vtx.insert(vtx.end(), block.vtx.begin(), block.vtx.end());
 
-            assert(vtx.size() == block.vtx.size() +1); //TODO: maybe a softer way to verify?
+            if(vtx.size() != block.vtx.size() + 1)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "tritium block to state incorrect sizes"));
         }
 
 
         /* Construct a block state from a legacy block. */
         BlockState::BlockState(const Legacy::LegacyBlock& block)
         : Block(block)
+        , ssSystem()
         , vtx()
         , nChainTrust(0)
         , nMoneySupply(0)
@@ -110,7 +113,8 @@ namespace TAO
             for(const auto& tx : block.vtx)
                 vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
 
-            assert(vtx.size() == block.vtx.size()); //TODO: maybe a softer way to verify?
+            if(vtx.size() != block.vtx.size())
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "legacy block to state incorrect sizes"));
         }
 
 
