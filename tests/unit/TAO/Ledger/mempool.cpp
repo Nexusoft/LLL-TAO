@@ -130,7 +130,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             Object object;
             object << std::string("byte") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(55)
                    << std::string("test") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::STRING) << std::string("this string")
-                   << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT32_T) << uint32_t(0);
+                   << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
 
             //payload
             tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();

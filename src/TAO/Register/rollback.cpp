@@ -129,7 +129,7 @@ namespace TAO
                                 if(object.Standard() == OBJECTS::TOKEN)
                                 {
                                     /* Erase the identifier. */ //TODO: possibly do not check for false
-                                    if(!LLD::regDB->EraseIdentifier(object.get<uint32_t>("identifier")))
+                                    if(!LLD::regDB->EraseIdentifier(object.get<uint256_t>("identifier")))
                                         return debug::error(FUNCTION, "could not erase identifier");
                                 }
                             }

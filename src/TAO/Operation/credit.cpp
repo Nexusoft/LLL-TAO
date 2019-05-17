@@ -111,7 +111,7 @@ namespace TAO
                     return debug::error(FUNCTION, "cannot claim coinbase from different sigchain");
 
                 /* Check the identifier. */
-                if(account.get<uint32_t>("identifier") != 0)
+                if(account.get<uint256_t>("identifier") != 0)
                     return debug::error(FUNCTION, "can't credit a coinbase for identifier other than 0");
 
                 /* Check that the balances match. */
@@ -291,7 +291,7 @@ namespace TAO
                     return debug::error(FUNCTION, "debit from must have a base account object");
 
                 /* Check token identifiers. */
-                if(accountFrom.get<uint32_t>("identifier") != account.get<uint32_t>("identifier"))
+                if(accountFrom.get<uint256_t>("identifier") != account.get<uint256_t>("identifier"))
                     return debug::error(FUNCTION, "credit can't be of different identifier");
 
                 /* Get the debit amount. */
@@ -387,7 +387,7 @@ namespace TAO
                     return debug::error(FUNCTION, "not authorized to use this temporal proof");
 
                 /* Check that the token indetifier matches token identifier. */
-                if(accountProof.get<uint32_t>("identifier") != tokenOwner.get<uint32_t>("identifier"))
+                if(accountProof.get<uint256_t>("identifier") != tokenOwner.get<uint256_t>("identifier"))
                     return debug::error(FUNCTION, "account proof identifier not token identifier");
 
                 /* Get the total amount of the debit. */
@@ -422,7 +422,7 @@ namespace TAO
                     return debug::error(FUNCTION, "account from object register is non-standard type");
 
                 /* Check that the debit to credit identifiers match. */
-                if(account.get<uint32_t>("identifier") != accountFrom.get<uint32_t>("identifier"))
+                if(account.get<uint256_t>("identifier") != accountFrom.get<uint256_t>("identifier"))
                     return debug::error(FUNCTION, "credit can't be of different identifier");
 
                 /* Write the new balance to object register. */

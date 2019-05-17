@@ -136,7 +136,7 @@ namespace LLD
 
 
     /* Writes a token identifier to the register database. */
-    bool RegisterDB::WriteIdentifier(const uint32_t nIdentifier, const uint256_t& hashRegister, const uint8_t nFlags)
+    bool RegisterDB::WriteIdentifier(const uint256_t nIdentifier, const uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -161,14 +161,14 @@ namespace LLD
 
 
     /* Erase a token identifier to the register database. */
-    bool RegisterDB::EraseIdentifier(const uint32_t nIdentifier)
+    bool RegisterDB::EraseIdentifier(const uint256_t nIdentifier)
     {
         return Erase(std::make_pair(std::string("token"), nIdentifier));
     }
 
 
     /* Read a token identifier from the register database. */
-    bool RegisterDB::ReadIdentifier(const uint32_t nIdentifier, uint256_t& hashRegister, const uint8_t nFlags)
+    bool RegisterDB::ReadIdentifier(const uint256_t nIdentifier, uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -189,7 +189,7 @@ namespace LLD
 
 
     /*  Determines if an identifier exists in the database. */
-    bool RegisterDB::HasIdentifier(const uint32_t nIdentifier, const uint8_t nFlags)
+    bool RegisterDB::HasIdentifier(const uint256_t nIdentifier, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags & TAO::Register::FLAGS::MEMPOOL)

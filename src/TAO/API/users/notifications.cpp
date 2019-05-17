@@ -106,13 +106,13 @@ namespace TAO
                     continue;
 
                 /* Skip over identifier 0. */
-                if(!object.Check("identifier", TAO::Register::TYPES::UINT32_T, false)
-                || object.get<uint32_t>("identifier") == 0)
+                if(!object.Check("identifier", TAO::Register::TYPES::UINT256_T, false)
+                || object.get<uint256_t>("identifier") == 0)
                     continue;
 
                 /* Get the token address. */
                 uint256_t hashToken;
-                if(!LLD::regDB->ReadIdentifier(object.get<uint32_t>("identifier"), hashToken))
+                if(!LLD::regDB->ReadIdentifier(object.get<uint256_t>("identifier"), hashToken))
                     continue;
 
                 /* Push the token identifier to list to check. */

@@ -77,8 +77,8 @@ namespace TAO
                         if((nFlags & TAO::Register::FLAGS::WRITE) || (nFlags & TAO::Register::FLAGS::MEMPOOL))
                         {
                             /* Check that token identifier hasn't been claimed. */
-                            if(object.get<uint32_t>("identifier") != 0 && !LLD::regDB->HasIdentifier(object.get<uint32_t>("identifier"), nFlags))
-                                return debug::error(FUNCTION, "account can't be created with no identifier ", object.get<uint32_t>("identifier"));
+                            if(object.get<uint256_t>("identifier") != 0 && !LLD::regDB->HasIdentifier(object.get<uint256_t>("identifier"), nFlags))
+                                return debug::error(FUNCTION, "account can't be created with no identifier ", object.get<uint256_t>("identifier").GetHex());
 
                         }
 
@@ -102,8 +102,8 @@ namespace TAO
                             return debug::error(FUNCTION, "trust account can't be created with non-zero trust ", object.get<uint64_t>("trust"));
 
                         /* Check that token identifier hasn't been claimed. */
-                        if(object.get<uint32_t>("identifier") != 0)
-                            return debug::error(FUNCTION, "trust account can't be created with non-default identifier ", object.get<uint32_t>("identifier"));
+                        if(object.get<uint256_t>("identifier") != 0)
+                            return debug::error(FUNCTION, "trust account can't be created with non-default identifier ", object.get<uint256_t>("identifier").GetHex());
 
                         break;
                     }
@@ -113,19 +113,19 @@ namespace TAO
                     case TAO::Register::OBJECTS::TOKEN:
                     {
                         /* Check for reserved native token. */
-                        if(object.get<uint32_t>("identifier") == 0)
-                            return debug::error(FUNCTION, "token can't be created with reserved identifier ", object.get<uint32_t>("identifier"));
+                        if(object.get<uint256_t>("identifier") == 0)
+                            return debug::error(FUNCTION, "token can't be created with reserved identifier ", object.get<uint256_t>("identifier").GetHex());
 
                         /* Check that token identifier hasn't been claimed. */
                         if((nFlags & TAO::Register::FLAGS::WRITE) || (nFlags & TAO::Register::FLAGS::MEMPOOL))
                         {
                             /* Check the claimed register address to identifier. */
                             uint256_t hashClaimed = 0;
-                            if(LLD::regDB->ReadIdentifier(object.get<uint32_t>("identifier"), hashClaimed, nFlags))
-                                return debug::error(FUNCTION, "token can't be created with reserved identifier ", object.get<uint32_t>("identifier"));
+                            if(LLD::regDB->ReadIdentifier(object.get<uint256_t>("identifier"), hashClaimed, nFlags))
+                                return debug::error(FUNCTION, "token can't be created with reserved identifier ", object.get<uint256_t>("identifier").GetHex());
 
                             /* Write the new identifier to database. */
-                            if(!LLD::regDB->WriteIdentifier(object.get<uint32_t>("identifier"), hashAddress, nFlags))
+                            if(!LLD::regDB->WriteIdentifier(object.get<uint256_t>("identifier"), hashAddress, nFlags))
                                 return debug::error(FUNCTION, "failed to commit token register identifier to disk");
                         }
 

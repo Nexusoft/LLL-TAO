@@ -36,7 +36,7 @@ namespace LLD
         std::mutex MEMORY_MUTEX;
 
         std::map<uint256_t, TAO::Register::State> mapStates;
-        std::map<uint32_t, uint256_t> mapIdentifiers;
+        std::map<uint256_t, uint256_t> mapIdentifiers;
 
     public:
 
@@ -167,7 +167,7 @@ namespace LLD
          *  @return True if write was successful, false otherwise.
          *
          **/
-        bool WriteIdentifier(const uint32_t nIdentifier, const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool WriteIdentifier(const uint256_t nIdentifier, const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** EraseIdentifier
@@ -179,7 +179,7 @@ namespace LLD
          *  @return True if write was successful, false otherwise.
          *
          **/
-        bool EraseIdentifier(const uint32_t nIdentifier);
+        bool EraseIdentifier(const uint256_t nIdentifier);
 
 
         /** ReadIdentifier
@@ -193,7 +193,7 @@ namespace LLD
          *  @return True if read was successful, false otherwise.
          *
          **/
-        bool ReadIdentifier(const uint32_t nIdentifier, uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool ReadIdentifier(const uint256_t nIdentifier, uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** HasIdentifier
@@ -206,7 +206,7 @@ namespace LLD
          *  @return True if it exists, false otherwise.
          *
          **/
-        bool HasIdentifier(const uint32_t nIdentifier, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool HasIdentifier(const uint256_t nIdentifier, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** HasState

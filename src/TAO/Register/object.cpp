@@ -30,7 +30,7 @@ namespace TAO
             uint8_t nType = OBJECTS::NONSTANDARD;
 
             /* Search object register for key types. */
-            if(Check("identifier", TYPES::UINT32_T, false) && Check("balance", TYPES::UINT64_T, true))
+            if(Check("identifier", TYPES::UINT256_T, false) && Check("balance", TYPES::UINT64_T, true))
             {
                 /* Set the return value. */
                 nType = OBJECTS::ACCOUNT;
@@ -59,7 +59,7 @@ namespace TAO
             uint8_t nType = OBJECTS::NONSTANDARD;
 
             /* Search object register for key types. */
-            if(Check("identifier", TYPES::UINT32_T, false) && Check("balance", TYPES::UINT64_T, true))
+            if(Check("identifier", TYPES::UINT256_T, false) && Check("balance", TYPES::UINT64_T, true))
             {
                 /* Set the return value. */
                 nType = OBJECTS::ACCOUNT;
