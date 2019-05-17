@@ -162,22 +162,6 @@ namespace TAO
             bool CheckStake() const;
 
 
-            /** BlockAge
-             *
-             *  Get the current block age of the trust key.
-             *
-             **/
-            bool BlockAge(uint64_t& nAge) const;
-
-
-            /** TrustScore
-             *
-             *  Get the score of the current trust block.
-             *
-             **/
-            bool TrustScore(uint64_t& nScore) const;
-
-
             /** VerifyWork
              *
              *  Verify the work was completed by miners as advertised.
