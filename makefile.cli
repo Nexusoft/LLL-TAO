@@ -315,6 +315,7 @@ OBJS+=  build/LLC_bignum.o \
 		build/Ledger_mempool.o \
 		build/Ledger_prime.o \
 		build/Ledger_sigchain.o \
+		build/Ledger_stake.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \
 		build/Ledger_transaction.o \
