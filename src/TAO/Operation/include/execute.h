@@ -252,8 +252,12 @@ namespace TAO
                             uint64_t nTrustScore;
                             tx.ssOperation >> nTrustScore;
 
+                            /* Change in stake amount (positive = add stake from balance, negative = unstake to balance). */
+                            int64_t nStakeChange;
+                            tx.ssOperation >> nStakeChange;
+
                             /* Execute the operation method. */
-                            if(!Trust(hashLastTrust, nTrustScore, nFlags, tx))
+                            if(!Trust(hashLastTrust, nTrustScore, nStakeChange, nFlags, tx))
                                 return false;
 
                             /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */

@@ -17,6 +17,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/system.h>
 
+#include <TAO/Ledger/include/stake.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -106,16 +108,23 @@ namespace TAO
             if(account.get<uint64_t>("trust") != 0)
                 return debug::error(FUNCTION, "cannot create genesis with already existing trust");
 
-            /* Check that there is no trust. */
-            if(account.get<uint64_t>("balance") == 0)
+            uint64_t nBalancePrev = account.get<uint64_t>("balance");
+
+            /* Check that account has balance. */
+            if(nBalancePrev == 0)
                 return debug::error(FUNCTION, "cannot create genesis with no available balance");
 
-            /* Write the new balance to object register. */
-            if(!account.Write("stake", account.get<uint64_t>("balance")))
+            /* Get the stake reward. */
+            uint64_t nStakeTime = tx.nTimestamp - account.nTimestamp; //"coin age"
+
+            uint64_t nCoinstakeReward = TAO::Ledger::CoinstakeReward(nBalancePrev, nStakeTime, (uint64_t)0, true);
+
+            /* Move existing balance to stake. */
+            if(!account.Write("stake", nBalancePrev))
                 return debug::error(FUNCTION, "stake could not be written to object register");
 
-            /* Write the new balance to object register. */
-            if(!account.Write("balance", uint64_t(0)))
+            /* Write the new balance to object register. Previous balance was just moved to stake, so new balance is only the coinstake reward */
+            if(!account.Write("balance", nCoinstakeReward))
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Update the state register's timestamp. */
@@ -130,8 +139,8 @@ namespace TAO
             if(!sys.Parse())
                 return debug::error(FUNCTION, "failed to parse system object register");
 
-            /* Write the system values. */
-            if(!sys.Write("stake", sys.get<uint64_t>("stake") + account.get<uint64_t>("stake")))
+            /* Write the system values */
+            if(!sys.Write("stake", sys.get<uint64_t>("stake") + nBalancePrev))
                 return debug::error(FUNCTION, "could not write new system register value.");
 
             /* Update the system register's timestamp. */
