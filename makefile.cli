@@ -173,8 +173,6 @@ HEADERS= $(wildcard *.h)
 ifdef UNIT_TESTS
 	OBJS = build/Tests_main.o \
 		   build/Tests_aes.o \
-		   #build/Tests_uint1024.o \
-		   build/Tests_fermat.o \
 		   build/Tests_testvm.o \
 		   build/Tests_objects.o \
 		   build/Tests_system.o \
