@@ -162,7 +162,13 @@ namespace TAO
         bool isGenesis;
 
 
-        /** Value of any change to the trust account stake to be applied in the next stake block **/
+        /** Value of any change to the trust account stake.
+         *  
+         *  A positive value stakes more by moving from trust account balance to stake.
+         *  A negative value unstakes by moving from trust account stake to balance.
+         *
+         *  The change is applied as part of the next OP::TRUST operation when successfully stake a block.
+         **/
         int64_t nStakeChange;
 
 
@@ -209,21 +215,25 @@ namespace TAO
         bool FindTrustAccount(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
 
 
-        /** FindStakeUpdate
+        /** FindStakeChange
          *
          *  Retrieve any change to be applied to the stake amount in the current trust account.
          *  This method updates the value stored in nStakeChange.
          *
-         **/
-        void FindStakeUpdate();
-
-
-        /** ApplyStakeUpdate
-         *
-         *  Record that a stake update request has been completed.
+         *  @param[in] user - the currently active signature chain
          *
          **/
-        void ApplyStakeUpdate();
+        void FindStakeChange(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
+
+
+        /** ApplyStakeChange
+         *
+         *  Record that a stake change request has been completed.
+         *
+         *  @param[in] user - the currently active signature chain
+         *
+         **/
+        void ApplyStakeChange(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
 
 
         /** CreateCandidateBlock

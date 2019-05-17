@@ -245,14 +245,18 @@ namespace TAO
 
 
     /*  Retrieve any change to be applied to the stake amount in the current trust account. */
-    void TritiumMinter::FindStakeUpdate()
+    void TritiumMinter::FindStakeChange(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user)
     {
         nStakeChange = 0;
 
-/*TODO - Check for any specific transfer to/from stake and apply it -- overrides autostake setting */
-        if (false)
+        /* No stake change applied for Genesis (automatically moves all trust account balance to stake) */
+        if (isGenesis)
+            return;
+
+        /* Overrides autostake when there is a specific request for a stake change */
+        if (LLD::locDB->ReadStakeChange(user->Genesis(), nStakeChange) && nStakeChange != 0)
         {
-            /* Validate balance transfer request */
+            /* Validate stake change request */
             if (nStakeChange > 0)
             {
                 /* Cannot transfer more into stake than current trust account balance */
@@ -260,16 +264,19 @@ namespace TAO
             }
             else if (nStakeChange < 0)
             {
-                /* Cannot transfer more from stake than current stake balance */
-                nStakeChange = std::min(nStakeChange, (int64_t)trustAccount.get<uint64_t>("stake"));
+                int64_t nStake = (int64_t)trustAccount.get<uint64_t>("stake");
+
+                /* Cannot transfer more from stake than current stake amount */
+                if ((0 - nStakeChange) > nStake)
+                    nStakeChange = (0 - nStake);
             }
 
             return;
         }
 
-        if (config::GetBoolArg("-autostake", true))
+        if (config::GetBoolArg("-autostake", false))
         {
-            /* autostake is enabled. Automatically transfer any value from trust account balance to the stake balance */
+            /* autostake is enabled. Automatically transfer any value from trust account balance to the stake amount */
             nStakeChange = (int64_t)trustAccount.get<uint64_t>("balance");
         }
 
@@ -278,10 +285,21 @@ namespace TAO
 
 
     /* Record that a stake update request has been completed. */
-    void TritiumMinter::ApplyStakeUpdate()
+    void TritiumMinter::ApplyStakeChange(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user)
     {
-/*TODO - Check for any specific transfer to/from stake and record it as applied */
+        int64_t nStakeChangePrev = 0;
 
+        /* Update requested stake change with amount applied */
+        if (LLD::locDB->ReadStakeChange(user->Genesis(), nStakeChangePrev) && nStakeChangePrev != 0)
+        {
+            /* Previous stake change request exists, so autostake was overridden and that change applied. Update requested amount by applied amount */
+            int64_t nStakeChangeNew = nStakeChangePrev - nStakeChange;
+
+            if (!LLD::locDB->WriteStakeChange(user->Genesis(), nStakeChangeNew))
+                debug::error(FUNCTION, "Unable to apply update to requested stake change");
+        }
+
+        return;
     }
 
 
@@ -660,10 +678,11 @@ namespace TAO
             return false;
         }
 
-        ApplyStakeUpdate();
-        
+
         if (isGenesis)
             isGenesis = false;
+        else
+            ApplyStakeChange(user);
 
         return true;
     }
@@ -754,7 +773,8 @@ namespace TAO
             if (!pTritiumMinter->FindTrustAccount(user))
                 break;
 
-            pTritiumMinter->FindStakeUpdate();
+            /* Retrieve the amount to add to stake or unstake (Trust only) */
+            pTritiumMinter->FindStakeChange(user);
             
             /* Set up the candidate block the minter is attempting to mine */
             if (!pTritiumMinter->CreateCandidateBlock(user, strPIN))
