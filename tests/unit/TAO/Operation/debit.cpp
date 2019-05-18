@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/enum.h>
 

@@ -167,7 +167,7 @@ namespace TAO
 
         /*  Determins whether a string value is a register address.
          *  This only checks to see if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
-         *  It does not check to see whether the register address exists in the database 
+         *  It does not check to see whether the register address exists in the database
          */
         bool IsRegisterAddress(const std::string& strValueToCheck)
         {
@@ -187,10 +187,10 @@ namespace TAO
                                     block.nVersion < 5 ? block.GetHash().GetHex() :
                                     ((block.nChannel == 0) ? block.StakeHash().GetHex() : block.ProofHash().GetHex());
 
-            result["size"] = (int)::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION);
-            result["height"] = (int)block.nHeight;
-            result["channel"] = (int)block.nChannel;
-            result["version"] = (int)block.nVersion;
+            result["size"] = (uint32_t)::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION);
+            result["height"] = (uint32_t)block.nHeight;
+            result["channel"] = (uint32_t)block.nChannel;
+            result["version"] = (uint32_t)block.nVersion;
             result["merkleroot"] = block.hashMerkleRoot.GetHex();
             result["time"] = convert::DateTimeStrFormat(block.GetBlockTime());
             result["nonce"] = (uint64_t)block.nNonce;
@@ -626,7 +626,7 @@ namespace TAO
                 uint512_t nUint512;
                 uint1024_t nUint1024;
                 std::string strValue;
-                std::vector<unsigned char> vchBytes;
+                std::vector<uint8_t> vchBytes;
 
                 for(const auto& strFieldName : vFieldNames)
                 {
@@ -679,7 +679,7 @@ namespace TAO
                     }
                     else if(nType == TAO::Register::TYPES::BYTES)
                     {
-                        object.Read<std::vector<unsigned char>>(strFieldName, vchBytes);
+                        object.Read<std::vector<uint8_t> >(strFieldName, vchBytes);
                         ret[strFieldName] = encoding::EncodeBase64(&vchBytes[0], vchBytes.size()) ;
                     }
 

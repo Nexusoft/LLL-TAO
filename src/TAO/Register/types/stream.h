@@ -44,7 +44,6 @@ namespace TAO
             Stream()
             : BaseStream()
             {
-
             }
 
 

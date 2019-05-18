@@ -81,99 +81,38 @@ namespace TAO
 
 
             /** Default Constructor **/
-            State()
-            : nVersion(1)
-            , nType(0)
-            , hashOwner(0)
-            , nTimestamp(runtime::unifiedtimestamp())
-            , vchState()
-            , hashChecksum(0)
-            , nReadPos(0)
-            {
-                vchState.clear();
-            }
+            State();
 
 
             /** Basic Type Constructor **/
-            State(uint8_t nTypeIn)
-            : nVersion(1)
-            , nType(nTypeIn)
-            , hashOwner(0)
-            , nTimestamp(runtime::unifiedtimestamp())
-            , vchState()
-            , hashChecksum(0)
-            , nReadPos(0)
-            {
-                vchState.clear();
-            }
+            State(uint8_t nTypeIn);
 
 
             /** Default Constructor **/
-            State(std::vector<uint8_t> vchData)
-            : nVersion(1)
-            , nType(0)
-            , hashOwner(0)
-            , nTimestamp(runtime::unifiedtimestamp())
-            , vchState(vchData)
-            , nReadPos(0)
-            {
-                SetChecksum();
-            }
+            State(const std::vector<uint8_t>& vchData);
 
             /** Default Constructor **/
-            State(uint8_t nTypeIn, uint256_t hashOwnerIn)
-            : nVersion(1)
-            , nType(nTypeIn)
-            , hashOwner(hashOwnerIn)
-            , nTimestamp(runtime::unifiedtimestamp())
-            , vchState()
-            , hashChecksum(0)
-            , nReadPos(0)
-            {
-
-            }
+            State(uint8_t nTypeIn, const uint256_t& hashOwnerIn);
 
 
             /** Default Constructor **/
-            State(std::vector<uint8_t> vchData, uint8_t nTypeIn, uint256_t hashOwnerIn)
-            : nVersion(1)
-            , nType(nTypeIn)
-            , hashOwner(hashOwnerIn)
-            , nTimestamp(runtime::unifiedtimestamp())
-            , vchState(vchData)
-            , nReadPos(0)
-            {
-                SetChecksum();
-            }
+            State(std::vector<uint8_t> vchData, uint8_t nTypeIn, const uint256_t& hashOwnerIn);
 
 
             /** Default Constructor **/
-            State(uint64_t hashChecksumIn)
-            : nVersion(1)
-            , nType(0)
-            , hashOwner(0)
-            , nTimestamp(runtime::unifiedtimestamp())
-            , vchState()
-            , hashChecksum(hashChecksumIn)
-            , nReadPos(0)
-            {
+            State(uint64_t hashChecksumIn);
 
-            }
+
+            /** Default Destructor **/
+            ~State();
 
 
             /** Operator overload to check for equivilence. **/
-            bool operator==(const State& state) const
-            {
-                return GetHash() == state.GetHash();
-            }
+            bool operator==(const State& state) const;
 
 
             /** Operator overload to check for non-equivilence. **/
-            bool operator!=(const State& state) const
-            {
-                return GetHash() != state.GetHash();
-            }
-
+            bool operator!=(const State& state) const;
 
             /** SetNull
              *

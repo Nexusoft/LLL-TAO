@@ -62,7 +62,8 @@ namespace TAO
             }
 
             /* Get pre-states on write. */
-            if(nFlags & TAO::Register::FLAGS::WRITE  || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 {
                     /* Get the state byte. */
@@ -151,7 +152,8 @@ namespace TAO
             }
 
             /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Check register post-state checksum. */
                 {

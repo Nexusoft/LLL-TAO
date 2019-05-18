@@ -140,7 +140,7 @@ namespace TAO
                         break;
 
                     /* Check claims against notifications. */
-                    if(LLD::legDB->HasProof(std::get<0>(hash), tx.GetHash()))
+                    if(LLD::legDB->HasProof(std::get<0>(hash), tx.GetHash(), TAO::Register::FLAGS::WRITE | TAO::Register::FLAGS::MEMPOOL))
                         continue;
 
                     ++nTotal;
@@ -191,7 +191,8 @@ namespace TAO
                         if(!LLD::regDB->ReadState(hashTo, stateTo))
                             continue;
 
-                        if(stateTo.nType == TAO::Register::REGISTER::RAW || stateTo.nType == TAO::Register::REGISTER::READONLY)
+                        if(stateTo.nType == TAO::Register::REGISTER::RAW
+                        || stateTo.nType == TAO::Register::REGISTER::READONLY)
                         {
                             /* Parse the object register. */
                             if(!object.Parse())
@@ -227,7 +228,7 @@ namespace TAO
                     continue;
 
                 /* Check claims against notifications. */
-                if(LLD::legDB->HasProof(hashAddress, tx.GetHash()))
+                if(LLD::legDB->HasProof(hashAddress, tx.GetHash(), TAO::Register::FLAGS::WRITE | TAO::Register::FLAGS::MEMPOOL))
                     continue;
 
                 ++nTotal;

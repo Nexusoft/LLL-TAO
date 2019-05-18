@@ -51,7 +51,7 @@ namespace TAO
 
             /* Check for identifier parameter. */
             if(params.find("type") == params.end())
-                throw APIException(-25, "Missing Type");
+                throw APIException(-25, "Missing Type (<type>)");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
@@ -90,23 +90,23 @@ namespace TAO
             {
                 /* Check for identifier parameter. */
                 if(params.find("identifier") == params.end())
-                    throw APIException(-25, "Missing Identifier");
-                    
+                    throw APIException(-25, "Missing Identifier (<identifier>)");
+
                 /* The identifier is the register address of the token that this account is being created for.  The API supports passing the identifier
                    in by name in the format of namespace:name, in which case we need to convert it to the register hash */
-                uint256_t nIdentifier = 0;
+                uint256_t hashIdentifier = 0;
                 std::string strIdentifier = params["identifier"].get<std::string>();
-                
+
                 /* Edge case to allow identifer NXS or 0 to be specified for NXS token */
                 if( strIdentifier == "NXS" || strIdentifier == "0")
-                    nIdentifier = uint256_t(0);
+                    hashIdentifier = uint256_t(0);
                 else if(IsRegisterAddress(strIdentifier))
-                    nIdentifier = uint256_t(strIdentifier);
+                    hashIdentifier = uint256_t(strIdentifier);
                 else
-                    nIdentifier = RegisterAddressFromName(params, "token", strIdentifier);
+                    hashIdentifier = RegisterAddressFromName(params, "token", strIdentifier);
 
                 /* Create an account object register. */
-                TAO::Register::Object account = TAO::Register::CreateAccount(nIdentifier);
+                TAO::Register::Object account = TAO::Register::CreateAccount(hashIdentifier);
 
                 /* Submit the payload object. */
                 tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
@@ -119,10 +119,10 @@ namespace TAO
                     throw APIException(-25, "Missing Supply");
 
                 /* For tokens being created without a global namespaced name, the identifier is equal to the register address */
-                uint256_t nIdentifier = hashRegister;
+                uint256_t hashIdentifier = hashRegister;
 
                 /* Create a token object register. */
-                TAO::Register::Object token = TAO::Register::CreateToken(nIdentifier,
+                TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier,
                                                                          std::stoull(params["supply"].get<std::string>()),
                                                                          1000000);
 

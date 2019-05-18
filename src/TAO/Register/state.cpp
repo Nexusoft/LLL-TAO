@@ -24,6 +24,105 @@ namespace TAO
     namespace Register
     {
 
+        /** Default Constructor **/
+        State::State()
+        : nVersion(1)
+        , nType(0)
+        , hashOwner(0)
+        , nTimestamp(runtime::unifiedtimestamp())
+        , vchState()
+        , hashChecksum(0)
+        , nReadPos(0)
+        {
+            vchState.clear();
+        }
+
+
+        /** Basic Type Constructor **/
+        State::State(uint8_t nTypeIn)
+        : nVersion(1)
+        , nType(nTypeIn)
+        , hashOwner(0)
+        , nTimestamp(runtime::unifiedtimestamp())
+        , vchState()
+        , hashChecksum(0)
+        , nReadPos(0)
+        {
+            vchState.clear();
+        }
+
+
+        /** Default Constructor **/
+        State::State(const std::vector<uint8_t>& vchData)
+        : nVersion(1)
+        , nType(0)
+        , hashOwner(0)
+        , nTimestamp(runtime::unifiedtimestamp())
+        , vchState(vchData)
+        , nReadPos(0)
+        {
+            SetChecksum();
+        }
+
+        /** Default Constructor **/
+        State::State(uint8_t nTypeIn, const uint256_t& hashOwnerIn)
+        : nVersion(1)
+        , nType(nTypeIn)
+        , hashOwner(hashOwnerIn)
+        , nTimestamp(runtime::unifiedtimestamp())
+        , vchState()
+        , hashChecksum(0)
+        , nReadPos(0)
+        {
+        }
+
+
+        /** Default Constructor **/
+        State::State(std::vector<uint8_t> vchData, uint8_t nTypeIn, const uint256_t& hashOwnerIn)
+        : nVersion(1)
+        , nType(nTypeIn)
+        , hashOwner(hashOwnerIn)
+        , nTimestamp(runtime::unifiedtimestamp())
+        , vchState(vchData)
+        , nReadPos(0)
+        {
+            SetChecksum();
+        }
+
+
+        /** Default Constructor **/
+        State::State(uint64_t hashChecksumIn)
+        : nVersion(1)
+        , nType(0)
+        , hashOwner(0)
+        , nTimestamp(runtime::unifiedtimestamp())
+        , vchState()
+        , hashChecksum(hashChecksumIn)
+        , nReadPos(0)
+        {
+        }
+
+
+        /** Default Destructor **/
+        State::~State()
+        {
+        }
+
+
+        /** Operator overload to check for equivilence. **/
+        bool State::operator==(const State& state) const
+        {
+            return GetHash() == state.GetHash();
+        }
+
+
+        /** Operator overload to check for non-equivilence. **/
+        bool State::operator!=(const State& state) const
+        {
+            return GetHash() != state.GetHash();
+        }
+
+
         /* Set the State Register into a nullptr state. */
         void State::SetNull()
         {

@@ -83,7 +83,8 @@ namespace TAO
                 tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
 
             /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Get the state byte. */
                 uint8_t nState; //RESERVED
@@ -106,7 +107,8 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to write new state");
 
                 /* Write the notification foreign index. */
-                if(nFlags & TAO::Register::FLAGS::WRITE && !LLD::legDB->WriteEvent(hashTransfer, tx.GetHash()))
+                if(nFlags & TAO::Register::FLAGS::WRITE
+                && !LLD::legDB->WriteEvent(hashTransfer, tx.GetHash()))
                     return debug::error(FUNCTION, "failed to commit event to ledger DB");
 
             }

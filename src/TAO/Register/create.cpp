@@ -24,7 +24,7 @@ namespace TAO
     {
 
         /* Generate a new account object register. */
-        Object CreateAccount(const uint256_t nIdentifier)
+        Object CreateAccount(const uint256_t& nIdentifier)
         {
             /* Create an account object register. */
             TAO::Register::Object account;
@@ -54,7 +54,7 @@ namespace TAO
 
 
         /* Generate a new token object register. */
-        Object CreateToken(const uint256_t nIdentifier, const uint64_t nSupply, const uint64_t nDigits)
+        Object CreateToken(const uint256_t& nIdentifier, const uint64_t nSupply, const uint64_t nDigits)
         {
             /* Create an token object register. */
             TAO::Register::Object token;

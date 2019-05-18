@@ -70,15 +70,20 @@ namespace TAO
                     case TAO::Register::OBJECTS::ACCOUNT:
                     {
                         /* Check the account balance. */
-                        if(object.get<uint64_t>("balance") != 0)
-                            return debug::error(FUNCTION, "account can't be created with non-zero balance ", object.get<uint64_t>("balance"));
+                        uint64_t nBalance = object.get<uint64_t>("balance");
+                        if(nBalance != 0)
+                            return debug::error(FUNCTION, "account can't be created with non-zero balance ", nBalance);
 
                         /* Check that token identifier hasn't been claimed. */
-                        if((nFlags & TAO::Register::FLAGS::WRITE) || (nFlags & TAO::Register::FLAGS::MEMPOOL))
+                        if(nFlags & TAO::Register::FLAGS::WRITE
+                        || nFlags & TAO::Register::FLAGS::MEMPOOL)
                         {
+                            /* Get the token identifier. */
+                            uint256_t nIdentifier = object.get<uint256_t>("identifier");
+
                             /* Check that token identifier hasn't been claimed. */
-                            if(object.get<uint256_t>("identifier") != 0 && !LLD::regDB->HasIdentifier(object.get<uint256_t>("identifier"), nFlags))
-                                return debug::error(FUNCTION, "account can't be created with no identifier ", object.get<uint256_t>("identifier").GetHex());
+                            if(nIdentifier != 0  && !LLD::regDB->HasIdentifier(nIdentifier, nFlags))
+                                return debug::error(FUNCTION, "account can't be created with no identifier ", nIdentifier.GetHex());
 
                         }
 
@@ -95,7 +100,7 @@ namespace TAO
 
                         /* Check the account balance. */
                         if(object.get<uint64_t>("stake") != 0)
-                            return debug::error(FUNCTION, "trust account can't be created with non-zero balance ", object.get<uint64_t>("balance"));
+                            return debug::error(FUNCTION, "trust account can't be created with non-zero stake ", object.get<uint64_t>("stake"));
 
                         /* Check the account balance. */
                         if(object.get<uint64_t>("trust") != 0)
@@ -112,20 +117,24 @@ namespace TAO
                     /* Check default values for creating a standard token. */
                     case TAO::Register::OBJECTS::TOKEN:
                     {
+                        /* Get the token identifier. */
+                        uint256_t nIdentifier = object.get<uint256_t>("identifier");
+
                         /* Check for reserved native token. */
-                        if(object.get<uint256_t>("identifier") == 0)
-                            return debug::error(FUNCTION, "token can't be created with reserved identifier ", object.get<uint256_t>("identifier").GetHex());
+                        if(nIdentifier == 0)
+                            return debug::error(FUNCTION, "token can't be created with reserved identifier ", nIdentifier.GetHex());
 
                         /* Check that token identifier hasn't been claimed. */
-                        if((nFlags & TAO::Register::FLAGS::WRITE) || (nFlags & TAO::Register::FLAGS::MEMPOOL))
+                        if((nFlags & TAO::Register::FLAGS::WRITE)
+                        || (nFlags & TAO::Register::FLAGS::MEMPOOL))
                         {
                             /* Check the claimed register address to identifier. */
                             uint256_t hashClaimed = 0;
-                            if(LLD::regDB->ReadIdentifier(object.get<uint256_t>("identifier"), hashClaimed, nFlags))
-                                return debug::error(FUNCTION, "token can't be created with reserved identifier ", object.get<uint256_t>("identifier").GetHex());
+                            if(LLD::regDB->ReadIdentifier(nIdentifier, hashClaimed, nFlags))
+                                return debug::error(FUNCTION, "token can't be created with reserved identifier ", nIdentifier.GetHex());
 
                             /* Write the new identifier to database. */
-                            if(!LLD::regDB->WriteIdentifier(object.get<uint256_t>("identifier"), hashAddress, nFlags))
+                            if(!LLD::regDB->WriteIdentifier(nIdentifier, hashAddress, nFlags))
                                 return debug::error(FUNCTION, "failed to commit token register identifier to disk");
                         }
 
@@ -147,7 +156,8 @@ namespace TAO
                 tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
 
             /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Get the state byte. */
                 uint8_t nState = 0; //RESERVED
