@@ -191,18 +191,6 @@ namespace TAO
             bool IsFirst() const;
 
 
-            /** CheckTrust
-             *
-             *  Determines if the published trust score is accurate.
-             *
-             *  @param[in] state The block state to check trust from.
-             *
-             *  @return true if the trust is valid.
-             *
-             **/
-            bool CheckTrust(const TAO::Ledger::BlockState& state) const;
-
-
             /** GetHash
              *
              *  Gets the hash of the transaction object.

@@ -25,14 +25,15 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
-#include <Util/templates/datastream.h>
-#include <Util/include/hex.h>
-#include <Util/include/debug.h>
-
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
+
+#include <Util/templates/datastream.h>
+#include <Util/include/hex.h>
+#include <Util/include/debug.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -144,97 +145,6 @@ namespace TAO
         bool Transaction::IsFirst() const
         {
             return (nSequence == 0 && hashPrevTx == 0);
-        }
-
-
-        /* Get the score of the current trust block. */
-        bool Transaction::CheckTrust(const TAO::Ledger::BlockState& state) const
-        {
-            /* Reset the operation stream. */
-            ssOperation.seek(1, STREAM::BEGIN);
-
-            /* Get the previous producer. */
-            uint512_t hashLastTrust;
-            ssOperation >> hashLastTrust;
-
-            /* The current calculated trust score. */
-            uint64_t nTrustScore;
-            ssOperation >> nTrustScore;
-
-            /* Check that the last trust block is in the block database. */
-            TAO::Ledger::BlockState stateLast;
-            if(!LLD::legDB->ReadBlock(hashLastTrust, stateLast))
-                return debug::error(FUNCTION, "last block not in database");
-
-            /* Check that the previous block is in the block database. */
-            TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(state.hashPrevBlock, statePrev))
-                return debug::error(FUNCTION, "prev block not in database");
-
-            /* Get the last coinstake transaction. */
-            Transaction txLast;
-            if(!LLD::legDB->ReadTx(hashLastTrust, txLast))
-                return debug::error(FUNCTION, "last state coinstake tx not found");
-
-            /* Enforce the minimum trust key interval of 120 blocks. */
-            const uint32_t nMinimumInterval = config::fTestNet ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
-                                                               : TAO::Ledger::MAINNET_MINIMUM_INTERVAL;
-
-            /* Check the proper intervals. */
-            if(state.nHeight - stateLast.nHeight < nMinimumInterval)
-                return debug::error(FUNCTION, "trust key interval below minimum interval ", state.nHeight - stateLast.nHeight);
-
-            /* Set the previous transaction trust score. */
-            uint64_t nScorePrev = 0;
-
-            /* Set the trust score for calculating. */
-            uint64_t nScore     = 0;
-
-            /* If previous block is genesis, set previous score to 0. */
-            if(txLast.IsGenesis())
-            {
-                /* Genesis results in a previous score of 0. */
-                nScorePrev = 0;
-            }
-
-            /* The time it has been since the last trust block for this trust key. */
-            uint32_t nTimespan = (statePrev.GetBlockTime() - stateLast.GetBlockTime());
-
-            /* Timespan less than required timespan is awarded the total seconds it took to find. */
-            if(nTimespan < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
-                nScore = nScorePrev + nTimespan;
-
-            /* Timespan more than required timespan is penalized 3 times the time it took past the required timespan. */
-            else
-            {
-                /* Calculate the penalty for score (3x the time). */
-                uint32_t nPenalty = (nTimespan - (config::fTestNet ?
-                    TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN)) * 3;
-
-                /* Catch overflows and zero out if penalties are greater than previous score. */
-                if(nPenalty > nScorePrev)
-                    nScore = 0;
-                else
-                    nScore = (nScorePrev - nPenalty);
-            }
-
-            /* Set maximum trust score to seconds passed for interest rate. */
-            if(nScore > TAO::Ledger::TRUST_SCORE_MAX)
-                nScore = TAO::Ledger::TRUST_SCORE_MAX;
-
-            /* Debug output. */
-            debug::log(2, FUNCTION,
-                "score=", nScore, ", ",
-                "prev=", nScorePrev, ", ",
-                "timespan=", nTimespan, ", ",
-                "change=", (int32_t)(nScore - nScorePrev), ")"
-            );
-
-            /* Check that published score in this block is equivilent to calculated score. */
-            if(nTrustScore != nScore)
-                return debug::error(FUNCTION, "published trust score ", nTrustScore, " not meeting calculated score ", nScore);
-
-            return true;
         }
 
 

@@ -579,14 +579,6 @@ namespace TAO
                     if(LLD::legDB->HasIndex(hash))
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
 
-                    /* Check if is trust or genesis. */
-                    if(tx.IsTrust() || tx.IsGenesis())
-                    {
-                        //TODO: make sure this is in producer position
-                        if(!tx.CheckTrust(*this))
-                            return debug::error(FUNCTION, "Trust score is invalid");
-                    }
-
                     /* Verify the ledger layer. */
                     if(!TAO::Register::Verify(tx))
                         return debug::error(FUNCTION, "transaction register layer failed to verify");
