@@ -44,19 +44,6 @@ namespace TAO
     namespace Ledger
     {
 
-        /** FindLastStake
-         *
-         *  Retrieves the most recent stake transaction for a user account.
-         *
-         *  @param[in] user - the user account signature chain
-         *  @param[out] tx - the most recent stake transaction
-         *
-         *  @return true if the last stake transaction was successfully retrieved
-         *
-         **/
-        bool FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, TAO::Ledger::Transaction& tx);
-
-
         /** MaxBlockAge
          *
          *  Retrieve the setting for maximum block age (time since last stake block mined)
@@ -113,14 +100,13 @@ namespace TAO
          *  Calculate new trust score from parameters.
          *
          *  @param[in] nTrustPrev - previous trust score of trust account
-         *  @param[in] nStakePrev - previous stake balance,  
-         *  @param[in] nStakeNew - new stake balance after any pending change applied
+         *  @param[in] nStake - current stake balance  
          *  @param[in] nBlockAge - current block age (time since last stake block for trust account)
          *
          *  @return new value for trust score
          *
          **/
-        uint64_t TrustScore(const uint64_t nTrustPrev, const uint64_t nStakePrev, const uint64_t nStakeNew, const uint64_t nBlockAge);
+        uint64_t TrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge);
 
 
         /** BlockWeight 

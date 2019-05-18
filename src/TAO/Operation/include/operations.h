@@ -160,16 +160,16 @@ namespace TAO
          *
          *  Handles the locking of stake in a stake register.
          *
-         *  @param[in] hashLastTrust The last trust transaction.
+         *  @param[in] hashLastTrust The last stake transaction for the register.
          *  @param[in] nTrustScore The trust score for the operation.
-         *  @param[in] nStakeChange Amount to move from trust account balance to stake (negative amount moves from stake to balance)
+         *  @param[in] nCoinstakeReward Coinstake reward paid to register by this operation
          *  @param[in] nFlags The flag to determine if database state should be written.
          *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const int64_t nStakeChange, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const int64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Genesis
@@ -177,13 +177,14 @@ namespace TAO
          *  Handles the locking of stake in a stake register.
          *
          *  @param[in] hashAccount The account being staked to
+         *  @param[in] nCoinstakeReward Coinstake reward paid to register by this operation
          *  @param[in] nFlags The flag to determine if database state should be written.
          *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Genesis(const uint256_t& hashAddress, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Genesis(const uint256_t& hashAddress, const int64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Authorize

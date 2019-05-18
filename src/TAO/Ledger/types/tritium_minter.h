@@ -162,14 +162,8 @@ namespace TAO
         bool isGenesis;
 
 
-        /** Value of any change to the trust account stake.
-         *  
-         *  A positive value stakes more by moving from trust account balance to stake.
-         *  A negative value unstakes by moving from trust account stake to balance.
-         *
-         *  The change is applied as part of the next OP::TRUST operation when successfully stake a block.
-         **/
-        int64_t nStakeChange;
+        /** Block time of last stake block found by current trust account. */
+        uint64_t nTimeLastStake;
 
 
         /** Trust score applied for the candidate block that the stake minter is attempting to mine **/
@@ -186,7 +180,7 @@ namespace TAO
         , trustAccount()
         , candidateBlock()
         , isGenesis(false)
-        , nStakeChange(0)
+        , nTimeLastStake()
         , nTrust(0)
         , nBlockAge(0)
         {
@@ -215,25 +209,17 @@ namespace TAO
         bool FindTrustAccount(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
 
 
-        /** FindStakeChange
+        /** FindLastStake
          *
-         *  Retrieve any change to be applied to the stake amount in the current trust account.
-         *  This method updates the value stored in nStakeChange.
+         *  Retrieves the most recent stake transaction for a user account.
          *
-         *  @param[in] user - the currently active signature chain
+         *  @param[in] user - the user account signature chain
+         *  @param[out] tx - the most recent stake transaction
          *
-         **/
-        void FindStakeChange(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
-
-
-        /** ApplyStakeChange
-         *
-         *  Record that a stake change request has been completed.
-         *
-         *  @param[in] user - the currently active signature chain
+         *  @return true if the last stake transaction was successfully retrieved
          *
          **/
-        void ApplyStakeChange(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
+        bool FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, TAO::Ledger::Transaction& tx);
 
 
         /** CreateCandidateBlock

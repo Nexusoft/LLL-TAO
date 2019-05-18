@@ -42,39 +42,6 @@ namespace TAO
         const double LOG10 = log(10); 
 
 
-        /** Retrieves the most recent stake transaction for a user account. */
-        bool FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, TAO::Ledger::Transaction& tx)
-        {
-            uint512_t hashLast = 0;
-
-            /* Get the most recent tx hash for the user account. */
-            if (!LLD::legDB->ReadLast(user->Genesis(), hashLast))
-                return false;
-
-            /* Loop until find stake transaction or reach first transaction on user acount (hashLast == 0). */
-            while (hashLast != 0)
-            {
-                /* Get the transaction for the current hashLast. */
-                TAO::Ledger::Transaction txCheck;
-                if(!LLD::legDB->ReadTx(hashLast, txCheck))
-                    return false;
-
-                /* Test whether the transaction contains a staking operation */
-                if (TAO::Register::Unpack(txCheck, TAO::Operation::OP::TRUST) || TAO::Register::Unpack(txCheck, TAO::Operation::OP::GENESIS))
-                {
-                    /* Found last stake transaction. */
-                    tx = txCheck;
-                    return true;
-                }
-
-                /* Stake tx not found, yet, iterate to next previous user tx */
-                hashLast = txCheck.hashPrevTx;
-            }
-
-            return false;
-        }
-
-
         /* Retrieve the setting for maximum block age (time since last stake before trust decay begins. */
         uint64_t MaxBlockAge()
         {
@@ -121,13 +88,14 @@ namespace TAO
 
 
         /* Calculate new trust score from parameters. */
-        uint64_t TrustScore(const uint64_t nTrustPrev, const uint64_t nStakePrev, const uint64_t nStakeNew, const uint64_t nBlockAge)
+        uint64_t TrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge)
         {
-            uint64_t nTrust;
+            uint64_t nTrust = 0;
             uint64_t nTrustMax = MaxTrustScore();
+            uint64_t nBlockAgeMax = MaxBlockAge();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
-            if (nBlockAge <= MaxBlockAge())
+            if (nBlockAge <= nBlockAgeMax)
             {
                 nTrust = std::min((nTrustPrev + nBlockAge), nTrustMax);
             }
@@ -136,19 +104,13 @@ namespace TAO
                 /* Block age more than maximum allowed is penalized 3 times the time it has exceeded the maximum. */
 
                 /* Calculate the penalty for score (3x the time). */
-                uint64_t nPenalty = (nBlockAge - MaxBlockAge()) * (uint64_t)3;
+                uint64_t nPenalty = (nBlockAge - nBlockAgeMax) * (uint64_t)3;
 
                 /* Trust back to zero if penalty more than previous score. */
-                nTrust = std::max((nTrustPrev - nPenalty), (uint64_t)0);
-            }
-
-            if (nTrust > 0 && nStakeNew < nStakePrev)
-            {
-                /* Removing stake balance incurs trust penalty */
-                uint64_t nBalanceRemoved = nStakePrev - nStakeNew;
-
-                /* Trust reduced by the percent of balance removed */
-                nTrust = nTrust - (nTrust * nBalanceRemoved) / nStakePrev;
+                if (nPenalty < nTrustPrev)
+                    nTrust = nTrustPrev - nPenalty;
+                else
+                    nTrust = 0;
             }
 
             /* Double check that the trust score cannot exceed the maximum */

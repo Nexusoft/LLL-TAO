@@ -29,7 +29,7 @@ namespace TAO
     {
 
         /* Commits funds from a coinbase transaction. */
-        bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const int64_t nStakeChange, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const int64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Read the register from the database. */
             TAO::Register::Object account;
@@ -98,26 +98,12 @@ namespace TAO
             if(!LLD::legDB->ReadBlock(hashLastTrust, statePrev))
                 return debug::error(FUNCTION, "Failed to get block for last trust");
 
-            /* Get starting account values */
+            /* Get account starting values */
             uint64_t nTrustPrev = account.get<uint64_t>("trust");
             uint64_t nBalancePrev = account.get<uint64_t>("balance");
-            uint64_t nStakePrev = account.get<uint64_t>("stake");
 
-            /* Check that requested stake change is valid */
-            if(nStakeChange < 0 && (uint64_t)(0 - nStakeChange) > nStakePrev)
-                return debug::error(FUNCTION, "Cannot unstake more than existing stake balance");
-
-            else if(nStakeChange > nBalancePrev)
-                return debug::error(FUNCTION, "Cannot add more than existing trust account balance to stake");
-
-            /* Get the stake reward. */
-            uint64_t nStakeTime = tx.nTimestamp - statePrev.GetBlockTime();
-
-            uint64_t nCoinstakeReward = TAO::Ledger::CoinstakeReward(nStakePrev, nStakeTime, nTrustScore);
-
-            /* Update stake and balance amounts */
-            uint64_t nBalance = nBalancePrev + nCoinstakeReward - nStakeChange;
-            uint64_t nStake = nStakePrev + nStakeChange;
+            /* Update account balance with cointake reward */
+            uint64_t nBalance = nBalancePrev + nCoinstakeReward;
 
             /* Write the new trust to object register. */
             if(!account.Write("trust", nTrustScore))
@@ -126,10 +112,6 @@ namespace TAO
             /* Write the new balance to object register. */
             if(!account.Write("balance", nBalance))
                 return debug::error(FUNCTION, "balance could not be written to object register");
-
-            /* Write the new stake to object register. */
-            if(!account.Write("stake", nStake))
-                return debug::error(FUNCTION, "stake could not be written to object register");
 
             /* Update the state register's timestamp. */
             account.nTimestamp = tx.nTimestamp;
@@ -143,12 +125,9 @@ namespace TAO
             if(!sys.Parse())
                 return debug::error(FUNCTION, "failed to parse system object register");
 
-            /* Write the system values. */
+            /* Update the system trust with change in trust score. */
             if(!sys.Write("trust", sys.get<uint64_t>("trust") + int64_t(nTrustScore - nTrustPrev)))
-                return debug::error(FUNCTION, "could not write new system register value.");
-
-            if(!sys.Write("stake", sys.get<uint64_t>("stake") + int64_t(nStake - nStakePrev)))
-                return debug::error(FUNCTION, "could not write new system register value.");
+                return debug::error(FUNCTION, "could not write new trust value to system register.");
 
             /* Update the system register's timestamp. */
             sys.nTimestamp = tx.nTimestamp;

@@ -28,7 +28,7 @@ namespace TAO
     {
 
         /* Commits funds from a coinbase transaction. */
-        bool Genesis(const uint256_t& hashAddress, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Genesis(const uint256_t& hashAddress, const int64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashAddress))
@@ -94,11 +94,11 @@ namespace TAO
 
             /* Check ownership of register. */
             if(account.hashOwner != tx.hashGenesis)
-                return debug::error(FUNCTION, tx.hashGenesis.ToString(), " caller not authorized to debit from register");
+                return debug::error(FUNCTION, tx.hashGenesis.ToString(), "caller not authorized to debit from register");
 
             /* Parse the account object register. */
             if(!account.Parse())
-                return debug::error(FUNCTION, "failed to parse account object register");
+                return debug::error(FUNCTION, "failed to parse trust account object register");
 
             /* Check that there is no stake. */
             if(account.get<uint64_t>("stake") != 0)
@@ -113,11 +113,6 @@ namespace TAO
             /* Check that account has balance. */
             if(nBalancePrev == 0)
                 return debug::error(FUNCTION, "cannot create genesis with no available balance");
-
-            /* Get the stake reward. */
-            uint64_t nStakeTime = tx.nTimestamp - account.nTimestamp; //"coin age"
-
-            uint64_t nCoinstakeReward = TAO::Ledger::CoinstakeReward(nBalancePrev, nStakeTime, (uint64_t)0, true);
 
             /* Move existing balance to stake. */
             if(!account.Write("stake", nBalancePrev))
@@ -141,7 +136,7 @@ namespace TAO
 
             /* Write the system values */
             if(!sys.Write("stake", sys.get<uint64_t>("stake") + nBalancePrev))
-                return debug::error(FUNCTION, "could not write new system register value.");
+                return debug::error(FUNCTION, "could not write new stake value to system register.");
 
             /* Update the system register's timestamp. */
             sys.nTimestamp = tx.nTimestamp;

@@ -114,7 +114,7 @@ namespace LLD
          *  Reads the last txid of sigchain to disk indexed by genesis.
          *
          *  @param[in] hashGenesis The genesis hash to read.
-         *  @param[out] hashLast The last hash (txid) to read.
+         *  @param[in] hashLast The last hash (txid) to read.
          *
          *  @return True if the last was successfully read, false otherwise.
          *
@@ -122,38 +122,6 @@ namespace LLD
         bool ReadLast(const uint256_t& hashGenesis, uint512_t &hashLast)
         {
             return Read(std::make_pair(std::string("last"), hashGenesis), hashLast);
-        }
-
-
-        /** WriteStakeChange
-         *
-         *  Writes the amount to change current stake for a sigchain to disk, indexed by genesis.
-         *
-         *  @param[in] hashGenesis The genesis hash to write.
-         *  @param[in] nStakeChange Change in current stake to write
-         *
-         *  @return True if the stake change was successfully written, false otherwise.
-         *
-         **/
-        bool WriteStakeChange(const uint256_t& hashGenesis, const int64_t& nStakeChange)
-        {
-            return Write(std::make_pair(std::string("stakechange"), hashGenesis), nStakeChange);
-        }
-
-
-        /** ReadStakeChange
-         *
-         *  Reads the amount to change current stake for a sigchain, indexed by genesis.
-         *
-         *  @param[in] hashGenesis The genesis hash to read.
-         *  @param[out] nStakeChange Change in current stake to read
-         *
-         *  @return True if the stake change was successfully read, false otherwise.
-         *
-         **/
-        bool ReadStakeChange(const uint256_t& hashGenesis, int64_t &nStakeChange)
-        {
-            return Read(std::make_pair(std::string("stakechange"), hashGenesis), nStakeChange);
         }
     };
 }
