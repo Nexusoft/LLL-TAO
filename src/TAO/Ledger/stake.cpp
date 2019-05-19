@@ -45,28 +45,28 @@ namespace TAO
         /* Retrieve the setting for maximum block age (time since last stake before trust decay begins. */
         uint64_t MaxBlockAge()
         {
-            return (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN);
+            return (uint64_t)(config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN);
         }
 
 
         /* Retrieve the setting for maximum trust score value allowed. */
         uint64_t MaxTrustScore()
         {
-            return (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX);
+            return (uint64_t)(config::fTestNet.load() ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX);
         }
 
 
         /* Retrieve the setting for minimum coin age required to begin staking Genesis.*/
         uint64_t MinCoinAge()
         {
-            return (uint64_t)(config::fTestNet ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE);
+            return (uint64_t)(config::fTestNet.load() ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE);
         }
 
 
         /* Retrieve the minimum number of blocks required between an account's stake transactions.*/
         uint32_t MinStakeInterval()
         {
-            if (config::fTestNet)
+            if (config::fTestNet.load())
                 return TAO::Ledger::TESTNET_MINIMUM_INTERVAL;
 
             else if (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
@@ -83,7 +83,7 @@ namespace TAO
         /* Retrieve the base trust score setting for performing trust weight calculations. */
         uint64_t TrustWeightBase()
         {
-            return (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE);
+            return (uint64_t)(config::fTestNet.load() ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE);
         }
 
 

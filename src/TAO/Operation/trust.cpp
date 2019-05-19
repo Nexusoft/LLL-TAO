@@ -30,7 +30,7 @@ namespace TAO
     {
 
         /* Commits funds from a coinbase transaction. */
-        bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const int64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const uint64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Read the register from the database. */
             TAO::Register::Object account;

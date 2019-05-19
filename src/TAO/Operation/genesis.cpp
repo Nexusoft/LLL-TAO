@@ -29,7 +29,7 @@ namespace TAO
     {
 
         /* Commits funds from a coinbase transaction. */
-        bool Genesis(const uint256_t& hashAddress, const int64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Genesis(const uint256_t& hashAddress, const uint64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashAddress))

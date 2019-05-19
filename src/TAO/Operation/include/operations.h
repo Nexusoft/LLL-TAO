@@ -169,7 +169,7 @@ namespace TAO
          *  @return true if successful.
          *
          **/
-        bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const int64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const uint64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Genesis
@@ -184,7 +184,7 @@ namespace TAO
          *  @return true if successful.
          *
          **/
-        bool Genesis(const uint256_t& hashAddress, const int64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Genesis(const uint256_t& hashAddress, const uint64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Authorize
