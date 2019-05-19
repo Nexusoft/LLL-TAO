@@ -17,7 +17,6 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/include/version.h>
 #include <LLD/templates/sector.h>
 
 #include <Legacy/types/trustkey.h>
@@ -36,14 +35,12 @@ namespace LLD
 
     public:
 
-
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        TrustDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase(std::string("trust"), nFlagsIn) { }
+        TrustDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE);
 
 
         /** Default Destructor **/
-        virtual ~TrustDB() {}
+        virtual ~TrustDB();
 
 
         /** WriteTrustKey
@@ -56,10 +53,7 @@ namespace LLD
          *  @return True if the trust key was successfully written, false otherwise.
          *
          **/
-        bool WriteTrustKey(const uint576_t& hashKey, const Legacy::TrustKey& key)
-        {
-            return Write(hashKey, key);
-        }
+        bool WriteTrustKey(const uint576_t& hashKey, const Legacy::TrustKey& key);
 
 
         /** ReadTrustKey
@@ -72,10 +66,8 @@ namespace LLD
          *  @return True if the trust key was successfully written, false otherwise.
          *
          **/
-        bool ReadTrustKey(const uint576_t& hashKey, Legacy::TrustKey& key)
-        {
-            return Read(hashKey, key);
-        }
+        bool ReadTrustKey(const uint576_t& hashKey, Legacy::TrustKey& key);
+
     };
 }
 

@@ -70,7 +70,7 @@ namespace Legacy
     /* Determine if a key is expired at a given point in time. */
     bool TrustKey::Expired(const TAO::Ledger::BlockState& state) const
     {
-        if (BlockAge(state) > (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+        if (BlockAge(state) > (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
             return true;
 
         return false;
@@ -110,7 +110,7 @@ namespace Legacy
         static const double LOG10 = log(10); // Constant for use in calculations
 
         /* Use appropriate settings for Testnet or Mainnet */
-        static const uint32_t nMaxTrustScore = config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
+        static const uint32_t nMaxTrustScore = config::fTestNet.load() ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
 
         /* Get the previous coinstake transaction. */
         if(!block.vtx[0].IsCoinStake())
@@ -140,7 +140,7 @@ namespace Legacy
         static const double LOG10 = log(10); // Constant for use in calculations
 
         /* Use appropriate settings for Testnet or Mainnet */
-        static const uint32_t nMaxTrustScore = config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
+        static const uint32_t nMaxTrustScore = config::fTestNet.load() ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
 
         /* Get the previous coinstake transaction. */
         Legacy::Transaction tx;

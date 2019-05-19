@@ -76,7 +76,8 @@ namespace TAO
              *  @param[in] obj The object to serialize into ledger data
              *
              **/
-            template<typename Type> Stream& operator<<(const Type& obj)
+            template<typename Type>
+            Stream& operator<<(const Type& obj)
             {
                 /* Serialize to the stream. */
                 ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
@@ -92,7 +93,8 @@ namespace TAO
              *  @param[out] obj The object to de-serialize from ledger data
              *
              **/
-            template<typename Type> const Stream& operator>>(Type& obj) const
+            template<typename Type>
+            const Stream& operator>>(Type& obj) const
             {
                 /* Unserialize from the stream. */
                 ::Unserialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //TODO: version should be object version

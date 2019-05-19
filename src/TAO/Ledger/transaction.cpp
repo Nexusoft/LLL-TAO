@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -44,14 +45,21 @@ namespace TAO
     {
 
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
-        bool Transaction::IsValid() const
+        bool Transaction::IsValid(const uint8_t nFlags) const
         {
             /* Read the previous transaction from disk. */
             if(!IsFirst())
             {
+                /* Previous transaction. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadTx(hashPrevTx, tx))
-                    return debug::error(FUNCTION, "failed to read previous transaction");
+
+                /* Check disk of writing new block. */
+                if((nFlags & TAO::Register::FLAGS::WRITE) && (!LLD::legDB->ReadTx(hashPrevTx, tx) || !LLD::legDB->HasIndex(hashPrevTx)))
+                    return debug::error(FUNCTION, hashPrevTx.ToString(), " tx doesn't exist or not indexed");
+
+                /* Check mempool or disk if not writing. */
+                else if(!TAO::Ledger::mempool.Get(hashPrevTx, tx) && !LLD::legDB->ReadTx(hashPrevTx, tx))
+                    return debug::error(FUNCTION, hashPrevTx.ToString(), " tx doesn't exist");
 
                 /* Check the previous next hash that is being claimed. */
                 if(tx.hashNext != PrevHash())
@@ -121,6 +129,16 @@ namespace TAO
         }
 
 
+        /* Determines if the transaction is for a private block. */
+        bool Transaction::IsPrivate() const
+        {
+            if(ssOperation.size() == 0)
+                return false;
+
+            return ssOperation.get(0) == TAO::Operation::OP::AUTHORIZE;
+        }
+
+
         /* Determines if the transaction is a coinstake transaction. */
         bool Transaction::IsTrust() const
         {
@@ -159,7 +177,7 @@ namespace TAO
 
 
         /* Sets the Next Hash from the key */
-        void Transaction::NextHash(uint512_t hashSecret)
+        void Transaction::NextHash(const uint512_t& hashSecret)
         {
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
@@ -187,7 +205,7 @@ namespace TAO
 
 
         /* Signs the transaction with the private key and sets the public key */
-        bool Transaction::Sign(uint512_t hashSecret)
+        bool Transaction::Sign(const uint512_t& hashSecret)
         {
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
@@ -213,10 +231,12 @@ namespace TAO
         }
 
 
-        /* Debug output - use ANSI colors. TODO: turn ansi colors on or off with a commandline flag */
-        void Transaction::print() const
+        /* Create a transaction string. */
+        std::string Transaction::ToString() const
         {
-            debug::log(0, IsGenesis() ? "Genesis" : "Tritium", "(",
+            return debug::safe_printstr
+            (
+                IsGenesis() ? "Genesis" : "Tritium", "(",
                 "nVersion = ", nVersion, ", ",
                 "nSequence = ", nSequence, ", ",
                 "nTimestamp = ", nTimestamp, ", ",
@@ -227,7 +247,15 @@ namespace TAO
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",
                 "hash = ", GetHash().ToString().substr(0, 20), ", ",
                 "register.size() = ", ssRegister.size(), ", ",
-                "operation.size() = ", ssOperation.size(), ")" );
+                "operation.size() = ", ssOperation.size(), ")"
+            );
+        }
+
+
+        /* Debug Output. */
+        void Transaction::print() const
+        {
+            debug::log(0, ToString());
         }
 
         /* Short form of the debug output. */

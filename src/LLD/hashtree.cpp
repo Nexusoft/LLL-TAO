@@ -314,7 +314,9 @@ namespace LLD
             //++i;
             //i += 2;
             i <<= 1;
-            i  |= (nCompare < 0);
+            if(nCompare > 0)
+                i |= 1;
+            //i  |= (nCompare < 0);
         }
 
         return false;
@@ -421,8 +423,12 @@ namespace LLD
 
             //++i;
             //i += 2;
+            //i <<= 1;
+            //i  |= (nCompare < 0);
+
             i <<= 1;
-            i  |= (nCompare < 0);
+            if(nCompare > 0)
+                i |= 1;
         }
 
         return true;

@@ -35,6 +35,24 @@ namespace TAO
 
         Mempool mempool;
 
+
+        /** Default Constructor. **/
+        Mempool::Mempool()
+        : MUTEX()
+        , mapLegacy()
+        , mapLedger()
+        , mapPrevHashes()
+        , mapInputs()
+        {
+        }
+
+
+        /** Default Destructor. **/
+        Mempool::~Mempool()
+        {
+        }
+
+
         /* Add a transaction to the memory pool without validation checks. */
         bool Mempool::AddUnchecked(const TAO::Ledger::Transaction& tx)
         {
@@ -60,20 +78,26 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
-            LOCK(MUTEX);
-
             /* Runtime calculations. */
             runtime::timer time;
             time.Start();
 
-            /* Check the mempool. */
-            if(mapLedger.count(hashTx))
-                return false;
-
-            /* The next hash that is being claimed. */
+            /* Get ehe next hash being claimed. */
             uint256_t hashClaim = tx.PrevHash();
-            if(mapPrevHashes.count(hashClaim))
-                return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.ToString().substr(0, 20));
+
+            {
+                LOCK(MUTEX);
+
+                /* Check the mempool. */
+                if(mapLedger.count(hashTx))
+                    return false;
+
+                /* The next hash that is being claimed. */
+                if(mapPrevHashes.count(hashClaim))
+                    return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.ToString().substr(0, 20));
+
+                //TODO: add mapConflcts map to soft-ban conflicting blocks
+            }
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.IsCoinbase())
@@ -88,11 +112,11 @@ namespace TAO
                 return debug::error(FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " too far in the future");
 
             /* Check that the transaction is in a valid state. */
-            if(!tx.IsValid())
+            if(!tx.IsValid(TAO::Register::FLAGS::MEMPOOL))
                 return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " is invalid");
 
             /* Verify the Ledger Pre-States. */
-            if(!TAO::Register::Verify(tx))
+            if(!TAO::Register::Verify(tx, TAO::Register::FLAGS::MEMPOOL))
                 return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " register verification failed");
 
             /* Calculate the future potential states. */
@@ -100,8 +124,13 @@ namespace TAO
                 return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
 
             /* Add to the map. */
-            mapLedger[hashTx] = tx;
-            mapPrevHashes[hashClaim] = hashTx;
+            {
+                LOCK(MUTEX);
+
+                /* Set the internal memory. */
+                mapLedger[hashTx] = tx;
+                mapPrevHashes[hashClaim] = hashTx;
+            }
 
             /* Debug output. */
             debug::log(2, FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
@@ -134,24 +163,41 @@ namespace TAO
             return true;
         }
 
+
         /* Get by genesis. */
-        bool Mempool::Get(uint256_t hashGenesis, TAO::Ledger::Transaction& tx) const
+        bool Mempool::Get(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTx) const
         {
             LOCK(MUTEX);
 
             /* Check through the ledger map for the genesis. */
             for(const auto& txMap : mapLedger)
             {
+                /* Check for Genesis. */
                 if(txMap.second.hashGenesis == hashGenesis)
-                {
-                    tx = txMap.second;
-                    return true;
-                }
+                    vTx.push_back(txMap.second);
+
             }
 
-            return false;
+            /* Sort the list by sequence numbers. */
+            std::sort(vTx.begin(), vTx.end());
+
+            return (vTx.size() > 0);
         }
 
+
+        /* Gets a transaction by genesis. */
+        bool Mempool::Get(const uint256_t& hashGenesis, TAO::Ledger::Transaction &tx) const
+        {
+            /* Get the list of transactions by genesis. */
+            std::vector<TAO::Ledger::Transaction> vTx;
+            if(!Get(hashGenesis, vTx))
+                return false;
+
+            /* Return last item in list (newest). */
+            tx = vTx.back();
+
+            return true;
+        }
 
 
         /* Checks if a transaction exists. */
@@ -159,12 +205,12 @@ namespace TAO
         {
             LOCK(MUTEX);
 
-            return mapLedger.count(hashTx);
+            return mapLedger.count(hashTx) || mapLegacy.count(hashTx);
         }
 
 
         /* Checks if a genesis exists. */
-        bool Mempool::Has(uint256_t hashGenesis) const
+        bool Mempool::Has(const uint256_t& hashGenesis) const
         {
             LOCK(MUTEX);
 

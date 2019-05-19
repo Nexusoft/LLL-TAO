@@ -44,14 +44,15 @@ namespace TAO
             /* Write pre-states. */
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
-                if(!LLD::regDB->ReadState(hashFrom, account))
+                if(!LLD::regDB->ReadState(hashFrom, account, nFlags))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashFrom.ToString());
 
                 tx.ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << account;
             }
 
             /* Get pre-states on write. */
-            if(nFlags & TAO::Register::FLAGS::WRITE  || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Get the state byte. */
                 uint8_t nState = 0; //RESERVED
@@ -100,7 +101,8 @@ namespace TAO
                 tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << account.GetHash();
 
             /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Get the state byte. */
                 uint8_t nState = 0; //RESERVED
@@ -120,16 +122,16 @@ namespace TAO
 
                 /* Read the register from the database. */
                 TAO::Register::State stateTo;
-                if(!LLD::regDB->ReadState(hashTo, stateTo))
+                if(!LLD::regDB->ReadState(hashTo, stateTo, nFlags))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
 
                 /* Write the register to the database. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashFrom, account))
+                if(!LLD::regDB->WriteState(hashFrom, account, nFlags))
                     return debug::error(FUNCTION, "failed to write new state");
 
                 /* Write the event to the ledger database. */
                 if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteEvent(stateTo.hashOwner, tx.GetHash()))
-                    return debug::error(FUNCTION, "failed to rollback event to register DB");
+                    return debug::error(FUNCTION, "failed to write event in register DB");
             }
 
             return true;

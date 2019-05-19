@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
 
+#include <TAO/Ledger/types/mempool.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -37,7 +39,13 @@ namespace TAO
 
             /* Read the claimed transaction. */
             TAO::Ledger::Transaction txSpend;
-            if(!LLD::legDB->ReadTx(hashTx, txSpend))
+
+            /* Check disk of writing new block. */
+            if((nFlags & TAO::Register::FLAGS::WRITE) && (!LLD::legDB->ReadTx(hashTx, txSpend) || !LLD::legDB->HasIndex(hashTx)))
+                return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist or not indexed");
+
+            /* Check mempool or disk if not writing. */
+            else if(!TAO::Ledger::mempool.Get(hashTx, txSpend) && !LLD::legDB->ReadTx(hashTx, txSpend))
                 return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist");
 
             /* Extract the state from tx. */
@@ -50,14 +58,15 @@ namespace TAO
             /* Write pre-states. */
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
-                if(!LLD::regDB->ReadState(hashAccount, account))
+                if(!LLD::regDB->ReadState(hashAccount, account, nFlags))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashAccount.ToString());
 
                 tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << account;
             }
 
             /* Get pre-states on write. */
-            if(nFlags & TAO::Register::FLAGS::WRITE  || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Get the state byte. */
                 uint8_t nState = 0; //RESERVED
@@ -103,7 +112,7 @@ namespace TAO
                     return debug::error(FUNCTION, "cannot claim coinbase from different sigchain");
 
                 /* Check the identifier. */
-                if(account.get<uint32_t>("identifier") != 0)
+                if(account.get<uint256_t>("identifier") != 0)
                     return debug::error(FUNCTION, "can't credit a coinbase for identifier other than 0");
 
                 /* Check that the balances match. */
@@ -146,11 +155,11 @@ namespace TAO
                         return debug::error(FUNCTION, "register script has invalid post-state");
 
                     /* Write the proof spend. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteProof(hashProof, hashTx, nFlags))
+                    if(!LLD::legDB->WriteProof(hashProof, hashTx, nFlags))
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAccount, account))
+                    if(!LLD::regDB->WriteState(hashAccount, account, nFlags))
                         return debug::error(FUNCTION, "failed to write new state");
                 }
 
@@ -209,7 +218,8 @@ namespace TAO
                     tx.ssRegister << uint8_t(TAO::Register::STATES::POSTSTATE) << account.GetHash();
 
                 /* Verify the post-state checksum. */
-                if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+                if(nFlags & TAO::Register::FLAGS::WRITE
+                || nFlags & TAO::Register::FLAGS::MEMPOOL)
                 {
                     /* Get the state byte. */
                     uint8_t nState = 0; //RESERVED
@@ -229,7 +239,7 @@ namespace TAO
 
                     /* Read the register from the database. */
                     TAO::Register::State stateTo;
-                    if(!LLD::regDB->ReadState(hashTo, stateTo))
+                    if(!LLD::regDB->ReadState(hashTo, stateTo, nFlags))
                         return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
 
                     /* Write the proof spend. */
@@ -237,7 +247,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAccount, account))
+                    if(!LLD::regDB->WriteState(hashAccount, account, nFlags))
                         return debug::error(FUNCTION, "failed to write new state");
 
                     /* Erase the event to the ledger database. */
@@ -271,7 +281,7 @@ namespace TAO
 
                 /* Read the state from. */
                 TAO::Register::Object accountFrom;
-                if(!LLD::regDB->ReadState(hashFrom, accountFrom))
+                if(!LLD::regDB->ReadState(hashFrom, accountFrom, nFlags))
                     return debug::error(FUNCTION, "can't read state from");
 
                 /* Parse the account from. */
@@ -283,7 +293,7 @@ namespace TAO
                     return debug::error(FUNCTION, "debit from must have a base account object");
 
                 /* Check token identifiers. */
-                if(accountFrom.get<uint32_t>("identifier") != account.get<uint32_t>("identifier"))
+                if(accountFrom.get<uint256_t>("identifier") != account.get<uint256_t>("identifier"))
                     return debug::error(FUNCTION, "credit can't be of different identifier");
 
                 /* Get the debit amount. */
@@ -311,7 +321,8 @@ namespace TAO
                     tx.ssRegister << uint8_t(TAO::Register::STATES::POSTSTATE) << account.GetHash();
 
                 /* Verify the post-state checksum. */
-                if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+                if(nFlags & TAO::Register::FLAGS::WRITE
+                || nFlags & TAO::Register::FLAGS::MEMPOOL)
                 {
                     /* Get the state byte. */
                     uint8_t nState = 0; //RESERVED
@@ -334,11 +345,12 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAccount, account))
+                    if(!LLD::regDB->WriteState(hashAccount, account, nFlags))
                         return debug::error(FUNCTION, "failed to write new state");
                 }
             }
-            else if(stateTo.nType == TAO::Register::REGISTER::RAW || stateTo.nType == TAO::Register::REGISTER::READONLY)
+            else if(stateTo.nType == TAO::Register::REGISTER::RAW
+                 || stateTo.nType == TAO::Register::REGISTER::READONLY)
             {
                 /* Check that this proof has not been used in a partial credit. */
                 if(LLD::legDB->HasProof(hashProof, hashTx, nFlags))
@@ -346,7 +358,7 @@ namespace TAO
 
                 /* Get the state register of this register's owner. */
                 TAO::Register::Object tokenOwner;
-                if(!LLD::regDB->ReadState(stateTo.hashOwner, tokenOwner))
+                if(!LLD::regDB->ReadState(stateTo.hashOwner, tokenOwner, nFlags))
                     return debug::error(FUNCTION, "credit from raw object can't be without owner");
 
                 /* Parse the owner object register. */
@@ -359,7 +371,7 @@ namespace TAO
 
                 /* Check the state register that is being used as proof from creditor. */
                 TAO::Register::Object accountProof;
-                if(!LLD::regDB->ReadState(hashProof, accountProof))
+                if(!LLD::regDB->ReadState(hashProof, accountProof, nFlags))
                     return debug::error(FUNCTION, "temporal proof register is not found");
 
                 /* Compare the last timestamp update to transaction timestamp. */
@@ -379,7 +391,7 @@ namespace TAO
                     return debug::error(FUNCTION, "not authorized to use this temporal proof");
 
                 /* Check that the token indetifier matches token identifier. */
-                if(accountProof.get<uint32_t>("identifier") != tokenOwner.get<uint32_t>("identifier"))
+                if(accountProof.get<uint256_t>("identifier") != tokenOwner.get<uint256_t>("identifier"))
                     return debug::error(FUNCTION, "account proof identifier not token identifier");
 
                 /* Get the total amount of the debit. */
@@ -402,7 +414,7 @@ namespace TAO
 
                 /* Read the state from. */
                 TAO::Register::Object accountFrom;
-                if(!LLD::regDB->ReadState(hashFrom, accountFrom))
+                if(!LLD::regDB->ReadState(hashFrom, accountFrom, nFlags))
                     return debug::error(FUNCTION, "can't read state from");
 
                 /* Parse the account from. */
@@ -414,7 +426,7 @@ namespace TAO
                     return debug::error(FUNCTION, "account from object register is non-standard type");
 
                 /* Check that the debit to credit identifiers match. */
-                if(account.get<uint32_t>("identifier") != accountFrom.get<uint32_t>("identifier"))
+                if(account.get<uint256_t>("identifier") != accountFrom.get<uint256_t>("identifier"))
                     return debug::error(FUNCTION, "credit can't be of different identifier");
 
                 /* Write the new balance to object register. */
@@ -434,7 +446,8 @@ namespace TAO
                     tx.ssRegister << uint8_t(TAO::Register::STATES::POSTSTATE) << account.GetHash();
 
                 /* Verify the post-state checksum. */
-                if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+                if(nFlags & TAO::Register::FLAGS::WRITE
+                || nFlags & TAO::Register::FLAGS::MEMPOOL)
                 {
                     /* Get the state byte. */
                     uint8_t nState = 0; //RESERVED
@@ -457,7 +470,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write proof");
 
                     /* Write the register to the database. */
-                    if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAccount, account))
+                    if(!LLD::regDB->WriteState(hashAccount, account, nFlags))
                         return debug::error(FUNCTION, "failed to write new state");
                 }
             }

@@ -148,7 +148,10 @@ namespace TAO
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
             if(!statePrev)
+            {
+                debug::log(0, "Previous ", hashPrevBlock.ToString());
                 return debug::error(FUNCTION, "previous block state not found");
+            }
 
             /* Compute the Chain Trust */
             nChainTrust = statePrev.nChainTrust + GetBlockTrust();
@@ -579,8 +582,12 @@ namespace TAO
                     if(LLD::legDB->HasIndex(hash))
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
 
+                    /* Check that previous transaction is indexed. */
+                    if(!tx.IsFirst() && !LLD::legDB->HasIndex(tx.hashPrevTx))
+                        return debug::error(FUNCTION, "previous transaction not indexed");
+
                     /* Verify the ledger layer. */
-                    if(!TAO::Register::Verify(tx))
+                    if(!TAO::Register::Verify(tx, TAO::Register::FLAGS::WRITE))
                         return debug::error(FUNCTION, "transaction register layer failed to verify");
 
                     /* Execute the operations layers. */
@@ -596,18 +603,16 @@ namespace TAO
                         if(!LLD::legDB->WriteGenesis(tx.hashGenesis, tx.GetHash()))
                             return debug::error(FUNCTION, "failed to write genesis");
                     }
-                    else //POTENTIALLY SUPERFLUOUS CHECK, KEEP NOW FOR TESTING BUT DISPOSE BEFORE MAINNET
+                    else
                     {
                         /* Check for the last hash. */
                         uint512_t hashLast;
                         if(!LLD::legDB->ReadLast(tx.hashGenesis, hashLast))
                             return debug::error(FUNCTION, "failed to read last on non-genesis");
 
-                        /* Check that advertised last transaction is correct. */
+                        /* Check that the last transaction is correct. */
                         if(tx.hashPrevTx != hashLast)
-                            return debug::error(FUNCTION,
-                                "previous transaction ", tx.hashPrevTx.ToString().substr(0, 20),
-                                " and last hash mismatch ", hashLast.ToString().substr(0, 20));
+                            return debug::error(FUNCTION, "transaction has to be head of sigchain");
                     }
 
                     /* Write the last to disk. */

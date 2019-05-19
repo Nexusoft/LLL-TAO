@@ -78,7 +78,7 @@ namespace TAO
             return debug::error(0, FUNCTION, "Attempt to start Stake Minter when already started.");
 
         /* Disable stake minter if not in sessionless mode. */
-        if (config::fAPISessions)
+        if (config::fAPISessions.load())
         {
             debug::log(0, FUNCTION, "Stake minter disabled when use API sessions (multiuser).");
             return false;
@@ -161,7 +161,7 @@ namespace TAO
         /*
          * Every user account should have a corresponding trust account created with its first transaction.
          * Upon staking Genesis, that account is indexed into the register DB and is directly retrievable.
-         * Pre-Genesis, we have to find its creation in the account transaction history. 
+         * Pre-Genesis, we have to find its creation in the account transaction history.
          *
          * If this process fails in any way, the user account has no trust account available and cannot stake.
          * This is logged as an error and the stake minter should be suspended pending stop/shutdown.
@@ -336,7 +336,7 @@ namespace TAO
 
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
-                    debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ", 
+                    debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ",
                                (MinStakeInterval() - nCurrentInterval), " blocks remaining until staking available.");
 
                 ++nWaitCounter;
@@ -514,7 +514,7 @@ namespace TAO
                 continue;
             }
 
-            /* Calculate the new Efficiency Threshold for the next nonce. 
+            /* Calculate the new Efficiency Threshold for the next nonce.
              * To stake, this value must be larger than required threshhold.
              * Block time increases the value while nonce decreases it.
              */
@@ -630,7 +630,7 @@ namespace TAO
             return false;
         }
 
-        /* Process the block and relay to network if it gets accepted into main chain. 
+        /* Process the block and relay to network if it gets accepted into main chain.
          * This method will call TritiumBlock::Accept() and BlockState::Index()
          * After all is approved, BlockState::Index() will call BlockState::SetBest()
          * to set the new best chain. This final method relays the new block to the
@@ -665,7 +665,7 @@ namespace TAO
         #endif
 
         if (!key.SetSecret(vchSecret, true))
-            return debug::error(FUNCTION, "TritiumMinter: Unable to set key for signing Tritium Block ", 
+            return debug::error(FUNCTION, "TritiumMinter: Unable to set key for signing Tritium Block ",
                                 candidateBlock.hashMerkleRoot.ToString().substr(0, 20));
 
         if (!candidateBlock.GenerateSignature(key))
@@ -687,7 +687,7 @@ namespace TAO
 
         debug::log(0, FUNCTION, "Stake Minter Started");
         pTritiumMinter->nSleepTime = 5000;
-        bool fLocalTestnet = config::fTestNet && config::GetBoolArg("-nodns", false);
+        bool fLocalTestnet = config::fTestNet.load() && config::GetBoolArg("-nodns", false);
 
         /* If the system is still syncing/connecting on startup, wait to run minter */
         while ((TAO::Ledger::ChainState::Synchronizing() || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))

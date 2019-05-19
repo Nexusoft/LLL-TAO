@@ -49,6 +49,19 @@ namespace TAO
          **/
         uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectType, const std::string& strObjectName);
 
+
+        /** IsRegisterAddress
+         *
+         *  Determins whether a string value is a register address.
+         *  This only checks to see if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
+         *  It does not check to see whether the register address exists in the database 
+         *
+         *  @param[in] strValueToCheck The value to check
+         *
+         *  @return True if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
+         **/
+        bool IsRegisterAddress(const std::string& strValueToCheck);
+
         /** BlockToJSON
         *
         *  Converts the block to formatted JSON

@@ -35,7 +35,7 @@ namespace TAO
          *  @return true if verified correctly, false otherwise.
          *
          **/
-        bool Verify(TAO::Ledger::Transaction tx);
+        bool Verify(const TAO::Ledger::Transaction& tx, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
     }
 

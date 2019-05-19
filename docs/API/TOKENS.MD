@@ -1,197 +1,403 @@
-The Token API Interface Definition
+Tokens API
 -----------------------------------
 
-### Create
+The Tokens API provides methods for creating fungible tokens, creating accounts to store them in, and sending and receiving tokens between users. 
 
-Create a new token object register.
+
+## `Named Shortcuts`
+
+For each API method we support an alternative endpoint that includes the token/account name or register address at the end of the the URI.  This shortcut removes the need to include the name name or address as an additional parameter.  
+
+For example `tokens/create/account/savings` is a shortcut to `tokens/create/account?name=savings`.
+
+Similarly `tokens/get/token/5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9` is a shortcut to `tokens/get/token?address=5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9`  
+
+The logic for resolving the shortcut to either a name or address is that if the data is 64 characters of hexadecimal then it will be assumed to be a register address.  Otherwise it will be considered a name.  
+
+
+## `Methods`
+
+The following methods are currently supported by this API
+
+[`create/token`](#createtoken)   
+[`debit/token`](#debittoken)      
+[`get/token`](#gettoken)   
+[`create/account`](#createaccount)   
+[`debit/account`](#debitaccount)   
+[`credit/account`](#creditaccount)   
+[`get/account`](#getaccount)   
+
+-----------------------------------
+***
+
+# `create/token`
+
+Create a new token object register. The API supports an alternative endpoint that can include the new token name in the URI.  For example `/tokens/create/token/mytoken` will resolve to `tokens/create/token?name=mytoken`.   
+
+
+### Endpoint:
+
+`/tokens/create/token`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the token should be created with. For single-user API mode the session should not be supplied.
+
+`name` : A name to identify the token. A hash of the name will determine the register address. If no name is provided, a random 256-bit register hash will be generated.
+
+`supply` : The initial token supply amount.
+
+`digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
+
+### Example:
 
 ```
-<method>:
-    /token/create
-
-<key>=<value> parameter pairs:
-    session=<session-id>
-    pin=<pin>
-    identifier=<token-id>
-    type=<account/token>
-    name=<selected-name>
-
-
-If type=token specified:
-    supply=<total-supply>
-
-Input parameter description:
-<name>:
-    Is an API caller's selected name for the object register.
-<supply>:
-    The initial token supply count.
-<session>:
-     The value returned from the accounts/login API call.
-<pin>:
-     The input value used on the accounts/create API call.
-     Only required for session-based API (configured with apisessions=1)
-<type>:
-     An account or token. Token will create a token object register,
-     account will create an account to receive that token identifier.
+{
+    "pin": "1234",
+    "session": "16953804956473956578",
+    "name": "ABC",
+    "supply": 1000000,
+    "digits": 4
+}
 ```
 
-Return value JSON object:
+### Return value JSON object:
 ```    
 {
-    "txid"    : "<transaction-id>"
-    "address" : "<register-address>"
-}    
-
-Output parameter description:
-<address>:
-    The address used for the register. Any address references in other token
-    API calls use this address.
-
-<txid>:
-    The transaction ID that create was executed on.
-```
-
-### Credit
-
-Increment a token amount to owner’s object register received from an owner of
-another object register address.
-
-
-```
-<method>:
-/tokens/credit
-
-<key>=<value> parameter pairs:
-name=<name>
-address=<address>
-amount=<token-increment>
-from-name=<send-name> or from-address=<send-address>
-txid=<txid>
-session=<session-id>
-pin=<pin>
-
-Input parameter description:
-<name>:
-    A token name supplied on the token/create API call.        
-<address>:
-    A token object register address returned from the token/create API call.
-<token-increment>:
-    The amount number to increment to the object register contents.
-<send-name>:
-    The name of the object register that receives the tokens.
-<send-address>:
-    The address of the object register that receives the tokens. Either this
-    parameter or <send-name> is used.
-<session-id>:
-     The value returned from the accounts/login API call.
-<pin>:
-     The input value used on the accounts/create API call.
-
-```
-
-Return value JSON object:
-```
-{
-    "amount" : <new-amount>
-    "txid" : "<txid>"
-}            
-
-Output parameter description:
-<new-amount>:
-    The new amount after increment of the object register.
-<txid>:
-    The transaction-id associated with this credit operation.            
-```
-
-### Debit
-
-Deduct a token amount from owner’s object register and send it to the owner of
-another object register address.
-
-```
-<method>:
-/tokens/debit
-
-    <key>=<value> parameter pairs:
-name=<name>
-address=<address>
-amount=<token-decrement>
-to-name=<receive-name> or to-address=<receive-address>
-session=<session-id>
-pin=<pin>
-
-Input parameter description:
-<name>:
-    A token name supplied on the token/create API call.        
-<address>:
-    A token object register address returned from the token/create API call.
-<token-decrement>:
-    The amount number to decrement from the object register contents.
-<receive-name>:
-    The name of the object register that receives the tokens.
-<receive-address>:
-    The address of the object register that receives the tokens. Either this
-    parameter or <receive-name> is used.
-<session-id>:
-     The value returned from the accounts/login API call.
-<pin>:
-     The input value used on the accounts/create API call.
-     Only required for session-based API (configured with apisessions=1)
-```
-
-Return value JSON object:
-```
-{
-    "amount" : <new-amount>
-    "txid" : "<txid>"
+    "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d",
+    "address": "f2f71204bda6e6512d21c48eb4ca98db37a25c4d152afb284f3fc36760c0c717"
 }
+```   
 
-Output parameter description:
-<new-amount>:
-    The new amount after decrement of the object register.
-<txid>:
-    The transaction-id associated with this debit operation.            
-```
+### Return values:
 
+`txid` : The ID (hash) of the transaction that includes the token creation.
 
-### Get
+`address` : The register address for this token. The address (or name that hashes to this address) is needed when creating token accounts, as (by default) the `identifier` value relating accounts to tokens is the register address of the token .    
 
-Get data from a digital token asset or token account such as version,
-identifier, balance, max supply, and current supply.
+***
 
-```
-<method>:
-/tokens/get
+# `debit/token`
 
-type=<type>
-name|address=<name>|<address>
+Deduct a token amount from a token's initial supply and send it to a token account. The API supports an alternative endpoint that can include the token name in the URI.  For example `/tokens/debit/token/mytoken` will resolve to `tokens/debit/token?name=mytoken`.   
 
 
-Input parameter description:
-<type>:
-    Must be either "token" or "account" for the token register type.
-<name>:
-    A token name supplied on the token/create API call.   The name should be in namespace:name format
+### Endpoint:
 
-`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
-  
-<address>:
-    A token object register address returned from the token/create API call.     
-```
+`/tokens/debit/token`
 
-Return value JSON object:
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the token owner. For single-user API mode the session should not be supplied.
+
+`name` : The name identifying the token to debit. This is optional if the address is provided.  The name should be in namespace:name format
+
+`namespace` : The namespace that the the token was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+
+`address` : The register address of the token to debit. This is optional if the name is provided.
+
+`amount` : The amount of tokens to debit.
+
+`name_to` : The name identifying the token account to send to. This is optional if the address is provided.  The name should be in namespace:name format
+
+`address_to` : The register address of the token account to send to. This is optional if the name is provided.
+
+### Example:
+
+The following example shows the json payload for a debit of 10.5 ABC tokens (that itself was created by the sig chain logged into session "16953804956473956578") being sent to a token account identified by the name "jack:savings".  In the name_to field, "jack" refers to the username of the account holder and "savings" is their token account.  If jack is concerned about privacy he could have provided the register address of his token account instead
+
 ```
 {
-    "version":       "<token/account-version>"
-    "identifier":    "<token/account-identifier>"
-    "balance":       "<account-balance>"
-    "maxsupply":     "<token-maxsupply>"
-    "currentsupply": "<token-currentsupply>"
+    "pin": "1234",
+    "session": "16953804956473956578",
+    "name": "bob:ABC",
+    "amount": 10.5,
+    "name_to": "jack:savings"
 }
 ```
-The type can either be token or account. The type is required for this command.
-The name or address can be specified and is require for this command. This will
-give information about version and identifier in either case. If the type is an
-account, this will give information about token account balance. If the type is
-instead a token, this will give token information about the max supply and current
-supply.
+
+### Return value JSON object:
+```    
+{
+    "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
+}
+```   
+
+### Return values:
+
+`txid` : The ID (hash) of the transaction that includes the token debit.
+
+****
+
+# `get/token`
+
+Retrieves information about a token and its supply. The API supports an alternative endpoint that can include the token name in the URI.  For example `/tokens/get/token/mytoken` will resolve to `tokens/get/token?name=mytoken`.   
+
+Additionally the API supports passing a field name in the URL after the token name, which will populate the `fieldname` parameter in the request.  For example `/tokens/get/token/mytoken/supply` will resolve to `tokens/get/token?name=mytoken&fieldname=supply`
+
+### Endpoint:
+
+`/tokens/get/token`
+
+
+### Parameters:
+
+
+`name` : The name identifying the token to retrieve. This is optional if the address is provided.  The name should be in namespace:name format
+
+`namespace` : The namespace that the the token was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+
+`address` : The register address of the token to retrieve. This is optional if the name is provided.
+
+`fieldname`: This optional field can be used to filter the response to return only a single field from the token.
+
+### Return value JSON object:
+```    
+{
+    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "identifier": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "balance": 990,
+    "maxsupply": 1000,
+    "currentsupply": 10,
+    "digits": 0
+}
+```   
+
+### Return values:
+
+`address` : The register address of the token.  If the token was created with a token name then the address is a hash based on the owners username and token name.
+
+`identifier` : By default the identifier is the same as register address of the token.  When creating token accounts the token identifier must be included (so we know which kind of token the account will be used for).  In future we will support user-defined identifiers when creating a token (for an additional fee) allowing tokens to be identified by this custom name (e.g. a ticker).    
+
+`balance` : The current balance of this token.  Initially the balance of the token is equal to the max supply, until the tokens have been distributed to accounts.
+
+`maxsupply` : The maximum token supply amount.
+
+`currentsupply` : The current amount of tokens that have been distributed to token accounts.
+
+`digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
+
+***
+
+# `create/account`
+
+Create a new token account for receiving tokens. The API supports an alternative endpoint that can include the account name in the URI.  For example `/tokens/create/account/savings` will resolve to `tokens/create/account?name=savings`.   
+
+
+### Endpoint:
+
+`/tokens/create/account`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the token account should be created with. For single-user API mode the session should not be supplied.
+
+`name` : A name to identify the token account. A hash of the name will determine the register address. If no name is provided, a random 256-bit register hash will be generated.
+
+`identifier` : By default the identifier is the same as register address of the token.  When creating token accounts the token identifier must be included so we know which kind of token the account will be used for.  In future we will support user-defined identifiers when creating a token (for an additional fee) allowing tokens to be identified by this custom name (e.g. a ticker).  As a helpful shortcut, the token name can be supplied in the identifier field in the format `username:tokenname` and we will resolve this to the token register address.    
+
+
+### Example:
+
+This example creates a token account called "main" for a token identified by the token name.  NOTE the name has been qualified with a namespace which is the username of the signature chain that created the token 
+
+```
+{
+    "pin": "1234",
+    "session": "16953804956473956578",
+    "name": "main",
+    "identifier": "bob:ABC"
+}
+```
+
+### Example:
+
+This example creates a token account called "savings" for a token identified by the token register hash. 
+
+```
+{
+    "pin": "1234",
+    "session": "16953804956473956578",
+    "name": "savings",
+    "identifier": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+}
+```
+
+### Return value JSON object:
+```    
+{
+    "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d",
+    "address": "f2f71204bda6e6512d21c48eb4ca98db37a25c4d152afb284f3fc36760c0c717"
+}
+```   
+
+### Return values:
+
+`txid` : The ID (hash) of the transaction that includes the account creation.
+
+`address` : The register address for this token account. The address (or name that hashes to this address) is needed when creating crediting or debiting the account.    
+
+
+***
+
+# `debit/account`
+
+Deduct a token amount from a token account and send it to another token account. The API supports an alternative endpoint that can include the account name in the URI.  For example `/tokens/debit/account/savings` will resolve to `tokens/debit/account?name=savings`.   
+
+
+### Endpoint:
+
+`/tokens/debit/account`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) that owns the token account. For single-user API mode the session should not be supplied.
+
+`name` : The name identifying the token account to debit. This is optional if the address is provided.  The name should be in namespace:name format
+
+`namespace` : The namespace that the the account was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+
+`address` : The register address of the token account to debit. This is optional if the name is provided.
+
+`amount` : The amount of tokens to debit.
+
+`name_to` : The name identifying the token account to send to. This is optional if the address is provided.  The name should be in namespace:name format
+
+`address_to` : The register address of the token account to send to. This is optional if the name is provided.
+
+### Example:
+
+The following example shows the json payload for a debit of 10.5 tokens from an account called "main" (that itself was created by the sig chain logged into session "16953804956473956578") being sent to a token account identified by the name "bob:savings".  In the name_to field, "bob" refers to the username of the account holder and "savings" is their token account.  If Bob is concerned about privacy he could have provided the register address of his token account instead
+
+```
+{
+    "pin": "1234",
+    "session": "16953804956473956578",
+    "name": "main",
+    "amount": 10.5,
+    "name_to": "bob:savings"
+}
+```
+
+### Return value JSON object:
+```    
+{
+    "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
+}
+```   
+
+### Return values:
+
+`txid` : The ID (hash) of the transaction that includes the token debit.
+
+****
+
+# `credit/account`
+
+Increment an amount received from another token account to an account owned by your signature chain. The API supports an alternative endpoint that can include the account name to credit in the URI.  For example `/tokens/credit/account/savings` will resolve to `tokens/credit/account?name=savings`.   
+
+
+### Endpoint:
+
+`/tokens/credit/account`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the token account. For single-user API mode the session should not be supplied.
+
+`name` : The name identifying the token to credit. This is optional if the address is provided.  The name should be in namespace:name format
+
+`namespace` : The namespace that the the account was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+
+`address` : The register address of the account to credit. This is optional if the name is provided.
+
+`amount` : The amount of tokens to credit.
+
+`txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.
+
+### Example:
+
+The following example shows the json payload for a credit of 10 tokens to an account called "savings" (that itself was created by the sig chain logged into session "16953804956473956578") identified by the name "bob:savings".  In the name field, "bob" refers to the username of the account holder and "savings" is their token account.  
+
+```
+{
+    "pin": "1234",
+    "session": "16953804956473956578",
+    "name": "bob:savings",
+    "amount": 10,
+    "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
+}
+```
+
+### Return value JSON object:
+```    
+{
+    "txid": "318b86d2c208618aaa13946a3b75f14472ebc0cce9e659f2830b17e854984b55606738f689d886800f21ffee68a3e5fd5a29818e88f8c5b13b9f8ae67739903d"
+}
+```   
+
+### Return values:
+
+`txid` : The ID (hash) of the transaction that includes the token credit.
+
+****
+
+
+
+# `get/account`
+
+Retrieves information about a token account . The API supports an alternative endpoint that can include the account name in the URI.  For example `/tokens/get/account/savings` will resolve to `tokens/get/account?name=savings`. 
+
+Additionally the API supports passing a field name in the URL after the account name, which will populate the `fieldname` parameter in the request and filter the response on that field.  For example `/tokens/get/account/savings/balance` will resolve to `tokens/get/account?name=savings&fieldname=balance`
+
+
+### Endpoint:
+
+`/tokens/get/account`
+
+
+### Parameters:
+
+
+`name` : The name identifying the token account to retrieve. This is optional if the address is provided.  The name should be in namespace:name format
+
+`namespace` : The namespace that the the account was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+
+`address` : The register address of the token account to retrieve. This is optional if the name is provided.
+
+`fieldname`: This optional field can be used to filter the response to return only a single field from the token account.
+
+### Return value JSON object:
+```    
+{
+    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "identifier": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "balance": 990
+}
+```   
+
+### Return values:
+
+`address` : The register address of the account.  The address is a hash based on the owners username and account name.
+
+`identifier` : By default the identifier is the same as register address of the token.  When creating token accounts the token identifier must be included (so we know which kind of token the account will be used for).  In future we will support user-defined identifiers when creating a token (for an additional fee) allowing tokens to be identified by this custom name (e.g. a ticker).    
+
+`balance` : The current balance of this token account.  
+
+
+***

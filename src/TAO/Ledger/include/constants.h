@@ -53,7 +53,7 @@ namespace TAO
 
 
         /** Minimum prime zero bits (1016-bits). **/
-        const LLC::CBigNum bnPrimeMinOrigins    =   LLC::CBigNum(~uint1024_t(0) >> 8); //minimum prime origins of 1016 bits
+        const LLC::CBigNum bnPrimeMinOrigins = LLC::CBigNum(~uint1024_t(0) >> 8); //minimum prime origins of 1016 bits
 
 
         /** Maximum size a block can be in transit. **/

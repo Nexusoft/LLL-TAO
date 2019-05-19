@@ -178,7 +178,7 @@ ifdef UNIT_TESTS
 		   build/Tests_system.o \
 		   build/Tests_rollback.o \
 		   build/Tests_block.o \
-		   build/Tests_sigchain.o \
+		   build/Tests_mempool.o \
 		   build/Tests_register.o \
 		   build/Tests_debit.o \
 		   build/Tests_trust.o \
@@ -207,7 +207,8 @@ else
 	OBJS = build/main.o
 endif
 
-OBJS+=  build/LLC_bignum.o \
+OBJS+=  build/LLC_base_uint.o \
+		build/LLC_bignum.o \
 		build/LLC_eckey.o \
 		build/LLC_flkey.o \
 		build/LLC_random.o \
@@ -231,6 +232,12 @@ OBJS+=  build/LLC_bignum.o \
 		build/LLC_falcon-vrfy.o \
 		build/LLC_frng.o \
 		build/LLC_shake.o \
+        build/LLD_address.o \
+        build/LLD_ledger.o \
+        build/LLD_legacy.o \
+        build/LLD_local.o \
+        build/LLD_register.o \
+        build/LLD_trust.o \
 		build/LLD_binary_key.o \
 		build/LLD_binary_lru.o \
 		build/LLD_filemap.o \
@@ -278,6 +285,7 @@ OBJS+=  build/LLC_bignum.o \
 		build/API_ledger_state.o \
 		build/API_ledger_transaction.o \
 		build/API_lisp_lisp.o \
+		build/API_system_system.o \
 		build/API_RPC_account.o \
 		build/API_RPC_daemon.o \
 		build/API_RPC_info.o \
@@ -289,6 +297,7 @@ OBJS+=  build/LLC_bignum.o \
 		build/API_supply_history.o \
 		build/API_supply_initialize.o \
 		build/API_supply_transfer.o \
+		build/API_supply_claim.o \
 		build/API_supply_updateitem.o \
 		build/API_tokens_create.o \
 		build/API_tokens_credit.o \
@@ -314,6 +323,7 @@ OBJS+=  build/LLC_bignum.o \
 		build/Ledger_locator.o \
 		build/Ledger_mempool.o \
 		build/Ledger_prime.o \
+		build/Ledger_retarget.o \
 		build/Ledger_sigchain.o \
 		build/Ledger_stake.o \
 		build/Ledger_state.o \
@@ -327,6 +337,7 @@ OBJS+=  build/LLC_bignum.o \
 		build/Operation_coinbase.o \
 		build/Operation_credit.o \
 		build/Operation_debit.o \
+        build/Operation_execute.o \
 		build/Operation_genesis.o \
 		build/Operation_register.o \
 		build/Operation_transfer.o \
@@ -496,6 +507,9 @@ build/API_users_%.o: ./src/TAO/API/users/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_utils_%.o: ./src/TAO/API/utils/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_system_%.o: ./src/TAO/API/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Ledger_%.o: ./src/TAO/Ledger/%.cpp $(HEADERS)
@@ -748,6 +762,13 @@ build/API_tokens_%.o: src/TAO/API/tokens/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_users_%.o: src/TAO/API/users/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_system_%.o: src/TAO/API/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1108,6 +1129,13 @@ build/API_tokens_%.o: src/TAO/API/tokens/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_users_%.o: src/TAO/API/users/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_system_%.o: src/TAO/API/system/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

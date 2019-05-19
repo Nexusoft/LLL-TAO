@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/operations.h>
 
+#include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
 
 #include <TAO/Ledger/include/stake.h>
@@ -47,7 +48,7 @@ namespace TAO
             {
                 /* Set the register pre-states. */
                 {
-                    if(!LLD::regDB->ReadState(hashAddress, account))
+                    if(!LLD::regDB->ReadState(hashAddress, account, nFlags))
                         return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
 
                     tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << account;
@@ -63,7 +64,8 @@ namespace TAO
             }
 
             /* Get pre-states on write. */
-            if(nFlags & TAO::Register::FLAGS::WRITE  || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 {
                     /* Get the state byte. */
@@ -154,7 +156,8 @@ namespace TAO
             }
 
             /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Check register post-state checksum. */
                 {
@@ -194,6 +197,10 @@ namespace TAO
                         return debug::error(FUNCTION, "system register script has invalid post-state");
                 }
 
+                /* Write the register to the database. */
+                if(!LLD::regDB->WriteState(hashAddress, account, nFlags))
+                    return debug::error(FUNCTION, "failed to write new state");
+
                 /* Update the register database with the index. */
                 if((nFlags & TAO::Register::FLAGS::WRITE))
                 {
@@ -203,10 +210,6 @@ namespace TAO
 
                     /* Write the register to the database. */
                     if(!LLD::regDB->WriteState(uint256_t(TAO::Register::SYSTEM::TRUST), sys))
-                        return debug::error(FUNCTION, "failed to write new state");
-
-                    /* Write the register to the database. */
-                    if(!LLD::regDB->WriteState(hashAddress, account))
                         return debug::error(FUNCTION, "failed to write new state");
                 }
 

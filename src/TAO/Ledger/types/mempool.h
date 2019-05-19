@@ -63,14 +63,12 @@ namespace TAO
         public:
 
             /** Default Constructor. **/
-            Mempool()
-            : mapLegacy()
-            , mapLedger()
-            , mapPrevHashes()
-            , mapInputs()
-            {
+            Mempool();
 
-            }
+
+            /** Default Destructor. **/
+            ~Mempool();
+
 
             /** AddUnchecked.
              *
@@ -140,12 +138,26 @@ namespace TAO
              *
              *  @param[in] hashTx Hash of transaction to get.
              *
-             *  @param[out] tx The retrieved transaction
+             *  @param[out] vTx The list of retrieved transaction
              *
              *  @return true if pool contained transaction.
              *
              **/
-            bool Get(uint256_t hashGenesis, TAO::Ledger::Transaction& tx) const;
+            bool Get(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTx) const;
+
+
+            /** Get
+             *
+             *  Gets a transaction by genesis.
+             *
+             *  @param[in] hashTx Hash of transaction to get.
+             *
+             *  @param[out] tx The last tx by genesistransaction
+             *
+             *  @return true if pool contained transaction.
+             *
+             **/
+            bool Get(const uint256_t& hashGenesis, TAO::Ledger::Transaction &tx) const;
 
 
             /** Get
@@ -183,7 +195,7 @@ namespace TAO
              *  @return true if transaction in mempool.
              *
              **/
-            bool Has(uint256_t hashGenesis) const;
+            bool Has(const uint256_t& hashGenesis) const;
 
 
             /** HasLegacy

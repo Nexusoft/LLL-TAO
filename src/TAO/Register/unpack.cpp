@@ -181,8 +181,8 @@ namespace TAO
         }
 
 
-        /* Unpack a previous transaction and test for the operation it contains. */
-        bool Unpack(const TAO::Ledger::Transaction& tx, const uint8_t opCode)
+        /* Unpack a transaction and test for the operation it contains. */
+        bool Unpack(const TAO::Ledger::Transaction& tx, const uint8_t nCode)
         {
 
             /* Start the stream at the beginning. */
@@ -198,7 +198,7 @@ namespace TAO
                     tx.ssOperation >> OPERATION;
 
                     /* Check the current opcode. */
-                    if (OPERATION == opCode)
+                    if (OPERATION == nCode)
                         return true;
 
                     else

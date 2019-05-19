@@ -29,7 +29,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
                << std::string("test") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::STRING) << std::string("this string")
                << std::string("bytes") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::BYTES) << std::vector<uint8_t>(10, 0xff)
                << std::string("balance") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(55)
-               << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT32_T) << uint32_t(0);
+               << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
 
         //write the object register for testing
         uint256_t hash = LLC::GetRand256();
@@ -60,7 +60,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
         REQUIRE(object.get<std::string>("test") == std::string("this string"));
         REQUIRE(object.get<std::vector<uint8_t>>("bytes") == std::vector<uint8_t>(10, 0xff));
         REQUIRE(object.get<uint64_t>("balance") == uint64_t(55));
-        REQUIRE(object.get<uint32_t>("identifier") == uint32_t(0));
+        REQUIRE(object.get<uint256_t>("identifier") == uint256_t(0));
 
 
         //create an operation stream to set values.
@@ -85,7 +85,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
         REQUIRE(object2.get<std::string>("test") == std::string("stRInGISNew"));
         REQUIRE(object2.get<std::vector<uint8_t>>("bytes") == std::vector<uint8_t>(10, 0xff));
         REQUIRE(object2.get<uint64_t>("balance") == uint64_t(55));
-        REQUIRE(object2.get<uint32_t>("identifier") == uint32_t(0));
+        REQUIRE(object2.get<uint256_t>("identifier") == uint256_t(0));
 
         //make sure reserved values fail
         {
@@ -98,7 +98,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
 
         {
             Stream stream;
-            stream << std::string("identifier") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(99);
+            stream << std::string("identifier") << uint8_t(OP::TYPES::UINT256_T) << uint256_t(99);
 
             //run the write operation.
             REQUIRE(!Write(hash, stream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));

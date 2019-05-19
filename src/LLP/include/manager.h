@@ -123,11 +123,22 @@ namespace LLP
          *  Adds the addresses to the manager and sets the connect state for that
          *  address
          *
-         *  @param[in] addrs The addresses to add
+         *  @param[in] addrs The addresses to add (as a vector of BaseAddress).
          *  @param[in] state The state of the connection for the address
          *
          **/
         void AddAddresses(const std::vector<BaseAddress> &addrs, const uint8_t state = ConnectState::NEW);
+
+
+        /** AddAddresses
+         *
+         *  Adds the addresses to the manager and sets the connect state for that
+         *  address
+         *
+         *  @param[in] addrs The addresses to add (as a vector of strings).
+         *  @param[in] state The state of the connection for the address
+         *
+         **/
         void AddAddresses(const std::vector<std::string> &addrs, const uint8_t state = ConnectState::NEW);
 
 
@@ -350,12 +361,26 @@ namespace LLP
         void update_state(TrustAddress *pAddr, uint8_t state);
 
 
+    private:
+
+        /* The map of trust addresses to track. */
         std::map<uint64_t, TrustAddress> mapTrustAddress;
+
+        /* The map of banned addresses to ignore. */
         std::map<uint64_t, uint32_t> mapBanned;
+
+        /* The map of DNS related addresses. */
         std::map<uint64_t, std::string> mapDNS;
-        mutable std::mutex mut;
+
+        /* The mutex used for thread locking. */
+        mutable std::mutex MUTEX;
+
+        /* The pointer to the address database. */
         LLD::AddressDB *pDatabase;
+
+        /* The global port number for the manager (associated with server port). */
         uint16_t nPort;
+
     };
 }
 

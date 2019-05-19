@@ -50,7 +50,7 @@ namespace LLP
         return new Server<ProtocolType>(
 
             /* The port this server listens on. */
-            static_cast<uint16_t>(config::GetArg(std::string("-miningport"), config::fTestNet ? 8325 : 9325)),
+            static_cast<uint16_t>(config::GetArg(std::string("-miningport"), config::fTestNet.load() ? 8325 : 9325)),
 
             /* The total data I/O threads. */
             static_cast<uint16_t>(config::GetArg(std::string("-miningthreads"), 4)),

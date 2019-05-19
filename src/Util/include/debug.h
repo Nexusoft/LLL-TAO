@@ -65,11 +65,14 @@ namespace debug
     extern thread_local std::string strLastError;
 
     /** Block debug output flags. **/
-    enum flags
+    struct flags
     {
-        header        = (1 << 0),
-        tx            = (1 << 1),
-        chain         = (1 << 2)
+        enum
+        {
+            header        = (1 << 0),
+            tx            = (1 << 1),
+            chain         = (1 << 2)
+        };
     };
 
 

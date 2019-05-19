@@ -40,14 +40,15 @@ namespace TAO
             /* Write pre-states. */
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
-                if(!LLD::regDB->ReadState(hashAddress, state))
+                if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
 
                 tx.ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
             }
 
             /* Get pre-states on write. */
-            if(nFlags & TAO::Register::FLAGS::WRITE  || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Get the state byte. */
                 uint8_t nState = 0; //RESERVED
@@ -90,7 +91,8 @@ namespace TAO
                 tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
 
             /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Get the state byte. */
                 uint8_t nState = 0; //RESERVED
@@ -109,7 +111,7 @@ namespace TAO
                     return debug::error(FUNCTION, "register script has invalid post-state");
 
                 /* Write the register to the database. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
+                if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
                     return debug::error(FUNCTION, "failed to write new state");
             }
 

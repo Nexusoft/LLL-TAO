@@ -28,6 +28,7 @@ namespace TAO
         {
             mapFunctions["getitem"]             = Function(std::bind(&Supply::GetItem,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["transfer"]            = Function(std::bind(&Supply::Transfer,   this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["claim"]               = Function(std::bind(&Supply::Claim,      this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["createitem"]          = Function(std::bind(&Supply::CreateItem, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["updateitem"]          = Function(std::bind(&Supply::UpdateItem, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["history"]             = Function(std::bind(&Supply::History,    this, std::placeholders::_1, std::placeholders::_2));

@@ -21,7 +21,7 @@ ________________________________________________________________________________
 namespace encoding
 {
 
-    /** Url Encode
+    /** urlencode
      *
      *  Encode a string into URL format.
      *
@@ -47,7 +47,7 @@ namespace encoding
     }
 
 
-    /** Url Decode
+    /** urldecode
      *
      *  Encode a string into URL format.
      *

@@ -28,6 +28,56 @@ namespace TAO
     namespace Ledger
     {
 
+        /** Default constructor. **/
+        SignatureChain::SignatureChain()
+        : strUsername()
+        , strPassword()
+        , MUTEX()
+        , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+        , hashGenesis()
+        {
+        }
+
+
+        /** Constructor to generate Keychain **/
+        SignatureChain::SignatureChain(const SecureString& strUsernameIn, const SecureString& strPasswordIn)
+        : strUsername(strUsernameIn.c_str())
+        , strPassword(strPasswordIn.c_str())
+        , MUTEX()
+        , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+        , hashGenesis(SignatureChain::Genesis(strUsernameIn))
+        {
+        }
+
+
+        /** Copy constructor **/
+        SignatureChain::SignatureChain(const SignatureChain& chain)
+        : strUsername(chain.strUsername)
+        , strPassword(chain.strPassword)
+        , MUTEX()
+        , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+        , hashGenesis(chain.hashGenesis)
+        {
+        }
+
+
+        /** Move constructor **/
+        SignatureChain::SignatureChain(const SignatureChain&& chain)
+        : strUsername(chain.strUsername)
+        , strPassword(chain.strPassword)
+        , MUTEX()
+        , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+        , hashGenesis(chain.hashGenesis)
+        {
+        }
+
+
+        /** Destructor. **/
+        SignatureChain::~SignatureChain()
+        {
+        }
+
+
         /* This function is responsible for returning the genesis ID.*/
         uint256_t SignatureChain::Genesis() const
         {
@@ -165,10 +215,10 @@ namespace TAO
                 NULL, 0,
 
                 /* Computational Cost. */
-                12,
+                std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
 
                 /* Memory Cost (64 MB). */
-                (1 << 16),
+                uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))),
 
                 /* The number of threads and lanes */
                 1, 1,
@@ -208,7 +258,7 @@ namespace TAO
 
 
         /* Returns the username for this sig chain */
-        const SecureString& SignatureChain::UserName() const 
+        const SecureString& SignatureChain::UserName() const
         {
             return strUsername;
         }

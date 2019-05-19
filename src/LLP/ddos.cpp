@@ -18,6 +18,10 @@ namespace LLP
 
     /*  Construct a DDOS Score of Moving Average Timespan. */
     DDOS_Score::DDOS_Score(int nTimespan)
+    : SCORE()
+    , TIMER()
+    , nIterator()
+    , MUTEX()
     {
         LOCK(MUTEX);
 
@@ -103,7 +107,9 @@ namespace LLP
 
     /* Default Constructor */
     DDOS_Filter::DDOS_Filter(uint32_t nTimespan)
-    : BANTIME(0)
+    : MUTEX()
+    , TIMER()
+    , BANTIME(0)
     , TOTALBANS(0)
     , rSCORE(nTimespan)
     , cSCORE(nTimespan) { }

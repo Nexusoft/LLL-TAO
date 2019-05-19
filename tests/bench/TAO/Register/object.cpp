@@ -14,7 +14,7 @@ TEST_CASE( "Object Register Benchmarks", "[register]" )
            << std::string("test") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::STRING) << std::string("this string")
            << std::string("bytes") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::BYTES) << std::vector<uint8_t>(10, 0xff)
            << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-           << std::string("identifier") << uint8_t(TYPES::STRING) << std::string("NXS");
+           << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
     debug::log(0, "===== Begin Object Register Benchmarks =====");
 

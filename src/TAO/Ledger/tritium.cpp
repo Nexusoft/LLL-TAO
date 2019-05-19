@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <cmath>
-
 #include <LLC/types/bignum.h>
 
 #include <LLD/include/global.h>
@@ -20,6 +18,8 @@ ________________________________________________________________________________
 #include <LLP/packets/tritium.h>
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
+
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/state.h>
@@ -29,12 +29,15 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
+
+#include <cmath>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -120,9 +123,8 @@ namespace TAO
 
 
             /* Make sure the Block was Created within Active Channel. */
-            if (GetChannel() > 2)
+            if (GetChannel() > (config::GetBoolArg("-private") ? 3 : 2))
                 return debug::error(FUNCTION, "channel out of Range.");
-
 
             /* Check that the time was within range. */
             if (GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
@@ -130,7 +132,7 @@ namespace TAO
 
 
             /* Do not allow blocks to be accepted above the current block version. */
-            if(nVersion == 0 || nVersion > (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION))
+            if(nVersion == 0 || nVersion > (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION))
                 return debug::error(FUNCTION, "invalid block version");
 
 
@@ -140,7 +142,7 @@ namespace TAO
 
 
             /* Check the Proof of Work Claims. */
-            if (!config::GetBoolArg("-private") && !VerifyWork())
+            if (!VerifyWork())
             {
                 if (IsProofOfWork())
                     return debug::error(FUNCTION, "invalid proof of work");
@@ -150,28 +152,32 @@ namespace TAO
 
 
             /* Check the Network Launch Time-Lock. */
-            if (nHeight > 0 && GetBlockTime() <= (config::fTestNet ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
+            if (nHeight > 0 && GetBlockTime() <= (config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
                 return debug::error(FUNCTION, "block created before network time-lock");
 
 
             /* Check the Current Channel Time-Lock. */
-            if (nHeight > 0 && GetBlockTime() < (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
-                return debug::error(FUNCTION, "block created before channel time-lock, please wait ", (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp(), " seconds");
+            if (nHeight > 0 && GetBlockTime() < (config::fTestNet.load() ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
+                return debug::error(FUNCTION, "block created before channel time-lock, please wait ", (config::fTestNet.load() ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp(), " seconds");
 
 
             /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
-            if (nVersion > 1 && nVersion == (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-                return debug::error(FUNCTION, "version ", nVersion, " blocks have been obsolete for ", (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])), " seconds");
+            if (nVersion > 1 && nVersion == (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
+                return debug::error(FUNCTION, "version ", nVersion, " blocks have been obsolete for ", (runtime::unifiedtimestamp() - (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
 
             /* Check the Current Version Block Time-Lock. */
-            if (nVersion >= (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-                return debug::error(FUNCTION, "version ", nVersion, " blocks are not accepted for ", (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])), " seconds");
+            if (nVersion >= (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
+                return debug::error(FUNCTION, "version ", nVersion, " blocks are not accepted for ", (runtime::unifiedtimestamp() - (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
 
             /* Check the producer transaction. */
-            if(nHeight > 0 && GetChannel() > 0 && !producer.IsCoinbase())
+            if(nHeight > 0 && IsProofOfWork() && !producer.IsCoinbase())
                 return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
+
+            /* Check the producer transaction. */
+            if(nHeight > 0 && IsPrivate() && !producer.IsPrivate())
+                return debug::error(FUNCTION, "producer transaction has to be authorize for proof of work");
 
 
             /* Check the producer transaction. */
@@ -404,6 +410,16 @@ namespace TAO
                 /* Check the proof of stake. */
                 if(!CheckStake())
                     return debug::error(FUNCTION, "proof of stake is invalid");
+            }
+            else if (IsPrivate())
+            {
+                /* Check that the producer is a valid transaction. */
+                if(!producer.IsValid())
+                    return debug::error(FUNCTION, "producer transaction is invalid");
+
+                /* Check producer for correct genesis. */
+                if(producer.hashGenesis != uint256_t("0xb5a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41"))
+                    return debug::error(FUNCTION, "invalid genesis generated");
             }
 
 

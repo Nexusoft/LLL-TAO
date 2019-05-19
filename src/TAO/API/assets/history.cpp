@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/assets.h>
 #include <TAO/API/include/utils.h>
 
+#include <TAO/Operation/include/enum.h>
+
 #include <LLD/include/global.h>
 
 /* Global TAO namespace. */
@@ -36,7 +38,7 @@ namespace TAO
             if(params.find("name") != params.end())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = RegisterAddressFromName( params, "asset", params["name"].get<std::string>());
+                hashRegister = RegisterAddressFromName(params, "asset", params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
@@ -47,19 +49,115 @@ namespace TAO
             else
                 throw APIException(-23, "Missing memory address");
 
-            /* Get the history. */
-            std::vector<TAO::Register::State> states;
-            if(!LLD::regDB->GetStates(hashRegister, states))
-                throw APIException(-24, "No states found");
+            /* Get the register. */
+            TAO::Register::State state;
+            if(!LLD::regDB->ReadState(hashRegister, state))
+                throw APIException(-24, "No state found");
 
-            /* Build the response JSON. */
-            for(const auto& state : states)
+            /* Generate return object. */
+            json::json obj;
+            obj["owner"]      = state.hashOwner.ToString();
+            obj["timestamp"]  = state.nTimestamp;
+
+            /* Push to return array. */
+            ret.push_back(obj);
+
+            /* Read the last hash of owner. */
+            uint512_t hashLast = 0;
+            if(!LLD::legDB->ReadLast(state.hashOwner, hashLast))
+                throw APIException(-24, "No last hash found");
+
+            /* Iterate through sigchain for register updates. */
+            while(hashLast != 0)
             {
-                json::json obj;
-                obj["owner"]      = state.hashOwner.ToString();
-                obj["timestamp"]  = state.nTimestamp;
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::legDB->ReadTx(hashLast, tx))
+                    throw APIException(-28, "Failed to read transaction");
 
-                ret.push_back(obj);
+                /* Set the next last. */
+                hashLast = tx.hashPrevTx;
+
+                /* Get the operation byte. */
+                uint8_t nType = 0;
+                tx.ssOperation >> nType;
+
+                /* Check for key operations. */
+                TAO::Register::State state;
+                switch(nType)
+                {
+                    /* Break when at the register declaration. */
+                    case TAO::Operation::OP::REGISTER:
+                    {
+                        /* Set hash last to zero to break. */
+                        hashLast = 0;
+
+                        break;
+                    }
+
+                    case TAO::Operation::OP::APPEND:
+                    {
+                        /* Seek past pre-state. */
+                        tx.ssRegister.seek(1);
+
+                        /* De-Serialize state register. */
+                        tx.ssRegister >> state;
+
+                        /* Generate return object. */
+                        json::json obj;
+                        obj["owner"]      = tx.hashGenesis.ToString();
+                        obj["timestamp"]  = state.nTimestamp;
+
+                        /* Push to return array. */
+                        ret.push_back(obj);
+
+                        break;
+                    }
+
+                    case TAO::Operation::OP::WRITE:
+                    {
+                        /* Seek past pre-state. */
+                        tx.ssRegister.seek(1);
+
+                        /* De-Serialize state register. */
+                        tx.ssRegister >> state;
+
+                        /* Generate return object. */
+                        json::json obj;
+                        obj["owner"]      = tx.hashGenesis.ToString();
+                        obj["timestamp"]  = state.nTimestamp;
+
+                        /* Push to return array. */
+                        ret.push_back(obj);
+
+                        break;
+                    }
+
+                    case TAO::Operation::OP::CLAIM:
+                    {
+                        /* Jump to proper sigchain. */
+                        tx.ssOperation >> hashLast;
+
+                        break;
+                    }
+
+                    /* Get old owner from transfer. */
+                    case TAO::Operation::OP::TRANSFER:
+                    {
+                        /* Generate return object. */
+                        json::json obj;
+                        obj["owner"]      = tx.hashGenesis.ToString();
+                        obj["timestamp"]  = state.nTimestamp;
+
+                        /* Push to return array. */
+                        ret.push_back(obj);
+
+                        break;
+                    }
+
+                    default:
+                        continue;
+                }
             }
 
             return ret;

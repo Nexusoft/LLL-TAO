@@ -1,5 +1,35 @@
-# Users API Methods
+# Users API
 -------------------------------------
+
+The Users API provides methods for creating and managing users.  A user is synonymous with a signature chain.
+
+
+## `Named Shortcuts`
+
+For each API method we support an alternative endpoint that includes the username at the end of the the URI.  This shortcut removes the need to include the username or address as an additional parameter.  
+
+For example `/users/login/user/myusername` is a shortcut to `users/login/user?username=myusername`.
+
+Similarly `/users/list/accounts/myusername` is a shortcut to `users/list/accounts?username=myusername`.
+
+## `Methods`
+
+The following methods are currently supported by this API
+
+[`create/user`](#createuser)  
+[`login/user`](#loginuser)   
+[`logout/user`](#logoutuser)   
+[`unlock/user`](#unlockuser)  
+[`lock/user`](#lockuser)  
+[`list/transactions`](#listtransactions)    
+[`list/notifications`](#listnotifications)    
+[`list/assets`](#listassets)    
+[`list/accounts`](#listaccounts)    
+[`list/tokens`](#listtokens)    
+
+
+-----------------------------------
+****
 
 
 
@@ -19,7 +49,7 @@ This will create a new user account (signature chain) for use on the network. Th
 
 `password` : The password to be associated with this user.
 
-`PIN` : The PIN can be a combination of letters/numbers/symbols or could be tied into an external digital fingerprint. The PIN is required for all API calls that modify a user account (such as sending or claiming transactions).
+`pin` : The PIN can be a combination of letters/numbers/symbols or could be tied into an external digital fingerprint. The PIN is required for all API calls that modify a user account (such as sending or claiming transactions).
 
 
 ### Return value JSON object:
@@ -329,5 +359,158 @@ This will list off all of the transactions sent to a particular genesis or usern
 `version` : The serialization version of the transaction.
 
 `operation` : The description of the opcodes included in the transaction.
+
+****
+
+
+# `list/assets`
+
+This will list off all of the assets owned by a signature chain.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/assets`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
+### Return value JSON object:
+```
+[
+    {
+        "timestamp": "1553227128"
+        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+        "serial_number": "123456",
+        "description": "This is the description of my asset",
+        "shelf_location": "A9S2"
+    },
+    {
+        "timestamp": "1553227256"
+        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+        "serial_number": "78901234",
+        "description": "This is the description of another asset",
+        "shelf_location": "A3S6"
+    }
+]
+```
+### Return values:
+
+`timestamp` : The Unix timestamp of when the asset was last updated.
+
+`owner` : The genesis hash of the signature chain that owns this asset.
+
+`<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
+
+****
+
+# `list/accounts`
+
+This will list off all of the token accounts belonging to a particular signature chain.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/accounts`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+
+### Return value JSON object:
+```
+[
+    {
+        "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "identifier": "NXS",
+        "balance": 5000
+    },
+    {
+        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "identifier": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "balance": 60
+    }
+
+
+]
+```
+### Return values:
+
+`address` : The register address for the account
+
+`identifer` : The identifier of the token that this account can be used for.
+
+`balance` : The current balance of the token account.
+
+****
+
+# `list/tokens`
+
+This will list off all of the tokens that were created by a particular signature chain.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/tokens`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+
+### Return value JSON object:
+```
+[
+    {
+        "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "identifier": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "balance": 0,
+        "maxsupply": 26738388,
+        "currentsupply": 26738388
+    },
+    {
+        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "identifier": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "balance": 990,
+        "maxsupply": 1000,
+        "currentsupply": 10
+    }
+
+
+]
+```
+### Return values:
+
+`address` : The register address for the account
+
+`identifer` : The identifier of the token that this account can be used for.
+
+`balance` : The current balance of the token account.
+
+`maxsupply` : The maximum available supply for this token.
+
+`currentsupply` : The current number of tokens that have been distributed from this token register.
 
 ****

@@ -33,6 +33,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -56,17 +57,17 @@ namespace Legacy
         TAO::Ledger::BlockState prevBlockState = TAO::Ledger::ChainState::stateBest.load();
 
         /* Modulate the Block Versions if they correspond to their proper time stamp */
-        if (runtime::unifiedtimestamp() >= (config::fTestNet
+        if (runtime::unifiedtimestamp() >= (config::fTestNet.load()
                                             ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2]
                                             : TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 2]))
         {
-            newBlock.nVersion = config::fTestNet
+            newBlock.nVersion = config::fTestNet.load()
                                 ? TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION
                                 : TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION; // --> New Block Version Activation Switch
         }
         else
         {
-            newBlock.nVersion = config::fTestNet
+            newBlock.nVersion = config::fTestNet.load()
                                 ? TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 1
                                 : TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 1;
         }
@@ -167,7 +168,7 @@ namespace Legacy
         /* calculate the reward for this wallet */
         int64_t nReward = 0;
         if(coinbaseRecipients.IsNull())
-            nReward = nBlockReward; 
+            nReward = nBlockReward;
         else
             nReward = coinbaseRecipients.nPoolFee;
 
@@ -207,13 +208,13 @@ namespace Legacy
 
         /* Create the ambassador and developer outputs for Coinbase transaction */
         coinbaseTx.vout.resize(coinbaseTx.vout.size() + 2);
-        NexusAddress ambassadorKeyAddress(config::fTestNet
+        NexusAddress ambassadorKeyAddress(config::fTestNet.load()
                                             ? (nNewBlockVersion < 5 ? TESTNET_DUMMY_ADDRESS
                                                                     : TESTNET_DUMMY_AMBASSADOR_RECYCLED)
                                             : (nNewBlockVersion < 5 ? AMBASSADOR_ADDRESSES[nCoinbaseCounter]
                                                                     : AMBASSADOR_ADDRESSES_RECYCLED[nCoinbaseCounter]));
 
-        NexusAddress devKeyAddress(config::fTestNet
+        NexusAddress devKeyAddress(config::fTestNet.load()
                                     ? (nNewBlockVersion < 5 ? TESTNET_DUMMY_ADDRESS
                                                             : TESTNET_DUMMY_DEVELOPER_RECYCLED)
                                     : (nNewBlockVersion < 5 ? DEVELOPER_ADDRESSES[nCoinbaseCounter]

@@ -53,27 +53,13 @@ namespace TAO
 
 
         public:
-            Validate(const Stream& ssOperationIn, const TAO::Ledger::Transaction& txIn, int32_t nLimitsIn = 2048)
-            : TAO::Register::BaseVM() //512 bytes of register memory.
-            , nLimits(nLimitsIn)
-            , ssOperations(ssOperationIn)
-            , tx(txIn)
-            , nStreamPos(ssOperations.pos())
-            {
 
-            }
+            /** Default constructor. **/
+            Validate(const Stream& ssOperationIn, const TAO::Ledger::Transaction& txIn, int32_t nLimitsIn = 2048);
 
 
             /** Copy constructor. **/
-            Validate(const Validate& in)
-            : TAO::Register::BaseVM(in)
-            , nLimits(in.nLimits)
-            , ssOperations(in.ssOperations)
-            , tx(in.tx)
-            , nStreamPos(ssOperations.pos())
-            {
-
-            }
+            Validate(const Validate& in);
 
 
             /** Reset
@@ -81,13 +67,7 @@ namespace TAO
              *  Reset the validation script for re-executing.
              *
              **/
-            void Reset()
-            {
-                ssOperations.reset();
-                nLimits = 2048;
-
-                reset();
-            }
+            void Reset();
 
 
             /** Execute

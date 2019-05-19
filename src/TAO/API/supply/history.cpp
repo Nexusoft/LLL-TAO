@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/users.h>
 #include <TAO/API/include/supply.h>
 
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/verify.h>
@@ -46,30 +47,152 @@ namespace TAO
             uint256_t hashRegister;
             hashRegister.SetHex(params["address"].get<std::string>());
 
-            /* Get the history. */
-            std::vector<TAO::Register::State> states;
-            if(!LLD::regDB->GetStates(hashRegister, states))
-                throw APIException(-24, "No states found");
+            /* Get the register. */
+            TAO::Register::State state;
+            if(!LLD::regDB->ReadState(hashRegister, state))
+                throw APIException(-24, "No state found");
 
-            /* Build the response JSON. */
-            for(const auto& state : states)
+            /* Generate return object. */
+            json::json first;
+            first["owner"]      = state.hashOwner.ToString();
+            first["timestamp"]  = state.nTimestamp;
+
+            /* Reset read position. */
+            state.nReadPos = 0;
+
+            /* Grab the last state. */
+            while(!state.end())
             {
-                json::json obj;
-                obj["version"]  = state.nVersion;
-                obj["owner"]    = state.hashOwner.ToString();
-                obj["timestamp"]  = state.nTimestamp;
+                /* If the data type is string. */
+                std::string data;
+                state >> data;
 
-                while(!state.end())
+                first["checksum"] = state.hashChecksum;
+                first["state"]    = data;
+            }
+
+            /* Push to return array. */
+            ret.push_back(first);
+
+            /* Read the last hash of owner. */
+            uint512_t hashLast = 0;
+            if(!LLD::legDB->ReadLast(state.hashOwner, hashLast))
+                throw APIException(-24, "No last hash found");
+
+            /* Iterate through sigchain for register updates. */
+            while(hashLast != 0)
+            {
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::legDB->ReadTx(hashLast, tx))
+                    throw APIException(-28, "Failed to read transaction");
+
+                /* Set the next last. */
+                hashLast = tx.hashPrevTx;
+
+                /* Get the operation byte. */
+                uint8_t nType = 0;
+                tx.ssOperation >> nType;
+
+                /* Check for key operations. */
+                TAO::Register::State state;
+                switch(nType)
                 {
-                    /* If the data type is string. */
-                    std::string data;
-                    state >> data;
+                    /* Break when at the register declaration. */
+                    case TAO::Operation::OP::REGISTER:
+                    {
+                        /* Set hash last to zero to break. */
+                        hashLast = 0;
 
-                    obj["checksum"] = state.hashChecksum;
-                    obj["state"] = data;
+                        break;
+                    }
+
+                    case TAO::Operation::OP::APPEND:
+                    {
+                        /* Seek past pre-state. */
+                        tx.ssRegister.seek(1);
+
+                        /* De-Serialize state register. */
+                        tx.ssRegister >> state;
+
+                        /* Generate return object. */
+                        json::json obj;
+                        obj["OP"]         = "APPEND";
+                        obj["owner"]      = state.hashOwner.ToString();
+                        obj["timestamp"]  = state.nTimestamp;
+
+                        /* Reset read position. */
+                        state.nReadPos = 0;
+
+                        /* Grab the last state. */
+                        while(!state.end())
+                        {
+                            /* If the data type is string. */
+                            std::string data;
+                            state >> data;
+
+                            obj["checksum"] = state.hashChecksum;
+                            obj["state"]    = data;
+                        }
+
+                        /* Push to return array. */
+                        ret.push_back(obj);
+
+                        break;
+                    }
+
+                    case TAO::Operation::OP::WRITE:
+                    {
+                        /* Seek past pre-state. */
+                        tx.ssRegister.seek(1);
+
+                        /* De-Serialize state register. */
+                        tx.ssRegister >> state;
+
+                        /* Generate return object. */
+                        json::json obj;
+                        obj["OP"]         = "WRITE";
+                        obj["owner"]      = state.hashOwner.ToString();
+                        obj["timestamp"]  = state.nTimestamp;
+
+                        /* Reset read position. */
+                        state.nReadPos = 0;
+
+                        /* Grab the last state. */
+                        while(!state.end())
+                        {
+                            /* If the data type is string. */
+                            std::string data;
+                            state >> data;
+
+                            obj["checksum"] = state.hashChecksum;
+                            obj["state"]    = data;
+                        }
+
+                        /* Push to return array. */
+                        ret.push_back(obj);
+
+                        break;
+                    }
+
+                    case TAO::Operation::OP::CLAIM:
+                    {
+                        /* Jump to proper sigchain. */
+                        tx.ssOperation >> hashLast;
+
+                        break;
+                    }
+
+                    /* Get old owner from transfer. */
+                    case TAO::Operation::OP::TRANSFER:
+                    {
+
+                        break;
+                    }
+
+                    default:
+                        continue;
                 }
-
-                ret.push_back(obj);
             }
 
             return ret;

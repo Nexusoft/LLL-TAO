@@ -23,6 +23,39 @@ namespace TAO
     namespace Register
     {
 
+        /** Default constructor. **/
+        Object::Object()
+        : State(uint8_t(REGISTER::OBJECT))
+        , vchSystem(512, 0) //system memory by default is 512 bytes
+        , mapData()
+        {
+        }
+
+
+        /** Copy Constructor. **/
+        Object::Object(const Object& object)
+        : State(object)
+        , vchSystem(object.vchSystem)
+        , mapData(object.mapData)
+        {
+        }
+
+
+        /** Copy Constructor. **/
+        Object::Object(const State& state)
+        : State(state)
+        , vchSystem(512, 0)
+        , mapData()
+        {
+        }
+
+
+        /** Default Destructor **/
+        Object::~Object()
+        {
+        }
+
+
         /* Get's the standard object type. */
         uint8_t Object::Standard() const
         {
@@ -30,18 +63,21 @@ namespace TAO
             uint8_t nType = OBJECTS::NONSTANDARD;
 
             /* Search object register for key types. */
-            if(Check("identifier", TYPES::UINT32_T, false) && Check("balance", TYPES::UINT64_T, true))
+            if(Check("identifier", TYPES::UINT256_T, false)
+            && Check("balance",    TYPES::UINT64_T,  true))
             {
                 /* Set the return value. */
                 nType = OBJECTS::ACCOUNT;
 
                 /* Make the supply immutable for now (add continued distribution later). */
-                if(Check("supply", TYPES::UINT64_T, false) && Check("digits", TYPES::UINT64_T, false))
+                if(Check("supply", TYPES::UINT64_T, false)
+                && Check("digits", TYPES::UINT64_T, false))
                 {
                     /* Set the return value. */
                     nType = OBJECTS::TOKEN;
                 }
-                else if(Check("trust", TYPES::UINT64_T, true) && Check("stake", TYPES::UINT64_T, true))
+                else if(Check("trust", TYPES::UINT64_T, true)
+                     && Check("stake", TYPES::UINT64_T, true))
                 {
                     /* Set the return value. */
                     nType = OBJECTS::TRUST;
@@ -59,7 +95,8 @@ namespace TAO
             uint8_t nType = OBJECTS::NONSTANDARD;
 
             /* Search object register for key types. */
-            if(Check("identifier", TYPES::UINT32_T, false) && Check("balance", TYPES::UINT64_T, true))
+            if(Check("identifier", TYPES::UINT256_T, false)
+            && Check("balance",    TYPES::UINT64_T,  true))
             {
                 /* Set the return value. */
                 nType = OBJECTS::ACCOUNT;

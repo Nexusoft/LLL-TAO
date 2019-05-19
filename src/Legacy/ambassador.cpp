@@ -43,7 +43,7 @@ namespace Legacy
     {
         Script scriptSig;
 
-        if(config::fTestNet)
+        if(config::fTestNet.load())
         {
             scriptSig.clear();
             scriptSig.SetNexusAddress(TESTNET_DUMMY_ADDRESS);

@@ -28,13 +28,16 @@ namespace TAO
     {
 
         /* Verify the pre-states of a register to current network state. */
-        bool Verify(TAO::Ledger::Transaction tx)
+        bool Verify(const TAO::Ledger::Transaction& tx, const uint8_t nFlags)
         {
             /* Start the stream at the beginning. */
             tx.ssOperation.seek(0, STREAM::BEGIN);
 
             /* Start the register stream at the beginning. */
             tx.ssRegister.seek(0, STREAM::BEGIN);
+
+            /* Start the system stream at the beginning. */
+            tx.ssSystem.seek(0, STREAM::BEGIN);
 
             /* Make sure no exceptions are thrown. */
             try
@@ -71,7 +74,7 @@ namespace TAO
 
                             /* Read the register from database. */
                             State dbstate;
-                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate, nFlags))
                                 return debug::error(FUNCTION, "register pre-state doesn't exist");
 
                             /* Check the ownership. */
@@ -125,7 +128,7 @@ namespace TAO
 
                             /* Read the register from database. */
                             State dbstate;
-                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate, nFlags))
                                 return debug::error(FUNCTION, "register pre-state doesn't exist");
 
                             /* Check the ownership. */
@@ -153,7 +156,124 @@ namespace TAO
                         /* Coinstake operation. Requires an account. */
                         case TAO::Operation::OP::TRUST:
                         {
-                            tx.ssOperation.seek(180);
+                            /* Skip ahead in operation stream. */
+                            tx.ssOperation.seek(72);
+
+                            /* Scope the register pre-state verification. */
+                            {
+                                /* Verify the first register code. */
+                                uint8_t nState;
+                                tx.ssRegister  >> nState;
+
+                                /* Check the state is prestate. */
+                                if(nState != STATES::PRESTATE)
+                                    return debug::error(FUNCTION, "register state not in pre-state");
+
+                                /* Read the register from database. */
+                                State dbstate;
+                                if(!LLD::regDB->ReadTrust(tx.hashGenesis, dbstate))
+                                    return debug::error(FUNCTION, "register pre-state doesn't exist");
+
+                                /* Check the ownership. */
+                                if(dbstate.hashOwner != tx.hashGenesis)
+                                    return debug::error(FUNCTION, "cannot generate pre-state if not owner");
+
+                                /* Verify the register's prestate. */
+                                State prestate;
+                                tx.ssRegister  >> prestate;
+
+                                /* Check that the pre-states match. */
+                                if(dbstate != prestate)
+                                    return debug::error(FUNCTION, "register pre-state mismatch to db-state");
+                            }
+
+                            /* Scope the system register pre-state verification. */
+                            {
+                                /* Get the system pre-state. */
+                                uint8_t nState;
+                                tx.ssSystem  >> nState;
+
+                                /* Check the state is prestate. */
+                                if(nState != STATES::PRESTATE)
+                                    return debug::error(FUNCTION, "register state not in pre-state");
+
+                                /* Read the register from database. */
+                                State dbstate;
+                                if(!LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), dbstate))
+                                    return debug::error(FUNCTION, "register pre-state doesn't exist");
+
+                                /* Verify the register's prestate. */
+                                State prestate;
+                                tx.ssSystem  >> prestate;
+
+                                /* Check that the pre-states match. */
+                                if(dbstate != prestate)
+                                    return debug::error(FUNCTION, "register pre-state mismatch to db-state");
+                            }
+
+
+                            break;
+                        }
+
+
+                        /* Coinstake operation. Requires an account. */
+                        case TAO::Operation::OP::GENESIS:
+                        {
+                            /* Scope the register pre-state verification. */
+                            {
+                                /* Verify the first register code. */
+                                uint8_t nState;
+                                tx.ssRegister  >> nState;
+
+                                /* Check the state is prestate. */
+                                if(nState != STATES::PRESTATE)
+                                    return debug::error(FUNCTION, "register state not in pre-state");
+
+                                /* The account that is being staked. */
+                                uint256_t hashAccount;
+                                tx.ssOperation >> hashAccount;
+
+                                /* Read the register from database. */
+                                State dbstate;
+                                if(!LLD::regDB->ReadState(hashAccount, dbstate))
+                                    return debug::error(FUNCTION, "register pre-state doesn't exist");
+
+                                /* Check the ownership. */
+                                if(dbstate.hashOwner != tx.hashGenesis)
+                                    return debug::error(FUNCTION, "cannot generate pre-state if not owner");
+
+                                /* Verify the register's prestate. */
+                                State prestate;
+                                tx.ssRegister  >> prestate;
+
+                                /* Check that the pre-states match. */
+                                if(dbstate != prestate)
+                                    return debug::error(FUNCTION, "register pre-state mismatch to db-state");
+                            }
+
+                            /* Scope the system register pre-state verification. */
+                            {
+                                /* Get the system pre-state. */
+                                uint8_t nState;
+                                tx.ssSystem  >> nState;
+
+                                /* Check the state is prestate. */
+                                if(nState != STATES::PRESTATE)
+                                    return debug::error(FUNCTION, "register state not in pre-state");
+
+                                /* Read the register from database. */
+                                State dbstate;
+                                if(!LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), dbstate))
+                                    return debug::error(FUNCTION, "register pre-state doesn't exist");
+
+                                /* Verify the register's prestate. */
+                                State prestate;
+                                tx.ssSystem  >> prestate;
+
+                                /* Check that the pre-states match. */
+                                if(dbstate != prestate)
+                                    return debug::error(FUNCTION, "register pre-state mismatch to db-state");
+                            }
 
                             break;
                         }
@@ -179,7 +299,7 @@ namespace TAO
 
                             /* Read the register from database. */
                             State dbstate;
-                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate, nFlags))
                                 return debug::error(FUNCTION, "register pre-state doesn't exist");
 
                             /* Check the ownership. */
@@ -224,7 +344,7 @@ namespace TAO
 
                             /* Read the register from database. */
                             State dbstate;
-                            if(!LLD::regDB->ReadState(hashAddress, dbstate))
+                            if(!LLD::regDB->ReadState(hashAddress, dbstate, nFlags))
                                 return debug::error(FUNCTION, "register pre-state doesn't exist");
 
                             /* Check the ownership. */
@@ -238,6 +358,38 @@ namespace TAO
                             /* Seek to the next operation. */
                             tx.ssOperation.seek(8);
 
+                            break;
+                        }
+
+
+                        /* Authorize is enabled in private mode only. */
+                        case TAO::Operation::OP::AUTHORIZE:
+                        {
+                            /* Seek through the stream. */
+                            tx.ssOperation.seek(64);
+
+                            /* Extract the genesis. */
+                            uint256_t hashGenesis;
+                            tx.ssOperation >> hashGenesis;
+
+                            /* Check and enforce private mode. */
+                            if(!config::GetBoolArg("-private"))
+                                return debug::error(FUNCTION, "cannot use authorize when not in private mode");
+
+                            /* Check genesis. */
+                            if(hashGenesis != uint256_t("0xb5a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41"))
+                                return debug::error(FUNCTION, "invalid genesis generated");
+
+                            break;
+                        }
+
+
+                        /* Claim doesn't need register verification. */
+                        case TAO::Operation::OP::CLAIM:
+                        {
+                            /* Seek through the stream. */
+                            tx.ssOperation.seek(64);
+                            
                             break;
                         }
 

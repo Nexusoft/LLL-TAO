@@ -54,7 +54,7 @@ namespace Legacy
      **/
     inline int64_t MaxTxOut()
     {
-        if(runtime::unifiedtimestamp() > (config::fTestNet ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[3] : TAO::Ledger::NETWORK_VERSION_TIMELOCK[3]))
+        if(runtime::unifiedtimestamp() > (config::fTestNet.load() ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[3] : TAO::Ledger::NETWORK_VERSION_TIMELOCK[3]))
             return 50000000 * COIN;
 
         return 1000000 * COIN;

@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/operations.h>
 
+#include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
 
 #include <TAO/Ledger/include/constants.h>
@@ -40,7 +41,7 @@ namespace TAO
             {
                 /* Set the register pre-states. */
                 {
-                    if(!LLD::regDB->ReadTrust(tx.hashGenesis, account))
+                    if(!LLD::regDB->ReadTrust(tx.hashGenesis, account)) //TODO: memory states for this index
                         return debug::error(FUNCTION, "Trust address doesn't exist ", tx.hashGenesis.ToString());
 
                     tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << account;
@@ -56,7 +57,8 @@ namespace TAO
             }
 
             /* Get pre-states on write. */
-            if(nFlags & TAO::Register::FLAGS::WRITE  || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 {
                     /* Get the state byte. */
@@ -145,7 +147,8 @@ namespace TAO
             }
 
             /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Check register post-state checksum. */
                 {

@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/stream.h>
 #include <TAO/Register/types/stream.h>
+#include <TAO/Register/include/enum.h>
 
 #include <Util/include/runtime.h>
 
@@ -30,6 +31,7 @@ namespace TAO
     namespace Ledger
     {
         class BlockState;
+
 
         /** Transaction
          *
@@ -131,7 +133,8 @@ namespace TAO
              *  @param[in] obj The object to serialize into ledger data
              *
              **/
-            template<typename Type> Transaction& operator<<(const Type& obj)
+            template<typename Type>
+            Transaction& operator<<(const Type& obj)
             {
                 /* Serialize to the stream. */
                 ssOperation << obj;
@@ -140,14 +143,38 @@ namespace TAO
             }
 
 
+            /** Operator Overload >
+             *
+             *  Used for sorting transactions by sequence.
+             *
+             **/
+             bool operator> (const Transaction& tx)
+             {
+                 return nSequence > tx.nSequence;
+             }
+
+
+             /** Operator Overload <
+              *
+              *  Used for sorting transactions by sequence.
+              *
+              **/
+              bool operator< (const Transaction& tx)
+              {
+                  return nSequence < tx.nSequence;
+              }
+
+
             /** IsValid
              *
              *  Determines if the transaction is a valid transaciton and passes ledger level checks.
              *
+             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *
              *  @return true if transaction is valid.
              *
              **/
-            bool IsValid() const;
+            bool IsValid(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
 
 
             /** IsCoinbase
@@ -168,6 +195,16 @@ namespace TAO
              *
              **/
             bool IsTrust() const;
+
+
+            /** IsPrivate
+             *
+             *  Determines if the transaction is for a private block.
+             *
+             *  @return true if transaction is a coinbase.
+             *
+             **/
+            bool IsPrivate() const;
 
 
             /** IsGenesis
@@ -208,7 +245,7 @@ namespace TAO
              *  @param[in] hashSecret The secret phrase to generate the keys.
              *
              **/
-            void NextHash(uint512_t hashSecret);
+            void NextHash(const uint512_t& hashSecret);
 
 
             /** PrevHash
@@ -228,7 +265,7 @@ namespace TAO
              *  @param[in] hashSecret The secret phrase to generate the keys.
              *
              **/
-             bool Sign(uint512_t hashSecret);
+             bool Sign(const uint512_t& hashSecret);
 
 
              /** print
@@ -237,6 +274,16 @@ namespace TAO
               *
               **/
              void print() const;
+
+
+             /** ToString
+             *
+             *  Create a transaction string
+             *
+             *  @return The string value to return;
+             *
+             **/
+            std::string ToString() const;
 
 
              /** ToStringShort

@@ -751,7 +751,7 @@ namespace memory
         decrypted_proxy<TypeName> operator->() const
         {
             MUTEX.lock();
-            
+
             return decrypted_proxy<TypeName>(data, MUTEX, nRefs);
         }
 

@@ -54,7 +54,7 @@ namespace Legacy
     /* Sets the generated hash for address */
     void NexusAddress::SetHash256(const uint256_t& hash256)
     {
-        SetData(config::fTestNet ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS, &hash256, 32);
+        SetData(config::fTestNet.load() ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS, &hash256, 32);
     }
 
 
@@ -68,14 +68,14 @@ namespace Legacy
     /* Sets the address based on the hash of the script */
     void NexusAddress::SetScriptHash256(const uint256_t& hash256)
     {
-        SetData(config::fTestNet ? SCRIPT_ADDRESS_TEST : SCRIPT_ADDRESS, &hash256, 32);
+        SetData(config::fTestNet.load() ? SCRIPT_ADDRESS_TEST : SCRIPT_ADDRESS, &hash256, 32);
     }
 
 
     /* Preliminary check to ensure the address is mapped to a valid public key or script */
     bool NexusAddress::IsValid() const
     {
-        unsigned int nExpectedSize = 32;
+        uint32_t nExpectedSize = 32;
         bool fExpectTestNet = false;
         switch(nVersion)
         {
@@ -100,7 +100,7 @@ namespace Legacy
             default:
                 return false;
         }
-        return fExpectTestNet == config::fTestNet && vchData.size() == nExpectedSize;
+        return fExpectTestNet == config::fTestNet.load() && vchData.size() == nExpectedSize;
     }
 
 
@@ -109,7 +109,7 @@ namespace Legacy
     {
         if (!IsValid())
             return false;
-        if (config::fTestNet)
+        if (config::fTestNet.load())
             return nVersion == SCRIPT_ADDRESS_TEST;
         return nVersion == SCRIPT_ADDRESS;
     }

@@ -34,7 +34,7 @@ namespace TAO
          *  @return The object register just created.
          *
          **/
-        Object CreateAccount(const uint32_t nIdentifier);
+        Object CreateAccount(const uint256_t& nIdentifier);
 
 
         /** CreateTrust
@@ -58,7 +58,7 @@ namespace TAO
          *  @return The object register just created.
          *
          **/
-        Object CreateToken(const uint32_t nIdentifier, const uint64_t nSupply, const uint64_t nDigits);
+        Object CreateToken(const uint256_t& nIdentifier, const uint64_t nSupply, const uint64_t nDigits);
 
     }
 }

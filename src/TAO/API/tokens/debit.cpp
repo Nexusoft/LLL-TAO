@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/tokens.h>
 #include <TAO/API/include/utils.h>
 
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
@@ -48,7 +49,7 @@ namespace TAO
 
             /* Check for credit parameter. */
             if(params.find("amount") == params.end())
-                throw APIException(-25, "Missing Amount");
+                throw APIException(-25, "Missing Amount. (<amount>)");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
@@ -57,12 +58,12 @@ namespace TAO
 
             /* Check that the account is unlocked for creating transactions */
             if(!users.CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions");
+                throw APIException(-25, "Account has not been unlocked for transactions.");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-25, "Failed to create transaction");
+                throw APIException(-25, "Failed to create transaction.");
 
             /* Submit the transaction payload. */
             uint256_t hashTo = 0;
@@ -74,19 +75,19 @@ namespace TAO
             else if(params.find("address_to") != params.end())
                 hashTo.SetHex(params["address_to"].get<std::string>());
             else
-                throw APIException(-22, "Missing to recipient");
+                throw APIException(-22, "Missing recipient. (<name_to> or <address_to>)");
 
             /* Get the transaction id. */
             uint256_t hashFrom = 0;
 
-            /* If name_from is provided then use this to deduce the register address,
+            /* If name is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
             if(params.find("name_from") != params.end())
                 hashFrom = RegisterAddressFromName(params, "token", params["name_from"].get<std::string>());
             else if(params.find("address_from") != params.end())
                 hashFrom.SetHex(params["address_from"].get<std::string>());
             else
-                throw APIException(-22, "Missing from recipient");
+                throw APIException(-22, "Missing sender. (<name_from> or <address_from>)");
 
             /* Get the credit. */
             uint64_t nAmount = std::stoull(params["amount"].get<std::string>());

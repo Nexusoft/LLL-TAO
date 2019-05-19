@@ -17,7 +17,9 @@ ________________________________________________________________________________
 #include <TAO/API/include/assets.h>
 #include <TAO/API/include/utils.h>
 
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
+#include <TAO/Operation/include/operations.h>
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
@@ -100,7 +102,7 @@ namespace TAO
             asset.Parse();
 
             /* Declare operation stream to serialize all of the field updates*/
-            TAO::Operation::Stream operationStream;
+            TAO::Operation::Stream ssOperationStream;
 
             if(strFormat == "JSON")
             {
@@ -109,15 +111,15 @@ namespace TAO
                 {
                     /* Skip any incoming parameters that are keywords used by this API method*/
                     if(it.key() == "pin"
-                       || it.key() == "session"
-                       || it.key() == "name"
-                       || it.key() == "address"
-                       || it.key() == "format")
+                    || it.key() == "session"
+                    || it.key() == "name"
+                    || it.key() == "address"
+                    || it.key() == "format")
                     {
                         continue;
                     }
 
-                    if( it->is_string())
+                    if(it->is_string())
                     {
                         /* Get the key / value from the JSON*/
                         std::string strDataField = it.key();
@@ -126,53 +128,51 @@ namespace TAO
                         /* Check that the data field exists in the asset */
                         uint8_t nType = TAO::Register::TYPES::UNSUPPORTED;
                         if(!asset.Type(strDataField, nType))
-                            throw APIException(-25, debug::safe_printstr( "Field not found in asset: ", strDataField));
+                            throw APIException(-25, debug::safe_printstr("Field not found in asset: ", strDataField));
 
                         if(!asset.Check(strDataField, nType, true))
-                            throw APIException(-25, debug::safe_printstr( "Field not mutable in asset: ", strDataField));
+                            throw APIException(-25, debug::safe_printstr("Field not mutable in asset: ", strDataField));
 
                         /* Convert the incoming value to the correct type and write it into the asset object */
                         if( nType == TAO::Register::TYPES::UINT8_T)
-                            operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT8_T) << uint8_t(stol(strValue));
+                            ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT8_T) << uint8_t(stol(strValue));
                         else if(nType == TAO::Register::TYPES::UINT16_T)
-                            operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT16_T) << uint16_t(stol(strValue));
+                            ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT16_T) << uint16_t(stol(strValue));
                         else if(nType == TAO::Register::TYPES::UINT32_T)
-                            operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT32_T) << uint32_t(stol(strValue));
+                            ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT32_T) << uint32_t(stol(strValue));
                         else if(nType == TAO::Register::TYPES::UINT64_T)
-                            operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT64_T) << uint64_t(stol(strValue));
+                            ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT64_T) << uint64_t(stol(strValue));
                         else if(nType == TAO::Register::TYPES::UINT256_T)
-                            operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << uint256_t(strValue);
+                            ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << uint256_t(strValue);
                         else if(nType == TAO::Register::TYPES::UINT512_T)
-                            operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT512_T) << uint512_t(strValue);
+                            ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT512_T) << uint512_t(strValue);
                         else if(nType == TAO::Register::TYPES::UINT1024_T)
-                            operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT1024_T) << uint1024_t(strValue);
+                            ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT1024_T) << uint1024_t(strValue);
                         else if(nType == TAO::Register::TYPES::STRING)
-                            operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::STRING) << strValue;
+                            ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::STRING) << strValue;
                         else if(nType == TAO::Register::TYPES::BYTES)
                         {
                             bool fInvalid = false;
-                            std::vector<unsigned char> vchBytes = encoding::DecodeBase64(strValue.c_str(), &fInvalid);
+                            std::vector<uint8_t> vchBytes = encoding::DecodeBase64(strValue.c_str(), &fInvalid);
 
                             if (fInvalid)
                                 throw APIException(-5, "Malformed base64 encoding");
 
-                            operationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::BYTES) << vchBytes;
+                            ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::BYTES) << vchBytes;
                         }
                     }
                     else
                     {
                         throw APIException(-25, "Non-string types not supported in basic format.");
                     }
-
-
                 }
-
             }
 
-            //run the write operations.
-            if(!TAO::Operation::Write(hashRegister, operationStream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx))
-                throw APIException(-26, "Operations failed to execute");
-            if(!TAO::Operation::Write(hashRegister, operationStream.Bytes(), TAO::Register::FLAGS::WRITE, tx))
+            /* Create the transaction object script. */
+            tx << uint8_t(TAO::Operation::OP::WRITE) << hashRegister << ssOperationStream.Bytes();
+
+            /* Execute the operations layer. */
+            if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
                 throw APIException(-26, "Operations failed to execute");
 
             /* Sign the transaction. */

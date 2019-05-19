@@ -47,7 +47,7 @@ namespace TAO
         bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin, TAO::Ledger::Transaction& tx);
 
 
-        /** Add Transactions
+        /** AddTransactions
          *
          *  Gets a list of transactions from memory pool for current block.
          *
@@ -74,7 +74,6 @@ namespace TAO
         /** CreateGenesis
          *
          *  Creates the genesis block
-         *
          *
          **/
         bool CreateGenesis();

@@ -254,13 +254,13 @@ namespace Legacy
     bool LegacyMinter::CreateCandidateBlock()
     {
         /* Use appropriate settings for Testnet or Mainnet */
-        static const uint32_t nMaxTrustScore = config::fTestNet ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
-        static const uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
+        static const uint32_t nMaxTrustScore = config::fTestNet.load() ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
+        static const uint32_t nMaxBlockAge = config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
 
         static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
         /* New Mainnet interval will go into effect with activation of v7. Can't be static so it goes live immediately (can update after activation) */
-        const uint32_t nMinimumInterval = config::fTestNet
+        const uint32_t nMinimumInterval = config::fTestNet.load()
                                             ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
                                             : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
                                                 ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY
@@ -329,7 +329,7 @@ namespace Legacy
 
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
-                    debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ", 
+                    debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ",
                                (nMinimumInterval - nCurrentInterval), " blocks remaining until staking available.");
 
                 ++nWaitCounter;
@@ -457,9 +457,9 @@ namespace Legacy
         static const double LOG3 = log(3); // Constant for use in calculations
 
         /* Use appropriate settings for Testnet or Mainnet */
-        static const uint32_t nTrustWeightBase = config::fTestNet ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
-        static const uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
-        static const uint32_t nMinimumCoinAge = config::fTestNet ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE;
+        static const uint32_t nTrustWeightBase = config::fTestNet.load() ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
+        static const uint32_t nMaxBlockAge = config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
+        static const uint32_t nMinimumCoinAge = config::fTestNet.load() ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE;
 
         /* Use local variables for calculations, then set instance variables at the end */
         double nCurrentTrustWeight = 0.0;
@@ -489,7 +489,7 @@ namespace Legacy
             }
 
             /* Trust Weight base is time for 50% score. Weight continues to grow with Trust Score until it reaches max of 90.0
-             * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base), 
+             * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base),
              * while requiring close to a year to reach maximum.
              */
             double nTrustWeightRatio = (double)nTrustScore / (double)nTrustWeightBase;
@@ -526,7 +526,7 @@ namespace Legacy
                 {
                     uint32_t nRemainingWaitTime = (nMinimumCoinAge - nCoinAge) / 60; //minutes
 
-                    debug::log(0, FUNCTION, "Stake Minter: Average coin age is immature. ", 
+                    debug::log(0, FUNCTION, "Stake Minter: Average coin age is immature. ",
                                nRemainingWaitTime, " minutes remaining until staking available.");
                 }
 
@@ -599,7 +599,7 @@ namespace Legacy
                 continue;
             }
 
-            /* Calculate the new Efficiency Threshold for the next nonce. 
+            /* Calculate the new Efficiency Threshold for the next nonce.
              * To stake, this value must be larger than required threshhold.
              * Block time increases the value while nonce decreases it.
              */
@@ -710,7 +710,7 @@ namespace Legacy
 
         debug::log(0, FUNCTION, "Stake Minter Started");
         pLegacyMinter->nSleepTime = 5000;
-        bool fLocalTestnet = config::fTestNet && config::GetBoolArg("-nodns", false);
+        bool fLocalTestnet = config::fTestNet.load() && config::GetBoolArg("-nodns", false);
 
         /* If the system is still syncing/connecting on startup, wait to run minter */
         while ((TAO::Ledger::ChainState::Synchronizing() || (LLP::LEGACY_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))

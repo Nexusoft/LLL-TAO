@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/operations.h>
 
+#include <TAO/Register/types/object.h>
 #include <TAO/Register/types/state.h>
 #include <TAO/Register/include/system.h>
 
@@ -39,8 +40,8 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot transfer register to reserved address");
 
             /* Read the register from the database. */
-            TAO::Register::State state = TAO::Register::State();
-            if(!LLD::regDB->ReadState(hashAddress, state))
+            TAO::Register::State state;
+            if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                 return debug::error(FUNCTION, "Register ", hashAddress.ToString(), " doesn't exist in register DB");
 
             /* Make sure that you won the rights to register first. */
@@ -53,7 +54,7 @@ namespace TAO
 
             /* Check if transfer is to a register. */
             TAO::Register::Object object;
-            if(LLD::regDB->ReadState(hashTransfer, object))
+            if(LLD::regDB->ReadState(hashTransfer, object, nFlags))
             {
                 /* Parse the object. */
                 if(!object.Parse())
@@ -82,7 +83,8 @@ namespace TAO
                 tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
 
             /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Get the state byte. */
                 uint8_t nState; //RESERVED
@@ -101,11 +103,12 @@ namespace TAO
                     return debug::error(FUNCTION, "register script has invalid post-state");
 
                 /* Write the register to the database. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteState(hashAddress, state))
+                if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
                     return debug::error(FUNCTION, "failed to write new state");
 
                 /* Write the notification foreign index. */
-                if(nFlags & TAO::Register::FLAGS::WRITE && !LLD::legDB->WriteEvent(hashTransfer, tx.GetHash()))
+                if(nFlags & TAO::Register::FLAGS::WRITE
+                && !LLD::legDB->WriteEvent(hashTransfer, tx.GetHash()))
                     return debug::error(FUNCTION, "failed to commit event to ledger DB");
 
             }
