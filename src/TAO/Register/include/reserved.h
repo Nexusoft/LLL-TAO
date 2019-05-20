@@ -48,7 +48,10 @@ namespace TAO
             "stake",
 
             /* Used for internal object register system memory. */
-            "system"
+            "system",
+
+            /* USed for object register names. Reserved to never be changed. */
+            "name"
         };
 
 
