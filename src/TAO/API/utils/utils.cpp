@@ -675,11 +675,17 @@ namespace TAO
                     else if(nType == TAO::Register::TYPES::STRING )
                     {
                         object.Read<std::string>(strFieldName, strValue);
-                        ret[strFieldName] = strValue;
+                        
+                        /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */
+                        ret[strFieldName] = strValue.substr(0, strValue.find_last_not_of('\0') + 1);
                     }
                     else if(nType == TAO::Register::TYPES::BYTES)
                     {
-                        object.Read<std::vector<uint8_t> >(strFieldName, vchBytes);
+                        object.Read<std::vector<uint8_t>>(strFieldName, vchBytes);
+
+                        /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */                        
+                        vchBytes.erase(std::find(vchBytes.begin(), vchBytes.end(), '\0'), vchBytes.end());
+
                         ret[strFieldName] = encoding::EncodeBase64(&vchBytes[0], vchBytes.size()) ;
                     }
 
