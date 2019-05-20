@@ -11,30 +11,28 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/rpc.h>
+
 
 #include <Legacy/include/money.h>
 #include <Legacy/types/address.h>
+#include <Legacy/types/trustkey.h>
 
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/tritium.h>
 
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/rpc.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
-
-#include <functional>
-#include <map>
-#include <string>
-#include <vector>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -43,6 +41,7 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
+
         /* Get network hashrate for the hashing channel */
         json::json RPC::GetNetworkHashps(const json::json& params, bool fHelp)
         {
@@ -94,6 +93,7 @@ namespace TAO
             return obj;
         }
 
+
         /* Get network prime searched per second */
         json::json RPC::GetNetworkPps(const json::json& params, bool fHelp)
         {
@@ -143,6 +143,7 @@ namespace TAO
             return obj;
         }
 
+
         /* List all the Trust Keys on the Network */
         json::json RPC::GetNetworkTrustKeys(const json::json& params, bool fHelp)
         {
@@ -172,7 +173,7 @@ namespace TAO
                     continue;
 
                 /* Ignore trust keys that are inactive (no blocks within timespan) */
-                if (trustKey.nLastBlockTime + (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 3 : TAO::Ledger::TRUST_KEY_TIMESPAN * 3)
+                if (trustKey.nLastBlockTime + (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 3 : TAO::Ledger::TRUST_KEY_TIMESPAN * 3)
                     < TAO::Ledger::ChainState::stateBest.load().GetBlockTime())
                     continue;
 
@@ -201,6 +202,7 @@ namespace TAO
             return response;
         }
 
+
         /* Returns the number of blocks in the longest block chain */
         json::json RPC::GetBlockCount(const json::json& params, bool fHelp)
         {
@@ -222,6 +224,7 @@ namespace TAO
 
             return (int)TAO::Ledger::ChainState::nBestHeight.load();
         }
+
 
         /* Returns difficulty as a multiple of the minimum difficulty */
         json::json RPC::GetDifficulty(const json::json& params, bool fHelp)
@@ -255,6 +258,7 @@ namespace TAO
             return obj;
 
         }
+
 
         /* getsupplyrates
         Returns an object containing current Nexus production rates in set time intervals.
@@ -292,6 +296,7 @@ namespace TAO
 
         }
 
+
         /* getmoneysupply <timestamp>
         Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors.
         Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp */
@@ -313,6 +318,7 @@ namespace TAO
 
             return obj;
         }
+
 
         /* getblockhash <index>"
         *  Returns hash of block in best-block-chain at <index> */
@@ -340,6 +346,7 @@ namespace TAO
 
         }
 
+
         /* isorphan <hash>"
         *  Returns whether a block is an orphan or not*/
         json::json RPC::IsOrphan(const json::json& params, bool fHelp)
@@ -363,7 +370,6 @@ namespace TAO
             return !block.IsInMainChain();
 
         }
-
 
 
         /* getblock <hash> [txinfo]"

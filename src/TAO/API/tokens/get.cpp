@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/tokens.h>
 #include <TAO/API/include/utils.h>
 
+#include <TAO/Operation/include/enum.h>
+
 #include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
@@ -59,7 +61,15 @@ namespace TAO
             /* Check the object standard. */
             if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
             {
-                ret["identifier"] = object.get<uint32_t>("identifier");
+                /* Get the identifier */
+                uint256_t nIdentifier = object.get<uint256_t>("identifier");
+
+                /* If the identifier is 0 then return the value "NXS" for clarity rather than 0 */
+                if( nIdentifier == 0)
+                    ret["identifier"] = "NXS";
+                else
+                    ret["identifier"] = object.get<uint256_t>("identifier").GetHex();
+                
                 ret["balance"]    = object.get<uint64_t>("balance");
 
                 //TODO: handle the digits value
@@ -68,7 +78,7 @@ namespace TAO
             }
             else if(nStandard == TAO::Register::OBJECTS::TOKEN)
             {
-                ret["identifier"]       = object.get<uint32_t>("identifier");
+                ret["identifier"]       = object.get<uint256_t>("identifier").GetHex();
                 ret["balance"]          = object.get<uint64_t>("balance");
                 ret["maxsupply"]        = object.get<uint64_t>("supply");
                 ret["currentsupply"]    = object.get<uint64_t>("supply")

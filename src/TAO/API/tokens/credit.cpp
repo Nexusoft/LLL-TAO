@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/tokens.h>
 #include <TAO/API/include/utils.h>
 
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
@@ -74,15 +75,15 @@ namespace TAO
             uint256_t hashTo = 0;
 
             /* Check for data parameter. */
-            if(params.find("name_to") != params.end())
+            if(params.find("name") != params.end())
             {
                 /* If name_to is provided then use this to deduce the register address */
-                hashTo = RegisterAddressFromName( params, "token", params["name_to"].get<std::string>());
+                hashTo = RegisterAddressFromName( params, "token", params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("address_to") != params.end())
-                hashTo.SetHex(params["address_to"].get<std::string>());
+            else if(params.find("address") != params.end())
+                hashTo.SetHex(params["address"].get<std::string>());
             else
                 throw APIException(-22, "Missing to account");
 

@@ -51,8 +51,8 @@ namespace TAO
             /* Check to see whether the caller has requested a specific data field to return */
             std::string strDataField = "";
             
-            if(params.find("datafield") != params.end())
-                strDataField =  params["datafield"].get<std::string>();
+            if(params.find("fieldname") != params.end())
+                strDataField =  params["fieldname"].get<std::string>();
 
             /* Get the asset from the register DB.  We can read it as an Object.
                If this fails then we try to read it as a base State type and assume it was

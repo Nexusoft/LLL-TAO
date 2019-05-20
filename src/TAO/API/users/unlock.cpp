@@ -32,7 +32,7 @@ namespace TAO
         json::json Users::Unlock(const json::json& params, bool fHelp)
         {
             /* Restrict Unlock to sessionless API */
-            if(config::fAPISessions)
+            if(config::fAPISessions.load())
                 throw APIException(-23, "Unlock not supported for session-based API");
 
             if(!mapSessions.count(0))

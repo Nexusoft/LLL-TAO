@@ -48,7 +48,9 @@ namespace TAO
         {
             Initialize();
 
-            EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
+            /* Events processor only enabled if multi-user session is disabled. */
+            if(config::fAPISessions.load() == false)
+                EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
         }
 
 
@@ -71,8 +73,13 @@ namespace TAO
 
             /* Set the shutdown flag and join events processing thread. */
             fShutdown = true;
-            NotifyEvent();
-            EVENTS_THREAD.join();
+
+            /* Events processor only enabled if multi-user session is disabled. */
+            if(config::fAPISessions.load() == false)
+            {
+                NotifyEvent();
+                EVENTS_THREAD.join();
+            }
         }
 
 
@@ -158,14 +165,14 @@ namespace TAO
         /* Determine if a sessionless user is logged in. */
         bool Users::LoggedIn() const
         {
-            return !config::fAPISessions && mapSessions.count(0);
+            return !config::fAPISessions.load() && mapSessions.count(0);
         }
 
 
         /* Determine if the Users are locked. */
         bool Users::Locked() const
         {
-            if(config::fAPISessions || pActivePIN.IsNull() || pActivePIN->PIN().empty())
+            if(config::fAPISessions.load() || pActivePIN.IsNull() || pActivePIN->PIN().empty())
                 return true;
 
             return false;
@@ -178,7 +185,7 @@ namespace TAO
          * need to be provided in each API call */
         bool Users::CanTransact() const
         {
-            if(config::fAPISessions || pActivePIN.IsNull() || pActivePIN->CanTransact())
+            if(config::fAPISessions.load() || pActivePIN.IsNull() || pActivePIN->CanTransact())
                 return true;
 
             return false;
@@ -189,7 +196,7 @@ namespace TAO
          *  been unlocked to allow minting */
         bool Users::CanMint() const
         {
-            if(config::fAPISessions || (!pActivePIN.IsNull() && pActivePIN->CanMint()))
+            if(config::fAPISessions.load() || (!pActivePIN.IsNull() && pActivePIN->CanMint()))
                 return true;
 
             return false;
@@ -202,11 +209,11 @@ namespace TAO
             LOCK(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSessionToUse = config::fAPISessions ? nSession : 0;
+            uint64_t nSessionToUse = config::fAPISessions.load() ? nSession : 0;
 
             if(!mapSessions.count(nSessionToUse))
             {
-                if( config::fAPISessions)
+                if( config::fAPISessions.load())
                     throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
                 else
                     throw APIException(-1, "User not logged in");
@@ -222,11 +229,11 @@ namespace TAO
             LOCK(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSessionToUse = config::fAPISessions ? nSession : 0;
+            uint64_t nSessionToUse = config::fAPISessions.load() ? nSession : 0;
 
             if(!mapSessions.count(nSessionToUse))
             {
-                if(config::fAPISessions)
+                if(config::fAPISessions.load())
                     throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
                 else
                     throw APIException(-1, "User not logged in");
@@ -243,7 +250,7 @@ namespace TAO
             LOCK(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSessionToUse = config::fAPISessions ? nSession : 0;
+            uint64_t nSessionToUse = config::fAPISessions.load() ? nSession : 0;
 
             /* Check if you are logged in. */
             if(!mapSessions.count(nSessionToUse))
@@ -291,14 +298,14 @@ namespace TAO
             /* Check for session parameter. */
             uint64_t nSession = 0; // ID 0 is used for sessionless API
 
-            if(!config::fAPISessions && !users.LoggedIn())
+            if(!config::fAPISessions.load() && !users.LoggedIn())
             {
                 if(fThrow)
                     throw APIException(-25, "User not logged in");
                 else
                     return -1;
             }
-            else if(config::fAPISessions)
+            else if(config::fAPISessions.load())
             {
                 if(params.find("session") == params.end())
                 {

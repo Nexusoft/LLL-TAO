@@ -32,6 +32,7 @@ namespace TAO
     {
         class BlockState;
 
+
         /** Transaction
          *
          *  A Tritium Transaction.
@@ -50,10 +51,6 @@ namespace TAO
 
             /** The register pre-states. **/
             TAO::Register::Stream  ssRegister;
-
-
-            /** The critical system level pre-states and post-states. **/
-            TAO::Register::Stream  ssSystem;
 
 
             /** The transaction version. **/
@@ -94,7 +91,6 @@ namespace TAO
 
                 /* Register layer. */
                 READWRITE(ssRegister);
-                READWRITE(ssSystem);
 
                 /* Ledger layer */
                 READWRITE(nVersion);
@@ -113,7 +109,6 @@ namespace TAO
             Transaction()
             : ssOperation()
             , ssRegister()
-            , ssSystem()
             , nVersion(1)
             , nSequence(0)
             , nTimestamp(runtime::unifiedtimestamp())
@@ -132,7 +127,8 @@ namespace TAO
              *  @param[in] obj The object to serialize into ledger data
              *
              **/
-            template<typename Type> Transaction& operator<<(const Type& obj)
+            template<typename Type>
+            Transaction& operator<<(const Type& obj)
             {
                 /* Serialize to the stream. */
                 ssOperation << obj;
@@ -193,6 +189,16 @@ namespace TAO
              *
              **/
             bool IsTrust() const;
+
+
+            /** IsPrivate
+             *
+             *  Determines if the transaction is for a private block.
+             *
+             *  @return true if transaction is a coinbase.
+             *
+             **/
+            bool IsPrivate() const;
 
 
             /** IsGenesis

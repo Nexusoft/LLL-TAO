@@ -18,9 +18,9 @@ ________________________________________________________________________________
 
 TEST_CASE("Arguments Tests", "[args]")
 {
-    config::fTestNet = true;
+    config::fTestNet.load() = true;
     config::mapArgs["-testnet"] = "92349234";
 
-    REQUIRE(config::fTestNet == true);
+    REQUIRE(config::fTestNet.load() == true);
     REQUIRE(config::GetArg("-testnet", 0) == 92349234);
 }

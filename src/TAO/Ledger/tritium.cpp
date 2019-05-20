@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <cmath>
-
 #include <LLC/types/bignum.h>
 
 #include <LLD/include/global.h>
@@ -21,6 +19,8 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
 
+#include <TAO/Register/types/object.h>
+
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -28,12 +28,15 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
+
+#include <cmath>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -47,6 +50,7 @@ namespace TAO
         TritiumBlock::TritiumBlock()
         : Block()
         , producer()
+        , ssSystem()
         , vtx()
         {
             SetNull();
@@ -57,6 +61,7 @@ namespace TAO
         TritiumBlock::TritiumBlock(const TritiumBlock& block)
         : Block(block)
         , producer(block.producer)
+        , ssSystem(block.ssSystem)
         , vtx(block.vtx)
         {
         }
@@ -66,6 +71,7 @@ namespace TAO
         TritiumBlock::TritiumBlock(const BlockState& state)
         : Block(state)
         , producer()
+        , ssSystem(state.ssSystem)
         , vtx(state.vtx)
         {
             vtx.erase(vtx.begin());
@@ -119,9 +125,8 @@ namespace TAO
 
 
             /* Make sure the Block was Created within Active Channel. */
-            if (GetChannel() > 2)
+            if (GetChannel() > (config::GetBoolArg("-private") ? 3 : 2))
                 return debug::error(FUNCTION, "channel out of Range.");
-
 
             /* Check that the time was within range. */
             if (GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
@@ -129,7 +134,7 @@ namespace TAO
 
 
             /* Do not allow blocks to be accepted above the current block version. */
-            if(nVersion == 0 || nVersion > (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION))
+            if(nVersion == 0 || nVersion > (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION))
                 return debug::error(FUNCTION, "invalid block version");
 
 
@@ -139,33 +144,37 @@ namespace TAO
 
 
             /* Check the Proof of Work Claims. */
-            if (!config::GetBoolArg("-private") && IsProofOfWork() && !VerifyWork())
+            if (IsProofOfWork() && !VerifyWork())
                return debug::error(FUNCTION, "invalid proof of work");
 
 
             /* Check the Network Launch Time-Lock. */
-            if (nHeight > 0 && GetBlockTime() <= (config::fTestNet ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
+            if (nHeight > 0 && GetBlockTime() <= (config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
                 return debug::error(FUNCTION, "block created before network time-lock");
 
 
             /* Check the Current Channel Time-Lock. */
-            if (nHeight > 0 && GetBlockTime() < (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
-                return debug::error(FUNCTION, "block created before channel time-lock, please wait ", (config::fTestNet ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp(), " seconds");
+            if (nHeight > 0 && GetBlockTime() < (config::fTestNet.load() ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
+                return debug::error(FUNCTION, "block created before channel time-lock, please wait ", (config::fTestNet.load() ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp(), " seconds");
 
 
             /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
-            if (nVersion > 1 && nVersion == (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-                return debug::error(FUNCTION, "version ", nVersion, " blocks have been obsolete for ", (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])), " seconds");
+            if (nVersion > 1 && nVersion == (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
+                return debug::error(FUNCTION, "version ", nVersion, " blocks have been obsolete for ", (runtime::unifiedtimestamp() - (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
 
             /* Check the Current Version Block Time-Lock. */
-            if (nVersion >= (config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-                return debug::error(FUNCTION, "version ", nVersion, " blocks are not accepted for ", (runtime::unifiedtimestamp() - (config::fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])), " seconds");
+            if (nVersion >= (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
+                return debug::error(FUNCTION, "version ", nVersion, " blocks are not accepted for ", (runtime::unifiedtimestamp() - (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
 
             /* Check the producer transaction. */
-            if(nHeight > 0 && GetChannel() > 0 && !producer.IsCoinbase())
+            if(nHeight > 0 && IsProofOfWork() && !producer.IsCoinbase())
                 return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
+
+            /* Check the producer transaction. */
+            if(nHeight > 0 && IsPrivate() && !producer.IsPrivate())
+                return debug::error(FUNCTION, "producer transaction has to be authorize for proof of work");
 
 
             /* Check the producer transaction. */
@@ -209,7 +218,29 @@ namespace TAO
 
             /* Only do producer transaction on non genesis. */
             if(nHeight > 0)
-                vHashes.push_back(producer.GetHash());
+            {
+                /* Get producer hash. */
+                uint512_t hashProducer = producer.GetHash();
+
+                /* Add producer to merkle tree list. */
+                vHashes.push_back(hashProducer);
+
+                /* Add producer to unique transactions. */
+                uniqueTx.insert(hashProducer);
+
+                /* Calculate merkle root with system memory. */
+                if(!ssSystem.size() != 0)
+                {
+                    /* Get the hash of the system register. */
+                    uint512_t hashSystem = LLC::SK512(ssSystem.Bytes());
+
+                    /* Add system hash to merkle tree list. */
+                    vHashes.push_back(hashSystem);
+
+                    /* Add system hash to unique hashes. */
+                    uniqueTx.insert(hashSystem);
+                }
+            }
 
 
             /* Get the signature operations for legacy tx's. */
@@ -219,7 +250,6 @@ namespace TAO
             /* Check all the transactions. */
             for(const auto& proof : vtx)
             {
-
                 /* Insert txid into set to check for duplicates. */
                 uniqueTx.insert(proof.second);
 
@@ -283,7 +313,7 @@ namespace TAO
 
 
             /* Check for duplicate txid's. */
-            if (uniqueTx.size() != vtx.size())
+            if (uniqueTx.size() != vHashes.size())
                 return debug::error(FUNCTION, "duplicate transaction");
 
 
@@ -399,6 +429,16 @@ namespace TAO
                 if(!CheckStake())
                     return debug::error(FUNCTION, "proof of stake is invalid");
             }
+            else if (IsPrivate())
+            {
+                /* Check that the producer is a valid transaction. */
+                if(!producer.IsValid())
+                    return debug::error(FUNCTION, "producer transaction is invalid");
+
+                /* Check producer for correct genesis. */
+                if(producer.hashGenesis != uint256_t("0xb5a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41"))
+                    return debug::error(FUNCTION, "invalid genesis generated");
+            }
 
 
             /* Check legacy transactions for finality. */
@@ -500,7 +540,7 @@ namespace TAO
 
                 /* Block Weight Reaches Maximum At Trust Key Expiration. */
                 nBlockWeight = std::min(10.0, (((9.0 * log(((2.0 * nBlockAge) /
-                    ((config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))) + 1.0)) / log(3))) + 1.0);
+                    ((config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))) + 1.0)) / log(3))) + 1.0);
 
                 /* Get stake from the object register stake balance. */
                 nStake = object.get<uint64_t>("stake");
@@ -517,7 +557,7 @@ namespace TAO
                 uint64_t nCoinAge = (uint64_t(nTime) - object.nTimestamp);
 
                 /* Genesis has to wait for one full trust key timespan. */
-                if(nCoinAge < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+                if(nCoinAge < (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
                     return debug::error(FUNCTION, "genesis age is immature");
 
                 /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */

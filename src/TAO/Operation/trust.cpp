@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/operations.h>
 
+#include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
 
 #include <TAO/Ledger/include/constants.h>
@@ -32,56 +33,30 @@ namespace TAO
         {
             /* Read the register from the database. */
             TAO::Register::Object account;
-            TAO::Register::Object sys;
 
             /* Write pre-states. */
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
                 /* Set the register pre-states. */
-                {
-                    if(!LLD::regDB->ReadTrust(tx.hashGenesis, account)) //TODO: memory states for this index
-                        return debug::error(FUNCTION, "trust address doesn't exist ", tx.hashGenesis.ToString());
+                if(!LLD::regDB->ReadTrust(tx.hashGenesis, account)) //TODO: memory states for this index
+                    return debug::error(FUNCTION, "trust address doesn't exist ", tx.hashGenesis.ToString());
 
-                    tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << account;
-                }
-
-                /* Set the system pre-states. */
-                {
-                    if(!LLD::regDB->ReadState(uint256_t(TAO::Register::SYSTEM::TRUST), sys))
-                        return debug::error(FUNCTION, "system register address doesn't exist ", uint256_t(TAO::Register::SYSTEM::TRUST).ToString());
-
-                    tx.ssSystem << uint8_t(TAO::Register::STATES::PRESTATE) << sys;
-                }
+                tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << account;
             }
 
             /* Get pre-states on write. */
             if(nFlags & TAO::Register::FLAGS::WRITE  || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
-                {
-                    /* Get the state byte. */
-                    uint8_t nState = 0; //RESERVED
-                    tx.ssRegister >> nState;
+                /* Get the state byte. */
+                uint8_t nState = 0; //RESERVED
+                tx.ssRegister >> nState;
 
-                    /* Check for the pre-state. */
-                    if(nState != TAO::Register::STATES::PRESTATE)
-                        return debug::error(FUNCTION, "register script not in pre-state");
+                /* Check for the pre-state. */
+                if(nState != TAO::Register::STATES::PRESTATE)
+                    return debug::error(FUNCTION, "register script not in pre-state");
 
-                    /* Get the pre-state. */
-                    tx.ssRegister >> account;
-                }
-
-                {
-                    /* Get the state byte. */
-                    uint8_t nState = 0; //RESERVED
-                    tx.ssSystem >> nState;
-
-                    /* Check for the pre-state. */
-                    if(nState != TAO::Register::STATES::PRESTATE)
-                        return debug::error(FUNCTION, "register script not in pre-state");
-
-                    /* Get the pre-state. */
-                    tx.ssSystem >> sys;
-                }
+                /* Get the pre-state. */
+                tx.ssRegister >> account;
             }
 
             /* Check ownership of register. */
@@ -93,7 +68,7 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to parse account object register");
 
             /* Calculate the new trust score. */
-            uint64_t nTrustPrev = account.get<uint64_t>("trust");
+            //uint64_t nTrustPrev = account.get<uint64_t>("trust");
 
             /* Write the new trust to object register. */
             if(!account.Write("trust", nTrustScore))
@@ -116,81 +91,32 @@ namespace TAO
             if(!account.IsValid())
                 return debug::error(FUNCTION, "trust address ", tx.hashGenesis.ToString(), " is in invalid state");
 
-            /* Parse the system object register. */
-            if(!sys.Parse())
-                return debug::error(FUNCTION, "failed to parse system object register");
-
-            /* Write the system values. */
-            if(!sys.Write("trust", sys.get<uint64_t>("trust") + int64_t(nTrustScore - nTrustPrev)))
-                return debug::error(FUNCTION, "could not write new system register value.");
-
-            /* Update the system register's timestamp. */
-            sys.nTimestamp = tx.nTimestamp;
-            sys.SetChecksum();
-
-            /* Check that the register is in a valid state. */
-            if(!sys.IsValid())
-                return debug::error(FUNCTION, "system memory address ", uint256_t(TAO::Register::SYSTEM::TRUST).ToString(), " is in invalid state");
-
             /* Write post-state checksum. */
             if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-            {
                 tx.ssRegister << uint8_t(TAO::Register::STATES::POSTSTATE) << account.GetHash();
-                tx.ssSystem   << uint8_t(TAO::Register::STATES::POSTSTATE) << sys.GetHash();
-            }
 
             /* Verify the post-state checksum. */
             if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Check register post-state checksum. */
-                {
-                    /* Get the state byte. */
-                    uint8_t nState = 0; //RESERVED
-                    tx.ssRegister >> nState;
+                uint8_t nState = 0; //RESERVED
+                tx.ssRegister >> nState;
 
-                    /* Check for the pre-state. */
-                    if(nState != TAO::Register::STATES::POSTSTATE)
-                        return debug::error(FUNCTION, "register script not in post-state");
+                /* Check for the pre-state. */
+                if(nState != TAO::Register::STATES::POSTSTATE)
+                    return debug::error(FUNCTION, "register script not in post-state");
 
-                    /* Get the post state checksum. */
-                    uint64_t nChecksum;
-                    tx.ssRegister >> nChecksum;
+                /* Get the post state checksum. */
+                uint64_t nChecksum;
+                tx.ssRegister >> nChecksum;
 
-                    /* Check for matching post states. */
-                    if(nChecksum != account.GetHash())
-                        return debug::error(FUNCTION, "register script has invalid post-state");
-                }
-
-                /* Check system post-state checksum. */
-                {
-                    /* Get the state byte. */
-                    uint8_t nState = 0; //RESERVED
-                    tx.ssSystem >> nState;
-
-                    /* Check for the pre-state. */
-                    if(nState != TAO::Register::STATES::POSTSTATE)
-                        return debug::error(FUNCTION, "system register script not in post-state");
-
-                    /* Get the post state checksum. */
-                    uint64_t nChecksum;
-                    tx.ssSystem >> nChecksum;
-
-                    /* Check for matching post states. */
-                    if(nChecksum != sys.GetHash())
-                        return debug::error(FUNCTION, "system register script has invalid post-state");
-                }
+                /* Check for matching post states. */
+                if(nChecksum != account.GetHash())
+                    return debug::error(FUNCTION, "register script has invalid post-state");
 
                 /* Update the register database with the index. */
-                if((nFlags & TAO::Register::FLAGS::WRITE))
-                {
-                    /* Write the register to the database. */
-                    if(!LLD::regDB->WriteState(uint256_t(TAO::Register::SYSTEM::TRUST), sys))
-                        return debug::error(FUNCTION, "failed to write new state");
-
-                    /* Write the register to the database. */
-                    if(!LLD::regDB->WriteTrust(tx.hashGenesis, account))
-                        return debug::error(FUNCTION, "failed to write new state");
-                }
+                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteTrust(tx.hashGenesis, account))
+                    return debug::error(FUNCTION, "failed to write new state");
 
             }
 

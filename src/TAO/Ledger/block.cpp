@@ -82,7 +82,7 @@ namespace TAO
         /* Set the block state to null. */
         void Block::SetNull()
         {
-            nVersion = config::fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION;
+            nVersion = config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION;
             hashPrevBlock = 0;
             hashMerkleRoot = 0;
             nChannel = 0;
@@ -123,9 +123,9 @@ namespace TAO
 
 
         /* Get the prime number of the block. */
-        LLC::CBigNum Block::GetPrime() const
+        uint1024_t Block::GetPrime() const
         {
-            return LLC::CBigNum(ProofHash() + nNonce);
+            return ProofHash() + nNonce;
         }
 
 
@@ -177,6 +177,13 @@ namespace TAO
         bool Block::IsProofOfWork() const
         {
             return (nChannel == 1 || nChannel == 2);
+        }
+
+
+        /* Check flags for PoW block. */
+        bool Block::IsPrivate() const
+        {
+            return nChannel == 3;
         }
 
 

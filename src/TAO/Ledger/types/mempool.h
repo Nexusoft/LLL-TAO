@@ -63,14 +63,11 @@ namespace TAO
         public:
 
             /** Default Constructor. **/
-            Mempool()
-            : MUTEX()
-            , mapLegacy()
-            , mapLedger()
-            , mapPrevHashes()
-            , mapInputs()
-            {
-            }
+            Mempool();
+
+
+            /** Default Destructor. **/
+            ~Mempool();
 
 
             /** AddUnchecked.

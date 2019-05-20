@@ -102,7 +102,6 @@ class sdk_init():
 
         parms = "?genesis={}&page={}&limit={}&verbose={}".format( \
             self.genesis_id, page, limit, verbose)
-        parms = "?genesis={}".format(self.genesis_id)
         url = accounts_url.format("transactions") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -111,7 +110,7 @@ class sdk_init():
     def nexus_accounts_lock(self):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
-        parms = "?session-id={}".format(self.session_id)
+        parms = "?session={}".format(self.session_id)
         url = accounts_url.format("lock") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -120,7 +119,7 @@ class sdk_init():
     def nexus_accounts_unlock(self):
         if (self.session_id == None): return(self.__error("Not logged in"))
 
-        parms = "?pin={}&session-id={}".format(self.pin, self.session_id)
+        parms = "?pin={}&session={}".format(self.pin, self.session_id)
         url = accounts_url.format("unlock") + parms
         json_data = self.__get(url)
         return(json_data)

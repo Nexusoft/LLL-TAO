@@ -50,7 +50,7 @@ namespace TAO
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-            else if(!config::fAPISessions && mapSessions.count(0))
+            else if(!config::fAPISessions.load() && mapSessions.count(0))
                 hashGenesis = mapSessions[0]->Genesis();
             else
                 throw APIException(-25, "Missing Genesis or Username");
@@ -106,13 +106,13 @@ namespace TAO
                     continue;
 
                 /* Skip over identifier 0. */
-                if(!object.Check("identifier", TAO::Register::TYPES::UINT32_T, false)
-                || object.get<uint32_t>("identifier") == 0)
+                if(!object.Check("identifier", TAO::Register::TYPES::UINT256_T, false)
+                || object.get<uint256_t>("identifier") == 0)
                     continue;
 
                 /* Get the token address. */
                 uint256_t hashToken;
-                if(!LLD::regDB->ReadIdentifier(object.get<uint32_t>("identifier"), hashToken))
+                if(!LLD::regDB->ReadIdentifier(object.get<uint256_t>("identifier"), hashToken))
                     continue;
 
                 /* Push the token identifier to list to check. */

@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/tokens.h>
 #include <TAO/API/include/utils.h>
 
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
@@ -79,14 +80,14 @@ namespace TAO
             /* Get the transaction id. */
             uint256_t hashFrom = 0;
 
-            /* If name_from is provided then use this to deduce the register address,
+            /* If name is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
-            if(params.find("name_from") != params.end())
-                hashFrom = RegisterAddressFromName(params, "token", params["name_from"].get<std::string>());
-            else if(params.find("address_from") != params.end())
-                hashFrom.SetHex(params["address_from"].get<std::string>());
+            if(params.find("name") != params.end())
+                hashFrom = RegisterAddressFromName(params, "token", params["name"].get<std::string>());
+            else if(params.find("address") != params.end())
+                hashFrom.SetHex(params["address"].get<std::string>());
             else
-                throw APIException(-22, "Missing from recipient");
+                throw APIException(-22, "Missing from name or address ");
 
             /* Get the credit. */
             uint64_t nAmount = std::stoull(params["amount"].get<std::string>());

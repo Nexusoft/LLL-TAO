@@ -15,12 +15,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_SIGNATURE_CHAIN_H
 #define NEXUS_TAO_LEDGER_TYPES_SIGNATURE_CHAIN_H
 
-#include <string>
 
 #include <LLC/types/uint1024.h>
 
 #include <Util/include/allocators.h>
 #include <Util/include/mutex.h>
+
+#include <string>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -64,61 +65,32 @@ namespace TAO
         public:
 
             /** Default constructor. **/
-            SignatureChain()
-            : strUsername()
-            , strPassword()
-            , MUTEX()
-            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
-            , hashGenesis()
-            {
+            SignatureChain();
 
-            }
 
             /** Constructor to generate Keychain
              *
-             * @param[in] strUsernameIn The username to seed the signature chain
-             * @param[in] strPasswordIn The password to seed the signature chain
+             *  @param[in] strUsernameIn The username to seed the signature chain
+             *  @param[in] strPasswordIn The password to seed the signature chain
+             *
              **/
-            SignatureChain(const SecureString& strUsernameIn, const SecureString& strPasswordIn)
-            : strUsername(strUsernameIn.c_str())
-            , strPassword(strPasswordIn.c_str())
-            , MUTEX()
-            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
-            , hashGenesis(SignatureChain::Genesis(strUsernameIn))
-            {
-            }
+            SignatureChain(const SecureString& strUsernameIn, const SecureString& strPasswordIn);
 
 
             /** Copy constructor **/
-            SignatureChain(const SignatureChain& chain)
-            : strUsername(chain.strUsername)
-            , strPassword(chain.strPassword)
-            , MUTEX()
-            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
-            , hashGenesis(chain.hashGenesis)
-            {
-            }
+            SignatureChain(const SignatureChain& chain);
 
 
             /** Move constructor
              *
-             * @param[in] strUsernameIn The username to seed the signature chain
-             * @param[in] strPasswordIn The password to seed the signature chain
+             *  @param[in] chain The signature chain to move from.
+             *
              **/
-            SignatureChain(const SignatureChain&& chain)
-            : strUsername(chain.strUsername)
-            , strPassword(chain.strPassword)
-            , MUTEX()
-            , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
-            , hashGenesis(chain.hashGenesis)
-            {
-            }
+            SignatureChain(const SignatureChain&& chain);
 
 
             /** Destructor. **/
-            ~SignatureChain()
-            {
-            }
+            ~SignatureChain();
 
 
             /** Genesis
@@ -126,6 +98,7 @@ namespace TAO
              *  This function is responsible for generating the genesis ID for this sig chain.
              *
              *  @return The 512 bit hash of this key in the series.
+             *
              **/
             uint256_t Genesis() const;
 

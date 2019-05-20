@@ -111,7 +111,7 @@ namespace TAO
 
         /* Resolves a register address from a name.
         *  The register address is a hash of the fully-namespaced name in the format of namespacehash:objecttype:name. */
-        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectName, const std::string& strObjectType)
+        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectType, const std::string& strObjectName )
         {
             uint256_t hashRegister = 0;
 
@@ -162,6 +162,16 @@ namespace TAO
             hashRegister = LLC::SK256(std::vector<uint8_t>(strRegisterName.begin(), strRegisterName.end()));
 
             return hashRegister;
+        }
+
+
+        /*  Determins whether a string value is a register address.
+         *  This only checks to see if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
+         *  It does not check to see whether the register address exists in the database 
+         */
+        bool IsRegisterAddress(const std::string& strValueToCheck)
+        {
+            return strValueToCheck.length() == 64 && strValueToCheck.find_first_not_of("0123456789abcdefABCDEF", 0) == std::string::npos;
         }
 
 

@@ -115,7 +115,7 @@ namespace TAO
                         user.free();
 
                         ret["genesis"] = hashGenesis.ToString();
-                        if(config::fAPISessions)
+                        if(config::fAPISessions.load())
                             ret["session"] = debug::safe_printstr(std::dec, session.first);
 
                         return ret;
@@ -124,7 +124,7 @@ namespace TAO
             }
 
             /* Extract the PIN, if supplied, and if the user has specified to remain unlocked for minting or transacting */
-            if(!config::fAPISessions && nUnlockedActions != TAO::Ledger::PinUnlock::UnlockActions::NONE)
+            if(!config::fAPISessions.load() && nUnlockedActions != TAO::Ledger::PinUnlock::UnlockActions::NONE)
             {
                 if(!pActivePIN.IsNull())
                     pActivePIN.free();
@@ -133,10 +133,10 @@ namespace TAO
             }
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSession = config::fAPISessions ? LLC::GetRand() : 0;
+            uint64_t nSession = config::fAPISessions.load() ? LLC::GetRand() : 0;
             ret["genesis"] = hashGenesis.ToString();
 
-            if(config::fAPISessions)
+            if(config::fAPISessions.load())
                 ret["session"] = debug::safe_printstr(std::dec, nSession);
 
             /* Setup the account. */

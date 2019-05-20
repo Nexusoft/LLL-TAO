@@ -207,7 +207,8 @@ else
 	OBJS = build/main.o
 endif
 
-OBJS+=  build/LLC_bignum.o \
+OBJS+=  build/LLC_base_uint.o \
+		build/LLC_bignum.o \
 		build/LLC_eckey.o \
 		build/LLC_flkey.o \
 		build/LLC_random.o \
@@ -231,6 +232,12 @@ OBJS+=  build/LLC_bignum.o \
 		build/LLC_falcon-vrfy.o \
 		build/LLC_frng.o \
 		build/LLC_shake.o \
+        build/LLD_address.o \
+        build/LLD_ledger.o \
+        build/LLD_legacy.o \
+        build/LLD_local.o \
+        build/LLD_register.o \
+        build/LLD_trust.o \
 		build/LLD_binary_key.o \
 		build/LLD_binary_lru.o \
 		build/LLD_filemap.o \
@@ -290,6 +297,7 @@ OBJS+=  build/LLC_bignum.o \
 		build/API_supply_history.o \
 		build/API_supply_initialize.o \
 		build/API_supply_transfer.o \
+		build/API_supply_claim.o \
 		build/API_supply_updateitem.o \
 		build/API_tokens_create.o \
 		build/API_tokens_credit.o \
@@ -315,6 +323,7 @@ OBJS+=  build/LLC_bignum.o \
 		build/Ledger_locator.o \
 		build/Ledger_mempool.o \
 		build/Ledger_prime.o \
+		build/Ledger_retarget.o \
 		build/Ledger_sigchain.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \
@@ -327,6 +336,7 @@ OBJS+=  build/LLC_bignum.o \
 		build/Operation_coinbase.o \
 		build/Operation_credit.o \
 		build/Operation_debit.o \
+        build/Operation_execute.o \
 		build/Operation_genesis.o \
 		build/Operation_register.o \
 		build/Operation_transfer.o \

@@ -33,9 +33,9 @@ namespace TAO
          *
          *  Unpack a state register from operation scripts.
          *
-         *  @param[in] tx - the transaction to unpack
-         *  @param[out] state - the unpacked register
-         *  @param[out] hashAddress - the register address
+         *  @param[in] tx the transaction to unpack
+         *  @param[out] state the unpacked register
+         *  @param[out] hashAddress the register address
          *
          *  @return true if register unpacked successfully
          *
@@ -47,8 +47,8 @@ namespace TAO
          *
          *  Unpack a source register address from operation scripts.
          *
-         *  @param[in] tx - the transaction to unpack
-         *  @param[out] hashAddress - one or more op code values (combine multiple with bitwise | )
+         *  @param[in] tx the transaction to unpack
+         *  @param[out] hashAddress one or more op code values (combine multiple with bitwise | )
          *
          *  @return true if the address unpacked successfully
          *
@@ -60,8 +60,8 @@ namespace TAO
          *
          *  Unpack a previous transaction from operation scripts.
          *
-         *  @param[in] tx - the transaction to unpack
-         *  @param[out] hashPrevTx 
+         *  @param[in] tx the transaction to unpack
+         *  @param[out] hashPrevTx finds a previous transaction
          *
          *  @return true if the previous tx hash was unpacked successfully
          *
@@ -73,13 +73,13 @@ namespace TAO
          *
          *  Unpack a previous transaction and test for the operation it contains.
          *
-         *  @param[in] tx - the transaction to unpack
-         *  @param[in] opCode - op code value to test
+         *  @param[in] tx the transaction to unpack
+         *  @param[in] nCode op code value to test
          *
          *  @return true if the transaction contains the requested op code
          *
          **/
-        bool Unpack(const TAO::Ledger::Transaction& tx, const uint8_t opCode);
+        bool Unpack(const TAO::Ledger::Transaction& tx, const uint8_t nCode);
 
     }
 }

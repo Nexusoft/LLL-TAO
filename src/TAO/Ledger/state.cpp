@@ -33,6 +33,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/string.h>
 
@@ -78,6 +79,7 @@ namespace TAO
         /** Default Constructor. **/
         BlockState::BlockState(const TritiumBlock& block)
         : Block(block)
+        , ssSystem()
         , vtx()
         , nChainTrust(0)
         , nMoneySupply(0)
@@ -90,13 +92,15 @@ namespace TAO
             vtx.push_back(std::make_pair(TYPE::TRITIUM_TX, block.producer.GetHash()));
             vtx.insert(vtx.end(), block.vtx.begin(), block.vtx.end());
 
-            assert(vtx.size() == block.vtx.size() +1); //TODO: maybe a softer way to verify?
+            if(vtx.size() != block.vtx.size() + 1)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "tritium block to state incorrect sizes"));
         }
 
 
         /* Construct a block state from a legacy block. */
         BlockState::BlockState(const Legacy::LegacyBlock& block)
         : Block(block)
+        , ssSystem()
         , vtx()
         , nChainTrust(0)
         , nMoneySupply(0)
@@ -109,7 +113,8 @@ namespace TAO
             for(const auto& tx : block.vtx)
                 vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
 
-            assert(vtx.size() == block.vtx.size()); //TODO: maybe a softer way to verify?
+            if(vtx.size() != block.vtx.size())
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "legacy block to state incorrect sizes"));
         }
 
 
@@ -148,7 +153,10 @@ namespace TAO
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
             if(!statePrev)
+            {
+                debug::log(0, "Previous ", hashPrevBlock.ToString());
                 return debug::error(FUNCTION, "previous block state not found");
+            }
 
             /* Compute the Chain Trust */
             nChainTrust = statePrev.nChainTrust + GetBlockTrust();
@@ -579,6 +587,10 @@ namespace TAO
                     if(LLD::legDB->HasIndex(hash))
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
 
+                    /* Check that previous transaction is indexed. */
+                    if(!tx.IsFirst() && !LLD::legDB->HasIndex(tx.hashPrevTx))
+                        return debug::error(FUNCTION, "previous transaction not indexed");
+
                     /* Check if is trust or genesis. */
                     if(tx.IsTrust() || tx.IsGenesis())
                     {
@@ -588,7 +600,7 @@ namespace TAO
                     }
 
                     /* Verify the ledger layer. */
-                    if(!TAO::Register::Verify(tx))
+                    if(!TAO::Register::Verify(tx, TAO::Register::FLAGS::WRITE))
                         return debug::error(FUNCTION, "transaction register layer failed to verify");
 
                     /* Execute the operations layers. */
@@ -604,18 +616,16 @@ namespace TAO
                         if(!LLD::legDB->WriteGenesis(tx.hashGenesis, tx.GetHash()))
                             return debug::error(FUNCTION, "failed to write genesis");
                     }
-                    else //POTENTIALLY SUPERFLUOUS CHECK, KEEP NOW FOR TESTING BUT DISPOSE BEFORE MAINNET
+                    else
                     {
                         /* Check for the last hash. */
                         uint512_t hashLast;
                         if(!LLD::legDB->ReadLast(tx.hashGenesis, hashLast))
                             return debug::error(FUNCTION, "failed to read last on non-genesis");
 
-                        /* Check that advertised last transaction is correct. */
+                        /* Check that the last transaction is correct. */
                         if(tx.hashPrevTx != hashLast)
-                            return debug::error(FUNCTION,
-                                "previous transaction ", tx.hashPrevTx.ToString().substr(0, 20),
-                                " and last hash mismatch ", hashLast.ToString().substr(0, 20));
+                            return debug::error(FUNCTION, "transaction has to be head of sigchain");
                     }
 
                     /* Write the last to disk. */

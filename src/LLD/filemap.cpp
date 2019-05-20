@@ -26,7 +26,8 @@ namespace LLD
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     BinaryFileMap::BinaryFileMap(std::string strBaseLocationIn, uint8_t nFlagsIn)
-    : strBaseLocation(strBaseLocationIn)
+    : KEY_MUTEX()
+    , strBaseLocation(strBaseLocationIn)
     , nCurrentFileSize(0)
     , nCurrentFile(0)
     , nFlags(nFlagsIn)

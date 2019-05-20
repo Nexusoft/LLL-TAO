@@ -11,9 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <cmath>
-#include <limits>
-
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/validate.h>
@@ -21,17 +18,49 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/object.h>
 
+#include <TAO/Ledger/include/chainstate.h>
+
+#include <cmath>
+#include <limits>
+
 namespace TAO
 {
 
     namespace Operation
     {
 
-        /** Execute
-         *
-         *  Execute the validation script.
-         *
-         **/
+        Validate::Validate(const Stream& ssOperationIn, const TAO::Ledger::Transaction& txIn, int32_t nLimitsIn)
+        : TAO::Register::BaseVM() //512 bytes of register memory.
+        , nLimits(nLimitsIn)
+        , ssOperations(ssOperationIn)
+        , tx(txIn)
+        , nStreamPos(ssOperations.pos())
+        {
+        }
+
+
+        /** Copy constructor. **/
+        Validate::Validate(const Validate& in)
+        : TAO::Register::BaseVM(in)
+        , nLimits(in.nLimits)
+        , ssOperations(in.ssOperations)
+        , tx(in.tx)
+        , nStreamPos(ssOperations.pos())
+        {
+        }
+
+
+        /* Reset the validation script for re-executing. */
+        void Validate::Reset()
+        {
+            ssOperations.reset();
+            nLimits = 2048;
+
+            reset();
+        }
+
+
+        /* Execute the validation script. */
         bool Validate::Execute()
         {
             /* Keep track of previous execution return value. */

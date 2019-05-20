@@ -52,9 +52,13 @@ namespace TAO
                 /* Previous transaction. */
                 TAO::Ledger::Transaction tx;
 
-                /* Check for memory pool. */
-                if(!mempool.Get(hashPrevTx, tx) && !LLD::legDB->ReadTx(hashPrevTx, tx))
-                    return debug::error(FUNCTION, "failed to read previous transaction from disk");
+                /* Check disk of writing new block. */
+                if((nFlags & TAO::Register::FLAGS::WRITE) && (!LLD::legDB->ReadTx(hashPrevTx, tx) || !LLD::legDB->HasIndex(hashPrevTx)))
+                    return debug::error(FUNCTION, hashPrevTx.ToString(), " tx doesn't exist or not indexed");
+
+                /* Check mempool or disk if not writing. */
+                else if(!TAO::Ledger::mempool.Get(hashPrevTx, tx) && !LLD::legDB->ReadTx(hashPrevTx, tx))
+                    return debug::error(FUNCTION, hashPrevTx.ToString(), " tx doesn't exist");
 
                 /* Check the previous next hash that is being claimed. */
                 if(tx.hashNext != PrevHash())
@@ -68,16 +72,6 @@ namespace TAO
                 if(tx.hashGenesis != hashGenesis)
                     return debug::error(FUNCTION, "previous genesis ", tx.hashGenesis.ToString().substr(0, 20), " mismatch ",  hashGenesis.ToString().substr(0, 20));
             }
-            else
-            {
-                /* System memory cannot be allocated on first. */
-                if(ssSystem.size() != 0)
-                    return debug::error(FUNCTION, "no system memory available on genesis");
-            }
-
-            /* Check for Trust. */
-            if(!IsTrust() && ssSystem.size() != 0)
-                return debug::error(FUNCTION, "no system memory available when not trust");
 
             /* Checks for coinbase. */
             if(IsCoinbase())
@@ -121,6 +115,16 @@ namespace TAO
                 return false;
 
             return ssOperation.get(0) == TAO::Operation::OP::COINBASE;
+        }
+
+
+        /* Determines if the transaction is for a private block. */
+        bool Transaction::IsPrivate() const
+        {
+            if(ssOperation.size() == 0)
+                return false;
+
+            return ssOperation.get(0) == TAO::Operation::OP::AUTHORIZE;
         }
 
 
@@ -181,7 +185,7 @@ namespace TAO
                 return debug::error(FUNCTION, "last state coinstake tx not found");
 
             /* Enforce the minimum trust key interval of 120 blocks. */
-            const uint32_t nMinimumInterval = config::fTestNet ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
+            const uint32_t nMinimumInterval = config::fTestNet.load() ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
                                                                : TAO::Ledger::MAINNET_MINIMUM_INTERVAL;
 
             /* Check the proper intervals. */
@@ -205,14 +209,14 @@ namespace TAO
             uint32_t nTimespan = (statePrev.GetBlockTime() - stateLast.GetBlockTime());
 
             /* Timespan less than required timespan is awarded the total seconds it took to find. */
-            if(nTimespan < (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+            if(nTimespan < (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
                 nScore = nScorePrev + nTimespan;
 
             /* Timespan more than required timespan is penalized 3 times the time it took past the required timespan. */
             else
             {
                 /* Calculate the penalty for score (3x the time). */
-                uint32_t nPenalty = (nTimespan - (config::fTestNet ?
+                uint32_t nPenalty = (nTimespan - (config::fTestNet.load() ?
                     TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN)) * 3;
 
                 /* Catch overflows and zero out if penalties are greater than previous score. */
