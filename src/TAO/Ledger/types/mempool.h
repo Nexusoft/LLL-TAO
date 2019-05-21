@@ -43,7 +43,7 @@ namespace TAO
          **/
         class Mempool
         {
-            mutable std::mutex MUTEX;
+            mutable std::recursive_mutex MUTEX;
 
             /** The transactions in the ledger memory pool. **/
             std::map<uint512_t, Legacy::Transaction> mapLegacy;
@@ -51,6 +51,10 @@ namespace TAO
 
             /** The transactions in the ledger memory pool. **/
             std::map<uint512_t, TAO::Ledger::Transaction> mapLedger;
+
+
+            /** Oprhan transactions in queue. **/
+            std::map<uint512_t, TAO::Ledger::Transaction> mapOrphans;
 
 
             /** Record of next hashes in the mempool. **/

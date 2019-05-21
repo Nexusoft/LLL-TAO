@@ -28,6 +28,8 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
+#include <algorithm>
+
 TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 {
     using namespace TAO::Register;
@@ -459,7 +461,6 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
 
         {
-
             //check mempool list sequencing
             std::vector<uint512_t> vHashes;
             REQUIRE(TAO::Ledger::mempool.List(vHashes));
@@ -499,6 +500,435 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
                 //check values
                 REQUIRE(object2.get<uint64_t>("balance") == 0);
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+    //handle out of order transactions
+    {
+
+        //cleanup
+        LLD::regDB->EraseIdentifier(22);
+
+        //vector to shuffle
+        std::vector<TAO::Ledger::Transaction> vTX;
+
+        //create object
+        uint256_t hashGenesis  = LLC::GetRand256();
+        uint512_t hashPrivKey1  = LLC::GetRand512();
+        uint512_t hashPrivKey2  = LLC::GetRand512();
+
+        uint512_t hashPrevTx;
+
+        uint256_t hashToken     = LLC::GetRand256();
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object token = CreateToken(22, 1000, 100);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+
+            //push to vector
+            vTX.push_back(tx);
+        }
+
+        //set address
+        uint256_t hashAccount = LLC::GetRand256();
+        {
+
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 1;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object account = CreateAccount(11);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+
+            //push to vector
+            vTX.push_back(tx);
+        }
+
+        //set address
+        uint256_t hashAddress = LLC::GetRand256();
+        {
+
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 2;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object object;
+            object << std::string("byte") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(55)
+                   << std::string("test") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::STRING) << std::string("this string")
+                   << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+
+            //push to vector
+            vTX.push_back(tx);
+        }
+
+
+        //set new address
+        hashAddress = LLC::GetRand256();
+        {
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 3;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object object;
+            object << std::string("byte") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(55)
+                   << std::string("test") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::STRING) << std::string("this string")
+                   << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+
+            //push to vector
+            vTX.push_back(tx);
+        }
+
+
+        //set new address
+        hashAddress = LLC::GetRand256();
+        {
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 4;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object object;
+            object << std::string("byte") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(55)
+                   << std::string("test") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::STRING) << std::string("this string")
+                   << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+
+            //push to vector
+            vTX.push_back(tx);
+        }
+
+
+        //set new address
+        hashAddress = LLC::GetRand256();
+        {
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 5;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object object;
+            object << std::string("byte") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(55)
+                   << std::string("test") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::STRING) << std::string("this string")
+                   << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+
+            //push to vector
+            vTX.push_back(tx);
+        }
+
+
+        //set new address
+        hashAddress = LLC::GetRand256();
+        {
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 6;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object object;
+            object << std::string("byte") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(55)
+                   << std::string("test") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::STRING) << std::string("this string")
+                   << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+
+            //push to vector
+            vTX.push_back(tx);
+        }
+
+
+        //set new address
+        hashAddress = LLC::GetRand256();
+        {
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 7;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object object;
+            object << std::string("byte") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(55)
+                   << std::string("test") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::STRING) << std::string("this string")
+                   << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+
+            //push to vector
+            vTX.push_back(tx);
+        }
+
+
+
+        //set new address
+        hashAddress = LLC::GetRand256();
+        {
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 8;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object object;
+            object << std::string("byte") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(55)
+                   << std::string("test") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::STRING) << std::string("this string")
+                   << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+
+            //push to vector
+            vTX.push_back(tx);
+        }
+
+
+        //set new address
+        hashAddress = LLC::GetRand256();
+        {
+
+            //set private keys
+            hashPrivKey1 = hashPrivKey2;
+            hashPrivKey2 = LLC::GetRand512();
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 9;
+            tx.hashPrevTx  = hashPrevTx;
+            tx.nTimestamp  = runtime::timestamp();
+            tx.NextHash(hashPrivKey2);
+
+            //create object
+            Object object;
+            object << std::string("byte") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(55)
+                   << std::string("test") << uint8_t(TAO::Register::TYPES::MUTABLE) << uint8_t(TAO::Register::TYPES::STRING) << std::string("this string")
+                   << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
+
+            //payload
+            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+
+            //sign
+            tx.Sign(hashPrivKey1);
+
+            //set previous
+            hashPrevTx = tx.GetHash();
+
+            //push to vector
+            vTX.push_back(tx);
+        }
+
+
+        {
+            //random shuffle the list for sequencing
+            std::random_shuffle(vTX.begin(), vTX.end());
+
+            //accept all transactions in random ordering
+            for(auto& tx : vTX)
+            {
+                REQUIRE(TAO::Ledger::mempool.Accept(tx));
+            }
+
+            //check mempool list sequencing
+            std::vector<uint512_t> vHashes;
+            REQUIRE(TAO::Ledger::mempool.List(vHashes));
+
+            //commit memory pool transactions to disk
+            for(auto& hash : vHashes)
+            {
+                TAO::Ledger::Transaction tx;
+                REQUIRE(TAO::Ledger::mempool.Get(hash, tx));
+
+                LLD::legDB->WriteTx(hash, tx);
+                REQUIRE(Verify(tx, FLAGS::WRITE));
+                REQUIRE(Execute(tx, FLAGS::WRITE));
+                REQUIRE(TAO::Ledger::mempool.Remove(tx.GetHash()));
             }
         }
     }
