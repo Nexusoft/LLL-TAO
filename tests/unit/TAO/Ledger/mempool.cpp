@@ -458,16 +458,18 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
 
         {
-            //list of mempool transctions
-            std::vector<TAO::Ledger::Transaction> vTx;
 
-            //check mempool sequencing
-            REQUIRE(TAO::Ledger::mempool.Get(hashGenesis, vTx));
+            //check mempool list sequencing
+            std::vector<uint512_t> vHashes;
+            REQUIRE(TAO::Ledger::mempool.List(vHashes));
 
             //commit memory pool transactions to disk
-            for(auto& tx : vTx)
+            for(auto& hash : vHashes)
             {
-                LLD::legDB->WriteTx(tx.GetHash(), tx);
+                TAO::Ledger::Transaction tx;
+                REQUIRE(TAO::Ledger::mempool.Get(hash, tx));
+
+                LLD::legDB->WriteTx(hash, tx);
                 REQUIRE(Verify(tx, FLAGS::WRITE));
                 REQUIRE(Execute(tx, FLAGS::WRITE));
                 REQUIRE(TAO::Ledger::mempool.Remove(tx.GetHash()));

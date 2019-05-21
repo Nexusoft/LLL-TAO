@@ -262,11 +262,45 @@ namespace TAO
         {
             LOCK(MUTEX);
 
-            for(auto it = mapLedger.begin(); it != mapLedger.end() && nCount > 0; ++it)
-            {
+            /* Create map of transactions by genesis. */
+            std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
 
-                vHashes.push_back(it->first);
-                --nCount;
+            /* Loop through all the transactions. */
+            for(const auto& tx : mapLedger)
+            {
+                /* Cache the genesis. */
+                const uint256_t& hashGenesis = tx.second.hashGenesis;
+
+                /* Check in map for push back. */
+                if(!mapTransactions.count(hashGenesis))
+                    mapTransactions[hashGenesis] = std::vector<TAO::Ledger::Transaction>();
+
+                /* Push to back of map. */
+                mapTransactions[hashGenesis].push_back(tx.second);
+            }
+
+            /* Loop transctions map by genesis. */
+            for(auto& list : mapTransactions)
+            {
+                /* Get reference of the vector. */
+                std::vector<TAO::Ledger::Transaction>& vTx = list.second;
+
+                /* Sort the list by sequence numbers. */
+                std::sort(vTx.begin(), vTx.end());
+
+                /* Add the hashes into list. */
+                for(const auto& tx : vTx)
+                {
+                    /* Add to the output queue. */
+                    vHashes.push_back(tx.GetHash());
+
+                    /* Decrement counter. */
+                    --nCount;
+
+                    /* Check count. */
+                    if(nCount == 0)
+                        return true;
+                }
             }
 
             return vHashes.size() > 1;
