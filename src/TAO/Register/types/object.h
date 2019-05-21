@@ -17,8 +17,6 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/state.h>
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/types/stream.h>
-
 
 /* Global TAO namespace. */
 namespace TAO
@@ -45,30 +43,19 @@ namespace TAO
 
 
             /** Default constructor. **/
-            Object()
-            : State(uint8_t(REGISTER::OBJECT))
-            , vchSystem(512, 0) //system memory by default is 512 bytes
-            , mapData()
-            {
-            }
+            Object();
 
 
             /** Copy Constructor. **/
-            Object(const Object& object)
-            : State(object)
-            , vchSystem(object.vchSystem)
-            , mapData(object.mapData)
-            {
-            }
+            Object(const Object& object);
 
 
             /** Copy Constructor. **/
-            Object(const State& state)
-            : State(state)
-            , vchSystem(512, 0)
-            , mapData()
-            {
-            }
+            Object(const State& state);
+
+
+            /** Default Destructor **/
+            ~Object();
 
 
             IMPLEMENT_SERIALIZE
@@ -305,6 +292,7 @@ namespace TAO
              *
              **/
             uint8_t type(const uint8_t n) const;
+
 
             /** type
              *

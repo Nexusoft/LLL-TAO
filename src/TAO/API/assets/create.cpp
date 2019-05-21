@@ -184,8 +184,43 @@ namespace TAO
                     /* Parse the values out of the definition json*/
                     std::string strName =  (*it)["name"].get<std::string>();
                     std::string strType =  (*it)["type"].get<std::string>();
-                    std::string strValue = (*it)["value"].get<std::string>();
+                    std::string strValue = (*it)["value"].get<std::string>();                                
                     bool fMutable = (*it)["mutable"].get<std::string>() == "true";
+                    bool fBytesInvalid = false;
+                    std::vector<uint8_t> vchBytes; 
+
+                    /* Convert the value to bytes if the type is bytes */
+                    if(strType == "bytes" ) 
+                        vchBytes = encoding::DecodeBase64(strValue.c_str(), &fBytesInvalid) ;
+
+                    /* Declare the max length variable */
+                    size_t nMaxLength = 0;
+                    
+                    /* If this is a mutable string or byte fields then set the length.  
+                       This can either be set by the caller in a  maxlength field or we will default it
+                       based on the field data type.` */
+                    if(fMutable && 
+                    (strType == "string" || strType == "bytes") )
+                    {
+                        /* Determine the length of the data passed in */
+                        std::size_t nDataLength = strType == "string" ? strValue.length() : vchBytes.size();
+
+                        /* If the caller specifies a maxlength then use this to set the size of the string or bytes array */
+                        if( it->find("maxlength") != it->end() )
+                        {
+                            nMaxLength = stoul((*it)["maxlength"].get<std::string>());
+
+                            /* If they specify a value less than the data length then error */
+                            if( nMaxLength < nDataLength )
+                                throw APIException(-25, "maxlength value is less than the specified data length.");
+                        }
+                        else
+                        {
+                            /* If the caller hasn't specified a maxlength then set a suitable default 
+                               by rounding up the current length to the nearest 64 bytes. */
+                            nMaxLength = (((uint8_t)(nDataLength / 64)) +1) * 64;
+                        }
+                    }
 
                     /* Add the field to the Object based on the user defined type.
                        NOTE: all numeric values <= 64-bit are converted from string to the corresponding type.
@@ -214,15 +249,20 @@ namespace TAO
                     else if(strType == "uint1024")
                         asset << uint8_t(TAO::Register::TYPES::UINT1024_T) << uint1024_t(strValue);
                     else if(strType == "string")
+                    {
+                        /* Ensure that the serialized value is padded out to the max length */
+                        strValue.resize(nMaxLength);
+
                         asset << uint8_t(TAO::Register::TYPES::STRING) << strValue;
+                    }
                     else if(strType == "bytes")
                     {
-                        bool fInvalid = false;
-                        std::vector<unsigned char> vchBytes = encoding::DecodeBase64(strValue.c_str(), &fInvalid);
-
-                        if (fInvalid)
+                        if (fBytesInvalid)
                             throw APIException(-5, "Malformed base64 encoding");
 
+                        /* Ensure that the serialized value is padded out to the max length */
+                        vchBytes.resize(nMaxLength);
+                         
                         asset << uint8_t(TAO::Register::TYPES::BYTES) << vchBytes;
                     }
 

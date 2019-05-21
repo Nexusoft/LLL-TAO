@@ -51,41 +51,41 @@ namespace TAO
 
             /* Check for txid parameter. */
             if(params.find("txid") == params.end())
-                throw APIException(-25, "Missing TXID");
+                throw APIException(-25, "Missing TxID.");
 
             /* Check for credit parameter. */
             if(params.find("amount") == params.end())
-                throw APIException(-25, "Missing Amount");
+                throw APIException(-25, "Missing Amount. (<amount>)");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
             if(!user)
-                throw APIException(-25, "Invalid session ID");
+                throw APIException(-25, "Invalid session ID.");
 
             /* Check that the account is unlocked for creating transactions */
             if(!users.CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions");
+                throw APIException(-25, "Account has not been unlocked for transactions.");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-25, "Failed to create transaction");
+                throw APIException(-25, "Failed to create transaction.");
 
             /* Submit the transaction payload. */
             uint256_t hashTo = 0;
 
             /* Check for data parameter. */
-            if(params.find("name") != params.end())
+            if(params.find("name_to") != params.end())
             {
                 /* If name_to is provided then use this to deduce the register address */
-                hashTo = RegisterAddressFromName( params, "token", params["name"].get<std::string>());
+                hashTo = RegisterAddressFromName( params, "token", params["name_to"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("address") != params.end())
-                hashTo.SetHex(params["address"].get<std::string>());
+            else if(params.find("address_to") != params.end())
+                hashTo.SetHex(params["address_to"].get<std::string>());
             else
-                throw APIException(-22, "Missing to account");
+                throw APIException(-22, "Missing to account. (<name_to> or <address_to>)");
 
             /* Get the transaction id. */
             uint512_t hashTx;
@@ -105,7 +105,7 @@ namespace TAO
                 /* Read the previous transaction. */
                 TAO::Ledger::Transaction txPrev;
                 if(!LLD::legDB->ReadTx(hashTx, txPrev))
-                    throw APIException(-23, "Previous transaction not found");
+                    throw APIException(-23, "Previous transaction not found.");
 
                 /* Read the type from previous transaction */
                 uint8_t nType;
@@ -113,7 +113,7 @@ namespace TAO
 
                 /* Check type. */
                 if(nType != TAO::Operation::OP::DEBIT)
-                    throw APIException(-32, "Previous transaction not debit");
+                    throw APIException(-32, "Previous transaction not debit.");
 
                 /* Get the hashFrom from the previous transaction. */
                 uint256_t hashFrom;
@@ -131,15 +131,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
-                throw APIException(-26, "Operations failed to execute");
+                throw APIException(-26, "Operations failed to execute.");
 
             /* Sign the transaction. */
             if(!tx.Sign(users.GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-26, "Ledger failed to sign transaction");
+                throw APIException(-26, "Ledger failed to sign transaction.");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-26, "Failed to accept");
+                throw APIException(-26, "Failed to accept.");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

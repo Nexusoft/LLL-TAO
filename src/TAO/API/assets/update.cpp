@@ -149,14 +149,33 @@ namespace TAO
                         else if(nType == TAO::Register::TYPES::UINT1024_T)
                             ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT1024_T) << uint1024_t(strValue);
                         else if(nType == TAO::Register::TYPES::STRING)
+                        {
+                            /* Check that the incoming value is not longer than the current value */
+                            size_t nMaxLength = asset.Size(strDataField);
+                            if( strValue.length() > nMaxLength)
+                                throw APIException(-25, debug::safe_printstr("Value longer than maximum length: ", strDataField));
+                            
+                            /* Ensure that the serialized value is padded out to the max length */
+                            strValue.resize(nMaxLength);
+                            
                             ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::STRING) << strValue;
+                        }
                         else if(nType == TAO::Register::TYPES::BYTES)
                         {
                             bool fInvalid = false;
                             std::vector<uint8_t> vchBytes = encoding::DecodeBase64(strValue.c_str(), &fInvalid);
 
+
                             if (fInvalid)
                                 throw APIException(-5, "Malformed base64 encoding");
+
+                            /* Check that the incoming value is not longer than the current value */
+                            size_t nMaxLength = asset.Size(strDataField);
+                            if( vchBytes.size() > nMaxLength)
+                                throw APIException(-25, debug::safe_printstr("Value longer than maximum length: ", strDataField));
+                            
+                            /* Ensure that the serialized value is padded out to the max length */
+                            vchBytes.resize(nMaxLength);
 
                             ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::BYTES) << vchBytes;
                         }

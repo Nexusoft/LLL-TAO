@@ -35,9 +35,8 @@ namespace TAO
             uint256_t hashTo;
             uint64_t nAmount = 0;
             uint64_t nSession = 0;
-            //uint32_t nSequence = 0;
 
-
+            /* Loop the events processing thread until shutdown. */
             while(!fShutdown.load())
             {
 
@@ -45,9 +44,11 @@ namespace TAO
                 std::unique_lock<std::mutex> lk(EVENTS_MUTEX);
                 CONDITION.wait_for(lk, std::chrono::milliseconds(1000), [this]{ return fEvent.load() || fShutdown.load();});
 
+                /* Check for a shutdown event. */
                 if(fShutdown.load())
                     return;
 
+                /* Ensure that the user is logged, in, wallet unlocked, and able to transact. */
                 if(!LoggedIn() || Locked() || !CanTransact())
                     continue;
 
@@ -61,6 +62,7 @@ namespace TAO
                     throw APIException(-25, "Invalid session ID");
 
 
+                /* Set the genesis id for the user. */
                 params["genesis"] = user->Genesis().ToString();
 
                 /* Get the PIN to be used for this API call */
@@ -88,7 +90,7 @@ namespace TAO
                             /* Get the credit. */
                             nAmount = notification["operation"]["amount"];
 
-
+                            // TODO:
                             // get identifer from notification (you need to add identifier to notification JSON)
                             // check event processor config to see if we have an account or register address configured for identifier X
                             // if so then use that to process this debit...
@@ -98,8 +100,6 @@ namespace TAO
                             //  - register address is namespacehash:token:name
                             //  - namespacehash is argon2 hash of username
                             //  - Look at RegisterAddressFromName() method as you can probably use that
-
-
 
 
                             /* Submit the payload object. */
@@ -124,7 +124,7 @@ namespace TAO
                             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                                 throw APIException(-25, "Failed to create transaction");
 
-
+                            /* Set the transaction hash for the claim. */
                             hashTx.SetHex(notification["hash"]);
 
                             /* Submit the payload object. */
@@ -144,29 +144,13 @@ namespace TAO
                         }
                     }
 
-                    debug::log(0, ret.dump(4));
+                    /* Print the JSON value for the notifications processed. */
+                    debug::log(0, FUNCTION, "\n", ret.dump(4));
+
                 }
                 catch(const APIException& e)
                 {
                 }
-
-
-
-                /* Scan sigchain by hashLast to hashPrev == 0 */
-
-
-                /* Unpack all registers */
-
-
-                /* Write in localDB with a genesis index (sequence, genesis) */
-
-
-                /* Use the local DB cache for scanning events to any owned register address */
-
-
-
-                /* Respond to all DEBIT notifications with CREDIT. */
-
 
                 /* Reset the events flag. */
                 fEvent = false;

@@ -40,11 +40,13 @@ namespace TAO
             TAO::Ledger::Transaction txClaim;
 
             /* Check disk of writing new block. */
-            if((nFlags & TAO::Register::FLAGS::WRITE) && (!LLD::legDB->ReadTx(hashTx, txClaim) || !LLD::legDB->HasIndex(hashTx)))
+            if((nFlags & TAO::Register::FLAGS::WRITE)
+            && (!LLD::legDB->ReadTx(hashTx, txClaim) || !LLD::legDB->HasIndex(hashTx)))
                 return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist or not indexed");
 
             /* Check mempool or disk if not writing. */
-            else if(!TAO::Ledger::mempool.Get(hashTx, txClaim) && !LLD::legDB->ReadTx(hashTx, txClaim))
+            else if(!TAO::Ledger::mempool.Get(hashTx, txClaim)
+            && !LLD::legDB->ReadTx(hashTx, txClaim))
                 return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist");
 
             /* Extract the state from tx. */
@@ -106,7 +108,8 @@ namespace TAO
                 tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
 
             /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if(nFlags & TAO::Register::FLAGS::WRITE
+            || nFlags & TAO::Register::FLAGS::MEMPOOL)
             {
                 /* Get the state byte. */
                 uint8_t nState; //RESERVED

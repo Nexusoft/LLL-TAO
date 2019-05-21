@@ -167,7 +167,7 @@ namespace TAO
 
         /*  Determins whether a string value is a register address.
          *  This only checks to see if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
-         *  It does not check to see whether the register address exists in the database 
+         *  It does not check to see whether the register address exists in the database
          */
         bool IsRegisterAddress(const std::string& strValueToCheck)
         {
@@ -187,10 +187,10 @@ namespace TAO
                                     block.nVersion < 5 ? block.GetHash().GetHex() :
                                     ((block.nChannel == 0) ? block.StakeHash().GetHex() : block.ProofHash().GetHex());
 
-            result["size"] = (int)::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION);
-            result["height"] = (int)block.nHeight;
-            result["channel"] = (int)block.nChannel;
-            result["version"] = (int)block.nVersion;
+            result["size"] = (uint32_t)::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION);
+            result["height"] = (uint32_t)block.nHeight;
+            result["channel"] = (uint32_t)block.nChannel;
+            result["version"] = (uint32_t)block.nVersion;
             result["merkleroot"] = block.hashMerkleRoot.GetHex();
             result["time"] = convert::DateTimeStrFormat(block.GetBlockTime());
             result["nonce"] = (uint64_t)block.nNonce;
@@ -626,7 +626,7 @@ namespace TAO
                 uint512_t nUint512;
                 uint1024_t nUint1024;
                 std::string strValue;
-                std::vector<unsigned char> vchBytes;
+                std::vector<uint8_t> vchBytes;
 
                 for(const auto& strFieldName : vFieldNames)
                 {
@@ -675,11 +675,17 @@ namespace TAO
                     else if(nType == TAO::Register::TYPES::STRING )
                     {
                         object.Read<std::string>(strFieldName, strValue);
-                        ret[strFieldName] = strValue;
+                        
+                        /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */
+                        ret[strFieldName] = strValue.substr(0, strValue.find_last_not_of('\0') + 1);
                     }
                     else if(nType == TAO::Register::TYPES::BYTES)
                     {
-                        object.Read<std::vector<unsigned char>>(strFieldName, vchBytes);
+                        object.Read<std::vector<uint8_t>>(strFieldName, vchBytes);
+
+                        /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */                        
+                        vchBytes.erase(std::find(vchBytes.begin(), vchBytes.end(), '\0'), vchBytes.end());
+
                         ret[strFieldName] = encoding::EncodeBase64(&vchBytes[0], vchBytes.size()) ;
                     }
 

@@ -1,4 +1,4 @@
-# Users API 
+# Users API
 -------------------------------------
 
 The Users API provides methods for creating and managing users.  A user is synonymous with a signature chain.
@@ -26,7 +26,7 @@ The following methods are currently supported by this API
 [`list/assets`](#listassets)    
 [`list/accounts`](#listaccounts)    
 [`list/tokens`](#listtokens)    
- 
+
 
 -----------------------------------
 ****
@@ -49,7 +49,7 @@ This will create a new user account (signature chain) for use on the network. Th
 
 `password` : The password to be associated with this user.
 
-`PIN` : The PIN can be a combination of letters/numbers/symbols or could be tied into an external digital fingerprint. The PIN is required for all API calls that modify a user account (such as sending or claiming transactions).
+`pin` : The PIN can be a combination of letters/numbers/symbols or could be tied into an external digital fingerprint. The PIN is required for all API calls that modify a user account (such as sending or claiming transactions).
 
 
 ### Return value JSON object:
@@ -365,7 +365,7 @@ This will list off all of the transactions sent to a particular genesis or usern
 
 # `list/assets`
 
-This will list off all of the assets owned by a signature chain. 
+This will list off all of the assets owned by a signature chain.
 
 **NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
 
@@ -417,7 +417,7 @@ This will list off all of the assets owned by a signature chain.
 
 # `list/accounts`
 
-This will list off all of the token accounts belonging to a particular signature chain. 
+This will list off all of the token accounts belonging to a particular signature chain.
 
 **NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
 
@@ -463,7 +463,7 @@ This will list off all of the token accounts belonging to a particular signature
 
 # `list/tokens`
 
-This will list off all of the tokens that were created by a particular signature chain. 
+This will list off all of the tokens that were created by a particular signature chain.
 
 **NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
 
@@ -514,4 +514,3 @@ This will list off all of the tokens that were created by a particular signature
 `currentsupply` : The current number of tokens that have been distributed from this token register.
 
 ****
-
