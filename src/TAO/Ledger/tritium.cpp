@@ -229,7 +229,7 @@ namespace TAO
                 uniqueTx.insert(hashProducer);
 
                 /* Calculate merkle root with system memory. */
-                if(!ssSystem.size() != 0)
+                if(ssSystem.size() != 0)
                 {
                     /* Get the hash of the system register. */
                     uint512_t hashSystem = LLC::SK512(ssSystem.Bytes());

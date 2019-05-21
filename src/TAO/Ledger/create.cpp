@@ -97,15 +97,9 @@ namespace TAO
         /* Gets a list of transactions from memory pool for current block. */
         void AddTransactions(TAO::Ledger::TritiumBlock& block)
         {
-            /* Add each transaction. */
-            std::map<uint256_t, uint512_t> mapUniqueGenesis;
-
             /* Add the transactions. */
             std::vector<uint512_t> vHashes;
-            vHashes.push_back(block.producer.GetHash());
-
-            /* Add the producer to unique genesis. */
-            mapUniqueGenesis[block.producer.hashGenesis] = block.producer.GetHash();
+            vHashes.push_back(block.producer.GetHash()); //TODO: producer should be created and processed very LAST and sequenced off of transactions listed.
 
             /* Check the memory pool. */
             std::vector<uint512_t> vMempool;
@@ -127,24 +121,6 @@ namespace TAO
                 if(tx.IsCoinbase() || tx.IsTrust())
                     continue;
 
-                /* Check for the last hash. */
-                uint512_t hashLast;
-                if(LLD::legDB->ReadLast(tx.hashGenesis, hashLast))
-                {
-                    /* Check that transaction is in phase with sigchain. */
-                    if(tx.hashPrevTx != hashLast)
-                    {
-                        /* Remove the transaction from memory pool. */
-                        mempool.Remove(hash);
-
-                        debug::log(2, FUNCTION, "TX ", tx.GetHash().ToString().substr(0, 20), " is STALE");
-                    }
-                }
-
-                /* Check for a unique genesis hash. */
-                if(mapUniqueGenesis.count(tx.hashGenesis))
-                    continue;
-
                 /* Check for timestamp violations. */
                 if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                     continue;
@@ -154,9 +130,6 @@ namespace TAO
 
                 /* Add to the hashes for merkle root. */
                 vHashes.push_back(hash);
-
-                /* Add the unique genesis to the map. */
-                mapUniqueGenesis[tx.hashGenesis] = hash;
             }
 
             /* Build the block's merkle root. */
