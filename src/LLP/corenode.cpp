@@ -24,6 +24,9 @@ ________________________________________________________________________________
 #include <TAO/API/include/system.h>
 
 #include <Util/include/urlencode.h>
+#include <Util/include/config.h>
+#include <Util/include/base64.h>
+
 #include <new> //std::bad_alloc
 
 namespace LLP
@@ -40,6 +43,22 @@ namespace LLP
     /** Main message handler once a packet is recieved. **/
     bool CoreNode::ProcessPacket()
     {
+
+        if(!Authorized(INCOMING.mapHeaders))
+        {
+            debug::error(FUNCTION, "API incorrect password attempt from ", this->addr.ToString());
+
+            /* Deter brute-forcing short passwords.
+             * If this results in a DOS the user really
+             * shouldn't have their RPC port exposed. */
+            if (config::GetArg("-apipassword", "").size() < 20)
+                runtime::sleep(250);
+
+            PushResponse(401, "");
+
+            return false;
+        }
+
         /* Parse the packet request. */
         std::string::size_type npos = INCOMING.strRequest.find('/', 1);
 
@@ -184,6 +203,32 @@ namespace LLP
         /* Send the response packet. */
         json::json ret = { { "error", jsonError } };
         PushResponse(nStatus, ret.dump());
+    }
+
+
+    bool CoreNode::Authorized(std::map<std::string, std::string>& mapHeaders)
+    {
+        if(config::GetArg("-apiuser", "").empty() && config::GetArg("-apipassword", "").empty())
+            return true;
+
+        /* Check the headers. */
+        if(!mapHeaders.count("authorization"))
+            return debug::error(FUNCTION, "no authorization in header");
+
+
+        std::string strAuth = mapHeaders["authorization"];
+        if (strAuth.substr(0,6) != "Basic ")
+            return debug::error(FUNCTION, "incorrect authorization type");
+
+        /* Get the encoded content */
+        std::string strUserPass64 = strAuth.substr(6);
+        trim(strUserPass64);
+
+        /* Decode from base64 */
+        std::string strUserPass = encoding::DecodeBase64(strUserPass64);
+        std::string strAPIUserColonPass = config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", "");
+
+        return strUserPass == strAPIUserColonPass;
     }
 
 }
