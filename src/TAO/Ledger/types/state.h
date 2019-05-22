@@ -45,6 +45,14 @@ namespace TAO
 
         public:
 
+            /** System Script
+             *
+             *  The critical system level pre-states and post-states.
+             *
+             **/
+            TAO::Register::Stream  ssSystem;
+
+
             /** The transaction history.
              *  uint8_t = TransactionType (per enum)
              *  uint512_t = Tx hash
@@ -103,6 +111,7 @@ namespace TAO
                 READWRITE(hashCheckpoint);
 
                 READWRITE(vchBlockSig);
+                READWRITE(ssSystem);
                 READWRITE(vtx);
             )
 
@@ -110,6 +119,7 @@ namespace TAO
             /** Default Constructor. **/
             BlockState()
             : Block()
+            , ssSystem()
             , vtx()
             , nChainTrust(0)
             , nMoneySupply(0)

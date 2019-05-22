@@ -43,9 +43,6 @@ namespace TAO
             /* Start the register stream at the beginning. */
             tx.ssRegister.seek(0, STREAM::BEGIN);
 
-            /* Start the system stream at the beginning. */
-            tx.ssSystem.seek(0, STREAM::BEGIN);
-
             /* Make sure no exceptions are thrown. */
             try
             {
@@ -232,16 +229,20 @@ namespace TAO
                             if(!tx.ssOperation.begin())
                                 return debug::error(FUNCTION, "trust opeartion has to be first");
 
-                            /* The previous trust block. */
+                            /* The last stake transaction for the trust account register. */
                             uint512_t hashLastTrust;
                             tx.ssOperation >> hashLastTrust;
 
-                            /* The current calculated trust score. */
+                            /* The current calculated value for new trust score. */
                             uint64_t nTrustScore;
                             tx.ssOperation >> nTrustScore;
 
+                            /* Coinstake reward paid to trust account by this operation. */
+                            uint64_t nCoinstakeReward;
+                            tx.ssOperation >> nCoinstakeReward;
+
                             /* Execute the operation method. */
-                            if(!Trust(hashLastTrust, nTrustScore, nFlags, tx))
+                            if(!Trust(hashLastTrust, nTrustScore, nCoinstakeReward, nFlags, tx))
                                 return false;
 
                             /* Ensure that it as end of tx.ssOperation. TODO: coinbase should be followed by ambassador and developer scripts */
@@ -263,8 +264,12 @@ namespace TAO
                             uint256_t hashAccount;
                             tx.ssOperation >> hashAccount;
 
+                            /* Coinstake reward paid to trust account by this operation. */
+                            uint64_t nCoinstakeReward;
+                            tx.ssOperation >> nCoinstakeReward;
+
                             /* Execute the operation method. */
-                            if(!Genesis(hashAccount, nFlags, tx))
+                            if(!Genesis(hashAccount, nCoinstakeReward, nFlags, tx))
                                 return false;
 
                             /* Ensure that it as end of tx.ssOperation. */

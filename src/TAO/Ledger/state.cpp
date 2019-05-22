@@ -33,7 +33,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/supply.h>
-#include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/string.h>
 
@@ -79,6 +78,7 @@ namespace TAO
         /** Default Constructor. **/
         BlockState::BlockState(const TritiumBlock& block)
         : Block(block)
+        , ssSystem()
         , vtx()
         , nChainTrust(0)
         , nMoneySupply(0)
@@ -91,13 +91,15 @@ namespace TAO
             vtx.push_back(std::make_pair(TYPE::TRITIUM_TX, block.producer.GetHash()));
             vtx.insert(vtx.end(), block.vtx.begin(), block.vtx.end());
 
-            assert(vtx.size() == block.vtx.size() +1); //TODO: maybe a softer way to verify?
+            if(vtx.size() != block.vtx.size() + 1)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "tritium block to state incorrect sizes"));
         }
 
 
         /* Construct a block state from a legacy block. */
         BlockState::BlockState(const Legacy::LegacyBlock& block)
         : Block(block)
+        , ssSystem()
         , vtx()
         , nChainTrust(0)
         , nMoneySupply(0)
@@ -110,7 +112,8 @@ namespace TAO
             for(const auto& tx : block.vtx)
                 vtx.push_back(std::make_pair(TYPE::LEGACY_TX, tx.GetHash()));
 
-            assert(vtx.size() == block.vtx.size()); //TODO: maybe a softer way to verify?
+            if(vtx.size() != block.vtx.size())
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "legacy block to state incorrect sizes"));
         }
 
 
@@ -586,14 +589,6 @@ namespace TAO
                     /* Check that previous transaction is indexed. */
                     if(!tx.IsFirst() && !LLD::legDB->HasIndex(tx.hashPrevTx))
                         return debug::error(FUNCTION, "previous transaction not indexed");
-
-                    /* Check if is trust or genesis. */
-                    if(tx.IsTrust() || tx.IsGenesis())
-                    {
-                        //TODO: make sure this is in producer position
-                        if(!tx.CheckTrust(*this))
-                            return debug::error(FUNCTION, "Trust score is invalid");
-                    }
 
                     /* Verify the ledger layer. */
                     if(!TAO::Register::Verify(tx, TAO::Register::FLAGS::WRITE))

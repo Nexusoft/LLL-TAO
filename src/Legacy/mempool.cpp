@@ -36,7 +36,7 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t nTxHash = tx.GetHash();
 
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             /* Check the mempool. */
             if(mapLegacy.count(nTxHash))
@@ -54,7 +54,7 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t nTxHash = tx.GetHash();
 
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             /* Check if we already have this tx. */
             if(mapLegacy.count(nTxHash))
@@ -151,7 +151,7 @@ namespace TAO
         /* Gets a legacy transaction from mempool */
         bool Mempool::Get(const uint512_t& hashTx, Legacy::Transaction &tx) const
         {
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             /* Check the memory map. */
             if(!mapLegacy.count(hashTx))
@@ -167,7 +167,7 @@ namespace TAO
         /* Checks if a legacy transaction exists. */
         bool Mempool::HasLegacy(const uint512_t& hashTx) const
         {
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             return mapLegacy.count(hashTx);
         }
@@ -176,7 +176,7 @@ namespace TAO
         /* Remove a legacy transaction from pool. */
         bool Mempool::RemoveLegacy(const uint512_t& hashTx)
         {
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             if(mapLegacy.count(hashTx))
             {
@@ -199,7 +199,7 @@ namespace TAO
         /* List legacy transactions in memory pool. */
         bool Mempool::ListLegacy(std::vector<uint512_t> &vHashes, uint32_t nCount) const
         {
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             for(auto it = mapLegacy.begin(); it != mapLegacy.end() && nCount > 0; ++it)
             {
@@ -215,7 +215,7 @@ namespace TAO
         /* Gets the size of the memory pool. */
         uint32_t Mempool::SizeLegacy()
         {
-            LOCK(MUTEX);
+            RLOCK(MUTEX);
 
             return mapLegacy.size();
         }

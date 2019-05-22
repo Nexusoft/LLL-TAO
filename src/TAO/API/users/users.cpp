@@ -49,8 +49,8 @@ namespace TAO
             Initialize();
 
             /* Events processor only enabled if multi-user session is disabled. */
-            if(config::fAPISessions.load() == false)
-                EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
+            //if(config::fAPISessions.load() == false)
+                //EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
         }
 
 
@@ -75,11 +75,11 @@ namespace TAO
             fShutdown = true;
 
             /* Events processor only enabled if multi-user session is disabled. */
-            if(config::fAPISessions.load() == false)
-            {
-                NotifyEvent();
-                EVENTS_THREAD.join();
-            }
+            //if(config::fAPISessions.load() == false)
+            //{
+            //    NotifyEvent();
+            //    EVENTS_THREAD.join();
+            //}
         }
 
 

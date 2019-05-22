@@ -300,7 +300,7 @@ namespace LLD
             mapProofs[std::make_pair(hashProof, hashTransaction)] = 0;
             return true;
         }
-        else
+        else if(nFlags & TAO::Register::FLAGS::WRITE)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -319,8 +319,7 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags & TAO::Register::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX); //TODO: these shoudl really be in the memory pool structures
-            //(they cause conflicts in MEMPOOL | WRITE)
+            LOCK(MEMORY_MUTEX);
 
             /* If exists in memory, return true. */
             if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
@@ -337,12 +336,15 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags & TAO::Register::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX); //TODO: these shoudl really be in the memory pool structures
-            //(they cause conflicts in MEMPOOL | WRITE)
+            LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
             if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
-               mapProofs.erase(std::make_pair(hashProof, hashTransaction));
+            {
+                mapProofs.erase(std::make_pair(hashProof, hashTransaction));
+
+                return true;
+            }
         }
 
         return Erase(std::make_pair(hashProof, hashTransaction));

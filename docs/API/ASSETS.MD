@@ -66,7 +66,7 @@ This will create a new asset or object register. The API supports an alternative
 - `type` : The data type to use for this field. Values can be `uint8`, `uint16`, `uint32`, `uint64`, `uint256`, `uint512`, `uint1024`, `string`, or `bytes`.
 - `value` : The default value of the field.
 - `mutable` : The boolean field to indicate whether the field is writable (true) or read-only (false).
-
+- `maxlength`: Only applicable to `string` or `bytes` fields where `mutable`=true, this is the maximum number of characters (bytes) that can be stored in the field.  If no maxlength parameter is provided then we will default the field size to the length of the default value rounded up to the nearest 64 bytes.  
 
 `token_name` : The name of a token to use to tokenize the asset. If provided, this will immediately tokenize the asset into fungible tokens that represent ownership of the asset.
 `token_address` : The register address of a token to use to tokenize the asset. If provided, this will immediately tokenize the asset into fungible tokens that represent ownership of the asset.  `token_name` can be supplied as an alternative to `token_address`.
@@ -211,9 +211,7 @@ This is the generic endpoint for updating one or more values in an asset.  The A
 
 `address` : The register address of the asset to update. This is optional if the name is provided.
 
-`format` : The format the caller is using to provide the data to update the asset. Values can be `JSON` (the default), or `XML` (not currently supported). This is an optional field and the value `JSON` is assumed if omitted.
-
-`<fieldname>=<value>` : If format is `JSON` (the default if omitted), then the caller can provide <fieldname>=<newvalue> pairs for each piece of data to update in the asset.
+`<fieldname>=<value>` : The caller can provide <fieldname>=<newvalue> pairs for each piece of data to update in the asset.
 
 
 ### Example:
@@ -224,7 +222,6 @@ The following is an example JSON payload to update two fields in an asset called
     "pin": "1234",
     "session": "16953804956473956578",
     "name": "mysong",
-    "format": "JSON",
     "last_downloaded": "2019/02/03 14:22:08",
     "download_count": "428"
 }
