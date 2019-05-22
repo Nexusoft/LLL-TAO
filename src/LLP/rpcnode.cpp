@@ -13,11 +13,14 @@ ________________________________________________________________________________
 
 
 #include <LLP/types/rpcnode.h>
+
 #include <TAO/API/include/rpc.h>
+#include <TAO/API/types/exception.h>
+
 #include <Util/include/config.h>
 #include <Util/include/base64.h>
 #include <Util/include/string.h>
-#include <TAO/API/types/exception.h>
+
 #include <new> //std::bad_alloc
 
 // using alias to simplify using APIException liberally without having to reference the TAO:API namespace
@@ -50,7 +53,7 @@ namespace LLP
         /* Check HTTP authorization */
         if (!Authorized(INCOMING.mapHeaders))
         {
-            debug::log(0, "RPC incorrect password attempt from ", this->addr.ToString());
+            debug::error(FUNCTION, "RPC incorrect password attempt from ", this->addr.ToString());
 
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really

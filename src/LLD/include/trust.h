@@ -19,15 +19,7 @@ ________________________________________________________________________________
 
 #include <LLD/templates/sector.h>
 
-
-/** Forward declarations **/
-namespace TAO
-{
-    namespace Ledger
-    {
-        class TrustKey;
-    }
-}
+#include <Legacy/types/trustkey.h>
 
 
 namespace LLD
@@ -61,7 +53,7 @@ namespace LLD
          *  @return True if the trust key was successfully written, false otherwise.
          *
          **/
-        bool WriteTrustKey(const uint576_t& hashKey, const TAO::Ledger::TrustKey& key);
+        bool WriteTrustKey(const uint576_t& hashKey, const Legacy::TrustKey& key);
 
 
         /** ReadTrustKey
@@ -74,7 +66,7 @@ namespace LLD
          *  @return True if the trust key was successfully written, false otherwise.
          *
          **/
-        bool ReadTrustKey(const uint576_t& hashKey, TAO::Ledger::TrustKey& key);
+        bool ReadTrustKey(const uint576_t& hashKey, Legacy::TrustKey& key);
 
     };
 }

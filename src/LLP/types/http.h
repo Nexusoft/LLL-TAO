@@ -209,7 +209,7 @@ namespace LLP
 
                             /* Parse out the content length field. */
                             if(field == "content-length")
-                                INCOMING.nContentLength = stoi(strLine.substr(pos + 2));
+                                INCOMING.nContentLength = std::stoul(strLine.substr(pos + 2));
 
                             /* Add line to the headers map. */
                             INCOMING.mapHeaders[field] = strLine.substr(pos + 2);

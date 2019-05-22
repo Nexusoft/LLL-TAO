@@ -101,6 +101,18 @@ namespace LLP
          **/
         void ErrorReply(const json::json& jsonError);
 
+
+        /** Authorized
+         *
+         *  Check if an authorization base64 encoded string is correct.
+         *
+         *  @param[in] mapHeaders The list of headers to check.
+         *
+         *  @return True if this connection is authorized.
+         *
+         **/
+        bool Authorized(std::map<std::string, std::string>& mapHeaders);
+
     };
 }
 
