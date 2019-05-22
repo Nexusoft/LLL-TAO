@@ -1,0 +1,339 @@
+Help on module nexus_sdk:
+
+NAME
+    nexus_sdk - The Nexus python SDK supports the following Nexus API calls.
+
+FILE
+    /Users/dino/code/nexus/git/LLL-TAO-dev/sdk/nexus_sdk.py
+
+DESCRIPTION
+    Low-level APIs:
+    
+    System API:               Objects API:           Ledger API:
+    -----------               ------------           -----------
+    system/get/info           objects/create/schema  ledger/get/blockhash
+    system/list/peers         objects/get/schema     ledger/get/block
+    system/list/lisp-eids                            ledger/list/blocks
+                                                     ledger/get/transaction
+                                                     ledger/submit/transaction
+                                                     ledger/get/mininginfo
+    
+    Use-case APIs:
+    
+    Users API:                Supply API:               Assets API:       
+    ----------                -----------               -----------       
+    users/create/user         supply/create/item        assets/create/asset
+    users/login/user          supply/get/item           assets/get/asset       
+    users/logout/user         supply/udpate/item        assets/update/asset  
+    users/unlock/user         supply/transfer/item      assets/transfer/asset
+    users/lock/user           supply/claim/item         assets/claim/asset
+    users/list/transactions   supply/list/item/history  assets/list/asset/history
+    users/list/notifications                            assets/tokenize/asset
+    users/list/assets
+    users/list/accounts
+    users/list/tokens
+    
+    Tokens API:               Finance API:
+    -----------               ------------
+    tokens/create/token       finance/create/account
+    tokens/create/account     finance/debit/account
+    tokens/get/token          finance/credit/account
+    tokens/get/account        finance/get/account
+    tokens/debit/token        finance/list/accounts
+    tokens/debit/account
+    tokens/credit/account
+
+CLASSES
+    sdk_init
+    
+    class sdk_init
+     |  Methods defined here:
+     |  
+     |  __init__(self, user, pw, pin)
+     |      Initialize the API with user account credentials. This function
+     |      must be calledd to create a login instance before using any other
+     |      calls.
+     |  
+     |  nexus_assests_claim_asset(self, txid)
+     |      Claim an asset that has been transfered to username. The transaction 
+     |      id, specified in 'txid' is returned from when the user did a 
+     |      assets//transfer/asset API call.
+     |  
+     |  nexus_assets_create_asset(self, asset_name, data)
+     |      Create asset with name 'asset_name' and store data specified in
+     |      'data' for asset transaction.
+     |  
+     |  nexus_assets_get_asset_by_address(self, asset_address)
+     |      Get asset with by register address 'asset_address'.
+     |  
+     |  nexus_assets_get_asset_by_name(self, asset_name)
+     |      Get asset with by name 'asset_name'.
+     |  
+     |  nexus_assets_list_asset_history_by_address(self, asset_address)
+     |      List assets history by address specified in 'address'.
+     |  
+     |  nexus_assets_list_asset_history_by_name(self, asset_name)
+     |      List assets history by name specified in 'name'.
+     |  
+     |  nexus_assets_tokenize_by_address(self, asset_address, token_address)
+     |      Tokenize an asset specified by 'asset_address' to a previously created 
+     |      token specified by 'token_address'.
+     |  
+     |  nexus_assets_tokenize_by_name(self, asset_name, token_name)
+     |      Tokenize an asset specified by 'asset_name' to a previously created 
+     |      token specified by 'token_name'.
+     |  
+     |  nexus_assets_transfer_asset_by_address(self, asset_address, dest_address)
+     |      Transfer ownership of an asset by address specified in 'asset_address'
+     |      to address specified in 'dest_address'.
+     |  
+     |  nexus_assets_transfer_asset_by_name(self, asset_name, dest_username)
+     |      Transfer ownership of an asset by name specified in 'asset_name' to 
+     |      username specified in 'dest_username'.
+     |  
+     |  nexus_assets_update_asset_by_address(self, asset_address, data)
+     |      Update data stored in asset by address specified in 'asset_address'
+     |      with JSON data stored in 'data'.
+     |  
+     |  nexus_assets_update_asset_by_name(self, asset_name, data)
+     |      Update data stored in asset by name specified in 'asset_name' with
+     |      JSON data stored in 'data'.
+     |  
+     |  nexus_finance_create_account(self, name)
+     |      Create a NXS crypto-currency account with name specified in 'name'.
+     |  
+     |  nexus_finance_credit_by_address(self, to_address, amount, txid)
+     |      Credit NXS by address to account 'to_address' for account 'amount' from
+     |      debit transaction-id 'txid'.
+     |  
+     |  nexus_finance_credit_by_name(self, to_name, amount, txid)
+     |      Credit NXS by name to account 'to_name' for account 'amount' from
+     |      debit transaction-id 'txid'.
+     |  
+     |  nexus_finance_debit_account_by_address(self, from_address, to_address, amount)
+     |      Debit NXS by address from account 'from_address' to account 
+     |      'to_address' for the amount 'amount'.
+     |  
+     |  nexus_finance_debit_account_by_name(self, from_name, to_name, amount)
+     |      Debit NXS by name from account 'from_name' to account 'to_name' for the
+     |      amount 'amount'.
+     |  
+     |  nexus_finance_get_account_by_address(self, address)
+     |      Get NXS crypto-currency account information with register address
+     |      specified in 'address'.
+     |  
+     |  nexus_finance_get_account_by_name(self, name)
+     |      Get NXS crypto-currency account information with name specified in 
+     |      'name'.
+     |  
+     |  nexus_finance_list_accounts(self)
+     |      List NXS transactions for user account.
+     |  
+     |  nexus_ledger_get_block_by_hash(self, block_hash, verbosity)
+     |      Retrieve the block with supplied hash 'block_hash'. See API 
+     |      documentation for 'verbosity' values.
+     |  
+     |  nexus_ledger_get_block_by_height(self, block_height, verbosity)
+     |      Retrieve the block with supplied hash 'block_height'. See API 
+     |      documentation for 'verbosity' values.
+     |  
+     |  nexus_ledger_get_blockhash(self, height)
+     |      Retrieve the block hash for a block with supplied parameter 'height'.
+     |  
+     |  nexus_ledger_get_mininginfo(self)
+     |      Retrieve mining information for the Nexus blockchain.
+     |  
+     |  nexus_ledger_get_transaction(self, tx_hash, verbosity)
+     |      Retrieve transaction with transactioin hash 'tx_hash' with specific
+     |      verbose. See API documentation for 'verbosity' values.
+     |  
+     |  nexus_ledger_list_blocks_by_hash(self, block_hash, limit, verbosity)
+     |      Retrieve list of blocks starting with hash 'block_hash'. The number
+     |      of blocks is specified in 'limit'. See API documentation for 
+     |      'verbosity' values.
+     |  
+     |  nexus_ledger_list_blocks_by_height(self, block_height, limit, verbosity)
+     |      Retrieve list of blocks starting with block height 'block_height'. 
+     |      The number of blocks is specified in 'limit'. See API documentation 
+     |      for 'verbosity' values.
+     |  
+     |  nexus_ledger_submit_transaction(self, tx_data)
+     |      Submit a transaction to the Nexus blockchain. The data stored for
+     |      the transaction is specified in 'tx_data'.
+     |  
+     |  nexus_objects_create_schema(self, name, data)
+     |      Create object register schema. See API documentation for format
+     |      of 'data' parameter.
+     |  
+     |  nexus_objects_get_schema_by_address(self, address)
+     |      Get object register scheme definition by supplying 'address' returned
+     |      from nexus_objects_create_schema_by_name().
+     |  
+     |  nexus_objects_get_schema_by_name(self, name)
+     |      Get object register scheme definition by supplying 'name' it was
+     |      created by.
+     |  
+     |  nexus_supply_claim_item(self, txid)
+     |      Claim supply chain item that has been transfered to username. The
+     |      transaction id, specified in 'txid' is returned from when the
+     |      user did a supply/transfer/item API call.
+     |  
+     |  nexus_supply_create_item(self, name, data)
+     |      Create supply chain item with name specified in 'name'. Store data 
+     |      with item specified in 'data'.
+     |  
+     |  nexus_supply_get_item_by_address(self, address)
+     |      Get supply chain item from blockchain using register address specified
+     |      in 'address'.
+     |  
+     |  nexus_supply_get_item_by_name(self, name)
+     |      Get supply chain item from blockchain using name specified in 'name'.
+     |  
+     |  nexus_supply_list_item_history_by_address(self, address)
+     |      List supply chain item history by address specified in 'address'.
+     |  
+     |  nexus_supply_list_item_history_by_name(self, name)
+     |      List supply chain item history by name specified in 'name'.
+     |  
+     |  nexus_supply_transfer_item_by_address(self, address, new_owner)
+     |      Transfer supply chain item, specified by address in 'address' to new 
+     |      owner. The new owner username is specified in 'new_owner'.
+     |  
+     |  nexus_supply_transfer_item_by_name(self, name, new_owner)
+     |      Transfer supply chain item, specified by name in 'name' to new owner.
+     |      The new owner username is specified in 'new_owner'.
+     |  
+     |  nexus_supply_update_item_by_address(self, address, data)
+     |      Update data stored from a previously created supply chain item using
+     |      register address specifiied in 'address' with data stored in 'data'.
+     |  
+     |  nexus_supply_update_item_by_name(self, name, data)
+     |      Update data stored from a previously created supply chain item using
+     |      name specified in 'name' with data stored in 'data'.
+     |  
+     |  nexus_system_get_info(self)
+     |      Get system information about Nexus node. Login not required.
+     |  
+     |  nexus_system_list_lisp_eids(self)
+     |      List configured LISP EIDs for this node. Login not required.
+     |  
+     |  nexus_system_list_peers(self)
+     |      List established Nexus peer connections. Login not required.
+     |  
+     |  nexus_tokens_create_account(self, account_name, token_id)
+     |      Create a token account associated with previously create token
+     |      with token ID 'token_id'.
+     |  
+     |  nexus_tokens_create_token(self, token_name, token_id, supply, digits=2)
+     |      Create a token by name with token ID 'token_id' with a initial
+     |      resource supply of 'supply'. Give the token accuracy precision
+     |      specified in 'digits'.
+     |  
+     |  nexus_tokens_credit_account_by_name(self, to_name, amount, txid)
+     |      Credit token account by name specified in 'to_name' for the amount
+     |      specified in 'amount' from the debit transaction with transaction
+     |      id 'txid'.
+     |  
+     |  nexus_tokens_credit_by_address(self, to_address, amount, txid)
+     |      Credit token account by address specified in 'to_address' for the 
+     |      amount specified in 'amount' from the debit transaction with 
+     |      transaction id 'txid'.
+     |  
+     |  nexus_tokens_debit_account_by_address(self, from_address, to_address, amount)
+     |      Debit token account from token account 'from_name' for the amount
+     |      specified in 'amount' for token account 'to_name'.
+     |  
+     |  nexus_tokens_debit_account_by_name(self, from_name, to_name, amount)
+     |      Debit token account from token account 'from_name' for the amount
+     |      specified in 'amount' for token account 'to_name'.
+     |  
+     |  nexus_tokens_debit_token_by_address(self, from_address, to_address, amount)
+     |      Debit token by address specified iin 'from_address' for the amount
+     |      specified in 'amount' for token account address 'to_address'.
+     |  
+     |  nexus_tokens_debit_token_by_name(self, from_name, to_name, amount)
+     |      Debit token with name specified iin 'from_name' for the amount
+     |      specified in 'amount' for token account 'to_name'.
+     |  
+     |  nexus_tokens_get_account_by_address(self, account_address)
+     |      Get token account by address specified in 'account_address'.
+     |  
+     |  nexus_tokens_get_account_by_name(self, account_name)
+     |      Get token account by name specified in 'account_name'.
+     |  
+     |  nexus_tokens_get_token_by_address(self, token_address)
+     |      Get token by address specified in 'token_address'.
+     |  
+     |  nexus_tokens_get_token_by_name(self, token_name)
+     |      Get token by name specified in 'token_name'.
+     |  
+     |  nexus_users_create_user(self)
+     |      Create a user account on the Nexus blockchain. Username, password,
+     |      and pin parameters are supplied on the sdk_init() call.
+     |  
+     |  nexus_users_list_accounts_by_genesis(self)
+     |      List user created token accounts by genesis-id.
+     |  
+     |  nexus_users_list_accounts_by_username(self)
+     |      List user created token accounts by username.
+     |  
+     |  nexus_users_list_assets_by_genesis(self, page, limit)
+     |      List user account created assets by genesis-id. The number of assets
+     |      entries returned is specified in 'limit' starting with entry offset 
+     |      specified in 'page'.
+     |  
+     |  nexus_users_list_assets_by_username(self, page, limit)
+     |      List user account created assets by username. The number of assets
+     |      entries returned is specified in 'limit' starting with entry offset 
+     |      specified in 'page'.
+     |  
+     |  nexus_users_list_notifications_by_genesis(self, page, limit)
+     |      List user account notifications by genesis-id. The number of 
+     |      notifications returned is specified in 'limit' starting with entry
+     |      offset specified in 'page'.
+     |  
+     |  nexus_users_list_notifications_by_username(self, page, limit)
+     |      List user account notifications by username. The number of 
+     |      notifications returned is specified in 'limit' starting with entry
+     |      offset specified in 'page'.
+     |  
+     |  nexus_users_list_tokens_by_genesis(self)
+     |      List user created tokens by genesis-id.
+     |  
+     |  nexus_users_list_tokens_by_username(self)
+     |      List user created tokens by username.
+     |  
+     |  nexus_users_list_transactions(self, limit, verbosity='default')
+     |      List user account transactions. The number of transactions returned
+     |      is specified in 'limit'. Valid values for 'verbosity' is "default", 
+     |      "summary", "detail".
+     |  
+     |  nexus_users_lock_user(self)
+     |      Lock a user account on the Nexus blockchain. This disallows any API
+     |      activity to the blockchain for this user account signature chain.
+     |  
+     |  nexus_users_login_user(self, minting=False, transactions=True)
+     |      Login a user on the Nexus blockchain. Username, password, and pin 
+     |      parameters are supplied on the sdk_init() call. Set 'minting' to
+     |      True is the user account is staking or mining. Set 'transactions'
+     |      to False if the user account should not create or claim transactions.
+     |  
+     |  nexus_users_logout_user(self)
+     |      Logout a user from the Nexus blockchain.
+     |  
+     |  nexus_users_unlock_user(self)
+     |      Unlock a user account on the Nexus blockchain that was previously
+     |      locked with nexus_users_lock(). This now allows API activity 
+     |      to the blockchain for this user account signature chain.
+
+DATA
+    assets_url = 'http://localhost:8080/assets/{}'
+    finance_url = 'http://localhost:8080/finance/{}'
+    ledger_url = 'http://localhost:8080/ledger/{}'
+    objects_url = 'http://localhost:8080/objects/{}'
+    supply_url = 'http://localhost:8080/supply/{}'
+    system_url = 'http://localhost:8080/system/{}'
+    tokens_url = 'http://localhost:8080/tokens/{}'
+    users_url = 'http://localhost:8080/users/{}'
+
+

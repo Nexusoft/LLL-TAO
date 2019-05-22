@@ -53,12 +53,8 @@ namespace TAO
                 /* Previous transaction. */
                 TAO::Ledger::Transaction tx;
 
-                /* Check disk of writing new block. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && (!LLD::legDB->ReadTx(hashPrevTx, tx) || !LLD::legDB->HasIndex(hashPrevTx)))
-                    return debug::error(FUNCTION, hashPrevTx.ToString(), " tx doesn't exist or not indexed");
-
-                /* Check mempool or disk if not writing. */
-                else if(!TAO::Ledger::mempool.Get(hashPrevTx, tx) && !LLD::legDB->ReadTx(hashPrevTx, tx))
+                /* Check memory and disk for previous transaction. */
+                if(!TAO::Ledger::mempool.Get(hashPrevTx, tx) && !LLD::legDB->ReadTx(hashPrevTx, tx))
                     return debug::error(FUNCTION, hashPrevTx.ToString(), " tx doesn't exist");
 
                 /* Check the previous next hash that is being claimed. */
@@ -73,16 +69,6 @@ namespace TAO
                 if(tx.hashGenesis != hashGenesis)
                     return debug::error(FUNCTION, "previous genesis ", tx.hashGenesis.ToString().substr(0, 20), " mismatch ",  hashGenesis.ToString().substr(0, 20));
             }
-            else
-            {
-                /* System memory cannot be allocated on first. */
-                if(ssSystem.size() != 0)
-                    return debug::error(FUNCTION, "no system memory available on genesis");
-            }
-
-            /* Check for Trust. */
-            if(!IsTrust() && ssSystem.size() != 0)
-                return debug::error(FUNCTION, "no system memory available when not trust");
 
             /* Checks for coinbase. */
             if(IsCoinbase())

@@ -922,26 +922,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
     }
 
 
-    //initialize the SYSTEM
-    TAO::Register::Initialize();
-
-
-    //check system values
-    {
-        Object stateSystem;
-        REQUIRE(LLD::regDB->ReadState(uint256_t(TAO::Register::SYSTEM::TRUST), stateSystem));
-
-        //parse register
-        REQUIRE(stateSystem.Parse());
-
-        //check balance
-        REQUIRE(stateSystem.get<uint64_t>("trust") == 0);
-
-        //check balance
-        REQUIRE(stateSystem.get<uint64_t>("stake") == 0);
-    }
-
-
     //create a trust register from inputs spent on coinbase
     {
         //create object
@@ -1059,22 +1039,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             }
 
 
-            //check system values
-            {
-                Object sys;
-                REQUIRE(LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), sys));
-
-                //parse register
-                REQUIRE(sys.Parse());
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("trust") == 0);
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("stake") == 5000);
-            }
-
-
             //rollback the genesis
             REQUIRE(Rollback(tx));
 
@@ -1095,22 +1059,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                 //check for trust index
                 REQUIRE(!LLD::regDB->HasTrust(hashGenesis));
-            }
-
-
-            //check system values
-            {
-                Object sys;
-                REQUIRE(LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), sys));
-
-                //parse register
-                REQUIRE(sys.Parse());
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("trust") == 0);
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("stake") == 0);
             }
         }
 
@@ -1145,22 +1093,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                 //check for trust index
                 REQUIRE(!LLD::regDB->HasTrust(hashGenesis));
-            }
-
-
-            //check system values
-            {
-                Object sys;
-                REQUIRE(LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), sys));
-
-                //parse register
-                REQUIRE(sys.Parse());
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("trust") == 0);
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("stake") == 0);
             }
         }
 
@@ -1202,22 +1134,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 //check for trust index
                 REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trust));
             }
-
-
-            //check system values
-            {
-                Object sys;
-                REQUIRE(LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), sys));
-
-                //parse register
-                REQUIRE(sys.Parse());
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("trust") == 0);
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("stake") == 5000);
-            }
         }
 
 
@@ -1254,22 +1170,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                 //check trust
                 REQUIRE(trust.get<uint64_t>("trust") == 555);
-            }
-
-
-            //check system values
-            {
-                Object sys;
-                REQUIRE(LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), sys));
-
-                //parse register
-                REQUIRE(sys.Parse());
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("trust") == 555);
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("stake") == 5000);
             }
         }
 
@@ -1309,22 +1209,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trust.get<uint64_t>("trust") == 333);
             }
 
-
-            //check system values
-            {
-                Object sys;
-                REQUIRE(LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), sys));
-
-                //parse register
-                REQUIRE(sys.Parse());
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("trust") == 333);
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("stake") == 5000);
-            }
-
             //rollback
             Rollback(tx);
 
@@ -1344,22 +1228,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                 //check trust
                 REQUIRE(trust.get<uint64_t>("trust") == 555);
-            }
-
-
-            //check system values
-            {
-                Object sys;
-                REQUIRE(LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), sys));
-
-                //parse register
-                REQUIRE(sys.Parse());
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("trust") == 555);
-
-                //check balance
-                REQUIRE(sys.get<uint64_t>("stake") == 5000);
             }
         }
     }

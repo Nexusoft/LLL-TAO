@@ -66,7 +66,7 @@ This will create a new asset or object register. The API supports an alternative
 - `type` : The data type to use for this field. Values can be `uint8`, `uint16`, `uint32`, `uint64`, `uint256`, `uint512`, `uint1024`, `string`, or `bytes`.
 - `value` : The default value of the field.
 - `mutable` : The boolean field to indicate whether the field is writable (true) or read-only (false).
-
+- `maxlength`: Only applicable to `string` or `bytes` fields where `mutable`=true, this is the maximum number of characters (bytes) that can be stored in the field.  If no maxlength parameter is provided then we will default the field size to the length of the default value rounded up to the nearest 64 bytes.  
 
 `token_name` : The name of a token to use to tokenize the asset. If provided, this will immediately tokenize the asset into fungible tokens that represent ownership of the asset.
 `token_address` : The register address of a token to use to tokenize the asset. If provided, this will immediately tokenize the asset into fungible tokens that represent ownership of the asset.  `token_name` can be supplied as an alternative to `token_address`.
