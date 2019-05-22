@@ -1011,8 +1011,8 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
 
-            //payload
-            tx << uint8_t(OP::GENESIS) << hashTrust;
+            //payload with coinstake reward
+            tx << uint8_t(OP::GENESIS) << hashTrust << uint64_t(5);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -1028,10 +1028,10 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 //parse register
                 REQUIRE(trust.Parse());
 
-                //check balance
-                REQUIRE(trust.get<uint64_t>("balance") == 0);
+                //check balance (coinstake reward deposited to balance)
+                REQUIRE(trust.get<uint64_t>("balance") == 5);
 
-                //check balance
+                //check stake (balance moved to stake by Genesis op)
                 REQUIRE(trust.get<uint64_t>("stake") == 5000);
 
                 //check for trust index
@@ -1072,7 +1072,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::TRUST) << hashTx << uint64_t(555);
+            tx << uint8_t(OP::TRUST) << hashTx << uint64_t(555) << uint64_t(6);
 
             //generate the prestates and poststates
             REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -1106,7 +1106,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::GENESIS) << hashTrust;
+            tx << uint8_t(OP::GENESIS) << hashTrust << uint64_t(5);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -1126,7 +1126,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trust.Parse());
 
                 //check balance
-                REQUIRE(trust.get<uint64_t>("balance") == 0);
+                REQUIRE(trust.get<uint64_t>("balance") == 5);
 
                 //check balance
                 REQUIRE(trust.get<uint64_t>("stake") == 5000);
@@ -1146,7 +1146,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::TRUST) << hashTx << uint64_t(555);
+            tx << uint8_t(OP::TRUST) << hashTx << uint64_t(555) << uint64_t(6);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -1163,7 +1163,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trust.Parse());
 
                 //check balance
-                REQUIRE(trust.get<uint64_t>("balance") == 0);
+                REQUIRE(trust.get<uint64_t>("balance") == 11);
 
                 //check balance
                 REQUIRE(trust.get<uint64_t>("stake") == 5000);
@@ -1183,7 +1183,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::TRUST) << hashTx << uint64_t(333);
+            tx << uint8_t(OP::TRUST) << hashTx << uint64_t(777) << uint64_t(4);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -1200,13 +1200,13 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trust.Parse());
 
                 //check balance
-                REQUIRE(trust.get<uint64_t>("balance") == 0);
+                REQUIRE(trust.get<uint64_t>("balance") == 15);
 
                 //check balance
                 REQUIRE(trust.get<uint64_t>("stake") == 5000);
 
                 //check trust
-                REQUIRE(trust.get<uint64_t>("trust") == 333);
+                REQUIRE(trust.get<uint64_t>("trust") == 777);
             }
 
             //rollback
@@ -1221,7 +1221,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trust.Parse());
 
                 //check balance
-                REQUIRE(trust.get<uint64_t>("balance") == 0);
+                REQUIRE(trust.get<uint64_t>("balance") == 11);
 
                 //check balance
                 REQUIRE(trust.get<uint64_t>("stake") == 5000);
