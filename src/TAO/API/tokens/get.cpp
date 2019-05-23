@@ -87,6 +87,19 @@ namespace TAO
             else
                 throw APIException(-27, "Unknown object register");
 
+            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */            
+            if(params.find("fieldname") != params.end())
+            {
+                /* First get the fieldname from the response */
+                std::string strFieldname =  params["fieldname"].get<std::string>();
+                
+                /* Iterate through the response keys */
+                for (auto it = ret.begin(); it != ret.end(); ++it)
+                    /* If this key is not the one that was requested then erase it */
+                    if( it.key() != strFieldname)
+                        ret.erase(it);
+            }
+
             return ret;
         }
     }

@@ -59,7 +59,22 @@ namespace TAO
                     /* Get the name or address that comes after the /token/ part */
                     std::string strNameOrAddress = strMethod.substr(nPos +7);
 
-                    /* Determine whether this is a valid register address and set the name or address parameter accordingly */
+                    /* Check to see whether there is a fieldname after the token name, i.e. tokens/get/token/mytoken/somefield */
+                    nPos = strNameOrAddress.find("/");
+
+                    if(nPos != std::string::npos)
+                    {
+                        /* Passing in the fieldname is only supported for the /get/ method so if the user has 
+                           requested a different method then just return the requested URL, which will in turn error */
+                        if( strMethodRewritten != "get")
+                            return strMethod;
+
+                        std::string strFieldName = strNameOrAddress.substr(nPos +1);
+                        strNameOrAddress = strNameOrAddress.substr(0, nPos);
+                        jsonParams["fieldname"] = strFieldName;
+                    }
+
+                    /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
                     if(IsRegisterAddress(strNameOrAddress))
                         jsonParams["address"] = strNameOrAddress;
                     else
@@ -87,7 +102,22 @@ namespace TAO
                     /* Get the name or address that comes after the /account/ part */
                     std::string strNameOrAddress = strMethod.substr(nPos +9);
 
-                    /* Determine whether this is a valid register address and set the name or address parameter accordingly */
+                    /* Check to see whether there is a fieldname after the account name, i.e. tokens/get/account/myaccount/somefield */
+                    nPos = strNameOrAddress.find("/");
+
+                    if(nPos != std::string::npos)
+                    {
+                        /* Passing in the fieldname is only supported for the /get/ method so if the user has 
+                           requested a different method then just return the requested URL, which will in turn error */
+                        if( strMethodRewritten != "get")
+                            return strMethod;
+
+                        std::string strFieldName = strNameOrAddress.substr(nPos +1);
+                        strNameOrAddress = strNameOrAddress.substr(0, nPos);
+                        jsonParams["fieldname"] = strFieldName;
+                    }
+
+                    /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
                     if(IsRegisterAddress(strNameOrAddress))
                         jsonParams["address"] = strNameOrAddress;
                     else
