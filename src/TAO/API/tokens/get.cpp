@@ -46,10 +46,10 @@ namespace TAO
             else
                 throw APIException(-23, "Missing memory address");
 
-            /* Get the history. */
+            /* Get the token / account object. */
             TAO::Register::Object object;
             if(!LLD::regDB->ReadState(hashRegister, object))
-                throw APIException(-24, "No object found");
+                throw APIException(-24, "No token/account found");
 
             /* Parse the object register. */
             if(!object.Parse())
@@ -61,6 +61,10 @@ namespace TAO
             /* Check the object standard. */
             if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
             {
+                /* If the user requested a particular object type then check it is that type */
+                if(params.find("type") != params.end() && params["type"].get<std::string>() == "token")
+                    throw APIException(-24, "Requested object is not a token");
+
                 /* Get the identifier */
                 uint256_t nIdentifier = object.get<uint256_t>("identifier");
 
@@ -70,19 +74,31 @@ namespace TAO
                 else
                     ret["identifier"] = object.get<uint256_t>("identifier").GetHex();
                 
-                ret["balance"]    = object.get<uint64_t>("balance");
+                /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
+                   Therefore, to convert the internal value to a floating point value we need to reduce the internal value
+                   by 10^digits  */
+                uint64_t nDigits = GetTokenOrAccountDigits(object);
 
-                //TODO: handle the digits value
-                //read token object register by identifier
-                //divide the balance by this total figures element
+                ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
+
             }
             else if(nStandard == TAO::Register::OBJECTS::TOKEN)
             {
+                /* If the user requested a particular object type then check it is that type */
+                if(params.find("type") != params.end() && params["type"].get<std::string>() == "account")
+                    throw APIException(-24, "Requested object is not an account");
+
+                /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
+                   Therefore, to convert the internal value to a floating point value we need to reduce the internal value
+                   by 10^digits  */
+                uint64_t nDigits = GetTokenOrAccountDigits(object);
+
                 ret["identifier"]       = object.get<uint256_t>("identifier").GetHex();
-                ret["balance"]          = object.get<uint64_t>("balance");
-                ret["maxsupply"]        = object.get<uint64_t>("supply");
-                ret["currentsupply"]    = object.get<uint64_t>("supply")
-                                        - object.get<uint64_t>("balance");
+                ret["balance"]          = (double) object.get<uint64_t>("balance") / pow(10, nDigits);
+                ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDigits);
+                ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
+                                        - object.get<uint64_t>("balance")) / pow(10, nDigits);
+                ret["digits"]           = nDigits;
             }
             else
                 throw APIException(-27, "Unknown object register");

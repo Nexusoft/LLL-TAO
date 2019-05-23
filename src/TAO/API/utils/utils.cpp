@@ -161,13 +161,65 @@ namespace TAO
         }
 
 
-        /*  Determins whether a string value is a register address.
-         *  This only checks to see if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
-         *  It does not check to see whether the register address exists in the database
-         */
+        /* Determins whether a string value is a register address.
+        *  This only checks to see if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
+        *  It does not check to see whether the register address exists in the database
+        */
         bool IsRegisterAddress(const std::string& strValueToCheck)
         {
             return strValueToCheck.length() == 64 && strValueToCheck.find_first_not_of("0123456789abcdefABCDEF", 0) == std::string::npos;
+        }
+
+
+        /* Retrieves the number of digits that applies to amounts for this token or account object. 
+        *  If the object register passed in is a token account then we need to look at the token definition 
+        *  in order to get the digits.  The token is obtained by looking at the identifier field, 
+        *  which contains the register address of the issuing token
+        */
+        uint64_t GetTokenOrAccountDigits(const TAO::Register::Object& object)
+        {
+            /* Declare the nDigits to return */
+            uint64_t nDigits = 0;
+
+            /* Get the object standard. */
+            uint8_t nStandard = object.Standard();
+
+            /* Check the object standard. */
+            if( nStandard == TAO::Register::OBJECTS::TOKEN)
+            {
+                nDigits = object.get<uint64_t>("digits");
+            }
+            else if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
+            {
+
+                /* If debiting an account we need to look at the token definition in order to get the digits. 
+                   The token is obtained by looking at the identifier field, which contains the register address of
+                   the issuing token */
+                uint256_t nIdentifier = object.get<uint256_t>("identifier");
+
+                /* Edge case for NXS token which has identifier 0, so no look up needed */
+                if( nIdentifier == 0)
+                    nDigits = 1000000;
+                else
+                {
+                    
+                    TAO::Register::Object token;
+                    if(!LLD::regDB->ReadState(nIdentifier, token))
+                        throw APIException(-24, "Token not found");
+
+                    /* Parse the object register. */
+                    if(!token.Parse())
+                        throw APIException(-24, "Object failed to parse");
+
+                    nDigits = token.get<uint64_t>("digits");
+                }   
+            }
+            else
+            {
+                throw APIException(-27, "Unknown token / account." );
+            }
+
+            return nDigits;
         }
 
 
@@ -583,7 +635,7 @@ namespace TAO
 
 
         /* Converts an Object Register to formattted JSON */
-        json::json ObjectRegisterToJSON(const TAO::Register::Object object, const std::string strDataField)
+        json::json ObjectRegisterToJSON(const TAO::Register::Object& object, const std::string strDataField)
         {
             /* Declare the return JSON object */
             json::json ret;

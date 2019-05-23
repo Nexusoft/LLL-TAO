@@ -117,13 +117,26 @@ namespace TAO
                 if(params.find("supply") == params.end())
                     throw APIException(-25, "Missing Supply");
 
+                /* Extract the supply parameter */
+                double dSupply = 0;
+                if(params.find("supply") != params.end())
+                    dSupply = std::stoll(params["supply"].get<std::string>());
+
                 /* For tokens being created without a global namespaced name, the identifier is equal to the register address */
                 uint256_t hashIdentifier = hashRegister;
 
+                /* Check for nDigits parameter. */
+                uint64_t nDigits = 0;
+                if(params.find("digits") != params.end())
+                    nDigits = std::stod(params["digits"].get<std::string>());
+
+                /* Multiply the supply by 10^digits to give the supply in the divisible units */
+                uint64_t nSupply = dSupply * pow(10, nDigits); 
+
                 /* Create a token object register. */
                 TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier,
-                                                                         std::stoull(params["supply"].get<std::string>()),
-                                                                         1000000);
+                                                                         nSupply,
+                                                                         nDigits);
 
                 /* Submit the payload object. */
                 tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();
