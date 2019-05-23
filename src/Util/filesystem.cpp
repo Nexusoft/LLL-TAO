@@ -54,8 +54,8 @@ ________________________________________________________________________________
 namespace filesystem
 {
 
-    /* Removes a file or folder from the specified path. */
-    bool remove(const std::string& path)
+    /* Removes a directory from the specified path. */
+    bool remove_directory(const std::string& path)
     {
         if(!exists(path))
             return false;
@@ -67,6 +67,19 @@ namespace filesystem
         if(system(debug::safe_printstr("rm -rf ", path).c_str()) == 0)
             return true;
         #endif
+
+        return false;
+    }
+
+
+    /* Removes a file or folder from the specified path. */
+    bool remove(const std::string& path)
+    {
+        if(!exists(path))
+            return false;
+
+        if(!std::remove(path.c_str()) == 0)
+            return false;
 
         return false;
     }

@@ -28,6 +28,19 @@ ________________________________________________________________________________
 namespace filesystem
 {
 
+
+    /** remove_directory
+     *
+     *  Removes a directory from the specified path.
+     *
+     *  @param[in] path The path to remove.
+     *
+     *  @return true if path was deleted
+     *
+     **/
+    bool remove_directory(const std::string& path);
+
+
     /** remove
      *
      *  Removes a file or folder from the specified path.

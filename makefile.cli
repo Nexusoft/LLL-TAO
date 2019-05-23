@@ -160,7 +160,7 @@ endif
 #Display Warnings while compiling
 ifdef ENABLE_WARNINGS
 	CXXWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security -pedantic
-	CWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wformat -Wformat-security -pedantic
+	CWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-unknown-pragmas -Wformat -Wformat-security -pedantic
 else
 	CXXFLAGS+= -w
 endif

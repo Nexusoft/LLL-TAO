@@ -33,7 +33,7 @@ TEST_CASE("Arguments Tests", "[args]")
     //test the filesystem remove and also clear from previous unit tests
     if(filesystem::exists(strPath))
     {
-        REQUIRE(filesystem::remove(strPath));
+        REQUIRE(filesystem::remove_directory(strPath));
         REQUIRE(!filesystem::exists(strPath));
     }
 

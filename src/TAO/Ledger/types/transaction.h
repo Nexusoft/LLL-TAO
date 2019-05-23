@@ -100,6 +100,7 @@ namespace TAO
                 READWRITE(hashGenesis);
                 READWRITE(hashPrevTx);
                 READWRITE(vchPubKey);
+
                 if(!(nSerType & SER_GETHASH))
                     READWRITE(vchSig);
             )
