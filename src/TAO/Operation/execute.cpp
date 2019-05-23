@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <TAO/Operation/include/execute.h>
-#include <TAO/Operation/include/stream.h>
+#include <TAO/Operation/types/stream.h>
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/operations.h>
 

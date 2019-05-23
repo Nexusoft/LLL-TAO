@@ -15,7 +15,7 @@
 
 #include <LLC/aes/aes.h>
 
-#include <TAO/Operation/include/validate.h>
+#include <TAO/Operation/types/validate.h>
 
 #include <TAO/Operation/include/enum.h>
 

@@ -30,48 +30,48 @@ namespace TAO
          *
          *  Writes data to a register.
          *
-         *  @param[in] hashAddress The register address to write to.
-         *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[out] tx The transaction calling operations
+         *  @param[out] contract The contract being executed
+         *  @param[in] hashCaller The calling sigchain.
+         *  @param[in] nFlags Flag to determine what states to write.
          *
          *  @return true if successful.
          *
          **/
-        bool Write(const uint256_t& hashAddress, const std::vector<uint8_t>& vchData,
-            const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Write(Contract &contract,
+            const uint256_t& hashCaller, const uint8_t nFlags);
 
 
         /** Append
          *
          *  Appends data to a register.
          *
+         *  @param[out] contract The contract being executed
          *  @param[in] hashAddress The register address to write to.
-         *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[out] tx The transaction calling operations
+         *  @param[in] nFlags The flag to determine what states to write.
          *
          *  @return true if successful.
          *
          **/
-        bool Append(const uint256_t& hashAddress, const std::vector<uint8_t>& vchData,
-            const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Append(Contract &contract, const uint256_t& hashAddress,
+            const std::vector<uint8_t>& vchData, const uint8_t nFlags);
 
 
         /** Register
          *
          *  Creates a new register if it doesn't exist.
          *
+         *  @param[out] contract The contract being executed
          *  @param[in] hashAddress The register address to create.
          *  @param[in] nType The type of register being written.
          *  @param[in] vchData The binary data to record in register.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Register(const uint256_t& hashAddress, const uint8_t nType,
-            const std::vector<uint8_t>& vchData, const uint8_t nFlags,
-            TAO::Ledger::Transaction &tx);
+        bool Register(Contract &contract, const uint256_t& hashAddress,
+            const uint8_t nType, const std::vector<uint8_t>& vchData,
+            const uint8_t nFlags);
 
 
         /** Transfer
@@ -81,126 +81,133 @@ namespace TAO
          *  @param[in] hashAddress The register address to transfer.
          *  @param[in] hashTransfer The register to transfer to.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[out] tx The transaction calling operations
+         *  @param[out] contract The contract being executed
          *
          *  @return true if successful.
          *
          **/
-        bool Transfer(const uint256_t& hashAddress, const uint256_t& hashTransfer,
-            const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Transfer(Contract &contract, const uint256_t& hashAddress,
+            const uint256_t& hashTransfer, const uint8_t nFlags);
 
-        /** Transfer
+
+        /** Claim
          *
-         *  Transfers a register between sigchains.
+         *  Claims a register between sigchains.
          *
+         *  @param[out] contract The contract being executed
          *  @param[in] hashTx The tx that is being claimed.
          *  @param[in] hashAddress The register address to claim.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Claim(const uint512_t& hashTx, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Claim(Contract &contract, const uint512_t& hashTx,
+            const uint8_t nFlags, const uint32_t nContract = 0);
 
 
         /** Debit
          *
          *  Authorizes funds from an account to an account
          *
+         *  @param[out] contract The contract being executed
          *  @param[in] hashFrom The account being transferred from.
          *  @param[in] hashTo The account being transferred to.
          *  @param[in] nAmount The amount being transferred
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Debit(const uint256_t& hashFrom, const uint256_t& hashTo, const uint64_t nAmount,
-            const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Debit(Contract &contract, const uint256_t& hashFrom,
+            const uint256_t& hashTo, const uint64_t nAmount,
+            const uint8_t nFlags);
 
 
         /** Credit
          *
          *  Commits funds from an account to an account
          *
+         *  @param[out] contract The contract being executed
          *  @param[in] hashTx The account being transferred from.
          *  @param[in] hashProof The proof address used in this credit.
          *  @param[in] hashTo The account being transferred to.
          *  @param[in] nCredit The amount being transferred
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[out] tx The transaction calling operations
+         *  @param[in] nContrat The contract output number (default: 0)
          *
          *  @return true if successful.
          *
          **/
-        bool Credit(const uint512_t& hashTx, const uint256_t& hashProof,
-            const uint256_t& hashTo, const uint64_t nCredit, const uint8_t nFlags,
-            TAO::Ledger::Transaction &tx);
+        bool Credit(Contract &contract, const uint512_t& hashTx,
+            const uint256_t& hashProof, const uint256_t& hashTo,
+            const uint8_t nFlags, const uint32_t nContract = 0);
 
 
         /** Coinbase
          *
          *  Commits funds from a coinbase transaction
          *
+         *  @param[out] contract The contract being executed
          *  @param[in] hashAccount The account being transferred to.
          *  @param[in] nAmount The amount being transferred
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Coinbase(const uint256_t& hashAccount, const uint64_t nAmount,
-            const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Coinbase(Contract &contract, const uint256_t& hashAccount,
+            const uint64_t nAmount, const uint8_t nFlags);
 
 
         /** Trust
          *
          *  Handles the locking of stake in a stake register.
          *
+         *  @param[out] contract The contract being executed
          *  @param[in] hashLastTrust The last stake transaction for the register.
          *  @param[in] nTrustScore The trust score for the operation.
          *  @param[in] nCoinstakeReward Coinstake reward paid to register by this operation
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const uint64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Trust(Contract &contract, const uint512_t& hashLastTrust,
+            const uint64_t nTrustScore, const uint64_t nCoinstakeReward,
+            const uint8_t nFlags);
 
 
         /** Genesis
          *
          *  Handles the locking of stake in a stake register.
          *
+         *  @param[out] contract The contract being executed
          *  @param[in] hashAccount The account being staked to
          *  @param[in] nCoinstakeReward Coinstake reward paid to register by this operation
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Genesis(const uint256_t& hashAddress, const uint64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Genesis(Contract &contract, const uint256_t& hashAddress,
+            const uint64_t nCoinstakeReward, const uint8_t nFlags);
 
 
         /** Authorize
          *
          *  Authorizes an action if holder of a token.
          *
+         *  @param[out] contract The contract being executed
          *  @param[in] hashTx The transaction being authorized for.
          *  @param[in] hashProof The register temporal proof to use.
          *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Authorize(const uint512_t& hashTx, const uint256_t& hashProof,
-            const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Authorize(Contract &contract, const uint512_t& hashTx,
+            const uint256_t& hashProof, const uint8_t nFlags);
     }
 }
 

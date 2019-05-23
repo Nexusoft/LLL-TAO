@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/base_uint.h>
 
-typedef base_uint<192>  uint192_t;
+typedef base_uint<128>  uint128_t;
 typedef base_uint<256>  uint256_t;
 typedef base_uint<512>  uint512_t;
 typedef base_uint<576>  uint576_t;

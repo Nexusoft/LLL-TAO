@@ -821,7 +821,7 @@ uint32_t base_uint<BITS>::GetCompact() const
 
 
 /** Explicity instantiate all template instances needed for compiler. **/
-template class base_uint<192>;
+template class base_uint<128>;
 template class base_uint<256>;
 template class base_uint<512>;
 template class base_uint<576>;

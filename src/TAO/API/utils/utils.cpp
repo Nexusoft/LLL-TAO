@@ -24,7 +24,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/types/tritium.h>
 
-#include <TAO/Operation/include/stream.h>
+#include <TAO/Operation/types/stream.h>
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/operations.h>
 

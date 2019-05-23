@@ -26,6 +26,10 @@ ________________________________________________________________________________
 #include <Util/include/hex.h>
 
 
+#include <TAO/Register/types/stream.h>
+#include <TAO/Operation/types/stream.h>
+
+
 namespace LLD
 {
     class TestDB : public SectorDatabase<BinaryHashTree, BinaryLRU>
@@ -50,13 +54,10 @@ namespace LLD
     };
 }
 
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-
-    uint256_t hashAddress = LLC::GetRand256();
-
-
 
 
 /*
