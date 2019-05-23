@@ -86,27 +86,25 @@ namespace debug
     {
         #ifndef UNIT_TESTS
 
+        /* Build the timestamp */
+        std::string time_str = safe_printstr(
+            "[", 
+            std::put_time(std::localtime(&timestamp), "%H:%M:%S"),
+            ".",
+            std::setfill('0'),
+            std::setw(3),
+            (runtime::timestamp(true) % 1000),
+            "] ");
+
+        /* Get the final timestamped debug string. */
+        std::string final_str = time_str + debug_str;
+
         /* Dump it to the console. */
-        std::cout << "["
-                  << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
-                  << "."
-                  << std::setfill('0')
-                  << std::setw(3)
-                  << (runtime::timestamp(true) % 1000)
-                  << "] "
-                  << debug_str
-                  << std::endl;
+        std::cout << final_str << std::endl;
 
         /* Write it to the debug file. */
-        ssFile    << "["
-                  << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
-                  << "."
-                  << std::setfill('0')
-                  << std::setw(3)
-                  << (runtime::timestamp(true) % 1000)
-                  << "] "
-                  << debug_str
-                  << std::endl;
+        ssFile << final_str << std::endl;
+
         #endif
     }
 
@@ -156,14 +154,15 @@ namespace debug
 
             std::string confFileParams = "";
 
-            for (const auto& argItem : mapMultiConfig)
+            for(const auto& argItem : mapMultiConfig)
             {
-                for (int i = 0; i < argItem.second.size(); i++)
+                for(int i = 0; i < argItem.second.size(); ++i)
                 {
                     confFileParams += argItem.first;
 
-                    if (argItem.first.compare(0, 12, "-rpcpassword") == 0)
-                        confFileParams += "=xxxxx";
+                    if(argItem.first.compare(0, 12, "-rpcpassword") == 0
+                    || argItem.first.compare(0, 12, "-apipassword") == 0)
+                        confFileParams += "=XXXXXXXX";
                     else if (!argItem.second[i].empty())
                         confFileParams += "=" + argItem.second[i];
 
@@ -180,7 +179,7 @@ namespace debug
 
         /* Log command line parameters (which can override conf file settings) */
         std::string cmdLineParms = "";
-        for (const auto& arg : config::mapArgs)
+        for(const auto& arg : config::mapArgs)
         {
             cmdLineParms += arg.first;
             if(arg.second.empty())
@@ -191,7 +190,8 @@ namespace debug
             else
                 cmdLineParms += "=";
 
-            if (arg.first.compare(0, 12, "-rpcpassword") == 0)
+            if(arg.first.compare(0, 12, "-rpcpassword") == 0
+            || arg.first.compare(0, 12, "-apipassword") == 0)
                 cmdLineParms += "XXXXXXXX ";
             else
                 cmdLineParms += arg.second + " ";
