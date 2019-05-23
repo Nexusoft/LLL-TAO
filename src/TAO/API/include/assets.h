@@ -127,6 +127,19 @@ namespace TAO
             json::json Transfer(const json::json& params, bool fHelp);
 
 
+            /** Claim
+             *
+             *  Claim a transferred asset .
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Claim(const json::json& params, bool fHelp);
+
+
             /** History
              *
              *  History of an asset and its ownership

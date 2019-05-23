@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/assets.h>
+#include <TAO/API/include/utils.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -32,75 +33,59 @@ namespace TAO
         {
             std::string strMethodRewritten = strMethod;
 
-
-            /* route get/myasset to get/asset?name=myasset */
-            /* check to see if this method is a get/myasset format. i.e. it starts with get/ */
-            if(strMethod.find("get/") == 0)
+            /* support passing the asset name after the method e.g. get/asset/myasset */
+            std::size_t nPos = strMethod.find("/asset/");
+            if(nPos != std::string::npos)
             {
-                /* get the asset name from after the get/ */
-                std::string strAssetName = strMethod.substr(4);
+                std::string strNameOrAddress;
 
-                /* Check to see whether there is a fieldname after the asset name, i.e. get/asset/myasset/somefield */
-                std::string::size_type pos = strAssetName.find("/");
-
-                if(pos != std::string::npos)
+                /* Edge case for /assets/list/asset/history/assetname */
+                if( strMethod == "list/asset/history" )
+                    return strMethod;
+                else if(strMethod.find("list/asset/history/") != std::string::npos)
                 {
-                    std::string strFieldName = strAssetName.substr(pos +1);
-                    strAssetName = strAssetName.substr(0, pos);
+                    strMethodRewritten = "list/asset/history";
+
+                    /* Get the name or address that comes after the list/asset/history part */
+                    strNameOrAddress = strMethod.substr(19); 
+                }
+                else
+                {
+                    /* get the method name from the incoming string */
+                    strMethodRewritten = strMethod.substr(0, nPos+6);
+
+                    /* Get the name or address that comes after the /asset/ part */
+                    strNameOrAddress = strMethod.substr(nPos +7);
+                }
+
+                /* Check to see whether there is a fieldname after the token name, i.e. asset/get/asset/myasset/somefield */
+                nPos = strNameOrAddress.find("/");
+
+                if(nPos != std::string::npos)
+                {
+                    /* Passing in the fieldname is only supported for the /get/  so if the user has 
+                        requested a different method then just return the requested URL, which will in turn error */
+                    if( strMethodRewritten != "get/asset")
+                        return strMethod;
+
+                    std::string strFieldName = strNameOrAddress.substr(nPos +1);
+                    strNameOrAddress = strNameOrAddress.substr(0, nPos);
                     jsonParams["fieldname"] = strFieldName;
                 }
 
-                strMethodRewritten = "get/asset";
-                jsonParams["name"] = strAssetName;
-            }
-
-            /* route create/myasset to create/asset?name=myasset */
-            /* check to see if this method is a create/myasset format. i.e. it starts with tokenize/ */
-            else if(strMethod.find("create/") == 0)
-            {
-                /* get the asset name from after the create/ */
-                std::string strAssetName = strMethod.substr(7);
-
-                strMethodRewritten = "create/asset";
-                jsonParams["name"] = strAssetName;
-            }
-
-            /* route update/myasset to update/asset?name=myasset */
-            /* check to see if this method is a update/myasset format. i.e. it starts with tokenize/ */
-            else if(strMethod.find("update/") == 0)
-            {
-                /* get the asset name from after the update/ */
-                std::string strAssetName = strMethod.substr(7);
-
-                strMethodRewritten = "update/asset";
-                jsonParams["name"] = strAssetName;
-            }
-
-            /* route transfer/myasset to transfer/asset?name=myasset */
-            /* check to see if this method is a transfer/myasset format. i.e. it starts with tokenize/ */
-            else if(strMethod.find("transfer/") == 0)
-            {
-                /* get the asset name from after the transfer/ */
-                std::string strAssetName = strMethod.substr(9);
-
-                strMethodRewritten = "transfer/asset";
-                jsonParams["name"] = strAssetName;
-            }
-
-
-            /* route tokenize/myasset to tokenize/asset?name=myasset */
-            /* check to see if this method is a tokenize/myasset format. i.e. it starts with tokenize/ */
-            else if(strMethod.find("tokenize/") == 0)
-            {
-                /* get the asset name from after the tokenize/ */
-                std::string strAssetName = strMethod.substr(9);
-
-                strMethodRewritten = "tokenize/asset";
-                jsonParams["name"] = strAssetName;
+                
+                /* Edge case for claim/asset/txid */
+                if( strMethodRewritten == "claim/asset")
+                    jsonParams["txid"] = strNameOrAddress;
+                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
+                else if(IsRegisterAddress(strNameOrAddress))
+                    jsonParams["address"] = strNameOrAddress;
+                else
+                    jsonParams["name"] = strNameOrAddress;
+                    
             }
 
             return strMethodRewritten;
-
         }
 
 
@@ -111,7 +96,8 @@ namespace TAO
             mapFunctions["update/asset"]             = Function(std::bind(&Assets::Update,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get/asset"]                = Function(std::bind(&Assets::Get,       this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["transfer/asset"]           = Function(std::bind(&Assets::Transfer,  this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/history"]            = Function(std::bind(&Assets::History,   this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["claim/asset"]              = Function(std::bind(&Assets::Claim,  this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/asset/history"]       = Function(std::bind(&Assets::History,   this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["tokenize/asset"]           = Function(std::bind(&Assets::Tokenize,  this, std::placeholders::_1, std::placeholders::_2));
         }
     }
