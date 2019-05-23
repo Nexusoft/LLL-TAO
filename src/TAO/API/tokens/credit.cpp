@@ -75,17 +75,17 @@ namespace TAO
             uint256_t hashTo = 0;
 
             /* Check for data parameter. */
-            if(params.find("name_to") != params.end())
+            if(params.find("name") != params.end())
             {
                 /* If name_to is provided then use this to deduce the register address */
-                hashTo = RegisterAddressFromName( params, "token", params["name_to"].get<std::string>());
+                hashTo = RegisterAddressFromName( params, "token", params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("address_to") != params.end())
-                hashTo.SetHex(params["address_to"].get<std::string>());
+            else if(params.find("address") != params.end())
+                hashTo.SetHex(params["address"].get<std::string>());
             else
-                throw APIException(-22, "Missing to account. (<name_to> or <address_to>)");
+                throw APIException(-22, "Missing to name or address");
 
             /* Get the transaction id. */
             uint512_t hashTx;
