@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/system.h>
 
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/stake.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -29,19 +30,19 @@ namespace TAO
     {
 
         /* Commits funds from a coinbase transaction. */
-        bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const uint64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Read the register from the database. */
-            TAO::Register::Object account;
+            TAO::Register::Object trustAccount;
 
             /* Write pre-states. */
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
                 /* Set the register pre-states. */
-                if(!LLD::regDB->ReadTrust(tx.hashGenesis, account)) //TODO: memory states for this index
-                    return debug::error(FUNCTION, "trust address doesn't exist ", tx.hashGenesis.ToString());
+                if(!LLD::regDB->ReadTrust(tx.hashGenesis, trustAccount)) //TODO: memory states for this index
+                        return debug::error(FUNCTION, "Trust address doesn't exist ", tx.hashGenesis.ToString());
 
-                tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << account;
+                tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << trustAccount;
             }
 
             /* Get pre-states on write. */
@@ -54,47 +55,45 @@ namespace TAO
 
                 /* Check for the pre-state. */
                 if(nState != TAO::Register::STATES::PRESTATE)
-                    return debug::error(FUNCTION, "register script not in pre-state");
+                        return debug::error(FUNCTION, "Register script not in pre-state");
 
                 /* Get the pre-state. */
-                tx.ssRegister >> account;
+                tx.ssRegister >> trustAccount;
             }
 
             /* Check ownership of register. */
-            if(account.hashOwner != tx.hashGenesis)
-                return debug::error(FUNCTION, tx.hashGenesis.ToString(), " caller not authorized to debit from register");
+            if(trustAccount.hashOwner != tx.hashGenesis)
+                return debug::error(FUNCTION, tx.hashGenesis.ToString(), "Caller not authorized to debit from register");
 
             /* Parse the account object register. */
-            if(!account.Parse())
-                return debug::error(FUNCTION, "failed to parse account object register");
+            if(!trustAccount.Parse())
+                return debug::error(FUNCTION, "Failed to parse account object register");
 
-            /* Calculate the new trust score. */
-            //uint64_t nTrustPrev = account.get<uint64_t>("trust");
+            /* Get account starting values */
+            uint64_t nBalancePrev = trustAccount.get<uint64_t>("balance");
+
+            /* Update account balance with cointake reward */
+            uint64_t nBalance = nBalancePrev + nCoinstakeReward;
 
             /* Write the new trust to object register. */
-            if(!account.Write("trust", nTrustScore))
+            if(!trustAccount.Write("trust", nTrustScore))
                 return debug::error(FUNCTION, "trust could not be written to object register");
 
-            /* Get the interest payment. */
-            uint64_t nBalance = account.get<uint64_t>("balance");
-
-            //calculate stake reward and add it to nBalance
-
             /* Write the new balance to object register. */
-            if(!account.Write("balance", nBalance))
+            if(!trustAccount.Write("balance", nBalance))
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Update the state register's timestamp. */
-            account.nTimestamp = tx.nTimestamp;
-            account.SetChecksum();
+            trustAccount.nTimestamp = tx.nTimestamp;
+            trustAccount.SetChecksum();
 
             /* Check that the register is in a valid state. */
-            if(!account.IsValid())
+            if(!trustAccount.IsValid())
                 return debug::error(FUNCTION, "trust address ", tx.hashGenesis.ToString(), " is in invalid state");
 
             /* Write post-state checksum. */
             if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                tx.ssRegister << uint8_t(TAO::Register::STATES::POSTSTATE) << account.GetHash();
+                tx.ssRegister << uint8_t(TAO::Register::STATES::POSTSTATE) << trustAccount.GetHash();
 
             /* Verify the post-state checksum. */
             if(nFlags & TAO::Register::FLAGS::WRITE
@@ -113,11 +112,11 @@ namespace TAO
                 tx.ssRegister >> nChecksum;
 
                 /* Check for matching post states. */
-                if(nChecksum != account.GetHash())
+                if(nChecksum != trustAccount.GetHash())
                     return debug::error(FUNCTION, "register script has invalid post-state");
 
                 /* Update the register database with the index. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteTrust(tx.hashGenesis, account))
+                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteTrust(tx.hashGenesis, trustAccount))
                     return debug::error(FUNCTION, "failed to write new state");
 
             }

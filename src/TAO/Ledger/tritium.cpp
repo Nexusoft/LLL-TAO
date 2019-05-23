@@ -26,12 +26,13 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/retarget.h>
+#include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/supply.h>
-#include <TAO/Ledger/include/checkpoints.h>
-#include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/timelocks.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -144,8 +145,13 @@ namespace TAO
 
 
             /* Check the Proof of Work Claims. */
-            if (IsProofOfWork() && !VerifyWork())
-               return debug::error(FUNCTION, "invalid proof of work");
+            if (!VerifyWork())
+            {
+                if (IsProofOfWork())
+                    return debug::error(FUNCTION, "invalid proof of work");
+                else
+                    return debug::error(FUNCTION, "invalid proof of stake");
+            }
 
 
             /* Check the Network Launch Time-Lock. */
@@ -178,11 +184,11 @@ namespace TAO
 
 
             /* Check the producer transaction. */
-            if(GetChannel() == 0 && !producer.IsTrust())
+            if(GetChannel() == 0 && !(producer.IsTrust() || producer.IsGenesis()))
                 return debug::error(FUNCTION, "producer transaction has to be trust for proof of stake");
 
 
-            /* Check coinbase/coinstake timestamp is at least 20 minutes before block time */
+            /* Check coinbase/coinstake timestamp against block time */
             if (GetBlockTime() > (uint64_t)producer.nTimestamp + ((nVersion < 4) ? 1200 : 3600))
                 return debug::error(FUNCTION, "producer transaction timestamp is too early");
 
@@ -200,7 +206,7 @@ namespace TAO
 
                 /* Make Sure Trust Transaction Time is Before Block. */
                 if (producer.nTimestamp > GetBlockTime())
-                    return debug::error(FUNCTION, "trust timestamp is ahead of block timestamp");
+                    return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
             }
 
 
@@ -271,7 +277,7 @@ namespace TAO
                     if(GetBlockTime() < (uint64_t) tx.nTime)
                         return debug::error(FUNCTION, "block timestamp earlier than transaction timestamp");
 
-                    /* Check the transaction for validitity. */
+                    /* Check the transaction for validity. */
                     if(!tx.CheckTransaction())
                         return debug::error(FUNCTION, "check transaction failed.");
                 }
@@ -349,12 +355,12 @@ namespace TAO
         /** Accept a tritium block. **/
         bool TritiumBlock::Accept() const
         {
-            /* Read leger DB for duplicate block. */
+            /* Read ledger DB for duplicate block. */
             if(LLD::legDB->HasBlock(GetHash()))
                 return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20));
 
 
-            /* Read leger DB for previous block. */
+            /* Read ledger DB for previous block. */
             TAO::Ledger::BlockState statePrev;
             if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
                 return debug::error(FUNCTION, "previous block state not found");
@@ -488,83 +494,124 @@ namespace TAO
         }
 
 
-        /* Get the score of the current trust block. */
-        bool TritiumBlock::TrustScore(uint64_t& nScore) const
-        {
-            /* Reset the operation stream. */
-            producer.ssOperation.seek(65, STREAM::BEGIN);
-
-            /* The current calculated trust score. */
-            producer.ssOperation >> nScore;
-
-            return true;
-        }
-
-
         /* Check the proof of stake calculations. */
         bool TritiumBlock::CheckStake() const
         {
-            /* Check the proof hash of the stake block on version 5 and above. */
-            LLC::CBigNum bnTarget;
-            bnTarget.SetCompact(nBits);
-            if(StakeHash() > bnTarget.getuint1024())
-                return debug::error(FUNCTION, "proof of stake hash not meeting target");
-
             /* Get the trust object register. */
-            TAO::Register::Object object;
+            TAO::Register::Object trustAccount;
 
             /* Deserialize from the stream. */
             producer.ssRegister.seek(1, STREAM::BEGIN);
-            producer.ssRegister >> object;
+            producer.ssRegister >> trustAccount;
 
             /* Parse the object. */
-            if(!object.Parse())
+            if(!trustAccount.Parse())
                 return debug::error(FUNCTION, "failed to parse object register from pre-state");
 
-            /* Weight for Trust transactions combine block weight and stake weight. */
-            double nTrustWeight = 0.0, nBlockWeight = 0.0;
-            uint64_t nTrustAge = 0, nBlockAge = 0, nStake = 0;
+            /* Get previous block. Block time used for block age/coin age calculation */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
+                return debug::error(FUNCTION, "prev block not in database");
+
+            /* Calculate weights */
+            double nTrustWeight = 0.0;
+            double nBlockWeight = 0.0;
+
+            uint64_t nTrust = 0;
+            uint64_t nTrustPrev = 0;
+            uint64_t nCoinstakeReward = 0;
+            uint64_t nBlockAge = 0;
+            uint64_t nStake = 0;
+
             if(producer.IsTrust())
             {
-                /* Get the score and make sure it all checks out. */
-                if(!TrustScore(nTrustAge))
-                    return debug::error(FUNCTION, "failed to get trust score");
+                /* Extract values from producer operation */
+                producer.ssOperation.seek(1, STREAM::BEGIN);
 
-                /* Get the weights with the block age. */
-                if(!BlockAge(nBlockAge))
-                    return debug::error(FUNCTION, "failed to get block age");
+                uint512_t hashLastTrust;
+                producer.ssOperation >> hashLastTrust;
 
-                /* Trust Weight Continues to grow the longer you have staked and higher your interest rate */
-                nTrustWeight = std::min(90.0, (((44.0 * log(((2.0 * nTrustAge) /
-                    (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
+                uint64_t nClaimedTrust;
+                producer.ssOperation >> nClaimedTrust;
 
-                /* Block Weight Reaches Maximum At Trust Key Expiration. */
-                nBlockWeight = std::min(10.0, (((9.0 * log(((2.0 * nBlockAge) /
-                    ((config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))) + 1.0)) / log(3))) + 1.0);
+                uint64_t nClaimedReward;
+                producer.ssOperation >> nClaimedReward;
 
-                /* Get stake from the object register stake balance. */
-                nStake = object.get<uint64_t>("stake");
+                /* Get the last stake block. */
+                TAO::Ledger::BlockState stateLast;
+                if(!LLD::legDB->ReadBlock(hashLastTrust, stateLast))
+                    return debug::error(FUNCTION, "last block not in database");
+
+                /* Enforce the minimum interval between stake blocks. */
+                const uint32_t nCurrentInterval = nHeight - stateLast.nHeight;
+
+                if(nCurrentInterval <= MinStakeInterval())
+                    return debug::error(FUNCTION, "stake block interval below minimum interval ", nHeight - stateLast.nHeight);
+
+                /* Get pre-state trust account values */
+                nTrustPrev = trustAccount.get<uint64_t>("trust");
+                nStake = trustAccount.get<uint64_t>("stake");
+
+                /* Calculate the new trust score */
+                nTrust = TrustScore(nTrustPrev, nStake, nBlockAge);
+
+                /* Validate the trust score calculation */
+                if(nClaimedTrust != nTrust)
+                    return debug::error(FUNCTION, "claimed trust score ", nClaimedTrust, " does not match calculated trust score ", nTrust);
+
+                /* Calculate the coinstake reward */
+                const uint64_t nStakeTime = GetBlockTime() - stateLast.GetBlockTime();
+
+                nCoinstakeReward = CoinstakeReward(nStake, nStakeTime, nTrust, false);
+
+                /* Validate the coinstake reward calculation */
+                if(nClaimedReward != nCoinstakeReward)
+                    return debug::error(FUNCTION, "claimed stake reward ", nClaimedReward, " does not match calculated reward ", nCoinstakeReward);
+
+                /* Calculate Trust Weight corresponding to new trust score. */
+                nTrustWeight = TrustWeight(nTrust);
+
+                /* Calculate Block Age (time from last stake block until previous block) */
+                nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
+
+                /* Calculate Block Weight from current block age. */
+                nBlockWeight = BlockWeight(nBlockAge);
             }
 
-            /* Weight for Gensis transactions are based on your coin age. */
-            else
+            else //Genesis stake
             {
+                /* Extract values from producer operation */
+                producer.ssOperation.seek(1, STREAM::BEGIN);
+
+                uint256_t hashAddress;
+                producer.ssOperation >> hashAddress;
+
+                uint64_t nClaimedReward;
+                producer.ssOperation >> nClaimedReward;
+
+                /* Get Genesis stake from the trust account pre-state balance. Genesis reward based on balance (that will move to stake) */
+                nStake = trustAccount.get<uint64_t>("balance");
+
                 /* Genesis transaction can't have any transactions. */
                 if(vtx.size() != 1)
-                    return debug::error(FUNCTION, "genesis can't include transactions");
+                    return debug::error(FUNCTION, "genesis cannot include transactions");
 
-                /* Calculate the Average Coinstake Age. */
-                uint64_t nCoinAge = (uint64_t(nTime) - object.nTimestamp);
+                /* Calculate the Coinstake Age. */
+                const uint64_t nCoinAge = GetBlockTime() - trustAccount.nTimestamp;
 
-                /* Genesis has to wait for one full trust key timespan. */
-                if(nCoinAge < (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+                /* Validate that Genesis coin age exceeds required minimum. */
+                if(nCoinAge < MinCoinAge())
                     return debug::error(FUNCTION, "genesis age is immature");
 
-                /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
-                nTrustWeight = std::min(10.0, (((9.0 * log(((2.0 * nCoinAge) / (60 * 60 * 24 * 28 * 3)) + 1.0)) / log(3))) + 1.0);
+                /* Calculate the coinstake reward */
+                nCoinstakeReward = CoinstakeReward(nStake, nCoinAge, nTrust, false);
 
-                /* Get stake from the object register stake balance. */
-                nStake = object.get<uint64_t>("balance");
+                /* Validate the coinstake reward calculation */
+                if(nClaimedReward != nCoinstakeReward)
+                    return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nCoinstakeReward);
+
+                /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
+                nTrustWeight = GenesisWeight(nCoinAge);
             }
 
             /* Check the stake balance. */
@@ -572,67 +619,35 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot stake if stake balance is zero");
 
             /* Calculate the energy efficiency thresholds. */
-            double nThreshold = ((nTime - producer.nTimestamp) * 100.0) / nNonce;
-            double nRequired  = ((108.0 - nTrustWeight - nBlockWeight) * TAO::Ledger::MAX_STAKE_WEIGHT) / nStake;
+            uint64_t nBlockTime = GetBlockTime() - producer.nTimestamp;
+            double nThreshold = CurrentThreshold(nBlockTime, nNonce);
+            double nRequired  = RequiredThreshold(nTrustWeight, nBlockWeight, nStake);
 
             /* Check that the threshold was not violated. */
             if(nThreshold < nRequired)
                 return debug::error(FUNCTION, "energy threshold too low ", nThreshold, " required ", nRequired);
 
+            /* Set target for logging */
+            LLC::CBigNum bnTarget;
+            bnTarget.SetCompact(nBits);
+
             /* Verbose logging. */
             debug::log(2, FUNCTION,
                 "hash=", StakeHash().ToString().substr(0, 20), ", ",
                 "target=", bnTarget.getuint1024().ToString().substr(0, 20), ", ",
-                "trustscore=", nTrustAge, ", ",
-                "blockage=", nBlockAge, ", ",
-                "trustweight=", nTrustWeight, ", ",
-                "blockweight=", nBlockWeight, ", ",
+                "type=", (producer.IsTrust()?"Trust":"Genesis"), ", ",
+                "trust score=", nTrust, ", ",
+                "prev trust score=", nTrustPrev, ", ",
+                "trust change=", (nTrust - nTrustPrev), ", ",
+                "block age=", nBlockAge, ", ",
+                "stake=", nStake, ", ",
+                "reward=", nCoinstakeReward, ", ",
+                "trust weight=", nTrustWeight, ", ",
+                "block weight=", nBlockWeight, ", ",
+                "block time=", nBlockTime, ", ",
                 "threshold=", nThreshold, ", ",
                 "required=", nRequired, ", ",
-                "time=", (nTime - producer.nTimestamp), ", ",
-                "nonce=", nNonce, ")");
-
-            return true;
-        }
-
-
-        /* Get the current block age of the trust key. */
-        bool TritiumBlock::BlockAge(uint64_t& nAge) const
-        {
-            /* No age for non proof of stake or non version 5 blocks */
-            if(!IsProofOfStake() || nVersion < 5)
-                return debug::error(FUNCTION, "not proof of stake / version < 5");
-
-            /* Genesis has an age 0. */
-            if(producer.IsGenesis())
-            {
-                nAge = 0;
-                return true;
-            }
-
-            /* Reset the operation stream. */
-            producer.ssOperation.seek(1, STREAM::BEGIN);
-
-            /* Get the previous producer. */
-            uint512_t hashLastTrust;
-            producer.ssOperation >> hashLastTrust;
-
-            /* The current calculated trust score. */
-            uint64_t nTrustScore;
-            producer.ssOperation >> nTrustScore;
-
-            /* Check that the last trust block is in the block database. */
-            TAO::Ledger::BlockState stateLast;
-            if(!LLD::legDB->ReadBlock(hashLastTrust, stateLast))
-                return debug::error(FUNCTION, "last block not in database");
-
-            /* Check that the previous block is in the block database. */
-            TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
-                return debug::error(FUNCTION, "prev block not in database");
-
-            /* Read the previous block from disk. */
-            nAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
+                "nonce=", nNonce);
 
             return true;
         }
