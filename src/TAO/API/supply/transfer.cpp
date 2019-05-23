@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -44,14 +45,6 @@ namespace TAO
             /* Get the session to be used for this API call */
             uint64_t nSession = users->GetSession(params);
 
-            /* Check for id parameter. */
-            if(params.find("address") == params.end())
-                throw APIException(-25, "Missing register ID");
-
-            /* Check for id parameter. */
-            if(params.find("destination") == params.end())
-                throw APIException(-25, "Missing Destination");
-
             /* Watch for destination genesis. */
             uint256_t hashTo = 0;
             if(params.find("destination") != params.end())
@@ -60,6 +53,20 @@ namespace TAO
                 hashTo = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else
                 throw APIException(-25, "Missing Destination");
+
+            /* Get the register address. */
+            uint256_t hashRegister = 0;
+
+            /* Check whether the caller has provided the asset name parameter. */
+            if(params.find("name") != params.end())
+                /* If name is provided then use this to deduce the register address */
+                hashRegister = RegisterAddressFromName(params, "item", params["name"].get<std::string>());
+            /* Otherwise try to find the raw hex encoded address. */
+            else if(params.find("address") != params.end())
+                hashRegister.SetHex(params["address"]);
+            /* Fail if no required parameters supplied. */
+            else
+                throw APIException(-23, "Missing memory address");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
@@ -74,10 +81,6 @@ namespace TAO
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction");
-
-            /* Submit the transaction payload. */
-            uint256_t hashRegister;
-            hashRegister.SetHex(params["address"].get<std::string>());
 
             /* Submit the payload object. */
             tx << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo;

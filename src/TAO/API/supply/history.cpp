@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/users.h>
 #include <TAO/API/include/supply.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -37,20 +38,26 @@ namespace TAO
         /* Gets the history of an item. */
         json::json Supply::History(const json::json& params, bool fHelp)
         {
-            json::json ret;
+            json::json ret = json::json::array();
 
-            /* Check for username parameter. */
-            if(params.find("address") == params.end())
+            /* Get the register address. */
+            uint256_t hashRegister = 0;
+
+            /* Check whether the caller has provided the asset name parameter. */
+            if(params.find("name") != params.end())
+                /* If name is provided then use this to deduce the register address */
+                hashRegister = RegisterAddressFromName(params, "item", params["name"].get<std::string>());
+            /* Otherwise try to find the raw hex encoded address. */
+            else if(params.find("address") != params.end())
+                hashRegister.SetHex(params["address"]);
+            /* Fail if no required parameters supplied. */
+            else
                 throw APIException(-23, "Missing memory address");
-
-            /* Get the Register ID. */
-            uint256_t hashRegister;
-            hashRegister.SetHex(params["address"].get<std::string>());
 
             /* Get the register. */
             TAO::Register::State state;
             if(!LLD::regDB->ReadState(hashRegister, state))
-                throw APIException(-24, "No state found");
+                return ret; // no history so return empty array
 
             /* Generate return object. */
             json::json first;
@@ -68,7 +75,7 @@ namespace TAO
                 state >> data;
 
                 first["checksum"] = state.hashChecksum;
-                first["state"]    = data;
+                first["data"]    = data;
             }
 
             /* Push to return array. */
@@ -119,7 +126,7 @@ namespace TAO
                         json::json obj;
                         obj["OP"]         = "APPEND";
                         obj["owner"]      = state.hashOwner.ToString();
-                        obj["timestamp"]  = state.nTimestamp;
+                        obj["updated"]  = state.nTimestamp;
 
                         /* Reset read position. */
                         state.nReadPos = 0;
@@ -132,7 +139,7 @@ namespace TAO
                             state >> data;
 
                             obj["checksum"] = state.hashChecksum;
-                            obj["state"]    = data;
+                            obj["data"]    = data;
                         }
 
                         /* Push to return array. */
@@ -153,7 +160,7 @@ namespace TAO
                         json::json obj;
                         obj["OP"]         = "WRITE";
                         obj["owner"]      = state.hashOwner.ToString();
-                        obj["timestamp"]  = state.nTimestamp;
+                        obj["updated"]  = state.nTimestamp;
 
                         /* Reset read position. */
                         state.nReadPos = 0;
@@ -166,7 +173,7 @@ namespace TAO
                             state >> data;
 
                             obj["checksum"] = state.hashChecksum;
-                            obj["state"]    = data;
+                            obj["data"]    = data;
                         }
 
                         /* Push to return array. */
@@ -186,6 +193,28 @@ namespace TAO
                     /* Get old owner from transfer. */
                     case TAO::Operation::OP::TRANSFER:
                     {
+                         /* Generate return object. */
+                        json::json obj;
+                        obj["OP"]         = "TRANSFER";
+                        obj["owner"]      = tx.hashGenesis.ToString();
+                        obj["updated"]  = state.nTimestamp;
+
+                        /* Reset read position. */
+                        state.nReadPos = 0;
+
+                        /* Grab the last state. */
+                        while(!state.end())
+                        {
+                            /* If the data type is string. */
+                            std::string data;
+                            state >> data;
+
+                            obj["checksum"] = state.hashChecksum;
+                            obj["data"]    = data;
+                        }
+
+                        /* Push to return array. */
+                        ret.push_back(obj);
 
                         break;
                     }

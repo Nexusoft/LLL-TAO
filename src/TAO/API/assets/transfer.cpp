@@ -62,15 +62,11 @@ namespace TAO
 
             /* Check whether the caller has provided the asset name parameter. */
             if(params.find("name") != params.end())
-            {
                 /* If name is provided then use this to deduce the register address */
                 hashRegister = RegisterAddressFromName(params, "asset", params["name"].get<std::string>());
-            }
-
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"]);
-
             /* Fail if no required parameters supplied. */
             else
                 throw APIException(-23, "Missing memory address");
