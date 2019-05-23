@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
+#include <LLD/include/global.h>
+
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 
@@ -21,6 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -88,8 +91,51 @@ namespace TAO
             else
                 throw APIException(-22, "Missing name or address)");
 
-            /* Get the credit. */
-            uint64_t nAmount = std::stoull(params["amount"].get<std::string>());
+            
+            /* Get the token / account object. */
+            TAO::Register::Object object;
+            if(!LLD::regDB->ReadState(hashFrom, object))
+                throw APIException(-24, "Token/account not found");
+
+            /* Parse the object register. */
+            if(!object.Parse())
+                throw APIException(-24, "Object failed to parse");
+
+            /* Get the object standard. */
+            uint8_t nStandard = object.Standard();
+
+            uint64_t nDigits = 0;
+            uint64_t nCurrentBalance = 0;
+
+            /* Check the object standard. */
+            if( nStandard == TAO::Register::OBJECTS::TOKEN || nStandard == TAO::Register::OBJECTS::ACCOUNT)
+            {
+                /* If the user requested a particular object type then check it is that type */
+                std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
+                if((strType == "token" && nStandard == TAO::Register::OBJECTS::ACCOUNT))
+                    throw APIException(-24, "Object is not a token");
+                else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
+                    throw APIException(-24, "Object is not an account");
+
+                nCurrentBalance = object.get<uint64_t>("balance");
+                nDigits = GetTokenOrAccountDigits(object);
+            }
+            else
+            {
+                throw APIException(-27, "Unknown token / account." );
+            }
+            
+
+            /* Get the amount to debit. */
+            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDigits);
+
+            /* Check the amount is not too small once converted by the token digits */
+            if(nAmount == 0)
+                throw APIException(-25, "Amount too small");
+
+            /* Check they have the required funds */
+            if(nAmount > nCurrentBalance)
+                throw APIException(-25, "Insufficient funds");
 
             /* Submit the payload object. */
             tx << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;

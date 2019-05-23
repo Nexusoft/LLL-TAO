@@ -122,8 +122,41 @@ namespace TAO
                 hashProof = hashFrom;
             }
 
+            /* Get the token / account object that we are crediting to. This is required as we need to determine the 
+               digits specification from the token definition, in order to convert the user supplied amount to the 
+               internal amount */
+            TAO::Register::Object object;
+            if(!LLD::regDB->ReadState(hashTo, object))
+                throw APIException(-24, "Token/account not found");
+
+            /* Parse the object register. */
+            if(!object.Parse())
+                throw APIException(-24, "Object failed to parse");
+
+            /* Get the object standard. */
+            uint8_t nStandard = object.Standard();
+
+            uint64_t nDigits = 0;
+
+            /* Check the object standard. */
+            if( nStandard == TAO::Register::OBJECTS::TOKEN || nStandard == TAO::Register::OBJECTS::ACCOUNT)
+            {
+                /* If the user requested a particular object type then check it is that type */
+                std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
+                if((strType == "token" && nStandard == TAO::Register::OBJECTS::ACCOUNT))
+                    throw APIException(-24, "Object is not a token");
+                else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
+                    throw APIException(-24, "Object is not an account");
+
+                nDigits = GetTokenOrAccountDigits(object);
+            }
+            else
+            {
+                throw APIException(-27, "Unknown token / account." );
+            }
+
             /* Get the credit. */
-            uint64_t nAmount = std::stoull(params["amount"].get<std::string>());
+            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDigits);
 
             /* Submit the payload object. */
             tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashProof << hashTo << nAmount;
