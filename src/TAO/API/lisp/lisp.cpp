@@ -32,10 +32,7 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
-        /** The LISP API instance. **/
-        Lisp lisp;
-
+        
         /* Standard initialization function. */
         void Lisp::Initialize()
         {

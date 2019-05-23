@@ -30,7 +30,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
 
-#include <TAO/API/include/users.h>
+#include <TAO/API/include/global.h>
 
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
@@ -86,16 +86,16 @@ namespace LLP
          SecureString PIN;
 
          /* Attempt to unlock the account. */
-         if(TAO::API::users.Locked())
+         if(TAO::API::users->Locked())
          {
             debug::error(FUNCTION, "No unlocked account available");
             return nullptr;
          }
          else
-            PIN = TAO::API::users.GetActivePin();
+            PIN = TAO::API::users->GetActivePin();
 
          /* Attempt to get the sigchain. */
-         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users.GetAccount(0);
+         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
          if(!pSigChain)
          {
             debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
@@ -103,7 +103,7 @@ namespace LLP
          }
 
         /* Check that the account is unlocked for minting */
-        if( !TAO::API::users.CanMint())
+        if( !TAO::API::users->CanMint())
         {
             debug::error(FUNCTION, "Account has not been unlocked for minting");
             return nullptr;
@@ -165,19 +165,19 @@ namespace LLP
         SecureString PIN;
 
         /* Attempt to unlock the account. */
-         if(TAO::API::users.Locked())
+         if(TAO::API::users->Locked())
             return debug::error(FUNCTION, "No unlocked account available");
 
         else
-            PIN = TAO::API::users.GetActivePin();
+            PIN = TAO::API::users->GetActivePin();
 
         /* Attempt to get the sigchain. */
-         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users.GetAccount(0);
+         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
         if(!pSigChain)
             return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
         /* Check that the account is unlocked for minting */
-        if( !TAO::API::users.CanMint())
+        if( !TAO::API::users->CanMint())
             return debug::error(FUNCTION, "Account has not been unlocked for minting");
 
         /* Sign the submitted block */
@@ -257,7 +257,7 @@ namespace LLP
      bool TritiumMiner::is_locked()
      {
          /* Attempt to unlock the account. */
-         return TAO::API::users.Locked();
+         return TAO::API::users->Locked();
      }
 
 }

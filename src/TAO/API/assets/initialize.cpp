@@ -21,15 +21,13 @@ namespace TAO
     namespace API
     {
 
-        Assets assets;
-
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
-        *  map directly to a function in the target API.  Insted this method can be overriden to
-        *  parse the incoming URL and route to a different/generic method handler, adding parameter
-        *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-        *  added to the jsonParams
-        *  The return json contains the modifed method URL to be called.
-        */
+         *  map directly to a function in the target API.  Insted this method can be overriden to
+         *  parse the incoming URL and route to a different/generic method handler, adding parameter
+         *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
+         *  added to the jsonParams
+         *  The return json contains the modifed method URL to be called.
+         */
         std::string Assets::RewriteURL(const std::string& strMethod, json::json& jsonParams)
         {
             std::string strMethodRewritten = strMethod;

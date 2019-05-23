@@ -11,8 +11,11 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/users.h>
-#include <TAO/API/include/supply.h>
+#include <LLC/include/random.h>
+
+#include <LLD/include/global.h>
+
+#include <TAO/API/include/global.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -23,8 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
-#include <LLC/include/random.h>
-#include <LLD/include/global.h>
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -40,10 +42,10 @@ namespace TAO
             json::json ret;
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users.GetPin(params);
+            SecureString strPIN = users->GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = users.GetSession(params);
+            uint64_t nSession = users->GetSession(params);
 
             /* Check for address parameter. */
             if(params.find("address") == params.end())
@@ -54,12 +56,12 @@ namespace TAO
                 throw APIException(-25, "Missing data");
 
             /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if(!users.CanTransact())
+            if(!users->CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
@@ -83,7 +85,7 @@ namespace TAO
                 throw APIException(-26, "Operations failed to execute");
 
             /* Sign the transaction. */
-            if(!tx.Sign(users.GetKey(tx.nSequence, strPIN, nSession)))
+            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
                 throw APIException(-26, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

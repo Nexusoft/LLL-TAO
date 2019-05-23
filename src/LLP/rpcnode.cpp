@@ -14,7 +14,7 @@ ________________________________________________________________________________
 
 #include <LLP/types/rpcnode.h>
 
-#include <TAO/API/include/rpc.h>
+#include <TAO/API/include/global.h>
 #include <TAO/API/types/exception.h>
 
 #include <Util/include/config.h>
@@ -95,7 +95,7 @@ namespace LLP
                 throw APIException(-32600, "Params must be an array");
 
             /* Execute the RPC method. */
-            json::json jsonResult = TAO::API::RPCCommands.Execute(strMethod, jsonParams, false);
+            json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
 
             /* Push the response data with json payload. */
             PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());

@@ -15,13 +15,7 @@ ________________________________________________________________________________
 #include <LLP/types/corenode.h>
 
 #include <TAO/API/types/exception.h>
-#include <TAO/API/include/users.h>
-#include <TAO/API/include/assets.h>
-#include <TAO/API/include/supply.h>
-#include <TAO/API/include/ledger.h>
-#include <TAO/API/include/tokens.h>
-#include <TAO/API/include/lisp.h>
-#include <TAO/API/include/system.h>
+#include <TAO/API/include/global.h>
 
 #include <Util/include/urlencode.h>
 #include <Util/include/config.h>
@@ -136,19 +130,19 @@ namespace LLP
 
             /* Execute the api and methods. */
             if(strAPI == "supply")
-                ret = { {"result", TAO::API::supply.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::supply->Execute(METHOD, params) } };
             else if(strAPI == "users")
-                ret = { {"result", TAO::API::users.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::users->Execute(METHOD, params) } };
             else if(strAPI == "assets")
-                ret = { {"result", TAO::API::assets.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::assets->Execute(METHOD, params) } };
             else if(strAPI == "ledger")
-                ret = { {"result", TAO::API::ledger.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::ledger->Execute(METHOD, params) } };
             else if(strAPI == "lisp")
-                ret = { {"result", TAO::API::lisp.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::lisp->Execute(METHOD, params) } };
             else if(strAPI == "tokens")
-                ret = { {"result", TAO::API::tokens.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::tokens->Execute(METHOD, params) } };
             else if(strAPI == "system")
-                ret = { {"result", TAO::API::system.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::system->Execute(METHOD, params) } };
             else
                 throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
         }

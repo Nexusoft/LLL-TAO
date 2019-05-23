@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Ledger/types/tritium_minter.h>
+
 
 #include <LLC/include/eckey.h>
 #include <LLC/types/bignum.h>
@@ -21,8 +21,9 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
 
-#include <TAO/API/include/users.h>
+#include <TAO/API/include/global.h>
 
+#include <TAO/Ledger/types/tritium_minter.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/stake.h>
@@ -137,14 +138,14 @@ namespace TAO
     bool TritiumMinter::CheckUser()
     {
         /* Check whether unlocked account available. */
-        if (TAO::API::users.Locked())
+        if (TAO::API::users->Locked())
         {
             debug::log(0, FUNCTION, "No unlocked account available for staking");
             return false;
         }
 
         /* Check that the account is unlocked for minting */
-        if (!TAO::API::users.CanMint())
+        if (!TAO::API::users->CanMint())
         {
             debug::log(0, FUNCTION, "Account has not been unlocked for minting");
             return false;
@@ -721,14 +722,14 @@ namespace TAO
                 break;
 
             /* Get the active, unlocked sigchain. Requires session 0 */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = TAO::API::users.GetAccount(0);
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = TAO::API::users->GetAccount(0);
             if (!user)
             {
                 debug::error(0, FUNCTION, "Stake minter could not retrieve the unlocked signature chain.");
                 break;
             }
 
-            SecureString strPIN = TAO::API::users.GetActivePin();
+            SecureString strPIN = TAO::API::users->GetActivePin();
 
             /* Retrieve the latest trust account data */
             if (!pTritiumMinter->FindTrustAccount(user))

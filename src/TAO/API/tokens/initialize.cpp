@@ -21,7 +21,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        Tokens tokens;
 
         /* Standard initialization function. */
         void Tokens::Initialize()

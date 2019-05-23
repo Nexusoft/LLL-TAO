@@ -130,11 +130,7 @@ namespace TAO
              **/
             json::json Credit(const json::json& params, bool fHelp);
 
-
-
         };
-
-        extern Tokens tokens;
     }
 }
 

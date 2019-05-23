@@ -1,0 +1,61 @@
+/*__________________________________________________________________________________________
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+
+            (c) Copyright The Nexus Developers 2014 - 2019
+
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+            "ad vocem populi" - To the Voice of the People
+
+____________________________________________________________________________________________*/
+
+#pragma once
+#ifndef NEXUS_TAO_API_INCLUDE_GLOBAL_H
+#define NEXUS_TAO_API_INCLUDE_GLOBAL_H
+
+#include <TAO/API/include/assets.h>
+#include <TAO/API/include/ledger.h>
+#include <TAO/API/include/lisp.h>
+#include <TAO/API/include/register.h>
+#include <TAO/API/include/rpc.h>
+#include <TAO/API/include/supply.h>
+#include <TAO/API/include/system.h>
+#include <TAO/API/include/tokens.h>
+#include <TAO/API/include/users.h>
+
+namespace TAO
+{
+    namespace API
+    {
+        extern Assets* assets;
+        extern Ledger* ledger;
+        extern Lisp* lisp;
+        extern Register* reg;
+        extern RPC* RPCCommands;
+        extern Supply* supply;
+        extern System* system;
+        extern Tokens* tokens;
+        extern Users* users;
+
+
+        /** Initialize
+         * 
+         *  Instantiate global instances of the API.
+         * 
+         **/
+        void Initialize();
+
+
+        /** Shutdown
+         * 
+         *  Delete global instances of the API.
+         * 
+         **/ 
+        void Shutdown();
+    }
+}
+
+
+#endif

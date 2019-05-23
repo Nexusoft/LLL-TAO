@@ -11,12 +11,13 @@
 
 ____________________________________________________________________________________________*/
 
-
-
-#include <TAO/API/include/utils.h>
-#include <TAO/API/types/exception.h>
+#include <Legacy/include/evaluate.h>
 
 #include <LLD/include/global.h>
+
+#include <TAO/API/include/global.h>
+#include <TAO/API/include/utils.h>
+#include <TAO/API/types/exception.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -27,14 +28,9 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/operations.h>
 
-#include <Legacy/include/evaluate.h>
-
-#include <TAO/API/include/users.h>
-
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
-
 #include <Util/include/base64.h>
 
 
@@ -142,10 +138,10 @@ namespace TAO
             {
                 /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can
                    throw a missing namespace exception if no valid session could be found */
-                uint64_t nSession = users.GetSession(params, false);
+                uint64_t nSession = users->GetSession(params, false);
 
                 /* Get the account. */
-                memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
+                memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
                 if(!user)
                     throw APIException(-23, "Missing namespace parameter");
 

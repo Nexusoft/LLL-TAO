@@ -21,8 +21,6 @@ namespace TAO
     namespace API
     {
 
-        Supply supply;
-
         /* Standard initialization function. */
         void Supply::Initialize()
         {

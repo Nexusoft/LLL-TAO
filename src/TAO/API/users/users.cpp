@@ -13,14 +13,14 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/include/users.h>
+#include <TAO/API/include/global.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/include/hex.h>
-
 #include <Util/include/args.h>
+
 #include <functional>
 
 /* Global TAO namespace. */
@@ -30,10 +30,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
-        /** List of users in API. **/
-        Users users;
-
 
         /** Default Constructor. **/
         Users::Users()
@@ -75,11 +71,11 @@ namespace TAO
             fShutdown = true;
 
             /* Events processor only enabled if multi-user session is disabled. */
-            //if(config::fAPISessions.load() == false)
-            //{
-            //    NotifyEvent();
-            //    EVENTS_THREAD.join();
-            //}
+            if(EVENTS_THREAD.joinable())
+            {
+                NotifyEvent();
+                EVENTS_THREAD.join();
+            }
         }
 
 
@@ -275,14 +271,14 @@ namespace TAO
         {
             /* Check for pin parameter. */
             SecureString strPIN;
-            bool fNeedPin = users.Locked();
+            bool fNeedPin = users->Locked();
 
             if(fNeedPin && params.find("pin") == params.end())
                 throw APIException(-25, "Missing PIN");
             else if(fNeedPin)
                 strPIN = params["pin"].get<std::string>().c_str();
             else
-                strPIN = users.GetActivePin();
+                strPIN = users->GetActivePin();
 
             return strPIN;
         }
@@ -298,7 +294,7 @@ namespace TAO
             /* Check for session parameter. */
             uint64_t nSession = 0; // ID 0 is used for sessionless API
 
-            if(!config::fAPISessions.load() && !users.LoggedIn())
+            if(!config::fAPISessions.load() && !users->LoggedIn())
             {
                 if(fThrow)
                     throw APIException(-25, "User not logged in");

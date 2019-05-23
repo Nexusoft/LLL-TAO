@@ -140,8 +140,6 @@ namespace TAO
             json::json MiningInfo(const json::json& params, bool fHelp);
 
         };
-
-        extern Ledger ledger;
     }
 }
 

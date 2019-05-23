@@ -153,8 +153,6 @@ namespace TAO
             json::json Tokenize(const json::json& params, bool fHelp);
 
         };
-
-        extern Assets assets;
     }
 }
 

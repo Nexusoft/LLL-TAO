@@ -272,6 +272,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_tritium.o \
 		build/LLP_tritium_miner.o \
 		build/LLP_trust_address.o \
+		build/API_global.o \
 		build/API_cmd.o \
 		build/API_assets_create.o \
 		build/API_assets_get.o \

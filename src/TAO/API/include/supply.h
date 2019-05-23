@@ -137,9 +137,7 @@ namespace TAO
              *
              **/
             json::json History(const json::json& params, bool fHelp);
-        };
-
-        extern Supply supply;
+        }; 
     }
 }
 

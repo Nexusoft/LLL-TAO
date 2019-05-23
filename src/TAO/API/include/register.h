@@ -42,12 +42,20 @@ namespace TAO
             }
 
 
+            /** Default Destructor. **/
+            virtual ~Register()
+            {
+            }
+
+
             /** Initialize.
              *
              *  Sets the function pointers for this API.
              *
              **/
-            void Initialize() final;
+            void Initialize() final
+            {
+            }
 
 
             /** GetName
@@ -125,8 +133,6 @@ namespace TAO
              **/
             json::json History(const json::json& params, bool fHelp);
         };
-
-        extern Supply supply;
     }
 }
 
