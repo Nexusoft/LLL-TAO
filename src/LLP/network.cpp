@@ -60,7 +60,6 @@ namespace LLP
         debug::log(2, FUNCTION " File descriptor limit set to ", lim.rlim_cur, " and maximum ", lim.rlim_max);
     }
 
-
     #endif
 
         debug::log(2, FUNCTION, "Network resource initialization complete");

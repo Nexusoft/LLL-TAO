@@ -618,7 +618,7 @@ namespace TAO
 
                         /* Check that the last transaction is correct. */
                         if(tx.hashPrevTx != hashLast)
-                            debug::error(FUNCTION, "transaction has to be head of sigchain");
+                            return debug::error(FUNCTION, "transaction has to be head of sigchain");
                     }
 
                     /* Write the last to disk. */
