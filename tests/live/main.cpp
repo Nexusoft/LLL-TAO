@@ -50,11 +50,185 @@ namespace LLD
     };
 }
 
+
+
+
+
+class encrypted
+{
+public:
+    virtual void encrypt() = 0;
+
+protected:
+
+    /** encrypt memory
+     *
+     *  Encrypt or Decrypt a pointer.
+     *
+     **/
+    template<class TypeName>
+    void _encrypt(const TypeName& data)
+    {
+        static bool fKeySet = false;
+        static std::vector<uint8_t> vKey(16);
+        static std::vector<uint8_t> vIV(16);
+
+        /* Set the encryption key if not set. */
+        if(!fKeySet)
+        {
+            RAND_bytes((uint8_t*)&vKey[0], 16);
+            RAND_bytes((uint8_t*)&vIV[0], 16);
+
+            fKeySet = true;
+        }
+
+        /* Create the AES context. */
+        struct AES_ctx ctx;
+        AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+
+        /* Encrypt the buffer data. */
+        AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data, sizeof(data));
+    }
+
+
+    /** encrypt memory
+     *
+     *  Encrypt or Decrypt a pointer.
+     *
+     **/
+    template<class TypeName>
+    void _encrypt(const std::vector<TypeName>& data)
+    {
+        static bool fKeySet = false;
+        static std::vector<uint8_t> vKey(16);
+        static std::vector<uint8_t> vIV(16);
+
+        /* Set the encryption key if not set. */
+        if(!fKeySet)
+        {
+            RAND_bytes((uint8_t*)&vKey[0], 16);
+            RAND_bytes((uint8_t*)&vIV[0], 16);
+
+            fKeySet = true;
+        }
+
+        /* Create the AES context. */
+        struct AES_ctx ctx;
+        AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+
+        /* Encrypt the buffer data. */
+        AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size() * sizeof(TypeName));
+    }
+
+
+    /** encrypt memory
+     *
+     *  Encrypt or Decrypt a pointer.
+     *
+     **/
+    void _encrypt(const std::string& data)
+    {
+        static bool fKeySet = false;
+        static std::vector<uint8_t> vKey(16);
+        static std::vector<uint8_t> vIV(16);
+
+        /* Set the encryption key if not set. */
+        if(!fKeySet)
+        {
+            RAND_bytes((uint8_t*)&vKey[0], 16);
+            RAND_bytes((uint8_t*)&vIV[0], 16);
+
+            fKeySet = true;
+        }
+
+        /* Create the AES context. */
+        struct AES_ctx ctx;
+        AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+
+        /* Encrypt the buffer data. */
+        AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size());
+    }
+
+
+
+    /** encrypt memory
+     *
+     *  Encrypt or Decrypt a pointer.
+     *
+     **/
+    void _encrypt(const SecureString& data)
+    {
+        static bool fKeySet = false;
+        static std::vector<uint8_t> vKey(16);
+        static std::vector<uint8_t> vIV(16);
+
+        /* Set the encryption key if not set. */
+        if(!fKeySet)
+        {
+            RAND_bytes((uint8_t*)&vKey[0], 16);
+            RAND_bytes((uint8_t*)&vIV[0], 16);
+
+            fKeySet = true;
+        }
+
+        /* Create the AES context. */
+        struct AES_ctx ctx;
+        AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+
+        /* Encrypt the buffer data. */
+        AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size());
+    }
+};
+
+
+class Test : public encrypted
+{
+public:
+    SecureString str;
+    SecureString str2;
+
+    uint256_t hashAddress;
+
+    std::mutex MUTEX;
+
+    Test()
+    : encrypted()
+    , str("this is the testing string")
+    , str2("this is the second one")
+    , hashAddress(1)
+    , MUTEX()
+    {
+    }
+
+    virtual void encrypt()
+    {
+        _encrypt(str);
+        _encrypt(str2);
+        _encrypt(hashAddress);
+    }
+};
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
 
-    uint256_t hashAddress = LLC::GetRand256();
+
+    Test* test = new Test();
+
+    debug::log(0, test->str);
+    debug::log(0, test->str2);
+    debug::log(0, test->hashAddress.ToString());
+
+    test->encrypt();
+    test->encrypt();
+
+    debug::log(0, test->str);
+    debug::log(0, test->str2);
+    debug::log(0, test->hashAddress.ToString());
+
+    return 0;
+
+
 
 
 
