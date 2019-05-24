@@ -535,7 +535,7 @@ namespace LLP
                     vInv.push_back(CInv(state.GetHash(), fIsLegacy ? MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM));
 
                     /* Stop at limits. */
-                    if (--nLimit <= 0)
+                    if (--nLimit <= 0 || vInv.size() > 50000)
                     {
                         // When this block is requested, we'll send an inv that'll make them
                         // getblocks the next batch of inventory.
@@ -564,9 +564,10 @@ namespace LLP
                 debug::log(3, NODE "Inventory Message of ", vInv.size(), " elements");
 
                 /* Make sure the inventory size is not too large. */
-                if (vInv.size() > 10000)
+                if (vInv.size() > 100000)
                 {
-                    DDOS->rSCORE += 20;
+                    if(DDOS)
+                        DDOS->rSCORE += 20;
 
                     return true;
                 }
@@ -641,9 +642,10 @@ namespace LLP
                 std::vector<CInv> vInv;
                 ssPacket >> vInv;
 
-                if (vInv.size() > 10000)
+                if (vInv.size() > 100000)
                 {
-                    DDOS->rSCORE += 20;
+                    if(DDOS)
+                        DDOS->rSCORE += 20;
 
                     return true;
                 }
