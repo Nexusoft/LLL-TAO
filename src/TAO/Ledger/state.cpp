@@ -258,8 +258,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
                     /* Remove the coinbase or coinstake. */
-                    if(tx.IsCoinbase() || tx.IsTrust())
-                        mempool.Remove(hash);
+                    mempool.Remove(hash);
 
                 }
                 else if(proof.first == TYPE::LEGACY_TX)
@@ -281,8 +280,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
                     /* Remove the coinbase or coinstake. */
-                    if(tx.IsCoinBase() || tx.IsCoinStake())
-                        mempool.Remove(hash);
+                    mempool.Remove(hash);
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");

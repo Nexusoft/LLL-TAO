@@ -77,7 +77,7 @@ namespace TAO
             }
 
             /* Create trust account register name within the user sig chain namespace */
-            std::string strName = NamespaceHash(user->UserName()).ToString() + ":trust:";
+            std::string strName = NamespaceHash(user->UserName()).ToString() + ":token:trust";
 
             /* Get the register address from an SK256. */
             uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));

@@ -66,7 +66,7 @@ namespace TAO
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
             /* Get verbose levels. */
-            uint32_t nVerbose = 0;
+            uint32_t nVerbose = 3;
             if(params.find("verbose") != params.end())
                 nVerbose = std::stoul(params["verbose"].get<std::string>());
 
@@ -103,11 +103,6 @@ namespace TAO
 
                 /* Parse out the object register. */
                 if(!object.Parse())
-                    continue;
-
-                /* Skip over identifier 0. */
-                if(!object.Check("identifier", TAO::Register::TYPES::UINT256_T, false)
-                || object.get<uint256_t>("identifier") == 0)
                     continue;
 
                 /* Get the token address. */

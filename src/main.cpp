@@ -34,10 +34,13 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy_minter.h>
 #include <Legacy/wallet/wallet.h>
 
-
+#ifndef WIN32
+#include <sys/resource.h>
+#endif
 
 int main(int argc, char** argv)
 {
+
     /* Setup the timer timer. */
     runtime::timer timer;
     timer.Start();

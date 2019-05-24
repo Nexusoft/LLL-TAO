@@ -147,8 +147,11 @@ namespace TAO
 
                 /* Read the response packet. */
                 apiNode.ReadPacket();
-                runtime::sleep(10);
+                runtime::sleep(1);
             }
+
+            /* Clean socket disconnect. */
+            apiNode.Disconnect();
 
             /* Parse response JSON. */
             json::json ret = json::json::parse(apiNode.INCOMING.strContent);
@@ -263,8 +266,11 @@ namespace TAO
 
                 /* Read the response packet. */
                 rpcNode.ReadPacket();
-                runtime::sleep(10);
+                runtime::sleep(1);
             }
+
+            /* Clean socket disconnect. */
+            rpcNode.Disconnect();
 
             /* Dump the response to the console. */
             int nRet = 0;

@@ -20,6 +20,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/types/tritium.h>
+
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
@@ -424,11 +426,7 @@ namespace TAO
                 block.GenerateSignature(key);
 
                 /* Verify the block object. */
-                if(!block.Check())
-                    continue;
-
-                /* Create the state object. */
-                if(!block.Accept())
+                if(!LLP::TritiumNode::Process(block, nullptr))
                     continue;
 
                 /* Debug output. */
