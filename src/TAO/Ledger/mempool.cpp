@@ -177,11 +177,17 @@ namespace TAO
                 uint512_t hashThis = txOrphan.GetHash();
 
                 /* Debug output. */
-                debug::log(2, FUNCTION, "PROCESSING ORPHAN tx ", hashTx.ToString().substr(0, 20));
+                debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashTx.ToString().substr(0, 20));
 
                 /* Accept the transaction into memory pool. */
                 if(!Accept(txOrphan))
-                    return true;
+                {
+                    hashTx = hashThis;
+
+                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.ToString().substr(0, 20), " REJECTED");
+
+                    continue;
+                }
 
                 /* Erase the transaction. */
                 mapOrphans.erase(hashTx);
