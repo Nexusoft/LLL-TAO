@@ -238,6 +238,8 @@ namespace TAO
         /* Gets a transaction by genesis. */
         bool Mempool::Get(const uint256_t& hashGenesis, TAO::Ledger::Transaction &tx) const
         {
+            RLOCK(MUTEX);
+
             /* Get the list of transactions by genesis. */
             std::vector<TAO::Ledger::Transaction> vTx;
             if(!Get(hashGenesis, vTx))
