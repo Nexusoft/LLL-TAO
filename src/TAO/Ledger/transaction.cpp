@@ -55,7 +55,7 @@ namespace TAO
 
                 /* Check memory and disk for previous transaction. */
                 if(!TAO::Ledger::mempool.Get(hashPrevTx, tx) && !LLD::legDB->ReadTx(hashPrevTx, tx))
-                    return debug::error(FUNCTION, hashPrevTx.ToString(), " tx doesn't exist");
+                    return debug::error(FUNCTION, hashPrevTx.ToString().substr(0, 20), " tx doesn't exist");
 
                 /* Check the previous next hash that is being claimed. */
                 if(tx.hashNext != PrevHash())
