@@ -797,7 +797,7 @@ namespace LLP
                         debug::log(3, NODE "Received tx ", tx.GetHash().ToString().substr(0, 20));
 
                         /* Add the transaction to the memory pool. */
-                        if (TAO::Ledger::mempool.Accept(tx))
+                        if (TAO::Ledger::mempool.Accept(tx, this))
                         {
                             std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX_TRITIUM) };
                             TRITIUM_SERVER->Relay(DAT_INVENTORY, vInv);
@@ -805,7 +805,7 @@ namespace LLP
                         else
                         {
                             /* Give this item a time penalty in the relay cache to make it ignored from here forward. */
-                            cacheInventory.Ban(tx.GetHash());
+                            //cacheInventory.Ban(tx.GetHash());
                         }
                     }
                     else
