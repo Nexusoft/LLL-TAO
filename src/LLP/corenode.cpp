@@ -60,7 +60,7 @@ namespace LLP
         std::string strAPI = INCOMING.strRequest.substr(1, npos - 1);
 
         /* Extract the method to invoke. */
-        std::string METHOD = INCOMING.strRequest.substr(npos + 1);   
+        std::string METHOD = INCOMING.strRequest.substr(npos + 1);
 
         /* Extract the parameters. */
         json::json ret;

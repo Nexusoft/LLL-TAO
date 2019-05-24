@@ -111,14 +111,21 @@ namespace TAO
                         /* Clear the orphans map. */
                         mapOrphans.clear();
 
+                        debug::log(0, FUNCTION, "orphan queue too large, erasing...");
+
                         return false;
                     }
 
                     /* Debug output. */
-                    debug::log(2, FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " ", tx.nSequence, " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
+                    debug::log(0, FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " ", tx.nSequence, " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
                     /* Push to orphan queue. */
                     mapOrphans[tx.hashPrevTx] = tx;
+
+                    /* Ask for the transaction. */
+                    std::vector<LLP::CInv> vInv = { LLP::CInv(tx.hashPrevTx, LLP::MSG_TX_TRITIUM) };
+                    if(LLP::TRITIUM_SERVER)
+                        LLP::TRITIUM_SERVER->Relay(LLP::GET_INVENTORY, vInv);
 
                     return true;
                 }
