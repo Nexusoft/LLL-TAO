@@ -706,7 +706,8 @@ namespace LLP
                     else if (inv.GetType() == LLP::MSG_TX_LEGACY)
                     {
                         Legacy::Transaction tx;
-                        if(!TAO::Ledger::mempool.Get((uint512_t)inv.GetHash(), tx) && !LLD::legacyDB->ReadTx((uint512_t)inv.GetHash(), tx))
+                        if(!TAO::Ledger::mempool.Get((uint512_t)inv.GetHash(), tx)
+                        && !LLD::legacyDB->ReadTx((uint512_t)inv.GetHash(), tx))
                             continue;
 
                         PushMessage(DAT_TRANSACTION, (uint8_t)LLP::MSG_TX_LEGACY, tx);
