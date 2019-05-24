@@ -85,39 +85,42 @@ namespace TAO
             runtime::timer time;
             time.Start();
 
-            RLOCK(MUTEX);
-
             /* Get ehe next hash being claimed. */
             uint256_t hashClaim = tx.PrevHash();
 
-            /* Check the mempool. */
-            if(mapLedger.count(hashTx))
-                return false;
-
-            /* The next hash that is being claimed. */
-            if(mapPrevHashes.count(hashClaim))
-                return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.ToString().substr(0, 20));
-
-            /* Check memory and disk for previous transaction. */
-            TAO::Ledger::Transaction txPrev;
-            if(!tx.IsFirst()
-            && !mapLedger.count(tx.hashPrevTx)
-            && !LLD::legDB->ReadTx(tx.hashPrevTx, txPrev))
             {
-                /* Debug output. */
-                debug::log(0, FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " ", tx.nSequence, " genesis ", tx.hashGenesis.ToString().substr(0, 20), " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
+                RLOCK(MUTEX);
 
-                /* Push to orphan queue. */
-                mapOrphans[tx.hashPrevTx] = tx;
+                /* Check the mempool. */
+                if(mapLedger.count(hashTx))
+                    return false;
 
-                /* Ask for the missing transaction. */
-                if(pnode)
+                /* The next hash that is being claimed. */
+                if(mapPrevHashes.count(hashClaim))
+                    return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.ToString().substr(0, 20));
+
+                /* Check memory and disk for previous transaction. */
+                TAO::Ledger::Transaction txPrev;
+                if(!tx.IsFirst()
+                && !mapLedger.count(tx.hashPrevTx)
+                && !LLD::legDB->ReadTx(tx.hashPrevTx, txPrev))
                 {
-                    std::vector<LLP::CInv> vInv = { LLP::CInv(tx.hashPrevTx, LLP::MSG_TX_TRITIUM) };
-                    pnode->PushMessage(LLP::GET_DATA, vInv);
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " ", tx.nSequence, " genesis ", tx.hashGenesis.ToString().substr(0, 20), " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
+
+                    /* Push to orphan queue. */
+                    mapOrphans[tx.hashPrevTx] = tx;
+
+                    /* Ask for the missing transaction. */
+                    if(pnode)
+                    {
+                        std::vector<LLP::CInv> vInv = { LLP::CInv(tx.hashPrevTx, LLP::MSG_TX_TRITIUM) };
+                        pnode->PushMessage(LLP::GET_DATA, vInv);
+                    }
+
+                    return false;
                 }
 
-                return false;
             }
 
             //TODO: add mapConflcts map to soft-ban conflicting blocks
@@ -146,9 +149,13 @@ namespace TAO
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
                 return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
 
-            /* Set the internal memory. */
-            mapLedger[hashTx] = tx;
-            mapPrevHashes[hashClaim] = hashTx;
+            {
+                RLOCK(MUTEX);
+
+                /* Set the internal memory. */
+                mapLedger[hashTx] = tx;
+                mapPrevHashes[hashClaim] = hashTx;
+            }
 
             /* Debug output. */
             debug::log(2, FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
@@ -159,32 +166,36 @@ namespace TAO
                 LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
 
             /* Check orphan queue. */
-            while(mapOrphans.count(hashTx))
             {
-                /* Get the transaction from map. */
-                TAO::Ledger::Transaction& txOrphan = mapOrphans[hashTx];
-
-                /* Get the previous hash. */
-                uint512_t hashThis = txOrphan.GetHash();
-
-                /* Debug output. */
-                debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashTx.ToString().substr(0, 20));
-
-                /* Accept the transaction into memory pool. */
-                if(!Accept(txOrphan))
+                RLOCK(MUTEX);
+                
+                while(mapOrphans.count(hashTx))
                 {
+                    /* Get the transaction from map. */
+                    TAO::Ledger::Transaction& txOrphan = mapOrphans[hashTx];
+
+                    /* Get the previous hash. */
+                    uint512_t hashThis = txOrphan.GetHash();
+
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashTx.ToString().substr(0, 20));
+
+                    /* Accept the transaction into memory pool. */
+                    if(!Accept(txOrphan))
+                    {
+                        hashTx = hashThis;
+
+                        debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.ToString().substr(0, 20), " REJECTED");
+
+                        continue;
+                    }
+
+                    /* Erase the transaction. */
+                    mapOrphans.erase(hashTx);
+
+                    /* Set the hashTx. */
                     hashTx = hashThis;
-
-                    debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.ToString().substr(0, 20), " REJECTED");
-
-                    continue;
                 }
-
-                /* Erase the transaction. */
-                mapOrphans.erase(hashTx);
-
-                /* Set the hashTx. */
-                hashTx = hashThis;
             }
 
             /* Notify private to produce block if valid. */
