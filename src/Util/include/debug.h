@@ -193,7 +193,6 @@ namespace debug
     }
 
 
-
     /** success
      *
      *  Safe constant format debugging success logs.
@@ -223,24 +222,44 @@ namespace debug
 
 
     /** InitializeLog
-      *
-      *  Write startup information into the log file
-      *
-      *  @param argc The argc value from main()
-      *  @param argv The argv value from main()
-      *
-      */
+     *
+     *  Write startup information into the log file
+     *
+     *  @param argc The argc value from main()
+     *  @param argv The argv value from main()
+     *
+     **/
     void InitializeLog(int argc, char** argv);
 
 
     /** GetLastError
-    *
-    *  Gets the last error string logged via debug::error and clears the last error
-    *
-    *  @return The last error string logged via debug::error
-    *
-    **/
+     *
+     *  Gets the last error string logged via debug::error and clears the last error
+     *
+     *  @return The last error string logged via debug::error
+     *
+     **/
     std::string GetLastError();
 
+
+    /** check_log_archive
+     *
+     *  Checks if the current debug log should be closed and archived. This
+     *  function will close the current file if the max file size is exceeded,
+     *  rename it, and open a new file. It will delete the oldest file if it
+     *  exceeds the max number of files.
+     *
+     *  @param[in] outFile The output file stream used to update debug files
+     *
+     **/
+    void check_log_archive(std::ofstream &outFile);
+
+
+    /** debug_filecount
+     *
+     *  Returns the number of debug files present in the debug directory.
+     *
+     **/
+    uint32_t debug_filecount();
 }
 #endif
