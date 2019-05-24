@@ -121,11 +121,6 @@ namespace TAO
                 /* Push to orphan queue. */
                 mapOrphans[tx.hashPrevTx] = tx;
 
-                /* Ask for the transaction. */
-                std::vector<LLP::CInv> vInv = { LLP::CInv(tx.hashPrevTx, LLP::MSG_TX_TRITIUM) };
-                if(LLP::TRITIUM_SERVER)
-                    LLP::TRITIUM_SERVER->Relay(LLP::GET_INVENTORY, vInv);
-
                 return true;
             }
 
