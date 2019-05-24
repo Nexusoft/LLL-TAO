@@ -57,7 +57,7 @@ namespace LLP
         struct rlimit lim;
         getrlimit(RLIMIT_NOFILE, &lim);
 
-        debug::log(0, FUNCTION " File descriptor limit set to ", lim.rlim_cur, " and maximum ", lim.rlim_max);
+        debug::log(2, FUNCTION " File descriptor limit set to ", lim.rlim_cur, " and maximum ", lim.rlim_max);
     }
 
 
