@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -66,7 +67,22 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction");
 
             /* Submit the transaction payload. */
-            uint256_t hashRegister = LLC::GetRand256();
+            uint256_t hashRegister = 0;
+
+            /* Check for data parameter. */
+            if(params.find("name") != params.end())
+            {
+                /* Get the namespace hash to use for this object.  By default the namespace is the username for the sig chain */
+                uint256_t nNamespaceHash = NamespaceHash(user->UserName());
+
+                /* register address is a hash of a name in the format of namespacehash:objecttype:name */
+                std::string strName = nNamespaceHash.ToString() + ":item:" + params["name"].get<std::string>();
+
+                /* Build the address from an SK256 hash of API:NAME. */
+                hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+            }
+            else
+                hashRegister = LLC::GetRand256();
 
             /* Test the payload feature. */
             DataStream ssData(SER_REGISTER, 1);

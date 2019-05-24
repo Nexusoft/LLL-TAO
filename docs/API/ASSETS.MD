@@ -356,9 +356,9 @@ This will get the history of an asset or digital item as well as it's ownership.
 
 The return value is a JSON array of objects for each entry in the assets history:
 
-`owner` : The genesis hash of the signature chain that owns this asset.
+`owner` : The genesis hash of the signature chain that owns the asset.
 
-`timestamp` : The Unix timestamp of when the asset was first created.
+`timestamp` : The Unix timestamp of when the asset was updated.
 
 
 

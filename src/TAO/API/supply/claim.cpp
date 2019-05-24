@@ -46,7 +46,7 @@ namespace TAO
 
             /* Check for id parameter. */
             if(params.find("txid") == params.end())
-                throw APIException(-25, "Missing register ID");
+                throw APIException(-25, "Missing txid");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);

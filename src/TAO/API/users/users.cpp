@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
@@ -90,55 +91,26 @@ namespace TAO
         {
             std::string strMethodRewritten = strMethod;
 
-            /* route create/myusername to create/user?username=myusername */
-            /* check to see if this method is a create/myusername format. i.e. it starts with get/ */
-            if(strMethod.find("create/") == 0)
+            /* support passing the username after the method e.g. login/user/myusername */
+            std::size_t nPos = strMethod.find("/user/");
+            if(nPos != std::string::npos)
             {
-                /* get the user name from after the create/ */
-                std::string strUserName = strMethod.substr(7);
+                std::string strNameOrAddress;
 
-                strMethodRewritten = "create/user";
-                jsonParams["username"] = strUserName;
-            }
-            /* route login/myusername to login/user?username=myusername */
-            /* check to see if this method is a login/myusername format. i.e. it starts with get/ */
-            else if(strMethod.find("login/") == 0)
-            {
-                /* get the user name from after the login/ */
-                std::string strUserName = strMethod.substr(6);
+                
+                /* get the method name from the incoming string */
+                strMethodRewritten = strMethod.substr(0, nPos+5);
 
-                strMethodRewritten = "login/user";
-                jsonParams["username"] = strUserName;
-            }
-            /* route logout/myusername to logout/user?username=myusername */
-            /* check to see if this method is a logout/myusername format. i.e. it starts with get/ */
-            else if(strMethod.find("logout/") == 0)
-            {
-                /* get the user name from after the logout/ */
-                std::string strUserName = strMethod.substr(7);
+                /* Get the name or address that comes after the /item/ part */
+                strNameOrAddress = strMethod.substr(nPos +6);
 
-                strMethodRewritten = "logout/user";
-                jsonParams["username"] = strUserName;
-            }
-            /* route lock/myusername to lock/user?username=myusername */
-            /* check to see if this method is a lock/myusername format. i.e. it starts with get/ */
-            else if(strMethod.find("lock/") == 0)
-            {
-                /* get the user name from after the lock/ */
-                std::string strUserName = strMethod.substr(5);
-
-                strMethodRewritten = "lock/user";
-                jsonParams["username"] = strUserName;
-            }
-            /* route unlock/myusername to unlock/user?username=myusername */
-            /* check to see if this method is a unlock/myusername format. i.e. it starts with get/ */
-            else if(strMethod.find("unlock/") == 0)
-            {
-                /* get the user name from after the unlock/ */
-                std::string strUserName = strMethod.substr(7);
-
-                strMethodRewritten = "unlock/user";
-                jsonParams["username"] = strUserName;
+                
+                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
+                if(IsRegisterAddress(strNameOrAddress))
+                    jsonParams["genesis"] = strNameOrAddress;
+                else
+                    jsonParams["username"] = strNameOrAddress;
+                    
             }
 
             return strMethodRewritten;
