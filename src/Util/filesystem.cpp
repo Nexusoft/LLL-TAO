@@ -14,7 +14,6 @@ ________________________________________________________________________________
 #ifdef WIN32 //TODO: use GetFullPathNameW in system_complete if getcwd not supported
 
 #else
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #endif

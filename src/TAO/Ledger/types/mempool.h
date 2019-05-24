@@ -27,6 +27,11 @@ ________________________________________________________________________________
 
 #include <Util/include/mutex.h>
 
+namespace LLP
+{
+    class TritiumNode;
+}
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -103,11 +108,12 @@ namespace TAO
              *  Accepts a transaction with validation rules.
              *
              *  @param[in] tx The transaction to add.
+             *  @param[in] pnode The node that transaction is accepted from.
              *
              *  @return true if added.
              *
              **/
-            bool Accept(TAO::Ledger::Transaction& tx);
+            bool Accept(TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode = nullptr);
 
 
             /** Accept

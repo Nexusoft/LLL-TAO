@@ -556,7 +556,7 @@ namespace LLP
             /* Handle new Inventory Messages.
             * This is used to know what other nodes have in their inventory to compare to our own.
             */
-            case DAT_INVENTORY :
+            case DAT_INVENTORY:
             {
                 std::vector<CInv> vInv;
                 ssPacket >> vInv;
@@ -612,7 +612,7 @@ namespace LLP
                         }
 
                         /* Check the memory pool for transactions being relayed. */
-                        else if(!TAO::Ledger::mempool.Has((uint512_t)inv.GetHash()))
+                        else if(!TAO::Ledger::mempool.Has(uint512_t(inv.GetHash())))
                         {
                             /* Add this item to request queue. */
                             vGet.push_back(inv);
@@ -697,7 +697,8 @@ namespace LLP
                     else if (inv.GetType() == LLP::MSG_TX_TRITIUM)
                     {
                         TAO::Ledger::Transaction tx;
-                        if(!TAO::Ledger::mempool.Get((uint512_t)inv.GetHash(), tx) && !LLD::legDB->ReadTx((uint512_t)inv.GetHash(), tx))
+                        if(!TAO::Ledger::mempool.Get(uint512_t(inv.GetHash()), tx)
+                        && !LLD::legDB->ReadTx(uint512_t(inv.GetHash()), tx))
                             continue;
 
                         PushMessage(DAT_TRANSACTION, (uint8_t)LLP::MSG_TX_TRITIUM, tx);
@@ -705,7 +706,8 @@ namespace LLP
                     else if (inv.GetType() == LLP::MSG_TX_LEGACY)
                     {
                         Legacy::Transaction tx;
-                        if(!TAO::Ledger::mempool.Get((uint512_t)inv.GetHash(), tx) && !LLD::legacyDB->ReadTx((uint512_t)inv.GetHash(), tx))
+                        if(!TAO::Ledger::mempool.Get((uint512_t)inv.GetHash(), tx)
+                        && !LLD::legacyDB->ReadTx((uint512_t)inv.GetHash(), tx))
                             continue;
 
                         PushMessage(DAT_TRANSACTION, (uint8_t)LLP::MSG_TX_LEGACY, tx);
@@ -796,16 +798,8 @@ namespace LLP
                         /* Debug output for tx. */
                         debug::log(3, NODE "Received tx ", tx.GetHash().ToString().substr(0, 20));
 
-                        /* Check if tx is valid. */
-                        if(!tx.IsValid())
-                        {
-                            debug::error(NODE "tx ", tx.GetHash().ToString().substr(0, 20), " REJECTED");
-
-                            break;
-                        }
-
                         /* Add the transaction to the memory pool. */
-                        if (TAO::Ledger::mempool.Accept(tx))
+                        if (TAO::Ledger::mempool.Accept(tx, this))
                         {
                             std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX_TRITIUM) };
                             TRITIUM_SERVER->Relay(DAT_INVENTORY, vInv);
@@ -813,7 +807,7 @@ namespace LLP
                         else
                         {
                             /* Give this item a time penalty in the relay cache to make it ignored from here forward. */
-                            cacheInventory.Ban(tx.GetHash());
+                            //cacheInventory.Ban(tx.GetHash());
                         }
                     }
                     else
