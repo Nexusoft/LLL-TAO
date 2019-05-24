@@ -27,23 +27,30 @@ namespace TAO
     {
 
         /* Writes data to a register. */
-        bool Append(const uint256_t& hashAddress, const std::vector<uint8_t>& vchData,
-                    const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Append(Contract &contract, const uint64_t nTimestamp,
+            const uint256_t& hashCaller, const uint8_t nFlags);
         {
+            /* Get the register address. */
+            uint256_t hashAddress = 0;
+            contract >> hashAddress;
+
+            /* Get the data to write. */
+            std::vector<uint8_t> vchData;
+            contract >> vchData;
+
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashAddress))
                 return debug::error(FUNCTION, "cannot append register with reserved address");
 
-            /* Read the binary data of the Register. */
-            TAO::Register::State state;
-
             /* Write pre-states. */
-            if((nFlags & TAO::Register::FLAGS::PRESTATE))
+            TAO::Register::State state;
+            if(nFlags & TAO::Register::FLAGS::PRESTATE)
             {
                 if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                     return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
 
-                tx.ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << state;
+                /* Serialize the pre-state into the register. */
+                contract <<= uint8_t(TAO::Register::STATES::PRESTATE) <<= state;
             }
 
             /* Get pre-states on write. */
@@ -52,14 +59,14 @@ namespace TAO
             {
                 /* Get the state byte. */
                 uint8_t nState = 0; //RESERVED
-                tx.ssRegister >> nState;
+                contract >>= nState;
 
                 /* Check for the pre-state. */
                 if(nState != TAO::Register::STATES::PRESTATE)
                     return debug::error(FUNCTION, "register script not in pre-state");
 
                 /* Get the pre-state. */
-                tx.ssRegister >> state;
+                contract >>= state;
             }
 
             /* Check ReadOnly permissions. */
@@ -71,15 +78,15 @@ namespace TAO
                 return debug::error(FUNCTION, "append operation called on raw register");
 
             /* Check that the proper owner is commiting the write. */
-            if(tx.hashGenesis != state.hashOwner)
-                return debug::error(FUNCTION, "no append permissions for caller ", tx.hashGenesis.ToString());
+            if(hashCaller != state.hashOwner)
+                return debug::error(FUNCTION, "no append permissions for caller ", hashCaller.ToString());
 
             /* Append the state data. */
             std::vector<uint8_t> vchState = state.GetState();
             vchState.insert(vchState.end(), vchData.begin(), vchData.end());
 
             /* Set the new state of the register. */
-            state.nTimestamp = tx.nTimestamp;
+            state.nTimestamp = nTimestamp;
             state.SetState(vchState);
 
             /* Check that the register is in a valid state. */
@@ -87,16 +94,16 @@ namespace TAO
                 return debug::error(FUNCTION, "memory address ", hashAddress.ToString(), " is in invalid state");
 
             /* Write post-state checksum. */
-            if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
+            if(nFlags & TAO::Register::FLAGS::POSTSTATE)
+                contract <<= uint8_t(TAO::Register::STATES::POSTSTATE) <<= state.GetHash();
 
             /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE
-            || nFlags & TAO::Register::FLAGS::MEMPOOL)
+            if((nFlags & TAO::Register::FLAGS::WRITE)
+            || (nFlags & TAO::Register::FLAGS::MEMPOOL))
             {
                 /* Get the state byte. */
                 uint8_t nState = 0; //RESERVED
-                tx.ssRegister >> nState;
+                contract >>= nState;
 
                 /* Check for the pre-state. */
                 if(nState != TAO::Register::STATES::POSTSTATE)
@@ -104,7 +111,7 @@ namespace TAO
 
                 /* Get the post state checksum. */
                 uint64_t nChecksum;
-                tx.ssRegister >> nChecksum;
+                contract >>= nChecksum;
 
                 /* Check for matching post states. */
                 if(nChecksum != state.GetHash())

@@ -30,7 +30,7 @@ namespace TAO
     {
 
         /* Writes data to a register. */
-        bool Write(Contract &contract,
+        bool Write(Contract &contract, const uint64_t nTimestamp,
             const uint256_t& hashCaller, const uint8_t nFlags);
         {
             /* Get the register address. */
@@ -79,8 +79,8 @@ namespace TAO
                 return debug::error(FUNCTION, "write operation called on read-only register");
 
             /* Check that the proper owner is commiting the write. */
-            if(tx.hashGenesis != state.hashOwner)
-                return debug::error(FUNCTION, "no write permissions for caller ", tx.hashGenesis.ToString());
+            if(hashCaller) != state.hashOwner)
+                return debug::error(FUNCTION, "no write permissions for caller ", hashCaller.ToString());
 
             /* Check write permissions for raw state registers. */
             if(state.nType == TAO::Register::REGISTER::OBJECT)
@@ -280,7 +280,7 @@ namespace TAO
             }
 
             /* Update the state register timestamp. */
-            state.nTimestamp = tx.nTimestamp;
+            state.nTimestamp = nTimestamp;
             state.SetChecksum();
 
             /* Check that the register is in a valid state. */

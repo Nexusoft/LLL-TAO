@@ -43,10 +43,9 @@ namespace TAO
          **/
         class Transaction
         {
-            /** For disk indexing on contract. **/
-            std::vector<TAO::Operation::Contract> vContracts;
-
         public:
+            /** For disk indexing on contract. **/
+            std::vector<uint128_t> vContracts;
 
 
             /** The transaction version. **/

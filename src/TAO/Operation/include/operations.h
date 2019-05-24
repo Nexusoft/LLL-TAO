@@ -31,13 +31,14 @@ namespace TAO
          *  Writes data to a register.
          *
          *  @param[out] contract The contract being executed
+         *  @param[in] nTimestamp The timestamp of operation execution.
          *  @param[in] hashCaller The calling sigchain.
          *  @param[in] nFlags Flag to determine what states to write.
          *
          *  @return true if successful.
          *
          **/
-        bool Write(Contract &contract,
+        bool Write(Contract &contract, const uint64_t nTimestamp,
             const uint256_t& hashCaller, const uint8_t nFlags);
 
 
@@ -46,32 +47,31 @@ namespace TAO
          *  Appends data to a register.
          *
          *  @param[out] contract The contract being executed
-         *  @param[in] hashAddress The register address to write to.
-         *  @param[in] nFlags The flag to determine what states to write.
+         *  @param[in] nTimestamp The timestamp of operation execution.
+         *  @param[in] hashCaller The calling sigchain.
+         *  @param[in] nFlags Flag to determine what states to write.
          *
          *  @return true if successful.
          *
          **/
-        bool Append(Contract &contract, const uint256_t& hashAddress,
-            const std::vector<uint8_t>& vchData, const uint8_t nFlags);
+        bool Append(Contract &contract, const uint64_t nTimestamp,
+            const uint256_t& hashCaller, const uint8_t nFlags);
 
 
-        /** Register
+        /** Create
          *
          *  Creates a new register if it doesn't exist.
          *
          *  @param[out] contract The contract being executed
-         *  @param[in] hashAddress The register address to create.
-         *  @param[in] nType The type of register being written.
-         *  @param[in] vchData The binary data to record in register.
-         *  @param[in] nFlags The flag to determine if database state should be written.
+         *  @param[in] nTimestamp The timestamp of operation execution.
+         *  @param[in] hashCaller The calling sigchain.
+         *  @param[in] nFlags Flag to determine what states to write.
          *
          *  @return true if successful.
          *
          **/
-        bool Register(Contract &contract, const uint256_t& hashAddress,
-            const uint8_t nType, const std::vector<uint8_t>& vchData,
-            const uint8_t nFlags);
+        bool Create(Contract &contract, const uint64_t nTimestamp,
+            const uint256_t& hashCaller, const uint8_t nFlags);
 
 
         /** Transfer
