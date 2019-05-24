@@ -796,14 +796,6 @@ namespace LLP
                         /* Debug output for tx. */
                         debug::log(3, NODE "Received tx ", tx.GetHash().ToString().substr(0, 20));
 
-                        /* Check if tx is valid. */
-                        if(!tx.IsValid())
-                        {
-                            debug::error(NODE "tx ", tx.GetHash().ToString().substr(0, 20), " REJECTED");
-
-                            break;
-                        }
-
                         /* Add the transaction to the memory pool. */
                         if (TAO::Ledger::mempool.Accept(tx))
                         {
