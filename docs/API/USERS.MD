@@ -249,7 +249,7 @@ This will list off all of the transactions for the requested signature chain gen
 
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
  - `default` : hash
- - `summary` : type, version, sequence, timestamp, and operation.
+ - `summary` : type, version, sequence, timestamp, operation, and confirmations.
  - `detail` : genesis, nexthash, prevhash, pubkey and signature.
 
 

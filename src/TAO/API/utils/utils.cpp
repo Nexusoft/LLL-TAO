@@ -307,8 +307,8 @@ namespace TAO
                 txdata["version"] = tx.nVersion;
                 txdata["sequence"] = tx.nSequence;
                 txdata["timestamp"] = tx.nTimestamp;
+                txdata["operation"]  = OperationToJSON(tx.ssOperation);
                 txdata["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
-
 
                 /* Genesis and hashes are verbose 3 and up. */
                 if(nTransactionVerbosity >= 3)
@@ -316,16 +316,12 @@ namespace TAO
                     txdata["genesis"] = tx.hashGenesis.ToString();
                     txdata["nexthash"] = tx.hashNext.ToString();
                     txdata["prevhash"] = tx.hashPrevTx.ToString();
-                }
-
-                /* Signatures and public keys are verbose level 4 and up. */
-                if(nTransactionVerbosity >= 4)
-                {
+                
                     txdata["pubkey"] = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                     txdata["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                 }
 
-                txdata["operation"]  = OperationToJSON(tx.ssOperation);
+                
             }
 
             return txdata;
