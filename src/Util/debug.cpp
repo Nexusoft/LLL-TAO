@@ -48,7 +48,6 @@ ________________________________________________________________________________
 #endif
 
 
-
 namespace debug
 {
     /* Mutex to lock DEBUG and prevent race conditions. */
@@ -160,6 +159,7 @@ namespace debug
                 {
                     confFileParams += argItem.first;
 
+                    /* Check for password parameters and hide them in the debug output. */
                     if(argItem.first.compare(0, 12, "-rpcpassword") == 0
                     || argItem.first.compare(0, 12, "-apipassword") == 0)
                         confFileParams += "=XXXXXXXX";
@@ -190,6 +190,7 @@ namespace debug
             else
                 cmdLineParms += "=";
 
+            /* Check for password parameters and hide them in the debug output. */
             if(arg.first.compare(0, 12, "-rpcpassword") == 0
             || arg.first.compare(0, 12, "-apipassword") == 0)
                 cmdLineParms += "XXXXXXXX ";
@@ -201,7 +202,6 @@ namespace debug
             cmdLineParms = "(none)";
 
         log(0, "Command line parameters: ", cmdLineParms);
-
         log(0, "");
         log(0, "");
     }
