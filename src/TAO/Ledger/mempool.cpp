@@ -114,7 +114,7 @@ namespace TAO
                 if(pnode)
                 {
                     std::vector<LLP::CInv> vInv = { LLP::CInv(tx.hashPrevTx, LLP::MSG_TX_TRITIUM) };
-                    pnode->PushMessage(LLP::GET_INVENTORY, vInv);
+                    pnode->PushMessage(LLP::GET_DATA, vInv);
                 }
 
                 return false;
