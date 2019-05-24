@@ -31,7 +31,7 @@ namespace TAO
          *  Encapsulates the PIN to unlock and allowable actions that can be performed on a signature chain
          *
          */
-        class PinUnlock
+        class PinUnlock : public memory::encrypted
         {
         public:
 
@@ -98,6 +98,17 @@ namespace TAO
             SecureString PIN() const
             {
                 return strPIN;
+            }
+
+
+            /** Encrypt
+             *
+             *  Special method for encrypting specific data types inside class.
+             *
+             **/
+            void Encrypt()
+            {
+                encrypt(strPIN);
             }
 
 

@@ -262,5 +262,16 @@ namespace TAO
         {
             return strUsername;
         }
+
+
+        /* Special method for encrypting specific data types inside class. */
+        void SignatureChain::Encrypt()
+        {
+            encrypt(strUsername);
+            encrypt(strPassword);
+            encrypt(pairCache.first);
+            encrypt(pairCache.second);
+            encrypt(hashGenesis);
+        }
     }
 }

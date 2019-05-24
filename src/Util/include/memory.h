@@ -21,6 +21,7 @@ ________________________________________________________________________________
 
 #include <Util/include/mutex.h>
 #include <Util/include/debug.h>
+#include <Util/include/allocators.h>
 
 #include <openssl/rand.h>
 
@@ -464,50 +465,145 @@ namespace memory
 
 
 
-    /** The encrypted and decryption key TODO: make this randomized across the program. **/
-    static std::vector<uint8_t> vKey(16);
-    static bool fKeySet = false;
-
-
-    /** encrypt memory
+    /** encrypted
      *
-     *  Encrypt or Decrypt a pointer.
+     *  Abstract base class for encrypting specific data types in a class.
      *
      **/
-    template<class TypeName>
-    void encrypt(TypeName* data, bool fEncrypt)
+    class encrypted
     {
-        /* Set the encryption key if not set. */
-        if(!fKeySet)
-        {
-            RAND_bytes((uint8_t*)&vKey[0], 16);
+    public:
 
-            fKeySet = true;
+        /** Special method for encrypting specific member variables of class. **/
+        virtual void Encrypt() = 0;
+
+
+        /** Virtual Destructor. **/
+        virtual ~encrypted()
+        {
+
         }
 
-        /* Get the size of memory. */
-        size_t nSize = sizeof(*data);
+    protected:
 
-        /* Copy memory into vector. */
-        std::vector<uint8_t> vData(nSize + (nSize % 16));
-        std::copy((uint8_t*)data, (uint8_t*)data + nSize, (uint8_t*)&vData[0]);
-
-        /* Create the AES context. */
-        struct AES_ctx ctx;
-        AES_init_ctx(&ctx, &vKey[0]);
-
-        /* Encrypt in block sizes of 16. */
-        for(uint32_t i = 0; i < vData.size(); i += 16)
+        /** encrypt memory
+         *
+         *  Encrypt or Decrypt a pointer.
+         *
+         **/
+        template<class TypeName>
+        void encrypt(const TypeName& data)
         {
-            if(fEncrypt)
-                AES_ECB_encrypt(&ctx, &vData[0] + i);
-            else
-                AES_ECB_decrypt(&ctx, &vData[0] + i);
+            static bool fKeySet = false;
+            static std::vector<uint8_t> vKey(16);
+            static std::vector<uint8_t> vIV(16);
+
+            /* Set the encryption key if not set. */
+            if(!fKeySet)
+            {
+                RAND_bytes((uint8_t*)&vKey[0], 16);
+                RAND_bytes((uint8_t*)&vIV[0], 16);
+
+                fKeySet = true;
+            }
+
+            /* Create the AES context. */
+            struct AES_ctx ctx;
+            AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+
+            /* Encrypt the buffer data. */
+            AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data, sizeof(data));
         }
 
-        /* Copy crypted data back into memory. */
-        std::copy((uint8_t*)&vData[0], (uint8_t*)&vData[0] + nSize, (uint8_t*)data);
-    }
+
+        /** encrypt memory
+         *
+         *  Encrypt or Decrypt a pointer.
+         *
+         **/
+        template<class TypeName>
+        void encrypt(const std::vector<TypeName>& data)
+        {
+            static bool fKeySet = false;
+            static std::vector<uint8_t> vKey(16);
+            static std::vector<uint8_t> vIV(16);
+
+            /* Set the encryption key if not set. */
+            if(!fKeySet)
+            {
+                RAND_bytes((uint8_t*)&vKey[0], 16);
+                RAND_bytes((uint8_t*)&vIV[0], 16);
+
+                fKeySet = true;
+            }
+
+            /* Create the AES context. */
+            struct AES_ctx ctx;
+            AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+
+            /* Encrypt the buffer data. */
+            AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size() * sizeof(TypeName));
+        }
+
+
+        /** encrypt memory
+         *
+         *  Encrypt or Decrypt a pointer.
+         *
+         **/
+        void encrypt(const std::string& data)
+        {
+            static bool fKeySet = false;
+            static std::vector<uint8_t> vKey(16);
+            static std::vector<uint8_t> vIV(16);
+
+            /* Set the encryption key if not set. */
+            if(!fKeySet)
+            {
+                RAND_bytes((uint8_t*)&vKey[0], 16);
+                RAND_bytes((uint8_t*)&vIV[0], 16);
+
+                fKeySet = true;
+            }
+
+            /* Create the AES context. */
+            struct AES_ctx ctx;
+            AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+
+            /* Encrypt the buffer data. */
+            AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size());
+        }
+
+
+
+        /** encrypt memory
+         *
+         *  Encrypt or Decrypt a pointer.
+         *
+         **/
+        void encrypt(const SecureString& data)
+        {
+            static bool fKeySet = false;
+            static std::vector<uint8_t> vKey(16);
+            static std::vector<uint8_t> vIV(16);
+
+            /* Set the encryption key if not set. */
+            if(!fKeySet)
+            {
+                RAND_bytes((uint8_t*)&vKey[0], 16);
+                RAND_bytes((uint8_t*)&vIV[0], 16);
+
+                fKeySet = true;
+            }
+
+            /* Create the AES context. */
+            struct AES_ctx ctx;
+            AES_init_ctx_iv(&ctx, &vKey[0], &vIV[0]);
+
+            /* Encrypt the buffer data. */
+            AES_CTR_xcrypt_buffer(&ctx, (uint8_t*)&data[0], data.size());
+        }
+    };
 
 
     /** decrypted_proxy
@@ -543,9 +639,12 @@ namespace memory
         , data(pdata)
         , nRefs(nRefsIn)
         {
+            /* Lock the mutex. */
+            MUTEX.lock();
+
             /* Decrypt memory on first proxy. */
             if(nRefs == 0)
-                encrypt(data, false);
+                data->Encrypt();
 
             /* Increment the reference count. */
             ++nRefs;
@@ -564,7 +663,7 @@ namespace memory
 
             /* Encrypt memory again when ref count is 0. */
             if(nRefs == 0)
-                encrypt(data, true);
+                data->Encrypt();
 
             /* Unlock the mutex. */
             MUTEX.unlock();
@@ -692,13 +791,13 @@ namespace memory
                 return false;
 
             /* Decrypt the pointer. */
-            encrypt(data, false);
+            data->Encrypt();
 
             /* Check equivilence. */
             bool fEquals = (*data == dataIn);
 
             /* Encrypt the poitner. */
-            encrypt(data, true);
+            data->Encrypt();
 
             return fEquals;
         }
@@ -718,13 +817,13 @@ namespace memory
                 return false;
 
             /* Decrypt the pointer. */
-            encrypt(data, false);
+            data->Encrypt();
 
             /* Check equivilence. */
             bool fNotEquals = (*data != dataIn);
 
             /* Encrypt the poitner. */
-            encrypt(data, true);
+            data->Encrypt();
 
             return fNotEquals;
         }
@@ -750,8 +849,6 @@ namespace memory
          **/
         decrypted_proxy<TypeName> operator->() const
         {
-            MUTEX.lock();
-
             return decrypted_proxy<TypeName>(data, MUTEX, nRefs);
         }
 
@@ -790,7 +887,7 @@ namespace memory
             data = pdata;
 
             /* Encrypt the memory. */
-            encrypt(data, true);
+            data->Encrypt();
         }
 
 
@@ -806,7 +903,7 @@ namespace memory
             /* Free the memory. */
             if(data)
             {
-                encrypt(data, false);
+                data->Encrypt();
                 delete data;
             }
 

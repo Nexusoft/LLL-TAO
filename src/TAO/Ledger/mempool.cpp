@@ -168,7 +168,8 @@ namespace TAO
                 LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
 
             /* Process orphans. */
-            { RLOCK(MUTEX);
+            {
+                RLOCK(MUTEX);
 
                 /* Check orphan queue. */
                 while(mapOrphans.count(hashTx))
