@@ -490,7 +490,7 @@ namespace memory
 
         /* Copy memory into vector. */
         std::vector<uint8_t> vData(nSize + (nSize % 16));
-        std::copy((uint8_t*)data, (uint8_t*)data + nSize, (uint8_t*)&vData[0]);
+        //std::copy((uint8_t*)data, (uint8_t*)data + nSize, (uint8_t*)&vData[0]);
 
         /* Create the AES context. */
         struct AES_ctx ctx;
@@ -499,14 +499,14 @@ namespace memory
         /* Encrypt in block sizes of 16. */
         for(uint32_t i = 0; i < vData.size(); i += 16)
         {
-            if(fEncrypt)
-                AES_ECB_encrypt(&ctx, &vData[0] + i);
-            else
-                AES_ECB_decrypt(&ctx, &vData[0] + i);
+            //if(fEncrypt)
+            //    AES_ECB_encrypt(&ctx, &vData[0] + i);
+            //else
+            //    AES_ECB_decrypt(&ctx, &vData[0] + i);
         }
 
         /* Copy crypted data back into memory. */
-        std::copy((uint8_t*)&vData[0], (uint8_t*)&vData[0] + nSize, (uint8_t*)data);
+        //std::copy((uint8_t*)&vData[0], (uint8_t*)&vData[0] + nSize, (uint8_t*)data);
     }
 
 
@@ -543,6 +543,9 @@ namespace memory
         , data(pdata)
         , nRefs(nRefsIn)
         {
+            /* Lock the mutex. */
+            MUTEX.lock();
+
             /* Decrypt memory on first proxy. */
             if(nRefs == 0)
                 encrypt(data, false);
@@ -750,8 +753,6 @@ namespace memory
          **/
         decrypted_proxy<TypeName> operator->() const
         {
-            MUTEX.lock();
-
             return decrypted_proxy<TypeName>(data, MUTEX, nRefs);
         }
 
