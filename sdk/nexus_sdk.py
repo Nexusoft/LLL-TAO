@@ -246,7 +246,7 @@ class sdk_init():
         pw = urllib.quote_plus(pw)
         parms = "?username={}&password={}&pin={}".format(self.username, pw,
             self.pin)
-        url = users_url.format("create") + parms
+        url = users_url.format("create/user") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
@@ -266,7 +266,7 @@ class sdk_init():
         t = 1 if transactions else 0
         parms = "?username={}&password={}&pin={}&minting={}&transactions={}". \
             format(self.username, pw, self.pin, m, t)
-        url = users_url.format("login") + parms
+        url = users_url.format("login/user") + parms
         json_data = self.__get(url)
         if (json_data.has_key("error")): return(json_data)
 
@@ -288,7 +288,7 @@ class sdk_init():
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session={}".format(self.session_id)
-        url = users_url.format("logout") + parms
+        url = users_url.format("logout/user") + parms
         json_data = self.__get(url)
         if (json_data.has_key("error")): return(json_data)
 
@@ -304,7 +304,7 @@ class sdk_init():
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session={}".format(self.session_id)
-        url = users_url.format("lock") + parms
+        url = users_url.format("lock/users") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
@@ -318,7 +318,7 @@ class sdk_init():
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}".format(self.pin, self.session_id)
-        url = users_url.format("unlock") + parms
+        url = users_url.format("unlock/user") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
@@ -446,7 +446,7 @@ class sdk_init():
 
         parms = "?username={}".format(self.username)
         url = users_url.format("list/tokens") + parms
-        json_data = self.__get(url)
+        json_data = self.__get(url) 
         return(json_data)
     #enddef
 
