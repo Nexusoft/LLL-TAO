@@ -78,8 +78,6 @@ namespace TAO
         /* Accepts a transaction with validation rules. */
         bool Mempool::Accept(TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode)
         {
-            RLOCK(MUTEX);
-
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
@@ -91,6 +89,7 @@ namespace TAO
             uint256_t hashClaim = tx.PrevHash();
 
             {
+                RLOCK(MUTEX);
 
                 /* Check the mempool. */
                 if(mapLedger.count(hashTx))
@@ -151,7 +150,7 @@ namespace TAO
                 return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
 
             {
-
+                RLOCK(MUTEX);
 
                 /* Set the internal memory. */
                 mapLedger[hashTx] = tx;
@@ -168,6 +167,7 @@ namespace TAO
 
             /* Check orphan queue. */
             {
+                RLOCK(MUTEX);
 
                 while(mapOrphans.count(hashTx))
                 {
