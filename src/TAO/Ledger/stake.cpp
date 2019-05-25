@@ -88,7 +88,7 @@ namespace TAO
 
 
         /* Calculate new trust score from parameters. */
-        uint64_t TrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge)
+        uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge)
         {
             uint64_t nTrust = 0;
             uint64_t nTrustMax = MaxTrustScore();
@@ -158,14 +158,14 @@ namespace TAO
 
 
         /* Calculate the current threshold value for Proof of Stake. */
-        double CurrentThreshold(const uint64_t nBlockTime, const uint64_t nNonce)
+        double GetCurrentThreshold(const uint64_t nBlockTime, const uint64_t nNonce)
         {
             return (nBlockTime * 100.0) / nNonce;
         }
 
 
         /* Calculate the minimum Required Energy Efficiency Threshold. */
-        double RequiredThreshold(double nTrustWeight, double nBlockWeight, uint64_t nStake)
+        double GetRequiredThreshold(double nTrustWeight, double nBlockWeight, uint64_t nStake)
         {
             /*  Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
              *  Weight from staking balance reduces the required threshold by increasing the denominator.
@@ -189,7 +189,7 @@ namespace TAO
 
 
         /* Calculate the coinstake reward for a given stake. */
-        uint64_t CoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime, const uint64_t nTrust, const bool isGenesis)
+        uint64_t GetCoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime, const uint64_t nTrust, const bool isGenesis)
         {
 
             double nStakeRate = StakeRate(nTrust, isGenesis);

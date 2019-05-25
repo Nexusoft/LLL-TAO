@@ -258,7 +258,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
                     /* Remove the coinbase or coinstake. */
-                    if(tx.IsCoinbase() || tx.IsTrust())
+                    if(tx.IsCoinbase() || tx.IsCoinstake())
                         mempool.Remove(hash);
 
                 }
@@ -410,7 +410,7 @@ namespace TAO
                                     return debug::error(FUNCTION, "transaction is not on disk");
 
                                 /* Resurrect. */
-                                if(!tx.IsCoinbase() && !tx.IsTrust())
+                                if(!tx.IsCoinbase() && !tx.IsCoinstake())
                                     vTritiumResurrect.push_back(tx);
                             }
                             else if(proof.first == TYPE::LEGACY_TX)

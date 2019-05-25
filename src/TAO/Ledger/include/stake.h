@@ -95,7 +95,7 @@ namespace TAO
         uint64_t TrustWeightBase();
 
 
-        /** TrustScore 
+        /** GetTrustScore 
          *
          *  Calculate new trust score from parameters.
          *
@@ -106,7 +106,7 @@ namespace TAO
          *  @return new value for trust score
          *
          **/
-        uint64_t TrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge);
+        uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge);
 
 
         /** BlockWeight 
@@ -145,7 +145,7 @@ namespace TAO
         double TrustWeight(const uint64_t nTrust);
 
 
-        /** CurrentThreshold 
+        /** GetCurrentThreshold 
          *
          *  Calculate the current threshold value for Proof of Stake.
          *  This value must exceed required threshold for staking to proceed.
@@ -156,10 +156,10 @@ namespace TAO
          *  @return value for current threshold
          *
          **/
-        double CurrentThreshold(const uint64_t nBlockTime, const uint64_t nNonce);
+        double GetCurrentThreshold(const uint64_t nBlockTime, const uint64_t nNonce);
 
 
-        /** RequiredThreshold 
+        /** GetRequiredThreshold 
          *
          *  Calculate the minimum Required Energy Efficiency Threshold.
          *  Can only mine Proof of Stake when current threshold exceeds this value.
@@ -171,7 +171,7 @@ namespace TAO
          *  @return value for minimum required threshold
          *
          **/
-        double RequiredThreshold(const double nTrustWeight, const double nBlockWeight, const uint64_t nStake);
+        double GetRequiredThreshold(const double nTrustWeight, const double nBlockWeight, const uint64_t nStake);
 
 
         /** StakeRate 
@@ -189,7 +189,7 @@ namespace TAO
         double StakeRate(const uint64_t nTrust, const bool isGenesis = false);
 
 
-        /** CoinstakeReward 
+        /** GetCoinstakeReward 
          *
          *  Calculate the coinstake reward for a given stake.
          *
@@ -201,7 +201,7 @@ namespace TAO
          *  @return amount of coinstake reward
          *
          **/
-        uint64_t CoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime, const uint64_t nTrust, const bool isGenesis = false);
+        uint64_t GetCoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime, const uint64_t nTrust, const bool isGenesis = false);
 
     }
 }

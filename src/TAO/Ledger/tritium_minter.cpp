@@ -299,8 +299,10 @@ namespace TAO
         if (!isGenesis)
         {
             /* Staking Trust for existing trust account */
+            uint64_t nTrustPrev = trustAccount.get<uint64_t>("trust");
+            uint64_t nStake = trustAccount.get<uint64_t>("stake");
 
-            if (trustAccount.get<uint64_t>("stake") == 0)
+            if (nStake == 0)
             {
                 /* Trust account has no stake balance. Increase sleep time to wait for balance. */
                 nSleepTime = 5000;
@@ -344,20 +346,19 @@ namespace TAO
                 return false;
             }
 
-            /* Calculate the new trust score. */
-            uint64_t nTrustPrev = trustAccount.get<uint64_t>("trust");
-            uint64_t nStake = trustAccount.get<uint64_t>("stake");
-
             /* Calculate time since the last stake block (block age = age of previous trust block). */
             nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - nTimeLastStake;
 
             /* Calculate the new trust score */
-            nTrust = TrustScore(nTrustPrev, nStake, nBlockAge);
+            nTrust = GetTrustScore(nTrustPrev, nStake, nBlockAge);
 
             /* Initialize block producer for Trust operation with hashLastTrust, new trust score.
              * The coinstake reward will be added based on time when block is found.
              */
             candidateBlock.producer << (uint8_t)TAO::Operation::OP::TRUST << txLast.GetHash() << nTrust;
+
+            /* Add transactions into the block from memory pool, but only for Trust (Genesis for trust account has no transactions except coinstake producer). */
+            AddTransactions(candidateBlock);
         }
         else
         {
@@ -371,7 +372,7 @@ namespace TAO
 
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
-                    debug::log(0, FUNCTION, "Stake Minter: Trust account has no balance assigned for Genesis.");
+                    debug::log(0, FUNCTION, "Stake Minter: Trust account has no balance for Genesis.");
 
                 ++nWaitCounter;
 
@@ -384,6 +385,8 @@ namespace TAO
             candidateBlock.producer << (uint8_t)TAO::Operation::OP::GENESIS << hashAddress;
 
         }
+
+        /* Do not sign producer transaction, yet. Coinstake reward must be added when block found, and it should be signed then */
 
         /* Reset sleep time on successful completion */
         if (nSleepTime == 5000)
@@ -487,7 +490,7 @@ namespace TAO
          */
         uint64_t nStake = trustAccount.get<uint64_t>("stake");
 
-        double nRequired = RequiredThreshold(nTrustWeight.load(), nBlockWeight.load(), nStake);
+        double nRequired = GetRequiredThreshold(nTrustWeight.load(), nBlockWeight.load(), nStake);
 
         /* Calculate the target value based on difficulty. */
         LLC::CBigNum bnTarget;
@@ -518,7 +521,7 @@ namespace TAO
              * To stake, this value must be larger than required threshhold.
              * Block time increases the value while nonce decreases it.
              */
-            double nThreshold = CurrentThreshold(nCurrentBlockTime, candidateBlock.nNonce);
+            double nThreshold = GetCurrentThreshold(nCurrentBlockTime, candidateBlock.nNonce);
 
             /* If threshhold is not larger than required, wait and keep trying with the same nonce value until threshold increases */
             if(nThreshold < nRequired)
@@ -559,13 +562,15 @@ namespace TAO
         /* Calculate the coinstake reward */
         if (!isGenesis)
         {
+            /* Trust reward based on time since last stake block. */
             nStakeTime = candidateBlock.GetBlockTime() - nTimeLastStake;
-            nCoinstakeReward = CoinstakeReward(nStake, nStakeTime, nTrust, isGenesis);
+            nCoinstakeReward = GetCoinstakeReward(nStake, nStakeTime, nTrust, isGenesis);
         }
         else
         {
-            nStakeTime = candidateBlock.GetBlockTime() - trustAccount.nTimestamp; //"coin age";
-            nCoinstakeReward = CoinstakeReward(nStake, nStakeTime, 0, isGenesis);
+            /* Genesis reward based on coin age as defined by register timestamp. */
+            nStakeTime = candidateBlock.GetBlockTime() - trustAccount.nTimestamp; 
+            nCoinstakeReward = GetCoinstakeReward(nStake, nStakeTime, 0, isGenesis);
         }
 
         /* Add coinstake reward to producer */
@@ -580,12 +585,8 @@ namespace TAO
         if (!TAO::Operation::Execute(candidateBlock.producer, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
             return debug::error(FUNCTION, "Operation layer failed to execute pre-state/post-state for coinstake transaction");
 
-        /* Sign the block producer */
+        /* With coinstake producer completed, can now sign the block producer */
         candidateBlock.producer.Sign(user->Generate(candidateBlock.producer.nSequence, strPIN));
-
-        /* Add transactions into the block from memory pool, but only for Trust (Genesis block for trust account has no transactions except coinstake producer). */
-        if (!isGenesis)
-            AddTransactions(candidateBlock);
 
         /* Build the Merkle Root. */
         std::vector<uint512_t> vHashes;
@@ -633,8 +634,7 @@ namespace TAO
         /* Process the block and relay to network if it gets accepted into main chain.
          * This method will call TritiumBlock::Accept() and BlockState::Index()
          * After all is approved, BlockState::Index() will call BlockState::SetBest()
-         * to set the new best chain. This final method relays the new block to the
-         * network.
+         * to set the new best chain. This method relays the new block to the network.
          */
         if (!LLP::TritiumNode::Process(candidateBlock, nullptr))
         {
