@@ -261,5 +261,17 @@ namespace debug
      *
      **/
     uint32_t debug_filecount();
+
+
+     /** log_path
+     *
+     *  Builds an indexed debug log path for a file.
+     *
+     *  @param[in] nIndex The index for the debug log path.
+     *
+     *  @return Returns the absolute path to the log file.
+     *
+     **/
+     std::string log_path(uint32_t nIndex);
 }
 #endif

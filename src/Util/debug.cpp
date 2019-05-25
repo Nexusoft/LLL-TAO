@@ -62,7 +62,7 @@ namespace debug
     thread_local std::string strLastError;
 
     /* The debug archive folder path. */
-    std::string strDebugFolder;
+    std::string strLogFolder;
 
     /* The maximum number of log files to archive. */
     uint32_t nLogFiles;
@@ -123,8 +123,18 @@ namespace debug
     /* Write startup information into the log file */
     void InitializeLog(int argc, char** argv)
     {
+        strLogFolder = config::GetDataDir() + "log/";
+
+        /* Create the debug archive folder if it doesn't exist. */
+        if(!filesystem::exists(strLogFolder))
+        {
+            filesystem::create_directory(strLogFolder);
+            log(0, FUNCTION, "created debug folder directory");
+        }
+
+
         /* Initialize the logging file stream. */
-        ssFile.open(config::GetDataDir() + "debug.log", std::ios::app | std::ios::out);
+        ssFile.open(log_path(0), std::ios::app | std::ios::out);
         if(!ssFile.is_open())
         {
             printf("Unable to initalize system logging\n");
@@ -132,8 +142,8 @@ namespace debug
         }
 
         /* Get the debug logging configuration parameters (or default if none specified) */
-        nLogFiles  = config::GetArg("-logfiles", 10);
-        nLogSizeMB = config::GetArg("-logsizeMB", 10);
+        nLogFiles  = config::GetArg("-logfiles", 20);
+        nLogSizeMB = config::GetArg("-logsizeMB", 5);
 
         /* Log the Operating System. */
         log(0, "Startup time ", convert::DateTimeStrFormat(runtime::timestamp()));
@@ -219,17 +229,6 @@ namespace debug
         log(0, "Command line parameters: ", cmdLineParms);
         log(0, "");
         log(0, "");
-
-
-        strDebugFolder = config::GetDataDir() + "debug/";
-        log(0, FUNCTION, strDebugFolder);
-
-        /* Create the debug archive folder if it doesn't exist. */
-        if(!filesystem::exists(strDebugFolder))
-        {
-            filesystem::create_directory(strDebugFolder);
-            log(0, FUNCTION, "created debug folder directory");
-        }
     }
 
 
@@ -254,12 +253,16 @@ namespace debug
     /*  Checks if the current debug log should be closed and archived. */
     void check_log_archive(std::ofstream &outFile)
     {
+        /* If the file is not open don't bother with archive. */
+        if(!outFile.is_open())
+            return;
+
         /* Get the current position to determine number of bytes. */
         uint32_t nBytes = outFile.tellp();
 
         /* Get the max log size in bytes. */
         uint32_t nMaxLogSizeBytes = nLogSizeMB << 20;
-        
+
         /* Check if the log size is exceeded. */
         if(nBytes > nMaxLogSizeBytes)
         {
@@ -270,25 +273,18 @@ namespace debug
             uint32_t nDebugFiles = debug_filecount();
 
             /* Shift the archived debug file name indices by 1. */
-            for(uint32_t i = nDebugFiles; i > 0; --i)
+            for(int32_t i = nDebugFiles-1; i >= 0; --i)
             {
                 /* If the oldest file will exceed the max amount of files, delete it. */
-                if(i + 1 > nLogFiles)
-                    filesystem::remove(strDebugFolder + "debug" + std::to_string(i) + ".log");
+                if(i + 1 >= nLogFiles)
+                    filesystem::remove(log_path(i));
                 /* Otherwise, rename the files in reverse order. */
                 else
-                    filesystem::rename(strDebugFolder + "debug" + std::to_string(i)   + ".log",
-                                       strDebugFolder + "debug" + std::to_string(i+1) + ".log");
+                    filesystem::rename(log_path(i), log_path(i+1));
             }
 
-            /* Rename and copy the currently closed debug file to the first indexed archived file. */
-            filesystem::copy_file(config::GetDataDir() + "debug.log", strDebugFolder + "debug1.log");
-
-            /* Remove the old copied file. */
-            filesystem::remove(config::GetDataDir() + "debug.log");
-
             /* Open the new debug file. */
-            outFile.open(config::GetDataDir() + "debug.log", std::ios::app | std::ios::out);
+            outFile.open(log_path(0), std::ios::app | std::ios::out);
             if(!outFile.is_open())
             {
                 printf("Unable to start a new debug file\n");
@@ -306,11 +302,18 @@ namespace debug
         /* Loop through the max file count and check if the file exists. */
         for(uint32_t i = 0; i < nLogFiles; ++i)
         {
-            if(filesystem::exists(strDebugFolder + "debug" + std::to_string(i) + ".log"))
+            if(filesystem::exists(log_path(i)))
                 ++nCount;
         }
 
         return nCount;
+    }
+
+
+    /*  Builds an indexed debug log path for a file. */
+    std::string log_path(uint32_t nIndex)
+    {
+        return strLogFolder + std::to_string(nIndex) + ".log";
     }
 
 }
