@@ -264,6 +264,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_lisp.o \
 		build/LLP_manager.o \
 		build/LLP_network.o \
+		build/LLP_permissions.o \
 		build/LLP_rpcnode.o \
 		build/LLP_seeds.o \
 		build/LLP_server.o \
