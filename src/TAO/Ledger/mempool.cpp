@@ -79,7 +79,7 @@ namespace TAO
         bool Mempool::Accept(TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode)
         {
             RLOCK(MUTEX);
-            
+
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
@@ -119,7 +119,7 @@ namespace TAO
                         pnode->PushMessage(LLP::GET_DATA, vInv);
                     }
 
-                    return false;
+                    return true;
                 }
 
             }
