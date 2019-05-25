@@ -1002,6 +1002,8 @@ namespace LLP
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool TritiumNode::Process(const TAO::Ledger::Block& block, TritiumNode* pnode)
     {
+        LOCK(PROCESSING_MUTEX);
+        
         uint1024_t hash = block.GetHash();
 
         /* Check if the block is valid. */
@@ -1054,7 +1056,6 @@ namespace LLP
         }
 
         /* Check if valid in the chain. */
-        LOCK(PROCESSING_MUTEX);
         if(!block.Accept())
         {
             /* Increment the consecutive failures. */
