@@ -109,6 +109,20 @@ namespace TAO
         uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge);
 
 
+        /** GetUnstakePenalty 
+         *
+         *  Calculate new trust score that results from unstaking a portion of stake balance.
+         *
+         *  @param[in] nTrustPrev - previous trust score of trust account
+         *  @param[in] nStakePrev - previous stake amount for trust account
+         *  @param[in] nStakeNew - new stake amount for trust account  
+         *
+         *  @return new value for trust score
+         *
+         **/
+        uint64_t GetUnstakePenalty(const uint64_t nTrustPrev, const uint64_t nStakePrev, const uint64_t nStakeNew);
+
+
         /** BlockWeight 
          *
          *  Calculate the proof of stake block weight for a given block age.

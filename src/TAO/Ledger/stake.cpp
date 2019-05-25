@@ -121,6 +121,18 @@ namespace TAO
         }
 
 
+        /* Calculate new trust score that results from unstaking a portion of stake balance. */
+        uint64_t GetUnstakePenalty(const uint64_t nTrustPrev, const uint64_t nStakePrev, const uint64_t nStakeNew)
+        {
+            /* When unstake, new trust score is fraction of old trust score equal to fraction of balance remaining.
+             * (nStakeNew / nStakePrev) is fraction of balance remaining, multiply by old trust score to get new.
+             * Example: have 100 stake and remove 30, new stake is 70 and new trust score is (70 / 100) * old trust score
+             * Multiplication is done first to allow this to use integer math. 
+             */
+            return (nStakeNew * nTrustPrev) / nStakePrev;
+        }
+
+
         /* Calculate the proof of stake block weight for a given block age. */
         double BlockWeight(const uint64_t nBlockAge)
         {
