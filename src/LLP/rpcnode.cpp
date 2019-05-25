@@ -21,8 +21,6 @@ ________________________________________________________________________________
 #include <Util/include/base64.h>
 #include <Util/include/string.h>
 
-#include <new> //std::bad_alloc
-
 // using alias to simplify using APIException liberally without having to reference the TAO:API namespace
 using APIException = TAO::API::APIException ;
 
@@ -99,11 +97,6 @@ namespace LLP
 
             /* Push the response data with json payload. */
             PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
-        }
-        /* Handle for memory allocation fail. */
-        catch(const std::bad_alloc &e)
-        {
-            return debug::error(FUNCTION, "Memory allocation failed ", e.what());
         }
 
         /* Handle for custom API exceptions. */

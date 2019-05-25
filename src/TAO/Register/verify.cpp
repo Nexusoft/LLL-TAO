@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Register/include/verify.h>
 
-#include <new> //std::bad_alloc
 
 /* Global TAO namespace. */
 namespace TAO
@@ -340,10 +339,6 @@ namespace TAO
                             return debug::error(FUNCTION, "invalid code for register verification");
                     }
                 }
-            }
-            catch(const std::bad_alloc &e)
-            {
-                return debug::error(FUNCTION, "Memory allocation failed ", e.what());
             }
             catch(const std::runtime_error& e)
             {

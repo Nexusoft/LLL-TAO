@@ -27,7 +27,6 @@ ________________________________________________________________________________
 
 #include <Util/include/hex.h>
 
-#include <new> //std::bad_alloc
 
 namespace LLP
 {
@@ -336,12 +335,6 @@ namespace LLP
 
                         connection->ResetPacket();
                     }
-                }
-                catch(const std::bad_alloc &e)
-                {
-                    debug::error(FUNCTION, "Memory allocation failed ", e.what());
-                    debug::error(FUNCTION, "Currently running ", nConnections, " connections.");
-                    disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                 }
                 catch(const std::exception& e)
                 {
