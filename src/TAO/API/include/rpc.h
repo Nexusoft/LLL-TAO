@@ -919,9 +919,6 @@ namespace TAO
              **/
             uint32_t GetTotalConnectionCount();
         };
-
-        /** The instance of RPC commands. */
-        extern RPC RPCCommands;
     }
 }
 

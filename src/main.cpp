@@ -21,6 +21,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/cmd.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -33,10 +34,13 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy_minter.h>
 #include <Legacy/wallet/wallet.h>
 
-
+#ifndef WIN32
+#include <sys/resource.h>
+#endif
 
 int main(int argc, char** argv)
 {
+
     /* Setup the timer timer. */
     runtime::timer timer;
     timer.Start();
@@ -72,10 +76,14 @@ int main(int argc, char** argv)
     {
         if (!convert::IsSwitchChar(argv[i][0]))
         {
-            if(config::GetBoolArg(std::string("-api")))
-                return TAO::API::CommandLineAPI(argc, argv, i);
+            int nRet = 0;
 
-            return TAO::API::CommandLineRPC(argc, argv, i);
+            if(config::GetBoolArg(std::string("-api")))
+                nRet = TAO::API::CommandLineAPI(argc, argv, i);
+            else
+                nRet = TAO::API::CommandLineRPC(argc, argv, i);
+
+            return nRet;
         }
     }
 
@@ -136,6 +144,10 @@ int main(int argc, char** argv)
 
     /** Rebroadcast transactions. **/
     Legacy::Wallet::GetInstance().ResendWalletTransactions();
+
+
+    /* Create the API instances. */
+    TAO::API::Initialize();
 
 
     /** Initialize ChainState. */
@@ -316,6 +328,9 @@ int main(int argc, char** argv)
     /** After all servers shut down, clean up underlying networking resources **/
     LLP::NetworkShutdown();
 
+    /* Cleanup the API. */
+    TAO::API::Shutdown();
+
     /* Cleanup the ledger database. */
     if(LLD::legDB)
     {
@@ -361,10 +376,12 @@ int main(int argc, char** argv)
     }
 
 
-    /* Shut down wallet database environment. */
+    /* Shutdown wallet database environment. */
     if (config::GetBoolArg(std::string("-flushwallet"), true))
         Legacy::WalletDB::ShutdownFlushThread();
 
+
+    /* Shutdown the Berkely database environment. */
     Legacy::BerkeleyDB::GetInstance().EnvShutdown();
 
 

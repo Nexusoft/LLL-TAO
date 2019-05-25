@@ -257,9 +257,8 @@ namespace TAO
                     if(!LLD::legDB->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
-                    /* Remove the coinbase or coinstake. */
-                    if(tx.IsCoinbase() || tx.IsCoinstake())
-                        mempool.Remove(hash);
+                    /* Remove indexed tx from memory pool. */
+                    mempool.Remove(hash);
 
                 }
                 else if(proof.first == TYPE::LEGACY_TX)
@@ -280,9 +279,8 @@ namespace TAO
                     if(!LLD::legacyDB->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
-                    /* Remove the coinbase or coinstake. */
-                    if(tx.IsCoinBase() || tx.IsCoinStake())
-                        mempool.Remove(hash);
+                    /* Remove indexed tx from memory pool. */
+                    mempool.Remove(hash);
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
@@ -499,7 +497,6 @@ namespace TAO
 
 
                 /* Set the best chain variables. */
-                ChainState::stateBest          = *this;
                 ChainState::hashBestChain      = nHash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
@@ -515,9 +512,14 @@ namespace TAO
                     "New Best Block hash=", nHash.ToString().substr(0, 20),
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
+                    " tx=", vtx.size(),
+                    " [", double(vtx.size()) / (GetBlockTime() - ChainState::stateBest.load().GetBlockTime()), " tx/s]"
                     " [verified in ", time.ElapsedMilliseconds(), " ms]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
+
+                /* Set best block state. */
+                ChainState::stateBest = *this;
 
 
                 /* Broadcast the block to nodes if not synchronizing. */

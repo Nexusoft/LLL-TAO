@@ -27,10 +27,10 @@ ________________________________________________________________________________
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <new> //std::bad_alloc
 #include <stdexcept>
 
 #include <openssl/bn.h>
+
 
 namespace Legacy
 {
@@ -862,10 +862,6 @@ namespace Legacy
                 if (stack.size() + altstack.size() > 1000)
                     return false;
             }
-        }
-        catch(const std::bad_alloc &e)
-        {
-            return debug::error(FUNCTION, "Memory allocation failed ", e.what());
         }
         catch(...)
         {

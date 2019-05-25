@@ -15,16 +15,11 @@ ________________________________________________________________________________
 #include <LLP/types/corenode.h>
 
 #include <TAO/API/types/exception.h>
-#include <TAO/API/include/users.h>
-#include <TAO/API/include/assets.h>
-#include <TAO/API/include/supply.h>
-#include <TAO/API/include/ledger.h>
-#include <TAO/API/include/tokens.h>
-#include <TAO/API/include/lisp.h>
-#include <TAO/API/include/system.h>
+#include <TAO/API/include/global.h>
 
 #include <Util/include/urlencode.h>
-#include <new> //std::bad_alloc
+#include <Util/include/config.h>
+#include <Util/include/base64.h>
 
 namespace LLP
 {
@@ -40,6 +35,22 @@ namespace LLP
     /** Main message handler once a packet is recieved. **/
     bool CoreNode::ProcessPacket()
     {
+
+        if(!Authorized(INCOMING.mapHeaders))
+        {
+            debug::error(FUNCTION, "API incorrect password attempt from ", this->addr.ToString());
+
+            /* Deter brute-forcing short passwords.
+             * If this results in a DOS the user really
+             * shouldn't have their RPC port exposed. */
+            if (config::GetArg("-apipassword", "").size() < 20)
+                runtime::sleep(250);
+
+            PushResponse(401, "");
+
+            return false;
+        }
+
         /* Parse the packet request. */
         std::string::size_type npos = INCOMING.strRequest.find('/', 1);
 
@@ -47,7 +58,7 @@ namespace LLP
         std::string strAPI = INCOMING.strRequest.substr(1, npos - 1);
 
         /* Extract the method to invoke. */
-        std::string METHOD = INCOMING.strRequest.substr(npos + 1);   
+        std::string METHOD = INCOMING.strRequest.substr(npos + 1);
 
         /* Extract the parameters. */
         json::json ret;
@@ -117,19 +128,19 @@ namespace LLP
 
             /* Execute the api and methods. */
             if(strAPI == "supply")
-                ret = { {"result", TAO::API::supply.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::supply->Execute(METHOD, params) } };
             else if(strAPI == "users")
-                ret = { {"result", TAO::API::users.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::users->Execute(METHOD, params) } };
             else if(strAPI == "assets")
-                ret = { {"result", TAO::API::assets.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::assets->Execute(METHOD, params) } };
             else if(strAPI == "ledger")
-                ret = { {"result", TAO::API::ledger.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::ledger->Execute(METHOD, params) } };
             else if(strAPI == "lisp")
-                ret = { {"result", TAO::API::lisp.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::lisp->Execute(METHOD, params) } };
             else if(strAPI == "tokens")
-                ret = { {"result", TAO::API::tokens.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::tokens->Execute(METHOD, params) } };
             else if(strAPI == "system")
-                ret = { {"result", TAO::API::system.Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::system->Execute(METHOD, params) } };
             else
                 throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
         }
@@ -140,10 +151,6 @@ namespace LLP
             ErrorReply(e.ToJSON());
 
             return false;
-        }
-        catch(const std::bad_alloc &e)
-        {
-            return debug::error(FUNCTION, "Memory allocation failed ", e.what());
         }
 
         /* Push a response. */
@@ -184,6 +191,32 @@ namespace LLP
         /* Send the response packet. */
         json::json ret = { { "error", jsonError } };
         PushResponse(nStatus, ret.dump());
+    }
+
+
+    bool CoreNode::Authorized(std::map<std::string, std::string>& mapHeaders)
+    {
+        if(config::GetArg("-apiuser", "").empty() && config::GetArg("-apipassword", "").empty())
+            return true;
+
+        /* Check the headers. */
+        if(!mapHeaders.count("authorization"))
+            return debug::error(FUNCTION, "no authorization in header");
+
+
+        std::string strAuth = mapHeaders["authorization"];
+        if (strAuth.substr(0,6) != "Basic ")
+            return debug::error(FUNCTION, "incorrect authorization type");
+
+        /* Get the encoded content */
+        std::string strUserPass64 = strAuth.substr(6);
+        trim(strUserPass64);
+
+        /* Decode from base64 */
+        std::string strUserPass = encoding::DecodeBase64(strUserPass64);
+        std::string strAPIUserColonPass = config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", "");
+
+        return strUserPass == strAPIUserColonPass;
     }
 
 }

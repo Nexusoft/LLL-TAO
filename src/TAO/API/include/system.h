@@ -84,9 +84,5 @@ namespace TAO
 
 
         };
-
-        extern System system;
-
     }
-
 }

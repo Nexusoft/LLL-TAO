@@ -610,7 +610,7 @@ namespace LLP
         }
 
         /* Listen for incoming connections */
-        if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
+        if (listen(hListenSocket, 4096) == SOCKET_ERROR)
         {
             debug::error("Listening for incoming connections failed (listen returned error )", WSAGetLastError());
             return false;

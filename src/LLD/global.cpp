@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 namespace LLD
 {
+    /* The LLD global instance pointers. */
     RegisterDB*   regDB;
     LedgerDB*     legDB;
     LocalDB*      locDB;

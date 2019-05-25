@@ -25,7 +25,6 @@ ________________________________________________________________________________
 
 #include <Util/include/hex.h>
 
-#include <new> /* std::bad_alloc */
 
 
 namespace TAO
@@ -335,10 +334,6 @@ namespace TAO
                             return debug::error(FUNCTION, "operations reached invalid stream state");
                     }
                 }
-            }
-            catch(const std::bad_alloc &e)
-            {
-                return debug::error(FUNCTION, "Memory allocation failed ", e.what());
             }
             catch(const std::runtime_error& e)
             {

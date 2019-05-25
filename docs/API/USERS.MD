@@ -95,7 +95,6 @@ This will create a new user account (signature chain) for use on the network. Th
 
 This will start a session for your user account with this specific API instance. Username, password, and pin fields are mandatory for login.   
 
-The minting/transactions parameters are optional and, if supplied, allow the signature chain to be immediately used for mining/staking or creating transactions when not using multi-user API mode. If the minting/transactions parameters are not supplied then you must either subsequently call unlock or provide the PIN number in in all subsequent API calls in order to use this signature chain.
 
 ### Endpoint:
 
@@ -110,9 +109,6 @@ The minting/transactions parameters are optional and, if supplied, allow the sig
 
 `PIN` : The PIN for this signature chain.
 
-`minting` : This boolean value determines whether the user account can be used for minting (staking or mining).
-
-`transactions` : This boolean value determines whether the user account can be used for creating or claiming transactions.
 
 ### Return value JSON object:    
 ```
@@ -162,39 +158,14 @@ in encrypted memory.
 ****
 
 
-# `lock/user`
-
-This will lock your signature chain, making it unavailable for use unless it is
-either unlocked or the PIN is passed in to all API requests. Only available in single-user API mode (multiuser=0).
-
-
-### Endpoint:
-
-`/users/lock/user`
-
-
-### Parameters:
-
-NONE
-
-
-### Return value JSON object:
-```
-{
-    true
-}
-```
-
-****
-
-
 # `unlock/user`
 
 This will unlock your signature chain and cache the PIN in encrypted memory to be used for all subsequent API calls. This method is only available when using single-user API mode (multiuser=0).    
 
-The PIN field is mandatory for unlock. The minting/transactions parameters are optional and, if supplied, allow the signature chain to be used for either mining/staking or creating transactions when in single-user API mode.
+The PIN field is mandatory for unlock. The minting/transactions parameters are optional and, if supplied, allow the signature chain to be used for either mining/staking or creating transactions (or both) when in single-user API mode.
 
 **NOTE** : If the minting/transactions parameters are not supplied then it is assumed that the signature chain can be used for both.
+**NOTE** : If the Unlock method is called once with either `minting` or `transactions`=1 (but not both) then it can be called a second time to unlock the other option.  
 
 
 ### Endpoint:
@@ -210,6 +181,36 @@ The PIN field is mandatory for unlock. The minting/transactions parameters are o
 `minting` : This boolean value determines whether the user account can be used for minting (staking or mining).
 
 `transactions` : This boolean value determines whether the user account can be used for creating or claiming transactions.
+
+
+
+### Return value JSON object:
+```
+{
+    true
+}
+```
+
+****
+
+
+# `lock/user`
+
+This will lock your signature chain, making it unavailable for use unless it is
+either unlocked or the PIN is passed in to all API requests. Only available in single-user API mode (multiuser=0).
+
+The minting/transactions parameters are optional and, if supplied, allow the signature chain to be locked for either mining/staking or creating transactions.  This allows, for example, a signature chain to be continually unlocked for minting, but only temporarily unlocked for sending a transaction.    
+
+### Endpoint:
+
+`/users/lock/user`
+
+
+### Parameters:
+
+`minting` : If set this will lock the users sig chain for minting (staking or mining).
+
+`transactions` : If set this will lock the users sig chain from creating any transactions.
 
 
 
@@ -248,7 +249,7 @@ This will list off all of the transactions for the requested signature chain gen
 
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
  - `default` : hash
- - `summary` : type, version, sequence, timestamp, and operation.
+ - `summary` : type, version, sequence, timestamp, operation, and confirmations.
  - `detail` : genesis, nexthash, prevhash, pubkey and signature.
 
 

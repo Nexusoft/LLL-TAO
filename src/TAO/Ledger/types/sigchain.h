@@ -20,6 +20,7 @@ ________________________________________________________________________________
 
 #include <Util/include/allocators.h>
 #include <Util/include/mutex.h>
+#include <Util/include/memory.h>
 
 #include <string>
 
@@ -40,7 +41,7 @@ namespace TAO
          *  to attack a signature chain by dictionary attack.
          *
          */
-        class SignatureChain
+        class SignatureChain : public memory::encrypted
         {
 
             /** Secure allocator to represent the username of this signature chain. **/
@@ -63,6 +64,7 @@ namespace TAO
             const uint256_t hashGenesis;
 
         public:
+
 
             /** Default constructor. **/
             SignatureChain();
@@ -133,6 +135,14 @@ namespace TAO
              *  @return The SecureString containing the username for this sig chain
              **/
             const SecureString& UserName() const;
+
+
+            /** Encrypt
+             *
+             *  Special method for encrypting specific data types inside class.
+             *
+             **/
+            void Encrypt();
         };
     }
 }

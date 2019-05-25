@@ -44,6 +44,10 @@ namespace TAO
                 return 0;
             }
 
+
+            /* HTTP basic authentication for API */
+            std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-apiuser"] + ":" + config::mapArgs["-apipassword"]);
+
             /* Parse out the endpoints. */
             std::string endpoint = std::string(argv[argn]);
             std::string::size_type pos = endpoint.find('/');
@@ -93,6 +97,7 @@ namespace TAO
                     "Content-Length: ", strContent.size(), "\r\n",
                     "Content-Type: application/json\r\n",
                     "Server: Nexus-JSON-API\r\n",
+                    "Authorization: Basic ", strUserPass64, "\r\n",
                     "\r\n",
                     strContent);
 
@@ -142,8 +147,11 @@ namespace TAO
 
                 /* Read the response packet. */
                 apiNode.ReadPacket();
-                runtime::sleep(10);
+                runtime::sleep(1);
             }
+
+            /* Clean socket disconnect. */
+            apiNode.Disconnect();
 
             /* Parse response JSON. */
             json::json ret = json::json::parse(apiNode.INCOMING.strContent);
@@ -173,14 +181,14 @@ namespace TAO
                 return 0;
             }
 
-            /** Check RPC user/pass are set */
+            /* Check RPC user/pass are set */
             if (config::mapArgs["-rpcuser"] == "" && config::mapArgs["-rpcpassword"] == "")
                 throw std::runtime_error(debug::safe_printstr(
                     "You must set rpcpassword=<password> in the configuration file: ",
                     config::GetConfigFile(), "\n",
                     "If the file does not exist, create it with owner-readable-only file permissions.\n"));
 
-             // HTTP basic authentication
+             /* HTTP basic authentication for RPC */
             std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"]);
 
             /* Build the JSON request object. */
@@ -258,8 +266,11 @@ namespace TAO
 
                 /* Read the response packet. */
                 rpcNode.ReadPacket();
-                runtime::sleep(10);
+                runtime::sleep(1);
             }
+
+            /* Clean socket disconnect. */
+            rpcNode.Disconnect();
 
             /* Dump the response to the console. */
             int nRet = 0;

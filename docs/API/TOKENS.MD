@@ -6,7 +6,7 @@ The Tokens API provides methods for creating fungible tokens, creating accounts 
 
 ## `Named Shortcuts`
 
-For each API method we support an alternative endpoint that includes the token/account name or register address at the end of the the URI.  This shortcut removes the need to include the name name or address as an additional parameter.  
+For each API method we support an alternative endpoint that includes the token/account name or register address at the end of the URI.  This shortcut removes the need to include the name name or address as an additional parameter.  
 
 For example `tokens/create/account/savings` is a shortcut to `tokens/create/account?name=savings`.
 
@@ -21,6 +21,7 @@ The following methods are currently supported by this API
 
 [`create/token`](#createtoken)   
 [`debit/token`](#debittoken)      
+[`credit/token`](#credittoken)    
 [`get/token`](#gettoken)   
 [`create/account`](#createaccount)   
 [`debit/account`](#debitaccount)   
@@ -98,7 +99,7 @@ Deduct a token amount from a token's initial supply and send it to a token accou
 
 `name` : The name identifying the token to debit. This is optional if the address is provided.  The name should be in namespace:name format
 
-`namespace` : The namespace that the the token was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`namespace` : The namespace that the token was created in. This is optional if the address is provided or the name is provided in the namespace:name format.
 
 `address` : The register address of the token to debit. This is optional if the name is provided.
 
@@ -135,6 +136,61 @@ The following example shows the json payload for a debit of 10.5 ABC tokens (tha
 
 ****
 
+# `credit/token`
+
+Increment the token balance by an amount received from a token account. This method allows fungible tokens to be recycled back to the token creator in circumstances where they have reached the end of their life-cycle, for example a loyalty token that has been used by the customer to pay for a product can be debited from the customer's account and back to the token for reuse.  The API supports an alternative endpoint that can include the token name to credit in the URL.  For example `/tokens/credit/token/mytoken` will resolve to `tokens/credit/token?name=mytoken`.   
+
+
+### Endpoint:
+
+`/tokens/credit/token`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the token account. For single-user API mode the session should not be supplied.
+
+`name` : The name identifying the token to credit. This is optional if the address is provided.  The name should be in namespace:name format
+
+`namespace` : The namespace that the token was created in. This is optional if the address is provided or the name is provided in the namespace:name format.
+
+`address` : The register address of the token to credit. This is optional if the name is provided.
+
+`amount` : The amount of tokens to credit.
+
+`txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.
+
+
+
+### Example:
+
+The following example shows the json payload for a credit of 10 tokens to a token called "mytoken" (that itself was created by the sig chain logged into session "16953804956473956578").  
+
+```
+{
+    "pin": "1234",
+    "session": "16953804956473956578",
+    "name": "mytoken",
+    "amount": 10,
+    "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
+}
+```
+
+### Return value JSON object:
+```    
+{
+    "txid": "318b86d2c208618aaa13946a3b75f14472ebc0cce9e659f2830b17e854984b55606738f689d886800f21ffee68a3e5fd5a29818e88f8c5b13b9f8ae67739903d"
+}
+```   
+
+### Return values:
+
+`txid` : The ID (hash) of the transaction that includes the token credit.
+
+****
+
 # `get/token`
 
 Retrieves information about a token and its supply. The API supports an alternative endpoint that can include the token name in the URI.  For example `/tokens/get/token/mytoken` will resolve to `tokens/get/token?name=mytoken`.   
@@ -151,7 +207,7 @@ Additionally the API supports passing a field name in the URL after the token na
 
 `name` : The name identifying the token to retrieve. This is optional if the address is provided.  The name should be in namespace:name format
 
-`namespace` : The namespace that the the token was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`namespace` : The namespace that the token was created in. This is optional if the address is provided or the name is provided in the namespace:name format.
 
 `address` : The register address of the token to retrieve. This is optional if the name is provided.
 
@@ -267,7 +323,7 @@ Deduct a token amount from a token account and send it to another token account.
 
 `name` : The name identifying the token account to debit. This is optional if the address is provided.  The name should be in namespace:name format
 
-`namespace` : The namespace that the the account was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`namespace` : The namespace that the account was created in. This is optional if the address is provided or the name is provided in the namespace:name format.
 
 `address` : The register address of the token account to debit. This is optional if the name is provided.
 
@@ -320,15 +376,19 @@ Increment an amount received from another token account to an account owned by y
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the token account. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the token to credit. This is optional if the address is provided.  The name should be in namespace:name format
+`name` : The name identifying the token account to credit. This is optional if the address is provided.  The name should be in namespace:name format
 
-`namespace` : The namespace that the the account was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`namespace` : The namespace that the account was created in. This is optional if the address is provided or the name is provided in the namespace:name format.
 
 `address` : The register address of the account to credit. This is optional if the name is provided.
 
 `amount` : The amount of tokens to credit.
 
 `txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.
+
+`name_proof` : The name identifying the account that proves your ability to credit the debit transaction.  This is only required for split payments, where your right to receive a payment is determined by the number of tokens you hold in the account proof account. The `name_proof` parameter can be used as alternative to `proof`  
+
+`proof` : The register address the account that proves your ability to credit the debit transaction.  This is only required for split payments, where your right to receive a payment is determined by the number of tokens you hold in the account proof account. The `proof` parameter can be used as alternative to `name_proof`
 
 ### Example:
 
@@ -376,7 +436,7 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `name` : The name identifying the token account to retrieve. This is optional if the address is provided.  The name should be in namespace:name format
 
-`namespace` : The namespace that the the account was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`namespace` : The namespace that the account was created in. This is optional if the address is provided or the name is provided in the namespace:name format.
 
 `address` : The register address of the token account to retrieve. This is optional if the name is provided.
 

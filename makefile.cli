@@ -160,7 +160,7 @@ endif
 #Display Warnings while compiling
 ifdef ENABLE_WARNINGS
 	CXXWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-invalid-offsetof -Wno-unused-parameter -Wformat -Wformat-security -pedantic
-	CWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wformat -Wformat-security -pedantic
+	CWARNINGS := -Wall -Wextra -Wno-sign-compare -Wno-unused-parameter -Wno-unknown-pragmas -Wformat -Wformat-security -pedantic
 else
 	CXXFLAGS+= -w
 endif
@@ -264,6 +264,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_lisp.o \
 		build/LLP_manager.o \
 		build/LLP_network.o \
+		build/LLP_permissions.o \
 		build/LLP_rpcnode.o \
 		build/LLP_seeds.o \
 		build/LLP_server.o \
@@ -272,6 +273,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_tritium.o \
 		build/LLP_tritium_miner.o \
 		build/LLP_trust_address.o \
+		build/API_global.o \
 		build/API_cmd.o \
 		build/API_assets_create.o \
 		build/API_assets_get.o \
@@ -279,6 +281,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_assets_initialize.o \
 		build/API_assets_tokenize.o \
 		build/API_assets_transfer.o \
+		build/API_assets_claim.o \
 		build/API_assets_update.o \
 		build/API_ledger_block.o \
 		build/API_ledger_initialize.o \

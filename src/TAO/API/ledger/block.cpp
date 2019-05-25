@@ -11,21 +11,18 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/ledger.h>
+#include <LLC/include/eckey.h>
 
 #include <LLD/include/global.h>
+
+#include <TAO/API/include/global.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/state.h>
 
-#include <TAO/API/include/ledger.h>
-#include <TAO/API/include/users.h>
-
-#include <LLC/include/eckey.h>
-
-#include <TAO/API/include/utils.h>
 #include <Util/include/hex.h>
 #include <Util/include/string.h>
 
@@ -40,18 +37,18 @@ namespace TAO
         json::json Ledger::Create(const json::json& params, bool fHelp)
         {
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users.GetPin(params);
+            SecureString strPIN = users->GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = users.GetSession(params);
+            uint64_t nSession = users->GetSession(params);
 
             /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if( !users.CanTransact())
+            if( !users->CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
 
             /* Create the block object. */
@@ -60,7 +57,7 @@ namespace TAO
                 throw APIException(-26, "Failed to create block");
 
             /* Get the secret from new key. */
-            std::vector<uint8_t> vBytes = users.GetKey(block.producer.nSequence, strPIN, nSession).GetBytes();
+            std::vector<uint8_t> vBytes = users->GetKey(block.producer.nSequence, strPIN, nSession).GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Generate the EC Key. */

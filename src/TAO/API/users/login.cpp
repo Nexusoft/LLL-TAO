@@ -49,20 +49,6 @@ namespace TAO
             if(params.find("pin") == params.end())
                 throw APIException(-24, "Missing PIN");
 
-            /* Check for unlock actions (Default no actions) */
-            uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE;
-
-            if(params.find("minting") != params.end()
-            && (params["minting"].get<std::string>() == "1"
-            || params["minting"].get<std::string>() == "true"))
-                nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::MINTING;
-
-            if(params.find("transactions") != params.end()
-            && (params["transactions"].get<std::string>() == "1"
-            || params["transactions"].get<std::string>() == "true"))
-                nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
-
-
             /* Create the sigchain. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
 
@@ -121,15 +107,6 @@ namespace TAO
                         return ret;
                     }
                 }
-            }
-
-            /* Extract the PIN, if supplied, and if the user has specified to remain unlocked for minting or transacting */
-            if(!config::fAPISessions.load() && nUnlockedActions != TAO::Ledger::PinUnlock::UnlockActions::NONE)
-            {
-                if(!pActivePIN.IsNull())
-                    pActivePIN.free();
-
-                pActivePIN = new TAO::Ledger::PinUnlock(params["pin"].get<std::string>().c_str(), nUnlockedActions);
             }
 
             /* For sessionless API use the active sig chain which is stored in session 0 */

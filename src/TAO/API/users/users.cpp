@@ -13,14 +13,15 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/include/users.h>
+#include <TAO/API/include/global.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/include/hex.h>
-
 #include <Util/include/args.h>
+
 #include <functional>
 
 /* Global TAO namespace. */
@@ -30,10 +31,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
-        /** List of users in API. **/
-        Users users;
-
 
         /** Default Constructor. **/
         Users::Users()
@@ -49,8 +46,8 @@ namespace TAO
             Initialize();
 
             /* Events processor only enabled if multi-user session is disabled. */
-            if(config::fAPISessions.load() == false)
-                EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
+            //if(config::fAPISessions.load() == false)
+                //EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
         }
 
 
@@ -75,7 +72,7 @@ namespace TAO
             fShutdown = true;
 
             /* Events processor only enabled if multi-user session is disabled. */
-            if(config::fAPISessions.load() == false)
+            if(EVENTS_THREAD.joinable())
             {
                 NotifyEvent();
                 EVENTS_THREAD.join();
@@ -94,55 +91,26 @@ namespace TAO
         {
             std::string strMethodRewritten = strMethod;
 
-            /* route create/myusername to create/user?username=myusername */
-            /* check to see if this method is a create/myusername format. i.e. it starts with get/ */
-            if(strMethod.find("create/") == 0)
+            /* support passing the username after the method e.g. login/user/myusername */
+            std::size_t nPos = strMethod.find("/user/");
+            if(nPos != std::string::npos)
             {
-                /* get the user name from after the create/ */
-                std::string strUserName = strMethod.substr(7);
+                std::string strNameOrAddress;
 
-                strMethodRewritten = "create/user";
-                jsonParams["username"] = strUserName;
-            }
-            /* route login/myusername to login/user?username=myusername */
-            /* check to see if this method is a login/myusername format. i.e. it starts with get/ */
-            else if(strMethod.find("login/") == 0)
-            {
-                /* get the user name from after the login/ */
-                std::string strUserName = strMethod.substr(6);
+                
+                /* get the method name from the incoming string */
+                strMethodRewritten = strMethod.substr(0, nPos+5);
 
-                strMethodRewritten = "login/user";
-                jsonParams["username"] = strUserName;
-            }
-            /* route logout/myusername to logout/user?username=myusername */
-            /* check to see if this method is a logout/myusername format. i.e. it starts with get/ */
-            else if(strMethod.find("logout/") == 0)
-            {
-                /* get the user name from after the logout/ */
-                std::string strUserName = strMethod.substr(7);
+                /* Get the name or address that comes after the /item/ part */
+                strNameOrAddress = strMethod.substr(nPos +6);
 
-                strMethodRewritten = "logout/user";
-                jsonParams["username"] = strUserName;
-            }
-            /* route lock/myusername to lock/user?username=myusername */
-            /* check to see if this method is a lock/myusername format. i.e. it starts with get/ */
-            else if(strMethod.find("lock/") == 0)
-            {
-                /* get the user name from after the lock/ */
-                std::string strUserName = strMethod.substr(5);
-
-                strMethodRewritten = "lock/user";
-                jsonParams["username"] = strUserName;
-            }
-            /* route unlock/myusername to unlock/user?username=myusername */
-            /* check to see if this method is a unlock/myusername format. i.e. it starts with get/ */
-            else if(strMethod.find("unlock/") == 0)
-            {
-                /* get the user name from after the unlock/ */
-                std::string strUserName = strMethod.substr(7);
-
-                strMethodRewritten = "unlock/user";
-                jsonParams["username"] = strUserName;
+                
+                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
+                if(IsRegisterAddress(strNameOrAddress))
+                    jsonParams["genesis"] = strNameOrAddress;
+                else
+                    jsonParams["username"] = strNameOrAddress;
+                    
             }
 
             return strMethodRewritten;
@@ -275,14 +243,14 @@ namespace TAO
         {
             /* Check for pin parameter. */
             SecureString strPIN;
-            bool fNeedPin = users.Locked();
+            bool fNeedPin = users->Locked();
 
             if(fNeedPin && params.find("pin") == params.end())
                 throw APIException(-25, "Missing PIN");
             else if(fNeedPin)
                 strPIN = params["pin"].get<std::string>().c_str();
             else
-                strPIN = users.GetActivePin();
+                strPIN = users->GetActivePin();
 
             return strPIN;
         }
@@ -298,7 +266,7 @@ namespace TAO
             /* Check for session parameter. */
             uint64_t nSession = 0; // ID 0 is used for sessionless API
 
-            if(!config::fAPISessions.load() && !users.LoggedIn())
+            if(!config::fAPISessions.load() && !users->LoggedIn())
             {
                 if(fThrow)
                     throw APIException(-25, "User not logged in");

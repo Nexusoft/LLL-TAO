@@ -74,9 +74,6 @@ namespace TAO
 
 
         };
-
-        extern Lisp lisp;
-
     }
 
 }

@@ -125,7 +125,23 @@ namespace TAO
         *  @return the formatted JSON object
         *
         **/
-        json::json ObjectRegisterToJSON(const TAO::Register::Object object, const std::string strDataField);
+        json::json ObjectRegisterToJSON(const TAO::Register::Object& object, const std::string strDataField);
+
+
+        /** GetTokenOrAccountDigits
+        *
+        *  Retrieves the number of digits that applies to amounts for this token or account object. 
+        *  If the object register passed in is a token account then we need to look at the token definition 
+        *  in order to get the digits.  The token is obtained by looking at the identifier field, 
+        *  which contains the register address of the issuing token
+        *
+        *  @param[in] object The Object Register to determine the digits for
+        *
+        *  @return the number of digits that apply to amounts for this token or account 
+        *
+        **/
+        uint64_t GetTokenOrAccountDigits(const TAO::Register::Object& object);
+
 
     }
 }
