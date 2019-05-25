@@ -275,13 +275,13 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_trust_address.o \
 		build/API_global.o \
 		build/API_cmd.o \
+		build/API_assets_claim.o \
 		build/API_assets_create.o \
 		build/API_assets_get.o \
 		build/API_assets_history.o \
 		build/API_assets_initialize.o \
 		build/API_assets_tokenize.o \
 		build/API_assets_transfer.o \
-		build/API_assets_claim.o \
 		build/API_assets_update.o \
 		build/API_ledger_block.o \
 		build/API_ledger_initialize.o \
@@ -295,12 +295,12 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_RPC_network.o \
 		build/API_RPC_rpc.o \
 		build/API_RPC_wallet.o \
+		build/API_supply_claim.o \
 		build/API_supply_createitem.o \
 		build/API_supply_getitem.o \
 		build/API_supply_history.o \
 		build/API_supply_initialize.o \
 		build/API_supply_transfer.o \
-		build/API_supply_claim.o \
 		build/API_supply_updateitem.o \
 		build/API_tokens_create.o \
 		build/API_tokens_credit.o \
@@ -343,8 +343,10 @@ OBJS+=  build/LLC_base_uint.o \
         build/Operation_execute.o \
 		build/Operation_genesis.o \
 		build/Operation_register.o \
+		build/Operation_stake.o \
 		build/Operation_transfer.o \
 		build/Operation_trust.o \
+		build/Operation_unstake.o \
 		build/Operation_validate.o \
 		build/Operation_write.o \
 		build/Register_basevm.o \

@@ -158,10 +158,10 @@ namespace TAO
 
         /** Trust
          *
-         *  Handles the locking of stake in a stake register.
+         *  Coinstake operation for a trust transaction.
          *
-         *  @param[in] hashLastTrust The last stake transaction for the register.
-         *  @param[in] nTrustScore The trust score for the operation.
+         *  @param[in] hashLastTrust The last stake transaction for the trust account register.
+         *  @param[in] nTrustScore The new account trust score after the operation.
          *  @param[in] nCoinstakeReward Coinstake reward paid to register by this operation
          *  @param[in] nFlags The flag to determine if database state should be written.
          *  @param[out] tx The transaction calling operations
@@ -174,9 +174,9 @@ namespace TAO
 
         /** Genesis
          *
-         *  Handles the locking of stake in a stake register.
+         *  Coinstake operation for a genesis transaction.
          *
-         *  @param[in] hashAccount The account being staked to
+         *  @param[in] hashAddress The address of the trust account register
          *  @param[in] nCoinstakeReward Coinstake reward paid to register by this operation
          *  @param[in] nFlags The flag to determine if database state should be written.
          *  @param[out] tx The transaction calling operations
@@ -185,6 +185,35 @@ namespace TAO
          *
          **/
         bool Genesis(const uint256_t& hashAddress, const uint64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+
+
+        /** Stake
+         *
+         *  Move balance to stake for trust account.
+         *
+         *  @param[in] nAmount The amount of balance to stake
+         *  @param[in] nFlags The flag to determine if database state should be written.
+         *  @param[out] tx The transaction calling operations
+         *
+         *  @return true if successful.
+         *
+         **/
+        bool Stake(const uint64_t nAmount, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+
+
+        /** Unstake
+         *
+         *  Move from stake to balance for trust account (unlock stake).
+         *
+         *  @param[in] nAmount The amount of balance to unstake
+         *  @param[in] nTrustScore The new account trust score after the operation.
+         *  @param[in] nFlags The flag to determine if database state should be written.
+         *  @param[out] tx The transaction calling operations
+         *
+         *  @return true if successful.
+         *
+         **/
+        bool Unstake(const uint64_t nAmount, const uint64_t nTrustScore, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Authorize

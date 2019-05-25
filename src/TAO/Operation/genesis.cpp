@@ -15,10 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/operations.h>
 
-#include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
-
-#include <TAO/Ledger/include/stake.h>
+#include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -28,7 +26,7 @@ namespace TAO
     namespace Operation
     {
 
-        /* Commits funds from a coinbase transaction. */
+        /* Coinstake operation for a genesis transaction. */
         bool Genesis(const uint256_t& hashAddress, const uint64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Check for reserved values. */
@@ -70,7 +68,7 @@ namespace TAO
 
             /* Check ownership of register. */
             if(trustAccount.hashOwner != tx.hashGenesis)
-                return debug::error(FUNCTION, tx.hashGenesis.ToString(), "caller not authorized to debit from register");
+                return debug::error(FUNCTION, tx.hashGenesis.ToString(), "caller not authorized to stake genesis for trust account");
 
             /* Parse the account object register. */
             if(!trustAccount.Parse())
