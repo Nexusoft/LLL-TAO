@@ -33,23 +33,6 @@ namespace TAO
         class BlockState;
 
 
-        class Contract
-        {
-        public:
-            /** The operations that create post-states. **/
-            TAO::Operation::Stream ssOperation;
-
-            /** The register pre-states. **/
-            TAO::Register::Stream  ssRegister;
-
-            Contract()
-            : ssOperation()
-            , ssRegister()
-            {
-            }
-        };
-
-
         /** Transaction
          *
          *  A Tritium Transaction.
@@ -62,10 +45,11 @@ namespace TAO
         {
         public:
 
-            std::vector<Contract> vContracts;
+            /** The operations that create post-states. **/
+            TAO::Operation::Stream ssOperation;
 
-
-            uint256_t hashContract;
+            /** The register pre-states. **/
+            TAO::Register::Stream  ssRegister;
 
 
             /** The transaction version. **/
@@ -101,12 +85,6 @@ namespace TAO
             /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
-                if(nSerType & SER_NETWORK)
-                    READWRITE(vContracts);
-
-                if(nSerType & SER_DISK)
-                    READWRITE(hashContract);
-
                 /* Operations layer. */
                 READWRITE(ssOperation);
 
@@ -141,22 +119,20 @@ namespace TAO
             , vchSig()
             {}
 
-
-            const Contract& operator[](const uint32_t nIndex) const
+            /** Operator Overload <<
+             *
+             *  Serializes data into vchOperations
+             *
+             *  @param[in] obj The object to serialize into ledger data
+             *
+             **/
+            template<typename Type>
+            Transaction& operator<<(const Type& obj)
             {
-                if(nIndex >= vContracts.size())
-                    throw std::domain_error("Out of bounds");
+                /* Serialize to the stream. */
+                ssOperation << obj;
 
-                return vContracts[nIndex];
-            }
-
-
-            Contract& operator[](const uint32_t nIndex)
-            {
-                if(nIndex >= vContracts.size())
-                    vContracts.resize(nIndex);
-
-                return vContracts[nIndex];
+                return (*this);
             }
 
 
