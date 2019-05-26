@@ -114,10 +114,6 @@ LIBS+=-ldb_cxx \
 endif
 DEFS+=  -D$(BUILD_ARCH)
 
-ifdef USE_FALCON
-	DEFS+= -DUSE_FALCON
-endif
-
 #Fail on warnings
 ifdef WARNINGS_FAIL
 	CXXFLAGS+= -Werror
