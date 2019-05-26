@@ -48,6 +48,7 @@ namespace TAO
             /** The operations that create post-states. **/
             TAO::Operation::Stream ssOperation;
 
+
             /** The register pre-states. **/
             TAO::Register::Stream  ssRegister;
 

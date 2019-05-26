@@ -68,6 +68,8 @@ namespace TAO
             if(ssOperation.size() > 1024) //TODO: implement a constant max size
                 return debug::error(FUNCTION, "ledger data outside of maximum size constraints");
 
+            /* Switch based on signature type. */
+
             /* Check the more expensive ECDSA verification. */
             #if defined USE_FALCON
             LLC::FLKey key;

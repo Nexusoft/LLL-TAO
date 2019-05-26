@@ -667,6 +667,11 @@ namespace TAO
                             return debug::error(FUNCTION, "failed to write last tx");
                     }
 
+                    /* Set the proper next pointer. */
+                    tx.hashNextTx = STATE::HEAD;
+                    if(!LLD::legDB->WriteTx(hash, tx))
+                        return debug::error(FUNCTION, "failed to write valid next pointer");
+
                     /* Write the last to disk. */
                     if(!LLD::legDB->WriteLast(tx.hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write last hash");

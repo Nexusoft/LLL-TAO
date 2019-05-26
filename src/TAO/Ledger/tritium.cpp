@@ -291,7 +291,7 @@ namespace TAO
                 {
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
-                    if(!mempool.Has(proof.second) && !LLD::legDB->ReadTx(proof.second, tx))
+                    if(!mempool.Get(proof.second, tx) && !LLD::legDB->ReadTx(proof.second, tx))
                     {
                         vMissingTx.push_back(proof);
                         continue;
