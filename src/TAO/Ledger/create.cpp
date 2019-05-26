@@ -60,11 +60,16 @@ namespace TAO
             /* Last sigchain transaction. */
             uint512_t hashLast = 0;
 
-            /* Check configuration. */
-            if(config::GetBoolArg("-ecdsa"))
+            /* Set default signature types. */
+            tx.nNextType = SIGNATURE::FALCON;
+            tx.nKeyType  = SIGNATURE::FALCON;
+
+            /* Check for configuration options. */
+            if(config::GetBoolArg("-brainpool"))
+            {
+                tx.nKeyType  = SIGNATURE::BRAINPOOL;
                 tx.nNextType = SIGNATURE::BRAINPOOL;
-            else
-                tx.nNextType = SIGNATURE::FALCON;
+            }
 
             /* Check mempool for other transactions. */
             TAO::Ledger::Transaction txPrev;
@@ -380,7 +385,7 @@ namespace TAO
 
                 /* Genesis Transaction. */
                 TAO::Ledger::Transaction tx;
-                tx.NextHash(user->Generate(txPrev.nSequence + 1, "1234", false), SIGNATURE::FALCON);
+                tx.NextHash(user->Generate(txPrev.nSequence + 1, "1234", false), txPrev.nNextType);
 
                 /* Check for consistency. */
                 if(txPrev.hashNext != tx.hashNext)

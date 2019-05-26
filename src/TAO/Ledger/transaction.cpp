@@ -251,10 +251,6 @@ namespace TAO
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-            /* Check for empty signatures. */
-            if(vchSig.size() == 0)
-                return debug::error(FUNCTION, "cannot sign with no signature set");
-
             /* Switch based on signature type. */
             switch(nKeyType)
             {
