@@ -11,10 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/rpc.h>
-
 #include <LLP/include/global.h>
 #include <LLP/include/manager.h>
+
+#include <TAO/API/include/rpc.h>
 
 #include <Util/include/json.h>
 #include <Util/include/convert.h>
@@ -26,9 +26,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
-        /* Create the list of commands. */
-        TAO::API::RPC RPCCommands;
 
         /* Initialize the list of commands. */
         void RPC::Initialize()

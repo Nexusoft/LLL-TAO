@@ -14,20 +14,19 @@ ________________________________________________________________________________
 #ifdef WIN32 //TODO: use GetFullPathNameW in system_complete if getcwd not supported
 
 #else
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #endif
 
-#include <cstdio> //remove()
+#include <cstdio> //remove(), rename()
 #include <cerrno>
 #include <cstring>
 #include <iostream>
 #include <fstream>
-#include <new> //std::bad_alloc
 
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
+#include <Util/include/mutex.h>
 
 #include <sys/stat.h>
 
@@ -53,12 +52,16 @@ ________________________________________________________________________________
 
 namespace filesystem
 {
+    /* Mutex to lock FILESYSTEM and prevent race conditions. */
+    std::mutex FILESYSTEM_MUTEX;
 
-    /* Removes a file or folder from the specified path. */
-    bool remove(const std::string& path)
+    /* Removes a directory from the specified path. */
+    bool remove_directories(const std::string& path)
     {
         if(!exists(path))
             return false;
+
+        LOCK(FILESYSTEM_MUTEX);
 
         #ifdef WIN32
         if(_rmdir(debug::safe_printstr("rm -rf ", path).c_str()) != -1) //TODO: @scottsimon36 test this for windoze
@@ -72,9 +75,41 @@ namespace filesystem
     }
 
 
+    /* Removes a file or folder from the specified path. */
+    bool remove(const std::string& path)
+    {
+        if(!exists(path))
+            return false;
+
+        LOCK(FILESYSTEM_MUTEX);
+
+        if(std::remove(path.c_str()) != 0)
+            return false;
+
+        return true;
+    }
+
+
+    /*  Renames a file or folder from the specified old path to a new path. */
+    bool rename(const std::string &pathOld, const std::string &pathNew)
+    {
+        if(!exists(pathOld))
+            return false;
+
+        LOCK(FILESYSTEM_MUTEX);
+
+        if(std::rename(pathOld.c_str(), pathNew.c_str()) != 0)
+            return false;
+
+        return true;
+    }
+
+
     /* Determines if the file or folder from the specified path exists. */
     bool exists(const std::string &path)
     {
+        LOCK(FILESYSTEM_MUTEX);
+
         std::ifstream sourceFile(path, std::ios::in);
         if(sourceFile.is_open())
             return true;
@@ -95,6 +130,8 @@ namespace filesystem
             /* If destination file exists, remove it (ie, we overwrite the file) */
             if (exists(pathDest))
                 filesystem::remove(pathDest);
+
+            LOCK(FILESYSTEM_MUTEX);
 
             /* Get the input stream of source file. */
             std::ifstream sourceFile(pathSource, std::ios::binary);
@@ -123,10 +160,6 @@ namespace filesystem
 #endif
 
         }
-        catch(const std::bad_alloc &e)
-        {
-            return debug::error(FUNCTION, "Memory allocation failed ", e.what());
-        }
         catch(const std::ios_base::failure &e)
         {
             return debug::error(FUNCTION, " failed to write ", e.what());
@@ -138,6 +171,8 @@ namespace filesystem
     /* Determines if the specified path is a folder. */
     bool is_directory(const std::string &path)
     {
+        LOCK(FILESYSTEM_MUTEX);
+
         struct stat statbuf;
 
         if(stat(path.c_str(), &statbuf) != 0)
@@ -171,6 +206,8 @@ namespace filesystem
         if(exists(path)) //if the directory exists, don't attempt to create it
             return true;
 
+        LOCK(FILESYSTEM_MUTEX);
+
         /* Set directory with read/write/search permissions for owner/group/other */
     #ifdef WIN32
         int status = mkdir(path.c_str());
@@ -196,6 +233,7 @@ namespace filesystem
 
         std::string fullPath;
 
+        LOCK(FILESYSTEM_MUTEX);
 
     #ifdef WIN32
 
@@ -239,6 +277,7 @@ namespace filesystem
     /* Returns the full pathname of the PID file */
     std::string GetPidFile()
     {
+        LOCK(FILESYSTEM_MUTEX);
 
         std::string pathPidFile(config::GetArg("-pid", "Nexus.pid"));
         return config::GetDataDir() + "/" +pathPidFile;
@@ -248,6 +287,8 @@ namespace filesystem
     /* Creates a PID file on disk for the provided PID */
     void CreatePidFile(const std::string &path, pid_t pid)
     {
+        LOCK(FILESYSTEM_MUTEX);
+
         FILE* file = fopen(path.c_str(), "w");
         if (file)
         {

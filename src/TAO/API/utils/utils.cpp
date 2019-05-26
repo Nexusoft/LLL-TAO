@@ -11,12 +11,13 @@
 
 ____________________________________________________________________________________________*/
 
-
-
-#include <TAO/API/include/utils.h>
-#include <TAO/API/types/exception.h>
+#include <Legacy/include/evaluate.h>
 
 #include <LLD/include/global.h>
+
+#include <TAO/API/include/global.h>
+#include <TAO/API/include/utils.h>
+#include <TAO/API/types/exception.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -27,14 +28,9 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/operations.h>
 
-#include <Legacy/include/evaluate.h>
-
-#include <TAO/API/include/users.h>
-
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
-
 #include <Util/include/base64.h>
 
 
@@ -142,10 +138,10 @@ namespace TAO
             {
                 /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can
                    throw a missing namespace exception if no valid session could be found */
-                uint64_t nSession = users.GetSession(params, false);
+                uint64_t nSession = users->GetSession(params, false);
 
                 /* Get the account. */
-                memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
+                memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
                 if(!user)
                     throw APIException(-23, "Missing namespace parameter");
 
@@ -165,13 +161,65 @@ namespace TAO
         }
 
 
-        /*  Determins whether a string value is a register address.
-         *  This only checks to see if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
-         *  It does not check to see whether the register address exists in the database
-         */
+        /* Determins whether a string value is a register address.
+        *  This only checks to see if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
+        *  It does not check to see whether the register address exists in the database
+        */
         bool IsRegisterAddress(const std::string& strValueToCheck)
         {
             return strValueToCheck.length() == 64 && strValueToCheck.find_first_not_of("0123456789abcdefABCDEF", 0) == std::string::npos;
+        }
+
+
+        /* Retrieves the number of digits that applies to amounts for this token or account object. 
+        *  If the object register passed in is a token account then we need to look at the token definition 
+        *  in order to get the digits.  The token is obtained by looking at the identifier field, 
+        *  which contains the register address of the issuing token
+        */
+        uint64_t GetTokenOrAccountDigits(const TAO::Register::Object& object)
+        {
+            /* Declare the nDigits to return */
+            uint64_t nDigits = 0;
+
+            /* Get the object standard. */
+            uint8_t nStandard = object.Standard();
+
+            /* Check the object standard. */
+            if( nStandard == TAO::Register::OBJECTS::TOKEN)
+            {
+                nDigits = object.get<uint64_t>("digits");
+            }
+            else if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
+            {
+
+                /* If debiting an account we need to look at the token definition in order to get the digits. 
+                   The token is obtained by looking at the identifier field, which contains the register address of
+                   the issuing token */
+                uint256_t nIdentifier = object.get<uint256_t>("identifier");
+
+                /* Edge case for NXS token which has identifier 0, so no look up needed */
+                if( nIdentifier == 0)
+                    nDigits = 1000000;
+                else
+                {
+                    
+                    TAO::Register::Object token;
+                    if(!LLD::regDB->ReadState(nIdentifier, token))
+                        throw APIException(-24, "Token not found");
+
+                    /* Parse the object register. */
+                    if(!token.Parse())
+                        throw APIException(-24, "Object failed to parse");
+
+                    nDigits = token.get<uint64_t>("digits");
+                }   
+            }
+            else
+            {
+                throw APIException(-27, "Unknown token / account." );
+            }
+
+            return nDigits;
         }
 
 
@@ -259,8 +307,8 @@ namespace TAO
                 txdata["version"] = tx.nVersion;
                 txdata["sequence"] = tx.nSequence;
                 txdata["timestamp"] = tx.nTimestamp;
+                txdata["operation"]  = OperationToJSON(tx.ssOperation);
                 txdata["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
-
 
                 /* Genesis and hashes are verbose 3 and up. */
                 if(nTransactionVerbosity >= 3)
@@ -268,16 +316,12 @@ namespace TAO
                     txdata["genesis"] = tx.hashGenesis.ToString();
                     txdata["nexthash"] = tx.hashNext.ToString();
                     txdata["prevhash"] = tx.hashPrevTx.ToString();
-                }
-
-                /* Signatures and public keys are verbose level 4 and up. */
-                if(nTransactionVerbosity >= 4)
-                {
+                
                     txdata["pubkey"] = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                     txdata["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                 }
 
-                txdata["operation"]  = OperationToJSON(tx.ssOperation);
+                
             }
 
             return txdata;
@@ -587,7 +631,7 @@ namespace TAO
 
 
         /* Converts an Object Register to formattted JSON */
-        json::json ObjectRegisterToJSON(const TAO::Register::Object object, const std::string strDataField)
+        json::json ObjectRegisterToJSON(const TAO::Register::Object& object, const std::string strDataField)
         {
             /* Declare the return JSON object */
             json::json ret;

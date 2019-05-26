@@ -22,11 +22,7 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
-        /** List of accounts in API. **/
-        Ledger ledger;
-
-
+        
         /* Standard initialization function. */
         void Ledger::Initialize()
         {

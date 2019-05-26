@@ -22,7 +22,6 @@ ________________________________________________________________________________
 #include <LLP/templates/base_connection.h>
 #include <LLP/templates/ddos.h>
 #include <Util/include/string.h>
-#include <new> //std::bad_alloc
 
 #define HTTPNODE ANSI_COLOR_FUNCTION "HTTPNode" ANSI_COLOR_RESET " : "
 
@@ -209,7 +208,7 @@ namespace LLP
 
                             /* Parse out the content length field. */
                             if(field == "content-length")
-                                INCOMING.nContentLength = stoi(strLine.substr(pos + 2));
+                                INCOMING.nContentLength = std::stoul(strLine.substr(pos + 2));
 
                             /* Add line to the headers map. */
                             INCOMING.mapHeaders[field] = strLine.substr(pos + 2);
@@ -241,11 +240,6 @@ namespace LLP
                 RESPONSE.strContent = strContent;
 
                 this->WritePacket(RESPONSE);
-            }
-            catch(const std::bad_alloc &e)
-            {
-                debug::error(FUNCTION, "Memory allocation failed ", e.what());
-                throw;
             }
             catch(...)
             {

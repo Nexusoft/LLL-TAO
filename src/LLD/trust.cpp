@@ -33,14 +33,14 @@ namespace LLD
 
 
     /* Writes a trust key to the ledger DB. */
-    bool TrustDB::WriteTrustKey(const uint576_t& hashKey, const TAO::Ledger::TrustKey& key)
+    bool TrustDB::WriteTrustKey(const uint576_t& hashKey, const Legacy::TrustKey& key)
     {
         return Write(hashKey, key);
     }
 
 
     /* Reads a trust key from the ledger DB. */
-    bool TrustDB::ReadTrustKey(const uint576_t& hashKey, TAO::Ledger::TrustKey& key)
+    bool TrustDB::ReadTrustKey(const uint576_t& hashKey, Legacy::TrustKey& key)
     {
         return Read(hashKey, key);
     }

@@ -211,9 +211,7 @@ This is the generic endpoint for updating one or more values in an asset.  The A
 
 `address` : The register address of the asset to update. This is optional if the name is provided.
 
-`format` : The format the caller is using to provide the data to update the asset. Values can be `JSON` (the default), or `XML` (not currently supported). This is an optional field and the value `JSON` is assumed if omitted.
-
-`<fieldname>=<value>` : If format is `JSON` (the default if omitted), then the caller can provide <fieldname>=<newvalue> pairs for each piece of data to update in the asset.
+`<fieldname>=<value>` : The caller can provide <fieldname>=<newvalue> pairs for each piece of data to update in the asset.
 
 
 ### Example:
@@ -224,7 +222,6 @@ The following is an example JSON payload to update two fields in an asset called
     "pin": "1234",
     "session": "16953804956473956578",
     "name": "mysong",
-    "format": "JSON",
     "last_downloaded": "2019/02/03 14:22:08",
     "download_count": "428"
 }
@@ -293,7 +290,7 @@ This will transfer ownership of an asset or digital item.  This is a generic end
 
 # `claim/asset`
 
-Assets that have been transferred need to be claimed by the recipient before the transfer is complete.  This method creates the claim transaction .  This is a generic endpoint requiring the transaction ID (hash) of the corresponding transfer transaction to be passed as a parameter. The API supports an alternative endpoint that can include the transaction ID in the URI.  For example `/assets/transfer/asset/27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1` will resolve to `assets/transfer/asset?txid=27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1`.
+Assets that have been transferred need to be claimed by the recipient before the transfer is complete.  This method creates the claim transaction .  This is a generic endpoint requiring the transaction ID (hash) of the corresponding transfer transaction to be passed as a parameter. The API supports an alternative endpoint that can include the transaction ID in the URI.  For example `/assets/claim/asset/27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1` will resolve to `assets/claim/asset?txid=27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1`.
 
 
 ### Endpoint:
@@ -314,15 +311,12 @@ Assets that have been transferred need to be claimed by the recipient before the
 ```
 {
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
 }
 ```
 
 ### Return values:
 
 `txid` : The ID (hash) of the transaction that includes the asset transfer.
-
-`address` : The new register address for this asset.   
 
 ****
 
@@ -362,9 +356,9 @@ This will get the history of an asset or digital item as well as it's ownership.
 
 The return value is a JSON array of objects for each entry in the assets history:
 
-`owner` : The genesis hash of the signature chain that owns this asset.
+`owner` : The genesis hash of the signature chain that owns the asset.
 
-`timestamp` : The Unix timestamp of when the asset was first created.
+`timestamp` : The Unix timestamp of when the asset was updated.
 
 
 

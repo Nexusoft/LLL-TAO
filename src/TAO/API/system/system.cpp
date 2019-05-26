@@ -11,12 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/system.h>
-#include <Util/include/debug.h>
-#include <Util/include/runtime.h>
-#include <Util/include/json.h>
-#include <Util/include/config.h>
-#include <Util/include/version.h>
+#include <Legacy/wallet/wallet.h>
+#include <Legacy/include/money.h>
 
 #include <LLP/types/corenode.h>
 #include <LLP/include/global.h>
@@ -25,12 +21,15 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 #include <LLP/include/trust_address.h>
 
-#include <Legacy/wallet/wallet.h>
-#include <Legacy/include/money.h>
-
+#include <TAO/API/include/system.h>
+#include <TAO/API/include/lisp.h>
 #include <TAO/Ledger/include/chainstate.h>
 
-#include <TAO/API/include/lisp.h>
+#include <Util/include/debug.h>
+#include <Util/include/runtime.h>
+#include <Util/include/json.h>
+#include <Util/include/config.h>
+#include <Util/include/version.h>
 
 
 /* Global TAO namespace. */
@@ -40,9 +39,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
-        /** The SYSTEM API instance. **/
-        System system;
 
         /* Standard initialization function. */
         void System::Initialize()

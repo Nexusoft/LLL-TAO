@@ -13,12 +13,13 @@ ________________________________________________________________________________
 
 
 #include <LLP/types/rpcnode.h>
-#include <TAO/API/include/rpc.h>
+
+#include <TAO/API/include/global.h>
+#include <TAO/API/types/exception.h>
+
 #include <Util/include/config.h>
 #include <Util/include/base64.h>
 #include <Util/include/string.h>
-#include <TAO/API/types/exception.h>
-#include <new> //std::bad_alloc
 
 // using alias to simplify using APIException liberally without having to reference the TAO:API namespace
 using APIException = TAO::API::APIException ;
@@ -50,7 +51,7 @@ namespace LLP
         /* Check HTTP authorization */
         if (!Authorized(INCOMING.mapHeaders))
         {
-            debug::log(0, "RPC incorrect password attempt from ", this->addr.ToString());
+            debug::error(FUNCTION, "RPC incorrect password attempt from ", this->addr.ToString());
 
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really
@@ -92,15 +93,10 @@ namespace LLP
                 throw APIException(-32600, "Params must be an array");
 
             /* Execute the RPC method. */
-            json::json jsonResult = TAO::API::RPCCommands.Execute(strMethod, jsonParams, false);
+            json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
 
             /* Push the response data with json payload. */
             PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
-        }
-        /* Handle for memory allocation fail. */
-        catch(const std::bad_alloc &e)
-        {
-            return debug::error(FUNCTION, "Memory allocation failed ", e.what());
         }
 
         /* Handle for custom API exceptions. */

@@ -14,14 +14,16 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
-#include <TAO/API/include/users.h>
-#include <TAO/API/include/tokens.h>
+#include <LLD/include/global.h>
+
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -42,22 +44,22 @@ namespace TAO
             json::json ret;
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users.GetPin(params);
+            SecureString strPIN = users->GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = users.GetSession(params);
+            uint64_t nSession = users->GetSession(params);
 
             /* Check for credit parameter. */
             if(params.find("amount") == params.end())
                 throw APIException(-25, "Missing Amount. (<amount>)");
 
             /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if(!users.CanTransact())
+            if(!users->CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions.");
 
             /* Create the transaction. */
@@ -82,15 +84,58 @@ namespace TAO
 
             /* If name is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
-            if(params.find("name_from") != params.end())
-                hashFrom = RegisterAddressFromName(params, "token", params["name_from"].get<std::string>());
-            else if(params.find("address_from") != params.end())
-                hashFrom.SetHex(params["address_from"].get<std::string>());
+            if(params.find("name") != params.end())
+                hashFrom = RegisterAddressFromName(params, "token", params["name"].get<std::string>());
+            else if(params.find("address") != params.end())
+                hashFrom.SetHex(params["address"].get<std::string>());
             else
-                throw APIException(-22, "Missing sender. (<name_from> or <address_from>)");
+                throw APIException(-22, "Missing name or address)");
 
-            /* Get the credit. */
-            uint64_t nAmount = std::stoull(params["amount"].get<std::string>());
+            
+            /* Get the token / account object. */
+            TAO::Register::Object object;
+            if(!LLD::regDB->ReadState(hashFrom, object))
+                throw APIException(-24, "Token/account not found");
+
+            /* Parse the object register. */
+            if(!object.Parse())
+                throw APIException(-24, "Object failed to parse");
+
+            /* Get the object standard. */
+            uint8_t nStandard = object.Standard();
+
+            uint64_t nDigits = 0;
+            uint64_t nCurrentBalance = 0;
+
+            /* Check the object standard. */
+            if( nStandard == TAO::Register::OBJECTS::TOKEN || nStandard == TAO::Register::OBJECTS::ACCOUNT)
+            {
+                /* If the user requested a particular object type then check it is that type */
+                std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
+                if((strType == "token" && nStandard == TAO::Register::OBJECTS::ACCOUNT))
+                    throw APIException(-24, "Object is not a token");
+                else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
+                    throw APIException(-24, "Object is not an account");
+
+                nCurrentBalance = object.get<uint64_t>("balance");
+                nDigits = GetTokenOrAccountDigits(object);
+            }
+            else
+            {
+                throw APIException(-27, "Unknown token / account." );
+            }
+            
+
+            /* Get the amount to debit. */
+            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDigits);
+
+            /* Check the amount is not too small once converted by the token digits */
+            if(nAmount == 0)
+                throw APIException(-25, "Amount too small");
+
+            /* Check they have the required funds */
+            if(nAmount > nCurrentBalance)
+                throw APIException(-25, "Insufficient funds");
 
             /* Submit the payload object. */
             tx << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
@@ -100,7 +145,7 @@ namespace TAO
                 throw APIException(-26, "Operations failed to execute");
 
             /* Sign the transaction. */
-            if(!tx.Sign(users.GetKey(tx.nSequence, strPIN, nSession)))
+            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
                 throw APIException(-26, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */

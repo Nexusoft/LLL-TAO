@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLP/packets/tritium.h>
+#include <LLP/types/tritium.h>
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
 
@@ -76,7 +76,7 @@ namespace TAO
 
 
         /* Accepts a transaction with validation rules. */
-        bool Mempool::Accept(TAO::Ledger::Transaction& tx)
+        bool Mempool::Accept(TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode)
         {
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
@@ -105,26 +105,25 @@ namespace TAO
                 && !mapLedger.count(tx.hashPrevTx)
                 && !LLD::legDB->ReadTx(tx.hashPrevTx, txPrev))
                 {
-                    /* Check for max orphan queue. */
-                    if(mapOrphans.size() > 1000)
-                    {
-                        /* Clear the orphans map. */
-                        mapOrphans.clear();
-
-                        return false;
-                    }
-
                     /* Debug output. */
-                    debug::log(2, FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " ", tx.nSequence, " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
+                    debug::log(0, FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " ", tx.nSequence, " genesis ", tx.hashGenesis.ToString().substr(0, 20), " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
                     /* Push to orphan queue. */
                     mapOrphans[tx.hashPrevTx] = tx;
 
+                    /* Ask for the missing transaction. */
+                    if(pnode)
+                    {
+                        std::vector<LLP::CInv> vInv = { LLP::CInv(tx.hashPrevTx, LLP::MSG_TX_TRITIUM) };
+                        pnode->PushMessage(LLP::GET_DATA, vInv);
+                    }
+
                     return true;
                 }
 
-                //TODO: add mapConflcts map to soft-ban conflicting blocks
             }
+
+            //TODO: add mapConflcts map to soft-ban conflicting blocks
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.IsCoinbase())
@@ -150,7 +149,6 @@ namespace TAO
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
                 return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
 
-            /* Add to the map. */
             {
                 RLOCK(MUTEX);
 
@@ -167,10 +165,10 @@ namespace TAO
             if(LLP::TRITIUM_SERVER)
                 LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
 
-            /* Process orphans. */
-            { RLOCK(MUTEX);
+            /* Check orphan queue. */
+            {
+                RLOCK(MUTEX);
 
-                /* Check orphan queue. */
                 while(mapOrphans.count(hashTx))
                 {
                     /* Get the transaction from map. */
@@ -180,11 +178,17 @@ namespace TAO
                     uint512_t hashThis = txOrphan.GetHash();
 
                     /* Debug output. */
-                    debug::log(2, FUNCTION, "PROCESSING ORPHAN tx ", hashTx.ToString().substr(0, 20));
+                    debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashTx.ToString().substr(0, 20));
 
                     /* Accept the transaction into memory pool. */
                     if(!Accept(txOrphan))
-                        return true;
+                    {
+                        hashTx = hashThis;
+
+                        debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.ToString().substr(0, 20), " REJECTED");
+
+                        continue;
+                    }
 
                     /* Erase the transaction. */
                     mapOrphans.erase(hashTx);
@@ -232,8 +236,31 @@ namespace TAO
 
             }
 
+            /* Check that a transaction was found. */
+            if(vTx.size() == 0)
+                return false;
+
             /* Sort the list by sequence numbers. */
             std::sort(vTx.begin(), vTx.end());
+
+            /* Check that the mempool transactions are in correct order. */
+            uint512_t hashLast = vTx[0].GetHash();
+            for(uint32_t n = 1; n < vTx.size(); ++n)
+            {
+                /* Check that transaction is in sequence. */
+                if(vTx[n].hashPrevTx != hashLast)
+                {
+                    debug::log(0, FUNCTION, "Last hash mismatch");
+
+                    /* Resize to forget about mismatched sequences. */
+                    vTx.resize(n);
+
+                    break;
+                }
+
+                /* Set last hash. */
+                hashLast = vTx[n].GetHash();
+            }
 
             return (vTx.size() > 0);
         }
@@ -343,17 +370,30 @@ namespace TAO
                 std::sort(vTx.begin(), vTx.end());
 
                 /* Add the hashes into list. */
-                for(const auto& tx : vTx)
+                uint512_t hashLast = vTx[0].GetHash();
+                for(uint32_t n = 1; n <= vTx.size(); ++n)
                 {
                     /* Add to the output queue. */
-                    vHashes.push_back(tx.GetHash());
+                    vHashes.push_back(hashLast);
 
-                    /* Decrement counter. */
-                    --nCount;
+                    /* Check for end of index. */
+                    if(n == vTx.size())
+                        break;
 
                     /* Check count. */
-                    if(nCount == 0)
+                    if(--nCount == 0)
                         return true;
+
+                    /* Check that transaction is in sequence. */
+                    if(vTx[n].hashPrevTx != hashLast)
+                    {
+                        debug::log(0, FUNCTION, "Last hash mismatch");
+
+                        break;
+                    }
+
+                    /* Set last hash. */
+                    hashLast = vTx[n].GetHash();
                 }
             }
 

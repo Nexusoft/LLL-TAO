@@ -261,14 +261,12 @@ This will get the history of changes to an item, including both the data and it'
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
         "state": "0b6e657764617461696e746f",
         "updated": 1546888868
-        "version": 1
     },
     {
         "checksum": 9060775569865698900,
         "owner": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
         "state": "0b6e657764617461696e746f",
         "updated": 1546888999
-        "version": 1
     }
 ]
 ```
@@ -285,6 +283,5 @@ The return value is a JSON array of objects for each entry in the item's history
 
 `updated` : The Unix timestamp of when the item was updated.
 
-`version` : The version of the state register.
 
 ***

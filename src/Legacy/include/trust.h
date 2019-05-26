@@ -12,45 +12,39 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_TRUST_H
-#define NEXUS_TAO_LEDGER_INCLUDE_TRUST_H
+#ifndef NEXUS_LEGACY_INCLUDE_TRUST_H
+#define NEXUS_LEGACY_INCLUDE_TRUST_H
 
 #include <Legacy/types/trustkey.h>
 
-/* Global TAO namespace. */
-namespace TAO
+namespace Legacy
 {
 
-    /* Ledger Layer namespace. */
-    namespace Ledger
-    {
-
-        /** GetLastTrust
-         *
-         *  Find the last trust block of given key.
-         *
-         *  @param[in] trustKey The trust key to search for
-         *  @param[out] state The trust key block found.
-         *
-         *  @return True if the trust block was found, false otherwise.
-         *
-         **/
-        bool GetLastTrust(const TrustKey& trustKey, TAO::Ledger::BlockState& state);
+    /** GetLastTrust
+     *
+     *  Find the last trust block of given key.
+     *
+     *  @param[in] trustKey The trust key to search for
+     *  @param[out] state The trust key block found.
+     *
+     *  @return True if the trust block was found, false otherwise.
+     *
+     **/
+    bool GetLastTrust(const TrustKey& trustKey, TAO::Ledger::BlockState& state);
 
 
-        /** FindGenesis
-         *
-         *  Find the genesis block of given trust key.
-         *
-         *  @param[in] cKey The trust key to search for.
-         *  @param[out] trustKey The trust that was found
-         *  @param[out] hashTrustBlock The trust key block found.
-         *
-         *  @return True if the trust block was found, false otherwise.
-         *
-         **/
-        bool FindGenesis(const uint576_t& cKey, const uint1024_t& hashTrustBlock, TrustKey& trustKey);
-    }
+    /** FindGenesis
+     *
+     *  Find the genesis block of given trust key.
+     *
+     *  @param[in] cKey The trust key to search for.
+     *  @param[out] trustKey The trust that was found
+     *  @param[out] hashTrustBlock The trust key block found.
+     *
+     *  @return True if the trust block was found, false otherwise.
+     *
+     **/
+    bool FindGenesis(const uint576_t& cKey, const uint1024_t& hashTrustBlock, TrustKey& trustKey);
 }
 
 #endif

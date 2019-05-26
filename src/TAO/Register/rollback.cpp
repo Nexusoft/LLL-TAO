@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/stream.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/rollback.h>
-#include <new> //std::bad_alloc
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -239,8 +239,15 @@ namespace TAO
                         /* Coinstake operation. Requires an account. */
                         case TAO::Operation::OP::TRUST:
                         {
-                            /* Skip ahead in operation stream. */
-                            tx.ssOperation.seek(72);
+                            /* Read values out of operation stream. */
+                            uint256_t hashLastTrust;
+                            tx.ssOperation >> hashLastTrust;
+
+                            uint64_t nTrustScore;
+                            tx.ssOperation >> nTrustScore;
+
+                            uint64_t nCoinstakeReward;
+                            tx.ssOperation >> nCoinstakeReward;
 
                             /* Verify the first register code. */
                             uint8_t nState;
@@ -277,6 +284,9 @@ namespace TAO
                             /* The account that is being staked. */
                             uint256_t hashAccount;
                             tx.ssOperation >> hashAccount;
+
+                            uint64_t nCoinstakeReward;
+                            tx.ssOperation >> nCoinstakeReward;
 
                             /* Verify the register's prestate. */
                             State state;
@@ -406,10 +416,6 @@ namespace TAO
                         }
                     }
                 }
-            }
-            catch(const std::bad_alloc &e)
-            {
-                return debug::error(FUNCTION, "Memory allocation failed ", e.what());
             }
             catch(const std::runtime_error& e)
             {

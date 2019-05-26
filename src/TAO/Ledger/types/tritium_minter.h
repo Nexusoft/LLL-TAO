@@ -37,25 +37,25 @@ namespace TAO
     {
 
     /** @class TritiumMinter
-    *
-    * This class performs all operations for mining blocks on the Proof of Stake channel.
-    * It is implemented as a Singleton instance retrieved by calling GetInstance(). 
-    *
-    * Staking does not start, though, until StartStakeMinter() is called for the first time.
-    * It requires single user mode, with a user account unlocked for minting before it
-    * will start successfully.
-    *
-    * The stake balance and trust score from the trust account will be used for Proof of Stake.
-    * A new trust account register must be created for the active user account signature chain
-    * before it can successfully stake. 
-    *
-    * The initial stake transaction for a new trust account is the Genesis transaction using OP::GENESIS
-    * in the block producer. All subsequent stake transactions are Trust transactions and use OP::TRUST.
-    *
-    * Staking operations can be suspended by calling StopStakeMinter (for example, when the account is locked)
-    * and restarted by calling StartStakeMinter() again.
-    *
-    **/
+     *
+     * This class performs all operations for mining blocks on the Proof of Stake channel.
+     * It is implemented as a Singleton instance retrieved by calling GetInstance(). 
+     *
+     * Staking does not start, though, until StartStakeMinter() is called for the first time.
+     * It requires single user mode, with a user account unlocked for minting before it
+     * will start successfully.
+     *
+     * The stake balance and trust score from the trust account will be used for Proof of Stake.
+     * A new trust account register must be created for the active user account signature chain
+     * before it can successfully stake. 
+     *
+     * The initial stake transaction for a new trust account is the Genesis transaction using OP::GENESIS
+     * in the block producer. All subsequent stake transactions are Trust transactions and use OP::TRUST.
+     *
+     * Staking operations can be suspended by calling StopStakeMinter (for example, when the account is locked)
+     * and restarted by calling StartStakeMinter() again.
+     *
+     **/
     class TritiumMinter final : public TAO::Ledger::StakeMinter
     {
     public:
@@ -71,65 +71,65 @@ namespace TAO
 
 
         /** GetInstance
-        *
-        * Retrieves the TritiumMinter.
-        *
-        * @return reference to the TritiumMinter instance
-        *
-        **/
+         *
+         * Retrieves the TritiumMinter.
+         *
+         * @return reference to the TritiumMinter instance
+         *
+         **/
         static TritiumMinter& GetInstance();
 
 
         /** IsStarted
-        *
-        * Tests whether or not the stake minter is currently running.
-        *
-        * @return true if the stake minter is started, false otherwise
-        *
-        */
+         *
+         * Tests whether or not the stake minter is currently running.
+         *
+         * @return true if the stake minter is started, false otherwise
+         *
+         */
         bool IsStarted() const override;
 
 
         /** StartStakeMinter
-        *
-        * Start the stake minter.
-        *
-        * Call this method to start the stake minter thread and begin mining Proof of Stake, or
-        * to restart it after it was stopped.
-        *
-        * The first time this method is called, it will retrieve a reference to the wallet
-        * by calling Wallet::GetInstance(), so the wallet must be initialized and loaded before
-        * starting the stake minter.
-        *
-        * In general, this method should be called when the wallet is unlocked.
-        *
-        * If the system is configured not to run the TritiumMinter, this method will return false.
-        * By default, the TritiumMinter will run for non-server, and won't run for server/daemon.
-        * These defaults can be changed using the -stake setting.
-        *
-        * After calling this method, the TritiumMinter thread may stay in suspended state if
-        * the local node is synchronizing, or if it does not have any connections, yet.
-        * In that case, it will automatically begin when sync is complete and connections
-        * are available.
-        *
-        * @return true if the stake minter was started, false if it was already running or not started
-        *
-        */
+         *
+         * Start the stake minter.
+         *
+         * Call this method to start the stake minter thread and begin mining Proof of Stake, or
+         * to restart it after it was stopped.
+         *
+         * The first time this method is called, it will retrieve a reference to the wallet
+         * by calling Wallet::GetInstance(), so the wallet must be initialized and loaded before
+         * starting the stake minter.
+         *
+         * In general, this method should be called when the wallet is unlocked.
+         *
+         * If the system is configured not to run the TritiumMinter, this method will return false.
+         * By default, the TritiumMinter will run for non-server, and won't run for server/daemon.
+         * These defaults can be changed using the -stake setting.
+         *
+         * After calling this method, the TritiumMinter thread may stay in suspended state if
+         * the local node is synchronizing, or if it does not have any connections, yet.
+         * In that case, it will automatically begin when sync is complete and connections
+         * are available.
+         *
+         * @return true if the stake minter was started, false if it was already running or not started
+         *
+         */
         bool StartStakeMinter() override;
 
 
         /** StopStakeMinter
-        *
-        * Stops the stake minter.
-        *
-        * Call this method to signal the stake minter thread stop Proof of Stake mining and end.
-        * It can be restarted via a subsequent call to StartStakeMinter().
-        *
-        * Should be called whenever the wallet is locked, and on system shutdown.
-        *
-        * @return true if the stake minter was stopped, false if it was already stopped
-        *
-        */
+         *
+         * Stops the stake minter.
+         *
+         * Call this method to signal the stake minter thread stop Proof of Stake mining and end.
+         * It can be restarted via a subsequent call to StartStakeMinter().
+         *
+         * Should be called whenever the wallet is locked, and on system shutdown.
+         *
+         * @return true if the stake minter was stopped, false if it was already stopped
+         *
+         */
         bool StopStakeMinter() override;
 
 
@@ -162,8 +162,8 @@ namespace TAO
         bool isGenesis;
 
 
-        /** Value of any change to the trust account stake to be applied in the next stake block **/
-        int64_t nStakeUpdate;
+        /** Block time of last stake block found by current trust account. */
+        uint64_t nTimeLastStake;
 
 
         /** Trust score applied for the candidate block that the stake minter is attempting to mine **/
@@ -180,7 +180,7 @@ namespace TAO
         , trustAccount()
         , candidateBlock()
         , isGenesis(false)
-        , nStakeUpdate(0)
+        , nTimeLastStake()
         , nTrust(0)
         , nBlockAge(0)
         {
@@ -188,131 +188,114 @@ namespace TAO
 
 
         /** CheckUser
-        *
-        *  Verify user account unlocked for minting.
-        *
-        *  @return true if the user account can stake
-        *
-        **/
+         *
+         *  Verify user account unlocked for minting.
+         *
+         *  @return true if the user account can stake
+         *
+         **/
         bool CheckUser();
 
 
-        /** FindLastStake
-        *
-        *  Retrieves the most recent stake transaction for a user account.
-        *
-        *  @param[in] user - the user account signature chain
-        *  @param[out] tx - the most recent stake transaction
-        *
-        *  @return true if the last stake transaction was successfully retrieved
-        *
-        **/
-        bool FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, TAO::Ledger::Transaction& tx);
-
-
         /** FindTrust
-        *
-        *  Gets the trust account for the current active signature chain and stores it into trustAccount.
-        *
-        *  @param[in] user - the currently active signature chain
-        *
-        *  @return true if the trust account was successfully retrieved
-        *
-        **/
+         *
+         *  Gets the trust account for the current active signature chain and stores it into trustAccount.
+         *
+         *  @param[in] user - the currently active signature chain
+         *
+         *  @return true if the trust account was successfully retrieved
+         *
+         **/
         bool FindTrustAccount(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
 
 
-        /** FindStakeUpdate
-        *
-        *  Retrieve any change to be applied to the stake amount in the current trust account.
-        *  This method updates the value stored in nStakeUpdate.
-        *
-        **/
-        void FindStakeUpdate();
-
-
-        /** ApplyStakeUpdate
-        *
-        *  Record that a stake update request has been completed.
-        *
-        **/
-        void ApplyStakeUpdate();
+        /** FindLastStake
+         *
+         *  Retrieves the most recent stake transaction for a user account.
+         *
+         *  @param[in] user - the user account signature chain
+         *  @param[out] tx - the most recent stake transaction
+         *
+         *  @return true if the last stake transaction was successfully retrieved
+         *
+         **/
+        bool FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, TAO::Ledger::Transaction& tx);
 
 
         /** CreateCandidateBlock
-        *
-        *  Creates a new tritium block that the stake minter will attempt to mine via the Proof of Stake process.
-        *
-        *  @param[in] user - the currently active signature chain
-        *  @param[in] strPIN - active pin corresponding to the sig chain
-        *
-        *  @return true if the candidate block was successfully created
-        *
-        **/
+         *
+         *  Creates a new tritium block that the stake minter will attempt to mine via the Proof of Stake process.
+         *
+         *  @param[in] user - the currently active signature chain
+         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *
+         *  @return true if the candidate block was successfully created
+         *
+         **/
         bool CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
 
 
         /** CalculateWeights
-        *
-        *  Calculates the Trust Weight and Block Weight values for the current trust account and candidate block.
-        *
-        *  @return true if the weights were properly calculated
-        *
-        */
+         *
+         *  Calculates the Trust Weight and Block Weight values for the current trust account and candidate block.
+         *
+         *  @return true if the weights were properly calculated
+         *
+         */
         bool CalculateWeights();
 
 
         /** MineProofOfStake
-        *
-        *  Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block, while
-        *  operating within the energy efficiency requirements. This process will continue to iterate until it either
-        *  mines a new block or the hashBestChain changes and the minter must start over with a new candidate block.
-        *
-        *  @param[in] user - the currently active signature chain
-        *  @param[in] strPIN - active pin corresponding to the sig chain
-        *
-        **/
+         *
+         *  Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block, while
+         *  operating within the energy efficiency requirements. This process will continue to iterate until it either
+         *  mines a new block or the hashBestChain changes and the minter must start over with a new candidate block.
+         *
+         *  @param[in] user - the currently active signature chain
+         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *
+         **/
         void MineProofOfStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
 
 
         /** ProcessMinedBlock
-        *
-        *  Processes a newly mined Proof of Stake block, adds transactions from the mempool, and submits it
-        *  to the network
-        *
-        *  @param[in] user - the currently active signature chain
-        *  @param[in] strPIN - active pin corresponding to the sig chain
-        *
-        *  @return true if the block passed all process checks and was successfully submitted
-        *
-        **/
+         *
+         *  Processes a newly mined Proof of Stake block, adds transactions from the mempool, and submits it
+         *  to the network
+         *
+         *  @param[in] user - the currently active signature chain
+         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *
+         *  @return true if the block passed all process checks and was successfully submitted
+         *
+         **/
         bool ProcessMinedBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
 
 
         /** SignBlock
-        *
-        *  Sign a candidate block after it is successfully mined.
-        *
-        *  @param[in] user - the currently active signature chain
-        *  @param[in] strPIN - active pin corresponding to the sig chain
-        *
-        *  @return true if block successfully signed
-        *
-        **/
+         *
+         *  Sign a candidate block after it is successfully mined.
+         *
+         *  @param[in] user - the currently active signature chain
+         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *
+         *  @return true if block successfully signed
+         *
+         **/
         bool SignBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
 
 
         /** TritiumMinterThread
-        *
-        *  Method run on its own thread to oversee stake minter operation using the methods in the
-        *  tritium minter instance. The thread will continue running after initialized, but operation can
-        *  be stopped/restarted by using the stake minter methods.
-        *
-        *  On shutdown, the thread will cease operation and wait for the minter destructor to tell it to exit/join.
-        *
-        *  @param[in] pTritiumMinter - the minter thread will use this instance to perform all the tritium minter work
-        *
-        **/
+         *
+         *  Method run on its own thread to oversee stake minter operation using the methods in the
+         *  tritium minter instance. The thread will continue running after initialized, but operation can
+         *  be stopped/restarted by using the stake minter methods.
+         *
+         *  On shutdown, the thread will cease operation and wait for the minter destructor to tell it to exit/join.
+         *
+         *  @param[in] pTritiumMinter - the minter thread will use this instance to perform all the tritium minter work
+         *
+         **/
         static void TritiumMinterThread(TritiumMinter* pTritiumMinter);
 
         };

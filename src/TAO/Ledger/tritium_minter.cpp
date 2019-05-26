@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Ledger/types/tritium_minter.h>
+
 
 #include <LLC/include/eckey.h>
 #include <LLC/types/bignum.h>
@@ -21,12 +21,12 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
 
-#include <TAO/API/include/users.h>
+#include <TAO/API/include/global.h>
 
+#include <TAO/Ledger/types/tritium_minter.h>
 #include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
-#include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/stake.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -34,11 +34,12 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/unpack.h>
 
-#include <Util/include/args.h>
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+
+#include <cmath>
 
 
 /* Global TAO namespace. */
@@ -137,53 +138,20 @@ namespace TAO
     bool TritiumMinter::CheckUser()
     {
         /* Check whether unlocked account available. */
-        if (TAO::API::users.Locked())
+        if (TAO::API::users->Locked())
         {
             debug::log(0, FUNCTION, "No unlocked account available for staking");
             return false;
         }
 
         /* Check that the account is unlocked for minting */
-        if (!TAO::API::users.CanMint())
+        if (!TAO::API::users->CanMint())
         {
             debug::log(0, FUNCTION, "Account has not been unlocked for minting");
             return false;
         }
 
         return true;
-    }
-
-
-    /*  Retrieves the most recent stake transaction for a user account */
-    bool TritiumMinter::FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, TAO::Ledger::Transaction& tx)
-    {
-        uint512_t hashLast = 0;
-
-        /* Get the most recent tx hash for the user account. */
-        if (!LLD::legDB->ReadLast(user->Genesis(), hashLast))
-            return false;
-
-        /* Loop until find stake transaction or reach first transaction on user acount (hashLast == 0). */
-        while (hashLast != 0)
-        {
-            /* Get the transaction for the current hashLast. */
-            TAO::Ledger::Transaction txCheck;
-            if(!LLD::legDB->ReadTx(hashLast, txCheck))
-                return false;
-
-            /* Test whether the transaction contains a staking operation */
-            if (TAO::Register::Unpack(txCheck, TAO::Operation::OP::TRUST) || TAO::Register::Unpack(txCheck, TAO::Operation::OP::GENESIS))
-            {
-                /* Found last stake transaction. */
-                tx = txCheck;
-                return true;
-            }
-
-            /* Stake tx not found, yet, iterate to next previous user tx */
-            hashLast = txCheck.hashPrevTx;
-        }
-
-        return false;
     }
 
 
@@ -277,70 +245,50 @@ namespace TAO
     }
 
 
-    /*  Retrieve any change to be applied to the stake amount in the current trust account. */
-    void TritiumMinter::FindStakeUpdate()
+    /** Retrieves the most recent stake transaction for a user account. */
+    bool TritiumMinter::FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, TAO::Ledger::Transaction& tx)
     {
-        nStakeUpdate = 0;
+        uint512_t hashLast = 0;
 
-/*TODO - Check for any specific transfer to/from stake and apply it -- overrides autostake setting */
-        if (false)
+        /* Get the most recent tx hash for the user account. */
+        if (!LLD::legDB->ReadLast(user->Genesis(), hashLast))
+            return false;
+
+        /* Loop until find stake transaction or reach first transaction on user acount (hashLast == 0). */
+        while (hashLast != 0)
         {
-            /* Validate balance transfer request */
-            if (nStakeUpdate > 0)
+            /* Get the transaction for the current hashLast. */
+            TAO::Ledger::Transaction txCheck;
+            if(!LLD::legDB->ReadTx(hashLast, txCheck))
+                return false;
+
+            /* Test whether the transaction contains a staking operation */
+            if (TAO::Register::Unpack(txCheck, TAO::Operation::OP::TRUST) || TAO::Register::Unpack(txCheck, TAO::Operation::OP::GENESIS))
             {
-                /* Cannot transfer more into stake than current trust account balance */
-                nStakeUpdate = std::min(nStakeUpdate, (int64_t)trustAccount.get<uint64_t>("balance"));
-            }
-            else if (nStakeUpdate < 0)
-            {
-                /* Cannot transfer more from stake than current stake balance */
-                nStakeUpdate = std::min(nStakeUpdate, (int64_t)trustAccount.get<uint64_t>("stake"));
+                /* Found last stake transaction. */
+                tx = txCheck;
+                return true;
             }
 
-            return;
+            /* Stake tx not found, yet, iterate to next previous user tx */
+            hashLast = txCheck.hashPrevTx;
         }
 
-        if (config::GetBoolArg("-autostake", true))
-        {
-            /* autostake is enabled. Automatically transfer any value from trust account balance to the stake balance */
-            nStakeUpdate = (int64_t)trustAccount.get<uint64_t>("balance");
-        }
-
-        return;
-    }
-
-
-    /* Record that a stake update request has been completed. */
-    void TritiumMinter::ApplyStakeUpdate()
-    {
-/*TODO - Check for any specific transfer to/from stake and record it as applied */
-
+        return false;
     }
 
 
     /* Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process. */
     bool TritiumMinter::CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
     {
-        /* Use appropriate settings for Testnet or Mainnet */
-        static const uint64_t nTrustMax = (uint64_t)(config::fTestNet.load() ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX);
-        static const uint64_t nBlockAgeMax = (uint64_t)(config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN);
         static const uint32_t stakingChannel = (uint32_t)0;
 
         static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
-        /* New Mainnet interval will go into effect with activation of v7. Can't be static so it goes live immediately (can update after activation) */
-        const uint32_t nMinimumInterval = config::fTestNet.load()
-                                            ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
-                                            : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
-                                                ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY
-                                                : (runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])
-                                                        ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL
-                                                        : TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
-
         /* Reset any prior value of trust score, block age, and stake update amount */
         nTrust = 0;
         nBlockAge = 0;
-        nStakeUpdate = 0;
+        nTimeLastStake = 0;
 
         /* Create the block to work on */
         candidateBlock = TritiumBlock();
@@ -351,32 +299,38 @@ namespace TAO
 
         if (!isGenesis)
         {
-            /* Get the last stake block for the trust account. */
-            TAO::Ledger::Transaction txStakePrev;
-            if (!FindLastStake(user, txStakePrev))
-                return debug::error(FUNCTION, "Failed to get last stake for trust account");
+            /* Staking Trust for existing trust account */
 
-            TAO::Ledger::BlockState stateStakePrev;
-            if(!LLD::legDB->ReadBlock(txStakePrev.GetHash(), stateStakePrev))
-                return debug::error(FUNCTION, "Failed to get last block for trust account");
-
-            if (trustAccount.get<uint64_t>("balance") == 0 && nStakeUpdate == 0)
+            if (trustAccount.get<uint64_t>("stake") == 0)
             {
-                /* Wallet has no balance, or balance unavailable for staking. Increase sleep time to wait for balance. */
+                /* Trust account has no stake balance. Increase sleep time to wait for balance. */
                 nSleepTime = 5000;
 
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
-                    debug::log(0, FUNCTION, "Stake Minter: Wallet has no balance or no spendable inputs available.");
+                    debug::log(0, FUNCTION, "Stake Minter: Trust account has no stake balance.");
 
                 ++nWaitCounter;
 
                 return false;
             }
 
+            /* Get the previous stake tx for the trust account. */
+            TAO::Ledger::Transaction txLast;
+            if (!FindLastStake(user, txLast))
+                return debug::error(FUNCTION, "Failed to get last stake for trust account");
+
+            /* Get the block containing the last stake tx for the trust account. */
+            TAO::Ledger::BlockState stateLast;
+            if(!LLD::legDB->ReadBlock(txLast.GetHash(), stateLast))
+                return debug::error(FUNCTION, "Failed to get last block for trust account");
+
+            nTimeLastStake = stateLast.GetBlockTime();
+
             /* Enforce the minimum stake transaction interval. (current height is candidate height - 1) */
-            uint32_t nCurrentInterval = (candidateBlock.nHeight - 1) - stateStakePrev.nHeight;
-            if (nCurrentInterval < nMinimumInterval)
+            const uint32_t nCurrentInterval = candidateBlock.nHeight - stateLast.nHeight;
+
+            if (nCurrentInterval <= MinStakeInterval())
             {
                 /* Below minimum interval for generating stake blocks. Increase sleep time until can continue normally. */
                 nSleepTime = 5000; //5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown)
@@ -384,7 +338,7 @@ namespace TAO
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
                     debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ",
-                               (nMinimumInterval - nCurrentInterval), " blocks remaining until staking available.");
+                               (MinStakeInterval() - nCurrentInterval), " blocks remaining until staking available.");
 
                 ++nWaitCounter;
 
@@ -393,44 +347,18 @@ namespace TAO
 
             /* Calculate the new trust score. */
             uint64_t nTrustPrev = trustAccount.get<uint64_t>("trust");
+            uint64_t nStake = trustAccount.get<uint64_t>("stake");
 
-            /* Calculate time since the last stake block for current trust account (block age = age of previous trust block). */
-            nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - stateStakePrev.GetBlockTime();
+            /* Calculate time since the last stake block (block age = age of previous trust block). */
+            nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - nTimeLastStake;
 
-            /* Block age less than maximum awards trust score increase equal to the current block age. */
-            if (nBlockAge <= nBlockAgeMax)
-                nTrust = std::min((nTrustPrev + nBlockAge), nTrustMax);
+            /* Calculate the new trust score */
+            nTrust = TrustScore(nTrustPrev, nStake, nBlockAge);
 
-            /* Block age more than maximum allowed is penalized 3 times the time it has exceeded the maximum. */
-            else
-            {
-                /* Calculate the penalty for score (3x the time). */
-                uint64_t nPenalty = (nBlockAge - nBlockAgeMax) * (uint64_t)3;
-
-                /* Trust back to zero if penalties more than previous score. */
-                nTrust = std::max((nTrustPrev - nPenalty), (uint64_t)0);
-            }
-
-            /* Determine the previous and current stake amounts */
-            uint64_t nStakePrev = trustAccount.get<uint64_t>("stake");
-            uint64_t nStake = nStakePrev + nStakeUpdate;
-
-            /* Removing stake balance incurs trust penalty */
-            if (nTrust > 0 && nStake < nStakePrev)
-            {
-                uint64_t nBalanceRemoved = nStakePrev - nStake;
-
-                /* Trust reduced by the percent of balance removed */
-                nTrust = nTrust - (nTrust * nBalanceRemoved) / nStakePrev;
-            }
-
-            /* Double check that the trust score cannot exceed the maximum */
-            if (nTrust > nTrustMax)
-                nTrust = nTrustMax;
-
-            /* Set up block producer for Trust operation with hashLastTrust, new trust score, and any changes to stake balance */
-            candidateBlock.producer << (uint8_t)TAO::Operation::OP::TRUST << txStakePrev.GetHash() << nTrust << nStakeUpdate;
-
+            /* Initialize block producer for Trust operation with hashLastTrust, new trust score.
+             * The coinstake reward will be added based on time when block is found.
+             */
+            candidateBlock.producer << (uint8_t)TAO::Operation::OP::TRUST << txLast.GetHash() << nTrust;
         }
         else
         {
@@ -451,26 +379,12 @@ namespace TAO
                 return false;
             }
 
-            /* Set up block producer for Genesis operation with hashAddress of trust account register */
+            /* Initialize block producer for Genesis operation with hashAddress of trust account register.
+             * The coinstake reward will be added based on time when block is found.
+             */
             candidateBlock.producer << (uint8_t)TAO::Operation::OP::GENESIS << hashAddress;
 
-            /* Check that there is no trust. */
-            if(trustAccount.get<uint64_t>("balance") == 0)
-                return debug::error(FUNCTION, "cannot create genesis with no available balance");
-
         }
-
-        /* Execute operation pre- and post-state.
-         *   - for OP::TRUST, the operation can obtain the trust account from candidateBlock.producer.hashGenesis
-         *   - for OP::GENESIS, the hashAddress of the trust account register is encoded into the block producer
-         *
-         * This process also calculates the appropriate stake reward and encodes it into the post-state.
-         */
-        if(!TAO::Operation::Execute(candidateBlock.producer, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
-            return debug::error(FUNCTION, "transaction operation layer failed to execute");
-
-        /* Sign the block producer */
-        candidateBlock.producer.Sign(user->Generate(candidateBlock.producer.nSequence, strPIN));
 
         /* Reset sleep time on successful completion */
         if (nSleepTime == 5000)
@@ -483,11 +397,8 @@ namespace TAO
             nWaitCounter = 0;
         }
 
-/* TODO -- need method to obtain stake rate accessible both here and within operations layer where calculates reward */
-        /* Update the current stake rate in the minter (not used for calculations, retrievable for display) */
-        // double nCurrentStakeRate = trustKey.StakeRate(candidateBlock, candidateBlock.GetBlockTime());
-
-        // nStakeRate.store(nCurrentStakeRate);
+        /* Update display stake rate */
+        nStakeRate.store(StakeRate(nTrust, isGenesis));
 
         return true;
     }
@@ -496,45 +407,33 @@ namespace TAO
     /* Calculates the Trust Weight and Block Weight values for the current trust account and candidate block. */
     bool TritiumMinter::CalculateWeights()
     {
-        static const double LOG3 = log(3); // Constant for use in calculations
-
-        /* Use appropriate settings for Testnet or Mainnet */
-        static const uint32_t nTrustWeightBase = config::fTestNet.load() ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
-        static const uint32_t nBlockAgeMax = config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
-        static const uint32_t nCoinAgeMin = config::fTestNet.load() ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE;
-
         /* Use local variables for calculations, then set instance variables at the end */
         double nTrustWeightCurrent = 0.0;
         double nBlockWeightCurrent = 0.0;
 
         static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
-        /* Weight for Trust transactions combines trust weight and block weight. */
+        nTrust = 0;
+
         if (!isGenesis)
         {
-            /* Trust Weight base is time for 50% score. Weight continues to grow with Trust Score until it reaches max of 90.0
-             * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base),
-             * while requiring close to a year to reach maximum.
-             */
-            double nTrustWeightRatio = (double)nTrust / (double)nTrustWeightBase;
-            nTrustWeightCurrent = std::min(90.0, (44.0 * log((2.0 * nTrustWeightRatio) + 1.0) / LOG3) + 1.0);
+            /* Weight for Trust transactions combines trust weight and block weight. */
+            nTrustWeightCurrent = TrustWeight(nTrust);
 
-            /* Block Weight reaches maximum of 10.0 when Block Age equals the defined timespan for max age */
-            double nBlockAgeRatio = (double)nBlockAge / (double)nBlockAgeMax;
-            nBlockWeightCurrent = std::min(10.0, (9.0 * log((2.0 * nBlockAgeRatio) + 1.0) / LOG3) + 1.0);
+            nBlockWeightCurrent = BlockWeight(nBlockAge);
         }
-
-        /* Weights for Genesis transactions only use trust weight with its value based on average coin age. */
         else
         {
-            /* For Genesis, coin age is current best block time less last time balance was added to the trust account register .
-             * This means that, if someone adds more balance after initially doing so, coin age is reset and they must wait
-             * the full time before staking Genesis.
-             */
-            uint64_t nCoinAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - trustAccount.nTimestamp;
+            /* Weights for Genesis transactions only use trust weight with its value based on average coin age. */
 
-            /* Genesis has to wait for coin age to reach one full trust timespan. */
-            if (nCoinAge < nCoinAgeMin)
+            /* For Genesis, coin age is current block time less last time trust account register was updated.
+             * This means that, if someone adds more balance to trust account while staking Genesis, coin age is reset and they must wait
+             * the full time before staking Genesis again.
+             */
+            uint64_t nCoinAge = candidateBlock.GetBlockTime() - trustAccount.nTimestamp;
+
+            /* Genesis has to wait for coin age to reach minimum. */
+            if (nCoinAge < MinCoinAge())
             {
                 /* Record that stake minter is in wait period */
                 fIsWaitPeriod.store(true);
@@ -545,10 +444,9 @@ namespace TAO
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
                 {
-                    uint32_t nRemainingWaitTime = (nCoinAgeMin - nCoinAge) / 60; //minutes
+                    uint64_t nRemainingWaitTime = (MinCoinAge() - nCoinAge) / 60; //minutes
 
-                    debug::log(0, FUNCTION, "Stake Minter: Age of stake balance is immature. ",
-                               nRemainingWaitTime, " minutes remaining until staking available.");
+                    debug::log(0, FUNCTION, "Stake Minter: Stake balance is immature. ", nRemainingWaitTime, " minutes remaining until staking available.");
                 }
 
                 ++nWaitCounter;
@@ -565,19 +463,15 @@ namespace TAO
                 nWaitCounter = 0;
             }
 
-            /* Trust Weight For Genesis is based on Coin Age. Genesis trust weight is less than normal trust weight,
-             * only reaching a maximum of 10.0 after average Coin Age reaches 84 days (Mainnet base).
-             */
-            double nGenesisTrustRatio = (double)nCoinAge / (double)nTrustWeightBase;
-            nTrustWeightCurrent = std::min(10.0, (9.0 * log((2.0 * nGenesisTrustRatio) + 1.0) / LOG3) + 1.0);
+            nTrustWeightCurrent = GenesisWeight(nCoinAge);
 
             /* Block Weight remains zero while staking for Genesis */
             nBlockWeightCurrent = 0.0;
         }
 
-            /* Update minter settings */
-            nBlockWeight.store(nBlockWeightCurrent);
-            nTrustWeight.store(nTrustWeightCurrent);
+        /* Update minter settings */
+        nBlockWeight.store(nBlockWeightCurrent);
+        nTrustWeight.store(nTrustWeightCurrent);
 
         return true;
     }
@@ -592,9 +486,9 @@ namespace TAO
          * Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
          * Weight from staking balance (based on nValue out of coinstake) reduces the required threshold by increasing the denominator.
          */
-        uint64_t nStake = trustAccount.get<uint64_t>("stake") + nStakeUpdate;
+        uint64_t nStake = trustAccount.get<uint64_t>("stake");
 
-        double nRequired = ((108.0 - nTrustWeight.load() - nBlockWeight.load()) * TAO::Ledger::MAX_STAKE_WEIGHT) / nStake;
+        double nRequired = RequiredThreshold(nTrustWeight.load(), nBlockWeight.load(), nStake);
 
         /* Calculate the target value based on difficulty. */
         LLC::CBigNum bnTarget;
@@ -625,7 +519,7 @@ namespace TAO
              * To stake, this value must be larger than required threshhold.
              * Block time increases the value while nonce decreases it.
              */
-            double nThreshold = (nCurrentBlockTime * 100.0) / candidateBlock.nNonce;
+            double nThreshold = CurrentThreshold(nCurrentBlockTime, candidateBlock.nNonce);
 
             /* If threshhold is not larger than required, wait and keep trying with the same nonce value until threshold increases */
             if(nThreshold < nRequired)
@@ -658,16 +552,50 @@ namespace TAO
 
     bool TritiumMinter::ProcessMinedBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
     {
-        /* Add the transactions into the block from memory pool, but only if not Genesis (Genesis block for trust account has no transactions except coinstake producer). */
+        /* Used to calculate coinstake reward */
+        uint64_t nStake = trustAccount.get<uint64_t>("stake");
+        uint64_t nStakeTime = 0;
+        uint64_t nCoinstakeReward = 0;
+
+        /* Calculate the coinstake reward */
+        if (!isGenesis)
+        {
+            nStakeTime = candidateBlock.GetBlockTime() - nTimeLastStake;
+            nCoinstakeReward = CoinstakeReward(nStake, nStakeTime, nTrust, isGenesis);
+        }
+        else
+        {
+            nStakeTime = candidateBlock.GetBlockTime() - trustAccount.nTimestamp; //"coin age";
+            nCoinstakeReward = CoinstakeReward(nStake, nStakeTime, 0, isGenesis);
+        }
+
+        /* Add coinstake reward to producer */
+        candidateBlock.producer << nCoinstakeReward;
+
+        /* Execute operation pre- and post-state.
+         *   - for OP::TRUST, the operation can obtain the trust account from candidateBlock.producer.hashGenesis
+         *   - for OP::GENESIS, the hashAddress of the trust account register is encoded into the block producer
+         *
+         * This process also calculates the appropriate stake reward and encodes it into the post-state.
+         */
+        if (!TAO::Operation::Execute(candidateBlock.producer, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
+            return debug::error(FUNCTION, "Operation layer failed to execute pre-state/post-state for coinstake transaction");
+
+        /* Sign the block producer */
+        candidateBlock.producer.Sign(user->Generate(candidateBlock.producer.nSequence, strPIN));
+
+        /* Add transactions into the block from memory pool, but only for Trust (Genesis block for trust account has no transactions except coinstake producer). */
         if (!isGenesis)
             AddTransactions(candidateBlock);
 
         /* Build the Merkle Root. */
-        std::vector<uint512_t> vMerkleTree;
-        for(const auto& txEntry : candidateBlock.vtx)
-            vMerkleTree.push_back(txEntry.second);
+        std::vector<uint512_t> vHashes;
+        vHashes.push_back(candidateBlock.producer.GetHash()); //producer is not part of vtx
 
-        candidateBlock.hashMerkleRoot = candidateBlock.BuildMerkleTree(vMerkleTree);
+        for (const auto& txEntry : candidateBlock.vtx)
+            vHashes.push_back(txEntry.second);
+
+        candidateBlock.hashMerkleRoot = candidateBlock.BuildMerkleTree(vHashes);
 
         /* Print the newly found block. */
         candidateBlock.print();
@@ -683,11 +611,6 @@ namespace TAO
         /* Check the stake. */
         if (!candidateBlock.CheckStake())
             return debug::error(FUNCTION, "Check stake failed");
-
-        /* Check the trust. */
-        TAO::Ledger::BlockState candidateBlockStake(candidateBlock);
-        if (!candidateBlock.producer.CheckTrust(candidateBlockStake))
-            return debug::error(FUNCTION, "Check trust failed");
 
         /* Check block for difficulty requirement. */
         if (!candidateBlock.VerifyWork())
@@ -719,8 +642,6 @@ namespace TAO
             debug::log(0, FUNCTION, "Generated block not accepted");
             return false;
         }
-
-        ApplyStakeUpdate();
 
         if (isGenesis)
             isGenesis = false;
@@ -801,20 +722,18 @@ namespace TAO
                 break;
 
             /* Get the active, unlocked sigchain. Requires session 0 */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = TAO::API::users.GetAccount(0);
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = TAO::API::users->GetAccount(0);
             if (!user)
             {
                 debug::error(0, FUNCTION, "Stake minter could not retrieve the unlocked signature chain.");
                 break;
             }
 
-            SecureString strPIN = TAO::API::users.GetActivePin();
+            SecureString strPIN = TAO::API::users->GetActivePin();
 
             /* Retrieve the latest trust account data */
             if (!pTritiumMinter->FindTrustAccount(user))
                 break;
-
-            pTritiumMinter->FindStakeUpdate();
 
             /* Set up the candidate block the minter is attempting to mine */
             if (!pTritiumMinter->CreateCandidateBlock(user, strPIN))

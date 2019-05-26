@@ -12,8 +12,10 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/supply.h>
+#include <TAO/API/include/utils.h>
 
 #include <LLD/include/global.h>
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -27,17 +29,27 @@ namespace TAO
         {
             json::json ret;
 
-            /* Check for username parameter. */
-            if(params.find("address") == params.end())
-                throw APIException(-23, "Missing memory address");
-
             /* Get the Register ID. */
-            uint256_t hashRegister;
-            hashRegister.SetHex(params["address"]);
+            uint256_t hashRegister = 0;
+
+            /* Check whether the caller has provided the asset name parameter. */
+            if(params.find("name") != params.end())
+            {
+                /* If name is provided then use this to deduce the register address */
+                hashRegister = RegisterAddressFromName( params, "item", params["name"].get<std::string>());
+            }
+
+            /* Otherwise try to find the raw hex encoded address. */
+            else if(params.find("address") != params.end())
+                hashRegister.SetHex(params["address"].get<std::string>());
+
+            /* Fail if no required parameters supplied. */
+            else
+                throw APIException(-23, "Missing name / address");
 
             /* Get the history. */
             TAO::Register::State state;
-            if(!LLD::regDB->ReadState(hashRegister, state))
+            if(!LLD::regDB->ReadState(hashRegister, state, TAO::Register::FLAGS::MEMPOOL))
                 throw APIException(-24, "No state found");
 
             /* Build the response JSON. */
@@ -53,7 +65,20 @@ namespace TAO
                 state >> data;
 
                 //ret["checksum"] = state.hashChecksum;
-                ret["state"] = data;
+                ret["data"] = data;
+            }
+
+            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */            
+            if(params.find("fieldname") != params.end())
+            {
+                /* First get the fieldname from the response */
+                std::string strFieldname =  params["fieldname"].get<std::string>();
+                
+                /* Iterate through the response keys */
+                for (auto it = ret.begin(); it != ret.end(); ++it)
+                    /* If this key is not the one that was requested then erase it */
+                    if( it.key() != strFieldname)
+                        ret.erase(it);
             }
 
             return ret;

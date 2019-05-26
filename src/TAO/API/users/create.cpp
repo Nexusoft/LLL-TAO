@@ -11,15 +11,23 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/hash/SK.h>
+
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/users.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
+
+#include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
+
+#include <TAO/Register/include/create.h>
 
 #include <Util/include/hex.h>
-#include <TAO/Ledger/types/sigchain.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -68,18 +76,35 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction");
             }
 
+            /* Create trust account register name within the user sig chain namespace */
+            std::string strName = NamespaceHash(user->UserName()).ToString() + ":token:trust";
+
+            /* Get the register address from an SK256. */
+            uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+
+            /* Set up tx operation to create the trust account register at the same time as sig chain genesis. */
+            tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
+
+            /* Calculate the prestates and poststates. */
+            if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
+            {
+                user.free();
+                throw APIException(-26, "Operations failed to execute");
+            }
+
             /* Sign the transaction. */
-            tx.Sign(user->Generate(tx.nSequence, params["pin"].get<std::string>().c_str()));
+            if(!tx.Sign(user->Generate(tx.nSequence, params["pin"].get<std::string>().c_str())))
+            {
+                user.free();
+                throw APIException(-26, "Ledger failed to sign transaction");
+            }
 
             /* Free the sigchain. */
             user.free();
 
-            /* Check that the transaction is valid. */
-            if(!tx.IsValid())
-                throw APIException(-26, "Invalid Transaction");
-
-            /* Accept to memory pool. */
+            /* Execute the operations layer. */
             TAO::Ledger::mempool.Accept(tx);
+
 
             /* Build a JSON response object. */
             ret["version"]   = tx.nVersion;

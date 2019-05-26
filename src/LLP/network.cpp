@@ -31,18 +31,34 @@ namespace LLP
 
         if (ret != NO_ERROR)
         {
-            debug::error("TCP/IP socket library failed to start (WSAStartup returned error ", ret, ") ");
+            debug::error(FUNCTION, "TCP/IP socket library failed to start (WSAStartup returned error ", ret, ") ");
             return false;
         }
-        else if ( LOBYTE( wsaData.wVersion ) != 2 || HIBYTE( wsaData.wVersion ) != 2 ) 
+        else if ( LOBYTE( wsaData.wVersion ) != 2 || HIBYTE( wsaData.wVersion ) != 2 )
         {
             /* Winsock version incorrect */
-            debug::error("Windows sockets does not support requested version 2.2");
+            debug::error(FUNCTION, "Windows sockets does not support requested version 2.2");
             WSACleanup();
-            return false; 
-        }        
+            return false;
+        }
 
         debug::log(3, FUNCTION, "Windows sockets initialized for Winsock version 2.2");
+
+    #else
+    {
+        struct rlimit lim;
+        lim.rlim_cur = 8192;
+        lim.rlim_max = 8192;
+        if(setrlimit(RLIMIT_NOFILE, &lim) == -1)
+            debug::error(FUNCTION, "Failed to set max file descriptors");
+    }
+
+    {
+        struct rlimit lim;
+        getrlimit(RLIMIT_NOFILE, &lim);
+
+        debug::log(2, FUNCTION " File descriptor limit set to ", lim.rlim_cur, " and maximum ", lim.rlim_max);
+    }
 
     #endif
 
@@ -74,11 +90,11 @@ namespace LLP
     }
 
 
-    /* Asynchronously invokes the lispers.net API to cache the EIDs and RLOCs used by this node 
+    /* Asynchronously invokes the lispers.net API to cache the EIDs and RLOCs used by this node
     *  and caches them for future use */
     void CacheEIDsAndRLOCs()
     {
-
+        
     }
 
 }

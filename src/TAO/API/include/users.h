@@ -346,7 +346,5 @@ namespace TAO
               void NotifyEvent();
 
         };
-
-        extern Users users;
     }
 }

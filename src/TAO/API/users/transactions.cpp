@@ -62,9 +62,17 @@ namespace TAO
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
             /* Get verbose levels. */
-            uint32_t nVerbose = 2; // default to level 2
+            std::string strVerbose = "default"; 
             if(params.find("verbose") != params.end())
-                nVerbose = std::stoul(params["verbose"].get<std::string>());
+                strVerbose = params["verbose"].get<std::string>();
+
+            uint32_t nVerbose = 1;
+            if( strVerbose == "default")
+                nVerbose = 1;
+            else if( strVerbose == "summary")
+                nVerbose = 2;
+            else if( strVerbose == "detail")
+                nVerbose = 3;
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;

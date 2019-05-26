@@ -274,7 +274,11 @@ namespace TAO
                 return true;
             }
 
-            return debug::error(FUNCTION, "Invalid channel: ", nChannel);
+            /* Check for a private block work claims. */
+            if(IsPrivate() && !config::GetBoolArg("-private"))
+                return debug::error(FUNCTION, "Invalid channel: ", nChannel);
+
+            return true;
         }
 
 

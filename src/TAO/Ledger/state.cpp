@@ -33,7 +33,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/supply.h>
-#include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/string.h>
 
@@ -259,8 +258,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
                     /* Remove the coinbase or coinstake. */
-                    if(tx.IsCoinbase() || tx.IsTrust())
-                        mempool.Remove(hash);
+                    mempool.Remove(hash);
 
                 }
                 else if(proof.first == TYPE::LEGACY_TX)
@@ -282,8 +280,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
                     /* Remove the coinbase or coinstake. */
-                    if(tx.IsCoinBase() || tx.IsCoinStake())
-                        mempool.Remove(hash);
+                    mempool.Remove(hash);
                 }
                 else
                     return debug::error(FUNCTION, "using an unknown transaction type");
@@ -500,7 +497,6 @@ namespace TAO
 
 
                 /* Set the best chain variables. */
-                ChainState::stateBest          = *this;
                 ChainState::hashBestChain      = nHash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
@@ -516,9 +512,14 @@ namespace TAO
                     "New Best Block hash=", nHash.ToString().substr(0, 20),
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
+                    " tx=", vtx.size(),
+                    " [", double(vtx.size()) / (GetBlockTime() - ChainState::stateBest.load().GetBlockTime()), " tx/s]"
                     " [verified in ", time.ElapsedMilliseconds(), " ms]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
 
+
+                /* Set best block state. */
+                ChainState::stateBest = *this;
 
 
                 /* Broadcast the block to nodes if not synchronizing. */
@@ -584,23 +585,15 @@ namespace TAO
                         return debug::error(FUNCTION, "transaction not on disk");
 
                     /* Check for existing indexes. */
-                    if(LLD::legDB->HasIndex(hash))
+                    if(LLD::legDB->HasIndex(hash)) //TODO: transaction object needs disk index. Write hashNext = 0 for disconnected
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
 
                     /* Check that previous transaction is indexed. */
                     if(!tx.IsFirst() && !LLD::legDB->HasIndex(tx.hashPrevTx))
                         return debug::error(FUNCTION, "previous transaction not indexed");
 
-                    /* Check if is trust or genesis. */
-                    if(tx.IsTrust() || tx.IsGenesis())
-                    {
-                        //TODO: make sure this is in producer position
-                        if(!tx.CheckTrust(*this))
-                            return debug::error(FUNCTION, "Trust score is invalid");
-                    }
-
                     /* Verify the ledger layer. */
-                    if(!TAO::Register::Verify(tx, TAO::Register::FLAGS::WRITE))
+                    if(!TAO::Register::Verify(tx, TAO::Register::FLAGS::WRITE)) //TODO: this is done in pre-processing, remove from post-processing
                         return debug::error(FUNCTION, "transaction register layer failed to verify");
 
                     /* Execute the operations layers. */
@@ -613,23 +606,43 @@ namespace TAO
                         //Check for duplicate genesis
 
                         /* Write the Genesis to disk. */
-                        if(!LLD::legDB->WriteGenesis(tx.hashGenesis, tx.GetHash()))
+                        if(!LLD::legDB->WriteGenesis(tx.hashGenesis, hash))
                             return debug::error(FUNCTION, "failed to write genesis");
                     }
                     else
                     {
                         /* Check for the last hash. */
-                        uint512_t hashLast;
+                        uint512_t hashLast = 0;
                         if(!LLD::legDB->ReadLast(tx.hashGenesis, hashLast))
                             return debug::error(FUNCTION, "failed to read last on non-genesis");
 
                         /* Check that the last transaction is correct. */
                         if(tx.hashPrevTx != hashLast)
+                        {
+                            /* Make sure the transaction is on disk. */
+                            TAO::Ledger::Transaction tx2;
+                            if(!LLD::legDB->ReadTx(hashLast, tx2))
+                                return debug::error(FUNCTION, "last transaction not on disk");
+
+                            tx2.print();
+                            tx.print();
+
+                            for(uint32_t i = 0; i < 10; ++i)
+                            {
+                                if(!LLD::legDB->ReadTx(tx.hashPrevTx, tx2))
+                                    break;
+
+                                tx2.print();
+                                tx = tx2;
+                            }
+
                             return debug::error(FUNCTION, "transaction has to be head of sigchain");
+                        }
+
                     }
 
                     /* Write the last to disk. */
-                    if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.GetHash()))
+                    if(!LLD::legDB->WriteLast(tx.hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write last hash");
                 }
                 else if(proof.first == TYPE::LEGACY_TX)

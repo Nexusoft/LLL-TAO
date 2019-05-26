@@ -121,6 +121,7 @@ namespace TAO
                 READWRITE(hashGenesis);
                 READWRITE(hashPrevTx);
                 READWRITE(vchPubKey);
+
                 if(!(nSerType & SER_GETHASH))
                     READWRITE(vchSig);
             )
@@ -164,7 +165,7 @@ namespace TAO
              *  Used for sorting transactions by sequence.
              *
              **/
-             bool operator> (const Transaction& tx)
+             bool operator>(const Transaction& tx) const
              {
                  return nSequence > tx.nSequence;
              }
@@ -175,7 +176,7 @@ namespace TAO
               *  Used for sorting transactions by sequence.
               *
               **/
-              bool operator< (const Transaction& tx)
+              bool operator<(const Transaction& tx) const
               {
                   return nSequence < tx.nSequence;
               }
@@ -242,18 +243,6 @@ namespace TAO
              *
              **/
             bool IsFirst() const;
-
-
-            /** CheckTrust
-             *
-             *  Determines if the published trust score is accurate.
-             *
-             *  @param[in] state The block state to check trust from.
-             *
-             *  @return true if the trust is valid.
-             *
-             **/
-            bool CheckTrust(const TAO::Ledger::BlockState& state) const;
 
 
             /** GetHash

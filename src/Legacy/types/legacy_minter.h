@@ -16,13 +16,13 @@ ________________________________________________________________________________
 #define NEXUS_LEGACY_TYPES_MINTER_H
 
 #include <Legacy/types/legacy.h>
+#include <Legacy/types/trustkey.h>
 #include <Legacy/wallet/reservekey.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <LLC/types/uint1024.h>
 
 #include <TAO/Ledger/types/base_minter.h>
-#include <Legacy/types/trustkey.h>
 
 #include <atomic>
 #include <thread>
@@ -142,7 +142,7 @@ namespace Legacy
 
 
         /** Trust key for staking. IsNull() is true when staking for Genesis. **/
-        TAO::Ledger::TrustKey trustKey;
+        TrustKey trustKey;
 
 
         /** Reserved key to use for Genesis. nullptr when staking for Trust **/
@@ -157,7 +157,7 @@ namespace Legacy
         LegacyMinter()
         : StakeMinter()
         , pStakingWallet(nullptr)
-        , trustKey(TAO::Ledger::TrustKey())
+        , trustKey(TrustKey())
         , pReservedTrustKey(nullptr)
         , candidateBlock(LegacyBlock())
         {

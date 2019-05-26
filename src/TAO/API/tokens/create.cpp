@@ -14,8 +14,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
-#include <TAO/API/include/users.h>
-#include <TAO/API/include/tokens.h>
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -44,22 +43,22 @@ namespace TAO
             json::json ret;
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users.GetPin(params);
+            SecureString strPIN = users->GetPin(params);
 
             /* Get the session to be used for this API call */
-            uint64_t nSession = users.GetSession(params);
+            uint64_t nSession = users->GetSession(params);
 
             /* Check for identifier parameter. */
             if(params.find("type") == params.end())
                 throw APIException(-25, "Missing Type (<type>)");
 
             /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users.GetAccount(nSession);
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if(!users.CanTransact())
+            if(!users->CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
@@ -118,13 +117,26 @@ namespace TAO
                 if(params.find("supply") == params.end())
                     throw APIException(-25, "Missing Supply");
 
+                /* Extract the supply parameter */
+                double dSupply = 0;
+                if(params.find("supply") != params.end())
+                    dSupply = std::stoll(params["supply"].get<std::string>());
+
                 /* For tokens being created without a global namespaced name, the identifier is equal to the register address */
                 uint256_t hashIdentifier = hashRegister;
 
+                /* Check for nDigits parameter. */
+                uint64_t nDigits = 0;
+                if(params.find("digits") != params.end())
+                    nDigits = std::stod(params["digits"].get<std::string>());
+
+                /* Multiply the supply by 10^digits to give the supply in the divisible units */
+                uint64_t nSupply = dSupply * pow(10, nDigits); 
+
                 /* Create a token object register. */
                 TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier,
-                                                                         std::stoull(params["supply"].get<std::string>()),
-                                                                         1000000);
+                                                                         nSupply,
+                                                                         nDigits);
 
                 /* Submit the payload object. */
                 tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();
@@ -137,7 +149,7 @@ namespace TAO
                 throw APIException(-26, "Operations failed to execute");
 
             /* Sign the transaction. */
-            if(!tx.Sign(users.GetKey(tx.nSequence, strPIN, nSession)))
+            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
                 throw APIException(-26, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
