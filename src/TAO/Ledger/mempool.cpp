@@ -236,6 +236,10 @@ namespace TAO
 
             }
 
+            /* Check that a transaction was found. */
+            if(vTx.size() == 0)
+                return false;
+
             /* Sort the list by sequence numbers. */
             std::sort(vTx.begin(), vTx.end());
 
@@ -366,17 +370,30 @@ namespace TAO
                 std::sort(vTx.begin(), vTx.end());
 
                 /* Add the hashes into list. */
-                for(const auto& tx : vTx)
+                uint512_t hashLast = vTx[0].GetHash();
+                for(uint32_t n = 1; n <= vTx.size(); ++n)
                 {
                     /* Add to the output queue. */
-                    vHashes.push_back(tx.GetHash());
+                    vHashes.push_back(hashLast);
 
-                    /* Decrement counter. */
-                    --nCount;
+                    /* Check for end of index. */
+                    if(n == vTx.size())
+                        break;
 
                     /* Check count. */
-                    if(nCount == 0)
+                    if(--nCount == 0)
                         return true;
+
+                    /* Check that transaction is in sequence. */
+                    if(vTx[n].hashPrevTx != hashLast)
+                    {
+                        debug::log(0, FUNCTION, "Last hash mismatch");
+
+                        break;
+                    }
+
+                    /* Set last hash. */
+                    hashLast = vTx[n].GetHash();
                 }
             }
 
