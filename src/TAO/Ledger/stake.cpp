@@ -124,6 +124,10 @@ namespace TAO
         /* Calculate new trust score that results from unstaking a portion of stake balance. */
         uint64_t GetUnstakePenalty(const uint64_t nTrustPrev, const uint64_t nStakePrev, const uint64_t nStakeNew)
         {
+            /* Unstake penalty only applies if stake balance is reduced */
+            if (nStakeNew >= nStakePrev)
+                return nTrustPrev;
+
             /* When unstake, new trust score is fraction of old trust score equal to fraction of balance remaining.
              * (nStakeNew / nStakePrev) is fraction of balance remaining, multiply by old trust score to get new.
              * Example: have 100 stake and remove 30, new stake is 70 and new trust score is (70 / 100) * old trust score
