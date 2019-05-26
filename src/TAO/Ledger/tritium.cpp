@@ -193,6 +193,10 @@ namespace TAO
                 return debug::error(FUNCTION, "producer transaction timestamp is too early");
 
 
+            /* Check that the producer is a valid transaction. */
+            if(!producer.Check())
+                return debug::error(FUNCTION, "producer transaction is invalid");
+
             /* Proof of stake specific checks. */
             if(IsProofOfStake())
             {
@@ -215,7 +219,7 @@ namespace TAO
 
 
             /* Missing transactions. */
-            std::vector< std::pair<uint8_t, uint512_t> > missingTx;
+            std::vector< std::pair<uint8_t, uint512_t> > vMissingTx;
 
 
             /* Get the hashes for the merkle root. */
@@ -269,7 +273,7 @@ namespace TAO
                     Legacy::Transaction tx;
                     if(!mempool.Get(proof.second, tx) && !LLD::legacyDB->ReadTx(proof.second, tx))
                     {
-                        missingTx.push_back(proof);
+                        vMissingTx.push_back(proof);
                         continue;
                     }
 
@@ -289,19 +293,23 @@ namespace TAO
                     TAO::Ledger::Transaction tx;
                     if(!mempool.Has(proof.second) && !LLD::legDB->ReadTx(proof.second, tx))
                     {
-                        missingTx.push_back(proof);
+                        vMissingTx.push_back(proof);
                         continue;
                     }
+
+                    /* Check the transaction for validity. */
+                    if(!tx.Check())
+                        return debug::error(FUNCTION, "contains an invalid transaction");
                 }
                 else
                     return debug::error(FUNCTION, "unknown transaction type");
             }
 
             /* Fail and ask for response of missing transctions. */
-            if(missingTx.size() > 0 && nHeight > 0)
+            if(vMissingTx.size() > 0 && nHeight > 0)
             {
                 std::vector<LLP::CInv> vInv;
-                for(const auto& tx : missingTx)
+                for(const auto& tx : vMissingTx)
                     vInv.push_back(LLP::CInv(tx.second, tx.first == TYPE::TRITIUM_TX ? LLP::MSG_TX_TRITIUM : LLP::MSG_TX_LEGACY));
 
                 vInv.push_back(LLP::CInv(GetHash(), LLP::MSG_BLOCK_TRITIUM));
@@ -420,10 +428,6 @@ namespace TAO
                 if (nMiningReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
                     return debug::error(FUNCTION, "miner reward mismatch ", nMiningReward, " : ",
                          GetCoinbaseReward(statePrev, GetChannel(), 0));
-
-                 /* Check that the producer is a valid transaction. */
-                 if(!producer.IsValid())
-                     return debug::error(FUNCTION, "producer transaction is invalid");
             }
             else if (IsProofOfStake())
             {
@@ -437,10 +441,6 @@ namespace TAO
             }
             else if (IsPrivate())
             {
-                /* Check that the producer is a valid transaction. */
-                if(!producer.IsValid())
-                    return debug::error(FUNCTION, "producer transaction is invalid");
-
                 /* Check producer for correct genesis. */
                 if(producer.hashGenesis != uint256_t("0xb5a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41"))
                     return debug::error(FUNCTION, "invalid genesis generated");
@@ -461,17 +461,6 @@ namespace TAO
                     /* Check legacy transaction for finality. */
                     if (!txCheck.IsFinal(nHeight, GetBlockTime()))
                         return debug::error(FUNCTION, "contains a non-final transaction");
-                }
-                else if(tx.first == TYPE::TRITIUM_TX)
-                {
-                    /* Check if in memory pool. */
-                    Transaction txCheck;
-                    if(!mempool.Get(tx.second, txCheck))
-                        return debug::error(FUNCTION, "transaction is not in memory pool");
-
-                    /* Check the transaction for validity. */
-                    if (!txCheck.IsValid())
-                        return debug::error(FUNCTION, "contains an invalid transaction");
                 }
             }
 

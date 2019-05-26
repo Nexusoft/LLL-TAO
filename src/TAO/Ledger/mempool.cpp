@@ -138,7 +138,7 @@ namespace TAO
                 return debug::error(FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " too far in the future");
 
             /* Check that the transaction is in a valid state. */
-            if(!tx.IsValid(TAO::Register::FLAGS::MEMPOOL))
+            if(!tx.Check())
                 return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " is invalid");
 
             /* Verify the Ledger Pre-States. */

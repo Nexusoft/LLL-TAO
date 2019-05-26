@@ -37,16 +37,14 @@ namespace TAO
             if(TAO::Register::Reserved(hashAccount))
                 return debug::error(FUNCTION, "cannot credit register with reserved address");
 
-            /* Read the claimed transaction. */
+            /* Check mempool or disk if not writing. */
             TAO::Ledger::Transaction txSpend;
+            if(!TAO::Ledger::mempool.Get(hashTx, txSpend) && !LLD::legDB->ReadTx(hashTx, txSpend))
+                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " tx doesn't exist");
 
             /* Check disk of writing new block. */
-            if((nFlags & TAO::Register::FLAGS::WRITE) && (!LLD::legDB->ReadTx(hashTx, txSpend) || !LLD::legDB->HasIndex(hashTx)))
-                return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist or not indexed");
-
-            /* Check mempool or disk if not writing. */
-            else if(!TAO::Ledger::mempool.Get(hashTx, txSpend) && !LLD::legDB->ReadTx(hashTx, txSpend))
-                return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist");
+            if((nFlags & TAO::Register::FLAGS::WRITE) && !txSpend.IsConfirmed())
+                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " prev tx is not confirmed");
 
             /* Extract the state from tx. */
             uint8_t TX_OP;

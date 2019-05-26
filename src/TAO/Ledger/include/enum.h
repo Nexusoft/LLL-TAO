@@ -28,8 +28,43 @@ namespace TAO
         {
             TRITIUM = 0x00,
             LEGACY  = 0x01
-        }
+        };
 
+
+        /** State values for a transaction. **/
+        struct STATE
+        {
+            enum
+            {
+                /** A transaction is unconfirmed if not connected to chain. **/
+                UNCONFIRMED = 0x00,
+
+                /** A transaction is at head if it is the last transaction. **/
+                HEAD        = 0x01
+
+            };
+        };
+
+
+        /** Signature types for sigchain. **/
+        struct SIGNATURE
+        {
+            enum
+            {
+                /** Reserved. **/
+                RESERVED    = 0x00,
+
+                /** FALCON signature scheme. **/
+                FALCON      = 0x01,
+
+                /** BRAINPOOL ECDSA curve. **/
+                BRAINPOOL   = 0x02,
+
+                /** SECP256K1 ECDSA curve. **/
+                SECP256K1   = 0x03
+
+            };
+        };
     }
 }
 

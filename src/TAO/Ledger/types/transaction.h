@@ -76,6 +76,10 @@ namespace TAO
             uint512_t hashPrevTx;
 
 
+            /** The next transaction. **/
+            uint512_t hashNextTx;
+
+
             //memory only, to be disposed once fully locked into the chain behind a checkpoint
             //this is for the segregated keys from transaction data.
             std::vector<uint8_t> vchPubKey;
@@ -98,8 +102,14 @@ namespace TAO
                 READWRITE(hashNext);
                 READWRITE(hashGenesis);
                 READWRITE(hashPrevTx);
+
+                /* Only write hash next when to disk. */
+                if(!(nSerType & SER_GETHASH) && (nSerType & SER_LLD))
+                    READWRITE(hashNextTx);
+
                 READWRITE(vchPubKey);
 
+                /* Don't include signature in txid. */
                 if(!(nSerType & SER_GETHASH))
                     READWRITE(vchSig);
             )
@@ -115,6 +125,7 @@ namespace TAO
             , hashNext(0)
             , hashGenesis(0)
             , hashPrevTx(0)
+            , hashNextTx(0)
             , vchPubKey()
             , vchSig()
             {}
@@ -158,16 +169,14 @@ namespace TAO
               }
 
 
-            /** IsValid
+            /** Check
              *
              *  Determines if the transaction is a valid transaciton and passes ledger level checks.
-             *
-             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
              *
              *  @return true if transaction is valid.
              *
              **/
-            bool IsValid(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
+            bool Check() const;
 
 
             /** IsCoinbase
@@ -188,6 +197,26 @@ namespace TAO
              *
              **/
             bool IsTrust() const;
+
+
+            /** IsHead
+             *
+             *  Determines if the transaction is at head of chain.
+             *
+             *  @return true if transaction is at head.
+             *
+             **/
+            bool IsHead() const;
+
+
+            /** Confirmed
+             *
+             *  Determines if the transaction is confirmed in the chain.
+             *
+             *  @return true if transaction is confirmed.
+             *
+             **/
+            bool IsConfirmed() const;
 
 
             /** IsPrivate

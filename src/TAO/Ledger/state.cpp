@@ -28,6 +28,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/difficulty.h>
@@ -584,21 +585,9 @@ namespace TAO
                     if(!LLD::legDB->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
 
-                    /* Check for existing indexes. */
-                    if(LLD::legDB->HasIndex(hash)) //TODO: transaction object needs disk index. Write hashNext = 0 for disconnected
+                    /* Check the next hash pointer. */
+                    if(tx.IsConfirmed())
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
-
-                    /* Check that previous transaction is indexed. */
-                    if(!tx.IsFirst() && !LLD::legDB->HasIndex(tx.hashPrevTx))
-                        return debug::error(FUNCTION, "previous transaction not indexed");
-
-                    /* Verify the ledger layer. */
-                    if(!TAO::Register::Verify(tx, TAO::Register::FLAGS::WRITE)) //TODO: this is done in pre-processing, remove from post-processing
-                        return debug::error(FUNCTION, "transaction register layer failed to verify");
-
-                    /* Execute the operations layers. */
-                    if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
-                        return debug::error(FUNCTION, "transaction operation layer failed to execute");
 
                     /* Check for first. */
                     if(tx.IsFirst())
@@ -611,6 +600,37 @@ namespace TAO
                     }
                     else
                     {
+                        /* Make sure the previous transaction is on disk. */
+                        TAO::Ledger::Transaction txPrev;
+                        if(!LLD::legDB->ReadTx(tx.hashPrevTx, txPrev))
+                            return debug::error(FUNCTION, "prev transaction not on disk");
+
+                        /* Double check sequence numbers here. */
+                        if(txPrev.nSequence + 1 != tx.nSequence)
+                            return debug::error(FUNCTION, "prev transaction incorrect sequence");
+
+                        /* Check the previous next hash that is being claimed. */
+                        if(txPrev.hashNext != tx.PrevHash())
+                            return debug::error(FUNCTION, "next hash mismatch with previous transaction");
+
+                        /* Check the previous sequence number. */
+                        if(txPrev.nSequence + 1 != tx.nSequence)
+                            return debug::error(FUNCTION, "prev sequence ", txPrev.nSequence, " broken ", tx.nSequence);
+
+                        /* Check the previous genesis. */
+                        if(txPrev.hashGenesis != tx.hashGenesis)
+                            return debug::error(FUNCTION,
+                                "genesis ", txPrev.hashGenesis.ToString().substr(0, 20),
+                                " broken ",     tx.hashGenesis.ToString().substr(0, 20));
+
+                        /* Check previous transaction next pointer. */
+                        if(!txPrev.IsHead())
+                            return debug::error(FUNCTION, "prev transaction not head of sigchain");
+
+                        /* Check previous transaction from disk hash. */
+                        if(txPrev.GetHash() != tx.hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
+                            return debug::error(FUNCTION, "prev transaction prevhash mismatch");
+
                         /* Check for the last hash. */
                         uint512_t hashLast = 0;
                         if(!LLD::legDB->ReadLast(tx.hashGenesis, hashLast))
@@ -636,14 +656,24 @@ namespace TAO
                                 tx = tx2;
                             }
 
-                            return debug::error(FUNCTION, "transaction has to be head of sigchain");
+                            return debug::error(FUNCTION, "last hash hash mismatch");
                         }
 
+                        /* Set the previous transactions next hash. */
+                        txPrev.hashNextTx = hash;
+
+                        /* Write the next pointer. */
+                        if(!LLD::legDB->WriteTx(tx.hashPrevTx, txPrev))
+                            return debug::error(FUNCTION, "failed to write last tx");
                     }
 
                     /* Write the last to disk. */
                     if(!LLD::legDB->WriteLast(tx.hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write last hash");
+
+                    /* Execute the operations layers. */
+                    if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
+                        return debug::error(FUNCTION, "transaction operation layer failed to execute");
                 }
                 else if(proof.first == TYPE::LEGACY_TX)
                 {
@@ -725,17 +755,39 @@ namespace TAO
                     if(!LLD::legDB->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction is not on disk");
 
+                    /* Set the proper next pointer. */
+                    tx.hashNextTx = STATE::UNCONFIRMED;
+                    if(!LLD::legDB->WriteTx(hash, tx))
+                        return debug::error(FUNCTION, "failed to write valid next pointer");
+
                     /* Rollback the register layer. */
                     if(!TAO::Register::Rollback(tx))
                         return debug::error(FUNCTION, "transaction register layer failed to rollback");
 
                     /* Erase last for genesis. */
-                    if(tx.IsFirst() && !LLD::legDB->EraseLast(tx.hashGenesis))
-                        return debug::error(FUNCTION, "failed to erase last hash");
+                    if(tx.IsFirst())
+                    {
+                        /* Erase last hash pointer. */
+                        if(!LLD::legDB->EraseLast(tx.hashGenesis))
+                            return debug::error(FUNCTION, "failed to erase last hash");
+                    }
+                    else
+                    {
+                        /* Make sure the previous transaction is on disk. */
+                        TAO::Ledger::Transaction txPrev;
+                        if(!LLD::legDB->ReadTx(tx.hashPrevTx, txPrev))
+                            return debug::error(FUNCTION, "prev transaction not on disk");
 
-                    /* Set the last hash to previous transaciton in sigchain. */
-                    else if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.hashPrevTx))
-                        return debug::error(FUNCTION, "failed to write last hash");
+                        /* Set the proper next pointer. */
+                        txPrev.hashNextTx = STATE::HEAD;
+                        if(!LLD::legDB->WriteTx(tx.hashPrevTx, txPrev))
+                            return debug::error(FUNCTION, "failed to write valid next pointer");
+
+                        /* Write proper last hash index. */
+                        if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.hashPrevTx))
+                            return debug::error(FUNCTION, "failed to write last hash");
+
+                    }
                 }
                 else if(proof.first == TYPE::LEGACY_TX)
                 {

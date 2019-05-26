@@ -27,6 +27,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake.h>
+#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -45,31 +46,8 @@ namespace TAO
     {
 
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
-        bool Transaction::IsValid(const uint8_t nFlags) const
+        bool Transaction::Check() const
         {
-            /* Read the previous transaction from disk. */
-            if(!IsFirst())
-            {
-                /* Previous transaction. */
-                TAO::Ledger::Transaction tx;
-
-                /* Check memory and disk for previous transaction. */
-                if(!TAO::Ledger::mempool.Get(hashPrevTx, tx) && !LLD::legDB->ReadTx(hashPrevTx, tx))
-                    return debug::error(FUNCTION, hashPrevTx.ToString().substr(0, 20), " tx doesn't exist");
-
-                /* Check the previous next hash that is being claimed. */
-                if(tx.hashNext != PrevHash())
-                    return debug::error(FUNCTION, "next hash mismatch with previous transaction");
-
-                /* Check the previous sequence number. */
-                if(tx.nSequence + 1 != nSequence)
-                    return debug::error(FUNCTION, "previous sequence ", tx.nSequence, " not sequential ", nSequence);
-
-                /* Check the previous genesis. */
-                if(tx.hashGenesis != hashGenesis)
-                    return debug::error(FUNCTION, "previous genesis ", tx.hashGenesis.ToString().substr(0, 20), " mismatch ",  hashGenesis.ToString().substr(0, 20));
-            }
-
             /* Checks for coinbase. */
             if(IsCoinbase())
             {
@@ -132,6 +110,20 @@ namespace TAO
                 return false;
 
             return ssOperation.get(0) == TAO::Operation::OP::TRUST;
+        }
+
+
+        /* Determines if the transaction is at head of chain. */
+        bool Transaction::IsHead() const
+        {
+            return hashNextTx == STATE::HEAD;
+        }
+
+
+        /* Determines if the transaction is confirmed in the chain. */
+        bool Transaction::IsConfirmed() const
+        {
+            return (hashNextTx != STATE::UNCONFIRMED);
         }
 
 
