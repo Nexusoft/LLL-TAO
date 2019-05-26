@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/system.h>
 
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/include/enum.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -32,27 +33,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 {
     using namespace TAO::Register;
     using namespace TAO::Operation;
-
-
-    //create dummy block
-    uint1024_t hashBlock = 0;
-    {
-        TAO::Ledger::BlockState state;
-        state.nVersion       = 7;
-        state.hashPrevBlock  = 0;
-        state.nChannel       = 1;
-        state.nHeight        = 5;
-        state.hashMerkleRoot = 555;
-        state.nBits          = 333;
-        state.nNonce         = 222;
-        state.nTime          = 999;
-
-        //set hash
-        hashBlock = state.GetHash();
-
-        //write to disk
-        LLD::legDB->WriteBlock(hashBlock, state);
-    }
 
 
     //rollback a token object register
@@ -237,6 +217,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         tx.hashGenesis = hashGenesis;
         tx.nSequence   = 1;
         tx.nTimestamp  = runtime::timestamp();
+        tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
         //payload
         tx << uint8_t(OP::TRANSFER) << hashRegister << uint256_t(0xffff);
@@ -246,9 +227,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
         //write transaction
         REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
-
-        //write index
-        REQUIRE(LLD::legDB->IndexBlock(tx.GetHash(), hashBlock));
 
         //commit to disk
         REQUIRE(Execute(tx, FLAGS::WRITE));
@@ -313,6 +291,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 1;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx << uint8_t(OP::TRANSFER) << hashRegister << hashGenesis2;
@@ -322,9 +301,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
-
-            //write index
-            REQUIRE(LLD::legDB->IndexBlock(tx.GetHash(), hashBlock));
 
             //commit to disk
             REQUIRE(Execute(tx, FLAGS::WRITE));
@@ -481,6 +457,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.hashGenesis = hashGenesis2;
             tx.nSequence   = 1;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx << uint8_t(OP::CLAIM) << hashTx;
@@ -490,9 +467,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
-
-            //write index
-            REQUIRE(LLD::legDB->IndexBlock(tx.GetHash(), hashBlock));
 
             //commit to disk
             REQUIRE(Execute(tx, FLAGS::WRITE));
@@ -589,6 +563,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx << uint8_t(OP::DEBIT) << hashRegister << hashAccount << uint64_t(500);
@@ -598,9 +573,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
-
-            //write index
-            REQUIRE(LLD::legDB->IndexBlock(tx.GetHash(), hashBlock));
 
             //commit to disk
             REQUIRE(Execute(tx, FLAGS::WRITE));
@@ -694,6 +666,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx.hashGenesis = hashGenesis;
                 tx.nSequence   = 1;
                 tx.nTimestamp  = runtime::timestamp();
+                tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
                 //payload
                 tx << uint8_t(OP::DEBIT) << hashRegister << hashAccount << uint64_t(500);
@@ -703,9 +676,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                 //write transaction
                 REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
-
-                //write index
-                REQUIRE(LLD::legDB->IndexBlock(tx.GetHash(), hashBlock));
 
                 //commit to disk
                 REQUIRE(Execute(tx, FLAGS::WRITE));
@@ -937,15 +907,13 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx << uint8_t(OP::COINBASE) << uint64_t(5000);
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
-
-            //write index
-            REQUIRE(LLD::legDB->IndexBlock(tx.GetHash(), hashBlock));
 
             //set the hash
             hashTx = tx.GetHash();

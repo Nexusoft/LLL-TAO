@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/verify.h>
 
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/include/enum.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -56,7 +57,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object token = CreateToken(11, 1000, 100);
@@ -92,7 +95,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 1;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object account = CreateAccount(11);
@@ -128,7 +133,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 2;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object object;
@@ -179,7 +186,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 3;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create an operation stream to set values.
             TAO::Operation::Stream stream;
@@ -228,7 +237,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 4;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create an operation stream to set values.
             TAO::Operation::Stream stream;
@@ -277,7 +288,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 5;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //payload
             tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100);
@@ -321,7 +334,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 6;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //payload
             tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
@@ -365,7 +380,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 7;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //payload
             tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300);
@@ -428,7 +445,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 8;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //payload
             tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100);
@@ -534,7 +553,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object token = CreateToken(22, 1000, 100);
@@ -570,7 +591,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 1;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object account = CreateAccount(11);
@@ -606,7 +629,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 2;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object object;
@@ -645,7 +670,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 3;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object object;
@@ -684,7 +711,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 4;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object object;
@@ -723,7 +752,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 5;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object object;
@@ -762,7 +793,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 6;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object object;
@@ -801,7 +834,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 7;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object object;
@@ -841,7 +876,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 8;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object object;
@@ -880,7 +917,9 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nSequence   = 9;
             tx.hashPrevTx  = hashPrevTx;
             tx.nTimestamp  = runtime::timestamp();
-            tx.NextHash(hashPrivKey2);
+            tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
+            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
             Object object;
