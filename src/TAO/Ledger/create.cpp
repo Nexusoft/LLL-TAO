@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 
 #include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
 
@@ -59,6 +60,12 @@ namespace TAO
             /* Last sigchain transaction. */
             uint512_t hashLast = 0;
 
+            /* Check configuration. */
+            if(config::GetBoolArg("-ecdsa"))
+                tx.nNextType = SIGNATURE::BRAINPOOL;
+            else
+                tx.nNextType = SIGNATURE::FALCON;
+
             /* Check mempool for other transactions. */
             TAO::Ledger::Transaction txPrev;
             if(mempool.Get(hashGenesis, txPrev))
@@ -67,9 +74,7 @@ namespace TAO
                 tx.nSequence   = txPrev.nSequence + 1;
                 tx.hashGenesis = txPrev.hashGenesis;
                 tx.hashPrevTx  = txPrev.GetHash();
-                tx.NextHash(user->Generate(tx.nSequence + 1, pin));
-
-                return true;
+                tx.nKeyType    = txPrev.nNextType;
             }
 
             /* Get the last transaction. */
@@ -83,13 +88,11 @@ namespace TAO
                 tx.nSequence   = txPrev.nSequence + 1;
                 tx.hashGenesis = txPrev.hashGenesis;
                 tx.hashPrevTx  = hashLast;
-                tx.NextHash(user->Generate(tx.nSequence + 1, pin));
-
-                return true;
+                tx.nKeyType    = txPrev.nNextType;
             }
 
             /* Genesis Transaction. */
-            tx.NextHash(user->Generate(tx.nSequence + 1, pin));
+            tx.NextHash(user->Generate(tx.nSequence + 1, pin), tx.nNextType);
             tx.hashGenesis = user->Genesis();
 
             return true;
@@ -377,7 +380,7 @@ namespace TAO
 
                 /* Genesis Transaction. */
                 TAO::Ledger::Transaction tx;
-                tx.NextHash(user->Generate(txPrev.nSequence + 1, "1234", false));
+                tx.NextHash(user->Generate(txPrev.nSequence + 1, "1234", false), SIGNATURE::FALCON);
 
                 /* Check for consistency. */
                 if(txPrev.hashNext != tx.hashNext)
@@ -416,17 +419,43 @@ namespace TAO
                 std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, "1234").GetBytes();
                 LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-                /* Generate the EC Key. */
-                #if defined USE_FALCON
-                LLC::FLKey key;
-                #else
-                LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-                #endif
-                if(!key.SetSecret(vchSecret, true))
-                    continue;
+                /* Switch based on signature type. */
+                switch(block.producer.nKeyType)
+                {
+                    /* Support for the FALCON signature scheeme. */
+                    case SIGNATURE::FALCON:
+                    {
+                        /* Create the FL Key object. */
+                        LLC::FLKey key;
 
-                /* Generate new block signature. */
-                block.GenerateSignature(key);
+                        /* Set the secret parameter. */
+                        if (!key.SetSecret(vchSecret, true))
+                            continue;
+
+                        /* Generate the signature. */
+                        if (!block.GenerateSignature(key))
+                            continue;
+
+                        break;
+                    }
+
+                    /* Support for the BRAINPOOL signature scheme. */
+                    case SIGNATURE::BRAINPOOL:
+                    {
+                        /* Create EC Key object. */
+                        LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                        /* Set the secret parameter. */
+                        if (!key.SetSecret(vchSecret, true))
+                            continue;
+
+                        /* Generate the signature. */
+                        if (!block.GenerateSignature(key))
+                            continue;
+
+                        break;
+                    }
+                }
 
                 /* Verify the block object. */
                 if(!LLP::TritiumNode::Process(block, nullptr))

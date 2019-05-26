@@ -20,7 +20,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/supply.h>
-
+#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/difficulty.h>
@@ -184,22 +184,46 @@ namespace LLP
         std::vector<uint8_t> vBytes = pSigChain->Generate(pBlock->producer.nSequence, PIN).GetBytes();
         LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-        /* Generate the EC Key and new block signature. */
-        #if defined USE_FALCON
-        LLC::FLKey key;
-        #else
-        LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-        #endif
+        /* Switch based on signature type. */
+        switch(pBlock->producer.nKeyType)
+        {
+            /* Support for the FALCON signature scheeme. */
+            case TAO::Ledger::SIGNATURE::FALCON:
+            {
+                /* Create the FL Key object. */
+                LLC::FLKey key;
 
-        if (!key.SetSecret(vchSecret, true))
-            return debug::error(FUNCTION, "TritiumMiner: Unable to set key for signing Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+                /* Set the secret parameter. */
+                if(!key.SetSecret(vchSecret, true))
+                    return debug::error(FUNCTION, "TritiumMiner: Unable to set key for signing Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
 
-        if (!pBlock->GenerateSignature(key))
-            return debug::error(FUNCTION, "TritiumMiner: Unable to sign Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+                /* Generate the signature. */
+                if(!pBlock->GenerateSignature(key))
+                    return debug::error(FUNCTION, "TritiumMiner: Unable to sign Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
 
-        /* Ensure the signed block is a valid signature */
-        if (!pBlock->VerifySignature(key))
-            return debug::error(FUNCTION, "TritiumMiner: Failed verifying Tritium Block signature ", hashMerkleRoot.ToString().substr(0, 20));
+                break;
+            }
+
+            /* Support for the BRAINPOOL signature scheme. */
+            case TAO::Ledger::SIGNATURE::BRAINPOOL:
+            {
+                /* Create EC Key object. */
+                LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                /* Set the secret parameter. */
+                if(!key.SetSecret(vchSecret, true))
+                    return debug::error(FUNCTION, "TritiumMiner: Unable to set key for signing Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+
+                /* Generate the signature. */
+                if(!pBlock->GenerateSignature(key))
+                    return debug::error(FUNCTION, "TritiumMiner: Unable to sign Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+
+                break;
+            }
+
+            default:
+                return debug::error(FUNCTION, "unknown signature type");
+        }
 
         return true;
      }

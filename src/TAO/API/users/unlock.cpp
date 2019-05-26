@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/include/enum.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -54,7 +55,7 @@ namespace TAO
                 else
                     nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::MINTING;
             }
-                
+
 
             if(params.find("transactions") != params.end()
             && (params["transactions"].get<std::string>() == "1"
@@ -75,7 +76,7 @@ namespace TAO
                 else
                     nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::ALL;
             }
-                
+
 
 
             /* Get the sigchain from map of users. */
@@ -110,7 +111,7 @@ namespace TAO
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
-            tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str(), false));
+            tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str(), false), txPrev.nNextType);
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)

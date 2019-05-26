@@ -283,6 +283,22 @@ namespace TAO
 
 
         /* Sign the block with the key that found the block. */
+        bool Block::GenerateSignature(const LLC::FLKey& key)
+        {
+            return key.Sign(GetHash().GetBytes(), vchBlockSig);
+        }
+
+
+        /* Check that the block signature is a valid signature. */
+        bool Block::VerifySignature(const LLC::FLKey& key) const
+        {
+            if (vchBlockSig.empty())
+                return false;
+
+            return key.Verify(GetHash().GetBytes(), vchBlockSig);
+        }
+
+        /* Sign the block with the key that found the block. */
         bool Block::GenerateSignature(const LLC::ECKey& key)
         {
             return key.Sign((nVersion == 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);

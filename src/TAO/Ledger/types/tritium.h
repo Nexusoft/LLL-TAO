@@ -15,9 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
 #define NEXUS_TAO_LEDGER_TYPES_TRITIUM_H
 
-#if defined USE_FALCON
 #include <LLC/include/flkey.h>
-#endif
 
 #include <TAO/Register/types/stream.h>
 
@@ -182,28 +180,6 @@ namespace TAO
              *
              **/
             bool VerifyWork() const override;
-
-
-            #if defined USE_FALCON
-            /** Generate Signature
-             *
-             *  Sign the block with the key that found the block.
-             *
-             */
-            bool GenerateSignature(const LLC::FLKey& key);
-
-            #endif
-
-
-            #if defined USE_FALCON
-            /** Verify Signature
-             *
-             *  Check that the block signature is a valid signature.
-             *
-             **/
-            bool VerifySignature(const LLC::FLKey& key) const;
-
-            #endif
 
 
             /** StakeHash

@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/stake.h>
+#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 
@@ -343,17 +344,44 @@ namespace TAO
             /* Get the key from the producer. */
             if(nHeight > 0)
             {
-                /* Create the key to check. */
-                #if defined USE_FALCON
-                LLC::FLKey key;
-                #else
-                LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-                #endif
-                key.SetPubKey(producer.vchPubKey);
+                /* Switch based on signature type. */
+                switch(producer.nKeyType)
+                {
+                    /* Support for the FALCON signature scheeme. */
+                    case SIGNATURE::FALCON:
+                    {
+                        /* Create the FL Key object. */
+                        LLC::FLKey key;
 
-                /* Check the Block Signature. */
-                if (!VerifySignature(key))
-                    return debug::error(FUNCTION, "bad block signature");
+                        /* Set the public key and verify. */
+                        key.SetPubKey(producer.vchPubKey);
+
+                        /* Check the Block Signature. */
+                        if (!VerifySignature(key))
+                            return debug::error(FUNCTION, "bad block signature");
+
+                        break;
+                    }
+
+                    /* Support for the BRAINPOOL signature scheme. */
+                    case SIGNATURE::BRAINPOOL:
+                    {
+                        /* Create EC Key object. */
+                        LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                        /* Set the public key and verify. */
+                        key.SetPubKey(producer.vchPubKey);
+
+                        /* Check the Block Signature. */
+                        if (!VerifySignature(key))
+                            return debug::error(FUNCTION, "bad block signature");
+
+                        break;
+                    }
+
+                    default:
+                        return debug::error(FUNCTION, "unknown signature type");
+                }
             }
 
             return true;
@@ -663,28 +691,6 @@ namespace TAO
 
             return Block::VerifyWork();
         }
-
-
-        /* Sign the block with the key that found the block. */
-        #if defined USE_FALCON
-        bool TritiumBlock::GenerateSignature(const LLC::FLKey& key)
-        {
-            return key.Sign(GetHash().GetBytes(), vchBlockSig);
-        }
-        #endif
-
-
-        /* Check that the block signature is a valid signature. */
-        #if defined USE_FALCON
-        bool TritiumBlock::VerifySignature(const LLC::FLKey& key) const
-        {
-            if (vchBlockSig.empty())
-                return false;
-
-            return key.Verify(GetHash().GetBytes(), vchBlockSig);
-        }
-        #endif
-
 
         /* Prove that you staked a number of seconds based on weight */
         uint1024_t TritiumBlock::StakeHash() const

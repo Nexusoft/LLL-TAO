@@ -52,14 +52,6 @@ namespace version
     #endif
 
 
-    /* The Cryptography Type */
-    #if defined USE_FALCON
-        const std::string CRYPTO_TYPE = "[FALCON]";
-    #else
-        const std::string CRYPTO_TYPE = "[ECC]";
-    #endif
-
-
     /* The Architecture (32-Bit or 64-Bit) */
     #if defined x64
         const std::string BUILD_ARCH = "[x64]";
@@ -67,5 +59,5 @@ namespace version
         const std::string BUILD_ARCH = "[x86]";
     #endif
 
-    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + " " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + CRYPTO_TYPE + BUILD_ARCH +" " +CLIENT_TYPE);
+    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + " " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH + " " +CLIENT_TYPE);
 }

@@ -81,6 +81,14 @@ namespace TAO
             uint512_t hashNextTx;
 
 
+            /** The key type. **/
+            uint8_t nKeyType;
+
+
+            /** The next key type. **/
+            uint8_t nNextType;
+
+
             //memory only, to be disposed once fully locked into the chain behind a checkpoint
             //this is for the segregated keys from transaction data.
             std::vector<uint8_t> vchPubKey;
@@ -108,6 +116,8 @@ namespace TAO
                 if(!(nSerType & SER_GETHASH) && (nSerType & SER_LLD))
                     READWRITE(hashNextTx);
 
+                READWRITE(nKeyType);
+                READWRITE(nNextType);
                 READWRITE(vchPubKey);
 
                 /* Don't include signature in txid. */
@@ -127,6 +137,8 @@ namespace TAO
             , hashGenesis(0)
             , hashPrevTx(0)
             , hashNextTx(0)
+            , nKeyType(0)
+            , nNextType(0)
             , vchPubKey()
             , vchSig()
             {}
@@ -266,9 +278,10 @@ namespace TAO
              *  Sets the Next Hash from the key
              *
              *  @param[in] hashSecret The secret phrase to generate the keys.
+             *  @param[in] nType The type of key to create with.
              *
              **/
-            void NextHash(const uint512_t& hashSecret);
+            void NextHash(const uint512_t& hashSecret, const uint8_t nType);
 
 
             /** PrevHash

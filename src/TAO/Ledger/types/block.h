@@ -21,6 +21,7 @@ ________________________________________________________________________________
 namespace LLC
 {
     class ECKey;
+    class FLKey;
 }
 
 /* Global TAO namespace. */
@@ -281,6 +282,22 @@ namespace TAO
              *
              **/
             virtual bool VerifyWork() const;
+
+
+            /** Generate Signature
+             *
+             *  Sign the block with the key that found the block.
+             *
+             */
+            bool GenerateSignature(const LLC::FLKey& key);
+
+
+            /** Verify Signature
+             *
+             *  Check that the block signature is a valid signature.
+             *
+             **/
+            bool VerifySignature(const LLC::FLKey& key) const;
 
 
             /** GenerateSignature

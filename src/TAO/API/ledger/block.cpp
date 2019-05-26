@@ -36,54 +36,7 @@ namespace TAO
         /* Creates a block . */
         json::json Ledger::Create(const json::json& params, bool fHelp)
         {
-            /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params);
-
-            /* Get the session to be used for this API call */
-            uint64_t nSession = users->GetSession(params);
-
-            /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
-            if(!user)
-                throw APIException(-25, "Invalid session ID");
-
-            /* Check that the account is unlocked for creating transactions */
-            if( !users->CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions");
-
-            /* Create the block object. */
-            TAO::Ledger::TritiumBlock block;
-            if(!TAO::Ledger::CreateBlock(user, strPIN, 2, block))
-                throw APIException(-26, "Failed to create block");
-
-            /* Get the secret from new key. */
-            std::vector<uint8_t> vBytes = users->GetKey(block.producer.nSequence, strPIN, nSession).GetBytes();
-            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
-
-            /* Generate the EC Key. */
-            #if defined USE_FALCON
-            LLC::FLKey key;
-            #else
-            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-            #endif
-            if(!key.SetSecret(vchSecret, true))
-                throw APIException(-26, "Failed to set secret key");
-
-            /* Generate new block signature. */
-            block.GenerateSignature(key);
-
-            /* Verify the block object. */
-            if(!block.Check())
-                throw APIException(-26, "Block is invalid");
-
-            /* Create the state object. */
-            if(!block.Accept())
-                throw APIException(-26, "Block failed accept");
-
-            json::json ret;
-            ret["block"] = block.GetHash().ToString();
-
-            return ret;
+            throw APIException(-25, "ledger create not available.");
         }
 
         /* Retrieves the blockhash for the given height. */

@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/enum.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -84,7 +85,7 @@ namespace TAO
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
-            tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str(), false));
+            tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str(), false), txPrev.nNextType);
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)

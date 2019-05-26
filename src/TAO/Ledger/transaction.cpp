@@ -15,11 +15,8 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
 
-#if defined USE_FALCON
 #include <LLC/include/flkey.h>
-#else
 #include <LLC/include/eckey.h>
-#endif
 
 #include <LLD/include/global.h>
 
@@ -60,6 +57,10 @@ namespace TAO
             if(hashGenesis == 0)
                 return debug::error(FUNCTION, "genesis cannot be zero");
 
+            /* Check for genesis valid numbers. */
+            if(hashNext == 0)
+                return debug::error(FUNCTION, "nextHash cannot be zero");
+
             /* Check the timestamp. */
             if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION, "transaction timestamp too far in the future ", nTimestamp);
@@ -68,18 +69,44 @@ namespace TAO
             if(ssOperation.size() > 1024) //TODO: implement a constant max size
                 return debug::error(FUNCTION, "ledger data outside of maximum size constraints");
 
+            /* Check for empty signatures. */
+            if(vchSig.size() == 0)
+                return debug::error(FUNCTION, "transaction with empty signature");
+
             /* Switch based on signature type. */
+            switch(nKeyType)
+            {
+                /* Support for the FALCON signature scheeme. */
+                case SIGNATURE::FALCON:
+                {
+                    /* Create the FL Key object. */
+                    LLC::FLKey key;
 
-            /* Check the more expensive ECDSA verification. */
-            #if defined USE_FALCON
-            LLC::FLKey key;
-            #else
-            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-            #endif
+                    /* Set the public key and verify. */
+                    key.SetPubKey(vchPubKey);
+                    if(!key.Verify(GetHash().GetBytes(), vchSig))
+                        return debug::error(FUNCTION, "invalid transaction signature");
 
-            key.SetPubKey(vchPubKey);
-            if(!key.Verify(GetHash().GetBytes(), vchSig))
-                return debug::error(FUNCTION, "invalid transaction signature");
+                    break;
+                }
+
+                /* Support for the BRAINPOOL signature scheme. */
+                case SIGNATURE::BRAINPOOL:
+                {
+                    /* Create EC Key object. */
+                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the public key and verify. */
+                    key.SetPubKey(vchPubKey);
+                    if(!key.Verify(GetHash().GetBytes(), vchSig))
+                        return debug::error(FUNCTION, "invalid transaction signature");
+
+                    break;
+                }
+
+                default:
+                    return debug::error(FUNCTION, "unknown signature type");
+            }
 
             return true;
         }
@@ -157,23 +184,56 @@ namespace TAO
 
 
         /* Sets the Next Hash from the key */
-        void Transaction::NextHash(const uint512_t& hashSecret)
+        void Transaction::NextHash(const uint512_t& hashSecret, const uint8_t nType)
         {
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-            /* Generate the EC Key. */
-            #if defined USE_FALCON
-            LLC::FLKey key;
-            #else
-            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-            #endif
-            if(!key.SetSecret(vchSecret, true))
-                return;
+            /* Switch based on signature type. */
+            switch(nType)
+            {
 
-            /* Calculate the next hash. */
-            hashNext = LLC::SK256(key.GetPubKey());
+                /* Support for the FALCON signature scheeme. */
+                case SIGNATURE::FALCON:
+                {
+                    /* Create the FL Key object. */
+                    LLC::FLKey key;
+
+                    /* Set the secret key. */
+                    if(!key.SetSecret(vchSecret, true))
+                        return;
+
+                    /* Calculate the next hash. */
+                    hashNext = LLC::SK256(key.GetPubKey());
+
+                    break;
+                }
+
+                /* Support for the BRAINPOOL signature scheme. */
+                case SIGNATURE::BRAINPOOL:
+                {
+                    /* Create EC Key object. */
+                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the secret key. */
+                    if(!key.SetSecret(vchSecret, true))
+                        return;
+
+                    /* Calculate the next hash. */
+                    hashNext = LLC::SK256(key.GetPubKey());
+
+                    break;
+                }
+
+                default:
+                {
+                    /* Unsupported (this is a failure flag). */
+                    hashNext = 0;
+
+                    break;
+                }
+            }
         }
 
 
@@ -191,23 +251,50 @@ namespace TAO
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-            /* Generate the EC Key. */
-            #if defined USE_FALCON
-            LLC::FLKey key;
-            #else
-            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-            #endif
-            if(!key.SetSecret(vchSecret, true))
-                return false;
+            /* Check for empty signatures. */
+            if(vchSig.size() == 0)
+                return debug::error(FUNCTION, "cannot sign with no signature set");
 
-            /* Set the public key. */
-            vchPubKey = key.GetPubKey();
+            /* Switch based on signature type. */
+            switch(nKeyType)
+            {
 
-            /* Calculate the has of this transaction. */
-            uint512_t hashThis = GetHash();
+                /* Support for the FALCON signature scheeme. */
+                case SIGNATURE::FALCON:
+                {
+                    /* Create the FL Key object. */
+                    LLC::FLKey key;
 
-            /* Sign the hash. */
-            return key.Sign(hashThis.GetBytes(), vchSig);
+                    /* Set the secret key. */
+                    if(!key.SetSecret(vchSecret, true))
+                        return false;
+
+                    /* Set the public key. */
+                    vchPubKey = key.GetPubKey();
+
+                    /* Sign the hash. */
+                    return key.Sign(GetHash().GetBytes(), vchSig);
+                }
+
+                /* Support for the BRAINPOOL signature scheme. */
+                case SIGNATURE::BRAINPOOL:
+                {
+                    /* Create EC Key object. */
+                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the secret key. */
+                    if(!key.SetSecret(vchSecret, true))
+                        return false;
+
+                    /* Set the public key. */
+                    vchPubKey = key.GetPubKey();
+
+                    /* Sign the hash. */
+                    return key.Sign(GetHash().GetBytes(), vchSig);
+                }
+            }
+
+            return false;
         }
 
 
