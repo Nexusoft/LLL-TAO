@@ -51,8 +51,6 @@ namespace TAO
             /* Check to see whether the caller has requested a specific data field to return */
             std::string strDataField = "";
             
-            if(params.find("fieldname") != params.end())
-                strDataField =  params["fieldname"].get<std::string>();
 
             /* Get the asset from the register DB.  We can read it as an Object.
                If this fails then we try to read it as a base State type and assume it was
@@ -65,7 +63,20 @@ namespace TAO
             object.Parse();
 
             /* Convert the object to JSON */
-            ret = TAO::API::ObjectRegisterToJSON(object, strDataField);
+            ret = TAO::API::ObjectRegisterToJSON(object, hashRegister);
+
+            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */            
+            if(params.find("fieldname") != params.end())
+            {
+                /* First get the fieldname from the response */
+                std::string strFieldname =  params["fieldname"].get<std::string>();
+                
+                /* Iterate through the response keys */
+                for (auto it = ret.begin(); it != ret.end(); ++it)
+                    /* If this key is not the one that was requested then erase it */
+                    if( it.key() != strFieldname)
+                        ret.erase(it);
+            }
 
             return ret;
         }

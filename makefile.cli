@@ -329,6 +329,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_tokens_debit.o \
 		build/API_tokens_get.o \
 		build/API_tokens_initialize.o \
+		build/API_users_assets.o \
 		build/API_users_create.o \
 		build/API_users_events.o \
 		build/API_users_lock.o \

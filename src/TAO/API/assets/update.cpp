@@ -97,6 +97,10 @@ namespace TAO
             if(!LLD::regDB->ReadState(hashRegister, asset))
                 throw APIException(-24, "Asset not found");
 
+            /* Check that this is an updatable object, i.e. not a raw / append obejct */
+            if(asset.nType != TAO::Register::REGISTER::OBJECT)
+                throw APIException(-24, "Raw assets can not be updated ");
+
             /* parse object so that the data fields can be accessed */
             asset.Parse();
 

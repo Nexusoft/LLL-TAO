@@ -127,6 +127,8 @@ namespace TAO
             mapFunctions["unlock/user"]              = Function(std::bind(&Users::Unlock,          this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/transactions"]        = Function(std::bind(&Users::Transactions,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/notifications"]       = Function(std::bind(&Users::Notifications,   this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/assets"]              = Function(std::bind(&Users::Assets,    this, std::placeholders::_1, std::placeholders::_2));
+            
         }
 
 

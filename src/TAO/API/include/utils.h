@@ -120,12 +120,12 @@ namespace TAO
         *  Converts an Object Register to formattted JSON
         *
         *  @param[in] object The Object Register to convert
-        *  @param[in] strDataField An optional data field to filter the response on
+        *  @param[in] hashRegister The register address of the object
         *
         *  @return the formatted JSON object
         *
         **/
-        json::json ObjectRegisterToJSON(const TAO::Register::Object& object, const std::string strDataField);
+        json::json ObjectRegisterToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister);
 
 
         /** GetTokenOrAccountDigits

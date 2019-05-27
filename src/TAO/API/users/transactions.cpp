@@ -102,7 +102,7 @@ namespace TAO
                 if(nCurrentPage > nPage)
                     break;
 
-                if(nTotal > nLimit)
+                if(nTotal - (nPage * nLimit) > nLimit)
                     break;
 
                 /* Read the block state from the the ledger DB using the transaction hash index */

@@ -167,6 +167,7 @@ Additionally the API supports passing a field name in the URL after the asset na
 ### Return value JSON object:
 ```
 {
+    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
     "timestamp": "1553227128",
     "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
     "serial_number": "123456789123456789",
@@ -175,6 +176,8 @@ Additionally the API supports passing a field name in the URL after the asset na
 }
 ```
 ### Return values:
+
+`address` : The register address of the asset.  
 
 `timestamp` : The Unix timestamp of when the asset was last updated.
 

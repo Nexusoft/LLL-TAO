@@ -147,7 +147,7 @@ namespace TAO
                     if(nCurrentPage > nPage)
                         break;
 
-                    if(nTotal > nLimit)
+                    if(nTotal - (nPage * nLimit) > nLimit)
                         break;
 
                     /* Read the object register. */
@@ -235,8 +235,8 @@ namespace TAO
                 if(nCurrentPage > nPage)
                     break;
 
-                if(nTotal > nLimit)
-                        break;
+                if(nTotal - (nPage * nLimit) > nLimit)
+                    break;
 
                 json::json obj;
                 obj["version"]   = tx.nVersion;

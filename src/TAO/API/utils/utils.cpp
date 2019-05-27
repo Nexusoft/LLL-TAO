@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/types/tritium.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/stream.h>
 #include <TAO/Operation/include/enum.h>
@@ -490,6 +491,41 @@ namespace TAO
                             break;
                         }
 
+                        /* Transfer ownership of a register to another signature chain. */
+                        case TAO::Operation::OP::CLAIM:
+                        {
+                            /* Extract the tx id of the corresponding transfer from the ssOperation. */
+                            uint512_t hashTransferTx;
+                            ssOperation >> hashTransferTx;
+
+                            /* Read the claimed transaction. */
+                            TAO::Ledger::Transaction txClaim;
+                            
+                            /* Check disk of writing new block. */
+                            if((!LLD::legDB->ReadTx(hashTransferTx, txClaim) || !LLD::legDB->HasIndex(hashTransferTx)))
+                                return debug::error(FUNCTION, hashTransferTx.ToString(), " tx doesn't exist or not indexed");
+
+                            /* Check mempool or disk if not writing. */
+                            else if(!TAO::Ledger::mempool.Get(hashTransferTx, txClaim)
+                            && !LLD::legDB->ReadTx(hashTransferTx, txClaim))
+                                return debug::error(FUNCTION, hashTransferTx.ToString(), " tx doesn't exist");
+
+                            /* Extract the state from tx. */
+                            uint8_t TX_OP;
+                            txClaim.ssOperation >> TX_OP;
+
+                            /* Extract the address  */
+                            uint256_t hashAddress;
+                            txClaim.ssOperation >> hashAddress;
+
+                            /* Output the json information. */
+                            ret["OP"]       = "CLAIM";
+                            ret["txid"] = hashTransferTx.ToString();
+                            ret["address"]  = hashAddress.ToString();
+
+                            break;
+                        }
+
 
                         /* Debit tokens from an account you own. */
                         case TAO::Operation::OP::DEBIT:
@@ -631,17 +667,19 @@ namespace TAO
 
 
         /* Converts an Object Register to formattted JSON */
-        json::json ObjectRegisterToJSON(const TAO::Register::Object& object, const std::string strDataField)
+        json::json ObjectRegisterToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister)
         {
             /* Declare the return JSON object */
             json::json ret;
 
-            if(object.nType == TAO::Register::REGISTER::RAW)
-            {
-                /* Build the response JSON for the raw format asset. */
-                ret["timestamp"]  = object.nTimestamp;
-                ret["owner"]      = object.hashOwner.ToString();
+            /* Build the response JSON. */
+            ret["address"]    = hashRegister.ToString();
+            ret["timestamp"]  = object.nTimestamp;
+            ret["owner"]      = object.hashOwner.ToString();
 
+            if(object.nType == TAO::Register::REGISTER::APPEND
+            || object.nType == TAO::Register::REGISTER::RAW)
+            {
                 /* raw state assets only have one data member containing the raw hex-encoded data*/
                 std::string data;
                 object >> data;
@@ -649,14 +687,6 @@ namespace TAO
             }
             else if(object.nType == TAO::Register::REGISTER::OBJECT)
             {
-
-                /* Build the response JSON. */
-                if(strDataField.empty())
-                {
-                    ret["timestamp"]  = object.nTimestamp;
-                    ret["owner"]      = object.hashOwner.ToString();
-                }
-
                 /* Get List of field names in this asset object */
                 std::vector<std::string> vFieldNames = object.GetFieldNames();
 
@@ -674,10 +704,6 @@ namespace TAO
 
                 for(const auto& strFieldName : vFieldNames)
                 {
-                    /* Only return requested data field if one was specifically requested */
-                    if(!strDataField.empty() && strDataField != strFieldName)
-                        continue;
-
                     /* First get the type*/
                     object.Type(strFieldName, nType);
 
@@ -737,6 +763,8 @@ namespace TAO
             }
             else
                 throw APIException(-24, "Specified name/address is not an asset.");
+
+            /* Only return requested data field if one was specifically requested */
 
             return ret;
         }
