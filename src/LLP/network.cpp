@@ -31,13 +31,13 @@ namespace LLP
 
         if (ret != NO_ERROR)
         {
-            debug::error("TCP/IP socket library failed to start (WSAStartup returned error ", ret, ") ");
+            debug::error(FUNCTION, "TCP/IP socket library failed to start (WSAStartup returned error ", ret, ") ");
             return false;
         }
         else if ( LOBYTE( wsaData.wVersion ) != 2 || HIBYTE( wsaData.wVersion ) != 2 )
         {
             /* Winsock version incorrect */
-            debug::error("Windows sockets does not support requested version 2.2");
+            debug::error(FUNCTION, "Windows sockets does not support requested version 2.2");
             WSACleanup();
             return false;
         }
@@ -47,10 +47,10 @@ namespace LLP
     #else
     {
         struct rlimit lim;
-        lim.rlim_cur = 4096;
-        lim.rlim_max = 4096;
+        lim.rlim_cur = 8192;
+        lim.rlim_max = 8192;
         if(setrlimit(RLIMIT_NOFILE, &lim) == -1)
-            debug::error("Failed to set max file descriptors");
+            debug::error(FUNCTION, "Failed to set max file descriptors");
     }
 
     {
@@ -94,7 +94,7 @@ namespace LLP
     *  and caches them for future use */
     void CacheEIDsAndRLOCs()
     {
-
+        
     }
 
 }

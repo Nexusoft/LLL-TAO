@@ -143,7 +143,7 @@ namespace TAO
              *  Used for sorting transactions by sequence.
              *
              **/
-             bool operator> (const Transaction& tx)
+             bool operator>(const Transaction& tx) const
              {
                  return nSequence > tx.nSequence;
              }
@@ -154,7 +154,7 @@ namespace TAO
               *  Used for sorting transactions by sequence.
               *
               **/
-              bool operator< (const Transaction& tx)
+              bool operator<(const Transaction& tx) const
               {
                   return nSequence < tx.nSequence;
               }

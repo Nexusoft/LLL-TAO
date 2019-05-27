@@ -401,6 +401,9 @@ namespace TAO
                 if(config::fShutdown.load())
                     return;
 
+                /* Keep block production to five seconds. */
+                runtime::sleep(5000);
+
                 /* Create the block object. */
                 runtime::timer TIMER;
                 TIMER.Start();

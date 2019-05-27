@@ -144,7 +144,29 @@ endif
 
 #Build with undefined behavior checking
 ifdef UNDEFINED_CHECK
-    CXXFLAGS+= -fsanitize=undefined
+    CXXFLAGS+=  -fsanitize=undefined \
+				-fsanitize=shift \
+				-fsanitize=shift-exponent \
+				-fsanitize=shift-base \
+				-fsanitize=integer-divide-by-zero \
+				-fsanitize=unreachable \
+				-fsanitize=vla-bound \
+				-fsanitize=null \
+				-fsanitize=return \
+				-fsanitize=signed-integer-overflow \
+				-fsanitize=bounds \
+				-fsanitize=bounds-strict \
+				-fsanitize=alignment \
+				-fsanitize=object-size \
+				-fsanitize=float-divide-by-zero \
+				-fsanitize=float-cast-overflow \
+				-fsanitize=nonnull-attribute \
+				-fsanitize=returns-nonnull-attribute \
+				-fsanitize=bool \
+				-fsanitize=enum \
+				-fsanitize=vptr \
+				-fsanitize=pointer-overflow \
+				-fsanitize=builtin
 endif
 
 
@@ -264,6 +286,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_lisp.o \
 		build/LLP_manager.o \
 		build/LLP_network.o \
+		build/LLP_permissions.o \
 		build/LLP_rpcnode.o \
 		build/LLP_seeds.o \
 		build/LLP_server.o \
@@ -306,16 +329,20 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_tokens_debit.o \
 		build/API_tokens_get.o \
 		build/API_tokens_initialize.o \
+		build/API_users_accounts.o \
+		build/API_users_assets.o \
 		build/API_users_create.o \
 		build/API_users_events.o \
 		build/API_users_lock.o \
 		build/API_users_login.o \
 		build/API_users_logout.o \
 		build/API_users_notifications.o \
+		build/API_users_tokens.o \
 		build/API_users_transactions.o \
 		build/API_users_unlock.o \
 		build/API_users_users.o \
 		build/API_utils_utils.o \
+		build/API_utils_jsonutils.o \
 		build/Ledger_base_minter.o \
 		build/Ledger_block.o \
 		build/Ledger_chainstate.o \

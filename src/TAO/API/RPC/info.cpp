@@ -34,8 +34,7 @@ ________________________________________________________________________________
 #include <LLP/include/lisp.h>
 
 #include <vector>
-#include <new> //std::bad_alloc
-//#include <TAO/Ledger/include/global.h>
+
 
 /* Global TAO namespace. */
 namespace TAO

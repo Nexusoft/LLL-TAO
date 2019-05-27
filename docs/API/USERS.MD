@@ -391,14 +391,16 @@ This will list off all of the assets owned by a signature chain.
 ```
 [
     {
-        "timestamp": "1553227128"
+        "address": "8195384518cc4daf2da54479a38c9d93fde145be0bbcd129f420054ff777917c",
+        "timestamp": "1553227256"
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
         "serial_number": "123456",
         "description": "This is the description of my asset",
         "shelf_location": "A9S2"
     },
     {
-        "timestamp": "1553227256"
+        "address": "2673bd356146d1b7ab34dac8f6503cd0c587158b6a017fb9e8ff3e627be8f01c",
+        "timestamp": "1553227128"
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
         "serial_number": "78901234",
         "description": "This is the description of another asset",
@@ -407,6 +409,8 @@ This will list off all of the assets owned by a signature chain.
 ]
 ```
 ### Return values:
+
+`address` : The register address of the asset. 
 
 `timestamp` : The Unix timestamp of when the asset was last updated.
 

@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/tokens.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/jsonutils.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -65,21 +66,8 @@ namespace TAO
                 if(params.find("type") != params.end() && params["type"].get<std::string>() == "token")
                     throw APIException(-24, "Requested object is not a token");
 
-                /* Get the identifier */
-                uint256_t nIdentifier = object.get<uint256_t>("identifier");
-
-                /* If the identifier is 0 then return the value "NXS" for clarity rather than 0 */
-                if( nIdentifier == 0)
-                    ret["identifier"] = "NXS";
-                else
-                    ret["identifier"] = object.get<uint256_t>("identifier").GetHex();
-                
-                /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
-                   Therefore, to convert the internal value to a floating point value we need to reduce the internal value
-                   by 10^digits  */
-                uint64_t nDigits = GetTokenOrAccountDigits(object);
-
-                ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
+                /* Convert the account object to JSON */
+                ret = ObjectRegisterToJSON(object, hashRegister);
 
             }
             else if(nStandard == TAO::Register::OBJECTS::TOKEN)
@@ -88,17 +76,8 @@ namespace TAO
                 if(params.find("type") != params.end() && params["type"].get<std::string>() == "account")
                     throw APIException(-24, "Requested object is not an account");
 
-                /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
-                   Therefore, to convert the internal value to a floating point value we need to reduce the internal value
-                   by 10^digits  */
-                uint64_t nDigits = GetTokenOrAccountDigits(object);
-
-                ret["identifier"]       = object.get<uint256_t>("identifier").GetHex();
-                ret["balance"]          = (double) object.get<uint64_t>("balance") / pow(10, nDigits);
-                ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDigits);
-                ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
-                                        - object.get<uint64_t>("balance")) / pow(10, nDigits);
-                ret["digits"]           = nDigits;
+                /* Convert the token object to JSON */
+                ret = ObjectRegisterToJSON(object, hashRegister);
             }
             else
                 throw APIException(-27, "Unknown object register");
