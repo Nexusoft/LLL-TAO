@@ -495,14 +495,16 @@ namespace TAO
             /* Declare the return JSON object */
             json::json ret;
 
-            /* Build the response JSON. */
-            ret["address"]    = hashRegister.ToString();
-            ret["timestamp"]  = object.nTimestamp;
-            ret["owner"]      = object.hashOwner.ToString();
+
 
             if(object.nType == TAO::Register::REGISTER::APPEND
             || object.nType == TAO::Register::REGISTER::RAW)
             {
+                /* Build the response JSON. */
+                ret["address"]    = hashRegister.ToString();
+                ret["timestamp"]  = object.nTimestamp;
+                ret["owner"]      = object.hashOwner.ToString();
+                
                 /* raw state assets only have one data member containing the raw hex-encoded data*/
                 std::string data;
                 object >> data;
@@ -510,85 +512,129 @@ namespace TAO
             }
             else if(object.nType == TAO::Register::REGISTER::OBJECT)
             {
-                /* Get List of field names in this asset object */
-                std::vector<std::string> vFieldNames = object.GetFieldNames();
+                /* Get the object standard. */
+                uint8_t nStandard = object.Standard();
 
-                /* Declare type and data variables for unpacking the Object fields */
-                uint8_t nType;
-                uint8_t nUint8;
-                uint16_t nUint16;
-                uint32_t nUint32;
-                uint64_t nUint64;
-                uint256_t nUint256;
-                uint512_t nUint512;
-                uint1024_t nUint1024;
-                std::string strValue;
-                std::vector<uint8_t> vchBytes;
-
-                for(const auto& strFieldName : vFieldNames)
+                if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
                 {
-                    /* First get the type*/
-                    object.Type(strFieldName, nType);
+                    ret["address"]    = hashRegister.ToString();
+                    
+                    /* Get the identifier */
+                    uint256_t nIdentifier = object.get<uint256_t>("identifier");
 
-                    if(nType == TAO::Register::TYPES::UINT8_T)
-                    {
-                        object.Read<uint8_t>(strFieldName, nUint8);
-                        ret[strFieldName] = nUint8;
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT16_T)
-                    {
-                        object.Read<uint16_t>(strFieldName, nUint16);
-                        ret[strFieldName] = nUint16;
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT32_T)
-                    {
-                        object.Read<uint32_t>(strFieldName, nUint32);
-                        ret[strFieldName] = nUint32;
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT64_T)
-                    {
-                        object.Read<uint64_t>(strFieldName, nUint64);
-                        ret[strFieldName] = nUint64;
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT256_T)
-                    {
-                        object.Read<uint256_t>(strFieldName, nUint256);
-                        ret[strFieldName] = nUint256.GetHex();
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT512_T)
-                    {
-                        object.Read<uint512_t>(strFieldName, nUint512);
-                        ret[strFieldName] = nUint512.GetHex();
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT1024_T)
-                    {
-                        object.Read<uint1024_t>(strFieldName, nUint1024);
-                        ret[strFieldName] = nUint1024.GetHex();
-                    }
-                    else if(nType == TAO::Register::TYPES::STRING )
-                    {
-                        object.Read<std::string>(strFieldName, strValue);
-                        
-                        /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */
-                        ret[strFieldName] = strValue.substr(0, strValue.find_last_not_of('\0') + 1);
-                    }
-                    else if(nType == TAO::Register::TYPES::BYTES)
-                    {
-                        object.Read<std::vector<uint8_t>>(strFieldName, vchBytes);
+                    /* If the identifier is 0 then return the value "NXS" for clarity rather than 0 */
+                    if( nIdentifier == 0)
+                        ret["identifier"] = "NXS";
+                    else
+                        ret["identifier"] = object.get<uint256_t>("identifier").GetHex();
+                    
+                    /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
+                    Therefore, to convert the internal value to a floating point value we need to reduce the internal value
+                    by 10^digits  */
+                    uint64_t nDigits = GetTokenOrAccountDigits(object);
 
-                        /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */                        
-                        vchBytes.erase(std::find(vchBytes.begin(), vchBytes.end(), '\0'), vchBytes.end());
-
-                        ret[strFieldName] = encoding::EncodeBase64(&vchBytes[0], vchBytes.size()) ;
-                    }
+                    ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
 
                 }
+                else if(nStandard == TAO::Register::OBJECTS::TOKEN)
+                {
+
+                    /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
+                    Therefore, to convert the internal value to a floating point value we need to reduce the internal value
+                    by 10^digits  */
+                    uint64_t nDigits = GetTokenOrAccountDigits(object);
+
+                    ret["address"]          = hashRegister.ToString();
+                    ret["identifier"]       = object.get<uint256_t>("identifier").GetHex();
+                    ret["balance"]          = (double) object.get<uint64_t>("balance") / pow(10, nDigits);
+                    ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDigits);
+                    ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
+                                            - object.get<uint64_t>("balance")) / pow(10, nDigits);
+                    ret["digits"]           = nDigits;
+                }
+                /* Must be a user-definable object register (asset) */
+                else
+                {                
+                    /* Build the response JSON. */
+                    ret["address"]    = hashRegister.ToString();
+                    ret["timestamp"]  = object.nTimestamp;
+                    ret["owner"]      = object.hashOwner.ToString();
+                    
+                    /* Get List of field names in this asset object */
+                    std::vector<std::string> vFieldNames = object.GetFieldNames();
+
+                    /* Declare type and data variables for unpacking the Object fields */
+                    uint8_t nType;
+                    uint8_t nUint8;
+                    uint16_t nUint16;
+                    uint32_t nUint32;
+                    uint64_t nUint64;
+                    uint256_t nUint256;
+                    uint512_t nUint512;
+                    uint1024_t nUint1024;
+                    std::string strValue;
+                    std::vector<uint8_t> vchBytes;
+
+                    for(const auto& strFieldName : vFieldNames)
+                    {
+                        /* First get the type*/
+                        object.Type(strFieldName, nType);
+
+                        if(nType == TAO::Register::TYPES::UINT8_T)
+                        {
+                            object.Read<uint8_t>(strFieldName, nUint8);
+                            ret[strFieldName] = nUint8;
+                        }
+                        else if(nType == TAO::Register::TYPES::UINT16_T)
+                        {
+                            object.Read<uint16_t>(strFieldName, nUint16);
+                            ret[strFieldName] = nUint16;
+                        }
+                        else if(nType == TAO::Register::TYPES::UINT32_T)
+                        {
+                            object.Read<uint32_t>(strFieldName, nUint32);
+                            ret[strFieldName] = nUint32;
+                        }
+                        else if(nType == TAO::Register::TYPES::UINT64_T)
+                        {
+                            object.Read<uint64_t>(strFieldName, nUint64);
+                            ret[strFieldName] = nUint64;
+                        }
+                        else if(nType == TAO::Register::TYPES::UINT256_T)
+                        {
+                            object.Read<uint256_t>(strFieldName, nUint256);
+                            ret[strFieldName] = nUint256.GetHex();
+                        }
+                        else if(nType == TAO::Register::TYPES::UINT512_T)
+                        {
+                            object.Read<uint512_t>(strFieldName, nUint512);
+                            ret[strFieldName] = nUint512.GetHex();
+                        }
+                        else if(nType == TAO::Register::TYPES::UINT1024_T)
+                        {
+                            object.Read<uint1024_t>(strFieldName, nUint1024);
+                            ret[strFieldName] = nUint1024.GetHex();
+                        }
+                        else if(nType == TAO::Register::TYPES::STRING )
+                        {
+                            object.Read<std::string>(strFieldName, strValue);
+                            
+                            /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */
+                            ret[strFieldName] = strValue.substr(0, strValue.find_last_not_of('\0') + 1);
+                        }
+                        else if(nType == TAO::Register::TYPES::BYTES)
+                        {
+                            object.Read<std::vector<uint8_t>>(strFieldName, vchBytes);
+
+                            /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */                        
+                            vchBytes.erase(std::find(vchBytes.begin(), vchBytes.end(), '\0'), vchBytes.end());
+
+                            ret[strFieldName] = encoding::EncodeBase64(&vchBytes[0], vchBytes.size()) ;
+                        }
+
+                    }
+                }
             }
-            else
-                throw APIException(-24, "Specified name/address is not an asset.");
-
-            /* Only return requested data field if one was specifically requested */
-
             return ret;
         }
     }

@@ -342,6 +342,32 @@ namespace TAO
             json::json Assets(const json::json& params, bool fHelp);
 
 
+            /** Tokens
+             *
+             *  Get a list of tokens owned by a signature chain
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Tokens(const json::json& params, bool fHelp);
+
+
+            /** Accounts
+             *
+             *  Get a list of accounts owned by a signature chain
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Accounts(const json::json& params, bool fHelp);
+
+
             /** EventsThread
              *
              *  Background thread to handle/suppress sigchain notifications.

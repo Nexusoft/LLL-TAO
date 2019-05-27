@@ -60,8 +60,23 @@ namespace TAO
             if(!LLD::regDB->ReadState(hashRegister, object))
                 throw APIException(-24, "Asset not found");
 
-            /* parse object so that the data fields can be accessed */
-            object.Parse();
+            /* Only include raw and non-standard object types (assets)*/
+            if( object.nType != TAO::Register::REGISTER::APPEND 
+            && object.nType != TAO::Register::REGISTER::RAW 
+            && object.nType != TAO::Register::REGISTER::OBJECT)
+            {
+                throw APIException(-24, "Specified name/address is not an asset.");
+            }
+                
+            if(object.nType == TAO::Register::REGISTER::OBJECT)
+            {
+                /* parse object so that the data fields can be accessed */
+                object.Parse();
+
+                /* Only include non standard object registers (assets) */
+                if( object.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
+                    throw APIException(-24, "Specified name/address is not an asset.");
+            }
 
             /* Convert the object to JSON */
             ret = TAO::API::ObjectRegisterToJSON(object, hashRegister);
