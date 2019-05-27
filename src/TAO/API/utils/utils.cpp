@@ -10,6 +10,7 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
+#include <unordered_set>
 
 #include <Legacy/include/evaluate.h>
 
@@ -33,6 +34,10 @@ ________________________________________________________________________________
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
 #include <Util/include/base64.h>
+#include <Util/include/debug.h>
+
+#include <LLC/hash/argon2.h>
+
 
 
 /* Global TAO namespace. */
@@ -224,291 +229,114 @@ namespace TAO
         }
 
 
-        /* Converts the block to formatted JSON */
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
+        /* Scans a signature chain to work out all registers that it owns */
+        std::vector<uint256_t> GetRegistersOwnedBySigChain(uint512_t hashGenesis)
         {
-            /* Decalre the response object*/
-            json::json result;
+            /* Get the last transaction. */
+            uint512_t hashLast = 0;
+            if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+                throw APIException(-28, "No transactions found");
 
-            result["hash"] = block.GetHash().GetHex();
-            // the hash that was relevant for Proof of Stake or Proof of Work (depending on block version)
-            result["proofhash"] =
-                                    block.nVersion < 5 ? block.GetHash().GetHex() :
-                                    ((block.nChannel == 0) ? block.StakeHash().GetHex() : block.ProofHash().GetHex());
+            /* In order to work out which registers are currently owned by a particular sig chain
+               we must iterate through all of the transactions for the sig chain and track the history 
+               of each register.  By  iterating through the transactions from most recent backwards we 
+               can make some assumptions about the current owned state.  For example if we find a debit 
+               transaction for a register before finding a transfer then we must know we currently own it. 
+               Similarly if we find a transfer transaction for a register before any other transaction 
+               then we must know we currently to NOT own it. */
 
-            result["size"] = (uint32_t)::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION);
-            result["height"] = (uint32_t)block.nHeight;
-            result["channel"] = (uint32_t)block.nChannel;
-            result["version"] = (uint32_t)block.nVersion;
-            result["merkleroot"] = block.hashMerkleRoot.GetHex();
-            result["time"] = convert::DateTimeStrFormat(block.GetBlockTime());
-            result["nonce"] = (uint64_t)block.nNonce;
-            result["bits"] = HexBits(block.nBits);
-            result["difficulty"] = TAO::Ledger::GetDifficulty(block.nBits, block.nChannel);
-            result["mint"] = Legacy::SatoshisToAmount(block.nMint);
-            if (block.hashPrevBlock != 0)
-                result["previousblockhash"] = block.hashPrevBlock.GetHex();
-            if (block.hashNextBlock != 0)
-                result["nextblockhash"] = block.hashNextBlock.GetHex();
+            /* Keep a running list of owned and transferred registers. We use a set to store these registers because 
+               we are going to be checking them frequently to see if a hash is already in the container, 
+               and a set offers us near linear search time*/
+            std::unordered_set<uint256_t> vTransferredRegisters;
+            std::unordered_set<uint256_t> vOwnedRegisters;
+            
+            /* For also put the owned register hashes in a vector as we want to maintain the insertion order, with the 
+               most recently updated register first*/
+            std::vector<uint256_t> vRegisters;
 
-            /* Add the transaction data if the caller has requested it*/
-            if(nTransactionVerbosity > 0)
+            /* Loop until genesis. */
+            while(hashLast != 0)
             {
-                json::json txinfo = json::json::array();
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::legDB->ReadTx(hashLast, tx))
+                    throw APIException(-28, "Failed to read transaction");
 
-                /* Iterate through each transaction hash in the block vtx*/
-                for(const auto& vtx : block.vtx)
-                {
-                    if(vtx.first == TAO::Ledger::TYPE::TRITIUM_TX)
-                    {
-                        /* Get the tritium transaction from the database*/
-                        TAO::Ledger::Transaction tx;
-                        if(LLD::legDB->ReadTx(vtx.second, tx))
-                        {
-                            /* add the transaction JSON.  */
-                            json::json txdata = TransactionToJSON(tx, block, nTransactionVerbosity);
+                /* Set the next last. */
+                hashLast = tx.hashPrevTx;
 
-                            txinfo.push_back(txdata);
-                        }
-                    }
-                    else if(vtx.first == TAO::Ledger::TYPE::LEGACY_TX)
-                    {
-                        /* Get the legacy transaction from the database. */
-                        Legacy::Transaction tx;
-                        if(LLD::legacyDB->ReadTx(vtx.second, tx))
-                        {
-                            /* add the transaction JSON.  */
-                            json::json txdata = TransactionToJSON(tx, block, nTransactionVerbosity);
+                /* Iterate through the operations in each transaction */
+                /* Start the stream at the beginning. */
+                tx.ssOperation.seek(0, STREAM::BEGIN);
 
-                            txinfo.push_back(txdata);
-                        }
-                    }
-                }
-                /* Add the transaction data to the response */
-                result["tx"] = txinfo;
-            }
-
-            return result;
-        }
-
-        /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
-        {
-            /* Declare JSON object to return */
-            json::json txdata;
-
-            /* Always add the hash if level 1 and up*/
-            if(nTransactionVerbosity >= 1)
-                txdata["hash"] = tx.GetHash().ToString();
-
-            /* Basic TX info for level 2 and up */
-            if(nTransactionVerbosity >= 2)
-            {
-                txdata["type"] = tx.GetTxTypeString();
-                txdata["version"] = tx.nVersion;
-                txdata["sequence"] = tx.nSequence;
-                txdata["timestamp"] = tx.nTimestamp;
-                txdata["operation"]  = OperationToJSON(tx.ssOperation);
-                txdata["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
-
-                /* Genesis and hashes are verbose 3 and up. */
-                if(nTransactionVerbosity >= 3)
-                {
-                    txdata["genesis"] = tx.hashGenesis.ToString();
-                    txdata["nexthash"] = tx.hashNext.ToString();
-                    txdata["prevhash"] = tx.hashPrevTx.ToString();
-                
-                    txdata["pubkey"] = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
-                    txdata["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
-                }
-
-                
-            }
-
-            return txdata;
-        }
-
-        /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
-        {
-            /* Declare JSON object to return */
-            json::json txdata;
-
-            /* Always add the hash */
-            txdata["hash"] = tx.GetHash().GetHex();
-
-            /* Basic TX info for level 1 and up */
-            if(nTransactionVerbosity > 0)
-            {
-                txdata["type"] = tx.GetTxTypeString();
-                txdata["timestamp"] = tx.nTime;
-                txdata["amount"] = Legacy::SatoshisToAmount(tx.GetValueOut());
-                txdata["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
-
-                /* Don't add inputs for coinbase or coinstake transactions */
-                if(!tx.IsCoinBase() && !tx.IsCoinStake())
-                {
-                    /* Declare the inputs JSON array */
-                    json::json inputs = json::json::array();
-                    /* Iterate through each input */
-                    for(const Legacy::TxIn& txin : tx.vin)
-                    {
-                        /* Read the previous transaction in order to get its outputs */
-                        Legacy::Transaction txprev;
-                        if(!LLD::legacyDB->ReadTx(txin.prevout.hash, txprev))
-                            throw APIException(-5, "Invalid transaction id");
-
-                        Legacy::NexusAddress cAddress;
-                        if(!Legacy::ExtractAddress(txprev.vout[txin.prevout.n].scriptPubKey, cAddress))
-                            throw APIException(-5, "Unable to Extract Input Address");
-
-                        inputs.push_back(debug::safe_printstr("%s:%f", cAddress.ToString().c_str(), (double) tx.vout[txin.prevout.n].nValue / Legacy::COIN));
-                    }
-                    txdata["inputs"] = inputs;
-                }
-
-                /* Declare the output JSON array */
-                json::json outputs = json::json::array();
-                /* Iterate through each output */
-                for(const Legacy::TxOut& txout : tx.vout)
-                {
-                    Legacy::NexusAddress cAddress;
-                    if(!Legacy::ExtractAddress(txout.scriptPubKey, cAddress))
-                        throw APIException(-5, "Unable to Extract Input Address");
-
-                    outputs.push_back(debug::safe_printstr("%s:%f", cAddress.ToString().c_str(), (double) txout.nValue / Legacy::COIN));
-                }
-                txdata["outputs"] = outputs;
-            }
-
-            return txdata;
-        }
-
-
-        /* Converts a serialized operation stream to formattted JSON */
-        json::json OperationToJSON(const TAO::Operation::Stream& ssOperation)
-        {
-            /* Declare the return JSON object*/
-            json::json ret;
-
-            /* Start the stream at the beginning. */
-            ssOperation.seek(0, STREAM::BEGIN);
-
-            /* Make sure no exceptions are thrown. */
-            try
-            {
-                /* Loop through the operations ssOperation. */
-                while(!ssOperation.end())
+                if(!tx.ssOperation.end())
                 {
                     uint8_t OPERATION;
-                    ssOperation >> OPERATION;
+                    tx.ssOperation >> OPERATION;
 
                     /* Check the current opcode. */
                     switch(OPERATION)
                     {
-                        /* Record a new state to the register. */
+                        /* These are the register-based operations that prove ownership if encountered before a transfer*/
                         case TAO::Operation::OP::WRITE:
-                        {
-                            /* Get the Address of the Register. */
-                            uint256_t hashAddress;
-                            ssOperation >> hashAddress;
-
-                            /* Deserialize the register from ssOperation. */
-                            std::vector<uint8_t> vchData;
-                            ssOperation >> vchData;
-
-                            /* Output the json information. */
-                            ret["OP"]      = "WRITE";
-                            ret["address"] = hashAddress.ToString();
-                            ret["data"]    = HexStr(vchData.begin(), vchData.end());
-
-                            break;
-                        }
-
-
-                        /* Append a new state to the register. */
                         case TAO::Operation::OP::APPEND:
-                        {
-                            /* Get the Address of the Register. */
-                            uint256_t hashAddress;
-                            ssOperation >> hashAddress;
-
-                            /* Deserialize the register from ssOperation. */
-                            std::vector<uint8_t> vchData;
-                            ssOperation >> vchData;
-
-                            /* Output the json information. */
-                            ret["OP"]      = "APPEND";
-                            ret["address"] = hashAddress.ToString();
-                            ret["data"]    = HexStr(vchData.begin(), vchData.end());
-
-                            break;
-                        }
-
-
-                        /* Create a new register. */
                         case TAO::Operation::OP::REGISTER:
+                        case TAO::Operation::OP::DEBIT:
+                        case TAO::Operation::OP::TRUST:
                         {
                             /* Extract the address from the ssOperation. */
                             uint256_t hashAddress;
-                            ssOperation >> hashAddress;
+                            tx.ssOperation >> hashAddress;
 
-                            /* Extract the register type from ssOperation. */
-                            uint8_t nType;
-                            ssOperation >> nType;
-
-                            /* Extract the register data from the ssOperation. */
-                            std::vector<uint8_t> vchData;
-                            ssOperation >> vchData;
-
-                            /* Output the json information. */
-                            ret["OP"]      = "REGISTER";
-                            ret["address"] = hashAddress.ToString();
-                            ret["type"]    = nType;
-                            ret["data"]    = HexStr(vchData.begin(), vchData.end());
-
+                            /* for these operations, if the address is NOT in the transferred list 
+                               then we know that we must currently own this register */
+                            if( vTransferredRegisters.find(hashAddress) == vTransferredRegisters.end() 
+                            && vOwnedRegisters.find(hashAddress) == vOwnedRegisters.end())
+                            {
+                                vOwnedRegisters.insert(hashAddress);
+                                vRegisters.push_back(hashAddress);
+                            }
 
                             break;
                         }
-
-
-                        /* Transfer ownership of a register to another signature chain. */
                         case TAO::Operation::OP::TRANSFER:
                         {
                             /* Extract the address from the ssOperation. */
                             uint256_t hashAddress;
-                            ssOperation >> hashAddress;
+                            tx.ssOperation >> hashAddress;
 
-                            /* Read the register transfer recipient. */
-                            uint256_t hashTransfer;
-                            ssOperation >> hashTransfer;
-
-                            /* Output the json information. */
-                            ret["OP"]       = "TRANSFER";
-                            ret["address"]  = hashAddress.ToString();
-                            ret["transfer"] = hashTransfer.ToString();
-
+                            /* If we find a TRANSFER before any other transaction for this register then we can know 
+                               for certain that we no longer own it */
+                            if( vOwnedRegisters.find(hashAddress) == vOwnedRegisters.end() 
+                            && vTransferredRegisters.find(hashAddress) == vTransferredRegisters.end())
+                            {
+                                vTransferredRegisters.insert(hashAddress);
+                            }
+                            
+                            if( std::find(vOwnedRegisters.begin(), vOwnedRegisters.end(), hashAddress) == vOwnedRegisters.end() )
+                                vTransferredRegisters.insert(hashAddress);
+                            
                             break;
                         }
 
-                        /* Transfer ownership of a register to another signature chain. */
                         case TAO::Operation::OP::CLAIM:
                         {
                             /* Extract the tx id of the corresponding transfer from the ssOperation. */
                             uint512_t hashTransferTx;
-                            ssOperation >> hashTransferTx;
+                            tx.ssOperation >> hashTransferTx;
 
                             /* Read the claimed transaction. */
                             TAO::Ledger::Transaction txClaim;
                             
                             /* Check disk of writing new block. */
                             if((!LLD::legDB->ReadTx(hashTransferTx, txClaim) || !LLD::legDB->HasIndex(hashTransferTx)))
-                                return debug::error(FUNCTION, hashTransferTx.ToString(), " tx doesn't exist or not indexed");
+                                debug::error(FUNCTION, hashTransferTx.ToString(), " tx doesn't exist or not indexed");
 
                             /* Check mempool or disk if not writing. */
                             else if(!TAO::Ledger::mempool.Get(hashTransferTx, txClaim)
                             && !LLD::legDB->ReadTx(hashTransferTx, txClaim))
-                                return debug::error(FUNCTION, hashTransferTx.ToString(), " tx doesn't exist");
+                                debug::error(FUNCTION, hashTransferTx.ToString(), " tx doesn't exist");
 
                             /* Extract the state from tx. */
                             uint8_t TX_OP;
@@ -517,256 +345,25 @@ namespace TAO
                             /* Extract the address  */
                             uint256_t hashAddress;
                             txClaim.ssOperation >> hashAddress;
+                            
 
-                            /* Output the json information. */
-                            ret["OP"]       = "CLAIM";
-                            ret["txid"] = hashTransferTx.ToString();
-                            ret["address"]  = hashAddress.ToString();
-
+                            /* If we find a CLAIM transaction before a TRANSFER, then we know that we must currently own this register */
+                            if( vTransferredRegisters.find(hashAddress) == vTransferredRegisters.end() 
+                            && vOwnedRegisters.find(hashAddress) == vOwnedRegisters.end())
+                            {
+                                vOwnedRegisters.insert(hashAddress);
+                                vRegisters.push_back(hashAddress);
+                            }
+                            
                             break;
                         }
 
-
-                        /* Debit tokens from an account you own. */
-                        case TAO::Operation::OP::DEBIT:
-                        {
-                            uint256_t hashAddress; //the register address debit is being sent from. Hard reject if this register isn't account id
-                            ssOperation >> hashAddress;
-
-                            uint256_t hashTransfer;   //the register address debit is being sent to. Hard reject if this register isn't an account id
-                            ssOperation >> hashTransfer;
-
-                            uint64_t  nAmount;  //the amount to be transfered
-                            ssOperation >> nAmount;
-
-                            /* Output the json information. */
-                            ret["OP"]       = "DEBIT";
-                            ret["address"]  = hashAddress.ToString();
-                            ret["transfer"] = hashTransfer.ToString();
-                            ret["amount"]   = nAmount;
-
-                            break;
-                        }
-
-
-                        /* Credit tokens to an account you own. */
-                        case TAO::Operation::OP::CREDIT:
-                        {
-                            /* The transaction that this credit is claiming. */
-                            uint512_t hashTx;
-                            ssOperation >> hashTx;
-
-                            /* The proof this credit is using to make claims. */
-                            uint256_t hashProof;
-                            ssOperation >> hashProof;
-
-                            /* The account that is being credited. */
-                            uint256_t hashAccount;
-                            ssOperation >> hashAccount;
-
-                            /* The total to be credited. */
-                            uint64_t  nCredit;
-                            ssOperation >> nCredit;
-
-                            /* Output the json information. */
-                            ret["OP"]      = "CREDIT";
-                            ret["txid"]    = hashTx.ToString();
-                            ret["proof"]   = hashProof.ToString();
-                            ret["account"] = hashAccount.ToString();
-                            ret["amount"]  = nCredit;
-
-                            break;
-                        }
-
-
-                        /* Coinbase operation. Creates an account if none exists. */
-                        case TAO::Operation::OP::COINBASE:
-                        {
-
-                            /* The total to be credited. */
-                            uint64_t  nCredit;
-                            ssOperation >> nCredit;
-
-                            /* The extra nNonce available in script. */
-                            uint64_t  nExtraNonce;
-                            ssOperation >> nExtraNonce;
-
-                            /* Output the json information. */
-                            ret["OP"]     = "COINBASE";
-                            ret["nonce"]  = nExtraNonce;
-                            ret["amount"] = nCredit;
-
-                            break;
-                        }
-
-
-                        /* Coinstake operation. Requires an account. */
-                        case TAO::Operation::OP::TRUST:
-                        {
-
-                            /* The account that is being staked. */
-                            uint256_t hashAccount;
-                            ssOperation >> hashAccount;
-
-                            /* The previous trust block. */
-                            uint1024_t hashLastTrust;
-                            ssOperation >> hashLastTrust;
-
-                            /* Previous trust sequence number. */
-                            uint32_t nSequence;
-                            ssOperation >> nSequence;
-
-                            /* The trust calculated. */
-                            uint64_t nTrust;
-                            ssOperation >> nTrust;
-
-                            /* The total to be staked. */
-                            uint64_t  nStake;
-                            ssOperation >> nStake;
-
-                            /* Output the json information. */
-                            ret["OP"]       = "TRUST";
-                            ret["account"]  = hashAccount.ToString();
-                            ret["last"]     = hashLastTrust.ToString();
-                            ret["sequence"] = nSequence;
-                            ret["trust"]    = nTrust;
-                            ret["amount"]   = nStake;
-
-                            break;
-                        }
-
-
-                        /* Authorize a transaction to happen with a temporal proof. */
-                        case TAO::Operation::OP::AUTHORIZE:
-                        {
-                            /* The transaction that you are authorizing. */
-                            uint512_t hashTx;
-                            ssOperation >> hashTx;
-
-                            /* The proof you are using that you have rights. */
-                            uint256_t hashProof;
-                            ssOperation >> hashProof;
-
-                            /* Output the json information. */
-                            ret["OP"]    = "AUTHORIZE";
-                            ret["txid"]  = hashTx.ToString();
-                            ret["proof"] = hashProof.ToString();
-
-                            break;
-                        }
                     }
                 }
-            }
-            catch(const std::runtime_error& e)
-            {
 
             }
 
-            return ret;
-        }
-
-
-        /* Converts an Object Register to formattted JSON */
-        json::json ObjectRegisterToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister)
-        {
-            /* Declare the return JSON object */
-            json::json ret;
-
-            /* Build the response JSON. */
-            ret["address"]    = hashRegister.ToString();
-            ret["timestamp"]  = object.nTimestamp;
-            ret["owner"]      = object.hashOwner.ToString();
-
-            if(object.nType == TAO::Register::REGISTER::APPEND
-            || object.nType == TAO::Register::REGISTER::RAW)
-            {
-                /* raw state assets only have one data member containing the raw hex-encoded data*/
-                std::string data;
-                object >> data;
-                ret["data"] = data;
-            }
-            else if(object.nType == TAO::Register::REGISTER::OBJECT)
-            {
-                /* Get List of field names in this asset object */
-                std::vector<std::string> vFieldNames = object.GetFieldNames();
-
-                /* Declare type and data variables for unpacking the Object fields */
-                uint8_t nType;
-                uint8_t nUint8;
-                uint16_t nUint16;
-                uint32_t nUint32;
-                uint64_t nUint64;
-                uint256_t nUint256;
-                uint512_t nUint512;
-                uint1024_t nUint1024;
-                std::string strValue;
-                std::vector<uint8_t> vchBytes;
-
-                for(const auto& strFieldName : vFieldNames)
-                {
-                    /* First get the type*/
-                    object.Type(strFieldName, nType);
-
-                    if(nType == TAO::Register::TYPES::UINT8_T)
-                    {
-                        object.Read<uint8_t>(strFieldName, nUint8);
-                        ret[strFieldName] = nUint8;
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT16_T)
-                    {
-                        object.Read<uint16_t>(strFieldName, nUint16);
-                        ret[strFieldName] = nUint16;
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT32_T)
-                    {
-                        object.Read<uint32_t>(strFieldName, nUint32);
-                        ret[strFieldName] = nUint32;
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT64_T)
-                    {
-                        object.Read<uint64_t>(strFieldName, nUint64);
-                        ret[strFieldName] = nUint64;
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT256_T)
-                    {
-                        object.Read<uint256_t>(strFieldName, nUint256);
-                        ret[strFieldName] = nUint256.GetHex();
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT512_T)
-                    {
-                        object.Read<uint512_t>(strFieldName, nUint512);
-                        ret[strFieldName] = nUint512.GetHex();
-                    }
-                    else if(nType == TAO::Register::TYPES::UINT1024_T)
-                    {
-                        object.Read<uint1024_t>(strFieldName, nUint1024);
-                        ret[strFieldName] = nUint1024.GetHex();
-                    }
-                    else if(nType == TAO::Register::TYPES::STRING )
-                    {
-                        object.Read<std::string>(strFieldName, strValue);
-                        
-                        /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */
-                        ret[strFieldName] = strValue.substr(0, strValue.find_last_not_of('\0') + 1);
-                    }
-                    else if(nType == TAO::Register::TYPES::BYTES)
-                    {
-                        object.Read<std::vector<uint8_t>>(strFieldName, vchBytes);
-
-                        /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */                        
-                        vchBytes.erase(std::find(vchBytes.begin(), vchBytes.end(), '\0'), vchBytes.end());
-
-                        ret[strFieldName] = encoding::EncodeBase64(&vchBytes[0], vchBytes.size()) ;
-                    }
-
-                }
-            }
-            else
-                throw APIException(-24, "Specified name/address is not an asset.");
-
-            /* Only return requested data field if one was specifically requested */
-
-            return ret;
+            return vRegisters;
         }
     }
 }

@@ -110,7 +110,32 @@ namespace TAO
                     jsonParams["genesis"] = strNameOrAddress;
                 else
                     jsonParams["username"] = strNameOrAddress;
-                    
+
+                return strMethodRewritten;                    
+            }
+
+            /* support passing the username after a list method e.g. list/assets/myusername */
+            nPos = strMethod.find("list/");
+            if(nPos != std::string::npos)
+            {
+                std::string strNameOrAddress;
+
+                nPos = strMethod.find("/", nPos+5);
+
+                /* get the method name from the incoming string */
+                strMethodRewritten = strMethod.substr(0, nPos);
+
+                /* Get the name or address that comes after the /item/ part */
+                strNameOrAddress = strMethod.substr(nPos +1);
+
+                
+                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
+                if(IsRegisterAddress(strNameOrAddress))
+                    jsonParams["genesis"] = strNameOrAddress;
+                else
+                    jsonParams["username"] = strNameOrAddress;
+
+                return strMethodRewritten;                    
             }
 
             return strMethodRewritten;

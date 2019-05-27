@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/users.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/jsonutils.h>
 
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/types/object.h>

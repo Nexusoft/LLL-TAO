@@ -13,11 +13,8 @@ ________________________________________________________________________________
 #pragma once
 
 #include <Util/include/json.h>
-#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Register/types/object.h>
 #include <Legacy/types/transaction.h>
-
-#include <LLC/hash/argon2.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -62,71 +59,6 @@ namespace TAO
          **/
         bool IsRegisterAddress(const std::string& strValueToCheck);
 
-        /** BlockToJSON
-        *
-        *  Converts the block to formatted JSON
-        *
-        *  @param[in] block The block to convert
-        *  @param[in] nTransactionVerbosity determines the amount of transaction data to include in the response
-        *
-        *  @return the formatted JSON object
-        *
-        **/
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
-
-
-        /** TransactionToJSON
-        *
-        *  Converts the transaction to formatted JSON
-        *
-        *  @param[in] tx The transaction to convert to JSON
-        *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
-        *  @param[in] nTransactionVerbosity determines the amount of transaction data to include in the response
-        *
-        *  @return the formatted JSON object
-        *
-        **/
-        json::json TransactionToJSON(TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
-
-
-        /** TransactionToJSON
-        *
-        *  Converts the transaction to formatted JSON
-        *
-        *  @param[in] tx The transaction to convert to JSON
-        *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
-        *  @param[in] nTransactionVerbosity determines the amount of transaction data to include in the response
-        *
-        *  @return the formatted JSON object
-        *
-        **/
-        json::json TransactionToJSON(Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
-
-
-        /** OperationToJSON
-        *
-        *  Converts a serialized operation stream to formattted JSON
-        *
-        *  @param[in] ssOperation The serialized Operation stream to convert
-        *
-        *  @return the formatted JSON object
-        *
-        **/
-        json::json OperationToJSON(const TAO::Operation::Stream& ssOperation);
-
-
-        /** ObjectRegisterToJSON
-        *
-        *  Converts an Object Register to formattted JSON
-        *
-        *  @param[in] object The Object Register to convert
-        *  @param[in] hashRegister The register address of the object
-        *
-        *  @return the formatted JSON object
-        *
-        **/
-        json::json ObjectRegisterToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister);
-
 
         /** GetTokenOrAccountDigits
         *
@@ -141,6 +73,18 @@ namespace TAO
         *
         **/
         uint64_t GetTokenOrAccountDigits(const TAO::Register::Object& object);
+
+
+        /** GetRegistersOwnedBySigChain
+        *
+        *  Scans a signature chain to work out all registers that it owns
+        *
+        *  @param[in] hashGenesis The genesis hash of the signature chain to scan
+        *
+        *  @return A vector of register addresses owned by the sig chain
+        *
+        **/
+        std::vector<uint256_t> GetRegistersOwnedBySigChain(uint512_t hashGenesis);
 
 
     }

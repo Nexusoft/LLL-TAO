@@ -340,6 +340,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_users_unlock.o \
 		build/API_users_users.o \
 		build/API_utils_utils.o \
+		build/API_utils_jsonutils.o \
 		build/Ledger_base_minter.o \
 		build/Ledger_block.o \
 		build/Ledger_chainstate.o \

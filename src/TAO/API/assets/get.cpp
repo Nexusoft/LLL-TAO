@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/assets.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/jsonutils.h>
 
 /* Global TAO namespace. */
 namespace TAO

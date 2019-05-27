@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/jsonutils.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/tritium.h>

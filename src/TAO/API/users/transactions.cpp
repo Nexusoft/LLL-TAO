@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/users.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/jsonutils.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
