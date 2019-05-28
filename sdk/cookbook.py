@@ -398,7 +398,9 @@ def build_users_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     genesis = form_parm.format("genesis", genid)
-    o += users_list_tokens.format(h, genesis, f)
+    page = form_parm.format("page", "")
+    limit = form_parm.format("limit", "")
+    o += users_list_tokens.format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -406,7 +408,9 @@ def build_users_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     genesis = form_parm.format("genesis", genid)
-    o += users_list_accounts.format(h, genesis, f)
+    page = form_parm.format("page", "")
+    limit = form_parm.format("limit", "")
+    o += users_list_accounts.format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -630,7 +634,9 @@ def do_users_list_assets(sid=""):
 @bottle.route('/users-list-tokens/<sid>', method="post")
 def do_users_list_tokens(sid=""):
     genesis = bottle.request.forms.get("genesis")
-    if (no_parms(genesis)):
+    page = bottle.request.forms.get("page")
+    limit = bottle.request.forms.get("limit")
+    if (no_parms(genesis, page, limit)):
         m = red("users/list/tokens needs more input parameters")
         return(show(m, sid, genesis))
     #endif
@@ -641,9 +647,10 @@ def do_users_list_tokens(sid=""):
     if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
         if (sdk == None): return(output)
-        output = sdk.nexus_users_list_tokens_by_genesis()
+        output = sdk.nexus_users_list_tokens_by_genesis(page, limit)
     else:
-        output= curl(users_list_notifications.format("", genesis, ""))
+        output= curl(users_list_notifications.format("", genesis, page, limit,
+            ""))
     #endif            
     output = json.dumps(output)
 
@@ -654,7 +661,9 @@ def do_users_list_tokens(sid=""):
 @bottle.route('/users-list-accounts/<sid>', method="post")
 def do_users_list_accounts(sid=""):
     genesis = bottle.request.forms.get("genesis")
-    if (no_parms(genesis)):
+    page = bottle.request.forms.get("page")
+    limit = bottle.request.forms.get("limit")
+    if (no_parms(genesis, page, limit)):
         m = red("users/list/accounts needs more input parameters")
         return(show(m, sid, genesis))
     #endif
@@ -665,9 +674,10 @@ def do_users_list_accounts(sid=""):
     if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
         if (sdk == None): return(output)
-        output = sdk.nexus_users_list_accounts_by_genesis()
+        output = sdk.nexus_users_list_accounts_by_genesis(page, limit)
     else:
-        output= curl(users_list_notifications.format("", genesis, ""))
+        output= curl(users_list_notifications.format("", genesis, page, limit,
+            ""))
     #endif            
     output = json.dumps(output)
 
