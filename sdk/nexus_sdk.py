@@ -1067,7 +1067,8 @@ class sdk_init():
         parms = ("?pin={}&session={}&txid={}&amount={}&address={}"). \
             format(self.pin, self.session_id, txid, amount, to_address)
 
-        if (address_proof != None): parms += "&proof={}".format(address_proof)
+        if (address_proof != None): parms += "&address_proof={}".format( \
+            address_proof)
                  
         url = tokens_url.format(sdk_url, "credit/account") + parms
         json_data = self.__get(url)
