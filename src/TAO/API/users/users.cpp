@@ -110,7 +110,32 @@ namespace TAO
                     jsonParams["genesis"] = strNameOrAddress;
                 else
                     jsonParams["username"] = strNameOrAddress;
-                    
+
+                return strMethodRewritten;                    
+            }
+
+            /* support passing the username after a list method e.g. list/assets/myusername */
+            nPos = strMethod.find("list/");
+            if(nPos != std::string::npos)
+            {
+                std::string strNameOrAddress;
+
+                nPos = strMethod.find("/", nPos+5);
+
+                /* get the method name from the incoming string */
+                strMethodRewritten = strMethod.substr(0, nPos);
+
+                /* Get the name or address that comes after the /item/ part */
+                strNameOrAddress = strMethod.substr(nPos +1);
+
+                
+                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
+                if(IsRegisterAddress(strNameOrAddress))
+                    jsonParams["genesis"] = strNameOrAddress;
+                else
+                    jsonParams["username"] = strNameOrAddress;
+
+                return strMethodRewritten;                    
             }
 
             return strMethodRewritten;
@@ -127,6 +152,10 @@ namespace TAO
             mapFunctions["unlock/user"]              = Function(std::bind(&Users::Unlock,          this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/transactions"]        = Function(std::bind(&Users::Transactions,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/notifications"]       = Function(std::bind(&Users::Notifications,   this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/assets"]              = Function(std::bind(&Users::Assets,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/tokens"]              = Function(std::bind(&Users::Tokens,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/accounts"]            = Function(std::bind(&Users::Accounts,    this, std::placeholders::_1, std::placeholders::_2));
+            
         }
 
 

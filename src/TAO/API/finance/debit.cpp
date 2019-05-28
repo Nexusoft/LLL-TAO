@@ -38,8 +38,8 @@ namespace TAO
     namespace API
     {
 
-        /* Create an asset or digital item. */
-        json::json Tokens::Debit(const json::json& params, bool fHelp)
+        /* Debit a NXS account. */
+        json::json Finance::Debit(const json::json& params, bool fHelp)
         {
             json::json ret;
 
@@ -77,7 +77,7 @@ namespace TAO
             else if(params.find("address_to") != params.end())
                 hashTo.SetHex(params["address_to"].get<std::string>());
             else
-                throw APIException(-22, "Missing recipient. (<name_to> or <address_to>)");
+                throw APIException(-22, "Missing recipient account name_to or address_to");
 
             /* Get the transaction id. */
             uint256_t hashFrom = 0;
@@ -89,13 +89,12 @@ namespace TAO
             else if(params.find("address") != params.end())
                 hashFrom.SetHex(params["address"].get<std::string>());
             else
-                throw APIException(-22, "Missing name or address)");
+                throw APIException(-22, "Missing account name or address)");
 
-            
-            /* Get the token / account object. */
+            /* Get the account object. */
             TAO::Register::Object object;
             if(!LLD::regDB->ReadState(hashFrom, object))
-                throw APIException(-24, "Token/account not found");
+                throw APIException(-24, "Account not found");
 
             /* Parse the object register. */
             if(!object.Parse())
@@ -104,27 +103,17 @@ namespace TAO
             /* Get the object standard. */
             uint8_t nStandard = object.Standard();
 
-            uint64_t nDigits = 0;
-            uint64_t nCurrentBalance = 0;
-
             /* Check the object standard. */
-            if( nStandard == TAO::Register::OBJECTS::TOKEN || nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST)
-            {
-                /* If the user requested a particular object type then check it is that type */
-                std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
-                if(strType == "token" && (nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST))
-                    throw APIException(-24, "Object is not a token");
-                else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
-                    throw APIException(-24, "Object is not an account");
+            if( nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+                throw APIException(-24, "Object is not an account");
 
-                nCurrentBalance = object.get<uint64_t>("balance");
-                nDigits = GetTokenOrAccountDigits(object);
-            }
-            else
-            {
-                throw APIException(-27, "Unknown token / account." );
-            }
+            /* Check the account is a NXS account */
+            if( object.get<uint256_t>("token_address") != 0)
+                throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
+
             
+            uint64_t nDigits = 1000000;
+            uint64_t nCurrentBalance = object.get<uint64_t>("balance");;
 
             /* Get the amount to debit. */
             uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDigits);

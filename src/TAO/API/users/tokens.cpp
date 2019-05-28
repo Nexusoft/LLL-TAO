@@ -16,11 +16,10 @@ ________________________________________________________________________________
 #include <TAO/API/include/users.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/jsonutils.h>
+#include <TAO/Register/types/object.h>
 
-#include <TAO/Ledger/include/create.h>
-#include <TAO/Ledger/types/mempool.h>
+#include <Util/include/debug.h>
 
-#include <Util/include/hex.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -30,25 +29,23 @@ namespace TAO
     namespace API
     {
 
-        /* Get a user's account. */
-        json::json Users::Transactions(const json::json& params, bool fHelp)
+        /* Get a list of tokens owned by a signature chain. */
+        json::json Users::Tokens(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            json::json ret;// = json::json::array();
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
 
-            /* Watch for destination genesis. */
+            /* Watch for destination genesis. If no specific genesis or username
+             * have been provided then fall back to the active sigchain. */
             if(params.find("genesis") != params.end())
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else if(!config::fAPISessions.load() && mapSessions.count(0))
-            {
-                /* If no specific genesis or username have been provided then fall back to the active sig chain */
                 hashGenesis = mapSessions[0]->Genesis();
-            }
             else
                 throw APIException(-25, "Missing Genesis or Username");
 
@@ -62,38 +59,33 @@ namespace TAO
             if(params.find("limit") != params.end())
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
-            /* Get verbose levels. */
-            std::string strVerbose = "default"; 
-            if(params.find("verbose") != params.end())
-                strVerbose = params["verbose"].get<std::string>();
+            /* Get the list of registers owned by this sig chain */
+            std::vector<uint256_t> vRegisters = GetRegistersOwnedBySigChain(hashGenesis);
 
-            uint32_t nVerbose = 1;
-            if( strVerbose == "default")
-                nVerbose = 1;
-            else if( strVerbose == "summary")
-                nVerbose = 2;
-            else if( strVerbose == "detail")
-                nVerbose = 3;
-
-            /* Get the last transaction. */
-            uint512_t hashLast = 0;
-            if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
-                throw APIException(-28, "No transactions found");
-
-            /* Loop until genesis. */
             uint32_t nTotal = 0;
-            while(hashLast != 0)
+            /* Add the register data to the response */
+            for(const auto& hashRegister : vRegisters)
             {
+                /* Get the asset from the register DB.  We can read it as an Object and then check its nType to determine
+                   whether or not it is an asset. */
+                TAO::Register::Object object;
+                if(!LLD::regDB->ReadState(hashRegister, object))
+                    throw APIException(-24, "Asset not found");
+
+                /* Check that this is a non-standard object type so that we can parse it and check the type*/
+                if( object.nType != TAO::Register::REGISTER::OBJECT)
+                    continue;
+
+                /* parse object so that the data fields can be accessed */
+                object.Parse();
+
+                /* Check that this is a token */
+                if( object.Standard() != TAO::Register::OBJECTS::TOKEN)
+                    continue;
+
                 /* Get the current page. */
                 uint32_t nCurrentPage = nTotal / nLimit;
 
-                /* Get the transaction from disk. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadTx(hashLast, tx))
-                    throw APIException(-28, "Failed to read transaction");
-
-                /* Set the next last. */
-                hashLast = tx.hashPrevTx;
                 ++nTotal;
 
                 /* Check the paged data. */
@@ -105,19 +97,9 @@ namespace TAO
 
                 if(nTotal - (nPage * nLimit) > nLimit)
                     break;
-
-                /* Read the block state from the the ledger DB using the transaction hash index */
-                TAO::Ledger::BlockState blockState;
-                if(!LLD::legDB->ReadBlock(tx.GetHash(), blockState))
-                    throw APIException(-25, "Block not found");
-
-                /* Get the transaction JSON. */
-                json::json obj = TAO::API::TransactionToJSON(tx, blockState, nVerbose);
-
-                /* Add the operations to transaction json. */
-                obj["operation"]     = OperationToJSON(tx.ssOperation);
-
-                ret.push_back(obj);
+                    
+                /* Convert the object to JSON */
+                ret.push_back(TAO::API::ObjectRegisterToJSON(object, hashRegister));
             }
 
             return ret;

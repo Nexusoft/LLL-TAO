@@ -297,9 +297,6 @@ namespace TAO
                             if(prestate != dbstate)
                                 return debug::error(FUNCTION, "prestate and dbstate mismatch");
 
-                            /* Seek to the next operation. */
-                            tx.ssOperation.seek(8);
-
                             break;
                         }
 

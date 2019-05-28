@@ -585,7 +585,7 @@ namespace TAO
                         return debug::error(FUNCTION, "transaction not on disk");
 
                     /* Check for existing indexes. */
-                    if(LLD::legDB->HasIndex(hash))
+                    if(LLD::legDB->HasIndex(hash)) //TODO: transaction object needs disk index. Write hashNext = 0 for disconnected
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
 
                     /* Check that previous transaction is indexed. */
@@ -593,7 +593,7 @@ namespace TAO
                         return debug::error(FUNCTION, "previous transaction not indexed");
 
                     /* Verify the ledger layer. */
-                    if(!TAO::Register::Verify(tx, TAO::Register::FLAGS::WRITE))
+                    if(!TAO::Register::Verify(tx, TAO::Register::FLAGS::WRITE)) //TODO: this is done in pre-processing, remove from post-processing
                         return debug::error(FUNCTION, "transaction register layer failed to verify");
 
                     /* Execute the operations layers. */
@@ -606,23 +606,43 @@ namespace TAO
                         //Check for duplicate genesis
 
                         /* Write the Genesis to disk. */
-                        if(!LLD::legDB->WriteGenesis(tx.hashGenesis, tx.GetHash()))
+                        if(!LLD::legDB->WriteGenesis(tx.hashGenesis, hash))
                             return debug::error(FUNCTION, "failed to write genesis");
                     }
                     else
                     {
                         /* Check for the last hash. */
-                        uint512_t hashLast;
+                        uint512_t hashLast = 0;
                         if(!LLD::legDB->ReadLast(tx.hashGenesis, hashLast))
                             return debug::error(FUNCTION, "failed to read last on non-genesis");
 
                         /* Check that the last transaction is correct. */
                         if(tx.hashPrevTx != hashLast)
+                        {
+                            /* Make sure the transaction is on disk. */
+                            TAO::Ledger::Transaction tx2;
+                            if(!LLD::legDB->ReadTx(hashLast, tx2))
+                                return debug::error(FUNCTION, "last transaction not on disk");
+
+                            tx2.print();
+                            tx.print();
+
+                            for(uint32_t i = 0; i < 10; ++i)
+                            {
+                                if(!LLD::legDB->ReadTx(tx.hashPrevTx, tx2))
+                                    break;
+
+                                tx2.print();
+                                tx = tx2;
+                            }
+
                             return debug::error(FUNCTION, "transaction has to be head of sigchain");
+                        }
+
                     }
 
                     /* Write the last to disk. */
-                    if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.GetHash()))
+                    if(!LLD::legDB->WriteLast(tx.hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write last hash");
                 }
                 else if(proof.first == TYPE::LEGACY_TX)

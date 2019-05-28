@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/tritium.h>
 
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/jsonutils.h>
 #include <TAO/API/include/rpc.h>
 
 #include <Util/include/args.h>

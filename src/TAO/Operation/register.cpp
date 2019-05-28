@@ -79,11 +79,11 @@ namespace TAO
                         || nFlags & TAO::Register::FLAGS::MEMPOOL)
                         {
                             /* Get the token identifier. */
-                            uint256_t nIdentifier = object.get<uint256_t>("identifier");
+                            uint256_t nIdentifier = object.get<uint256_t>("token_address");
 
                             /* Check that token identifier hasn't been claimed. */
                             if(nIdentifier != 0  && !LLD::regDB->HasIdentifier(nIdentifier, nFlags))
-                                return debug::error(FUNCTION, "account can't be created with no identifier ", nIdentifier.GetHex());
+                                return debug::error(FUNCTION, "account can't be created without token address", nIdentifier.GetHex());
 
                         }
 
@@ -107,8 +107,8 @@ namespace TAO
                             return debug::error(FUNCTION, "trust account can't be created with non-zero trust ", object.get<uint64_t>("trust"));
 
                         /* Check that token identifier hasn't been claimed. */
-                        if(object.get<uint256_t>("identifier") != 0)
-                            return debug::error(FUNCTION, "trust account can't be created with non-default identifier ", object.get<uint256_t>("identifier").GetHex());
+                        if(object.get<uint256_t>("token_address") != 0)
+                            return debug::error(FUNCTION, "trust account can't be created with non-default identifier ", object.get<uint256_t>("token_address").GetHex());
 
                         break;
                     }
@@ -118,7 +118,7 @@ namespace TAO
                     case TAO::Register::OBJECTS::TOKEN:
                     {
                         /* Get the token identifier. */
-                        uint256_t nIdentifier = object.get<uint256_t>("identifier");
+                        uint256_t nIdentifier = object.get<uint256_t>("token_address");
 
                         /* Check for reserved native token. */
                         if(nIdentifier == 0)

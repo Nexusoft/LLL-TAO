@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/users.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/jsonutils.h>
 
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/types/object.h>
@@ -107,7 +108,7 @@ namespace TAO
 
                 /* Get the token address. */
                 uint256_t hashToken;
-                if(!LLD::regDB->ReadIdentifier(object.get<uint256_t>("identifier"), hashToken))
+                if(!LLD::regDB->ReadIdentifier(object.get<uint256_t>("token_address"), hashToken))
                     continue;
 
                 /* Push the token identifier to list to check. */
@@ -147,7 +148,7 @@ namespace TAO
                     if(nCurrentPage > nPage)
                         break;
 
-                    if(nTotal > nLimit)
+                    if(nTotal - (nPage * nLimit) > nLimit)
                         break;
 
                     /* Read the object register. */
@@ -235,8 +236,8 @@ namespace TAO
                 if(nCurrentPage > nPage)
                     break;
 
-                if(nTotal > nLimit)
-                        break;
+                if(nTotal - (nPage * nLimit) > nLimit)
+                    break;
 
                 json::json obj;
                 obj["version"]   = tx.nVersion;

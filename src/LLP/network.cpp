@@ -47,8 +47,8 @@ namespace LLP
     #else
     {
         struct rlimit lim;
-        lim.rlim_cur = 8192;
-        lim.rlim_max = 8192;
+        lim.rlim_cur = 4096;
+        lim.rlim_max = 4096;
         if(setrlimit(RLIMIT_NOFILE, &lim) == -1)
             debug::error(FUNCTION, "Failed to set max file descriptors");
     }

@@ -30,7 +30,7 @@ namespace TAO
             "balance",
 
             /* Used to identify a specific token. */
-            "identifier",
+            "token_address",
 
             /* Used to set validation script in object register. */
             "require",

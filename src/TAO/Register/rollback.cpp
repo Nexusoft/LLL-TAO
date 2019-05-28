@@ -126,7 +126,7 @@ namespace TAO
                                 if(object.Standard() == OBJECTS::TOKEN)
                                 {
                                     /* Erase the identifier. */ //TODO: possibly do not check for false
-                                    if(!LLD::regDB->EraseIdentifier(object.get<uint256_t>("identifier")))
+                                    if(!LLD::regDB->EraseIdentifier(object.get<uint256_t>("token_address")))
                                         return debug::error(FUNCTION, "could not erase identifier");
                                 }
                             }
@@ -408,9 +408,6 @@ namespace TAO
                             /* Erase the proof event from database. */
                             if(!LLD::legDB->EraseProof(hashProof, hashTx))
                                 return debug::error(FUNCTION, "failed to erase the proof");
-
-                            /* Seek to the next operation. */
-                            tx.ssOperation.seek(8);
 
                             break;
                         }

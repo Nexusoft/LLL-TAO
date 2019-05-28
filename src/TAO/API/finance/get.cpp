@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/include/tokens.h>
+#include <TAO/API/include/finance.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/jsonutils.h>
 
@@ -30,7 +30,7 @@ namespace TAO
     {
 
         /* Get the data from a digital asset */
-        json::json Tokens::Get(const json::json& params, bool fHelp)
+        json::json Finance::Get(const json::json& params, bool fHelp)
         {
             json::json ret;
 
@@ -45,12 +45,12 @@ namespace TAO
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"].get<std::string>());
             else
-                throw APIException(-23, "Missing memory address");
+                throw APIException(-23, "Missing account name/address");
 
             /* Get the token / account object. */
             TAO::Register::Object object;
             if(!LLD::regDB->ReadState(hashRegister, object))
-                throw APIException(-24, "No token/account found");
+                throw APIException(-24, "Account not found");
 
             /* Parse the object register. */
             if(!object.Parse())
@@ -60,27 +60,15 @@ namespace TAO
             uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
-            if(nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST)
-            {
-                /* If the user requested a particular object type then check it is that type */
-                if(params.find("type") != params.end() && params["type"].get<std::string>() == "token")
-                    throw APIException(-24, "Requested object is not a token");
+            if( nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+                throw APIException(-24, "Object is not an account");
 
-                /* Convert the account object to JSON */
-                ret = ObjectRegisterToJSON(object, hashRegister);
+            /* Check the account is a NXS account */
+            if( object.get<uint256_t>("token_address") != 0)
+                throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for accessing non-NXS token accounts.");
 
-            }
-            else if(nStandard == TAO::Register::OBJECTS::TOKEN)
-            {
-                /* If the user requested a particular object type then check it is that type */
-                if(params.find("type") != params.end() && params["type"].get<std::string>() == "account")
-                    throw APIException(-24, "Requested object is not an account");
-
-                /* Convert the token object to JSON */
-                ret = ObjectRegisterToJSON(object, hashRegister);
-            }
-            else
-                throw APIException(-27, "Unknown object register");
+            /* Convert the account object to JSON */
+            ret = ObjectRegisterToJSON(object, hashRegister);
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */            
             if(params.find("fieldname") != params.end())

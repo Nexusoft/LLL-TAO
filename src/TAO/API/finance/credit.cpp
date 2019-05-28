@@ -37,8 +37,8 @@ namespace TAO
     namespace API
     {
 
-        /* Create an asset or digital item. */
-        json::json Tokens::Credit(const json::json& params, bool fHelp)
+        /* Credit to a NXS account. */
+        json::json Finance::Credit(const json::json& params, bool fHelp)
         {
             json::json ret;
 
@@ -118,10 +118,10 @@ namespace TAO
                 hashProof = hashFrom;
             }
 
-            /* Get the token / account object that we are crediting to. */
+            /* Get the account object that we are crediting to */
             TAO::Register::Object object;
             if(!LLD::regDB->ReadState(hashTo, object))
-                throw APIException(-24, "Token/account not found");
+                throw APIException(-24, "Account not found");
 
             /* Parse the object register. */
             if(!object.Parse())
@@ -131,19 +131,12 @@ namespace TAO
             uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
-            if( nStandard == TAO::Register::OBJECTS::TOKEN || nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST)
-            {
-                /* If the user requested a particular object type then check it is that type */
-                std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
-                if(strType == "token" && (nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST))
-                    throw APIException(-24, "Object is not a token");
-                else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
-                    throw APIException(-24, "Object is not an account");
-            }
-            else
-            {
-                throw APIException(-27, "Unknown token / account." );
-            }
+            if( nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+                throw APIException(-24, "Object is not an account");
+
+            /* Check the account is a NXS account */
+            if( object.get<uint256_t>("token_address") != 0)
+                throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for crediting non-NXS token accounts.");
 
             /* Submit the payload object. */
             tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashProof << hashTo ;
