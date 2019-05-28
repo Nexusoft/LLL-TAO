@@ -247,7 +247,7 @@ namespace TAO
 
 
         /* Verify write validation rules and caller. */
-        bool Write::Verify(const Contract& contract, const uint256_t& hashCaller)
+        bool Write::Verify(const Contract& contract)
         {
             /* Seek read position to first position. */
             contract.Reset();
@@ -290,7 +290,7 @@ namespace TAO
                 return debug::error(FUNCTION, "not allowed on readonly or append types");
 
             /* Check that the proper owner is commiting the write. */
-            if(hashCaller != state.hashOwner)
+            if(contract.hashCaller != state.hashOwner)
                 return debug::error(FUNCTION, "no write permissions for caller ", hashCaller.SubString());
 
             return true;

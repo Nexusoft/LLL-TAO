@@ -71,7 +71,7 @@ namespace TAO
 
 
         /* Verify claim validation rules and caller. */
-        bool Credit::Verify(const Contract& debit, const Contract& credit, const uint256_t& hashCaller)
+        bool Credit::Verify(const Contract& debit, const Contract& credit, uint64_t &nAmount)
         {
             /* Extract current contract. */
             credit.Reset();
@@ -103,6 +103,10 @@ namespace TAO
             TAO::Register::Object account;
             credit >>= account;
 
+            /* Check credit account */
+            if(credit.hashCaller != account.hashOwner)
+                return debug::error(FUNCTION, "no write permissions for caller ", credit.hashCaller.SubString());
+
             /* Parse the account. */
             if(!account.Parse())
                 return debug::error(FUNCTION, "failed to parse account to");
@@ -114,19 +118,11 @@ namespace TAO
             OP = 0;
             debit >> OP;
 
-            /* Extract the address  */
-            uint256_t hashFrom = 0;
-            debit  >> hashFrom;
-
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashFrom))
-                return debug::error(FUNCTION, "cannot credit register with reserved address");
-
             /* Check that prev is coinbase. */
             if(OP == OP::COINBASE)
             {
                 /* Check that the proof is the genesis. */
-                if(hashProof != hashCaller)
+                if(hashProof != credit.hashCaller)
                     return debug::error(FUNCTION, "proof for coinbase needs to be genesis");
 
                 /* Extract the coinbase public-id. */
@@ -134,14 +130,11 @@ namespace TAO
                 debit  >> hashPublic;
 
                 /* Make sure the claimed account is the debited account. */
-                if(hashPublic != hashCaller)
+                if(hashPublic != credit.hashCaller)
                     return debug::error(FUNCTION, "cannot claim coinbase from different sigchain");
 
                 /* Get the coinbase amount. */
-                uint64_t nCoinbase = 0;
-                debit >> nCoinbase;
-
-                //NOTE: maybe return the value here
+                debit >> nAmount;
 
                 /* Check the identifier. */
                 if(account.get<uint256_t>("identifier") != 0)
@@ -154,12 +147,12 @@ namespace TAO
             else if(OP != OP::DEBIT)
                 return debug::error(FUNCTION, "tx claim is not a debit");
 
-            /* Get the hashTo. */
-            uint256_t hashTo = 0;
-            debit  >> hashTo;
+            /* Get the hashFrom */
+            uint256_t hashFrom = 0;
+            debit  >> hashFrom;
 
             /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashTo))
+            if(TAO::Register::Reserved(hashFrom))
                 return debug::error(FUNCTION, "cannot credit register with reserved address");
 
             /* Get the byte from pre-state. */
@@ -178,22 +171,46 @@ namespace TAO
             if(!accountFrom.Parse())
                 return debug::error(FUNCTION, "failed to parse account from");
 
-            /* Check the proof as being the address being spent. */
-            if(hashProof != hashFrom)
-                return debug::error(FUNCTION, "proof must be address from");
+            /* Check debit hashFrom is a base object account. */
+            if(accountFrom.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                return debug::error(FUNCTION, "debit from must have a base account object");
+
+            /* Check token identifiers. */
+            if(accountFrom.get<uint256_t>("identifier") != account.get<uint256_t>("identifier"))
+                return debug::error(FUNCTION, "credit can't be of different identifier");
+
+            /* Get the hashTo. */
+            uint256_t hashTo = 0;
+            debit  >> hashTo;
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashTo))
+                return debug::error(FUNCTION, "cannot credit register with reserved address");
+
+            /* Get the byte from pre-state. */
+            nState = 0;
+            debit >= nState; //NOTE: this is deserializing from ssProof
+
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::PRESTATE)
+                return debug::error(FUNCTION, "register debit not in pre-state");
+
+            /* Read pre-states. */
+            TAO::Register::State stateTo;
+            debit >= stateTo;
+
+            /* Read the to account that credit is operating on. */
+            uint256_t hashAccount;
+            credit >> hashAccount;
 
             /* Handle a return to self. */
-            if(accountFrom.hashOwner == hashCaller)
+            if(hashFrom == hashAccount)
             {
                 /* Get the debit amount. */
-                uint64_t nDebit = 0;
-                debit >> nDebit;
-
-                //NOTE: maybe return the value here
+                debit >> nAmount;
 
                 return true;
             }
-
 
             /* Credits specific to account objects. */
             if(stateTo.nType == TAO::Register::REGISTER::OBJECT)
@@ -202,49 +219,24 @@ namespace TAO
                 if(hashProof != hashFrom)
                     return debug::error(FUNCTION, "proof must equal from for credit");
 
-                /* Check if this is a whole credit that the transaction is not already spent. */
-                if(LLD::legDB->HasProof(hashProof, hashTx, nFlags))
-                    return debug::error(FUNCTION, "transaction is already spent");
 
-                /* Read the to account state. */
+
+                /* Check that account to matches. */
                 if(hashTo != hashAccount)
                     return debug::error(FUNCTION, "debit to account mismatch with credit to account");
 
-                /* Read the state from. */
-                TAO::Register::Object accountFrom;
-                if(!LLD::regDB->ReadState(hashFrom, accountFrom, nFlags))
-                    return debug::error(FUNCTION, "can't read state from");
-
-                /* Parse the account from. */
-                if(!accountFrom.Parse())
-                    return debug::error(FUNCTION, "failed to parse account from");
-
-                /* Check debit hashFrom is a base object account. */
-                if(accountFrom.Base() != TAO::Register::OBJECTS::ACCOUNT)
-                    return debug::error(FUNCTION, "debit from must have a base account object");
-
-                /* Check token identifiers. */
-                if(accountFrom.get<uint256_t>("identifier") != account.get<uint256_t>("identifier"))
-                    return debug::error(FUNCTION, "credit can't be of different identifier");
-
                 /* Get the debit amount. */
-                uint64_t nDebit;
-                txSpend.ssOperation >> nDebit;
-
-                /* Check the proper balance requirements. */
-                if(nCredit != nDebit)
-                     return debug::error(FUNCTION, "credit and debit totals don't match");
+                uint64_t nDebit = 0;
+                debit >> nDebit;
 
             }
-            else if(stateTo.nType == TAO::Register::REGISTER::RAW
-                 || stateTo.nType == TAO::Register::REGISTER::READONLY)
-            {
-                /* Check that this proof has not been used in a partial credit. */
-                if(LLD::legDB->HasProof(hashProof, hashTx, nFlags))
-                    return debug::error(FUNCTION, "temporal proof has already been spent");
+            else if(!TAO::Register::Range(stateTo.nType))
+                return debug::error(FUNCTION, "debit to is out of range");
+
+
 
                 /* Get the state register of this register's owner. */
-                TAO::Register::Object tokenOwner;
+                TAO::Register::Object token;
                 if(!LLD::regDB->ReadState(stateTo.hashOwner, tokenOwner, nFlags))
                     return debug::error(FUNCTION, "credit from raw object can't be without owner");
 
@@ -256,68 +248,62 @@ namespace TAO
                 if(tokenOwner.Standard() != TAO::Register::OBJECTS::TOKEN)
                     return debug::error(FUNCTION, "owner object is not a token");
 
-                /* Check the state register that is being used as proof from creditor. */
-                TAO::Register::Object accountProof;
-                if(!LLD::regDB->ReadState(hashProof, accountProof, nFlags))
-                    return debug::error(FUNCTION, "temporal proof register is not found");
 
-                /* Compare the last timestamp update to transaction timestamp. */
-                if(accountProof.nTimestamp > txSpend.nTimestamp)
-                    return debug::error(FUNCTION, "temporal proof is stale");
+            /* Get the byte from pre-state. */
+            nState = 0;
+            credit >= nState; //NOTE: this is deserializing from ssProof
 
-                /* Parse the owner object register. */
-                if(!accountProof.Parse())
-                    return debug::error(FUNCTION, "failed to parse proof object register");
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::PRESTATE)
+                return debug::error(FUNCTION, "register debit not in pre-state");
 
-                /* Check that owner is of a valid type. */
-                if(accountProof.Standard() != TAO::Register::OBJECTS::ACCOUNT)
-                    return debug::error(FUNCTION, "owner object is not a token");
+            /* Read pre-states. */
+            TAO::Register::Object proof;
+            credit >= proof;  //NOTE: this is deserializing from ssProof
 
-                /* Check the ownership of proof register. */
-                if(accountProof.hashOwner != tx.hashGenesis)
-                    return debug::error(FUNCTION, "not authorized to use this temporal proof");
+            /* Parse object register. */
+            if(!proof.Parse())
+                return debug::error(FUNCTION, "failed to parse proof object register");
 
-                /* Check that the token indetifier matches token identifier. */
-                if(accountProof.get<uint256_t>("identifier") != tokenOwner.get<uint256_t>("identifier"))
-                    return debug::error(FUNCTION, "account proof identifier not token identifier");
+            /* Compare the last timestamp update to transaction timestamp. */
+            if(proof.nModified > credit.nTimestamp)
+                return debug::error(FUNCTION, "temporal proof is stale");
 
-                /* Get the total amount of the debit. */
-                uint64_t nDebit;
-                txSpend.ssOperation >> nDebit;
+            /* Check that owner is of a valid type. */
+            if(proof.Standard() != TAO::Register::OBJECTS::ACCOUNT)
+                return debug::error(FUNCTION, "owner object is not a token");
 
-                /* Get the total tokens to be distributed. */
-                uint64_t nPartial = (accountProof.get<uint64_t>("balance") * nDebit) / tokenOwner.get<uint64_t>("supply");
+            /* Check the ownership of proof register. */
+            if(proof.hashOwner != credit.hashCaller)
+                return debug::error(FUNCTION, "not authorized to use this temporal proof");
 
-                //NOTE: ISSUE here, temporal proofs can't be used if post timestamped. This prevents double spending,
-                //but it doesn't prevent coins from getting locked if a temporal proof has been changed. Possible to
-                //check tokens to ensure tokens aren't moved if a proof is able to be claimed.
-                //find a way to unlock the unspent tokens possibly with validation regitser.
-                //We might need to check back the history to find timestamp before proof to use previous state.
-                //This will work for now, but is not production ready.
+            /* Check that the token indetifier matches token identifier. */
+            if(proof.get<uint256_t>("identifier") != token.get<uint256_t>("identifier"))
+                return debug::error(FUNCTION, "account proof identifier not token identifier");
 
-                /* Check that the required credit claim is accurate. */
-                if(nPartial != nCredit)
-                    return debug::error(FUNCTION, "claimed credit ", nCredit, " mismatch with token holdings ", nPartial);
+            /* Get the total amount of the debit. */
+            uint64_t nDebit = 0;
+            debit >> nDebit;
 
-                /* Read the state from. */
-                TAO::Register::Object accountFrom;
-                if(!LLD::regDB->ReadState(hashFrom, accountFrom, nFlags))
-                    return debug::error(FUNCTION, "can't read state from");
+            /* Get the total tokens to be distributed. */
+            uint64_t nPartial = (proof.get<uint64_t>("balance") * nDebit) / token.get<uint64_t>("supply");
 
-                /* Parse the account from. */
-                if(!accountFrom.Parse())
-                    return debug::error(FUNCTION, "failed to parse the account from");
+            //NOTE: ISSUE here, temporal proofs can't be used if post timestamped. This prevents double spending,
+            //but it doesn't prevent coins from getting locked if a temporal proof has been changed. Possible to
+            //check tokens to ensure tokens aren't moved if a proof is able to be claimed.
+            //find a way to unlock the unspent tokens possibly with validation regitser.
+            //We might need to check back the history to find timestamp before proof to use previous state.
+            //This will work for now, but is not production ready.
 
-                /* Check that account from is a standard object. */
-                if(accountFrom.Standard() != TAO::Register::OBJECTS::ACCOUNT)
-                    return debug::error(FUNCTION, "account from object register is non-standard type");
+            /* Check that account from is a standard object. */
+            if(accountFrom.Standard() != TAO::Register::OBJECTS::ACCOUNT)
+                return debug::error(FUNCTION, "account from object register is non-standard type");
 
-                /* Check that the debit to credit identifiers match. */
-                if(account.get<uint256_t>("identifier") != accountFrom.get<uint256_t>("identifier"))
-                    return debug::error(FUNCTION, "credit can't be of different identifier");
+            /* Check that the debit to credit identifiers match. */
+            if(account.get<uint256_t>("identifier") != accountFrom.get<uint256_t>("identifier"))
+                return debug::error(FUNCTION, "credit can't be of different identifier");
 
-
-            }
+            return true;
         }
     }
 }

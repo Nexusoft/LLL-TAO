@@ -59,7 +59,7 @@ namespace TAO
              *  @return true if successful.
              *
              **/
-            bool Credit::Commit(const TAO::Register::Object& account, const uint256_t& hashAddress,
+            bool Commit(const TAO::Register::Object& account, const uint256_t& hashAddress,
                 const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags);
 
 
@@ -81,13 +81,13 @@ namespace TAO
              *
              *  Verify claim validation rules and caller.
              *
-             *  @param[in] contract The contract to verify.
-             *  @param[in] hashCaller The contract caller.
+             *  @param[in] debit The contract to claim.
+             *  @param[in] credit The contract to verify.
              *
              *  @return true if successful.
              *
              **/
-            bool Verify(const Contract& contract, const uint256_t& hashCaller);
+            bool Verify(const Contract& debit, const Contract& credit);
         }
     }
 }

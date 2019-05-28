@@ -23,10 +23,10 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 
-#include <TAO/Ledger/types/tritium_minter.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/stake.h>
+#include <TAO/Ledger/types/minter.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>

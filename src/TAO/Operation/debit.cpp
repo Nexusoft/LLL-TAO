@@ -66,7 +66,7 @@ namespace TAO
 
 
         /* Verify debit validation rules and caller. */
-        bool Debit::Verify(const Contract& contract, const uint256_t& hashCaller)
+        bool Debit::Verify(const Contract& contract)
         {
             /* Seek read position to first position. */
             contract.Reset();
@@ -116,7 +116,7 @@ namespace TAO
                 return debug::error(FUNCTION, "pre-state is in invalid state");
 
             /* Check that the proper owner is commiting the write. */
-            if(hashCaller != state.hashOwner)
+            if(contract.hashCaller != state.hashOwner)
                 return debug::error(FUNCTION, "no write permissions for caller ", hashCaller.SubString());
 
             return true;
