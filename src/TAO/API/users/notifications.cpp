@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/jsonutils.h>
 
+#include <TAO/Operation/include/enum.h>
+
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/types/object.h>
 
@@ -89,6 +91,15 @@ namespace TAO
 
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;
+
+                /* Attempt to unpack a coinbase transaction. */
+                if(TAO::Register::Unpack(tx, TAO::Operation::OP::COINBASE))
+                {
+                    json::json obj;
+                    obj["operation"] = OperationToJSON(tx.ssOperation);
+                    ret.push_back(obj);
+                    continue;
+                }
 
                 /* Register address. */
                 uint256_t hashAddress;
