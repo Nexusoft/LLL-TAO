@@ -1,15 +1,15 @@
-/*__________________________________________________________________________________________
+/*_________________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+               (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+               (c) Copyright The Nexus Developers 2014 - 2019
 
-            Distributed under the MIT software license, see the accompanying
-            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+               Distributed under the MIT software license, see the accompanying
+               file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To the Voice of the People
+               "ad vocem populi" - To the Voice of the People
 
-____________________________________________________________________________________________*/
+_________________________________________________________________________________________________*/
 
 #include <LLD/include/global.h>
 
@@ -27,100 +27,21 @@ namespace TAO
     {
 
         /* Writes data to a register. */
-        bool Append(Contract &contract, const uint64_t nTimestamp,
-            const uint256_t& hashCaller, const uint8_t nFlags);
+        bool Append(TAO::Register::State &state, const std::vector<uint8_t>& vchData)
         {
-            /* Get the register address. */
-            uint256_t hashAddress = 0;
-            contract >> hashAddress;
-
-            /* Get the data to write. */
-            std::vector<uint8_t> vchData;
-            contract >> vchData;
-
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashAddress))
-                return debug::error(FUNCTION, "cannot append register with reserved address");
-
-            /* Write pre-states. */
-            TAO::Register::State state;
-            if(nFlags & TAO::Register::FLAGS::PRESTATE)
-            {
-                if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
-                    return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
-
-                /* Serialize the pre-state into the register. */
-                contract <<= uint8_t(TAO::Register::STATES::PRESTATE) <<= state;
-            }
-
-            /* Get pre-states on write. */
-            if(nFlags & TAO::Register::FLAGS::WRITE
-            || nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                /* Get the state byte. */
-                uint8_t nState = 0; //RESERVED
-                contract >>= nState;
-
-                /* Check for the pre-state. */
-                if(nState != TAO::Register::STATES::PRESTATE)
-                    return debug::error(FUNCTION, "register script not in pre-state");
-
-                /* Get the pre-state. */
-                contract >>= state;
-            }
-
-            /* Check ReadOnly permissions. */
-            if(state.nType == TAO::Register::REGISTER::READONLY)
-                return debug::error(FUNCTION, "append operation called on read-only register");
-
-            /* Check write permissions for raw state registers. */
-            if(state.nType != TAO::Register::REGISTER::APPEND)
-                return debug::error(FUNCTION, "append operation called on raw register");
-
-            /* Check that the proper owner is commiting the write. */
-            if(hashCaller != state.hashOwner)
-                return debug::error(FUNCTION, "no append permissions for caller ", hashCaller.ToString());
+            /* Check that append is allowed. */
+            if(state.nType != TAO::Register::APPEND)
+                return debug::error(FUNCTION, "cannot call on non append register");
 
             /* Append the state data. */
-            std::vector<uint8_t> vchState = state.GetState();
-            vchState.insert(vchState.end(), vchData.begin(), vchData.end());
+            state.vchState.insert(state.vchState.end(), vchData.begin(), vchData.end());
 
-            /* Set the new state of the register. */
-            state.nTimestamp = nTimestamp;
-            state.SetState(vchState);
+            /* Update the state register checksum. */
+            state.SetChecksum();
 
             /* Check that the register is in a valid state. */
             if(!state.IsValid())
-                return debug::error(FUNCTION, "memory address ", hashAddress.ToString(), " is in invalid state");
-
-            /* Write post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::POSTSTATE)
-                contract <<= uint8_t(TAO::Register::STATES::POSTSTATE) <<= state.GetHash();
-
-            /* Verify the post-state checksum. */
-            if((nFlags & TAO::Register::FLAGS::WRITE)
-            || (nFlags & TAO::Register::FLAGS::MEMPOOL))
-            {
-                /* Get the state byte. */
-                uint8_t nState = 0; //RESERVED
-                contract >>= nState;
-
-                /* Check for the pre-state. */
-                if(nState != TAO::Register::STATES::POSTSTATE)
-                    return debug::error(FUNCTION, "register script not in post-state");
-
-                /* Get the post state checksum. */
-                uint64_t nChecksum;
-                contract >>= nChecksum;
-
-                /* Check for matching post states. */
-                if(nChecksum != state.GetHash())
-                    return debug::error(FUNCTION, "register script has invalid post-state");
-
-                /* Write the register to the database. */
-                if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
-                    return debug::error(FUNCTION, "failed to write new state");
-            }
+                return debug::error(FUNCTION, "memory address is in invalid state");
 
             return true;
         }

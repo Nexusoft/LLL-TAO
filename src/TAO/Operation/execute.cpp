@@ -34,7 +34,7 @@ namespace TAO
     {
 
         /* Executes a given operation byte sequence. */
-        bool Execute(TAO::Ledger::Transaction& tx, uint8_t nFlags)
+        bool Execute(const TAO::Ledger::Transaction& tx, uint8_t nFlags)
         {
 
             /* Start the stream at the beginning. */
@@ -71,6 +71,26 @@ namespace TAO
                             /* Execute the operation method. */
                             if(!Write(hashAddress, vchData, nFlags, tx))
                                 return false;
+
+                            /* Verify the post-state checksum. */
+                            uint8_t nState = 0; //RESERVED
+                            contract >>= nState;
+
+                            /* Check for the pre-state. */
+                            if(nState != TAO::Register::STATES::POSTSTATE)
+                                return debug::error(FUNCTION, "register script not in post-state");
+
+                            /* Get the post state checksum. */
+                            uint64_t nChecksum;
+                            contract >>= nChecksum;
+
+                            /* Check for matching post states. */
+                            if(nChecksum != state.GetHash())
+                                return debug::error(FUNCTION, "register script has invalid post-state");
+
+                            /* Write the register to the database. */
+                            if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
+                                return debug::error(FUNCTION, "failed to write new state");
 
                             break;
                         }

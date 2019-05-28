@@ -44,20 +44,11 @@ namespace TAO
 
         public:
 
-            /** The contract caller genesis-id. **/
-            uint256_t hashCaller;
-
-
-            /** The timestamp contract was created. **/
-            uint64_t nTimestamp;
-
 
             /** Default Constructor. **/
             Contract()
             : ssOperation()
             , ssRegister()
-            , hashCaller(0)
-            , nTimestamp(runtime::unifiedtimestamp())
             {
             }
 

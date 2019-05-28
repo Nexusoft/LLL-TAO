@@ -28,23 +28,11 @@ namespace TAO
     {
 
         /* Creates a new register if it doesn't exist. */
-        bool Register(const uint256_t& hashAddress, const uint8_t nType, const std::vector<uint8_t>& vchData,
-                      const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Create(TAO::Register::State &state, const std::vector<uint8_t>& vchData)
         {
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashAddress))
-                return debug::error(FUNCTION, "cannot create register with reserved address");
-
-            /* Check that the register doesn't exist yet. */
-            if(LLD::regDB->HasState(hashAddress, nFlags))
-                return debug::error(FUNCTION, "cannot allocate register of same memory address ", hashAddress.ToString());
-
-            /* Set the owner of this register. */
-            TAO::Register::State state;
-            state.nVersion   = 1;
-            state.nType      = nType;
-            state.hashOwner  = tx.hashGenesis;
-            state.nTimestamp = tx.nTimestamp;
+            /* Check the register is a valid type. */
+            if(!TAO::Register::Range(state.nType))
+                return debug::error(FUNCTION, "register using invalid type range");
 
             /* Set the data in the state register. */
             state.SetState(vchData);
@@ -59,10 +47,8 @@ namespace TAO
                 if(!object.Parse())
                     return debug::error(FUNCTION, "object register failed to parse");
 
-                /* Grab the object standard to check values. */
-                uint8_t nStandard = object.Standard();
-
                 /* Switch based on standard types. */
+                uint8_t nStandard = object.Standard();
                 switch(nStandard)
                 {
 
@@ -72,20 +58,7 @@ namespace TAO
                         /* Check the account balance. */
                         uint64_t nBalance = object.get<uint64_t>("balance");
                         if(nBalance != 0)
-                            return debug::error(FUNCTION, "account can't be created with non-zero balance ", nBalance);
-
-                        /* Check that token identifier hasn't been claimed. */
-                        if(nFlags & TAO::Register::FLAGS::WRITE
-                        || nFlags & TAO::Register::FLAGS::MEMPOOL)
-                        {
-                            /* Get the token identifier. */
-                            uint256_t nIdentifier = object.get<uint256_t>("identifier");
-
-                            /* Check that token identifier hasn't been claimed. */
-                            if(nIdentifier != 0  && !LLD::regDB->HasIdentifier(nIdentifier, nFlags))
-                                return debug::error(FUNCTION, "account can't be created with no identifier ", nIdentifier.GetHex());
-
-                        }
+                            return debug::error(FUNCTION, "account balance msut be zero ", nBalance);
 
                         break;
                     }
@@ -124,20 +97,6 @@ namespace TAO
                         if(nIdentifier == 0)
                             return debug::error(FUNCTION, "token can't be created with reserved identifier ", nIdentifier.GetHex());
 
-                        /* Check that token identifier hasn't been claimed. */
-                        if((nFlags & TAO::Register::FLAGS::WRITE)
-                        || (nFlags & TAO::Register::FLAGS::MEMPOOL))
-                        {
-                            /* Check the claimed register address to identifier. */
-                            uint256_t hashClaimed = 0;
-                            if(LLD::regDB->ReadIdentifier(nIdentifier, hashClaimed, nFlags))
-                                return debug::error(FUNCTION, "token can't be created with reserved identifier ", nIdentifier.GetHex());
-
-                            /* Write the new identifier to database. */
-                            if(!LLD::regDB->WriteIdentifier(nIdentifier, hashAddress, nFlags))
-                                return debug::error(FUNCTION, "failed to commit token register identifier to disk");
-                        }
-
                         /* Check that the current supply and max supply are the same. */
                         if(object.get<uint64_t>("supply") != object.get<uint64_t>("balance"))
                             return debug::error(FUNCTION, "token current supply and balance can't mismatch");
@@ -147,38 +106,12 @@ namespace TAO
                 }
             }
 
+            /* Update the state register checksum. */
+            state.SetChecksum();
+
             /* Check the state change is correct. */
             if(!state.IsValid())
                 return debug::error(FUNCTION, "memory address ", hashAddress.ToString(), " is in invalid state");
-
-            /* Write post-state checksum. */
-            if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
-
-            /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE
-            || nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                /* Get the state byte. */
-                uint8_t nState = 0; //RESERVED
-                tx.ssRegister >> nState;
-
-                /* Check for the post-state. */
-                if(nState != TAO::Register::STATES::POSTSTATE)
-                    return debug::error(FUNCTION, "register script not in post-state");
-
-                /* Get the post state checksum. */
-                uint64_t nChecksum;
-                tx.ssRegister >> nChecksum;
-
-                /* Check for matching post states. */
-                if(nChecksum != state.GetHash())
-                    return debug::error(FUNCTION, "register script ", std::hex, nChecksum, " has invalid post-state ", std::hex, state.GetHash());
-
-                /* Write the register to the database. */
-                if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
-                    return debug::error(FUNCTION, "failed to write new state");
-            }
 
             return true;
         }

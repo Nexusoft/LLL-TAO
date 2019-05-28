@@ -1,15 +1,15 @@
-/*__________________________________________________________________________________________
+/*_________________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+               (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+               (c) Copyright The Nexus Developers 2014 - 2019
 
-            Distributed under the MIT software license, see the accompanying
-            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+               Distributed under the MIT software license, see the accompanying
+               file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To the Voice of the People
+               "ad vocem populi" - To the Voice of the People
 
-____________________________________________________________________________________________*/
+_________________________________________________________________________________________________*/
 
 #include <LLD/include/global.h>
 
@@ -30,59 +30,14 @@ namespace TAO
     {
 
         /* Writes data to a register. */
-        bool Write(Contract &contract, const uint64_t nTimestamp,
-            const uint256_t& hashCaller, const uint8_t nFlags);
+        bool Write(TAO::Register::State& state, const std::vector<uint8_t>& vchData)
         {
-            /* Get the register address. */
-            uint256_t hashAddress = 0;
-            contract >> hashAddress;
+            /* Check for valid register types. */
+            if(state.nType == TAO::Register::REGISTER::READONLY
+            || state.nType == TAO::Register::REGISTER::APPEND)
+                return debug::error(FUNCTION, "not allowed on readonly or append types");
 
-            /* Get the data to write. */
-            std::vector<uint8_t> vchData;
-            contract >> vchData;
-
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashAddress))
-                return debug::error(FUNCTION, "cannot write to register with reserved address");
-
-            /* Read the binary data of the Register. */
-            TAO::Register::State state;
-
-            /* Read pre-states. */
-            if((nFlags & TAO::Register::FLAGS::PRESTATE))
-            {
-                if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
-                    return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
-
-                /* Write the pre-state to contract. */
-                contract <<= (uint8_t)TAO::Register::STATES::PRESTATE <<= state;
-            }
-
-            /* Get pre-states on write. */
-            if(nFlags & TAO::Register::FLAGS::WRITE
-            || nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                /* Get the state byte. */
-                uint8_t nState = 0; //RESERVED
-                contract >>= nState;
-
-                /* Check for the pre-state. */
-                if(nState != TAO::Register::STATES::PRESTATE)
-                    return debug::error(FUNCTION, "register script not in pre-state");
-
-                /* Get the pre-state. */
-                contract >>= state;
-            }
-
-            /* Check ReadOnly permissions. */
-            if(state.nType == TAO::Register::REGISTER::READONLY)
-                return debug::error(FUNCTION, "write operation called on read-only register");
-
-            /* Check that the proper owner is commiting the write. */
-            if(hashCaller) != state.hashOwner)
-                return debug::error(FUNCTION, "no write permissions for caller ", hashCaller.ToString());
-
-            /* Check write permissions for raw state registers. */
+            /* Write operations on the state object. */
             if(state.nType == TAO::Register::REGISTER::OBJECT)
             {
                 /* Create the object register. */
@@ -92,15 +47,13 @@ namespace TAO
                 if(!object.Parse())
                     return debug::error(FUNCTION, "object register failed to parse");
 
-                /* Create an operation stream object. */
-                Stream stream = Stream(vchData);
-
                 /* Loop through the stream.
                  *
                  * Types here are stored in a special stream that
                  * are write instructions for object registers.
                  *
                  */
+                Stream stream = Stream(vchData);
                 while(!stream.end())
                 {
                     /* Deserialize the named value. */
@@ -109,10 +62,11 @@ namespace TAO
 
                     /* Manually check reserved field names for now. */
                     if(TAO::Register::Reserved(strName))
-                        return debug::error(FUNCTION, "cannot write with reserved '", strName, "' field names");
+                        return debug::error(FUNCTION, "cannot use reserved '", strName, "' field");
 
                     //TODO: maybe we should catch duplicates?
-                    //no real point being that it will just overwrite a value in same transaction as long as it is mutable.
+                    //no real point being that it will just overwrite a value in same transaction
+                    //as long as it is mutable.
                     //but it might be best to be stricter here. to decide
 
                     /* Deserialize the type. */
@@ -273,48 +227,18 @@ namespace TAO
             {
                 /* Check the new data size against register's allocated size. */
                 if(vchData.size() != state.vchState.size())
-                    return debug::error(FUNCTION, "new register state size ", vchData.size(), " mismatch ",  state.vchState.size());
+                    return debug::error(FUNCTION, "size mismatch");
 
                 /* For all non objects, write the state as raw byte sequence. */
                 state.SetState(vchData);
             }
 
-            /* Update the state register timestamp. */
-            state.nTimestamp = nTimestamp;
+            /* Update the state register checksum. */
             state.SetChecksum();
 
             /* Check that the register is in a valid state. */
             if(!state.IsValid())
-                return debug::error(FUNCTION, "memory address ", hashAddress.ToString(), " is in invalid state");
-
-            /* Write post-state checksum. */
-            if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                contract <<= uint8_t(TAO::Register::STATES::POSTSTATE) <<= state.GetHash();
-
-            /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE
-            || nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                /* Get the state byte. */
-                uint8_t nState = 0; //RESERVED
-                contract >>= nState;
-
-                /* Check for the pre-state. */
-                if(nState != TAO::Register::STATES::POSTSTATE)
-                    return debug::error(FUNCTION, "register script not in post-state");
-
-                /* Get the post state checksum. */
-                uint64_t nChecksum;
-                contract >>= nChecksum;
-
-                /* Check for matching post states. */
-                if(nChecksum != state.GetHash())
-                    return debug::error(FUNCTION, "register script has invalid post-state");
-
-                /* Write the register to the database. */
-                if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
-                    return debug::error(FUNCTION, "failed to write new state");
-            }
+                return debug::error(FUNCTION, "register is in invalid state");
 
             return true;
         }

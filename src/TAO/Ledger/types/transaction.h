@@ -17,7 +17,8 @@ ________________________________________________________________________________
 
 #include <vector>
 
-#include <TAO/Operation/types/stream.h>
+#include <TAO/Operation/types/contract.h>
+
 #include <TAO/Register/types/stream.h>
 #include <TAO/Register/include/enum.h>
 
@@ -45,7 +46,7 @@ namespace TAO
         {
         public:
             /** For disk indexing on contract. **/
-            std::vector<uint128_t> vContracts;
+            std::vector<TAO::Operation::Contract> vContracts;
 
 
             /** The transaction version. **/
@@ -81,7 +82,7 @@ namespace TAO
             /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
-                /* Operations layer. */
+                /* Contracts layers. */
                 READWRITE(vContracts);
 
                 /* Ledger layer */
@@ -117,7 +118,7 @@ namespace TAO
              *  Used for sorting transactions by sequence.
              *
              **/
-            bool operator> (const Transaction& tx)
+            bool operator>(const Transaction& tx)
             {
                 return nSequence > tx.nSequence;
             }
@@ -128,7 +129,7 @@ namespace TAO
               *  Used for sorting transactions by sequence.
               *
               **/
-            bool operator< (const Transaction& tx)
+            bool operator<(const Transaction& tx)
             {
                 return nSequence < tx.nSequence;
             }

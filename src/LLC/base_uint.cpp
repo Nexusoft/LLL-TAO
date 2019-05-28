@@ -682,6 +682,14 @@ std::string base_uint<BITS>::ToString() const
     return (GetHex());
 }
 
+/**  Returns a string representation of the base_uint object. **/
+template<uint32_t BITS>
+std::string base_uint<BITS>::SubString(const uint32_t nSize) const
+{
+    return (GetHex().substr(0, nSize));
+}
+
+
 
 /**  Returns a byte pointer to the begin of the base_uint object. **/
 template<uint32_t BITS>

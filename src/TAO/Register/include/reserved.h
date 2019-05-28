@@ -68,6 +68,21 @@ namespace TAO
         {
             return std::find(RESERVED.begin(), RESERVED.end(), strValue) != RESERVED.end();
         }
+
+
+        /** Range
+         *
+         *  Check if a register type is using a valid range
+         *
+         *  @param[in] nType The type byte to check
+         *
+         *  @return True if value is in acceptable range.
+         *
+         **/
+        inline bool Range(const uint8_t nType)
+        {
+            return (nType > REGISTER::RESERVED && nType < REGISTER::SYSTEM);
+        }
     }
 }
 

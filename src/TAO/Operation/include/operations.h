@@ -30,64 +30,52 @@ namespace TAO
          *
          *  Writes data to a register.
          *
-         *  @param[out] contract The contract being executed
-         *  @param[in] nTimestamp The timestamp of operation execution.
-         *  @param[in] hashCaller The calling sigchain.
-         *  @param[in] nFlags Flag to determine what states to write.
+         *  @param[out] state The state register to operate on.
+         *  @param[in] vchData The data script to write into register.
          *
          *  @return true if successful.
          *
          **/
-        bool Write(Contract &contract, const uint64_t nTimestamp,
-            const uint256_t& hashCaller, const uint8_t nFlags);
+        bool Write(TAO::Register::State &state, const std::vector<uint8_t>& vchData);
 
 
         /** Append
          *
          *  Appends data to a register.
          *
-         *  @param[out] contract The contract being executed
-         *  @param[in] nTimestamp The timestamp of operation execution.
-         *  @param[in] hashCaller The calling sigchain.
-         *  @param[in] nFlags Flag to determine what states to write.
+         *  @param[out] state The state register to operate on.
+         *  @param[in] vchData The data script to write into register.
          *
          *  @return true if successful.
          *
          **/
-        bool Append(Contract &contract, const uint64_t nTimestamp,
-            const uint256_t& hashCaller, const uint8_t nFlags);
+        bool Append(TAO::Register::State &state, const std::vector<uint8_t>& vchData);
 
 
         /** Create
          *
          *  Creates a new register if it doesn't exist.
          *
-         *  @param[out] contract The contract being executed
-         *  @param[in] nTimestamp The timestamp of operation execution.
-         *  @param[in] hashCaller The calling sigchain.
-         *  @param[in] nFlags Flag to determine what states to write.
+         *  @param[out] state The state register to operate on.
+         *  @param[in] vchData The data script to write into register.
          *
          *  @return true if successful.
          *
          **/
-        bool Create(Contract &contract, const uint64_t nTimestamp,
-            const uint256_t& hashCaller, const uint8_t nFlags);
+        bool Create(TAO::Register::State &state, const std::vector<uint8_t>& vchData);
 
 
         /** Transfer
          *
          *  Transfers a register between sigchains.
          *
-         *  @param[in] hashAddress The register address to transfer.
-         *  @param[in] hashTransfer The register to transfer to.
-         *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[out] contract The contract being executed
+         *  @param[out] state The state register to operate on.
+         *  @param[in] hashTransfer The object to transfer
          *
          *  @return true if successful.
          *
          **/
-        bool Transfer(Contract &contract, const uint256_t& hashAddress,
-            const uint256_t& hashTransfer, const uint8_t nFlags);
+        bool Transfer(TAO::Register::State &state, const uint256_t& hashTransfer);
 
 
         /** Claim
@@ -96,14 +84,12 @@ namespace TAO
          *
          *  @param[out] contract The contract being executed
          *  @param[in] hashTx The tx that is being claimed.
-         *  @param[in] hashAddress The register address to claim.
          *  @param[in] nFlags The flag to determine if database state should be written.
          *
          *  @return true if successful.
          *
          **/
-        bool Claim(Contract &contract, const uint512_t& hashTx,
-            const uint8_t nFlags, const uint32_t nContract = 0);
+        bool Claim(TAO::Register::State &state, , const uint512_t& hashTx, const uint32_t nContract = 0);
 
 
         /** Debit
