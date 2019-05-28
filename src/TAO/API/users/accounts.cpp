@@ -79,8 +79,9 @@ namespace TAO
                 /* parse object so that the data fields can be accessed */
                 object.Parse();
 
+                uint8_t nStandard = object.Standard();
                 /* Check that this is an account */
-                if( object.Standard() != TAO::Register::OBJECTS::ACCOUNT)
+                if( nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                     continue;
 
                 /* Get the current page. */

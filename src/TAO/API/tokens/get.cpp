@@ -60,7 +60,7 @@ namespace TAO
             uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
-            if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
+            if(nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST)
             {
                 /* If the user requested a particular object type then check it is that type */
                 if(params.find("type") != params.end() && params["type"].get<std::string>() == "token")

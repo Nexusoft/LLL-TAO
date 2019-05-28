@@ -223,6 +223,7 @@ namespace TAO
                 /* Loop through the operations ssOperation. */
                 while(!ssOperation.end())
                 {
+                    json::json op;
                     uint8_t OPERATION;
                     ssOperation >> OPERATION;
 
@@ -241,9 +242,9 @@ namespace TAO
                             ssOperation >> vchData;
 
                             /* Output the json information. */
-                            ret["OP"]      = "WRITE";
-                            ret["address"] = hashAddress.ToString();
-                            ret["data"]    = HexStr(vchData.begin(), vchData.end());
+                            op["OP"]      = "WRITE";
+                            op["address"] = hashAddress.ToString();
+                            op["data"]    = HexStr(vchData.begin(), vchData.end());
 
                             break;
                         }
@@ -261,9 +262,9 @@ namespace TAO
                             ssOperation >> vchData;
 
                             /* Output the json information. */
-                            ret["OP"]      = "APPEND";
-                            ret["address"] = hashAddress.ToString();
-                            ret["data"]    = HexStr(vchData.begin(), vchData.end());
+                            op["OP"]      = "APPEND";
+                            op["address"] = hashAddress.ToString();
+                            op["data"]    = HexStr(vchData.begin(), vchData.end());
 
                             break;
                         }
@@ -285,10 +286,10 @@ namespace TAO
                             ssOperation >> vchData;
 
                             /* Output the json information. */
-                            ret["OP"]      = "REGISTER";
-                            ret["address"] = hashAddress.ToString();
-                            ret["type"]    = nType;
-                            ret["data"]    = HexStr(vchData.begin(), vchData.end());
+                            op["OP"]      = "REGISTER";
+                            op["address"] = hashAddress.ToString();
+                            op["type"]    = nType;
+                            op["data"]    = HexStr(vchData.begin(), vchData.end());
 
 
                             break;
@@ -307,9 +308,9 @@ namespace TAO
                             ssOperation >> hashTransfer;
 
                             /* Output the json information. */
-                            ret["OP"]       = "TRANSFER";
-                            ret["address"]  = hashAddress.ToString();
-                            ret["transfer"] = hashTransfer.ToString();
+                            op["OP"]       = "TRANSFER";
+                            op["address"]  = hashAddress.ToString();
+                            op["transfer"] = hashTransfer.ToString();
 
                             break;
                         }
@@ -342,9 +343,9 @@ namespace TAO
                             txClaim.ssOperation >> hashAddress;
 
                             /* Output the json information. */
-                            ret["OP"]       = "CLAIM";
-                            ret["txid"] = hashTransferTx.ToString();
-                            ret["address"]  = hashAddress.ToString();
+                            op["OP"]       = "CLAIM";
+                            op["txid"] = hashTransferTx.ToString();
+                            op["address"]  = hashAddress.ToString();
 
                             break;
                         }
@@ -363,10 +364,10 @@ namespace TAO
                             ssOperation >> nAmount;
 
                             /* Output the json information. */
-                            ret["OP"]       = "DEBIT";
-                            ret["address_from"]  = hashAddress.ToString();
-                            ret["address_to"] = hashTransfer.ToString();
-                            ret["amount"]   = nAmount;
+                            op["OP"]       = "DEBIT";
+                            op["address_from"]  = hashAddress.ToString();
+                            op["address_to"] = hashTransfer.ToString();
+                            op["amount"]   = nAmount;
 
                             break;
                         }
@@ -413,11 +414,11 @@ namespace TAO
                             txDebit.ssOperation >> nCredit;
 
                             /* Output the json information. */
-                            ret["OP"]      = "CREDIT";
-                            ret["txid"]    = hashTx.ToString();
-                            ret["proof"]   = hashProof.ToString();
-                            ret["account"] = hashAccount.ToString();
-                            ret["amount"]  = nCredit;
+                            op["OP"]      = "CREDIT";
+                            op["txid"]    = hashTx.ToString();
+                            op["proof"]   = hashProof.ToString();
+                            op["account"] = hashAccount.ToString();
+                            op["amount"]  = nCredit;
 
                             break;
                         }
@@ -436,9 +437,9 @@ namespace TAO
                             ssOperation >> nExtraNonce;
 
                             /* Output the json information. */
-                            ret["OP"]     = "COINBASE";
-                            ret["nonce"]  = nExtraNonce;
-                            ret["amount"] = nCredit;
+                            op["OP"]     = "COINBASE";
+                            op["nonce"]  = nExtraNonce;
+                            op["amount"] = nCredit;
 
                             break;
                         }
@@ -469,12 +470,12 @@ namespace TAO
                             ssOperation >> nStake;
 
                             /* Output the json information. */
-                            ret["OP"]       = "TRUST";
-                            ret["account"]  = hashAccount.ToString();
-                            ret["last"]     = hashLastTrust.ToString();
-                            ret["sequence"] = nSequence;
-                            ret["trust"]    = nTrust;
-                            ret["amount"]   = nStake;
+                            op["OP"]       = "TRUST";
+                            op["account"]  = hashAccount.ToString();
+                            op["last"]     = hashLastTrust.ToString();
+                            op["sequence"] = nSequence;
+                            op["trust"]    = nTrust;
+                            op["amount"]   = nStake;
 
                             break;
                         }
@@ -492,13 +493,15 @@ namespace TAO
                             ssOperation >> hashProof;
 
                             /* Output the json information. */
-                            ret["OP"]    = "AUTHORIZE";
-                            ret["txid"]  = hashTx.ToString();
-                            ret["proof"] = hashProof.ToString();
+                            op["OP"]    = "AUTHORIZE";
+                            op["txid"]  = hashTx.ToString();
+                            op["proof"] = hashProof.ToString();
 
                             break;
                         }
                     }
+                    /* Add this operation to the return json */
+                    ret.push_back(op);
                 }
             }
             catch(const std::runtime_error& e)
@@ -551,6 +554,25 @@ namespace TAO
                     uint64_t nDigits = GetTokenOrAccountDigits(object);
 
                     ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
+
+                }
+                else if(nStandard == TAO::Register::OBJECTS::TRUST)
+                {
+                    ret["address"]    = hashRegister.ToString();
+
+                    /* Get the identifier */
+                    uint256_t nIdentifier = object.get<uint256_t>("token_address");
+
+                    ret["token_address"] = object.get<uint256_t>("token_address").GetHex();
+                    
+                    /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
+                    Therefore, to convert the internal value to a floating point value we need to reduce the internal value
+                    by 10^digits  */
+                    uint64_t nDigits = GetTokenOrAccountDigits(object);
+
+                    ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
+                    ret["trust"]    = (double)object.get<uint64_t>("trust") / pow(10, nDigits);
+                    ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDigits);
 
                 }
                 else if(nStandard == TAO::Register::OBJECTS::TOKEN)

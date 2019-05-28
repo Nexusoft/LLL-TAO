@@ -267,7 +267,14 @@ This will list off all of the transactions for the requested signature chain gen
     "signature": "30818402405f1b486b556912edc1b87139c822409e4be7e1aae73a92aadf4ad36f46c90d3c4190ee9bff04e6e79fe27fad4557670ea04533d1ccdb4581de252f04403e36b402401734b064192c106ff070d922349a11eec82c57942824a8b92e44fcb6f5702fa31f190946f9b3bb98815be12f98649cdf7b7204942d1437557635060fb91095c0",
     "timestamp": 1545445264,
     "version": 1
-    "operation", "Coinbase(nAmount=55)"
+    "operation": [
+            {
+                "OP": "REGISTER",
+                "address": "140e9de108b17a6c532e088cfa6ffa7f5075a10ef1daa07924ba3a27ff20edb9",
+                "type": 4,
+                "data": "0762616c616e6365ff040000000000000000057472757374ff040000000000000000057374616b65ff0400000000000000000d746f6b656e5f61646472657373050000000000000000000000000000000000000000000000000000000000000000"
+            }
+        ]
 },
 ```
 
@@ -335,7 +342,7 @@ This will list off all of the transactions sent to a particular genesis or usern
     "signature": "30818402405f1b486b556912edc1b87139c822409e4be7e1aae73a92aadf4ad36f46c90d3c4190ee9bff04e6e79fe27fad4557670ea04533d1ccdb4581de252f04403e36b402401734b064192c106ff070d922349a11eec82c57942824a8b92e44fcb6f5702fa31f190946f9b3bb98815be12f98649cdf7b7204942d1437557635060fb91095c0",
     "timestamp": 1545445264,
     "version": 1
-    "operation", "Coinbase(nAmount=55)"
+    "operation": "Coinbase(nAmount=55)"
 },
 ```
 

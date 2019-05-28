@@ -195,6 +195,10 @@ namespace TAO
             {
                 nDigits = object.get<uint64_t>("digits");
             }
+            else if(nStandard == TAO::Register::OBJECTS::TRUST)
+            {
+                    nDigits = 1000000; // NXS token default digits
+            }
             else if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
             {
 
@@ -270,7 +274,7 @@ namespace TAO
                 /* Start the stream at the beginning. */
                 tx.ssOperation.seek(0, STREAM::BEGIN);
 
-                if(!tx.ssOperation.end())
+                while(!tx.ssOperation.end())
                 {
                     uint8_t OPERATION;
                     tx.ssOperation >> OPERATION;
@@ -299,6 +303,32 @@ namespace TAO
                             }
 
                             break;
+                        }
+                        case TAO::Operation::OP::CREDIT:
+                        {
+                            /* The transaction that this credit is claiming. */
+                            uint512_t hashTx;
+                            tx.ssOperation >> hashTx;
+
+                            /* The proof this credit is using to make claims. */
+                            uint256_t hashProof;
+                            tx.ssOperation >> hashProof;
+
+                            /* The account that is being credited. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
+
+                            /* If we find a credit before a transfer transaction for this register then 
+                               we can know for certain that we must own it */
+                            if( vTransferredRegisters.find(hashAddress) == vTransferredRegisters.end() 
+                            && vOwnedRegisters.find(hashAddress) == vOwnedRegisters.end())
+                            {
+                                vOwnedRegisters.insert(hashAddress);
+                                vRegisters.push_back(hashAddress);
+                            }
+
+                            break;
+
                         }
                         case TAO::Operation::OP::TRANSFER:
                         {
@@ -354,6 +384,76 @@ namespace TAO
                                 vOwnedRegisters.insert(hashAddress);
                                 vRegisters.push_back(hashAddress);
                             }
+                            
+                            break;
+                        }
+
+                    }
+
+                    /* Seek the operation stream forward to the end of the operation by 
+                       deserializing the data based on the operation type */
+                    switch(OPERATION)
+                    {
+                        case TAO::Operation::OP::WRITE:
+                        case TAO::Operation::OP::APPEND:
+                        {
+                            std::vector<uint8_t> vchData;
+                            tx.ssOperation >> vchData;
+                            break;
+                        }
+                        case TAO::Operation::OP::REGISTER:
+                        {
+                            uint8_t nType;
+                            tx.ssOperation >> nType;
+
+                            std::vector<uint8_t> vchData;
+                            tx.ssOperation >> vchData;
+                            break;
+
+                        }
+                        case TAO::Operation::OP::DEBIT:
+                        {
+                            uint256_t hashTransfer;   
+                            tx.ssOperation >> hashTransfer;
+
+                            uint64_t  nAmount;  
+                            tx.ssOperation >> nAmount;
+                            break;
+
+                        }
+                        case TAO::Operation::OP::CREDIT:
+                        {
+                            /* Nothing to seek forward for a CREDIT as we already deserialized to the 
+                               end of the operation in order to get the account address.   */
+                            break;
+                        }
+                        case TAO::Operation::OP::TRUST:
+                        {
+                            uint1024_t hashLastTrust;
+                            tx.ssOperation >> hashLastTrust;
+
+                            uint32_t nSequence;
+                            tx.ssOperation >> nSequence;
+
+                            uint64_t nTrust;
+                            tx.ssOperation >> nTrust;
+
+                            uint64_t  nStake;
+                            tx.ssOperation >> nStake;
+                            break;
+
+                        }
+                        case TAO::Operation::OP::TRANSFER:
+                        {
+                            uint256_t hashTransfer;
+                            tx.ssOperation >> hashTransfer;
+                            
+                            break;
+                        }
+                        case TAO::Operation::OP::CLAIM:
+                        {
+                            /* Nothing to seek forward for a CLAIM as we already deserialized to the 
+                               end of the operation in order to get the txid. */
                             
                             break;
                         }
