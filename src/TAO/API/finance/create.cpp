@@ -37,8 +37,8 @@ namespace TAO
     namespace API
     {
 
-        /* Create an asset or digital item. */
-        json::json Tokens::Create(const json::json& params, bool fHelp)
+        /* Create a NXS account. */
+        json::json Finance::Create(const json::json& params, bool fHelp)
         {
             json::json ret;
 
@@ -47,10 +47,6 @@ namespace TAO
 
             /* Get the session to be used for this API call */
             uint64_t nSession = users->GetSession(params);
-
-            /* Check for identifier parameter. */
-            if(params.find("type") == params.end())
-                throw APIException(-25, "Missing Type (<type>)");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
@@ -85,68 +81,15 @@ namespace TAO
             else
                 hashRegister = LLC::GetRand256();
 
-            if(params["type"].get<std::string>() == "account")
-            {
-                std::string strTokenIdentifier = "";
 
-                /* Check for token name/address parameter. */
-                if(params.find("token_address") != params.end())
-                    strTokenIdentifier = params["token_address"].get<std::string>();
-                else if(params.find("token_name") != params.end())
-                    strTokenIdentifier = params["token_name"].get<std::string>();
-                else
-                    throw APIException(-25, "Missing token name / address");
+            /* Hash identifier is 0 for NXS tokens */
+            uint256_t hashIdentifier = 0;
+            
+            /* Create an account object register. */
+            TAO::Register::Object account = TAO::Register::CreateAccount(hashIdentifier);
 
-                uint256_t hashIdentifier = 0;
-                
-                /* Convert token name to a register address if a name has been passed in */
-                /* Edge case to allow identifer NXS or 0 to be specified for NXS token */
-                if( strTokenIdentifier == "NXS" || strTokenIdentifier == "0")
-                    hashIdentifier = uint256_t(0);
-                else if(IsRegisterAddress(strTokenIdentifier))
-                    hashIdentifier = uint256_t(strTokenIdentifier);
-                else
-                    hashIdentifier = RegisterAddressFromName(params, "token", strTokenIdentifier);
-
-                /* Create an account object register. */
-                TAO::Register::Object account = TAO::Register::CreateAccount(hashIdentifier);
-
-                /* Submit the payload object. */
-                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
-
-            }
-            else if(params["type"].get<std::string>() == "token")
-            {
-                /* Check for supply parameter. */
-                if(params.find("supply") == params.end())
-                    throw APIException(-25, "Missing Supply");
-
-                /* Extract the supply parameter */
-                double dSupply = 0;
-                if(params.find("supply") != params.end())
-                    dSupply = std::stoll(params["supply"].get<std::string>());
-
-                /* For tokens being created without a global namespaced name, the identifier is equal to the register address */
-                uint256_t hashIdentifier = hashRegister;
-
-                /* Check for nDigits parameter. */
-                uint64_t nDigits = 0;
-                if(params.find("digits") != params.end())
-                    nDigits = std::stod(params["digits"].get<std::string>());
-
-                /* Multiply the supply by 10^digits to give the supply in the divisible units */
-                uint64_t nSupply = dSupply * pow(10, nDigits); 
-
-                /* Create a token object register. */
-                TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier,
-                                                                         nSupply,
-                                                                         nDigits);
-
-                /* Submit the payload object. */
-                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();
-            }
-            else
-                throw APIException(-27, "Unknown object register");
+            /* Submit the payload object. */
+            tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))

@@ -13,7 +13,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/include/users.h>
+#include <TAO/API/include/finance.h>
+#include <TAO/API/include/global.h>
+
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/jsonutils.h>
 #include <TAO/Register/types/object.h>
@@ -30,43 +32,37 @@ namespace TAO
     {
 
         /* Get a list of accounts owned by a signature chain. */
-        json::json Users::Accounts(const json::json& params, bool fHelp)
+        json::json Finance::List(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
             json::json ret;// = json::json::array();
 
-            /* Get the Genesis ID. */
-            uint256_t hashGenesis = 0;
+            /* Get the session to be used for this API call */
+            uint64_t nSession = users->GetSession(params);
 
-            /* Watch for destination genesis. If no specific genesis or username
-             * have been provided then fall back to the active sigchain. */
-            if(params.find("genesis") != params.end())
-                hashGenesis.SetHex(params["genesis"].get<std::string>());
-            else if(params.find("username") != params.end())
-                hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-            else if(!config::fAPISessions.load() && mapSessions.count(0))
-                hashGenesis = mapSessions[0]->Genesis();
-            else
-                throw APIException(-25, "Missing Genesis or Username");
+            /* Get the account. */
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+            if(!user)
+                throw APIException(-25, "Invalid session ID");
 
             /* Check for paged parameter. */
             uint32_t nPage = 0;
             if(params.find("page") != params.end())
                 nPage = std::stoul(params["page"].get<std::string>());
 
-            /* Check for username parameter. */
+            /* Check for limit parameter. */
             uint32_t nLimit = 100;
             if(params.find("limit") != params.end())
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
             /* Get the list of registers owned by this sig chain */
-            std::vector<uint256_t> vRegisters = GetRegistersOwnedBySigChain(hashGenesis);
+            std::vector<uint256_t> vRegisters = GetRegistersOwnedBySigChain(user->Genesis());
 
             uint32_t nTotal = 0;
             /* Add the register data to the response */
             for(const auto& hashRegister : vRegisters)
             {
-                /* Get the asset from the register DB.  We can read it as an Object and then check its nType to determine
+                /* Get the account from the register DB.  We can read it as an Object and then check its nType to determine
                    whether or not it is an asset. */
                 TAO::Register::Object object;
                 if(!LLD::regDB->ReadState(hashRegister, object))
@@ -82,6 +78,10 @@ namespace TAO
                 uint8_t nStandard = object.Standard();
                 /* Check that this is an account */
                 if( nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+                    continue;
+
+                /* Check the account is a NXS account */
+                if( object.get<uint256_t>("token_address") != 0)
                     continue;
 
                 /* Get the current page. */

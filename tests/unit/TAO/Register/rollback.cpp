@@ -735,7 +735,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx.nTimestamp  = runtime::timestamp();
 
                 //payload
-                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashAccount << uint64_t(500);
+                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashAccount ;
 
                 //generate the prestates and poststates
                 REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -787,7 +787,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx.nTimestamp  = runtime::timestamp();
 
                 //payload
-                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashRegister << uint64_t(500);
+                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashRegister ;
 
                 //generate the prestates and poststates
                 REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -863,7 +863,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx.nTimestamp  = runtime::timestamp();
 
                 //payload
-                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashAccount << uint64_t(500);
+                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashAccount ;
 
                 //generate the prestates and poststates
                 REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -897,7 +897,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx.nTimestamp  = runtime::timestamp();
 
                 //payload
-                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashAccount << uint64_t(500);
+                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashAccount ;
 
                 //generate the prestates and poststates
                 REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -913,7 +913,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx.nTimestamp  = runtime::timestamp();
 
                 //payload
-                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashRegister << uint64_t(500);
+                tx << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashRegister ;
 
                 //generate the prestates and poststates
                 REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -981,7 +981,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::CREDIT) << hashTx << hashGenesis << hashTrust << uint64_t(5000);
+            tx << uint8_t(OP::CREDIT) << hashTx << hashGenesis << hashTrust ;
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));

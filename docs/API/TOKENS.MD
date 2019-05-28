@@ -77,7 +77,7 @@ Create a new token object register. The API supports an alternative endpoint tha
 
 `txid` : The ID (hash) of the transaction that includes the token creation.
 
-`address` : The register address for this token. The address (or name that hashes to this address) is needed when creating token accounts, as (by default) the `identifier` value relating accounts to tokens is the register address of the token .    
+`address` : The register address for this token. The address (or name that hashes to this address) is needed when creating token accounts, so that we know which token the account can be used with.
 
 ***
 
@@ -158,22 +158,19 @@ Increment the token balance by an amount received from a token account. This met
 
 `address` : The register address of the token to credit. This is optional if the name is provided.
 
-`amount` : The amount of tokens to credit.
-
 `txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.
 
 
 
 ### Example:
 
-The following example shows the json payload for a credit of 10 tokens to a token called "mytoken" (that itself was created by the sig chain logged into session "16953804956473956578").  
+The following example shows the json payload for a credit to a token called "mytoken" (that itself was created by the sig chain logged into session "16953804956473956578").  
 
 ```
 {
     "pin": "1234",
     "session": "16953804956473956578",
     "name": "mytoken",
-    "amount": 10,
     "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
 }
 ```
@@ -217,7 +214,6 @@ Additionally the API supports passing a field name in the URL after the token na
 ```    
 {
     "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-    "identifier": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
     "balance": 990,
     "maxsupply": 1000,
     "currentsupply": 10,
@@ -227,9 +223,7 @@ Additionally the API supports passing a field name in the URL after the token na
 
 ### Return values:
 
-`address` : The register address of the token.  If the token was created with a token name then the address is a hash based on the owners username and token name.
-
-`identifier` : By default the identifier is the same as register address of the token.  When creating token accounts the token identifier must be included (so we know which kind of token the account will be used for).  In future we will support user-defined identifiers when creating a token (for an additional fee) allowing tokens to be identified by this custom name (e.g. a ticker).    
+`address` : The register address of the token.  If the token was created with a token name then the address is a hash based on the owners username and token name.   
 
 `balance` : The current balance of this token.  Initially the balance of the token is equal to the max supply, until the tokens have been distributed to accounts.
 
@@ -259,7 +253,10 @@ Create a new token account for receiving tokens. The API supports an alternative
 
 `name` : A name to identify the token account. A hash of the name will determine the register address. If no name is provided, a random 256-bit register hash will be generated.
 
-`identifier` : By default the identifier is the same as register address of the token.  When creating token accounts the token identifier must be included so we know which kind of token the account will be used for.  In future we will support user-defined identifiers when creating a token (for an additional fee) allowing tokens to be identified by this custom name (e.g. a ticker).  As a helpful shortcut, the token name can be supplied in the identifier field in the format `username:tokenname` and we will resolve this to the token register address.    
+`token_name` : This is the name of the token that the account can be used for.  The token name should be supplied in the format `namespace:tokenname`.  This is optional if the token_address is supplied.
+
+`token_addresss` : This is the address of the token that the account can be used for.  This is optional if token_name is supploed.
+
 
 
 ### Example:
@@ -271,20 +268,20 @@ This example creates a token account called "main" for a token identified by the
     "pin": "1234",
     "session": "16953804956473956578",
     "name": "main",
-    "identifier": "bob:ABC"
+    "token_name": "bob:ABC"
 }
 ```
 
 ### Example:
 
-This example creates a token account called "savings" for a token identified by the token register hash. 
+This example creates a token account called "savings" for a token identified by its register address. 
 
 ```
 {
     "pin": "1234",
     "session": "16953804956473956578",
     "name": "savings",
-    "identifier": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    "token_address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
 }
 ```
 
@@ -382,8 +379,6 @@ Increment an amount received from another token account to an account owned by y
 
 `address` : The register address of the account to credit. This is optional if the name is provided.
 
-`amount` : The amount of tokens to credit.
-
 `txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.
 
 `name_proof` : The name identifying the account that proves your ability to credit the debit transaction.  This is only required for split payments, where your right to receive a payment is determined by the number of tokens you hold in the account proof account. The `name_proof` parameter can be used as alternative to `proof`  
@@ -392,14 +387,13 @@ Increment an amount received from another token account to an account owned by y
 
 ### Example:
 
-The following example shows the json payload for a credit of 10 tokens to an account called "savings" (that itself was created by the sig chain logged into session "16953804956473956578") identified by the name "bob:savings".  In the name field, "bob" refers to the username of the account holder and "savings" is their token account.  
+The following example shows the json payload for a credit to an account called "savings" (that itself was created by the sig chain logged into session "16953804956473956578") identified by the name "bob:savings".  In the name field, "bob" refers to the username of the account holder and "savings" is their token account.  
 
 ```
 {
     "pin": "1234",
     "session": "16953804956473956578",
     "name": "bob:savings",
-    "amount": 10,
     "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
 }
 ```
@@ -446,7 +440,7 @@ Additionally the API supports passing a field name in the URL after the account 
 ```    
 {
     "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-    "identifier": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "token_address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
     "balance": 990
 }
 ```   
@@ -455,7 +449,7 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `address` : The register address of the account.  The address is a hash based on the owners username and account name.
 
-`identifier` : By default the identifier is the same as register address of the token.  When creating token accounts the token identifier must be included (so we know which kind of token the account will be used for).  In future we will support user-defined identifiers when creating a token (for an additional fee) allowing tokens to be identified by this custom name (e.g. a ticker).    
+`token_address` : This is register address of the token that this account can be used with.  
 
 `balance` : The current balance of this token account.  
 

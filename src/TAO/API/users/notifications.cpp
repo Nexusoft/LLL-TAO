@@ -108,7 +108,7 @@ namespace TAO
 
                 /* Get the token address. */
                 uint256_t hashToken;
-                if(!LLD::regDB->ReadIdentifier(object.get<uint256_t>("identifier"), hashToken))
+                if(!LLD::regDB->ReadIdentifier(object.get<uint256_t>("token_address"), hashToken))
                     continue;
 
                 /* Push the token identifier to list to check. */

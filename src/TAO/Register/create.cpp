@@ -31,7 +31,7 @@ namespace TAO
 
             /* Generate the object register values. */
             account << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << nIdentifier;
+                    << std::string("token_address") << uint8_t(TYPES::UINT256_T) << nIdentifier;
 
             return account;
         }
@@ -47,7 +47,7 @@ namespace TAO
             trust   << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                     << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                     << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
+                    << std::string("token_address") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
             return trust;
         }
@@ -61,7 +61,7 @@ namespace TAO
 
             /* Generate the object register values. */
             token   << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << nSupply
-                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << nIdentifier
+                    << std::string("token_address") << uint8_t(TYPES::UINT256_T) << nIdentifier
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T) << nSupply
                     << std::string("digits")     << uint8_t(TYPES::UINT64_T) << nDigits;
 
