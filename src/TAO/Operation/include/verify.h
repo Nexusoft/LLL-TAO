@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_OPERATION_INCLUDE_EXECUTE_H
-#define NEXUS_TAO_OPERATION_INCLUDE_EXECUTE_H
+#ifndef NEXUS_TAO_OPERATION_INCLUDE_VERIFY_H
+#define NEXUS_TAO_OPERATION_INCLUDE_VERIFY_H
 
 #include <LLC/types/uint1024.h>
 
@@ -34,44 +34,26 @@ namespace TAO
     namespace Operation
     {
 
-        /* Forward declarations. */
-        class Contract;
-
-
-        /** Execute
+        /** Verify
          *
-         *  Executes a given contract
-         *
-         *  @param[in] contract The contract to execute
-         *  @param[in] nFlags The flags to execute with.
-         *
-         *  @return True if operations executed successfully, false otherwise.
+         *  Namespace to hold primitive operation verify functions.
+         *  These functions ONLY verify inputs, they DO NOT update the state.
          *
          **/
-        bool Execute(const Contract& contract, const uint8_t nFlags);
-
-
-        /** Execute
-         *
-         *  Namespace to hold primitive operation execute functions.
-         *  These functions ONLY update the state of the register.
-         *
-         **/
-        namespace Execute
+        namespace Verify
         {
 
             /** Write
              *
-             *  Writes data to a register.
+             *  Verify write and caller.
              *
-             *  @param[out] state The state register to operate on.
-             *  @param[in] vchData The data script to write into register.
-             *  @param[in] nTimestamp The timestamp to update register to.
+             *  @param[in] state The state register to verify.
+             *  @param[in] hashCaller The contract caller.
              *
              *  @return true if successful.
              *
              **/
-            bool Write(TAO::Register::State &state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp);
+            bool Write(const TAO::Register::State& state, const uint256_t& hashCaller);
 
 
             /** Append

@@ -38,7 +38,7 @@ namespace TAO
         {
         public:
             /** The version of the state register. */
-            uint16_t nVersion;
+            uint8_t nVersion;
 
 
             /** The type of state recorded. */
@@ -49,8 +49,12 @@ namespace TAO
             uint256_t hashOwner;
 
 
-            /** The timestamp of the register. **/
-            uint64_t nTimestamp;
+            /** The created timestamp of the register. **/
+            uint64_t nModified;
+
+
+            /** The modified timestamp of the register. **/
+            uint64_t nModified;
 
 
             /** The byte level data of the register. **/
@@ -71,7 +75,8 @@ namespace TAO
                 READWRITE(nVersion);
                 READWRITE(nType);
                 READWRITE(hashOwner);
-                READWRITE(nTimestamp);
+                READWRITE(nCreated);
+                READWRITE(nModified);
                 READWRITE(vchState);
 
                 //checksum hash not serialized on gethash
@@ -90,6 +95,7 @@ namespace TAO
 
             /** Default Constructor **/
             State(const std::vector<uint8_t>& vchData);
+
 
             /** Default Constructor **/
             State(uint8_t nTypeIn, const uint256_t& hashOwnerIn);
@@ -216,14 +222,14 @@ namespace TAO
             State& write(const char* pch, int nSize);
 
 
-            /** Operator Overload <<
+            /** Operator Overload <<=
              *
              *  Serializes data into vchOperations
              *
              *  @param[in] obj The object to serialize into ledger data
              *
              **/
-            template<typename Type> State& operator<<(const Type& obj)
+            template<typename Type> State& operator<<=(const Type& obj)
             {
                 /* Serialize to the stream. */
                 ::Serialize(*this, obj, (uint32_t)SER_REGISTER, nVersion); //temp versinos for now
@@ -232,14 +238,14 @@ namespace TAO
             }
 
 
-            /** Operator Overload >>
+            /** Operator Overload >>=
              *
              *  Serializes data into vchOperations
              *
              *  @param[out] obj The object to de-serialize from ledger data
              *
              **/
-            template<typename Type> const State& operator>>(Type& obj) const
+            template<typename Type> const State& operator>>=(Type& obj) const
             {
                 /* Unserialize from the stream. */
                 ::Unserialize(*this, obj, (uint32_t)SER_REGISTER, nVersion);

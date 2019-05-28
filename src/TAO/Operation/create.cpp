@@ -28,7 +28,7 @@ namespace TAO
     {
 
         /* Creates a new register if it doesn't exist. */
-        bool Create(TAO::Register::State &state, const std::vector<uint8_t>& vchData)
+        bool Create(TAO::Register::State &state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
         {
             /* Check the register is a valid type. */
             if(!TAO::Register::Range(state.nType))
@@ -111,6 +111,8 @@ namespace TAO
             }
 
             /* Update the state register checksum. */
+            state.nCreated  = nTimestamp;
+            state.nModified = nTimestamp;
             state.SetChecksum();
 
             /* Check the state change is correct. */

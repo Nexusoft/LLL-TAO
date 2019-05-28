@@ -27,7 +27,7 @@ namespace TAO
     {
 
         /* Writes data to a register. */
-        bool Append(TAO::Register::State &state, const std::vector<uint8_t>& vchData)
+        bool Append(TAO::Register::State &state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
         {
             /* Check that append is allowed. */
             if(state.nType != TAO::Register::APPEND)
@@ -40,6 +40,7 @@ namespace TAO
             state.SetChecksum();
 
             /* Check that the register is in a valid state. */
+            state.nModified = nTimestamp;
             if(!state.IsValid())
                 return debug::error(FUNCTION, "memory address is in invalid state");
 

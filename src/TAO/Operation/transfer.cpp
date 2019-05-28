@@ -28,7 +28,7 @@ namespace TAO
     {
 
         /* Transfers a register between sigchains. */
-        bool Transfer(TAO::Register::State &state, const uint256_t& hashTransfer)
+        bool Transfer(TAO::Register::State &state, const uint256_t& hashTransfer, const uint64_t nTimestamp)
         {
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashTransfer))
@@ -45,6 +45,7 @@ namespace TAO
             state.SetChecksum();
 
             /* Check register for validity. */
+            state.nModified = nTimestamp;
             if(!state.IsValid())
                 return debug::error(FUNCTION, "memory is in invalid state");
 

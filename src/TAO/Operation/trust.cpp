@@ -30,7 +30,7 @@ namespace TAO
     {
 
         /* Commits funds from a coinbase transaction. */
-        bool Trust(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore)
+        bool Trust(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
             if(!trust.Parse())
@@ -48,6 +48,7 @@ namespace TAO
             trust.SetChecksum();
 
             /* Check that the register is in a valid state. */
+            trust.nModified = nTimestamp;
             if(!trust.IsValid())
                 return debug::error(FUNCTION, "trust address is in invalid state");
 

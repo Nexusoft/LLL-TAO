@@ -29,9 +29,8 @@ namespace TAO
     {
 
         /* Commits funds from a coinbase transaction. */
-        bool Genesis(TAO::Register::Object &trust, const uint64_t nReward)
+        bool Genesis(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nTimestamp)
         {
-
             /* Parse the account object register. */
             if(!trust.Parse())
                 return debug::error(FUNCTION, "failed to parse trust account object register");
@@ -57,6 +56,7 @@ namespace TAO
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Update the state register's timestamp. */
+            trust.nModified = nTimestamp;
             trust.SetChecksum();
 
             /* Check that the register is in a valid state. */

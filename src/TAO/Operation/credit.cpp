@@ -30,7 +30,7 @@ namespace TAO
     {
 
         /* Commits funds from an account to an account */
-        bool Credit(TAO::Register::Object &account, const uint64_t nAmount)
+        bool Credit(TAO::Register::Object &account, const uint64_t nAmount, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
             if(!account.Parse())
@@ -48,6 +48,7 @@ namespace TAO
             account.SetChecksum();
 
             /* Check that the register is in a valid state. */
+            account.nModified = nTimestamp;
             if(!account.IsValid())
                 return debug::error(FUNCTION, "memory address is in invalid state");
 

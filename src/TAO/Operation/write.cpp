@@ -30,7 +30,7 @@ namespace TAO
     {
 
         /* Writes data to a register. */
-        bool Write(TAO::Register::State& state, const std::vector<uint8_t>& vchData)
+        bool Write(TAO::Register::State& state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
         {
             /* Check for valid register types. */
             if(state.nType == TAO::Register::REGISTER::READONLY
@@ -234,6 +234,7 @@ namespace TAO
             }
 
             /* Update the state register checksum. */
+            state.nModified = nTimestamp;
             state.SetChecksum();
 
             /* Check that the register is in a valid state. */

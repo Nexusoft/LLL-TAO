@@ -30,7 +30,7 @@ namespace TAO
     {
 
         /* Claims a register from a transfer. */
-        bool Claim(TAO::Register::State &state, const uint256_t& hashClaim)
+        bool Claim(TAO::Register::State &state, const uint256_t& hashClaim, const uint64_t nTimestamp)
         {
             /* Make sure the register claim is in SYSTEM pending from a transfer. */
             if(state.hashOwner != 0)
@@ -41,6 +41,7 @@ namespace TAO
             state.SetChecksum();
 
             /* Check register for validity. */
+            state.nModified = nTimestamp;
             if(!state.IsValid())
                 return debug::error(FUNCTION, "memory address ", hashAddress.SubString(), " is in invalid state");
 
