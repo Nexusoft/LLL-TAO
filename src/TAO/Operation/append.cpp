@@ -11,12 +11,11 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/global.h>
-
-#include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/verify.h>
+#include <TAO/Operation/include/execute.h>
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/state.h>
-#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -27,22 +26,68 @@ namespace TAO
     {
 
         /* Writes data to a register. */
-        bool Append(TAO::Register::State &state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
+        bool Execute::Append(TAO::Register::State &state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
         {
-            /* Check that append is allowed. */
-            if(state.nType != TAO::Register::APPEND)
-                return debug::error(FUNCTION, "cannot call on non append register");
-
             /* Append the state data. */
             state.vchState.insert(state.vchState.end(), vchData.begin(), vchData.end());
 
             /* Update the state register checksum. */
+            state.nModified = nTimestamp;
             state.SetChecksum();
 
             /* Check that the register is in a valid state. */
-            state.nModified = nTimestamp;
             if(!state.IsValid())
-                return debug::error(FUNCTION, "memory address is in invalid state");
+                return debug::error(FUNCTION, "post-state is in invalid state");
+
+            return true;
+        }
+
+
+        /* Verify Append and caller register. */
+        bool Verify::Append(const Contract& contract, const uint256_t& hashCaller)
+        {
+            /* Seek read position to first position. */
+            contract.Reset();
+
+            /* Get operation byte. */
+            uint8_t OP = 0;
+            contract >> OP;
+
+            /* Check operation byte. */
+            if(OP != OP::APPEND)
+                return debug::error(FUNCTION, "called with incorrect OP");
+
+            /* Extract the address from contract. */
+            uint256_t hashAddress = 0;
+            contract >> hashAddress;
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAddress))
+                return debug::error(FUNCTION, "cannot append register with reserved address");
+
+            /* Get the state byte. */
+            uint8_t nState = 0; //RESERVED
+            contract >>= nState;
+
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::PRESTATE)
+                return debug::error(FUNCTION, "register script not in pre-state");
+
+            /* Get the pre-state. */
+            TAO::Register::State state;
+            contract >>= state;
+
+            /* Check that pre-state is valid. */
+            if(!state.IsValid())
+                return debug::error(FUNCTION, "pre-state is in invalid state");
+
+            /* Check for valid register types. */
+            if(state.nType != TAO::Register::APPEND)
+                return debug::error(FUNCTION, "cannot call on non append register");
+
+            /* Check that the proper owner is commiting the write. */
+            if(hashCaller != state.hashOwner)
+                return debug::error(FUNCTION, "no write permissions for caller ", hashCaller.SubString());
 
             return true;
         }

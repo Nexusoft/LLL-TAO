@@ -58,10 +58,27 @@ namespace TAO
              *  Reset the internal stream read pointers.
              *
              **/
-            void Reset()
+            void Reset() const
             {
                 /* Set the operation stream to beginning. */
                 ssOperation.seek(0, STREAM::BEGIN);
+
+                /* Set the register stream to beginning. */
+                ssRegister.seek(0, STREAM::BEGIN);
+            }
+
+
+            /** Seek
+             *
+             *  Seek the internal operation stream read pointers.
+             *
+             *  @param[in] nPos The position to seek to
+             *
+             **/
+            void Seek(const uint32_t nPos) const
+            {
+                /* Set the operation stream to beginning. */
+                ssOperation.seek(nPos, STREAM::BEGIN);
 
                 /* Set the register stream to beginning. */
                 ssRegister.seek(0, STREAM::BEGIN);

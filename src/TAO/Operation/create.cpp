@@ -28,7 +28,7 @@ namespace TAO
     {
 
         /* Creates a new register if it doesn't exist. */
-        bool Create(TAO::Register::State &state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
+        bool Execute::Create(TAO::Register::State &state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
         {
             /* Check the register is a valid type. */
             if(!TAO::Register::Range(state.nType))
@@ -117,7 +117,37 @@ namespace TAO
 
             /* Check the state change is correct. */
             if(!state.IsValid())
-                return debug::error(FUNCTION, "memory address ", hashAddress.ToString(), " is in invalid state");
+                return debug::error(FUNCTION, "post-state is in invalid state");
+
+            return true;
+        }
+
+
+        /* Verify Append and caller register. */
+        bool Verify::Create(const Contract& contract, const uint8_t nFlags)
+        {
+            /* Seek read position to first position. */
+            contract.Reset();
+
+            /* Get operation byte. */
+            uint8_t OP = 0;
+            contract >> OP;
+
+            /* Check operation byte. */
+            if(OP != OP::CREATE)
+                return debug::error(FUNCTION, "called with incorrect OP");
+
+            /* Extract the address from contract. */
+            uint256_t hashAddress = 0;
+            contract >> hashAddress;
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAddress))
+                return debug::error(FUNCTION, "cannot create register with reserved address");
+
+            /* Check that the register doesn't exist yet. */
+            if(LLD::regDB->HasState(hashAddress, nFlags))
+                return debug::error(FUNCTION, "cannot allocate register of same memory address ", hashAddress.SubString());
 
             return true;
         }

@@ -21,18 +21,12 @@ ________________________________________________________________________________
 namespace TAO
 {
 
-    /* Register layer. */
-    namespace Register
-    {
-        /* Forward declarations. */
-        class State;
-        class Object;
-    }
-
-
     /* Operation Layer namespace. */
     namespace Operation
     {
+        /* Forward Declaration. */
+        class Contract;
+
 
         /** Verify
          *
@@ -47,69 +41,65 @@ namespace TAO
              *
              *  Verify write and caller.
              *
-             *  @param[in] state The state register to verify.
+             *  @param[in] contract The contract to verify.
              *  @param[in] hashCaller The contract caller.
              *
              *  @return true if successful.
              *
              **/
-            bool Write(const TAO::Register::State& state, const uint256_t& hashCaller);
+            bool Write(const Contract& contract, const uint256_t& hashCaller);
 
 
             /** Append
              *
-             *  Appends data to a register.
+             *  Verify Append and caller register.
              *
-             *  @param[out] state The state register to operate on.
-             *  @param[in] vchData The data script to write into register.
-             *  @param[in] nTimestamp The timestamp to update register to.
+             *  @param[in] contract The contract to verify.
+             *  @param[in] hashCaller The contract caller.
              *
              *  @return true if successful.
              *
              **/
-            bool Append(TAO::Register::State &state, const std::vector<uint8_t>& vchData), const uint64_t nTimestamp);
+            bool Append(const Contract& contract, const uint256_t& hashCaller);
 
 
             /** Create
              *
-             *  Creates a new register if it doesn't exist.
+             *  Verifies a new register rules.
              *
-             *  @param[out] state The state register to operate on.
-             *  @param[in] vchData The data script to write into register.
-             *  @param[in] nTimestamp The timestamp to update register to.
+             *  @param[in] contract The contract to verify.
+             *  @param[in] hashCaller The contract caller.
              *
              *  @return true if successful.
              *
              **/
-            bool Create(TAO::Register::State &state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp);
+            bool Create(const Contract& contract, const uint8_t nFlags);
 
 
             /** Transfer
              *
              *  Transfers a register between sigchains.
              *
-             *  @param[out] state The state register to operate on.
-             *  @param[in] hashTransfer The object to transfer
-             *  @param[in] nTimestamp The timestamp to update register to.
+             *  @param[in] contract The contract to verify.
+             *  @param[in] hashCaller The contract caller.
              *
              *  @return true if successful.
              *
              **/
-            bool Transfer(TAO::Register::State &state, const uint256_t& hashTransfer, const uint64_t nTimestamp);
+            bool Transfer(const Contract& contract, const uint256_t& hashCaller);
 
 
             /** Claim
              *
              *  Claims a register between sigchains.
              *
-             *  @param[out] state The state register to operate on.
-             *  @param[in] hashClaim The public-id being claimed to
-             *  @param[in] nTimestamp The timestamp to update register to.
+             *  @param[in] contract The contract to verify.
+             *  @param[in] hashCaller The contract caller.
              *
              *  @return true if successful.
              *
              **/
-            bool Claim(TAO::Register::State &state, const uint256_t& hashClaim, const uint64_t nTimestamp);
+            bool Claim(const Contract& contract, const uint256_t& hashCaller);
 
 
             /** Debit

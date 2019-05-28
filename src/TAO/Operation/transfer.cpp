@@ -11,13 +11,11 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/global.h>
-
 #include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
-#include <TAO/Register/types/state.h>
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/enum.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -28,26 +26,92 @@ namespace TAO
     {
 
         /* Transfers a register between sigchains. */
-        bool Transfer(TAO::Register::State &state, const uint256_t& hashTransfer, const uint64_t nTimestamp)
+        bool Execute::Transfer(TAO::Register::State &state, const uint256_t& hashTransfer, const uint64_t nTimestamp)
         {
+            /* Set the new register's owner. */
+            state.hashOwner  = 0; //register custody is in SYSTEM ownership until claimed
+
+            /* Set the register checksum. */
+            state.nModified = nTimestamp;
+            state.SetChecksum();
+
+            /* Check register for validity. */
+            if(!state.IsValid())
+                return debug::error(FUNCTION, "post-state is in invalid state");
+
+            return true;
+        }
+
+
+        /* Verify Transfer and caller register. */
+        bool Verify::Transfer(const Contract& contract, const uint256_t& hashCaller)
+        {
+            /* Seek read position to first position. */
+            contract.Reset();
+
+            /* Get operation byte. */
+            uint8_t OP = 0;
+            contract >> OP;
+
+            /* Check operation byte. */
+            if(OP != OP::TRANSFER)
+                return debug::error(FUNCTION, "called with incorrect OP");
+
+            /* Extract the address from contract. */
+            uint256_t hashAddress = 0;
+            contract >> hashAddress;
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAddress))
+                return debug::error(FUNCTION, "cannot transfer reserved address");
+
+            /* Extract the address from contract. */
+            uint256_t hashTransfer = 0;
+            contract >> hashTransfer;
+
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashTransfer))
                 return debug::error(FUNCTION, "cannot transfer register to reserved address");
+
+            /* Get the state byte. */
+            uint8_t nState = 0; //RESERVED
+            contract >>= nState;
+
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::PRESTATE)
+                return debug::error(FUNCTION, "register script not in pre-state");
+
+            /* Get the pre-state. */
+            TAO::Register::State state;
+            contract >>= state;
+
+            /* Check that pre-state is valid. */
+            if(!state.IsValid())
+                return debug::error(FUNCTION, "pre-state is in invalid state");
 
             /* Check that you aren't sending to yourself. */
             if(state.hashOwner == hashTransfer)
                 return debug::error(FUNCTION, state.hashOwner.SubString(), " transfer to self");
 
-            /* Set the new register's owner. */
-            state.hashOwner  = 0; //register custody is in SYSTEM ownership until claimed
+            /* Check for valid register types. */
+            if(state.nType == TAO::Register::OBJECT)
+            {
+                /* Create an object to check values. */
+                TAO::Register::Object object = TAO::Register::Object(state);
 
-            /* Set the register checksum. */
-            state.SetChecksum();
+                /* Parse the object register. */
+                if(!object.Parse())
+                    return debug::error(FUNCTION, "failed to parse the object register");
 
-            /* Check register for validity. */
-            state.nModified = nTimestamp;
-            if(!state.IsValid())
-                return debug::error(FUNCTION, "memory is in invalid state");
+                /* Don't allow transferring trust accounts. */
+                if(object.Standard() == TAO::Register::OBJECTS::TRUST)
+                    return debug::error(FUNCTION, "cannot transfer a trust account");
+
+            }
+
+            /* Check that the proper owner is commiting the write. */
+            if(hashCaller != state.hashOwner)
+                return debug::error(FUNCTION, "no write permissions for caller ", hashCaller.SubString());
 
             return true;
         }

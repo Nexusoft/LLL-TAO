@@ -38,7 +38,7 @@ namespace TAO
 
                 //register operations
                 WRITE      = 0x01,
-                REGISTER   = 0x02,
+                CREATE     = 0x02,
                 AUTHORIZE  = 0x03, //to be determined how this will work
                 TRANSFER   = 0x04,
                 CLAIM      = 0x05,
