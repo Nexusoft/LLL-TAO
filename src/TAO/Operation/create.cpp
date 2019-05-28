@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/create.h>
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
@@ -27,8 +27,19 @@ namespace TAO
     namespace Operation
     {
 
+        /* Commit the final state to disk. */
+        bool Create::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
+        {
+            /* Check that the register doesn't exist yet. */
+            if(LLD::regDB->HasState(hashAddress, nFlags))
+                return debug::error(FUNCTION, "cannot allocate register of same memory address ", hashAddress.SubString());
+
+            return LLD::regDB->WriteState(hashAddress, state, nFlags);
+        }
+
+
         /* Creates a new register if it doesn't exist. */
-        bool Execute::Create(TAO::Register::State &state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
+        bool Create::Execute(TAO::Register::State &state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
         {
             /* Check the register is a valid type. */
             if(!TAO::Register::Range(state.nType))
@@ -124,7 +135,7 @@ namespace TAO
 
 
         /* Verify Append and caller register. */
-        bool Verify::Create(const Contract& contract, const uint8_t nFlags)
+        bool Create::Verify(const Contract& contract)
         {
             /* Seek read position to first position. */
             contract.Reset();
@@ -145,9 +156,6 @@ namespace TAO
             if(TAO::Register::Reserved(hashAddress))
                 return debug::error(FUNCTION, "cannot create register with reserved address");
 
-            /* Check that the register doesn't exist yet. */
-            if(LLD::regDB->HasState(hashAddress, nFlags))
-                return debug::error(FUNCTION, "cannot allocate register of same memory address ", hashAddress.SubString());
 
             return true;
         }

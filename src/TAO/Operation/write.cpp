@@ -11,8 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Operation/include/verify.h>
-#include <TAO/Operation/include/execute.h>
+#include <LLD/include/global.h>
+
+#include <TAO/Operation/include/write.h>
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
@@ -26,8 +27,15 @@ namespace TAO
     namespace Operation
     {
 
-        /* Writes data to a register. */
-        bool Execute::Write(TAO::Register::State& state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
+        /* Commit the final state to disk. */
+        bool Write::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
+        {
+            return LLD::regDB->WriteState(hashAddress, state, nFlags);
+        }
+
+
+        /* Execute a write operation to bring register into new state. */
+        bool Write::Execute(TAO::Register::State& state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
         {
 
             /* Write operations on the state object. */
@@ -238,8 +246,8 @@ namespace TAO
         }
 
 
-        /* Verify write and caller. */
-        bool Verify::Write(const Contract& contract, const uint256_t& hashCaller)
+        /* Verify write validation rules and caller. */
+        bool Write::Verify(const Contract& contract, const uint256_t& hashCaller)
         {
             /* Seek read position to first position. */
             contract.Reset();

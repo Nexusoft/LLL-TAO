@@ -13,7 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/debit.h>
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
@@ -26,8 +27,15 @@ namespace TAO
     namespace Operation
     {
 
+        /* Commit the final state to disk. */
+        bool Debit::Commit(const TAO::Register::Object& account, const uint256_t& hashAddress, const uint8_t nFlags)
+        {
+            return LLD::regDB->WriteState(hashAddress, account, nFlags);
+        }
+
+
         /* Authorizes funds from an account to an account */
-        bool Debit(TAO::Register::Object &account, const uint64_t nAmount, const uint64_t nTimestamp)
+        bool Debit::Execute(TAO::Register::Object &account, const uint64_t nAmount, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
             if(!account.Parse())
@@ -39,19 +47,77 @@ namespace TAO
 
             /* Check the account balance. */
             if(nAmount > account.get<uint64_t>("balance"))
-                return debug::error(FUNCTION, hashFrom.SubString(), " account doesn't have sufficient balance");
+                return debug::error(FUNCTION, "account ", hashFrom.SubString(), " doesn't have sufficient balance");
 
             /* Write the new balance to object register. */
             if(!account.Write("balance", account.get<uint64_t>("balance") - nAmount))
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Update the register's checksum. */
+            account.nModified = nTimestamp;
             account.SetChecksum();
 
             /* Check that the register is in a valid state. */
-            account.nModified = nTimestamp;
             if(!account.IsValid())
                 return debug::error(FUNCTION, "memory address is in invalid state");
+
+            return true;
+        }
+
+
+        /* Verify debit validation rules and caller. */
+        bool Debit::Verify(const Contract& contract, const uint256_t& hashCaller)
+        {
+            /* Seek read position to first position. */
+            contract.Reset();
+
+            /* Get operation byte. */
+            uint8_t OP = 0;
+            contract >> OP;
+
+            /* Check operation byte. */
+            if(OP != OP::DEBIT)
+                return debug::error(FUNCTION, "called with incorrect OP");
+
+            /* Extract the address from contract. */
+            uint256_t hashFrom = 0;
+            contract >> hashFrom;
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashFrom))
+                return debug::error(FUNCTION, "cannot transfer reserved address");
+
+            /* Extract the address from contract. */
+            uint256_t hashTo = 0;
+            contract >> hashTo;
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashTo))
+                return debug::error(FUNCTION, "cannot transfer register to reserved address");
+
+            /* Check for debit to and from same account. */
+            if(hashFrom == hashTo)
+                return debug::error(FUNCTION, "cannot debit to the same address as from");
+
+            /* Get the state byte. */
+            uint8_t nState = 0; //RESERVED
+            contract >>= nState;
+
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::PRESTATE)
+                return debug::error(FUNCTION, "register script not in pre-state");
+
+            /* Get the pre-state. */
+            TAO::Register::State state;
+            contract >>= state;
+
+            /* Check that pre-state is valid. */
+            if(!state.IsValid())
+                return debug::error(FUNCTION, "pre-state is in invalid state");
+
+            /* Check that the proper owner is commiting the write. */
+            if(hashCaller != state.hashOwner)
+                return debug::error(FUNCTION, "no write permissions for caller ", hashCaller.SubString());
 
             return true;
         }

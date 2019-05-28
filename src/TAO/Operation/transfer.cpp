@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/transfer.h>
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
@@ -25,8 +25,15 @@ namespace TAO
     namespace Operation
     {
 
+        /* Commit the final state to disk. */
+        bool Transfer::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
+        {
+            return LLD::regDB->WriteState(hashAddress, state, nFlags);
+        }
+
+
         /* Transfers a register between sigchains. */
-        bool Execute::Transfer(TAO::Register::State &state, const uint256_t& hashTransfer, const uint64_t nTimestamp)
+        bool Transfer::Execute(TAO::Register::State &state, const uint256_t& hashTransfer, const uint64_t nTimestamp)
         {
             /* Set the new register's owner. */
             state.hashOwner  = 0; //register custody is in SYSTEM ownership until claimed
@@ -43,8 +50,8 @@ namespace TAO
         }
 
 
-        /* Verify Transfer and caller register. */
-        bool Verify::Transfer(const Contract& contract, const uint256_t& hashCaller)
+        /* Verify claim validation rules and caller. */
+        bool Transfer::Verify(const Contract& contract, const uint256_t& hashCaller)
         {
             /* Seek read position to first position. */
             contract.Reset();

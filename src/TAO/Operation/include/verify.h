@@ -37,44 +37,6 @@ namespace TAO
         namespace Verify
         {
 
-            /** Write
-             *
-             *  Verify write and caller.
-             *
-             *  @param[in] contract The contract to verify.
-             *  @param[in] hashCaller The contract caller.
-             *
-             *  @return true if successful.
-             *
-             **/
-            bool Write(const Contract& contract, const uint256_t& hashCaller);
-
-
-            /** Append
-             *
-             *  Verify Append and caller register.
-             *
-             *  @param[in] contract The contract to verify.
-             *  @param[in] hashCaller The contract caller.
-             *
-             *  @return true if successful.
-             *
-             **/
-            bool Append(const Contract& contract, const uint256_t& hashCaller);
-
-
-            /** Create
-             *
-             *  Verifies a new register rules.
-             *
-             *  @param[in] contract The contract to verify.
-             *  @param[in] hashCaller The contract caller.
-             *
-             *  @return true if successful.
-             *
-             **/
-            bool Create(const Contract& contract, const uint8_t nFlags);
-
 
             /** Transfer
              *
@@ -93,7 +55,7 @@ namespace TAO
              *
              *  Claims a register between sigchains.
              *
-             *  @param[in] contract The contract to verify.
+             *  @param[in] contract The contract that's being claimed.
              *  @param[in] hashCaller The contract caller.
              *
              *  @return true if successful.
