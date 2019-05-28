@@ -29,13 +29,33 @@ namespace TAO
     namespace Operation
     {
 
-        /* Writes data to a register. */
-        bool Write(TAO::Register::State& state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
+        /* Verify write and caller. */
+        bool Verify::Write(const Contract& contract, const uint256_t& hashCaller)
         {
+            /* Extract the address from contract. */
+            uint256_t hashAddress = 0;
+            contract >> hashAddress;
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAddress))
+                return debug::error(FUNCTION, "cannot write to register with reserved address");
+
             /* Check for valid register types. */
             if(state.nType == TAO::Register::REGISTER::READONLY
             || state.nType == TAO::Register::REGISTER::APPEND)
                 return debug::error(FUNCTION, "not allowed on readonly or append types");
+
+            /* Check that the proper owner is commiting the write. */
+            if(hashCaller != state.hashOwner)
+                return debug::error(FUNCTION, "no write permissions for caller ", tx.hashGenesis.ToString());
+
+            return true;
+        }
+
+
+        /* Writes data to a register. */
+        bool Execute::Write(TAO::Register::State& state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
+        {
 
             /* Write operations on the state object. */
             if(state.nType == TAO::Register::REGISTER::OBJECT)
@@ -47,10 +67,10 @@ namespace TAO
                 if(!object.Parse())
                     return debug::error(FUNCTION, "object register failed to parse");
 
-                /* Loop through the stream.
+                /*  Loop through the stream.
                  *
-                 * Types here are stored in a special stream that
-                 * are write instructions for object registers.
+                 *  Types here are stored in a special stream that
+                 *  are write instructions for object registers.
                  *
                  */
                 Stream stream = Stream(vchData);
