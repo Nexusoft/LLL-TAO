@@ -71,10 +71,12 @@ namespace TAO
                 {
                     json::json ret = Notifications(params, false);
 
+                    /* Print the JSON value for the notifications processed. */
+                    debug::log(0, FUNCTION, "\n", ret.dump(4));
+
                     for(const auto& notification : ret)
                     {
-                        if(notification["operation"]["OP"] == "DEBIT"
-                        || notification["operation"]["OP"] == "COINBASE")
+                        if(notification["operation"][0]["OP"] == "DEBIT")
                         {
                             /* Create the transaction. */
                             TAO::Ledger::Transaction tx;
@@ -83,8 +85,8 @@ namespace TAO
 
                             /* Set the transaction, to and from hashes. */
                             hashTx.SetHex(notification["hash"]);
-                            hashFrom.SetHex(notification["operation"]["address"]);
-                            hashTo.SetHex(notification["operation"]["transfer"]);
+                            hashFrom.SetHex(notification["operation"][0]["address_from"]);
+                            hashTo.SetHex(notification["operation"][0]["address_to"]);
 
 
                             // TODO:
@@ -114,7 +116,11 @@ namespace TAO
                             if(!TAO::Ledger::mempool.Accept(tx))
                                 throw APIException(-26, "Failed to accept");
                         }
-                        else if(notification["operation"]["OP"] == "TRANSFER")
+                        else if(notification["operation"][0]["OP"] == "COINBASE")
+                        {
+
+                        }
+                        else if(notification["operation"][0]["OP"] == "TRANSFER")
                         {
                             /* Create the transaction. */
                             TAO::Ledger::Transaction tx;
@@ -140,9 +146,6 @@ namespace TAO
                                 throw APIException(-26, "Failed to accept");
                         }
                     }
-
-                    /* Print the JSON value for the notifications processed. */
-                    debug::log(0, FUNCTION, "\n", ret.dump(4));
 
                 }
                 catch(const APIException& e)
