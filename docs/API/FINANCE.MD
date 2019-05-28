@@ -154,20 +154,17 @@ Increment an amount received from another NXS account to an account owned by you
 
 `address` : The register address of the account to credit. This is optional if the name is provided.
 
-`amount` : The amount of NXS to credit.
-
 `txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.
 
 ### Example:
 
-The following example shows the json payload for a credit of 10 NXS to an account called "savings" (that itself was created by the sig chain logged into session "16953804956473956578") identified by the name "bob:savings".  In the name field, "bob" refers to the username of the account holder and "savings" is their NXS account.  
+The following example shows the json payload for a credit to an account called "savings" (that itself was created by the sig chain logged into session "16953804956473956578") identified by the name "bob:savings".  In the name field, "bob" refers to the username of the account holder and "savings" is their NXS account.  
 
 ```
 {
     "pin": "1234",
     "session": "16953804956473956578",
     "name": "bob:savings",
-    "amount": 10,
     "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
 }
 ```
@@ -215,6 +212,7 @@ Additionally the API supports passing a field name in the URL after the account 
 ```    
 {
     "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "token_address": "0000000000000000000000000000000000000000000000000000000000000000",
     "balance": 990
 }
 ```   
@@ -223,8 +221,13 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `address` : The register address of the account.  The address is a hash based on the owners username and account name.
 
+`token_address` : This will always be set to 0 for NXS accounts.
+
 `balance` : The current balance of this account.  
 
+`trust` : For the trust account this extra field will be returned containing the current trust score of the trust account.
+
+`stake` : For the trust account this extra field will be returned containing the amount of NXS currently being staked.
 
 ***
 
@@ -248,10 +251,12 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 [
     {
         "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "token_address": "0000000000000000000000000000000000000000000000000000000000000000",
         "balance": 5000
     },
     {
         "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "token_address": "0000000000000000000000000000000000000000000000000000000000000000",
         "balance": 60
     }
 
@@ -260,6 +265,13 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 ### Return values:
 
 `address` : The register address for the account
+
+`token_address` : This will always be set to 0 for NXS accounts.
+
 `balance` : The current balance of the token account.
+
+`trust` : For the trust account this extra field will be returned containing the current trust score of the trust account.
+
+`stake` : For the trust account this extra field will be returned containing the amount of NXS currently being staked.
 
 ****

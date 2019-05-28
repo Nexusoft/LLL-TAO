@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/system.h>
 #include <TAO/API/include/tokens.h>
 #include <TAO/API/include/users.h>
+#include <TAO/API/include/finance.h>
 
 namespace TAO
 {
@@ -38,6 +39,7 @@ namespace TAO
         extern System* system;
         extern Tokens* tokens;
         extern Users* users;
+        extern Finance* finance;
 
 
         /** Initialize

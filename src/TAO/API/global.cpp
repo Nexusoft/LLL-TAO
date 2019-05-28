@@ -29,6 +29,7 @@ namespace TAO
         System* system;
         Tokens* tokens;
         Users* users;
+        Finance* finance;
 
         
         /*  Instantiate global instances of the API. */
@@ -46,6 +47,7 @@ namespace TAO
             system      = new System();
             tokens      = new Tokens();
             users       = new Users();
+            finance     = new Finance();
         }
 
 
@@ -80,6 +82,9 @@ namespace TAO
 
             if(users)
                 delete users;
+
+            if(finance)
+                delete finance;
 
         }    
     }
