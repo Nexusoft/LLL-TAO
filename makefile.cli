@@ -334,14 +334,12 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_tritium.o \
 		build/Ledger_tritium_minter.o \
 		build/Operation_append.o \
-		build/Operation_authorize.o \
 		build/Operation_claim.o \
-		build/Operation_coinbase.o \
+		build/Operation_create.o \
 		build/Operation_credit.o \
 		build/Operation_debit.o \
         build/Operation_execute.o \
 		build/Operation_genesis.o \
-		build/Operation_register.o \
 		build/Operation_transfer.o \
 		build/Operation_trust.o \
 		build/Operation_validate.o \

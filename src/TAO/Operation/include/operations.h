@@ -82,118 +82,67 @@ namespace TAO
          *
          *  Claims a register between sigchains.
          *
-         *  @param[out] contract The contract being executed
-         *  @param[in] hashTx The tx that is being claimed.
-         *  @param[in] nFlags The flag to determine if database state should be written.
+         *  @param[out] state The state register to operate on.
+         *  @param[in] hashClaim The public-id being claimed to
          *
          *  @return true if successful.
          *
          **/
-        bool Claim(TAO::Register::State &state, , const uint512_t& hashTx, const uint32_t nContract = 0);
+        bool Claim(TAO::Register::State &state, const uint256_t& hashClaim);
 
 
         /** Debit
          *
          *  Authorizes funds from an account to an account
          *
-         *  @param[out] contract The contract being executed
-         *  @param[in] hashFrom The account being transferred from.
-         *  @param[in] hashTo The account being transferred to.
-         *  @param[in] nAmount The amount being transferred
-         *  @param[in] nFlags The flag to determine if database state should be written.
+         *  @param[out] account The object register to debit from.
+         *  @param[in] nAmount The amount to debit from object.
          *
          *  @return true if successful.
          *
          **/
-        bool Debit(Contract &contract, const uint256_t& hashFrom,
-            const uint256_t& hashTo, const uint64_t nAmount,
-            const uint8_t nFlags);
+        bool Debit(TAO::Register::Object &account, const uint64_t nAmount);
 
 
         /** Credit
          *
          *  Commits funds from an account to an account
          *
-         *  @param[out] contract The contract being executed
-         *  @param[in] hashTx The account being transferred from.
-         *  @param[in] hashProof The proof address used in this credit.
-         *  @param[in] hashTo The account being transferred to.
-         *  @param[in] nCredit The amount being transferred
-         *  @param[in] nFlags The flag to determine if database state should be written.
-         *  @param[in] nContrat The contract output number (default: 0)
+         *  @param[out] account The object register to credit to.
+         *  @param[in] nAmount The amount to credit to object.
          *
          *  @return true if successful.
          *
          **/
-        bool Credit(Contract &contract, const uint512_t& hashTx,
-            const uint256_t& hashProof, const uint256_t& hashTo,
-            const uint8_t nFlags, const uint32_t nContract = 0);
-
-
-        /** Coinbase
-         *
-         *  Commits funds from a coinbase transaction
-         *
-         *  @param[out] contract The contract being executed
-         *  @param[in] hashAccount The account being transferred to.
-         *  @param[in] nAmount The amount being transferred
-         *  @param[in] nFlags The flag to determine if database state should be written.
-         *
-         *  @return true if successful.
-         *
-         **/
-        bool Coinbase(Contract &contract, const uint256_t& hashAccount,
-            const uint64_t nAmount, const uint8_t nFlags);
+        bool Credit(TAO::Register::Object &account, const uint64_t nAmount);
 
 
         /** Trust
          *
          *  Handles the locking of stake in a stake register.
          *
-         *  @param[out] contract The contract being executed
-         *  @param[in] hashLastTrust The last stake transaction for the register.
-         *  @param[in] nTrustScore The trust score for the operation.
-         *  @param[in] nCoinstakeReward Coinstake reward paid to register by this operation
-         *  @param[in] nFlags The flag to determine if database state should be written.
+         *  @param[out] trust The trust object register to stake.
+         *  @param[in] nReward The reward to apply to trust account.
+         *  @param[in] nScore The score to apply to trust account.
          *
          *  @return true if successful.
          *
          **/
-        bool Trust(Contract &contract, const uint512_t& hashLastTrust,
-            const uint64_t nTrustScore, const uint64_t nCoinstakeReward,
-            const uint8_t nFlags);
+        bool Trust(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore);
 
 
         /** Genesis
          *
          *  Handles the locking of stake in a stake register.
          *
-         *  @param[out] contract The contract being executed
-         *  @param[in] hashAccount The account being staked to
-         *  @param[in] nCoinstakeReward Coinstake reward paid to register by this operation
-         *  @param[in] nFlags The flag to determine if database state should be written.
+         *  @param[out] trust The trust object register to stake.
+         *  @param[in] nReward The reward to apply to trust account.
          *
          *  @return true if successful.
          *
          **/
-        bool Genesis(Contract &contract, const uint256_t& hashAddress,
-            const uint64_t nCoinstakeReward, const uint8_t nFlags);
+        bool Genesis(TAO::Register::Object &trust, const uint64_t nReward);
 
-
-        /** Authorize
-         *
-         *  Authorizes an action if holder of a token.
-         *
-         *  @param[out] contract The contract being executed
-         *  @param[in] hashTx The transaction being authorized for.
-         *  @param[in] hashProof The register temporal proof to use.
-         *  @param[in] nFlags The flag to determine if database state should be written.
-         *
-         *  @return true if successful.
-         *
-         **/
-        bool Authorize(Contract &contract, const uint512_t& hashTx,
-            const uint256_t& hashProof, const uint8_t nFlags);
     }
 }
 

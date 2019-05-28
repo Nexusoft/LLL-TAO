@@ -7,6 +7,7 @@ This library and framework is designed to make your life easier. As such, we wan
 
 The variable names have a prefix that defines the type. This helps us not lose time in searching back to the declaration of said object, keeping the coding process efficient and precise.
 
+
 ### Primitive Types
 
 * (n)Variable ex. nVar - (n) denotes an integer (signed / unsigned).
@@ -30,11 +31,13 @@ Always use namespaces to keep the code well ordered and organized. The guide to 
 
 ## Indentation and Formatting
 
-This section involes how to format the code due to carriage return
+This section involves how to format the code due to carriage return
 
 * Avoid K&R style brackets. Put opening and closing brackets on their own lines.
 
 * Use tab length 4 and replace tabs with spaces
+
+* We use a maximum line length of 132 characters
 
 
 ## Types to avoid

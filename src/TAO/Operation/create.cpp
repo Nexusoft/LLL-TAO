@@ -7,7 +7,7 @@
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "ad vocem populi" - To the Voice of the People
+            "Doubt is the precursor to fear" - Alex Hannold
 
 ____________________________________________________________________________________________*/
 
@@ -69,19 +69,23 @@ namespace TAO
                     {
                         /* Check the account balance. */
                         if(object.get<uint64_t>("balance") != 0)
-                            return debug::error(FUNCTION, "trust account can't be created with non-zero balance ", object.get<uint64_t>("balance"));
+                            return debug::error(FUNCTION, "trust account can't be created with non-zero balance ",
+                            object.get<uint64_t>("balance"));
 
                         /* Check the account balance. */
                         if(object.get<uint64_t>("stake") != 0)
-                            return debug::error(FUNCTION, "trust account can't be created with non-zero stake ", object.get<uint64_t>("stake"));
+                            return debug::error(FUNCTION, "trust account can't be created with non-zero stake ",
+                            object.get<uint64_t>("stake"));
 
                         /* Check the account balance. */
                         if(object.get<uint64_t>("trust") != 0)
-                            return debug::error(FUNCTION, "trust account can't be created with non-zero trust ", object.get<uint64_t>("trust"));
+                            return debug::error(FUNCTION, "trust account can't be created with non-zero trust ",
+                            object.get<uint64_t>("trust"));
 
                         /* Check that token identifier hasn't been claimed. */
                         if(object.get<uint256_t>("identifier") != 0)
-                            return debug::error(FUNCTION, "trust account can't be created with non-default identifier ", object.get<uint256_t>("identifier").GetHex());
+                            return debug::error(FUNCTION, "trust account can't be created with non-default identifier ",
+                            object.get<uint256_t>("identifier").GetHex());
 
                         break;
                     }
