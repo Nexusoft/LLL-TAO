@@ -87,22 +87,26 @@ namespace TAO
 
             if(params["type"].get<std::string>() == "account")
             {
-                /* Check for identifier parameter. */
-                if(params.find("identifier") == params.end())
-                    throw APIException(-25, "Missing Identifier (<identifier>)");
+                std::string strTokenIdentifier = "";
 
-                /* The identifier is the register address of the token that this account is being created for.  The API supports passing the identifier
-                   in by name in the format of namespace:name, in which case we need to convert it to the register hash */
-                uint256_t hashIdentifier = 0;
-                std::string strIdentifier = params["identifier"].get<std::string>();
-
-                /* Edge case to allow identifer NXS or 0 to be specified for NXS token */
-                if( strIdentifier == "NXS" || strIdentifier == "0")
-                    hashIdentifier = uint256_t(0);
-                else if(IsRegisterAddress(strIdentifier))
-                    hashIdentifier = uint256_t(strIdentifier);
+                /* Check for token name/address parameter. */
+                if(params.find("token_address") != params.end())
+                    strTokenIdentifier = params["token_address"].get<std::string>();
+                else if(params.find("token_name") != params.end())
+                    strTokenIdentifier = params["token_name"].get<std::string>();
                 else
-                    hashIdentifier = RegisterAddressFromName(params, "token", strIdentifier);
+                    throw APIException(-25, "Missing token name / address");
+
+                uint256_t hashIdentifier = 0;
+                
+                /* Convert token name to a register address if a name has been passed in */
+                /* Edge case to allow identifer NXS or 0 to be specified for NXS token */
+                if( strTokenIdentifier == "NXS" || strTokenIdentifier == "0")
+                    hashIdentifier = uint256_t(0);
+                else if(IsRegisterAddress(strTokenIdentifier))
+                    hashIdentifier = uint256_t(strTokenIdentifier);
+                else
+                    hashIdentifier = RegisterAddressFromName(params, "token", strTokenIdentifier);
 
                 /* Create an account object register. */
                 TAO::Register::Object account = TAO::Register::CreateAccount(hashIdentifier);

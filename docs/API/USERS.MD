@@ -444,12 +444,12 @@ This will list off all of the token accounts belonging to a particular signature
 [
     {
         "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
-        "identifier": "NXS",
+        "token_address": "0",
         "balance": 5000
     },
     {
         "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
-        "identifier": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "token_address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
         "balance": 60
     }
 
@@ -460,7 +460,7 @@ This will list off all of the token accounts belonging to a particular signature
 
 `address` : The register address for the account
 
-`identifer` : The identifier of the token that this account can be used for.
+`token_address` : The register address of the token that this account can be used for.
 
 `balance` : The current balance of the token account.
 
@@ -490,14 +490,12 @@ This will list off all of the tokens that were created by a particular signature
 [
     {
         "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
-        "identifier": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
         "balance": 0,
         "maxsupply": 26738388,
         "currentsupply": 26738388
     },
     {
         "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
-        "identifier": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
         "balance": 990,
         "maxsupply": 1000,
         "currentsupply": 10
@@ -509,8 +507,6 @@ This will list off all of the tokens that were created by a particular signature
 ### Return values:
 
 `address` : The register address for the account
-
-`identifer` : The identifier of the token that this account can be used for.
 
 `balance` : The current balance of the token account.
 

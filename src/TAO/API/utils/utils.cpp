@@ -199,9 +199,9 @@ namespace TAO
             {
 
                 /* If debiting an account we need to look at the token definition in order to get the digits. 
-                   The token is obtained by looking at the identifier field, which contains the register address of
+                   The token is obtained by looking at the token_address field, which contains the register address of
                    the issuing token */
-                uint256_t nIdentifier = object.get<uint256_t>("identifier");
+                uint256_t nIdentifier = object.get<uint256_t>("token_address");
 
                 /* Edge case for NXS token which has identifier 0, so no look up needed */
                 if( nIdentifier == 0)

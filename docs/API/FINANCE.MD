@@ -215,7 +215,6 @@ Additionally the API supports passing a field name in the URL after the account 
 ```    
 {
     "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-    "identifier": "NXS",
     "balance": 990
 }
 ```   
@@ -223,8 +222,6 @@ Additionally the API supports passing a field name in the URL after the account 
 ### Return values:
 
 `address` : The register address of the account.  The address is a hash based on the owners username and account name.
-
-`identifier` : For NXS accounts the identifier is always "NXS".    
 
 `balance` : The current balance of this account.  
 
@@ -251,12 +248,10 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 [
     {
         "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
-        "identifier": "NXS",
         "balance": 5000
     },
     {
         "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
-        "identifier": "NXS",
         "balance": 60
     }
 
@@ -265,9 +260,6 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 ### Return values:
 
 `address` : The register address for the account
-
-`identifer` : This is always `NXS`
-
 `balance` : The current balance of the token account.
 
 ****

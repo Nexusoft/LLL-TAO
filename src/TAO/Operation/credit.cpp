@@ -112,8 +112,8 @@ namespace TAO
                     return debug::error(FUNCTION, "cannot claim coinbase from different sigchain");
 
                 /* Check the identifier. */
-                if(account.get<uint256_t>("identifier") != 0)
-                    return debug::error(FUNCTION, "can't credit a coinbase for identifier other than 0");
+                if(account.get<uint256_t>("token_address") != 0)
+                    return debug::error(FUNCTION, "can't credit a coinbase for a tokens other than NXS");
 
 
                 /* Write the new balance to object register. */
@@ -286,8 +286,8 @@ namespace TAO
                     return debug::error(FUNCTION, "debit from must have a base account object");
 
                 /* Check token identifiers. */
-                if(accountFrom.get<uint256_t>("identifier") != account.get<uint256_t>("identifier"))
-                    return debug::error(FUNCTION, "credit can't be of different identifier");
+                if(accountFrom.get<uint256_t>("token_address") != account.get<uint256_t>("token_address"))
+                    return debug::error(FUNCTION, "credit can't be for different type of token");
 
                 /* Get the amount from the corresponding debt. */
                 uint64_t nAmount;
@@ -380,8 +380,8 @@ namespace TAO
                     return debug::error(FUNCTION, "not authorized to use this temporal proof");
 
                 /* Check that the token indetifier matches token identifier. */
-                if(accountProof.get<uint256_t>("identifier") != tokenOwner.get<uint256_t>("identifier"))
-                    return debug::error(FUNCTION, "account proof identifier not token identifier");
+                if(accountProof.get<uint256_t>("token_address") != tokenOwner.get<uint256_t>("token_address"))
+                    return debug::error(FUNCTION, "account proof is for a different token");
 
                 /* Get the total amount from the debit. */
                 uint64_t nAmount;
@@ -411,8 +411,8 @@ namespace TAO
                     return debug::error(FUNCTION, "account from object register is non-standard type");
 
                 /* Check that the debit to credit identifiers match. */
-                if(account.get<uint256_t>("identifier") != accountFrom.get<uint256_t>("identifier"))
-                    return debug::error(FUNCTION, "credit can't be of different identifier");
+                if(account.get<uint256_t>("token_address") != accountFrom.get<uint256_t>("token_address"))
+                    return debug::error(FUNCTION, "credit can't be for different type of token");
 
                 /* Write the new balance to object register. */
                 if(!account.Write("balance", account.get<uint64_t>("balance") + nPartial))

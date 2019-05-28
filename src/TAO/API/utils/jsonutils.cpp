@@ -541,13 +541,9 @@ namespace TAO
                     ret["address"]    = hashRegister.ToString();
 
                     /* Get the identifier */
-                    uint256_t nIdentifier = object.get<uint256_t>("identifier");
+                    uint256_t nIdentifier = object.get<uint256_t>("token_address");
 
-                    /* If the identifier is 0 then return the value "NXS" for clarity rather than 0 */
-                    if( nIdentifier == 0)
-                        ret["identifier"] = "NXS";
-                    else
-                        ret["identifier"] = object.get<uint256_t>("identifier").GetHex();
+                    ret["token_address"] = object.get<uint256_t>("token_address").GetHex();
                     
                     /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
                     Therefore, to convert the internal value to a floating point value we need to reduce the internal value
@@ -566,7 +562,6 @@ namespace TAO
                     uint64_t nDigits = GetTokenOrAccountDigits(object);
 
                     ret["address"]          = hashRegister.ToString();
-                    ret["identifier"]       = object.get<uint256_t>("identifier").GetHex();
                     ret["balance"]          = (double) object.get<uint64_t>("balance") / pow(10, nDigits);
                     ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDigits);
                     ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
