@@ -102,11 +102,11 @@ CLASSES
      |  nexus_finance_create_account(self, name)
      |      Create a NXS crypto-currency account with name specified in 'name'.
      |  
-     |  nexus_finance_credit_by_address(self, to_address, amount, txid)
+     |  nexus_finance_credit_account_by_address(self, to_address, amount, txid)
      |      Credit NXS by address to account 'to_address' for account 'amount' from
      |      debit transaction-id 'txid'.
      |  
-     |  nexus_finance_credit_by_name(self, to_name, amount, txid)
+     |  nexus_finance_credit_account_by_name(self, to_name, amount, txid)
      |      Credit NXS by name to account 'to_name' for account 'amount' from
      |      debit transaction-id 'txid'.
      |  
@@ -197,7 +197,7 @@ CLASSES
      |  
      |  nexus_supply_transfer_item_by_address(self, address, new_owner)
      |      Transfer supply chain item, specified by address in 'address' to new 
-     |      owner. The new owner username is specified in 'new_owner'.
+     |      owner. The new owner genesis-id is specified in 'new_owner'.
      |  
      |  nexus_supply_transfer_item_by_name(self, name, new_owner)
      |      Transfer supply chain item, specified by name in 'name' to new owner.
@@ -220,24 +220,33 @@ CLASSES
      |  nexus_system_list_peers(self)
      |      List established Nexus peer connections. Login not required.
      |  
-     |  nexus_tokens_create_account(self, account_name, token_id)
+     |  nexus_tokens_create_account(self, account_name, token_name)
      |      Create a token account associated with previously create token
-     |      with token ID 'token_id'.
+     |      with token name 'token_name'.
      |  
-     |  nexus_tokens_create_token(self, token_name, token_id, supply, digits=2)
-     |      Create a token by name with token ID 'token_id' with a initial
-     |      resource supply of 'supply'. Give the token accuracy precision
-     |      specified in 'digits'.
+     |  nexus_tokens_create_token(self, token_name, supply, digits=2)
+     |      Create a token by name with with an initial reserve supply of 
+     |      'supply'. Give the token accuracy precision specified in 'digits'.
      |  
-     |  nexus_tokens_credit_account_by_name(self, to_name, amount, txid)
+     |  nexus_tokens_credit_account_by_address(self, to_address, amount, txid, address_proof)
+     |      Credit token account by address specified in 'to_address' for the 
+     |      amount specified in 'amount' from the debit transaction with 
+     |      transaction id 'txid'.
+     |  
+     |  nexus_tokens_credit_account_by_name(self, to_name, amount, txid, name_proof=None)
      |      Credit token account by name specified in 'to_name' for the amount
      |      specified in 'amount' from the debit transaction with transaction
      |      id 'txid'.
      |  
-     |  nexus_tokens_credit_by_address(self, to_address, amount, txid)
+     |  nexus_tokens_credit_token_by_address(self, to_address, amount, txid)
      |      Credit token account by address specified in 'to_address' for the 
      |      amount specified in 'amount' from the debit transaction with 
-     |      transaction id 'txid'.
+     |      transaction id 'txid'. This function is used to replenish tokens.
+     |  
+     |  nexus_tokens_credit_token_by_name(self, to_name, amount, txid)
+     |      Credit token by name specified in 'name' for the amount specified in 
+     |      'amount' from the debit transaction with transaction id 'txid'. This
+     |      function is used to replenish tokens.
      |  
      |  nexus_tokens_debit_account_by_address(self, from_address, to_address, amount)
      |      Debit token account from token account 'from_name' for the amount
@@ -271,69 +280,97 @@ CLASSES
      |      Create a user account on the Nexus blockchain. Username, password,
      |      and pin parameters are supplied on the sdk_init() call.
      |  
-     |  nexus_users_list_accounts_by_genesis(self)
-     |      List user created token accounts by genesis-id.
+     |  nexus_users_list_accounts_by_genesis(self, page, limit)
+     |      List user created token accounts by genesis-id. The number of account
+     |      entries returned is specified in 'limit' starting with entry offset 
+     |      specified in 'page'.
      |  
-     |  nexus_users_list_accounts_by_username(self)
-     |      List user created token accounts by username.
+     |  nexus_users_list_accounts_by_username(self, page, limit)
+     |      List user created token accounts by username. The number of account
+     |      entries returned is specified in 'limit' starting with entry offset 
+     |      specified in 'page'.
      |  
      |  nexus_users_list_assets_by_genesis(self, page, limit)
-     |      List user account created assets by genesis-id. The number of assets
+     |      List user account created assets by genesis-id. The number of asset
      |      entries returned is specified in 'limit' starting with entry offset 
      |      specified in 'page'.
      |  
      |  nexus_users_list_assets_by_username(self, page, limit)
-     |      List user account created assets by username. The number of assets
+     |      List user account created assets by username. The number of asset
      |      entries returned is specified in 'limit' starting with entry offset 
      |      specified in 'page'.
      |  
      |  nexus_users_list_notifications_by_genesis(self, page, limit)
-     |      List user account notifications by genesis-id. The number of 
-     |      notifications returned is specified in 'limit' starting with entry
-     |      offset specified in 'page'.
+     |      List user account notifications by genesis-id. The entry offset (first
+     |      is 0) is specified in 'page' and the number of transactions returned 
+     |      is specified in 'limit'.
      |  
      |  nexus_users_list_notifications_by_username(self, page, limit)
-     |      List user account notifications by username. The number of 
-     |      notifications returned is specified in 'limit' starting with entry
-     |      offset specified in 'page'.
+     |      List user account notifications by username. The entry offset (first
+     |      is 0) is specified in 'page' and the number of transactions returned 
+     |      is specified in 'limit'.
      |  
-     |  nexus_users_list_tokens_by_genesis(self)
-     |      List user created tokens by genesis-id.
+     |  nexus_users_list_tokens_by_genesis(self, page, limit)
+     |      List user created tokens by genesis-id. The number of token
+     |      entries returned is specified in 'limit' starting with entry offset 
+     |      specified in 'page'.
      |  
-     |  nexus_users_list_tokens_by_username(self)
-     |      List user created tokens by username.
+     |  nexus_users_list_tokens_by_username(self, page, limit)
+     |      List user created tokens by username. The number of token
+     |      entries returned is specified in 'limit' starting with entry offset 
+     |      specified in 'page'.
      |  
-     |  nexus_users_list_transactions(self, limit, verbosity='default')
-     |      List user account transactions. The number of transactions returned
-     |      is specified in 'limit'. Valid values for 'verbosity' is "default", 
+     |  nexus_users_list_transactions_by_genesis(self, page, limit, verbosity='default')
+     |      List user account transactions by genesis-id. The entry offset (first 
+     |      is 0) is specified in 'page' and the number of transactions returned 
+     |      is specified in 'limit'. Valid values for 'verbosity' are "default", 
      |      "summary", "detail".
      |  
-     |  nexus_users_lock_user(self)
+     |  nexus_users_list_transactions_by_username(self, page, limit, verbosity='default')
+     |      List user account transactions by username. The entry offset (first 
+     |      is 0) is specified in 'page' and the number of transactions returned 
+     |      is specified in 'limit'. Valid values for 'verbosity' are "default", 
+     |      "summary", "detail".
+     |  
+     |  nexus_users_lock_user(self, minting=0, transactions=0)
      |      Lock a user account on the Nexus blockchain. This disallows any API
      |      activity to the blockchain for this user account signature chain.
+     |      Set 'minting' to 1 if the user account is staking or mining. Set 
+     |      'transactions' to 0 if the user account should not create or claim 
+     |      transactions.
      |  
-     |  nexus_users_login_user(self, minting=False, transactions=True)
+     |  nexus_users_login_user(self)
      |      Login a user on the Nexus blockchain. Username, password, and pin 
-     |      parameters are supplied on the sdk_init() call. Set 'minting' to
-     |      True is the user account is staking or mining. Set 'transactions'
-     |      to False if the user account should not create or claim transactions.
+     |      parameters are supplied on the sdk_init() call.
      |  
      |  nexus_users_logout_user(self)
      |      Logout a user from the Nexus blockchain.
      |  
-     |  nexus_users_unlock_user(self)
+     |  nexus_users_unlock_user(self, minting=0, transactions=0)
      |      Unlock a user account on the Nexus blockchain that was previously
      |      locked with nexus_users_lock(). This now allows API activity 
      |      to the blockchain for this user account signature chain.
+     |      Set 'minting' to 1 if the user account is staking or mining. Set 
+     |      'transactions' to 0 if the user account should not create or claim 
+     |      transactions.
+
+FUNCTIONS
+    sdk_change_url(url='http://localhost:8080')
+        # sdk_change_url
+        #
+        # Change URL that the SDK uses. Make sure that the URL is formatted with http,
+        # double slashes and colon with number after colon.
 
 DATA
-    assets_url = 'http://localhost:8080/assets/{}'
-    finance_url = 'http://localhost:8080/finance/{}'
-    ledger_url = 'http://localhost:8080/ledger/{}'
-    objects_url = 'http://localhost:8080/objects/{}'
-    supply_url = 'http://localhost:8080/supply/{}'
-    system_url = 'http://localhost:8080/system/{}'
-    tokens_url = 'http://localhost:8080/tokens/{}'
-    users_url = 'http://localhost:8080/users/{}'
+    assets_url = '{}/assets/{}'
+    finance_url = '{}/finance/{}'
+    ledger_url = '{}/ledger/{}'
+    objects_url = '{}/objects/{}'
+    sdk_default_url = 'http://localhost:8080'
+    sdk_url = 'http://localhost:8080'
+    supply_url = '{}/supply/{}'
+    system_url = '{}/system/{}'
+    tokens_url = '{}/tokens/{}'
+    users_url = '{}/users/{}'
 
 

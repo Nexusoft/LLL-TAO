@@ -149,8 +149,10 @@ class sdk_init():
         Create object register schema. See API documentation for format
         of 'data' parameter.
         """
+
         parms = "?session={}&pin={}&name={}&format=json&json={}".format( \
             self.session_id, self.pin, name, data)
+
         url = objects_url.format(sdk_url, "create/schema") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -161,7 +163,9 @@ class sdk_init():
         Get object register scheme definition by supplying 'name' it was
         created by.
         """
+
         parms = "?name={}&format=json".format(name)
+
         url = objects_url.format(sdk_url, "get/schema") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -172,7 +176,9 @@ class sdk_init():
         Get object register scheme definition by supplying 'address' returned
         from nexus_objects_create_schema_by_name().
         """
+
         parms = "?address={}&format=json".format(address)
+
         url = objects_url.format(sdk_url, "get/schema") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -182,7 +188,9 @@ class sdk_init():
         """
         Retrieve the block hash for a block with supplied parameter 'height'.
         """
+
         parms = "?height={}&format=json".format(height)
+
         url = ledger_url.format(sdk_url, "get/blockhash") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -193,7 +201,9 @@ class sdk_init():
         Retrieve the block with supplied hash 'block_hash'. See API 
         documentation for 'verbosity' values.
         """
+
         parms = "?hash={}&verbose={}".format(block_hash, verbosity)
+
         url = ledger_url.format(sdk_url, "get/block") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -204,7 +214,9 @@ class sdk_init():
         Retrieve the block with supplied hash 'block_height'. See API 
         documentation for 'verbosity' values.
         """
+
         parms = "?height={}&verbose={}".format(block_height, verbosity)
+
         url = ledger_url.format(sdk_url, "get/block") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -216,8 +228,10 @@ class sdk_init():
         of blocks is specified in 'limit'. See API documentation for 
         'verbosity' values.
         """
+
         parms = "?hash={}&limit={}&verbose={}".format(block_hash, limit,
             verbosity)
+
         url = ledger_url.format(sdk_url, "list/blocks") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -230,8 +244,10 @@ class sdk_init():
         The number of blocks is specified in 'limit'. See API documentation 
         for 'verbosity' values.
         """
+
         parms = "?height={}&limit={}&verbose={}".format(block_height, limit,
             verbosity)
+
         url = ledger_url.format(sdk_url, "list/blocks") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -242,7 +258,9 @@ class sdk_init():
         Retrieve transaction with transactioin hash 'tx_hash' with specific
         verbose. See API documentation for 'verbosity' values.
         """
+
         parms = "?hash={}&format=json".format(tx_hash, verbosity)
+
         url = ledger_url.format(sdk_url, "get/transaction") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -253,7 +271,9 @@ class sdk_init():
         Submit a transaction to the Nexus blockchain. The data stored for
         the transaction is specified in 'tx_data'.
         """
+
         parms = "?data{}".format(tx_data)
+
         url = ledger_url.format(sdk_url, "submit/transaction") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -275,8 +295,10 @@ class sdk_init():
         """
         pw = self.password.replace("&", "%26")
         pw = urllib.quote_plus(pw)
+
         parms = "?username={}&password={}&pin={}".format(self.username, pw,
             self.pin)
+
         url = users_url.format(sdk_url, "create/user") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -291,8 +313,10 @@ class sdk_init():
 
         pw = self.password.replace("&", "%26")
         pw = urllib.quote_plus(pw)
+
         parms = "?username={}&password={}&pin={}".format(self.username, pw,
             self.pin)
+
         url = users_url.format(sdk_url, "login/user") + parms
         json_data = self.__get(url)
         if (json_data.has_key("error")): return(json_data)
@@ -315,6 +339,7 @@ class sdk_init():
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session={}".format(self.session_id)
+
         url = users_url.format(sdk_url, "logout/user") + parms
         json_data = self.__get(url)
         if (json_data.has_key("error")): return(json_data)
@@ -335,6 +360,7 @@ class sdk_init():
 
         parms = "?session={}&minting={}&transactions={}".format( \
             self.session_id, minting, transactions)
+
         url = users_url.format(sdk_url, "lock/users") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -353,6 +379,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&minting={}&transactions={}".format( \
             self.pin, self.session_id, minting, transactions)
+
         url = users_url.format(sdk_url, "unlock/user") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -374,6 +401,7 @@ class sdk_init():
 
         parms = "?genesis={}&page={}&limit={}&verbose={}".format( \
             self.genesis_id, page, limit, verbosity)
+
         url = users_url.format(sdk_url, "list/transactions") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -395,6 +423,7 @@ class sdk_init():
 
         parms = "?usernam={}&page={}&limit={}&verbose={}".format( \
             self.username, page, limit, verbosity)
+
         url = users_url.format(sdk_url, "list/transactions") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -410,6 +439,7 @@ class sdk_init():
 
         parms = "?genesis={}&page={}&limit={}".format(self.genesis_id, page,
             limit)
+
         url = users_url.format(sdk_url, "list/notifications") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -425,6 +455,7 @@ class sdk_init():
 
         parms = "?username={}&page={}&limit={}".format(self.username, page,
             limit)
+
         url = users_url.format(sdk_url, "list/notifications") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -432,7 +463,7 @@ class sdk_init():
        
     def nexus_users_list_assets_by_genesis(self, page, limit):
         """
-        List user account created assets by genesis-id. The number of assets
+        List user account created assets by genesis-id. The number of asset
         entries returned is specified in 'limit' starting with entry offset 
         specified in 'page'. 
         """
@@ -440,6 +471,7 @@ class sdk_init():
 
         parms = "?genesis={}&page={}&limit={}".format(self.genesis_id, page,
             limit)
+
         url = users_url.format(sdk_url, "list/assets") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -447,7 +479,7 @@ class sdk_init():
        
     def nexus_users_list_assets_by_username(self, page, limit):
         """
-        List user account created assets by username. The number of assets
+        List user account created assets by username. The number of asset
         entries returned is specified in 'limit' starting with entry offset 
         specified in 'page'. 
         """
@@ -455,54 +487,70 @@ class sdk_init():
 
         parms = "?username={}&page={}&limit={}".format(self.username, page,
             limit)
+
         url = users_url.format(sdk_url, "list/assets") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
-    def nexus_users_list_accounts_by_genesis(self):
+    def nexus_users_list_accounts_by_genesis(self, page, limit):
         """
-        List user created token accounts by genesis-id.
+        List user created token accounts by genesis-id. The number of account
+        entries returned is specified in 'limit' starting with entry offset 
+        specified in 'page'. 
         """
         if (self.genesis_id == None): return(self.__error("Not logged in"))
 
-        parms = "?genesis={}".format(self.genesis_id)
+        parms = "?genesis={}&page={}&limit={}".format(self.genesis_id, page,
+            limit)
+
         url = users_url.format(sdk_url, "list/accounts") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
-    def nexus_users_list_accounts_by_username(self):
+    def nexus_users_list_accounts_by_username(self, page, limit):
         """
-        List user created token accounts by username.
+        List user created token accounts by username. The number of account
+        entries returned is specified in 'limit' starting with entry offset 
+        specified in 'page'.  
         """
         if (self.genesis_id == None): return(self.__error("Not logged in"))
 
-        parms = "?username={}".format(self.username)
+        parms = "?username={}&page={}&limit={}".format(self.username, page,
+            limit)
+
         url = users_url.format(sdk_url, "list/accounts") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
-    def nexus_users_list_tokens_by_genesis(self):
+    def nexus_users_list_tokens_by_genesis(self, page, limit):
         """
-        List user created tokens by genesis-id.
+        List user created tokens by genesis-id. The number of token
+        entries returned is specified in 'limit' starting with entry offset 
+        specified in 'page'.  
         """
         if (self.genesis_id == None): return(self.__error("Not logged in"))
 
-        parms = "?genesis={}".format(self.genesis_id)
+        parms = "?genesis={}&page={}&limit={}".format(self.genesis_id)
+
         url = users_url.format(sdk_url, "list/tokens") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
 
-    def nexus_users_list_tokens_by_username(self):
+    def nexus_users_list_tokens_by_username(self, page, limit):
         """
-        List user created tokens by username.
+        List user created tokens by username. The number of token
+        entries returned is specified in 'limit' starting with entry offset 
+        specified in 'page'.
         """
         if (self.genesis_id == None): return(self.__error("Not logged in"))
 
-        parms = "?username={}".format(self.username)
+        parms = "?username={}&page={}&limit={}".format(self.username, page,
+            limit)
+
         url = users_url.format(sdk_url, "list/tokens") + parms
         json_data = self.__get(url) 
         return(json_data)
@@ -535,7 +583,9 @@ class sdk_init():
         """
         Get supply chain item from blockchain using name specified in 'name'.
         """
+
         parms = "?name={}".format(name)
+
         url = supply_url.format(sdk_url, "get/item") + parms
         json_data = self.__get(url)
 
@@ -554,7 +604,9 @@ class sdk_init():
         Get supply chain item from blockchain using register address specified
         in 'address'.
         """
+
         parms = "?address={}".format(address)
+
         url = supply_url.format(sdk_url, "get/item") + parms
         json_data = self.__get(url)
 
@@ -577,6 +629,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&name={}&username={}".format( \
             self.pin, self.session_id, name, new_owner)
+
         url = supply_url.format(sdk_url, "transfer/item") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -591,6 +644,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&address={}&destination={}".format( \
             self.pin, self.session_id, address, new_owner)
+
         url = supply_url.format(sdk_url, "transfer/item") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -606,6 +660,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&txid={}".format(self.pin, self.session_id,
             txid)
+
         url = supply_url.format(sdk_url, "claim/item") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -628,6 +683,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&name={}&data={}".format(self.pin,
             self.session_id, name, data)
+
         url = supply_url.format(sdk_url, "update/item") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -650,6 +706,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&address={}&data={}".format(self.pin,
             self.session_id, address, data)
+
         url = supply_url.format(sdk_url, "update/item") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -659,7 +716,9 @@ class sdk_init():
         """
         List supply chain item history by name specified in 'name'.
         """
+
         parms = "?name={}".format(name)
+
         url = supply_url.format(sdk_url, "list/item/history") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -669,7 +728,9 @@ class sdk_init():
         """
         List supply chain item history by address specified in 'address'.
         """
+
         parms = "?address={}".format(address)
+
         url = supply_url.format(sdk_url, "list/item/history") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -692,6 +753,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&name={}&format=raw&data={}".format( \
             self.pin, self.session_id, asset_name, data)
+
         url = assets_url.format(sdk_url, "create/asset") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -701,7 +763,9 @@ class sdk_init():
         """
         Get asset with by name 'asset_name'.
         """
+
         parms = "?name={}".format(asset_name)
+
         url = assets_url.format(sdk_url, "get/asset") + parms
         json_data = self.__get(url)
 
@@ -719,7 +783,9 @@ class sdk_init():
         """
         Get asset with by register address 'asset_address'.
         """
+
         parms = "?address={}".format(asset_address)
+
         url = assets_url.format(sdk_url, "get/asset") + parms
         json_data = self.__get(url)
 
@@ -742,6 +808,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&name={}&data={}".format(self.pin,
             self.session_id, asset_name, data)
+
         url = assets_url.format(sdk_url, "update/asset") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -756,6 +823,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&address={}&data={}".format( \
             self.pin, self.session_id, asset_address, data)
+
         url = assets_url.format(sdk_url, "update/asset") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -770,6 +838,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&name={}&username={}".format(self.pin,
             self.session_id, asset_name, dest_username)
+
         url = assets_url.format(sdk_url, "transfer/asset") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -785,6 +854,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&address={}&destination={}".format( \
             self.pin, self.session_id, asset_address, dest_address)
+
         url = assets_url.format(sdk_url, "transfer/asset") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -800,6 +870,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&txid={}".format(self.pin, self.session_id,
             txid)
+
         url = supply_url.format(sdk_url, "claim/asset") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -814,6 +885,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&name={}&token_name={}".format( \
             self.pin, self.session_id, asset_name, token_name)
+
         url = assets_url.format(sdk_url, "tokenize/asset") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -828,6 +900,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&address={}&token_address={}". \
             format(self.pin, self.session_id, asset_address, token_address)
+
         url = assets_url.format(sdk_url, "tokenize/asset") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -837,7 +910,9 @@ class sdk_init():
         """
         List assets history by name specified in 'name'.
         """
+
         parms = "?name={}".format(asset_name)
+
         url = assets_url.format(sdk_url, "list/asset/history") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -847,7 +922,9 @@ class sdk_init():
         """
         List assets history by address specified in 'address'.
         """
+
         parms = "?address={}".format(asset_address)
+
         url = assets_url.format(sdk_url, "list/asset/history") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -863,6 +940,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&name={}&supply={}&digits={}".format( \
             self.pin, self.session_id, token_name, supply, digits)
+
         url = tokens_url.format(sdk_url, "create/token") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -877,6 +955,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&name={}&token_name={}".format(self.pin,
             self.session_id, account_name, token_name)
+
         url = tokens_url.format(sdk_url, "create/account") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -886,7 +965,9 @@ class sdk_init():
         """
         Get token by name specified in 'token_name'.
         """
+
         parms = "?name={}".format(token_name)
+
         url = tokens_url.format(sdk_url, "get/token") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -896,7 +977,9 @@ class sdk_init():
         """
         Get token by address specified in 'token_address'.
         """
+
         parms = "?address={}".format(token_address)
+
         url = tokens_url.format(sdk_url, "get/token") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -906,7 +989,9 @@ class sdk_init():
         """
         Get token account by name specified in 'account_name'.
         """
+
         parms = "?name={}&type=account".format(account_name)
+
         url = tokens_url.format(sdk_url, "get/account") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -916,7 +1001,9 @@ class sdk_init():
         """
         Get token account by address specified in 'account_address'.
         """
+
         parms = "?address={}&type=account".format(account_address)
+
         url = tokens_url.format(sdk_url, "get/account") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -934,6 +1021,7 @@ class sdk_init():
         #
         parms = "?pin={}&session={}&amount={}&name={}&name_to={}". \
             format(self.pin, self.session_id, amount, from_name, to_name)
+
         url = tokens_url.format(sdk_url, "debit/account") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -952,6 +1040,7 @@ class sdk_init():
         #
         parms = "?pin={}&session={}&amount={}&address={}&address_to={}". \
             format(self.pin, self.session_id, amount, from_address, to_address)
+
         url = tokens_url.format(sdk_url, "debit/account") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -969,6 +1058,7 @@ class sdk_init():
         #
         parms = "?pin={}&session={}&amount={}&name={}&name_to={}". \
             format(self.pin, self.session_id, amount, from_name, to_name)
+
         url = tokens_url.format(sdk_url, "debit/token") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -987,6 +1077,7 @@ class sdk_init():
         #
         parms = "?pin={}&session={}&amount={}&address={}&address_to={}". \
             format(self.pin, self.session_id, amount, from_address, to_address)
+
         url = tokens_url.format(sdk_url, "debit/token") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -1067,7 +1158,8 @@ class sdk_init():
         parms = ("?pin={}&session={}&txid={}&amount={}&address={}"). \
             format(self.pin, self.session_id, txid, amount, to_address)
 
-        if (address_proof != None): parms += "&proof={}".format(address_proof)
+        if (address_proof != None): parms += "&address_proof={}".format( \
+            address_proof)
                  
         url = tokens_url.format(sdk_url, "credit/account") + parms
         json_data = self.__get(url)
@@ -1085,6 +1177,7 @@ class sdk_init():
         #
         parms = "?pin={}&session={}&name={}".format(self.pin, self.session_id,
             name)
+
         url = finance_url.format(sdk_url, "create/account") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -1098,6 +1191,7 @@ class sdk_init():
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session={}&name={}".format(self.session_id, name)
+
         url = finance_url.format(sdk_url, "get/account") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -1111,6 +1205,7 @@ class sdk_init():
         if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session={}&address={}".format(self.session_id, address)
+
         url = finance_url.format(sdk_url, "get/account") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -1125,6 +1220,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&amount={}&name={}&name_to={}". \
             format(self.pin, self.session_id, amount, from_name, to_name)
+
         url = finance_url.format(sdk_url, "debit/account") + parms
         json_data = self.__get(url)
         return(json_data)
@@ -1140,6 +1236,7 @@ class sdk_init():
 
         parms = "?pin={}&session={}&amount={}&address={}&address_to={}". \
             format(self.pin, self.session_id, amount, from_address, to_address)
+
         url = finance_url.format(sdk_url, "debit/account") + parms
         json_data = self.__get(url)
         return(json_data)
