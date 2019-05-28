@@ -42,9 +42,6 @@ namespace TAO
             TAO::Register::Stream  ssRegister;
 
 
-            /** MEMORY ONLY: Contract proof stream. **/
-            TAO::Register::Stream  ssProof;
-
         public:
 
             /** MEMORY ONLY: Contract timestamp. **/
@@ -73,7 +70,6 @@ namespace TAO
 
                 if(!(nSerType & SER_LLD))
                 {
-                    READWRITE(ssProof);
                     READWRITE(nTimestamp);
                     READWRITE(hashCaller);
                 }
@@ -172,40 +168,6 @@ namespace TAO
              **/
             template<typename Type>
             const Contract& operator>>=(Type& obj) const
-            {
-                /* Serialize to the stream. */
-                ssRegister >> obj;
-
-                return (*this);
-            }
-
-
-            /** Operator Overload <=
-             *
-             *  Serializes data into ssProof
-             *
-             *  @param[in] obj The object to serialize into ledger data
-             *
-             **/
-            template<typename Type>
-            Contract& operator<=(const Type& obj)
-            {
-                /* Serialize to the stream. */
-                ssRegister << obj;
-
-                return (*this);
-            }
-
-
-            /** Operator Overload >=
-             *
-             *  Serializes data into ssProof
-             *
-             *  @param[in] obj The object to serialize into ledger data
-             *
-             **/
-            template<typename Type>
-            const Contract& operator>=(Type& obj) const
             {
                 /* Serialize to the stream. */
                 ssRegister >> obj;
