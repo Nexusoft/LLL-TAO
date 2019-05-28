@@ -409,9 +409,6 @@ namespace TAO
                             if(!LLD::legDB->EraseProof(hashProof, hashTx))
                                 return debug::error(FUNCTION, "failed to erase the proof");
 
-                            /* Seek to the next operation. */
-                            tx.ssOperation.seek(8);
-
                             break;
                         }
                     }

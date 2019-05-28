@@ -158,22 +158,19 @@ Increment the token balance by an amount received from a token account. This met
 
 `address` : The register address of the token to credit. This is optional if the name is provided.
 
-`amount` : The amount of tokens to credit.
-
 `txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.
 
 
 
 ### Example:
 
-The following example shows the json payload for a credit of 10 tokens to a token called "mytoken" (that itself was created by the sig chain logged into session "16953804956473956578").  
+The following example shows the json payload for a credit to a token called "mytoken" (that itself was created by the sig chain logged into session "16953804956473956578").  
 
 ```
 {
     "pin": "1234",
     "session": "16953804956473956578",
     "name": "mytoken",
-    "amount": 10,
     "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
 }
 ```
@@ -382,8 +379,6 @@ Increment an amount received from another token account to an account owned by y
 
 `address` : The register address of the account to credit. This is optional if the name is provided.
 
-`amount` : The amount of tokens to credit.
-
 `txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.
 
 `name_proof` : The name identifying the account that proves your ability to credit the debit transaction.  This is only required for split payments, where your right to receive a payment is determined by the number of tokens you hold in the account proof account. The `name_proof` parameter can be used as alternative to `proof`  
@@ -392,14 +387,13 @@ Increment an amount received from another token account to an account owned by y
 
 ### Example:
 
-The following example shows the json payload for a credit of 10 tokens to an account called "savings" (that itself was created by the sig chain logged into session "16953804956473956578") identified by the name "bob:savings".  In the name field, "bob" refers to the username of the account holder and "savings" is their token account.  
+The following example shows the json payload for a credit to an account called "savings" (that itself was created by the sig chain logged into session "16953804956473956578") identified by the name "bob:savings".  In the name field, "bob" refers to the username of the account holder and "savings" is their token account.  
 
 ```
 {
     "pin": "1234",
     "session": "16953804956473956578",
     "name": "bob:savings",
-    "amount": 10,
     "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
 }
 ```

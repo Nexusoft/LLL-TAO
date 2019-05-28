@@ -31,7 +31,7 @@ namespace TAO
 
         /* Commits funds from an account to an account */
         bool Credit(const uint512_t& hashTx, const uint256_t& hashProof, const uint256_t& hashAccount,
-                    const uint64_t nCredit, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+                    const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashAccount))
@@ -115,12 +115,9 @@ namespace TAO
                 if(account.get<uint256_t>("identifier") != 0)
                     return debug::error(FUNCTION, "can't credit a coinbase for identifier other than 0");
 
-                /* Check that the balances match. */
-                if(nCoinbase != nCredit)
-                    return debug::error(FUNCTION, "credit ", nCredit, "and coinbase ", nCredit, " amounts mismatch");
 
                 /* Write the new balance to object register. */
-                if(!account.Write("balance", account.get<uint64_t>("balance") + nCredit))
+                if(!account.Write("balance", account.get<uint64_t>("balance") + nCoinbase))
                     return debug::error(FUNCTION, "balance could not be written to object register");
 
                 /* Update the state register's timestamp. */
@@ -193,16 +190,12 @@ namespace TAO
                 //if(hashAccount != hashFrom) //NOTE: this rule is disabled for now. Return to self should be able to done to other accounts
                 //    return debug::error(FUNCTION, "cannot return funds to self if differnet account");
 
-                /* Get the debit amount. */
-                uint64_t nDebit;
-                txSpend.ssOperation >> nDebit;
-
-                /* Check the proper balance requirements. */
-                if(nCredit != nDebit)
-                     return debug::error(FUNCTION, "credit and debit totals don't match");
+                /* Get the credit amount from the corresponding debit tx. */
+                uint64_t nAmount;
+                txSpend.ssOperation >> nAmount;
 
                 /* Write the new balance to object register. */
-                if(!account.Write("balance", account.get<uint64_t>("balance") + nCredit))
+                if(!account.Write("balance", account.get<uint64_t>("balance") + nAmount))
                     return debug::error(FUNCTION, "balance could not be written to object register");
 
                 /* Update the state register's timestamp. */
@@ -296,16 +289,12 @@ namespace TAO
                 if(accountFrom.get<uint256_t>("identifier") != account.get<uint256_t>("identifier"))
                     return debug::error(FUNCTION, "credit can't be of different identifier");
 
-                /* Get the debit amount. */
-                uint64_t nDebit;
-                txSpend.ssOperation >> nDebit;
-
-                /* Check the proper balance requirements. */
-                if(nCredit != nDebit)
-                     return debug::error(FUNCTION, "credit and debit totals don't match");
+                /* Get the amount from the corresponding debt. */
+                uint64_t nAmount;
+                txSpend.ssOperation >> nAmount;
 
                 /* Write the new balance to object register. */
-                if(!account.Write("balance", account.get<uint64_t>("balance") + nCredit))
+                if(!account.Write("balance", account.get<uint64_t>("balance") + nAmount))
                     return debug::error(FUNCTION, "balance could not be written to object register");
 
                 /* Update the state register's timestamp. */
@@ -394,12 +383,12 @@ namespace TAO
                 if(accountProof.get<uint256_t>("identifier") != tokenOwner.get<uint256_t>("identifier"))
                     return debug::error(FUNCTION, "account proof identifier not token identifier");
 
-                /* Get the total amount of the debit. */
-                uint64_t nDebit;
-                txSpend.ssOperation >> nDebit;
+                /* Get the total amount from the debit. */
+                uint64_t nAmount;
+                txSpend.ssOperation >> nAmount;
 
                 /* Get the total tokens to be distributed. */
-                uint64_t nPartial = (accountProof.get<uint64_t>("balance") * nDebit) / tokenOwner.get<uint64_t>("supply");
+                uint64_t nPartial = (accountProof.get<uint64_t>("balance") * nAmount) / tokenOwner.get<uint64_t>("supply");
 
                 //NOTE: ISSUE here, temporal proofs can't be used if post timestamped. This prevents double spending,
                 //but it doesn't prevent coins from getting locked if a temporal proof has been changed. Possible to
@@ -407,10 +396,6 @@ namespace TAO
                 //find a way to unlock the unspent tokens possibly with validation regitser.
                 //We might need to check back the history to find timestamp before proof to use previous state.
                 //This will work for now, but is not production ready.
-
-                /* Check that the required credit claim is accurate. */
-                if(nPartial != nCredit)
-                    return debug::error(FUNCTION, "claimed credit ", nCredit, " mismatch with token holdings ", nPartial);
 
                 /* Read the state from. */
                 TAO::Register::Object accountFrom;

@@ -364,8 +364,8 @@ namespace TAO
 
                             /* Output the json information. */
                             ret["OP"]       = "DEBIT";
-                            ret["address"]  = hashAddress.ToString();
-                            ret["transfer"] = hashTransfer.ToString();
+                            ret["address_from"]  = hashAddress.ToString();
+                            ret["address_to"] = hashTransfer.ToString();
                             ret["amount"]   = nAmount;
 
                             break;
@@ -387,9 +387,30 @@ namespace TAO
                             uint256_t hashAccount;
                             ssOperation >> hashAccount;
 
+                            /* Read the corresponding debit transaction. */
+                            TAO::Ledger::Transaction txDebit;
+                            
+                            /* Check disk of writing new block. */
+                            if((!LLD::legDB->ReadTx(hashTx, txDebit) || !LLD::legDB->HasIndex(hashTx)))
+                                return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist or not indexed");
+
+                            /* Check mempool or disk if not writing. */
+                            else if(!TAO::Ledger::mempool.Get(hashTx, txDebit)
+                            && !LLD::legDB->ReadTx(hashTx, txDebit))
+                                return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist");
+
+                            /* Extract the state from tx. */
+                            uint8_t TX_OP;
+                            txDebit.ssOperation >> TX_OP;
+
+                            uint256_t hashDebitAddress; //the register address debit is being sent from.
+                            txDebit.ssOperation >> hashDebitAddress;
+
+                            txDebit.ssOperation >> hashAccount;
+
                             /* The total to be credited. */
                             uint64_t  nCredit;
-                            ssOperation >> nCredit;
+                            txDebit.ssOperation >> nCredit;
 
                             /* Output the json information. */
                             ret["OP"]      = "CREDIT";
@@ -518,7 +539,7 @@ namespace TAO
                 if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
                 {
                     ret["address"]    = hashRegister.ToString();
-                    
+
                     /* Get the identifier */
                     uint256_t nIdentifier = object.get<uint256_t>("identifier");
 

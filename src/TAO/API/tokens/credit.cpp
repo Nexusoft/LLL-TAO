@@ -52,10 +52,6 @@ namespace TAO
             if(params.find("txid") == params.end())
                 throw APIException(-25, "Missing TxID.");
 
-            /* Check for credit parameter. */
-            if(params.find("amount") == params.end())
-                throw APIException(-25, "Missing Amount. (<amount>)");
-
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
@@ -136,8 +132,6 @@ namespace TAO
             /* Get the object standard. */
             uint8_t nStandard = object.Standard();
 
-            uint64_t nDigits = 0;
-
             /* Check the object standard. */
             if( nStandard == TAO::Register::OBJECTS::TOKEN || nStandard == TAO::Register::OBJECTS::ACCOUNT)
             {
@@ -147,19 +141,14 @@ namespace TAO
                     throw APIException(-24, "Object is not a token");
                 else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
                     throw APIException(-24, "Object is not an account");
-
-                nDigits = GetTokenOrAccountDigits(object);
             }
             else
             {
                 throw APIException(-27, "Unknown token / account." );
             }
 
-            /* Get the credit. */
-            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDigits);
-
             /* Submit the payload object. */
-            tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashProof << hashTo << nAmount;
+            tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashProof << hashTo ;
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))

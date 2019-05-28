@@ -33,7 +33,6 @@ namespace TAO
             uint512_t hashTx;
             uint256_t hashFrom;
             uint256_t hashTo;
-            uint64_t nAmount = 0;
             uint64_t nSession = 0;
 
             /* Loop the events processing thread until shutdown. */
@@ -87,8 +86,6 @@ namespace TAO
                             hashFrom.SetHex(notification["operation"]["address"]);
                             hashTo.SetHex(notification["operation"]["transfer"]);
 
-                            /* Get the credit. */
-                            nAmount = notification["operation"]["amount"];
 
                             // TODO:
                             // get identifer from notification (you need to add identifier to notification JSON)
@@ -103,7 +100,7 @@ namespace TAO
 
 
                             /* Submit the payload object. */
-                            tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashFrom << hashTo << nAmount;
+                            tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashFrom << hashTo ;
 
                             /* Execute the operations layer. */
                             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))

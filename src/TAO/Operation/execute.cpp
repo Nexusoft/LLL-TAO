@@ -186,12 +186,8 @@ namespace TAO
                             uint256_t hashAccount;
                             tx.ssOperation >> hashAccount;
 
-                            /* The total to be credited. */
-                            uint64_t  nCredit;
-                            tx.ssOperation >> nCredit;
-
                             /* Execute the operation method. */
-                            if(!Credit(hashTx, hashProof, hashAccount, nCredit, nFlags, tx))
+                            if(!Credit(hashTx, hashProof, hashAccount, nFlags, tx))
                                 return false;
 
                             break;
