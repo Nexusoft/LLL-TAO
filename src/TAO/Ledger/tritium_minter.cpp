@@ -88,9 +88,16 @@ namespace TAO
         /* Check that stake minter is configured to run.
          * Stake Minter default is to run for non-server and not to run for server
          */
-        if ((!config::fServer && !config::GetBoolArg("-stake", true)) || (config::fServer && !config::GetBoolArg("-stake", false)))
+        if (!config::GetBoolArg("-stake"))
         {
-            debug::log(2, "Stake Minter not configured. Startup cancelled.");
+            debug::log(0, "Stake Minter not configured. Startup cancelled.");
+            return false;
+        }
+
+        /* Stake minter does not run in private or hybrid mode (at least for now) */
+        if (config::GetBoolArg("-private") || config::GetBoolArg("-hybrid"))
+        {
+            debug::log(0, "Stake Minter does not run in private/hybrid mode. Startup cancelled.");
             return false;
         }
 
