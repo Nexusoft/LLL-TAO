@@ -57,7 +57,7 @@ namespace TAO
                If this fails then we try to read it as a base State type and assume it was
                created as a raw format asset */
             TAO::Register::Object object;
-            if(!LLD::regDB->ReadState(hashRegister, object))
+            if(!LLD::regDB->ReadState(hashRegister, object, TAO::Register::FLAGS::MEMPOOL))
                 throw APIException(-24, "Asset not found");
 
             /* Only include raw and non-standard object types (assets)*/
