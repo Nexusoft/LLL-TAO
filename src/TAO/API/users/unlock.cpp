@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/tritium_minter.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -121,6 +122,15 @@ namespace TAO
                 pActivePIN.free();
 
             pActivePIN = new TAO::Ledger::PinUnlock(params["pin"].get<std::string>().c_str(), nUnlockedActions);
+
+            /* After unlock complete, attempt to start stake minter if unlocked for minting */
+            if (pActivePIN->CanMint())
+            {
+                TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
+
+                if (!config::fAPISessions.load() && !stakeMinter.IsStarted())
+                    stakeMinter.StartStakeMinter();
+            }
 
             return true;
         }
