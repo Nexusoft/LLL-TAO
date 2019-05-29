@@ -60,11 +60,16 @@ namespace TAO
 
             while(!state.end())
             {
+                /* Deserialize the name */
+                std::string strName;
+                state >> strName;
+                
                 /* If the data type is string. */
                 std::string data;
                 state >> data;
 
                 //ret["checksum"] = state.hashChecksum;
+                ret["name"] = strName;
                 ret["data"] = data;
             }
 

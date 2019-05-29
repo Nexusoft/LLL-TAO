@@ -97,6 +97,7 @@ Additionally the API supports passing a field name in the URL after the asset na
 {
     "timestamp": "1553227128",
     "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
+    "name": "mysupplyitem",
     "data": "newregister"
 }
 ```
@@ -105,6 +106,8 @@ Additionally the API supports passing a field name in the URL after the asset na
 `timestamp` : The Unix timestamp of when the asset was last updated.
 
 `owner` : The genesis hash of the signature chain that owns this asset.
+
+`name` : The name identifying the item. 
 
 `data` : The current value of the data in the item.
 
@@ -257,12 +260,14 @@ This will get the history of changes to an item, including both the data and it'
 ```
 [
     {
+        "name": "mysupplyitem",
         "checksum": 9070277379865698600,
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
         "state": "0b6e657764617461696e746f",
         "updated": 1546888868
     },
     {
+        "name": "mysupplyitem",
         "checksum": 9060775569865698900,
         "owner": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
         "state": "0b6e657764617461696e746f",
@@ -274,6 +279,8 @@ This will get the history of changes to an item, including both the data and it'
 ### Return values:
 
 The return value is a JSON array of objects for each entry in the item's history:
+
+`name` : The name identifying the item
 
 `checksum` : A checksum of the state register used for pruning.
 

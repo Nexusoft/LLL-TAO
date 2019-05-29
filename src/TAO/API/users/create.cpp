@@ -92,7 +92,8 @@ namespace TAO
             hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
             
             /* Add the default account register operation to the transaction */
-            tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateAccount(0).GetState();
+            tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateAccount("default", 0).GetState();
+            
             /* Calculate the prestates and poststates. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
             {

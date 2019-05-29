@@ -233,6 +233,50 @@ namespace TAO
         }
 
 
+        /* Retrieves the token name for the token that this account object is used for. 
+        *  The token is obtained by looking at the token_address field, 
+        *  which contains the register address of the issuing token */
+        std::string GetTokenNameForAccount(const TAO::Register::Object& object)
+        {
+            /* Declare token name to return  */
+            std::string strTokenName;
+            /* Get the object standard. */
+            uint8_t nStandard = object.Standard();
+
+            if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
+            {
+
+                /* If debiting an account we need to look at the token definition in order to get the digits. 
+                   The token is obtained by looking at the token_address field, which contains the register address of
+                   the issuing token */
+                uint256_t nIdentifier = object.get<uint256_t>("token_address");
+
+                /* Edge case for NXS token which has identifier 0, so no look up needed */
+                if( nIdentifier == 0)
+                    strTokenName = "NXS";
+                else
+                {
+                    
+                    TAO::Register::Object token;
+                    if(!LLD::regDB->ReadState(nIdentifier, token))
+                        throw APIException(-24, "Token not found");
+
+                    /* Parse the object register. */
+                    if(!token.Parse())
+                        throw APIException(-24, "Object failed to parse");
+
+                    strTokenName = token.get<std::string>("name");
+                }   
+            }
+            else
+            {
+                throw APIException(-27, "Object is not an account." );
+            }
+
+            return strTokenName;
+        }
+
+
         /* Scans a signature chain to work out all registers that it owns */
         std::vector<uint256_t> GetRegistersOwnedBySigChain(uint512_t hashGenesis)
         {

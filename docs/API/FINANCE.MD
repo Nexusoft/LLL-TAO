@@ -211,6 +211,7 @@ Additionally the API supports passing a field name in the URL after the account 
 ### Return value JSON object:
 ```    
 {
+    "name": "main",
     "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
     "token_address": "0000000000000000000000000000000000000000000000000000000000000000",
     "balance": 990
@@ -218,6 +219,8 @@ Additionally the API supports passing a field name in the URL after the account 
 ```   
 
 ### Return values:
+
+`name` : The name identifying the account
 
 `address` : The register address of the account.  The address is a hash based on the owners username and account name.
 

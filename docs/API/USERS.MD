@@ -398,6 +398,7 @@ This will list off all of the assets owned by a signature chain.
 ```
 [
     {
+        "name": "myasset1",
         "address": "8195384518cc4daf2da54479a38c9d93fde145be0bbcd129f420054ff777917c",
         "timestamp": "1553227256"
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
@@ -406,6 +407,7 @@ This will list off all of the assets owned by a signature chain.
         "shelf_location": "A9S2"
     },
     {
+        "name": "myasset2",
         "address": "2673bd356146d1b7ab34dac8f6503cd0c587158b6a017fb9e8ff3e627be8f01c",
         "timestamp": "1553227128"
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
@@ -416,6 +418,8 @@ This will list off all of the assets owned by a signature chain.
 ]
 ```
 ### Return values:
+
+`name` : The name identifying the asset. 
 
 `address` : The register address of the asset. 
 
@@ -455,12 +459,16 @@ This will list off all of the token accounts belonging to a particular signature
 ```
 [
     {
+        "name": "default",
         "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "token_name": "NXS",
         "token_address": "0",
         "balance": 5000
     },
     {
+        "name": "savings",
         "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "token_name": "mytoken",
         "token_address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
         "balance": 60
     }
@@ -471,6 +479,8 @@ This will list off all of the token accounts belonging to a particular signature
 ### Return values:
 
 `address` : The register address for the account
+
+`token_name` : The name of the token that this account can be used with.  
 
 `token_address` : The register address of the token that this account can be used for.
 
@@ -506,22 +516,28 @@ This will list off all of the tokens that were created by a particular signature
 ```
 [
     {
+        "name": "mytoken1",
         "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
         "balance": 0,
         "maxsupply": 26738388,
-        "currentsupply": 26738388
+        "currentsupply": 26738388,
+        "digits": 2
     },
     {
+        "name": "mytoken2",
         "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
         "balance": 990,
         "maxsupply": 1000,
-        "currentsupply": 10
+        "currentsupply": 10,
+        "digits": 8
     }
 
 
 ]
 ```
 ### Return values:
+
+`name` : The name identifying the token 
 
 `address` : The register address for the account
 
@@ -530,5 +546,7 @@ This will list off all of the tokens that were created by a particular signature
 `maxsupply` : The maximum available supply for this token.
 
 `currentsupply` : The current number of tokens that have been distributed from this token register.
+
+`digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
 
 ****

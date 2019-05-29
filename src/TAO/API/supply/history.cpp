@@ -62,18 +62,26 @@ namespace TAO
             /* Generate return object. */
             json::json first;
             first["owner"]      = state.hashOwner.ToString();
-            first["timestamp"]  = state.nTimestamp;
+            first["updated"]  = state.nTimestamp;
 
             /* Reset read position. */
             state.nReadPos = 0;
 
+            /* Declare the name.  Since this is an append register the name will only exist 
+               in the first entry  */
+            std::string strName = "";
+
             /* Grab the last state. */
             while(!state.end())
             {
+                /* Deserialize the name */
+                state >> strName;
+
                 /* If the data type is string. */
                 std::string data;
                 state >> data;
 
+                first["name"] = strName;
                 first["checksum"] = state.hashChecksum;
                 first["data"]    = data;
             }
@@ -134,10 +142,14 @@ namespace TAO
                         /* Grab the last state. */
                         while(!state.end())
                         {
+                            /* Deserialize the name */
+                            state >> strName;
+
                             /* If the data type is string. */
                             std::string data;
                             state >> data;
 
+                            obj["name"] = strName;
                             obj["checksum"] = state.hashChecksum;
                             obj["data"]    = data;
                         }
@@ -168,10 +180,14 @@ namespace TAO
                         /* Grab the last state. */
                         while(!state.end())
                         {
+                            /* Deserialize the name */
+                            state >> strName;
+
                             /* If the data type is string. */
                             std::string data;
                             state >> data;
 
+                            obj["name"] = strName;
                             obj["checksum"] = state.hashChecksum;
                             obj["data"]    = data;
                         }
@@ -205,10 +221,14 @@ namespace TAO
                         /* Grab the last state. */
                         while(!state.end())
                         {
+                            /* Deserialize the name */
+                            state >> strName;
+
                             /* If the data type is string. */
                             std::string data;
                             state >> data;
 
+                            obj["name"] = strName;
                             obj["checksum"] = state.hashChecksum;
                             obj["data"]    = data;
                         }

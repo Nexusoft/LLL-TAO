@@ -22,6 +22,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/include/create.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -68,17 +69,23 @@ namespace TAO
             /* Submit the transaction payload. */
             uint256_t hashRegister = 0;
 
+            /* name of the object, default to blank */
+            std::string strName = "";
+
             /* Check for data parameter. */
             if(params.find("name") != params.end())
             {
+                /* Get the called-supplied name */
+                strName = params["name"].get<std::string>();
+
                 /* Get the namespace hash to use for this object.  By default the namespace is the username for the sig chain */
                 uint256_t nNamespaceHash = NamespaceHash(user->UserName());
 
                 /* register address is a hash of a name in the format of namespacehash:objecttype:name */
-                std::string strName = nNamespaceHash.ToString() + ":asset:" + params["name"].get<std::string>();
+                std::string strAddressName = nNamespaceHash.ToString() + ":asset:" + strName;
 
                 /* Build the address from an SK256 hash of API:NAME. */
-                hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+                hashRegister = LLC::SK256(std::vector<uint8_t>(strAddressName.begin(), strAddressName.end()));
             }
             else
                 hashRegister = LLC::GetRand256();
@@ -98,6 +105,11 @@ namespace TAO
 
                 /* Serialise the incoming data into a state register*/
                 DataStream ssData(SER_REGISTER, 1);
+                
+                /* Add the name first */
+                ssData << strName;
+
+                /* Then the raw data */
                 ssData << params["data"].get<std::string>();
 
                 /* Submit the payload object. */
@@ -107,7 +119,7 @@ namespace TAO
             else if(strFormat == "basic")
             {
                 /* declare the object register to hold the asset data*/
-                TAO::Register::Object asset;
+                TAO::Register::Object asset = TAO::Register::CreateAsset(strName);
 
                 /* Track the number of fields so that we can check there is at least one */
                 uint32_t nFieldCount = 0;
@@ -157,7 +169,7 @@ namespace TAO
                     throw APIException(-25, "json field must be an array");
 
                 /* declare the object register to hold the asset data*/
-                TAO::Register::Object asset;
+                TAO::Register::Object asset = TAO::Register::CreateAsset(strName);
 
                 json::json jsonAssetDefinition = params["json"];
 

@@ -524,14 +524,19 @@ namespace TAO
             if(object.nType == TAO::Register::REGISTER::APPEND
             || object.nType == TAO::Register::REGISTER::RAW)
             {
-                /* Build the response JSON. */
-                ret["address"]    = hashRegister.ToString();
-                ret["timestamp"]  = object.nTimestamp;
-                ret["owner"]      = object.hashOwner.ToString();
+                /* deserialize the name */
+                std::string strName;
+                object >> strName;
                 
                 /* raw state assets only have one data member containing the raw hex-encoded data*/
                 std::string data;
                 object >> data;
+
+                /* Build the response JSON. */
+                ret["name"] = strName;
+                ret["address"]    = hashRegister.ToString();
+                ret["timestamp"]  = object.nTimestamp;
+                ret["owner"]      = object.hashOwner.ToString();
                 ret["data"] = data;
             }
             else if(object.nType == TAO::Register::REGISTER::OBJECT)
@@ -541,11 +546,9 @@ namespace TAO
 
                 if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
                 {
+                    ret["name"] = object.get<std::string>("name");
                     ret["address"]    = hashRegister.ToString();
-
-                    /* Get the identifier */
-                    uint256_t nIdentifier = object.get<uint256_t>("token_address");
-
+                    ret["token_name"] = GetTokenNameForAccount(object);
                     ret["token_address"] = object.get<uint256_t>("token_address").GetHex();
                     
                     /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
@@ -558,11 +561,9 @@ namespace TAO
                 }
                 else if(nStandard == TAO::Register::OBJECTS::TRUST)
                 {
+                    ret["name"] = object.get<std::string>("name");
                     ret["address"]    = hashRegister.ToString();
-
-                    /* Get the identifier */
-                    uint256_t nIdentifier = object.get<uint256_t>("token_address");
-
+                    ret["token_name"] = "NXS";
                     ret["token_address"] = object.get<uint256_t>("token_address").GetHex();
                     
                     /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
@@ -582,7 +583,7 @@ namespace TAO
                     Therefore, to convert the internal value to a floating point value we need to reduce the internal value
                     by 10^digits  */
                     uint64_t nDigits = GetTokenOrAccountDigits(object);
-
+                    ret["name"] = object.get<std::string>("name");
                     ret["address"]          = hashRegister.ToString();
                     ret["balance"]          = (double) object.get<uint64_t>("balance") / pow(10, nDigits);
                     ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDigits);
@@ -594,6 +595,7 @@ namespace TAO
                 else
                 {                
                     /* Build the response JSON. */
+                    ret["name"] = object.get<std::string>("name");
                     ret["address"]    = hashRegister.ToString();
                     ret["timestamp"]  = object.nTimestamp;
                     ret["owner"]      = object.hashOwner.ToString();
@@ -615,6 +617,10 @@ namespace TAO
 
                     for(const auto& strFieldName : vFieldNames)
                     {
+                        /* we already added name so skip it */
+                        if( strFieldName == "name")
+                            continue;
+                            
                         /* First get the type*/
                         object.Type(strFieldName, nType);
 

@@ -59,7 +59,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.NextHash(hashPrivKey2);
 
             //create object
-            Object token = CreateToken(11, 1000, 100);
+            Object token = CreateToken("", 11, 1000, 100);
 
             //payload
             tx << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
@@ -95,7 +95,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.NextHash(hashPrivKey2);
 
             //create object
-            Object account = CreateAccount(11);
+            Object account = CreateAccount("", 11);
 
             //payload
             tx << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
@@ -537,7 +537,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.NextHash(hashPrivKey2);
 
             //create object
-            Object token = CreateToken(22, 1000, 100);
+            Object token = CreateToken("", 22, 1000, 100);
 
             //payload
             tx << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
@@ -573,7 +573,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.NextHash(hashPrivKey2);
 
             //create object
-            Object account = CreateAccount(11);
+            Object account = CreateAccount("", 11);
 
             //payload
             tx << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();

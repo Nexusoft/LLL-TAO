@@ -213,6 +213,7 @@ Additionally the API supports passing a field name in the URL after the token na
 ### Return value JSON object:
 ```    
 {
+    "name": "mytoken",
     "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
     "balance": 990,
     "maxsupply": 1000,
@@ -222,6 +223,8 @@ Additionally the API supports passing a field name in the URL after the token na
 ```   
 
 ### Return values:
+
+`name` : The name identifying the token 
 
 `address` : The register address of the token.  If the token was created with a token name then the address is a hash based on the owners username and token name.   
 
@@ -439,7 +442,9 @@ Additionally the API supports passing a field name in the URL after the account 
 ### Return value JSON object:
 ```    
 {
+    "name": "myaccount",
     "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "token_name": "mytoken"
     "token_address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
     "balance": 990
 }
@@ -447,7 +452,11 @@ Additionally the API supports passing a field name in the URL after the account 
 
 ### Return values:
 
+`name` : The name identifying the token account.
+
 `address` : The register address of the account.  The address is a hash based on the owners username and account name.
+
+`token_name` : The name of the token that this account can be used with.  
 
 `token_address` : This is register address of the token that this account can be used with.  
 
