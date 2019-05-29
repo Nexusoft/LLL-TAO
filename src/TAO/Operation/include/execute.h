@@ -50,49 +50,6 @@ namespace TAO
          **/
         bool Execute(const Contract& contract, const uint8_t nFlags);
 
-
-        /** Execute
-         *
-         *  Namespace to hold primitive operation execute functions.
-         *  These functions ONLY update the state of the register.
-         *
-         **/
-        namespace Execute
-        {
-
-
-
-
-
-            /** Trust
-             *
-             *  Handles the locking of stake in a stake register.
-             *
-             *  @param[out] trust The trust object register to stake.
-             *  @param[in] nReward The reward to apply to trust account.
-             *  @param[in] nScore The score to apply to trust account.
-             *  @param[in] nTimestamp The timestamp to update register to.
-             *
-             *  @return true if successful.
-             *
-             **/
-            bool Trust(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore, const uint64_t nTimestamp)
-
-
-            /** Genesis
-             *
-             *  Handles the locking of stake in a stake register.
-             *
-             *  @param[out] trust The trust object register to stake.
-             *  @param[in] nReward The reward to apply to trust account.
-             *  @param[in] nTimestamp The timestamp to update register to.
-             *
-             *  @return true if successful.
-             *
-             **/
-            bool Genesis(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nTimestamp)
-
-        }
     }
 }
 

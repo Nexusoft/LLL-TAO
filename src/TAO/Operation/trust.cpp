@@ -13,10 +13,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/trust.h>
 
 #include <TAO/Register/types/object.h>
-#include <TAO/Register/include/system.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake.h>
@@ -29,8 +28,15 @@ namespace TAO
     namespace Operation
     {
 
+        /*  Commit the final state to disk. */
+        bool Trust::Commit(const TAO::Register::State& state, const uint8_t nFlags)
+        {
+            return LLD::regDB->WriteTrust(state.hashOwner, state);
+        }
+
+
         /* Commits funds from a coinbase transaction. */
-        bool Trust(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore, const uint64_t nTimestamp)
+        bool Trust::Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
             if(!trust.Parse())
@@ -45,12 +51,50 @@ namespace TAO
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Update the state register's timestamp. */
+            trust.nModified = nTimestamp;
             trust.SetChecksum();
 
             /* Check that the register is in a valid state. */
-            trust.nModified = nTimestamp;
             if(!trust.IsValid())
                 return debug::error(FUNCTION, "trust address is in invalid state");
+
+            return true;
+        }
+
+
+        /* Verify trust validation rules and caller. */
+        bool Trust::Verify(const Contract& contract)
+        {
+            /* Seek read position to first position. */
+            contract.Reset();
+
+            /* Get operation byte. */
+            uint8_t OP = 0;
+            contract >> OP;
+
+            /* Check operation byte. */
+            if(OP != OP::TRUST)
+                return debug::error(FUNCTION, "called with incorrect OP");
+
+            /* Get the state byte. */
+            uint8_t nState = 0; //RESERVED
+            contract >>= nState;
+
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::PRESTATE)
+                return debug::error(FUNCTION, "register script not in pre-state");
+
+            /* Get the pre-state. */
+            TAO::Register::State trust;
+            contract >>= trust;
+
+            /* Check that pre-state is valid. */
+            if(!state.IsValid())
+                return debug::error(FUNCTION, "pre-state is in invalid state");
+
+            /* Check ownership of register. */
+            if(trust.hashOwner != contract.hashCaller)
+                return debug::error(FUNCTION, contract.hashCaller.SubString()," caller not authorized to debit from register");
 
             return true;
         }

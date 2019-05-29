@@ -38,7 +38,6 @@ namespace TAO
         bool Verify(const TAO::Ledger::Transaction& tx, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
     }
-
 }
 
 #endif
