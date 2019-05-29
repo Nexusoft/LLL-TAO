@@ -15,35 +15,47 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLC_INCLUDE_X509_CERT_H
 #define NEXUS_LLC_INCLUDE_X509_CERT_H
 
-#include <openssl/pem.h>
-#include <openssl/x509v3.h>
+#include <cstdint>
+
+
+typedef struct rsa_st RSA;
+typedef struct evp_pkey_st EVP_PKEY;
+typedef struct x509_st X509;
+
 
 namespace LLC
 {
 
-    class Certificate
+    class X509Cert
     {
     public:
-        Certificate();
+        X509Cert(uint32_t bits = 2048);
 
-        ~Certificate();
+        ~X509Cert();
+
+        bool Write();
 
     private:
 
-        bool create_cert(X509 **px509, EVP_PKEY **pkey, uint32_t nBits, uint32_t nSerial, uint32_t nDays);
+        bool init_cert();
 
 
-        void free_cert(X509 *px509, EVP_PKEY *pkey);
+        void free_cert();
 
 
-        /* The OpenSSl x509 certificate object. */
+        /* The OpenSSL x509 certificate object. */
         X509 *px509;
 
-        /* The OpenSSL key object */
+        /* The OpenSSL key object. */
         EVP_PKEY *pkey;
 
+        /* The OpenSSL RSA key object. */
+        RSA *pRSA;
 
-    }
+        /* The number of bits for the RSA key generation. */
+        uint32_t nBits;
+
+    };
 
 
 

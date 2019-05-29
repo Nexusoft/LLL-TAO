@@ -93,8 +93,8 @@ namespace TAO
                 /* If name_proof is provided then use this to deduce the register address */
                 hashProof = RegisterAddressFromName( params, "token", params["name_proof"].get<std::string>());
             }
-            else if(params.find("proof") != params.end())
-                hashProof.SetHex(params["proof"].get<std::string>());
+            else if(params.find("address_proof") != params.end())
+                hashProof.SetHex(params["address_proof"].get<std::string>());
             else
             {
                 /* Read the previous transaction. */

@@ -51,7 +51,7 @@ namespace TAO
 
             /* Get the register. */
             TAO::Register::State state;
-            if(!LLD::regDB->ReadState(hashRegister, state))
+            if(!LLD::regDB->ReadState(hashRegister, state, TAO::Register::FLAGS::MEMPOOL))
                 throw APIException(-24, "No state found");
 
             /* Generate return object. */

@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/jsonutils.h>
 
+#include <TAO/Operation/include/enum.h>
+
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/types/object.h>
 
@@ -89,6 +91,15 @@ namespace TAO
 
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;
+
+                /* Attempt to unpack a coinbase transaction. */
+                if(TAO::Register::Unpack(tx, TAO::Operation::OP::COINBASE))
+                {
+                    json::json obj;
+                    obj["operation"] = OperationToJSON(tx.ssOperation);
+                    ret.push_back(obj);
+                    continue;
+                }
 
                 /* Register address. */
                 uint256_t hashAddress;
@@ -179,9 +190,9 @@ namespace TAO
                     obj["hash"]          = tx.GetHash().ToString();
                     obj["operation"]     = OperationToJSON(tx.ssOperation);
 
-                    if(obj["operation"]["OP"] == "DEBIT")
+                    if(obj["operation"][0]["OP"] == "DEBIT")
                     {
-                        uint256_t hashTo = uint256_t(obj["operation"]["transfer"].get<std::string>());
+                        uint256_t hashTo = uint256_t(obj["operation"][0]["address_to"].get<std::string>());
 
                         TAO::Register::State stateTo;
                         if(!LLD::regDB->ReadState(hashTo, stateTo))
@@ -194,8 +205,8 @@ namespace TAO
                             if(!object.Parse())
                                 continue;
 
-                            /* Calculate the partial debit amount. */
-                            obj["operation"]["amount"] = (obj["operation"]["amount"].get<uint64_t>() * std::get<2>(hash)) / object.get<uint64_t>("supply");
+                            /* Calculate the partial debit amount (amount = amount * balance / supply). */
+                            obj["operation"][0]["amount"] = (obj["operation"][0]["amount"].get<uint64_t>() * std::get<2>(hash)) / object.get<uint64_t>("supply");
                         }
                     }
 

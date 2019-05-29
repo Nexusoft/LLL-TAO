@@ -195,31 +195,43 @@ namespace TAO
                     /* Declare the max length variable */
                     size_t nMaxLength = 0;
                     
-                    /* If this is a mutable string or byte fields then set the length.  
-                       This can either be set by the caller in a  maxlength field or we will default it
-                       based on the field data type.` */
-                    if(fMutable && 
-                    (strType == "string" || strType == "bytes") )
+                    if(strType == "string" || strType == "bytes") 
                     {
                         /* Determine the length of the data passed in */
                         std::size_t nDataLength = strType == "string" ? strValue.length() : vchBytes.size();
 
-                        /* If the caller specifies a maxlength then use this to set the size of the string or bytes array */
-                        if( it->find("maxlength") != it->end() )
+                        /* If this is a mutable string or byte fields then set the length.  
+                        This can either be set by the caller in a  maxlength field or we will default it
+                        based on the field data type.` */
+                        if( fMutable)
                         {
-                            nMaxLength = stoul((*it)["maxlength"].get<std::string>());
+                            /* Determine the length of the data passed in */
+                            std::size_t nDataLength = strType == "string" ? strValue.length() : vchBytes.size();
 
-                            /* If they specify a value less than the data length then error */
-                            if( nMaxLength < nDataLength )
-                                throw APIException(-25, "maxlength value is less than the specified data length.");
+                            /* If the caller specifies a maxlength then use this to set the size of the string or bytes array */
+                            if( it->find("maxlength") != it->end() )
+                            {
+                                nMaxLength = stoul((*it)["maxlength"].get<std::string>());
+
+                                /* If they specify a value less than the data length then error */
+                                if( nMaxLength < nDataLength )
+                                    throw APIException(-25, "maxlength value is less than the specified data length.");
+                            }
+                            else
+                            {
+                                /* If the caller hasn't specified a maxlength then set a suitable default 
+                                by rounding up the current length to the nearest 64 bytes. */
+                                nMaxLength = (((uint8_t)(nDataLength / 64)) +1) * 64;
+                            }
                         }
                         else
                         {
-                            /* If the caller hasn't specified a maxlength then set a suitable default 
-                               by rounding up the current length to the nearest 64 bytes. */
-                            nMaxLength = (((uint8_t)(nDataLength / 64)) +1) * 64;
+                            /* If the field is not mutable then the max length is simply the data length */
+                            nMaxLength = nDataLength;
                         }
+                        
                     }
+                    
 
                     /* Add the field to the Object based on the user defined type.
                        NOTE: all numeric values <= 64-bit are converted from string to the corresponding type.

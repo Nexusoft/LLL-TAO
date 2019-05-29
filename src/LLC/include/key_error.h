@@ -11,15 +11,21 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/x509_cert.h>
+#pragma once
+#ifndef NEXUS_LLC_INCLUDE_KEY_ERROR_H
+#define NEXUS_LLC_INCLUDE_KEY_ERROR_H
+
+#include <stdexcept>
 
 
-/* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
-int main(int argc, char** argv)
+namespace LLC
 {
-    LLC::X509Cert certificate;
-
-    certificate.Write();
-
-    return 0;
+    /** Key Runtime Error Wrapper. **/
+    class key_error : public std::runtime_error
+    {
+    public:
+        explicit key_error(const std::string& str) : std::runtime_error(str) {}
+    };
 }
+
+#endif

@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLC_INCLUDE_ECKEY_H
 #define NEXUS_LLC_INCLUDE_ECKEY_H
 
-#include <stdexcept>
 #include <vector>
 
 #include <LLC/types/uint1024.h>
@@ -32,14 +31,6 @@ namespace LLC
         SECT_571_R1 = 0,
         BRAINPOOL_P512_T1 = 1,
     };
-
-    /** Key Runtime Error Wrapper. **/
-    class key_error : public std::runtime_error
-    {
-    public:
-        explicit key_error(const std::string& str) : std::runtime_error(str) {}
-    };
-
 
     /** CPrivKey is a serialized private key, with all parameters included **/
     typedef std::vector<uint8_t, secure_allocator<uint8_t> > CPrivKey;
