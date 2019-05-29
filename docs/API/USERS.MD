@@ -445,6 +445,11 @@ This will list off all of the token accounts belonging to a particular signature
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
 
 ### Return value JSON object:
 ```
@@ -490,6 +495,11 @@ This will list off all of the tokens that were created by a particular signature
 `genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
 
 
 ### Return value JSON object:
