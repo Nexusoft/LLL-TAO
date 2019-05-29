@@ -254,6 +254,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_falcon-vrfy.o \
 		build/LLC_frng.o \
 		build/LLC_shake.o \
+        build/LLC_x509_cert.o \
         build/LLD_address.o \
         build/LLD_ledger.o \
         build/LLD_legacy.o \
