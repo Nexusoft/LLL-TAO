@@ -44,10 +44,10 @@ namespace TAO
          **/
         class Transaction
         {
-        public:
             /** For disk indexing on contract. **/
             std::vector<TAO::Operation::Contract> vContracts;
 
+        public:
 
             /** The transaction version. **/
             uint32_t nVersion;
@@ -94,8 +94,18 @@ namespace TAO
                 READWRITE(hashPrevTx);
                 READWRITE(vchPubKey);
 
+                /* Handle for when not getting hash. */
                 if(!(nSerType & SER_GETHASH))
+                {
                     READWRITE(vchSig);
+
+                    /* When reading and writing transaciton, build memory only data for contracts. */
+                    for(auto& contract : vContracts)
+                    {
+                        contract.hashCaller = hashGenesis;
+                        contract.nTimestamp = nTimestamp;
+                    }
+                }
             )
 
 
@@ -147,6 +157,14 @@ namespace TAO
                 if(n >= vContracts.size())
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
 
+                /* Check timestamp memory values. */
+                if(vContracts[n].nTimestamp != nTimestamp)
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "contract timestamp mismatch"));
+
+                /* Check caller memory values. */
+                if(vContracts[n].hashCaller != hashGenesis)
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "contract caller mismatch"));
+
                 return vContracts[n];
             }
 
@@ -162,6 +180,12 @@ namespace TAO
                 /* Allocate a new contract if on write. */
                 if(n >= vContracts.size())
                     vContracts.resize(n + 1);
+
+                /* Set the caller hash. */
+                vContracts[n].hashCaller  = hashGenesis;
+
+                /* Set the contract timestamp. */
+                vContracts[n].nTimestamp  = nTimestamp;
 
                 return vContracts[n];
             }

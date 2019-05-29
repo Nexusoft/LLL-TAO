@@ -66,7 +66,7 @@ namespace TAO
 
 
         /* Verify claim validation rules and caller. */
-        bool Claim::Verify(const Contract& claim, const uint256_t& hashCaller)
+        bool Claim::Verify(const Contract& claim, const Contract& contract)
         {
             /* Seek claim read position to first. */
             claim.Reset();
@@ -108,7 +108,7 @@ namespace TAO
             claim >>= state;
 
             /* Check the addresses match. */
-            if(state.hashOwner != hashCaller && hashTransfer != hashCaller)
+            if(state.hashOwner != contract.hashCaller && hashTransfer != contract.hashCaller)
                 return debug::error(FUNCTION, "claim public-id mismatch with transfer address");
 
             /* Check that pre-state is valid. */

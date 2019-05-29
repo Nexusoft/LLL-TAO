@@ -82,7 +82,7 @@ namespace TAO
 
             return true;
         }
-        
+
 
         /* Verify trust validation rules and caller. */
         bool Genesis::Verify(const Contract& contract)

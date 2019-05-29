@@ -56,7 +56,6 @@ namespace TAO
             Contract()
             : ssOperation()
             , ssRegister()
-            , ssProof()
             , nTimestamp(runtime::unifiedtimestamp())
             , hashCaller(0)
             {
@@ -67,12 +66,6 @@ namespace TAO
             (
                 READWRITE(ssOperation);
                 READWRITE(ssRegister);
-
-                if(!(nSerType & SER_LLD))
-                {
-                    READWRITE(nTimestamp);
-                    READWRITE(hashCaller);
-                }
             )
 
 
