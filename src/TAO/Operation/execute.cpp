@@ -654,6 +654,8 @@ namespace TAO
                         Legacy:;Script script;
                         contract >> script;
 
+                        /* Check for OP_DUP OP_HASH256 <hash> OP_EQUALVERIFY. */
+
                         break;
                     }
 

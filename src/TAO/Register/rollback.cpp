@@ -85,27 +85,6 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
-                        /* Check for object register. */
-                        if(nType == REGISTER::OBJECT)
-                        {
-                            /* Read the object from register database. */
-                            Object object;
-                            if(!LLD::regDB->ReadState(hashAddress, object))
-                                return debug::error(FUNCTION, "failed to read register object");
-
-                            /* Parse the object. */
-                            if(!object.Parse())
-                                return debug::error(FUNCTION, "failed to parse object");
-
-                            /* Check for token to remove reserved identifier. */
-                            if(object.Standard() == OBJECTS::TOKEN)
-                            {
-                                /* Erase the identifier. */ //TODO: possibly do not check for false
-                                if(!LLD::regDB->EraseIdentifier(object.get<uint256_t>("identifier")))
-                                    return debug::error(FUNCTION, "could not erase identifier");
-                            }
-                        }
-
                         /* Erase the register from database. */
                         if(!LLD::regDB->EraseState(hashAddress))
                             return debug::error(FUNCTION, "failed to erase post-state");
@@ -117,32 +96,25 @@ namespace TAO
                     /* Transfer ownership of a register to another signature chain. */
                     case TAO::Operation::OP::TRANSFER:
                     {
-                        /* Extract the address from the tx.ssOperation. */
-                        uint256_t hashAddress;
-                        tx.ssOperation >> hashAddress;
+                        /* Get the Address of the Register. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
 
-                        /* Extract the transfer address from the tx. */
-                        uint256_t hashTransfer;
-                        tx.ssOperation >> hashTransfer;
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
 
-                        /* Read the register from database. */
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "register state not in pre-state");
+
+                        /* Verify the register's prestate. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state))
-                            return debug::error(FUNCTION, "register pre-state doesn't exist");
+                        contract >>= prestate;
 
-                        /* Rollback the event. */
-                        if(!LLD::legDB->EraseEvent(hashTransfer))
-                            return debug::error(FUNCTION, "failed to rollback event");
-
-                        /* Set the previous owner to this sigchain. */
-                        state.hashOwner = tx.hashGenesis;
-
-                        /* Write the register to database. */
+                        /* Write the register from database. */
                         if(!LLD::regDB->WriteState(hashAddress, state))
                             return debug::error(FUNCTION, "failed to rollback to pre-state");
-
-                        /* Seek register past the post state */
-                        tx.ssRegister.seek(9);
 
                         break;
                     }

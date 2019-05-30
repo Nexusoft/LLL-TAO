@@ -108,7 +108,9 @@ namespace TAO
             claim >>= state;
 
             /* Check the addresses match. */
-            if(state.hashOwner != contract.hashCaller && hashTransfer != contract.hashCaller)
+            if(state.hashOwner != contract.hashCaller //claim to self
+            && hashTransfer    != contract.hashCaller //calim to transfer
+            && hashTransfer    != ~uint256_t(0))      //claim to wildcard (anyone)
                 return debug::error(FUNCTION, "claim public-id mismatch with transfer address");
 
             /* Check that pre-state is valid. */

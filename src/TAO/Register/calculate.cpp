@@ -42,7 +42,7 @@ namespace TAO
     {
 
         /* Verify the pre-states of a register to current network state. */
-        bool Calculate(Contract& contract)
+        bool Calculate(Contract &contract)
         {
             /* Reset the contract streams. */
             contract.Reset();

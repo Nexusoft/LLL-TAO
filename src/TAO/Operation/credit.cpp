@@ -216,7 +216,9 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot credit register with reserved address");
 
             /* Handle one-to-one debit to credit or return to self. */
-            if(hashTo == hashAccount || hashFrom == hashAccount)
+            if(hashTo == hashAccount    //regular debit to credit
+            || hashTo == ~uint256_t(0)  //wildcard address (anyone can claim)
+            || hashFrom == hashAccount) //regular return to self
             {
                 /* Check the proof as being the caller. */
                 if(hashProof != hashFrom)
