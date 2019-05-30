@@ -78,12 +78,11 @@ namespace TAO
              *  Verify append validation rules and caller.
              *
              *  @param[in] contract The contract to verify.
-             *  @param[in] hashCaller The contract caller.
              *
              *  @return true if successful.
              *
              **/
-            bool Verify(const Contract& contract, const uint256_t& hashCaller);
+            bool Verify(const Contract& contract);
         }
     }
 }

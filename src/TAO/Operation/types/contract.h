@@ -84,6 +84,17 @@ namespace TAO
             }
 
 
+            /** End
+             *
+             *  End of the internal stream.
+             *
+             **/
+            bool End() const
+            {
+                return ssOperation.End();
+            }
+
+
             /** Seek
              *
              *  Seek the internal operation stream read pointers.

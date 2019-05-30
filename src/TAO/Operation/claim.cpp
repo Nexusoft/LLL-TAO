@@ -66,7 +66,7 @@ namespace TAO
 
 
         /* Verify claim validation rules and caller. */
-        bool Claim::Verify(const Contract& claim, const Contract& contract)
+        bool Claim::Verify(const Contract& contract, const Contract& claim)
         {
             /* Seek claim read position to first. */
             claim.Reset();
@@ -114,6 +114,9 @@ namespace TAO
             /* Check that pre-state is valid. */
             if(!state.IsValid())
                 return debug::error(FUNCTION, "pre-state is in invalid state");
+
+            /* Seek read position to first position. */
+            claim.Reset();
 
             return true;
         }

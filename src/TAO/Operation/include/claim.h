@@ -80,13 +80,13 @@ namespace TAO
              *
              *  Verify claim validation rules and caller.
              *
+             *  @param[in] contract The 'calling' contract to verify.
              *  @param[in] claim The 'transferred' contract to verify.
-             *  @param[in] hashCaller The contract caller.
              *
              *  @return true if successful.
              *
              **/
-            bool Verify(const Contract& claim, const uint256_t& hashCaller);
+            bool Verify(const Contract& contract, const Contract& claim);
         }
     }
 }

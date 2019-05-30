@@ -70,7 +70,7 @@ namespace TAO
              *  @return true if successful.
              *
              **/
-            bool Transfer(TAO::Register::State &state, const uint256_t& hashTransfer, const uint64_t nTimestamp);
+            bool Execute(TAO::Register::State &state, const uint256_t& hashTransfer, const uint64_t nTimestamp);
 
 
             /** Verify
@@ -78,12 +78,11 @@ namespace TAO
              *  Verify transfer validation rules and caller.
              *
              *  @param[in] contract The contract to verify.
-             *  @param[in] hashCaller The contract caller.
              *
              *  @return true if successful.
              *
              **/
-            bool Verify(const Contract& contract, const uint256_t& hashCaller);
+            bool Verify(const Contract& contract);
         }
     }
 }

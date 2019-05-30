@@ -156,6 +156,8 @@ namespace TAO
             if(TAO::Register::Reserved(hashAddress))
                 return debug::error(FUNCTION, "cannot create register with reserved address");
 
+            /* Seek read position to first position. */
+            contract.Seek(1);
 
             return true;
         }

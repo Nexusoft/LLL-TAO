@@ -53,7 +53,7 @@ namespace TAO
 
 
         /* Verify append validation rules and caller. */
-        bool Append::Verify(const Contract& contract, const uint256_t& hashCaller)
+        bool Append::Verify(const Contract& contract)
         {
             /* Seek read position to first position. */
             contract.Reset();
@@ -95,8 +95,11 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot call on non append register");
 
             /* Check that the proper owner is commiting the write. */
-            if(hashCaller != state.hashOwner)
-                return debug::error(FUNCTION, "no write permissions for caller ", hashCaller.SubString());
+            if(contract.hashCaller != state.hashOwner)
+                return debug::error(FUNCTION, "caller not authorized ", contract.hashCaller.SubString());
+
+            /* Seek read position to first position. */
+            contract.Seek(1);
 
             return true;
         }

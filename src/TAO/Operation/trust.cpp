@@ -94,7 +94,10 @@ namespace TAO
 
             /* Check ownership of register. */
             if(trust.hashOwner != contract.hashCaller)
-                return debug::error(FUNCTION, contract.hashCaller.SubString()," caller not authorized to debit from register");
+                return debug::error(FUNCTION, "caller not authorized ", contract.hashCaller.SubString());
+
+            /* Seek read position to first position. */
+            contract.Seek(1);
 
             return true;
         }

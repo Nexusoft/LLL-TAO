@@ -19,6 +19,8 @@ ________________________________________________________________________________
 
 #include <LLD/templates/sector.h>
 
+#include <TAO/Operation/types/contract.h>
+
 #include <TAO/Register/types/state.h>
 #include <TAO/Register/include/enum.h>
 
@@ -98,6 +100,19 @@ namespace LLD
         bool ReadBestChain(memory::atomic<uint1024_t>& atomicBest);
 
 
+        /** ReadContract
+         *
+         *  Reads a contract from the ledger DB.
+         *
+         *  @param[in] hashTransaction The txid of transaction to read.
+         *  @param[in] nContract The contract output to read.
+         *
+         *  @return The contract object that was read.
+         *
+         **/
+        TAO::Operation::Contract ReadContract(const uint512_t& hashTransaction, const uint32_t nContract);
+
+
         /** WriteTx
          *
          *  Writes a transaction to the ledger DB.
@@ -134,6 +149,34 @@ namespace LLD
          *
          **/
         bool EraseTx(const uint512_t& hashTransaction);
+
+
+        /** WriteClaimed
+         *
+         *  Writes a partial to the ledger DB.
+         *
+         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] nContract The contract partial payment.
+         *  @param[in] nClaimed The partial amount to update.
+         *
+         *  @return True if the partial was successfully written.
+         *
+         **/
+        bool WriteClaimed(const uint512_t& hashTransaction, const uint32_t nContract, const uint64_t nClaimed);
+
+
+        /** ReadClaimed
+         *
+         *  Read a partial to the ledger DB.
+         *
+         *  @param[in] hashTransaction The txid of transaction to read.
+         *  @param[in] nContract The contract partial payment.
+         *  @param[in] nClaimed The partial amount to read.
+         *
+         *  @return True if the partial was successfully read.
+         *
+         **/
+        bool ReadClaimed(const uint512_t& hashTransaction, const uint32_t nContract, uint64_t& nClaimed);
 
 
         /** HasIndex
@@ -376,7 +419,7 @@ namespace LLD
          *  @return True if the last was successfully written, false otherwise.
          *
          **/
-        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint64_t nContract, uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** HasProof
@@ -390,7 +433,7 @@ namespace LLD
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint64_t nContract, uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** EraseProof
@@ -404,7 +447,7 @@ namespace LLD
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint64_t nContract, uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** WriteBlock

@@ -291,7 +291,10 @@ namespace TAO
 
             /* Check that the proper owner is commiting the write. */
             if(contract.hashCaller != state.hashOwner)
-                return debug::error(FUNCTION, "no write permissions for caller ", hashCaller.SubString());
+                return debug::error(FUNCTION, "caller not authorized ", contract.hashCaller.SubString());
+
+            /* Seek read position to first position. */
+            contract.Seek(1);
 
             return true;
         }

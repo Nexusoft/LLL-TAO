@@ -51,7 +51,7 @@ namespace TAO
 
 
         /* Verify claim validation rules and caller. */
-        bool Transfer::Verify(const Contract& contract, const uint256_t& hashCaller)
+        bool Transfer::Verify(const Contract& contract)
         {
             /* Seek read position to first position. */
             contract.Reset();
@@ -113,12 +113,14 @@ namespace TAO
                 /* Don't allow transferring trust accounts. */
                 if(object.Standard() == TAO::Register::OBJECTS::TRUST)
                     return debug::error(FUNCTION, "cannot transfer a trust account");
-
             }
 
             /* Check that the proper owner is commiting the write. */
-            if(hashCaller != state.hashOwner)
-                return debug::error(FUNCTION, "no write permissions for caller ", hashCaller.SubString());
+            if(contract.hashCaller != state.hashOwner)
+                return debug::error(FUNCTION, "caller not authorized ", contract.hashCaller.SubString());
+
+            /* Seek read position to first position. */
+            contract.Seek(1);
 
             return true;
         }

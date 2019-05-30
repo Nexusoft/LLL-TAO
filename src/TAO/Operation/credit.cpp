@@ -1,4 +1,4 @@
-/*__________________________________________________________________________________________
+contract./*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
@@ -27,16 +27,26 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Credit::Commit(const TAO::Register::Object& account, const uint256_t& hashAddress,
-            const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
+        bool Credit::Commit(const TAO::Register::Object& account, const uint256_t& hashAddress, const uint256_t& hashProof,
+            const uint512_t& hashTx, const uint32_t nContract, const uint64_t nAmount, const uint8_t nFlags)
         {
             /* Check if this transfer is already claimed. */
-            if(LLD::legDB->HasProof(hashProof, std::make_pair(hashTx, nContract), nFlags))
+            if(LLD::legDB->HasProof(hashProof, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "credit is already claimed");
 
             /* Write the claimed proof. */
-            if(!LLD::legDB->WriteProof(hashProof, std::make_pair(hashTx, nContract), nFlags))
+            if(!LLD::legDB->WriteProof(hashProof, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "failed to write credit proof");
+
+            /* Get the partial amount. */
+            uint64_t nClaimed = 0;
+            if(!LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+                return debug::error(FUNCTION, "read the partial amount");
+
+            /* Write the new partial amount. */
+            //TODO: need a better method here for handling claims, this above will always fail
+            if(!LLD::legDB->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
+                return debug::error(FUNCTION, "read the partial amount");
 
             /* Write the new register's state. */
             return LLD::regDB->WriteState(hashAddress, account, nFlags);
@@ -71,53 +81,58 @@ namespace TAO
 
 
         /* Verify claim validation rules and caller. */
-        bool Credit::Verify(const Contract& debit, const Contract& credit, const uint8_t nFlags)
+        bool Credit::Verify(const Contract& contract, const Contract& debit, const uint8_t nFlags)
         {
             /* Extract current contract. */
-            credit.Reset();
+            contract.Reset();
 
             /* Get operation byte. */
             uint8_t OP = 0;
-            credit >> OP;
+            contract >> OP;
 
             /* Check operation byte. */
             if(OP != OP::CREDIT)
                 return debug::error(FUNCTION, "called with incorrect OP");
 
-            /* Seek past transaction-id. */
-            credit.Seek(65);
+            /* Extract the transaction from contract. */
+            uint512_t hashTx = 0;
+            contract >> hashTx;
+
+            /* Extract the contract-id. */
+            uint32_t nContract = 0;
+            contract >> nContract;
+
+            /* Read the to account that contract is operating on. */
+            uint256_t hashAccount;
+            contract >> hashAccount;
 
             /* Get the proof hash. */
             uint256_t hashProof = 0;
-            credit >> hashProof;
+            contract >> hashProof;
 
-            /* Read the to account that credit is operating on. */
-            uint256_t hashAccount;
-            credit >> hashAccount;
-
-            /* Read the credit totals. */
+            /* Read the contract totals. */
             uint64_t  nCredit = 0;
-            credit >> nCredit;
+            contract >> nCredit;
 
             /* Get the byte from pre-state. */
             uint8_t nState = 0;
-            credit >>= nState;
+            contract >>= nState;
 
             /* Check for the pre-state. */
             if(nState != TAO::Register::STATES::PRESTATE)
-                return debug::error(FUNCTION, "register credit not in pre-state");
+                return debug::error(FUNCTION, "register contract not in pre-state");
 
             /* Read pre-states. */
             TAO::Register::Object account;
-            credit >>= account;
+            contract >>= account;
 
-            /* Check credit account */
-            if(credit.hashCaller != account.hashOwner)
-                return debug::error(FUNCTION, "no write permissions for caller ", credit.hashCaller.SubString());
+            /* Check contract account */
+            if(contract.hashCaller != account.hashOwner)
+                return debug::error(FUNCTION, "no write permissions for caller ", contract.hashCaller.SubString());
 
             /* Parse the account. */
             if(!account.Parse())
-                return debug::error(FUNCTION, "failed to parse account to");
+                return debug::error(FUNCTION, "failed to parse account");
 
             /* Seek claim read position to first. */
             debit.Reset();
@@ -130,7 +145,7 @@ namespace TAO
             if(OP == OP::COINBASE)
             {
                 /* Check that the proof is the genesis. */
-                if(hashProof != credit.hashCaller)
+                if(hashProof != contract.hashCaller)
                     return debug::error(FUNCTION, "proof for coinbase needs to be genesis");
 
                 /* Extract the coinbase public-id. */
@@ -138,7 +153,7 @@ namespace TAO
                 debit  >> hashPublic;
 
                 /* Make sure the claimed account is the debited account. */
-                if(hashPublic != credit.hashCaller)
+                if(hashPublic != contract.hashCaller)
                     return debug::error(FUNCTION, "cannot claim coinbase from different sigchain");
 
                 /* Get the coinbase amount. */
@@ -214,11 +229,18 @@ namespace TAO
                 /* Special rule for credit back to self on partial payments. */
                 if(hashFrom == hashAccount)
                 {
-                    //TODO: read LLD value for total amount
+                    /* Get the partial amount. */
+                    uint64_t nClaimed = 0;
+                    if(!LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+                        return debug::error(FUNCTION, "read the partial amount");
+
+                    /* Check the partial to the debit amount. */
+                    if(nDebit != (nClaimed + nCredit))
+                        return debug::error(FUNCTION, "debit and partial credit value mismatch");
                 }
 
                 /* Check the debit amount. */
-                if(nDebit != nCredit)
+                else if(nDebit != nCredit)
                     return debug::error(FUNCTION, "debit and credit value mismatch");
 
                 return true;
@@ -243,7 +265,7 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to parse owner object register");
 
             /* Compare the last timestamp update to transaction timestamp. */
-            if(proof.nModified > credit.nTimestamp)
+            if(proof.nModified > contract.nTimestamp)
                 return debug::error(FUNCTION, "temporal proof is stale");
 
             /* Check that owner is of a valid type. */
@@ -282,12 +304,17 @@ namespace TAO
             if(nCredit != nPartial)
                 return debug::error(FUNCTION, "partial credit mismatch with claimed proof");
 
-            //NOTE: ISSUE here, temporal proofs can't be used if post timestamped. This prevents double spending,
-            //but it doesn't prevent coins from getting locked if a temporal proof has been changed. Possible to
-            //check tokens to ensure tokens aren't moved if a proof is able to be claimed.
-            //find a way to unlock the unspent tokens possibly with validation regitser.
-            //We might need to check back the history to find timestamp before proof to use previous state.
-            //This will work for now, but is not production ready.
+            /* Get the partial amount. */
+            uint64_t nClaimed = 0;
+            if(!LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+                return debug::error(FUNCTION, "read the partial amount");
+
+            /* Check the partial to the debit amount. */
+            if((nClaimed + nCredit) > nDebit)
+                return debug::error(FUNCTION, "credit is beyond claimable debit amount");
+
+            /* Seek read position to first position. */
+            contract.Seek(1);
 
             return true;
         }

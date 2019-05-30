@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/state.h>
 
+#include <tuple>
+
 namespace LLD
 {
 
@@ -61,6 +63,22 @@ namespace LLD
     }
 
 
+    /* Reads a contract from the ledger DB. */
+    TAO::Operation::Contract LedgerDB::ReadContract(const uint512_t& hashTransaction, const uint32_t nContract)
+    {
+        /* Get the transaction. */
+        TAO::Ledger::Transaction tx;
+        if(!Read(hashTransaction, tx))
+            throw std::runtime_error("failed to read contract");
+
+        /* Get const reference for read-only access. */
+        const TAO::Ledger::Transaction& ref = tx;
+
+        /* Get the contract. */
+        return ref[nContract];
+    }
+
+
     /* Writes a transaction to the ledger DB. */
     bool LedgerDB::WriteTx(const uint512_t& hashTransaction, const TAO::Ledger::Transaction& tx)
     {
@@ -79,6 +97,20 @@ namespace LLD
     bool LedgerDB::EraseTx(const uint512_t& hashTransaction)
     {
         return Erase(hashTransaction);
+    }
+
+
+    /* Writes a partial to the ledger DB. */
+    bool LedgerDB::WriteClaimed(const uint512_t& hashTransaction, const uint32_t nContract, const uint64_t nClaimed)
+    {
+        return Write(std::make_pair(hashTransaction, nContract), nClaimed);
+    }
+
+
+    /* Read a partial to the ledger DB. */
+    bool LedgerDB::ReadClaimed(const uint512_t& hashTransaction, const uint32_t nContract, uint64_t& nClaimed)
+    {
+        return Read(std::make_pair(hashTransaction, nContract), nClaimed);
     }
 
 
@@ -289,7 +321,7 @@ namespace LLD
 
 
     /* Writes a proof to disk. Proofs are used to keep track of spent temporal proofs. */
-    bool LedgerDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags)
+    bool LedgerDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint32_t nContract, uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -297,7 +329,7 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Write the new proof state. */
-            mapProofs[std::make_pair(hashProof, hashTransaction)] = 0;
+            mapProofs[std::make_tuple(hashProof, hashTransaction, nContract)] = 0;
             return true;
         }
         else if(nFlags & TAO::Register::FLAGS::WRITE)
@@ -305,16 +337,16 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
-            if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
-               mapProofs.erase(std::make_pair(hashProof, hashTransaction));
+            if(mapProofs.count(std::make_tuple(hashProof, hashTransaction, nContract)))
+               mapProofs.erase(std::make_tuple(hashProof, hashTransaction, nContract));
         }
 
-        return Write(std::make_pair(hashProof, hashTransaction));
+        return Write(std::make_tuple(hashProof, hashTransaction, nContract));
     }
 
 
     /* Checks if a proof exists. Proofs are used to keep track of spent temporal proofs. */
-    bool LedgerDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags)
+    bool LedgerDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint32_t nContract, uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -322,16 +354,16 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* If exists in memory, return true. */
-            if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
+            if(mapProofs.count(std::make_tuple(hashProof, hashTransaction, nContract)))
                 return true;
         }
 
-        return Exists(std::make_pair(hashProof, hashTransaction));
+        return Exists(std::make_tuple(hashProof, hashTransaction, nContract));
     }
 
 
     /* Remove a temporal proof from the database. */
-    bool LedgerDB::EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, uint8_t nFlags)
+    bool LedgerDB::EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint32_t nContract, uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags & TAO::Register::FLAGS::MEMPOOL)
@@ -339,15 +371,15 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
-            if(mapProofs.count(std::make_pair(hashProof, hashTransaction)))
+            if(mapProofs.count(std::make_tuple(hashProof, hashTransaction, nContract)))
             {
-                mapProofs.erase(std::make_pair(hashProof, hashTransaction));
+                mapProofs.erase(std::make_tuple(hashProof, hashTransaction, nContract));
 
                 return true;
             }
         }
 
-        return Erase(std::make_pair(hashProof, hashTransaction));
+        return Erase(std::make_tuple(hashProof, hashTransaction, nContract));
     }
 
 

@@ -54,13 +54,14 @@ namespace TAO
              *  @param[in] hashAddress The register address to commit.
              *  @param[in] hashTx The transaction-id being claimed.
              *  @param[in] nContract The contract output being claimed.
+             *  @param[in] nAmount The amount that is being credited.
              *  @param[in] nFlags Flags to the LLD instance.
              *
              *  @return true if successful.
              *
              **/
-            bool Commit(const TAO::Register::Object& account, const uint256_t& hashAddress,
-                const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags);
+            bool Commit(const TAO::Register::Object& account, const uint256_t& hashAddress, const uint256_t& hashProof,
+                const uint512_t& hashTx, const uint32_t nContract, const uint64_t nAmount, const uint8_t nFlags);
 
 
             /** Execute
