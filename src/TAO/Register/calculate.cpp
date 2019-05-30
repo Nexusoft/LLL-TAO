@@ -13,7 +13,20 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <Legacy/types/script.h>
+
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
+#include <TAO/Operation/include/append.h>
+#include <TAO/Operation/include/claim.h>
+#include <TAO/Opeartion/include/create.h>
+#include <TAO/Opeartion/include/credit.h>
+#include <TAO/Opeartion/include/debit.h>
+#include <TAO/Opeartion/include/genesis.h>
+#include <TAO/Opeartion/include/script.h>
+#include <TAO/Opeartion/include/transfer.h>
+#include <TAO/Opeartion/include/trust.h>
+#include <TAO/Opeartion/include/write.h>
 
 #include <TAO/Register/types/stream.h>
 #include <TAO/Register/include/calculate.h>
@@ -410,6 +423,46 @@ namespace TAO
                     {
                         /* Seek to address. */
                         contract.Seek(96);
+
+                        break;
+                    }
+
+
+                    /* Create unspendable legacy script, that acts to debit from the account and make this unspendable. */
+                    case TAO::Operation::OP::LEGACY:
+                    {
+                        /* Get the register address. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
+
+                        /* Get the transfer amount. */
+                        uint64_t  nAmount = 0;
+                        contract >> nAmount;
+
+                        /* Serialize the pre-state byte into contract. */
+                        contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
+
+                        /* Read the register from database. */
+                        State state;
+                        if(!LLD::regDB->ReadState(hashAddress, state))
+                            return debug::error(FUNCTION, "OP::CREDIT: register pre-state doesn't exist");
+
+                        /* Serialize the pre-state into contract. */
+                        contract <<= state;
+
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Legacy::Execute(state, nAmount, contract.nTimestamp))
+                            return debug::error(FUNCTION, "OP::CREDIT: cannot generate post-state");
+
+                        /* Serialize the post-state byte into contract. */
+                        contract <<= uint8_t(TAO::Register::STATES::POSTSTATE);
+
+                        /* Serialize the checksum into contract. */
+                        contract <<= state.GetHash();
+
+                        /* Get the script data. */
+                        Legacy:;Script script;
+                        contract >> script;
 
                         break;
                     }

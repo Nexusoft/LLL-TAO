@@ -11,13 +11,22 @@
 
 ____________________________________________________________________________________________*/
 
-
 #include <LLC/types/uint1024.h>
 
-#include <TAO/Operation/include/execute.h>
-#include <TAO/Operation/types/stream.h>
+#include <Legacy/types/script.h>
+
 #include <TAO/Operation/include/enum.h>
-#include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/execute.h>
+#include <TAO/Operation/include/append.h>
+#include <TAO/Operation/include/claim.h>
+#include <TAO/Opeartion/include/create.h>
+#include <TAO/Opeartion/include/credit.h>
+#include <TAO/Opeartion/include/debit.h>
+#include <TAO/Opeartion/include/genesis.h>
+#include <TAO/Opeartion/include/script.h>
+#include <TAO/Opeartion/include/transfer.h>
+#include <TAO/Opeartion/include/trust.h>
+#include <TAO/Opeartion/include/write.h>
 
 #include <TAO/Register/include/enum.h>
 
@@ -35,7 +44,7 @@ namespace TAO
     {
 
         /* Executes a given operation byte sequence. */
-        bool Execute(const Contract& contract, uint8_t nFlags)
+        bool Execute(const Contract& contract, const uint8_t nFlags)
         {
             /* Make sure no exceptions are thrown. */
             try
@@ -506,7 +515,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::DEBIT: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!TAO::Operation::Debit::Commit(object, hashAddress, nFlags))
+                        if(!TAO::Operation::Debit::Commit(object, hashFrom, nFlags))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to write final state");
 
                         break;
@@ -591,6 +600,65 @@ namespace TAO
                     {
                         /* Seek to address. */
                         contract.Seek(96);
+
+                        break;
+                    }
+
+
+                    /* Create unspendable legacy script, that acts to debit from the account and make this unspendable. */
+                    case TAO::Operation::OP::LEGACY:
+                    {
+                        /* Verify the operation rules. */
+                        if(!TAO::Operation::Legacy::Verify(contract))
+                            return false;
+
+                        /* Get the register address. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
+
+                        /* Get the transfer amount. */
+                        uint64_t  nAmount = 0;
+                        contract >> nAmount;
+
+                        /* Deserialize the pre-state byte from the contract. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check for pre-state. */
+                        if(nState != TAO::Register::FLAGS::PRESTATE)
+                            return debug::error(FUNCTION, "OP::DEBIT: register pre-state doesn't exist");
+
+                        /* Read the register from database. */
+                        TAO::Register::Object object;
+                        contract >>= object;
+
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Legacy::Execute(object, nAmount, contract.nTimestamp))
+                            return false;
+
+                        /* Deserialize the pre-state byte from contract. */
+                        nState = 0;
+                        contract >>= nState;
+
+                        /* Check for pre-state. */
+                        if(nState != TAO::Register::FLAGS::POSTSTATE)
+                            return debug::error(FUNCTION, "OP::DEBIT: register post-state doesn't exist");
+
+                        /* Deserialize the checksum from contract. */
+                        uint64_t nChecksum = 0;
+                        contract >>= nChecksum;
+
+                        /* Check the post-state to register state. */
+                        if(nChecksum != object.GetHash())
+                            return debug::error(FUNCTION, "OP::DEBIT: invalid register post-state");
+
+                        /* Commit the register to disk. */
+                        if(!TAO::Operation::Legacy::Commit(object, hashAddress, nFlags))
+                            return debug::error(FUNCTION, "OP::DEBIT: failed to write final state");
+
+                        /* Get the script data. */
+                        Legacy:;Script script;
+                        contract >> script;
 
                         break;
                     }

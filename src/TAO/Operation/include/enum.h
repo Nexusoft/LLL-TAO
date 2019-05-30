@@ -65,6 +65,9 @@ namespace TAO
                 VALIDATE    = 0x40,
                 REQUIRE     = 0x41,
 
+                //legacy operations
+                LEGACY      = 0x50
+
                 //0x31 = 0x6f RESERVED
             };
 
