@@ -26,6 +26,7 @@ ________________________________________________________________________________
 namespace LLC
 {
 
+    /** Default Constructor **/
     X509Cert::X509Cert(uint32_t bits)
     : px509(nullptr)
     , pkey(nullptr)
@@ -36,45 +37,50 @@ namespace LLC
             throw key_error("X509Cert::X509Cert : Certificate initialization failed.");
     }
 
+
+    /** Default Destructor **/
     X509Cert::~X509Cert()
     {
         free_cert();
     }
 
 
+    /*  Writes the certificate and private key PEM files to an ssl folder located in the default directory path.
+     *  The ssl folder will be created if it doesn't exist. */
     bool X509Cert::Write()
     {
+        /* Check for null data. */
         if(!pkey)
             return debug::error(FUNCTION, "Unitialized EVP_PKEY");
-
         if(!px509)
             return debug::error(FUNCTION, "Uninitialized certificate.");
 
+        /* Identify the ssl subfolder. */
         std::string strFolder = config::GetDataDir() + "ssl/";
 
+        /* Create the ssl subfolder if it doesn't exist. */
         if(!filesystem::exists(strFolder))
             filesystem::create_directory(strFolder);
 
+        /* Identify the certificate and key paths. */
         std::string strKeyPath = strFolder + "key.pem";
         std::string strCertPath = strFolder + "cert.pem";
 
+        /* Write the private key PEM file to the key path. */
         FILE *pFile = fopen(strKeyPath.c_str(), "wb");
         if(!pFile)
             return debug::error(FUNCTION, "X509Cert : Unable to open key file.");
-
         bool ret = PEM_write_PrivateKey(pFile, pkey, nullptr, nullptr, 0, nullptr, nullptr);
         fclose(pFile);
-
         if(!ret)
             return debug::error(FUNCTION, "X509Cert : Unable to write key file.");
 
+        /* Write the certificate PEM file to the certificate path. */
         pFile = fopen(strCertPath.c_str(), "wb");
         if(!pFile)
             return debug::error(FUNCTION, "X509Cert : Unable to open cert file.");
-
         ret = PEM_write_X509(pFile, px509);
         fclose(pFile);
-
         if(!ret)
             return debug::error(FUNCTION, "X509Cert : Unable to write cert file.");
 
@@ -82,29 +88,30 @@ namespace LLC
     }
 
 
+    /*  Modifies the SSL internal state with certificate and key information. */
     bool X509Cert::Init_SSL(SSL *ssl)
     {
+        /* Check for null data. */
         if(ssl == nullptr)
             return debug::error(FUNCTION, "SSL object is null.");
-
         if(px509 == nullptr)
             return debug::error(FUNCTION, "certificate is null.");
-
         if(pkey == nullptr)
             return debug::error(FUNCTION, "private key is null.");
 
+        /* Assign the certiicate to the SSL object. */
         if(SSL_use_certificate(ssl, px509) != 1)
             return debug::error(FUNCTION, "Failed to initialize SSL with certificate.");
 
+        /* Assign the private key to the SSL object. */
         if(SSL_use_PrivateKey(ssl, pkey) != 1)
             return debug::error(FUNCTION, "Failed to initialize SSL with private key.");
-
-
 
         return true;
     }
 
 
+    /*  Prints out information about the certificate with human readable format. */
     void X509Cert::Print()
     {
         char *str = X509_NAME_oneline(X509_get_subject_name(px509), 0, 0);
@@ -116,6 +123,7 @@ namespace LLC
     }
 
 
+    /* Initializes and creates a new certificate signed with a unique RSA private key. */
     bool X509Cert::init_cert()
     {
         int32_t ret = 0;
@@ -130,15 +138,15 @@ namespace LLC
         if(pRSA == nullptr)
             return debug::error(FUNCTION, "RSA_new() failed");
 
-        /* Generate the exponent and the RSA key. Assign RSA to the EVP key. */
+        /* Generate the exponent and the RSA key. */
         BIGNUM *pBNE = BN_new();
         BN_set_word(pBNE, RSA_F4);
         ret = RSA_generate_key_ex(pRSA, nBits, pBNE, nullptr);
         BN_clear_free(pBNE);
-
         if(ret != 1)
             return debug::error(FUNCTION, "Unable to generate ", nBits, "-Bit RSA key.");
 
+        /* Assign RSA to the EVP key. */
         if(!EVP_PKEY_assign_RSA(pkey, pRSA))
             return debug::error(FUNCTION, "Unable to assign ", nBits, "-Bit RSA key.");
 
@@ -176,6 +184,7 @@ namespace LLC
     }
 
 
+    /*  Frees memory associated with the certificate and key. */
     void X509Cert::free_cert()
     {
         if(px509)
