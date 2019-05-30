@@ -217,8 +217,8 @@ namespace TAO
 
             /* Handle one-to-one debit to credit or return to self. */
             if(hashTo == hashAccount    //regular debit to credit
-            || hashTo == ~uint256_t(0)  //wildcard address (anyone can claim)
-            || hashFrom == hashAccount) //regular return to self
+            || hashTo == ~uint256_t(0)  //wildcard address (anyone can credit)
+            || hashFrom == hashAccount) //return to self
             {
                 /* Check the proof as being the caller. */
                 if(hashProof != hashFrom)
