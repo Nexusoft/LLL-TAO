@@ -27,8 +27,9 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Credit::Commit(const TAO::Register::Object& account, const uint256_t& hashAddress, const uint256_t& hashProof,
-            const uint512_t& hashTx, const uint32_t nContract, const uint64_t nAmount, const uint8_t nFlags)
+        bool Credit::Commit(const TAO::Register::Object& account, const Contract& debit,
+                            const uint256_t& hashAddress, const uint256_t& hashProof, const uint512_t& hashTx,
+                            const uint32_t nContract, const uint64_t nAmount, const uint8_t nFlags)
         {
             /* Check if this transfer is already claimed. */
             if(LLD::legDB->HasProof(hashProof, hashTx, nContract, nFlags))
@@ -38,15 +39,25 @@ namespace TAO
             if(!LLD::legDB->WriteProof(hashProof, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "failed to write credit proof");
 
-            /* Get the partial amount. */
-            uint64_t nClaimed = 0;
-            if(!LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
-                return debug::error(FUNCTION, "read the partial amount");
+            /* Read the debit. */
+            debit.Seek(1);
 
-            /* Write the new partial amount. */
-            //TODO: need a better method here for handling claims, this above will always fail
-            if(!LLD::legDB->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
-                return debug::error(FUNCTION, "read the partial amount");
+            /* Get address from. */
+            uint256_t hashFrom = 0;
+            debit  >> hashFrom;
+
+            /* Check for partial credits. */
+            if(account.hashOwner != hashProof && hashFrom != hashProof)
+            {
+                /* Get the partial amount. */
+                uint64_t nClaimed = 0;
+                if(!LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+                    nClaimed = 0; //resetting the value on failed read, just in case
+
+                /* Write the new claimed amount. */
+                if(!LLD::legDB->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
+                    return debug::error(FUNCTION, "failed to update claimed amount");
+            }
 
             /* Write the new register's state. */
             return LLD::regDB->WriteState(hashAddress, account, nFlags);
@@ -233,12 +244,12 @@ namespace TAO
                 {
                     /* Get the partial amount. */
                     uint64_t nClaimed = 0;
-                    if(!LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
-                        return debug::error(FUNCTION, "read the partial amount");
-
-                    /* Check the partial to the debit amount. */
-                    if(nDebit != (nClaimed + nCredit))
-                        return debug::error(FUNCTION, "debit and partial credit value mismatch");
+                    if(LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+                    {
+                        /* Check the partial to the debit amount. */
+                        if(nDebit != (nClaimed + nCredit))
+                            return debug::error(FUNCTION, "debit and partial credit value mismatch");
+                    }
                 }
 
                 /* Check the debit amount. */
@@ -309,7 +320,7 @@ namespace TAO
             /* Get the partial amount. */
             uint64_t nClaimed = 0;
             if(!LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
-                return debug::error(FUNCTION, "read the partial amount");
+                nClaimed = 0; //reset claimed on fail just in case
 
             /* Check the partial to the debit amount. */
             if((nClaimed + nCredit) > nDebit)

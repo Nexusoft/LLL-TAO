@@ -42,7 +42,7 @@ namespace TAO
          *  Namespace to contain main functions for OP::APPEND
          *
          **/
-        namespace Append
+        struct Append
         {
 
             /** Commit

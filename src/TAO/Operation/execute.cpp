@@ -58,10 +58,10 @@ namespace TAO
                 {
 
                     /* Generate pre-state to database. */
-                    case TAO::Operation::OP::WRITE:
+                    case OP::WRITE:
                     {
                         /* Verify the operation rules. */
-                        if(!TAO::Operation::Write::Verify(contract))
+                        if(!Write::Verify(contract))
                             return false;
 
                         /* Get the Address of the Register. */
@@ -85,7 +85,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Write::Execute(state, vchData, contract.nTimestamp))
+                        if(!Write::Execute(state, vchData, contract.nTimestamp))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -105,7 +105,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::WRITE: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!TAO::Operation::Write::Commit(state, hashAddress, nFlags))
+                        if(!Write::Commit(state, hashAddress, nFlags))
                             return debug::error(FUNCTION, "OP::WRITE: failed to write final state");
 
                         break;
@@ -113,10 +113,10 @@ namespace TAO
 
 
                     /* Generate pre-state to database. */
-                    case TAO::Operation::OP::APPEND:
+                    case OP::APPEND:
                     {
                         /* Verify the operation rules. */
-                        if(!TAO::Operation::Append::Verify(contract))
+                        if(!Append::Verify(contract))
                             return false;
 
                         /* Get the Address of the Register. */
@@ -140,7 +140,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Append::Execute(state, vchData, contract.nTimestamp))
+                        if(!Append::Execute(state, vchData, contract.nTimestamp))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -160,7 +160,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::APPEND: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!TAO::Operation::Append::Commit(state, hashAddress, nFlags))
+                        if(!Append::Commit(state, hashAddress, nFlags))
                             return debug::error(FUNCTION, "OP::APPEND: failed to write final state");
 
                         break;
@@ -170,10 +170,10 @@ namespace TAO
                     /*
                      * This does not contain any prestates.
                      */
-                    case TAO::Operation::OP::CREATE:
+                    case OP::CREATE:
                     {
                         /* Verify the operation rules. */
-                        if(!TAO::Operation::Create::Verify(contract))
+                        if(!Create::Verify(contract))
                             return false;
 
                         /* Get the Address of the Register. */
@@ -195,7 +195,7 @@ namespace TAO
                         state.hashOwner  = contract.hashCaller;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Create::Execute(state, vchData, contract.nTimestamp))
+                        if(!Create::Execute(state, vchData, contract.nTimestamp))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -215,7 +215,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::CREATE: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!TAO::Operation::Create::Commit(state, hashAddress, nFlags))
+                        if(!Create::Commit(state, hashAddress, nFlags))
                             return debug::error(FUNCTION, "OP::CREATE: failed to write final state");
 
                         break;
@@ -223,10 +223,10 @@ namespace TAO
 
 
                     /* Transfer ownership of a register to another signature chain. */
-                    case TAO::Operation::OP::TRANSFER:
+                    case OP::TRANSFER:
                     {
                         /* Verify the operation rules. */
-                        if(!TAO::Operation::Transfer::Verify(contract))
+                        if(!Transfer::Verify(contract))
                             return false;
 
                         /* Extract the address from the tx.ssOperation. */
@@ -250,7 +250,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Transfer::Execute(state, hashTransfer, contract.nTimestamp))
+                        if(!Transfer::Execute(state, hashTransfer, contract.nTimestamp))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -270,7 +270,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::TRANSFER: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!TAO::Operation::Transfer::Commit(state, hashAddress, nFlags))
+                        if(!Transfer::Commit(state, hashAddress, nFlags))
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to write final state");
 
                         break;
@@ -278,7 +278,7 @@ namespace TAO
 
 
                     /* Transfer ownership of a register to another signature chain. */
-                    case TAO::Operation::OP::CLAIM:
+                    case OP::CLAIM:
                     {
                         /* Extract the transaction from contract. */
                         uint512_t hashTx = 0;
@@ -294,7 +294,7 @@ namespace TAO
 
                         /* Verify the operation rules. */
                         const Contract claim = LLD::legDB->ReadContract(hashTx, nContract);
-                        if(!TAO::Operation::Claim::Verify(contract, claim))
+                        if(!Claim::Verify(contract, claim))
                             return false;
 
                         /* Get the state byte. */
@@ -310,7 +310,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Claim::Execute(state, contract.hashCaller, contract.nTimestamp))
+                        if(!Claim::Execute(state, contract.hashCaller, contract.nTimestamp))
                             return debug::error(FUNCTION, "OP::CLAIM: cannot generate post-state");
 
                         /* Deserialize the pre-state byte from contract. */
@@ -330,14 +330,14 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::CLAIM: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!TAO::Operation::Transfer::Commit(state, hashAddress, hashTx, nContract, nFlags))
+                        if(!Claim::Commit(state, hashAddress, hashTx, nContract, nFlags))
                             return debug::error(FUNCTION, "OP::CLAIM: failed to write final state");
 
                         break;
                     }
 
                     /* Coinbase operation. Creates an account if none exists. */
-                    case TAO::Operation::OP::COINBASE:
+                    case OP::COINBASE:
                     {
                         /* Seek to end. */
                         contract.Seek(40);
@@ -347,10 +347,10 @@ namespace TAO
 
 
                     /* Coinstake operation. Requires an account. */
-                    case TAO::Operation::OP::TRUST:
+                    case OP::TRUST:
                     {
                         /* Verify the operation rules. */
-                        if(!TAO::Operation::Trust::Verify(contract))
+                        if(!Trust::Verify(contract))
                             return false;
 
                         /* Seek to scores. */
@@ -377,7 +377,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Trust::Execute(state, nReward, nScore, contract.nTimestamp))
+                        if(!Trust::Execute(state, nReward, nScore, contract.nTimestamp))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -397,7 +397,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::TRUST: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!TAO::Operation::Trust::Commit(state, nFlags))
+                        if(!Trust::Commit(state, nFlags))
                             return debug::error(FUNCTION, "OP::TRUST: failed to write final state");
 
                         break;
@@ -405,10 +405,10 @@ namespace TAO
 
 
                     /* Coinstake operation. Requires an account. */
-                    case TAO::Operation::OP::GENESIS:
+                    case OP::GENESIS:
                     {
                         /* Verify the operation rules. */
-                        if(!TAO::Operation::Genesis::Verify(contract))
+                        if(!Genesis::Verify(contract))
                             return false;
 
                         /* Get last trust block. */
@@ -432,7 +432,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Genesis::Execute(state, nReward, contract.nTimestamp))
+                        if(!Genesis::Execute(state, nReward, contract.nTimestamp))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -452,7 +452,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::GENESIS: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!TAO::Operation::Genesis::Commit(state, hashAddress, nFlags))
+                        if(!Genesis::Commit(state, hashAddress, nFlags))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to write final state");
 
                         break;
@@ -460,10 +460,10 @@ namespace TAO
 
 
                     /* Debit tokens from an account you own. */
-                    case TAO::Operation::OP::DEBIT:
+                    case OP::DEBIT:
                     {
                         /* Verify the operation rules. */
-                        if(!TAO::Operation::Debit::Verify(contract))
+                        if(!Debit::Verify(contract))
                             return false;
 
                         /* Get the register address. */
@@ -491,7 +491,7 @@ namespace TAO
                         contract >>= object;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Debit::Execute(object, nAmount, contract.nTimestamp))
+                        if(!Debit::Execute(object, nAmount, contract.nTimestamp))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -511,7 +511,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::DEBIT: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!TAO::Operation::Debit::Commit(object, hashFrom, nFlags))
+                        if(!Debit::Commit(object, hashFrom, nFlags))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to write final state");
 
                         break;
@@ -519,7 +519,7 @@ namespace TAO
 
 
                     /* Credit tokens to an account you own. */
-                    case TAO::Operation::OP::CREDIT:
+                    case OP::CREDIT:
                     {
                         /* Extract the transaction from contract. */
                         uint512_t hashTx = 0;
@@ -531,7 +531,7 @@ namespace TAO
 
                         /* Verify the operation rules. */
                         const Contract debit = LLD::legDB->ReadContract(hashTx, nContract);
-                        if(!TAO::Operation::Credit::Verify(contract, debit, nFlags))
+                        if(!Credit::Verify(contract, debit, nFlags))
                             return false;
 
                         /* Seek past transaction-id. */
@@ -562,7 +562,7 @@ namespace TAO
                         contract >>= object;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Credit::Execute(object, nAmount, contract.nTimestamp))
+                        if(!Credit::Execute(object, nAmount, contract.nTimestamp))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -582,7 +582,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::CREDIT: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!TAO::Operation::Credit::Commit(object, hashAddress, hashProof, hashTx, nContract, nAmount, nFlags))
+                        if(!Credit::Commit(object, debit, hashAddress, hashProof, hashTx, nContract, nAmount, nFlags))
                             return debug::error(FUNCTION, "OP::CREDIT: failed to write final state");
 
                         break;
@@ -590,7 +590,7 @@ namespace TAO
 
 
                     /* Authorize is enabled in private mode only. */
-                    case TAO::Operation::OP::AUTHORIZE:
+                    case OP::AUTHORIZE:
                     {
                         /* Seek to address. */
                         contract.Seek(96);
@@ -600,10 +600,10 @@ namespace TAO
 
 
                     /* Create unspendable legacy script, that acts to debit from the account and make this unspendable. */
-                    case TAO::Operation::OP::LEGACY:
+                    case OP::LEGACY:
                     {
                         /* Verify the operation rules. */
-                        if(!TAO::Operation::Legacy::Verify(contract))
+                        if(!Legacy::Verify(contract))
                             return false;
 
                         /* Get the register address. */
@@ -627,7 +627,7 @@ namespace TAO
                         contract >>= object;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Legacy::Execute(object, nAmount, contract.nTimestamp))
+                        if(!Legacy::Execute(object, nAmount, contract.nTimestamp))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -647,7 +647,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::DEBIT: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!TAO::Operation::Legacy::Commit(object, hashAddress, nFlags))
+                        if(!Legacy::Commit(object, hashAddress, nFlags))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to write final state");
 
                         /* Get the script data. */
@@ -672,7 +672,7 @@ namespace TAO
                     contract >> OP;
 
                     /* Check for OP::REQUIRE. */
-                    if(OP != TAO::Operation::OP::REQUIRE && OP != TAO::Operation::OP::VALIDATE)
+                    if(OP != OP::REQUIRE && OP != OP::VALIDATE)
                         return debug::error(FUNCTION, "contract cannot contain second OP beyond REQUIRE or VALIDATE");
                 }
             }
