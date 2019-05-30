@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <cstdint>
 
 
+typedef struct ssl_st SSL;
 typedef struct rsa_st RSA;
 typedef struct evp_pkey_st EVP_PKEY;
 typedef struct x509_st X509;
@@ -34,6 +35,11 @@ namespace LLC
         ~X509Cert();
 
         bool Write();
+
+        bool Init_SSL(SSL *ssl);
+
+
+        void Print();
 
     private:
 
