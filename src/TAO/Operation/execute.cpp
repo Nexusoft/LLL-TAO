@@ -292,13 +292,9 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
-                        /* Get the previous tx. */
-                        TAO::Ledger::Transaction tx;
-                        if(!LLD::legDB->ReadTx(hashTx, tx))
-                            return debug::error(FUNCTION, "OP::CLAIM: cannot read prev tx ", hashTx.SubString());
-
                         /* Verify the operation rules. */
-                        if(!TAO::Operation::Claim::Verify(contract, tx[nContract]))
+                        const Contract claim = LLD::legDB->ReadContract(hashTx, nContract);
+                        if(!TAO::Operation::Claim::Verify(contract, claim))
                             return false;
 
                         /* Get the state byte. */
@@ -533,10 +529,8 @@ namespace TAO
                         uint32_t nContract = 0;
                         contract >> nContract;
 
-                        /* Get the debit contract. */
-                        const Contract debit = LLD::legDB->ReadContract(hashTx, nContract);
-
                         /* Verify the operation rules. */
+                        const Contract debit = LLD::legDB->ReadContract(hashTx, nContract);
                         if(!TAO::Operation::Credit::Verify(contract, debit, nFlags))
                             return false;
 
