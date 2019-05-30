@@ -66,41 +66,24 @@ namespace TAO
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction");
 
-            /* Submit the transaction payload. */
-            uint256_t hashRegister = 0;
+            /* Generate a random hash for this objects register address */
+            uint256_t hashRegister = LLC::GetRand256();
 
             /* name of the object, default to blank */
             std::string strName = "";
 
-            /* Check for data parameter. */
-            if(params.find("name") != params.end())
-            {
-                /* Get the called-supplied name */
-                strName = params["name"].get<std::string>();
-
-                /* Get the namespace hash to use for this object.  By default the namespace is the username for the sig chain */
-                uint256_t nNamespaceHash = NamespaceHash(user->UserName());
-
-                /* register address is a hash of a name in the format of namespacehash:objecttype:name */
-                std::string strAddressName = nNamespaceHash.ToString() + ":item:" + strName;
-
-                /* Build the address from an SK256 hash of API:NAME. */
-                hashRegister = LLC::SK256(std::vector<uint8_t>(strAddressName.begin(), strAddressName.end()));
-            }
-            else
-                hashRegister = LLC::GetRand256();
-
             /* Test the payload feature. */
             DataStream ssData(SER_REGISTER, 1);
-            
-            /* Add the name first */
-            ssData << strName;
 
             /* Then the raw data */
             ssData << params["data"].get<std::string>();
 
             /* Submit the payload object. */
             tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::REGISTER::APPEND << ssData.Bytes();
+
+            /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
+            if(params.find("name") != params.end())
+                CreateName( user->Genesis(), params["name"].get<std::string>(), hashRegister, tx); 
 
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))

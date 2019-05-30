@@ -36,7 +36,7 @@ namespace TAO
             if(params.find("name") != params.end())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = RegisterAddressFromName( params, "item", params["name"].get<std::string>());
+                hashRegister = RegisterAddressFromName( params, params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
@@ -60,16 +60,11 @@ namespace TAO
 
             while(!state.end())
             {
-                /* Deserialize the name */
-                std::string strName;
-                state >> strName;
-                
                 /* If the data type is string. */
                 std::string data;
                 state >> data;
 
                 //ret["checksum"] = state.hashChecksum;
-                ret["name"] = strName;
                 ret["data"] = data;
             }
 

@@ -33,18 +33,30 @@ namespace TAO
         uint256_t NamespaceHash(const SecureString& strNamespace);
 
 
+        /** CreateName
+        *
+        *  Creates a new Name Object register for the given name and register address adds the register operation to the transaction
+        *
+        *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for 
+        *  @param[in] strName The Name of the object
+        *  @param[in] hashRegister The register address that the Name object should resolve to
+        *  @param[in] tx The Transaction that the register operation should be added to 
+        *   
+        **/
+        void CreateName( const uint256_t& hashGenesis, const std::string strName, 
+                        const uint256_t& hashRegister, TAO::Ledger::Transaction& tx );
+
+
         /** RegisterAddressFromName
          *
-         *  Resolves a register address from a name.
-         *  The register address is a hash of the fully-namespaced name in the format of namespacehash:objecttype:name.
+         *  Resolves a register address from a name by looking up a Name object.
          *
          *  @param[in] params The json request params
-         *  @param[in] strObjectType The object type to include in the string to build the register hash from
          *  @param[in] strObjectName The name parameter to use in the register hash
          *
          *  @return The 256 bit hash of the object name.
          **/
-        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectType, const std::string& strObjectName);
+        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectName);
 
 
         /** IsRegisterAddress

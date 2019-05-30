@@ -46,7 +46,7 @@ namespace TAO
             /* Check whether the caller has provided the asset name parameter. */
             if(params.find("name") != params.end())
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = RegisterAddressFromName(params, "item", params["name"].get<std::string>());
+                hashRegister = RegisterAddressFromName(params, params["name"].get<std::string>());
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"]);
@@ -74,14 +74,10 @@ namespace TAO
             /* Grab the last state. */
             while(!state.end())
             {
-                /* Deserialize the name */
-                state >> strName;
-
                 /* If the data type is string. */
                 std::string data;
                 state >> data;
 
-                first["name"] = strName;
                 first["checksum"] = state.hashChecksum;
                 first["data"]    = data;
             }
@@ -142,14 +138,10 @@ namespace TAO
                         /* Grab the last state. */
                         while(!state.end())
                         {
-                            /* Deserialize the name */
-                            state >> strName;
-
                             /* If the data type is string. */
                             std::string data;
                             state >> data;
 
-                            obj["name"] = strName;
                             obj["checksum"] = state.hashChecksum;
                             obj["data"]    = data;
                         }
@@ -180,14 +172,10 @@ namespace TAO
                         /* Grab the last state. */
                         while(!state.end())
                         {
-                            /* Deserialize the name */
-                            state >> strName;
-
                             /* If the data type is string. */
                             std::string data;
                             state >> data;
 
-                            obj["name"] = strName;
                             obj["checksum"] = state.hashChecksum;
                             obj["data"]    = data;
                         }
@@ -221,14 +209,10 @@ namespace TAO
                         /* Grab the last state. */
                         while(!state.end())
                         {
-                            /* Deserialize the name */
-                            state >> strName;
-
                             /* If the data type is string. */
                             std::string data;
                             state >> data;
 
-                            obj["name"] = strName;
                             obj["checksum"] = state.hashChecksum;
                             obj["data"]    = data;
                         }

@@ -77,7 +77,7 @@ namespace TAO
                    whether or not it is an asset. */
                 TAO::Register::Object object;
                 if(!LLD::regDB->ReadState(hashRegister, object, TAO::Register::FLAGS::MEMPOOL))
-                    throw APIException(-24, "Asset not found");
+                    continue;
 
                 /* Only include raw and non-standard object types (assets)*/
                 if( object.nType != TAO::Register::REGISTER::APPEND 

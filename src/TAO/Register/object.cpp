@@ -63,7 +63,16 @@ namespace TAO
             uint8_t nType = OBJECTS::NONSTANDARD;
 
             /* Search object register for key types. */
-            if(Check("token_address", TYPES::UINT256_T, false)
+            if(mapData.size() == 2 
+            && Check("name", TYPES::STRING, false )
+            && CheckName("address")) /* Name registers can store different types in the address so don't check the field type */   
+            {
+                /* If it only contains one field called address then it must be a name */
+                /* Set the return value. */
+                nType = OBJECTS::NAME;
+
+            }
+            else if(Check("token_address", TYPES::UINT256_T, false)
             && Check("balance",    TYPES::UINT64_T,  true))
             {
                 /* Set the return value. */
@@ -358,6 +367,18 @@ namespace TAO
                 return false;
 
             return (fMutable == mapData[strName].second);
+        }
+
+
+        /* Check the name exists in the object register without checking type. */
+        bool Object::CheckName(const std::string& strName) const
+        {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                return debug::error(FUNCTION, "object is not parsed");
+
+            /* Check that the name exists in the object. */
+            return mapData.count(strName) > 0;
         }
 
 

@@ -132,6 +132,18 @@ namespace TAO
             bool Check(const std::string& strName, const uint8_t nType, bool fMutable) const;
 
 
+            /** CheckName
+             *
+             *  Check the name exists in the object register without checking type.
+             *
+             *  @param[in] strName The name of the field to check
+             *
+             *  @return True if the field exist in the Object.
+             *
+             **/
+            bool CheckName(const std::string& strName) const;
+
+
             /** Size
              *
              *  Get the size of value in object register.

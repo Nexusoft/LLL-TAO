@@ -28,14 +28,13 @@ namespace TAO
         /** CreateAccount
          *
          *  Generate a new account object register.
-         *
-         *  @param[in] strName The name of the account.  Can be blank
+         * 
          *  @param[in] nIdentifier The type of token this account supports.
          * 
          *  @return The object register just created.
          *
          **/
-        Object CreateAccount(const std::string strName, const uint256_t& nIdentifier);
+        Object CreateAccount(const uint256_t& nIdentifier);
 
 
         /** CreateTrust
@@ -51,8 +50,7 @@ namespace TAO
         /** CreateToken
          *
          *  Generate a new account object register.
-         *
-         *  @param[in] strName The name of the token.  Can be blank
+         * 
          *  @param[in] nIdentifier The type of token this is
          *  @param[in] nSupply The total supply for token
          *  @param[in] nDigits The total significant figures
@@ -60,19 +58,30 @@ namespace TAO
          *  @return The object register just created.
          *
          **/
-        Object CreateToken(const std::string strName, const uint256_t& nIdentifier, const uint64_t nSupply, const uint64_t nDigits);
+        Object CreateToken(const uint256_t& nIdentifier, const uint64_t nSupply, const uint64_t nDigits);
 
 
         /** CreateAsset
          *
          *  Generate a new asset object register.
          *
-         *  @param[in] strName The name of the asset.  Can be blank
+         *  @return The object register just created.
+         *
+         **/
+        Object CreateAsset();
+
+
+        /** CreateName
+         *
+         *  Generate a new name object register.
+         *
+         *  @param[in] strName The name of the Object that this Name record represents
+         *  @param[in] hashRegister The register address that this name is aliasing 
          *
          *  @return The object register just created.
          *
          **/
-        Object CreateAsset(const std::string strName);
+        Object CreateName(const std::string& strName, const uint256_t& hashRegister);
 
 
     }

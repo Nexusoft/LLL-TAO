@@ -25,10 +25,13 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <TAO/Operation/include/stream.h>
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/operations.h>
+
+#include <TAO/Register/include/create.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -111,9 +114,33 @@ namespace TAO
         }
 
 
-        /* Resolves a register address from a name.
-        *  The register address is a hash of the fully-namespaced name in the format of namespacehash:objecttype:name. */
-        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectType, const std::string& strObjectName )
+
+        /* Creates a new Name Object register for the given name and register address 
+           adds the register operation to the transaction */
+        void CreateName( const uint256_t& hashGenesis, const std::string strName, const uint256_t& hashRegister, TAO::Ledger::Transaction& tx)
+        {
+            /* Build vector to hold the genesis + name data for hashing */
+            std::vector<uint8_t> vData;
+
+            /* Insert the geneses hash of the transaction */
+            vData.insert(vData.end(), (uint8_t*)&hashGenesis, (uint8_t*)&hashGenesis + 32);
+            
+            /* Insert the name of from the Name object */
+            vData.insert(vData.end(), strName.begin(), strName.end());
+            
+            /* Hash this in the same was as the caller would have to generate hashAddress */
+            uint256_t hashName = LLC::SK256(vData);
+
+            /* Create the Name register object pointing to hashRegister */
+            TAO::Register::Object name = TAO::Register::CreateName(strName, hashRegister);
+
+            /* Add the Name object register operation to the transaction */
+            tx << uint8_t(TAO::Operation::OP::REGISTER) << hashName << uint8_t(TAO::Register::REGISTER::OBJECT) << name.GetState();
+        }
+
+
+        /* Resolves a register address from a name by looking up the Name object. */
+        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectName )
         {
             uint256_t hashRegister = 0;
 
@@ -125,18 +152,26 @@ namespace TAO
             std::string strName = strObjectName;
             std::string strNamespace = "";
 
+            /* Declare the namespace hash to use for this object. */
+            uint256_t nNamespaceHash = 0;
+
             /* First check to see if the name parameter has been provided in the namespace:name format*/
             size_t nPos = strName.find(":");
             if(nPos != std::string::npos)
             {
                 strNamespace = strName.substr(0, nPos);
                 strName = strName.substr(nPos+1);
+
+                /* get the namespace hash from the namespace name */
+                nNamespaceHash = TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
             }
 
             /* If not then check for the explicit namespace parameter*/
             else if(params.find("namespace") != params.end())
             {
                 strNamespace = params["namespace"].get<std::string>();
+                /* get the namespace hash from the namespace name */
+                nNamespaceHash = TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
             }
 
             /* If neither of those then check to see if there is an active session to access the sig chain */
@@ -151,17 +186,37 @@ namespace TAO
                 if(!user)
                     throw APIException(-23, "Missing namespace parameter");
 
-                strNamespace = user->UserName().c_str();
+                nNamespaceHash = user->Genesis();
             }
 
-            /* Get the namespace hash to use for this object. */
-            uint256_t nNamespaceHash = NamespaceHash(SecureString(strNamespace.c_str()));
+            /* Build vector to hold the genesis + name data for hashing */
+            std::vector<uint8_t> vData;
 
-            /* register address is a hash of a name in the format of namespacehash:objecttype:name */
-            std::string strRegisterName = nNamespaceHash.ToString() + ":" + strObjectType + ":" + strName;
+            /* Insert the geneses hash of the transaction */
+            vData.insert(vData.end(), (uint8_t*)&nNamespaceHash, (uint8_t*)&nNamespaceHash + 32);
+            
+            /* Insert the name of from the Name object */
+            vData.insert(vData.end(), strName.begin(), strName.end());
+            
+            /* Build the address from an SK256 hash of namespace + name. */
+            uint256_t hashName = LLC::SK256(vData);
 
-            /* Build the address from an SK256 hash of register name. */
-            hashRegister = LLC::SK256(std::vector<uint8_t>(strRegisterName.begin(), strRegisterName.end()));
+            /* Read the Name Object */
+            TAO::Register::Object object;
+            if(!LLD::regDB->ReadState(hashName, object, TAO::Register::FLAGS::MEMPOOL))
+                throw APIException(-24, "Unknown name.");
+
+            if(object.nType != TAO::Register::REGISTER::OBJECT)
+                throw APIException(-24, "Unknown name.");
+            
+            object.Parse();
+
+            /* Check that this is a Name register */
+            if( object.Standard() != TAO::Register::OBJECTS::NAME)
+                throw APIException(-24, "Unknown name");
+        
+            /* Get the address that this name register is pointing to */
+            hashRegister = object.get<uint256_t>("address");
 
             return hashRegister;
         }
@@ -265,7 +320,7 @@ namespace TAO
                     if(!token.Parse())
                         throw APIException(-24, "Object failed to parse");
 
-                    strTokenName = token.get<std::string>("name");
+                    strTokenName = "TODO";
                 }   
             }
             else
