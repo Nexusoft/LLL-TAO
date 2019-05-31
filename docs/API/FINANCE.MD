@@ -93,15 +93,13 @@ Deduct an amount of NXS from an account and send it to another account. The API 
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the account owner. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the account to debit. This is optional if the address is provided.  The name should be in namespace:name format
-
-`namespace` : The namespace that the the account was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`name` : The name identifying the account to debit. This is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `address` : The register address of the account to debit. This is optional if the name is provided.
 
 `amount` : The amount of NXS to debit.
 
-`name_to` : The name identifying the account to send to. This is optional if the address is provided.  The name should be in namespace:name format
+`name_to` : The name identifying the account to send to. This is optional if the address is provided.  The name should be in username:name format
 
 `address_to` : The register address of the account to send to. This is optional if the name is provided.
 
@@ -148,9 +146,7 @@ Increment an amount received from another NXS account to an account owned by you
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the account. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the account to credit. This is optional if the address is provided.  The name should be in namespace:name format
-
-`namespace` : The namespace that the the account was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`name` : The name identifying the account to credit. This is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `address` : The register address of the account to credit. This is optional if the name is provided.
 
@@ -198,11 +194,9 @@ Additionally the API supports passing a field name in the URL after the account 
 
 ### Parameters:
 
-`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the account. For single-user API mode the session should not be supplied.
+`name` : The name identifying the NXS account to retrieve. This is optional if the address is provided.  The name should be in username:name format.  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
-`name` : The name identifying the NXS account to retrieve. This is optional if the address is provided.  The name should be in namespace:name format.  If session is provided that the namespace is not required as it will be deduced from the signature chain of the session
-
-`namespace` : The namespace that the the account was create in. This is optional if the address is provided, if the name is provided in the namespace:name format, or of the session is provided
+`session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the name in order to deduce the register address of the object.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
 `address` : The register address of the NXS account to retrieve. This is optional if the name is provided.
 
