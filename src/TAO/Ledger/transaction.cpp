@@ -116,10 +116,6 @@ namespace TAO
         /* Accept a transaction object into the main chain. */
         bool Transaction::Accept() const
         {
-            /* Check the transaction first. */
-            if(!Check())
-                return false;
-
             /* Accept to memory pool. */
             return mempool.Accept(GetHash(), *this);
         }
@@ -130,15 +126,8 @@ namespace TAO
         {
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
-            {
-                /* Verify the register layer. */
                 if(!TAO::Register::Verify(contract, TAO::Register::FLAGS::MEMPOOL))
                     return debug::error(FUNCTION, "transaction register layer failed to verify");
-
-                /* Verify the operations layer. */
-                if(!TAO::Operation::Verify(contract, TAO::Register::FLAGS::MEMPOOL))
-                    return debug::error(FUNCTION, "transaction register layer failed to verify");
-            }
 
             return true;
         }
@@ -170,23 +159,10 @@ namespace TAO
             }
             else
             {
-
                 /* Make sure the previous transaction is on disk or mempool. */
                 TAO::Ledger::Transaction txPrev;
-                if(nFlags & TAO::Register::FLAGS::MEMPOOL)
-                {
-                    /* Check the memory pool. */
-                    if(!mempool.Get(hashPrevTx, txPrev) && !LLD::legDB->ReadTx(hashPrevTx, txPrev))
-                        return debug::error(FUNCTION, "failed to get prev transaction");
-                }
-                else if(nFlags & TAO::Register::FLAGS::WRITE)
-                {
-                    /* Check the disk if connecting in a block. */
-                    if(!LLD::legDB->ReadTx(hashPrevTx, txPrev))
-                        return debug::error(FUNCTION, "prev transaction not on disk");
-                }
-                else
-                    return debug::error(FUNCTION, "invalid flags on connect");
+                if(!LLD::legDB->ReadTx(hashPrevTx, txPrev, nFlags))
+                    return debug::error(FUNCTION, "prev transaction not on disk");
 
                 /* Double check sequence numbers here. */
                 if(txPrev.nSequence + 1 != nSequence)

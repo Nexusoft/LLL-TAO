@@ -13,9 +13,12 @@ ________________________________________________________________________________
 
 #include <LLD/include/ledger.h>
 
+#include <TAO/Register/include/enum.h>
+
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <tuple>
 
@@ -64,11 +67,11 @@ namespace LLD
 
 
     /* Reads a contract from the ledger DB. */
-    TAO::Operation::Contract LedgerDB::ReadContract(const uint512_t& hashTransaction, const uint32_t nContract)
+    TAO::Operation::Contract LedgerDB::ReadContract(const uint512_t& hashTransaction, const uint32_t nContract, const uint8_t nFlags)
     {
         /* Get the transaction. */
         TAO::Ledger::Transaction tx;
-        if(!Read(hashTransaction, tx))
+        if(!ReadTx(hashTransaction, tx, nFlags))
             throw std::runtime_error("failed to read contract");
 
         /* Get const reference for read-only access. */
@@ -87,8 +90,16 @@ namespace LLD
 
 
     /* Reads a transaction from the ledger DB. */
-    bool LedgerDB::ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx)
+    bool LedgerDB::ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx, const uint8_t nFlags)
     {
+        /* Special check for memory pool. */
+        if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+        {
+            /* Get the transaction. */
+            if(TAO::Ledger::mempool.Get(hashTransaction, tx))
+                return true;
+        }
+
         return Read(hashTransaction, tx);
     }
 

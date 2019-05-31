@@ -30,12 +30,6 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 
-#include <TAO/Ledger/types/transaction.h>
-
-#include <Util/include/hex.h>
-
-
-
 namespace TAO
 {
 

@@ -64,7 +64,7 @@ namespace TAO
 
                         /* Write the register from database. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state))
+                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::WRITE: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -100,7 +100,7 @@ namespace TAO
 
                         /* Write the register from database. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state))
+                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::APPEND: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -143,7 +143,7 @@ namespace TAO
 
                         /* Write the register from database. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state))
+                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -182,7 +182,7 @@ namespace TAO
 
                         /* Write the register from database. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state))
+                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::CLAIM: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -256,7 +256,7 @@ namespace TAO
 
                         /* Write the register from database. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state))
+                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -292,7 +292,7 @@ namespace TAO
 
                         /* Write the register from database. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state))
+                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -332,7 +332,7 @@ namespace TAO
 
                         /* Write the register from database. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state))
+                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::CREDIT: failed to read pre-state");
 
                         /* Check that the checksums match. */

@@ -106,7 +106,7 @@ namespace TAO
                 && !LLD::legDB->ReadTx(tx.hashPrevTx, txPrev))
                 {
                     /* Debug output. */
-                    debug::log(0, FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " ", tx.nSequence, " genesis ", tx.hashGenesis.ToString().substr(0, 20), " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
+                    debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ", tx.nSequence, " genesis ", tx.hashGenesis.ToString().substr(0, 20), " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
                     /* Push to orphan queue. */
                     mapOrphans[tx.hashPrevTx] = tx;
@@ -127,27 +127,27 @@ namespace TAO
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.IsCoinbase())
-                return debug::error(FUNCTION, "coinbase ", hashTx.ToString().substr(0, 20), " not accepted in pool");
+                return debug::error(FUNCTION, "coinbase ", hashTx.SubString(), " not accepted in pool");
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.IsTrust())
-                return debug::error(FUNCTION, "trust ", hashTx.ToString().substr(0, 20), " not accepted in pool");
+                return debug::error(FUNCTION, "trust ", hashTx.SubString(), " not accepted in pool");
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
-                return debug::error(FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " too far in the future");
+                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " too far in the future");
 
             /* Check that the transaction is in a valid state. */
             if(!tx.Check())
-                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " is invalid");
+                return false;
 
             /* Verify the Ledger Pre-States. */
-            if(!TAO::Register::Verify(tx, TAO::Register::FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " register verification failed");
+            if(!tx.Verify())
+                return false;
 
-            /* Calculate the future potential states. */
-            if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " operations execution failed");
+            /* Connect transaction in memory. */
+            if(!tx.Connect(TAO::RegisteR::FLAGS::MEMPOOL))
+                return false;
 
             {
                 RLOCK(MUTEX);
@@ -158,7 +158,7 @@ namespace TAO
             }
 
             /* Debug output. */
-            debug::log(2, FUNCTION, "tx ", hashTx.ToString().substr(0, 20), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
+            debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
             /* Relay the transaction. */
             std::vector<LLP::CInv> vInv = { LLP::CInv(hashTx, LLP::MSG_TX_TRITIUM) };
@@ -178,14 +178,14 @@ namespace TAO
                     uint512_t hashThis = txOrphan.GetHash();
 
                     /* Debug output. */
-                    debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashTx.ToString().substr(0, 20));
+                    debug::log(0, FUNCTION, "PROCESSING ORPHAN tx ", hashTx.SubString());
 
                     /* Accept the transaction into memory pool. */
                     if(!Accept(txOrphan))
                     {
                         hashTx = hashThis;
 
-                        debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.ToString().substr(0, 20), " REJECTED");
+                        debug::log(0, FUNCTION, "ORPHAN tx ", hashTx.SubString(), " REJECTED");
 
                         continue;
                     }

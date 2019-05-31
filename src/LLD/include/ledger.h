@@ -106,11 +106,12 @@ namespace LLD
          *
          *  @param[in] hashTransaction The txid of transaction to read.
          *  @param[in] nContract The contract output to read.
+         *  @param[in] nFlags The flags to determine memory pool or disk
          *
          *  @return The contract object that was read.
          *
          **/
-        TAO::Operation::Contract ReadContract(const uint512_t& hashTransaction, const uint32_t nContract);
+        TAO::Operation::Contract ReadContract(const uint512_t& hashTransaction, const uint32_t nContract, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** WriteTx
@@ -132,11 +133,12 @@ namespace LLD
          *
          *  @param[in] hashTransaction The txid of transaction to read.
          *  @param[in] tx The transaction object to read.
+         *  @param[in] nFlags The flags to determine memory pool or disk
          *
          *  @return True if the transaction was successfully read, false otherwise.
          *
          **/
-        bool ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx);
+        bool ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
 
         /** EraseTx
