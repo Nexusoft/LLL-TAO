@@ -46,7 +46,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]" )
     TAO::Ledger::Transaction tx;
     tx.nTimestamp  = 989798;
     tx.hashGenesis = LLC::GetRand256();
-    tx << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount;
+    tx[0] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount;
 
     {
         //Operation stream

@@ -67,7 +67,7 @@ namespace TAO
             hashClaim.SetHex(params["txid"].get<std::string>());
 
             /* Submit the payload object. */
-            tx << uint8_t(TAO::Operation::OP::CLAIM) << hashClaim;
+            tx[0] << uint8_t(TAO::Operation::OP::CLAIM) << hashClaim;
 
             /* Execute the operations layer. */
             if(!tx.Build())

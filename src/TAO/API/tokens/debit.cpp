@@ -138,7 +138,7 @@ namespace TAO
                 throw APIException(-25, "Insufficient funds");
 
             /* Submit the payload object. */
-            tx << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
+            tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
 
             /* Execute the operations layer. */
             if(!tx.Build())

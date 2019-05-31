@@ -101,7 +101,7 @@ namespace TAO
                 ssData << params["data"].get<std::string>();
 
                 /* Submit the payload object. */
-                tx << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::REGISTER::RAW << ssData.Bytes();
+                tx[0] << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::REGISTER::RAW << ssData.Bytes();
 
             }
             else if(strFormat == "basic")
@@ -144,7 +144,7 @@ namespace TAO
                     throw APIException(-25, "Missing asset value fields");
 
                 /* Submit the payload object. */
-                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
+                tx[0] << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
 
             }
             else if(strFormat == "JSON")
@@ -273,7 +273,7 @@ namespace TAO
                     throw APIException(-25, "Missing asset field definitions");
 
                 /* Submit the payload object. */
-                tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
+                tx[0] << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
             }
             else
             {

@@ -103,7 +103,7 @@ namespace TAO
 
 
                             /* Submit the payload object. */
-                            tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashFrom << hashTo << nAmount;
+                            tx[0] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashFrom << hashTo << nAmount;
 
                             /* Execute the operations layer. */
                             if(!tx.Build())
@@ -128,7 +128,7 @@ namespace TAO
                             hashTx.SetHex(notification["hash"]);
 
                             /* Submit the payload object. */
-                            tx << uint8_t(TAO::Operation::OP::CLAIM) << hashTx;
+                            tx[0] << uint8_t(TAO::Operation::OP::CLAIM) << hashTx;
 
                             /* Execute the operations layer. */
                             if(!tx.Build())

@@ -65,7 +65,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             Object token = CreateToken(11, 1000, 100);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -103,7 +103,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             Object account = CreateAccount(11);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -144,7 +144,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                    << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -195,7 +195,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             stream << std::string("test") << uint8_t(OP::TYPES::STRING) << std::string("stRInGISNew");
 
             //payload
-            tx << uint8_t(OP::WRITE) << hashAddress << stream.Bytes();
+            tx[0] << uint8_t(OP::WRITE) << hashAddress << stream.Bytes();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -246,7 +246,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             stream << std::string("byte") << uint8_t(OP::TYPES::UINT8_T) << uint8_t(13);
 
             //payload
-            tx << uint8_t(OP::WRITE) << hashAddress << stream.Bytes();
+            tx[0] << uint8_t(OP::WRITE) << hashAddress << stream.Bytes();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -293,7 +293,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //payload
-            tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -339,7 +339,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //payload
-            tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -385,7 +385,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //payload
-            tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -425,7 +425,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300);
 
             //generate the prestates and poststates
             REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -450,7 +450,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //payload
-            tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -561,7 +561,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             Object token = CreateToken(22, 1000, 100);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -599,7 +599,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             Object account = CreateAccount(11);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -640,7 +640,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                    << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -681,7 +681,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                    << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -722,7 +722,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                    << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -763,7 +763,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                    << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -804,7 +804,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                    << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -845,7 +845,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                    << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -887,7 +887,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                    << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -928,7 +928,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                    << std::string("identifier") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));

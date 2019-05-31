@@ -83,7 +83,7 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction");
 
             /* Submit the payload object. */
-            tx << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo;
+            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo;
 
             /* Execute the operations layer. */
             if(!tx.Build())

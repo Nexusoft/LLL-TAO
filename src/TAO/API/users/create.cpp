@@ -83,7 +83,7 @@ namespace TAO
             uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
 
             /* Set up tx operation to create the trust account register at the same time as sig chain genesis. */
-            tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
+            tx[0] << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
 
             /* Calculate the prestates and poststates. */
             if(!tx.Build())

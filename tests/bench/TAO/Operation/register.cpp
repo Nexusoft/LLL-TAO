@@ -27,7 +27,7 @@ TEST_CASE( "OP::REGISTER  Benchmarks", "[operation]" )
         {
             TAO::Ledger::Transaction tx;
             tx.hashGenesis = LLC::GetRand256();
-            tx << uint8_t(OP::REGISTER) << LLC::GetRand256() << uint8_t(TAO::Register::REGISTER::READONLY) << vData;
+            tx[0] << uint8_t(OP::REGISTER) << LLC::GetRand256() << uint8_t(TAO::Register::REGISTER::READONLY) << vData;
 
             REQUIRE(tx.Build());
 

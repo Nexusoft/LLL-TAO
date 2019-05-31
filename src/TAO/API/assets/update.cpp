@@ -187,7 +187,7 @@ namespace TAO
             }
 
             /* Create the transaction object script. */
-            tx << uint8_t(TAO::Operation::OP::WRITE) << hashRegister << ssOperationStream.Bytes();
+            tx[0] << uint8_t(TAO::Operation::OP::WRITE) << hashRegister << ssOperationStream.Bytes();
 
             /* Execute the operations layer. */
             if(!tx.Build())

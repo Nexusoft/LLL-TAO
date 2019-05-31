@@ -159,7 +159,7 @@ namespace TAO
             uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDigits);
 
             /* Submit the payload object. */
-            tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashProof << hashTo << nAmount;
+            tx[0] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashProof << hashTo << nAmount;
 
             /* Execute the operations layer. */
             if(!tx.Build())

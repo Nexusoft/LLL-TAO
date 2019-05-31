@@ -53,7 +53,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             Object token = CreateToken(11, 1000, 100);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -74,7 +74,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             Object account = CreateAccount(11);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -92,7 +92,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -139,7 +139,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             Object token = CreateToken(11, 1000, 100);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -160,7 +160,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             Object account = CreateAccount(11);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -178,7 +178,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(1000);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(1000);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -211,7 +211,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(1);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(1);
 
             //generate the prestates and poststates
             REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -250,7 +250,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             Object token = CreateToken(11, 100, 100);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -271,7 +271,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             Object account = CreateAccount(11);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -289,7 +289,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
             REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -325,7 +325,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             Object account = CreateAccount(11);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -343,7 +343,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::DEBIT) << uint256_t(0) << hashAccount << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << uint256_t(0) << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
             REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -379,7 +379,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             Object account = CreateAccount(11);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -397,7 +397,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::DEBIT) << hashAccount << hashAccount << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashAccount << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
             REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -442,7 +442,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
                     << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(100);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::RAW) << token.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::RAW) << token.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -459,7 +459,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
             REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -504,7 +504,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
                     << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(100);
 
             //payload
-            tx << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
+            tx[0] << uint8_t(OP::REGISTER) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -521,7 +521,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
             REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
