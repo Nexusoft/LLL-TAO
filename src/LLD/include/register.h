@@ -19,9 +19,9 @@ ________________________________________________________________________________
 
 #include <LLD/templates/sector.h>
 
-#include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/state.h>
 
+#include <TAO/Ledger/include/enum.h>
 
 namespace LLD
 {

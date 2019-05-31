@@ -154,7 +154,7 @@ namespace TAO
                 //Check for duplicate genesis
 
                 /* Write the Genesis to disk. */
-                if((nFlags & TAO::Ledger::FLAGS::BLOCK) && !LLD::legDB->WriteGenesis(tx.hashGenesis, hash))
+                if((nFlags == TAO::Ledger::FLAGS::BLOCK) && !LLD::legDB->WriteGenesis(tx.hashGenesis, hash))
                     return debug::error(FUNCTION, "failed to write genesis");
             }
             else
@@ -187,7 +187,7 @@ namespace TAO
                     return debug::error(FUNCTION, "prev transaction prevhash mismatch");
 
                 /* Write specific transaction flags. */
-                if(nFlags & TAO::Ledger::FLAGS::BLOCK)
+                if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
                     /* Check previous transaction next pointer. */
                     if(!txPrev.IsHead())

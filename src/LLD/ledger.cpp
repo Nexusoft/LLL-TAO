@@ -93,7 +93,7 @@ namespace LLD
     bool LedgerDB::ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
-        if(nFlags & TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Get(hashTransaction, tx))
@@ -335,7 +335,7 @@ namespace LLD
     bool LedgerDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint32_t nContract, uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags & TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -343,7 +343,7 @@ namespace LLD
             mapProofs[std::make_tuple(hashProof, hashTransaction, nContract)] = 0;
             return true;
         }
-        else if(nFlags & TAO::Ledger::FLAGS::BLOCK)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -360,7 +360,7 @@ namespace LLD
     bool LedgerDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint32_t nContract, uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags & TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -377,7 +377,7 @@ namespace LLD
     bool LedgerDB::EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint32_t nContract, uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags & TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 

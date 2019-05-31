@@ -22,7 +22,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/types/state.h>
-#include <TAO/Register/include/enum.h>
+
+#include <TAO/Ledger/include/enum.h>
 
 #include <Util/include/memory.h>
 

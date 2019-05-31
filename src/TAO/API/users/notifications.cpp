@@ -135,7 +135,7 @@ namespace TAO
                         break;
 
                     /* Check claims against notifications. */
-                    if(LLD::legDB->HasProof(std::get<0>(hash), tx.GetHash(), TAO::Ledger::FLAGS::BLOCK | TAO::Ledger::FLAGS::MEMPOOL))
+                    if(LLD::legDB->HasProof(std::get<0>(hash), tx.GetHash(), TAO::Ledger::FLAGS::MEMPOOL))
                         continue;
 
                     ++nTotal;
@@ -223,7 +223,7 @@ namespace TAO
                     continue;
 
                 /* Check claims against notifications. */
-                if(LLD::legDB->HasProof(hashAddress, tx.GetHash(), TAO::Ledger::FLAGS::BLOCK | TAO::Ledger::FLAGS::MEMPOOL))
+                if(LLD::legDB->HasProof(hashAddress, tx.GetHash(), TAO::Ledger::FLAGS::MEMPOOL))
                     continue;
 
                 ++nTotal;

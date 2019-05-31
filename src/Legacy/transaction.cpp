@@ -806,7 +806,7 @@ namespace Legacy
             if (fIsCoinBase)
             {
                 /* Calculate the mint when on a block. */
-                if(nFlags & FLAGS::BLOCK)
+                if(nFlags == FLAGS::BLOCK)
                     state.nMint = GetValueOut();
 
                 return true;
@@ -926,7 +926,7 @@ namespace Legacy
                 return debug::error(FUNCTION, "signature is invalid");
 
             /* Commit to disk if flagged. */
-            if((nFlags & FLAGS::BLOCK) && !LLD::legacyDB->WriteSpend(prevout.hash, prevout.n))
+            if((nFlags == FLAGS::BLOCK) && !LLD::legacyDB->WriteSpend(prevout.hash, prevout.n))
                 return debug::error(FUNCTION, "failed to write spend");
 
         }
@@ -948,7 +948,7 @@ namespace Legacy
             return debug::error(FUNCTION, GetHash().ToString().substr(0,10), "value in < value out");
 
         /* Calculate the mint if connected with a block. */
-        if(nFlags & FLAGS::BLOCK)
+        if(nFlags == FLAGS::BLOCK)
             state.nMint += (int32_t)(GetValueOut() - nValueIn);
 
         return true;

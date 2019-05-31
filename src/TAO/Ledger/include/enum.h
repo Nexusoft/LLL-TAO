@@ -62,7 +62,6 @@ namespace TAO
 
                 /** SECP256K1 ECDSA curve. **/
                 SECP256K1   = 0x03
-
             };
         };
 
@@ -76,11 +75,14 @@ namespace TAO
         {
             enum
             {
-                /* Write the registers post-state to database. */
-                BLOCK     = (1 << 1),
+                /** Reserved. **/
+                RESERVED    = 0x00,
 
-                /* Write the states into a mempool for checking pre-block. */
-                MEMPOOL   = (1 << 2)
+                /* Write data to disk on block. */
+                BLOCK       = 0x01,
+
+                /* Write data into memory on mempool. */
+                MEMPOOL     = 0x02
             };
         };
     }

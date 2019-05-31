@@ -38,7 +38,7 @@ namespace LLD
     bool RegisterDB::WriteState(const uint256_t& hashRegister, const TAO::Register::State& state, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags & TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -47,7 +47,7 @@ namespace LLD
 
             return true;
         }
-        else if(nFlags & TAO::Ledger::FLAGS::BLOCK)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -64,8 +64,7 @@ namespace LLD
     bool RegisterDB::ReadState(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if((nFlags & TAO::Ledger::FLAGS::MEMPOOL)
-        || (nFlags & TAO::Register::FLAGS::PRESTATE))
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -87,7 +86,7 @@ namespace LLD
     bool RegisterDB::EraseState(const uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags & TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -139,7 +138,7 @@ namespace LLD
     bool RegisterDB::WriteIdentifier(const uint256_t nIdentifier, const uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags & TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -147,7 +146,7 @@ namespace LLD
 
             return true;
         }
-        else if(nFlags & TAO::Ledger::FLAGS::BLOCK)
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -171,7 +170,7 @@ namespace LLD
     bool RegisterDB::ReadIdentifier(const uint256_t nIdentifier, uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags & TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -192,7 +191,7 @@ namespace LLD
     bool RegisterDB::HasIdentifier(const uint256_t nIdentifier, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags & TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -209,7 +208,7 @@ namespace LLD
     bool RegisterDB::HasState(const uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags & TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -226,7 +225,7 @@ namespace LLD
     bool RegisterDB::GetStates(const uint256_t& hashRegister, std::vector<TAO::Register::State>& states, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags & TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
