@@ -59,33 +59,6 @@ namespace TAO
                     }
 
 
-                    /* Check default values for creating a standard account. */
-                    case TAO::Register::OBJECTS::TRUST:
-                    {
-                        /* Check the account balance. */
-                        if(object.get<uint64_t>("balance") != 0)
-                            return debug::error(FUNCTION, "trust account can't be created with non-zero balance ",
-                            object.get<uint64_t>("balance"));
-
-                        /* Check the account balance. */
-                        if(object.get<uint64_t>("stake") != 0)
-                            return debug::error(FUNCTION, "trust account can't be created with non-zero stake ",
-                            object.get<uint64_t>("stake"));
-
-                        /* Check the account balance. */
-                        if(object.get<uint64_t>("trust") != 0)
-                            return debug::error(FUNCTION, "trust account can't be created with non-zero trust ",
-                            object.get<uint64_t>("trust"));
-
-                        /* Check that token identifier hasn't been claimed. */
-                        if(object.get<uint256_t>("identifier") != 0)
-                            return debug::error(FUNCTION, "trust account can't be created with non-default identifier ",
-                            object.get<uint256_t>("identifier").GetHex());
-
-                        break;
-                    }
-
-
                     /* Check default values for creating a standard token. */
                     case TAO::Register::OBJECTS::TOKEN:
                     {
@@ -98,7 +71,7 @@ namespace TAO
 
                         /* Check for reserved native token. */
                         if(hashIdentifier == 0 || LLD::regDB->HasState(hashIdentifier, nFlags))
-                            return debug::error(FUNCTION, "token can't use reserved identifier ", hashIdentifier.GetHex());
+                            return debug::error(FUNCTION, "token can't use reserved identifier ", hashIdentifier.SubString());
 
                         /* Check that the current supply and max supply are the same. */
                         if(object.get<uint64_t>("supply") != object.get<uint64_t>("balance"))
@@ -175,7 +148,7 @@ namespace TAO
                         /* Check that token identifier hasn't been claimed. */
                         if(object.get<uint256_t>("identifier") != 0)
                             return debug::error(FUNCTION, "trust account can't be created with non-default identifier ",
-                            object.get<uint256_t>("identifier").GetHex());
+                            object.get<uint256_t>("identifier").SubString());
 
                         break;
                     }
