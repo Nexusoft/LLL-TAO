@@ -13,11 +13,11 @@
 
 
 
-TEST_CASE( "OP::REGISTER  Benchmarks", "[operation]" )
+TEST_CASE( "OP::CREATE  Benchmarks", "[operation]" )
 {
     using namespace TAO::Operation;
 
-    debug::log(0, "===== Begin OP::REGISTER Benchmarks =====");
+    debug::log(0, "===== Begin OP::CREATE Benchmarks =====");
 
     {
         std::vector<uint8_t> vData(32, 0xff);
@@ -27,7 +27,7 @@ TEST_CASE( "OP::REGISTER  Benchmarks", "[operation]" )
         {
             TAO::Ledger::Transaction tx;
             tx.hashGenesis = LLC::GetRand256();
-            tx[0] << uint8_t(OP::REGISTER) << LLC::GetRand256() << uint8_t(TAO::Register::REGISTER::READONLY) << vData;
+            tx[0] << uint8_t(OP::CREATE) << LLC::GetRand256() << uint8_t(TAO::Register::REGISTER::READONLY) << vData;
 
             REQUIRE(tx.Build());
 
@@ -49,9 +49,9 @@ TEST_CASE( "OP::REGISTER  Benchmarks", "[operation]" )
 
         //time output
         uint64_t nTime = bench.ElapsedMilliseconds();
-        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "OP::REGISTER", ANSI_COLOR_RESET, " Processed ", 10000000.0 / nTime, " ops / second");
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "OP::CREATE", ANSI_COLOR_RESET, " Processed ", 10000000.0 / nTime, " ops / second");
     }
 
-    debug::log(0, "===== End OP::REGISTER Benchmarks =====\n");
+    debug::log(0, "===== End OP::CREATE Benchmarks =====\n");
 
 }

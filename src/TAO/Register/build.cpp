@@ -194,7 +194,7 @@ namespace TAO
                     /* Transfer ownership of a register to another signature chain. */
                     case TAO::Operation::OP::TRANSFER:
                     {
-                        /* Extract the address from the tx.ssOperation. */
+                        /* Extract the address from the contract. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 

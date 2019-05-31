@@ -106,24 +106,28 @@ namespace TAO
                 if(!LLD::legDB->ReadTx(hashTx, txPrev))
                     throw APIException(-23, "Previous transaction not found.");
 
-                /* Read the type from previous transaction */
-                uint8_t nType;
-                txPrev.ssOperation >> nType;
+                /* Loop through all transactions. */
+                for(uint32_t nContract = 0; nContract < txPrev.Size(); ++nContract)
+                {
+                    /* Get the operation byte. */
+                    uint8_t nType = 0;
+                    txPrev[nContract] >> nType;
 
-                /* Check type. */
-                if(nType != TAO::Operation::OP::DEBIT)
-                    throw APIException(-32, "Previous transaction not debit.");
+                    /* Check type. */
+                    if(nType != TAO::Operation::OP::DEBIT)
+                        throw APIException(-32, "Previous transaction not debit.");
 
-                /* Get the hashFrom from the previous transaction. */
-                uint256_t hashFrom;
-                txPrev.ssOperation >> hashFrom;
+                    /* Get the hashFrom from the previous transaction. */
+                    uint256_t hashFrom = 0;
+                    txPrev[nContract] >> hashFrom;
+                }
 
                 /* Assign hash proof to hash to. */
                 hashProof = hashFrom;
             }
 
-            /* Get the token / account object that we are crediting to. This is required as we need to determine the 
-               digits specification from the token definition, in order to convert the user supplied amount to the 
+            /* Get the token / account object that we are crediting to. This is required as we need to determine the
+               digits specification from the token definition, in order to convert the user supplied amount to the
                internal amount */
             TAO::Register::Object object;
             if(!LLD::regDB->ReadState(hashTo, object))

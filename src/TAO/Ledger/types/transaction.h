@@ -19,8 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/types/contract.h>
 
-#include <TAO/Register/types/stream.h>
-#include <TAO/Register/include/enum.h>
+#include <TAO/Ledger/include/enum.h>
 
 #include <Util/include/runtime.h>
 
@@ -173,7 +172,7 @@ namespace TAO
              *  This is for read-only objects.
              *
              **/
-            const Contract& operator[](const uint32_t n) const
+            const TAO::Operation::Contract& operator[](const uint32_t n) const
             {
                 /* Check contract bounds. */
                 if(n >= vContracts.size())
@@ -197,7 +196,7 @@ namespace TAO
              *  This handles writes to create new contracts.
              *
              **/
-            Contract& operator[](const uint32_t n)
+            TAO::Operation::Contract& operator[](const uint32_t n)
             {
                 /* Allocate a new contract if on write. */
                 if(n >= vContracts.size())
@@ -210,6 +209,17 @@ namespace TAO
                 vContracts[n].nTimestamp  = nTimestamp;
 
                 return vContracts[n];
+            }
+
+
+            /** size
+             *
+             *  Get the total contracts in transaction.
+             *
+             **/
+            uint32_t Size()
+            {
+                return vContracts.size();
             }
 
 

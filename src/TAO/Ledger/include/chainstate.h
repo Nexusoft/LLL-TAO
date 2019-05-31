@@ -36,7 +36,7 @@ namespace TAO
          **/
         namespace ChainState
         {
-            
+
             /** The best block height in the chain. **/
             std::atomic<uint32_t> nBestHeight;
 
@@ -92,7 +92,7 @@ namespace TAO
             /** The best block in the chain. **/
             BlockState stateGenesis;
 
-        };
+        }
     }
 }
 

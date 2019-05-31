@@ -45,11 +45,11 @@ namespace TAO
         public:
 
             /** MEMORY ONLY: Contract timestamp. **/
-            uint64_t nTimestamp;
+            mutable uint64_t nTimestamp;
 
 
             /** MEMORY ONLY: Caller public-id. **/
-            uint256_t hashCaller;
+            mutable uint256_t hashCaller;
 
 
             /** Default Constructor. **/
@@ -84,6 +84,27 @@ namespace TAO
             }
 
 
+            /** Clear
+             *
+             *  Clears all contract data
+             *
+             **/
+            void Reset() const
+            {
+                /* Set the operation stream to beginning. */
+                ssOperation.SetNull();
+
+                /* Set the register stream to beginning. */
+                ssRegister.SetNull();
+
+                /* Reset the timestamp. */
+                nTimestamp = runtime::unifiedtimestamp();
+
+                /* Reset the caller. */
+                hashCaller = 0;
+            }
+
+
             /** End
              *
              *  End of the internal stream.
@@ -91,7 +112,7 @@ namespace TAO
              **/
             bool End() const
             {
-                return ssOperation.End();
+                return ssOperation.end();
             }
 
 

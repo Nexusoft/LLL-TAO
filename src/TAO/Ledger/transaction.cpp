@@ -24,14 +24,12 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake.h>
-#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/enum.h>
 
-#include <Util/templates/datastream.h>
-#include <Util/include/hex.h>
+
 #include <Util/include/debug.h>
 
 /* Global TAO namespace. */
@@ -45,14 +43,6 @@ namespace TAO
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
         bool Transaction::Check() const
         {
-            /* Checks for coinbase. */
-            if(IsCoinbase())
-            {
-                /* Check the coinbase size. */
-                if(ssOperation.size() != 17)
-                    return debug::error(FUNCTION, "operation data inconsistent with fixed size rules ", ssOperation.size());
-            }
-
             /* Check for genesis valid numbers. */
             if(hashGenesis == 0)
                 return debug::error(FUNCTION, "genesis cannot be zero");

@@ -12,12 +12,18 @@
 ____________________________________________________________________________________________*/
 #pragma once
 
-#include <Util/include/json.h>
-#include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Register/types/object.h>
+#include <LLC/hash/argon2.h>
+
 #include <Legacy/types/transaction.h>
 
-#include <LLC/hash/argon2.h>
+#include <TAO/Operation/types/contract.h>
+
+#include <TAO/Register/types/object.h>
+
+#include <TAO/Ledger/include/chainstate.h>
+
+#include <Util/include/json.h>
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -54,7 +60,7 @@ namespace TAO
          *
          *  Determins whether a string value is a register address.
          *  This only checks to see if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
-         *  It does not check to see whether the register address exists in the database 
+         *  It does not check to see whether the register address exists in the database
          *
          *  @param[in] strValueToCheck The value to check
          *
@@ -103,7 +109,7 @@ namespace TAO
         json::json TransactionToJSON(Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
 
 
-        /** OperationToJSON
+        /** ContractToJSON
         *
         *  Converts a serialized operation stream to formattted JSON
         *
@@ -112,7 +118,7 @@ namespace TAO
         *  @return the formatted JSON object
         *
         **/
-        json::json OperationToJSON(const TAO::Operation::Stream& ssOperation);
+        json::json ContractToJSON(const TAO::Operation::Contract& ssOperation);
 
 
         /** ObjectRegisterToJSON
@@ -130,14 +136,14 @@ namespace TAO
 
         /** GetTokenOrAccountDigits
         *
-        *  Retrieves the number of digits that applies to amounts for this token or account object. 
-        *  If the object register passed in is a token account then we need to look at the token definition 
-        *  in order to get the digits.  The token is obtained by looking at the identifier field, 
+        *  Retrieves the number of digits that applies to amounts for this token or account object.
+        *  If the object register passed in is a token account then we need to look at the token definition
+        *  in order to get the digits.  The token is obtained by looking at the identifier field,
         *  which contains the register address of the issuing token
         *
         *  @param[in] object The Object Register to determine the digits for
         *
-        *  @return the number of digits that apply to amounts for this token or account 
+        *  @return the number of digits that apply to amounts for this token or account
         *
         **/
         uint64_t GetTokenOrAccountDigits(const TAO::Register::Object& object);

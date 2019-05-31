@@ -27,6 +27,8 @@ ________________________________________________________________________________
 
 #include <Util/include/memory.h>
 
+#include <tuple>
+
 
 /** Forward declarations **/
 namespace TAO
@@ -51,7 +53,7 @@ namespace LLD
     {
         std::mutex MEMORY_MUTEX;
 
-        std::map<std::pair<uint256_t, uint512_t>, uint32_t> mapProofs;
+        std::map<std::tuple<uint256_t, uint512_t, uint32_t>, uint32_t> mapProofs;
 
 
     public:
@@ -417,12 +419,14 @@ namespace LLD
          *
          *  @param[in] hashProof The proof that is being spent.
          *  @param[in] hashTransaction The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
          *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE).
          *
          *  @return True if the last was successfully written, false otherwise.
          *
          **/
-        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint64_t nContract, uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction,
+                        const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** HasProof
@@ -431,12 +435,14 @@ namespace LLD
          *
          *  @param[in] hashProof The proof that is being spent.
          *  @param[in] hashTransaction The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
          *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
          *
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint64_t nContract, uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction,
+                      const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** EraseProof
@@ -445,12 +451,14 @@ namespace LLD
          *
          *  @param[in] hashProof The proof that is being spent.
          *  @param[in] hashTransaction The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
          *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
          *
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint64_t nContract, uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction,
+                        const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteBlock

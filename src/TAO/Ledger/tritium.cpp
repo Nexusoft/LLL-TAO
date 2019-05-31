@@ -446,15 +446,20 @@ namespace TAO
             if(IsProofOfWork())
             {
                 /* Get the stream from coinbase. */
-                producer.ssOperation.seek(1, STREAM::BEGIN); //set the read position to where reward will be.
+                uint8_t OP = 0;
+                producer[0] >> OP;
+
+                /* Check the operations. */
+                if(OP != TAO::Operation::OP::COINBASE)
+                    return debug::error(FUNCTION, "coinbase not set for proof-of-work");
 
                 /* Read the mining reward. */
-                uint64_t nMiningReward;
-                producer.ssOperation >> nMiningReward;
+                uint64_t nReward = 0;
+                producer[0] >> nReward;
 
                 /* Check that the Mining Reward Matches the Coinbase Calculations. */
-                if (nMiningReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
-                    return debug::error(FUNCTION, "miner reward mismatch ", nMiningReward, " : ",
+                if (nReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
+                    return debug::error(FUNCTION, "miner reward mismatch ", nReward, " : ",
                          GetCoinbaseReward(statePrev, GetChannel(), 0));
             }
             else if (IsProofOfStake())
@@ -518,8 +523,11 @@ namespace TAO
             TAO::Register::Object trustAccount;
 
             /* Deserialize from the stream. */
-            producer.ssRegister.seek(1, STREAM::BEGIN);
-            producer.ssRegister >> trustAccount;
+            uint8_t nState = 0;
+            producer[0] >>= nState;
+
+            /* Get the pre-state. */
+            producer[0] >>= trustAccount;
 
             /* Parse the object. */
             if(!trustAccount.Parse())
@@ -543,16 +551,22 @@ namespace TAO
             if(producer.IsTrust())
             {
                 /* Extract values from producer operation */
-                producer.ssOperation.seek(1, STREAM::BEGIN);
+                uint8_t OP = 0;
+                producer[0] >> nOP;
 
-                uint512_t hashLastTrust;
-                producer.ssOperation >> hashLastTrust;
+                /* Double check OP code. */
+                if(OP != TAO::Operation::OP::TRUST)
+                    return debug::error(FUNCTION, "invalid producer operation for trust");
 
-                uint64_t nClaimedTrust;
-                producer.ssOperation >> nClaimedTrust;
+                /* Get last trust hash. */
+                uint512_t hashLastTrust = 0;
+                producer[0]>> hashLastTrust;
 
-                uint64_t nClaimedReward;
-                producer.ssOperation >> nClaimedReward;
+                uint64_t nClaimedTrust = 0;
+                producer[0] >> nClaimedTrust;
+
+                uint64_t nClaimedReward = 0;
+                producer[0] >> nClaimedReward;
 
                 /* Get the last stake block. */
                 TAO::Ledger::BlockState stateLast;
@@ -567,7 +581,7 @@ namespace TAO
 
                 /* Get pre-state trust account values */
                 nTrustPrev = trustAccount.get<uint64_t>("trust");
-                nStake = trustAccount.get<uint64_t>("stake");
+                nStake     = trustAccount.get<uint64_t>("stake");
 
                 /* Calculate the new trust score */
                 nTrust = TrustScore(nTrustPrev, nStake, nBlockAge);
@@ -578,7 +592,6 @@ namespace TAO
 
                 /* Calculate the coinstake reward */
                 const uint64_t nStakeTime = GetBlockTime() - stateLast.GetBlockTime();
-
                 nCoinstakeReward = CoinstakeReward(nStake, nStakeTime, nTrust, false);
 
                 /* Validate the coinstake reward calculation */
@@ -598,13 +611,18 @@ namespace TAO
             else //Genesis stake
             {
                 /* Extract values from producer operation */
-                producer.ssOperation.seek(1, STREAM::BEGIN);
+                uint8_t OP = 0;
+                producer[0] >> nOP;
 
-                uint256_t hashAddress;
-                producer.ssOperation >> hashAddress;
+                /* Double check OP code. */
+                if(OP != TAO::Operation::OP::GENESIS
+                    return debug::error(FUNCTION, "invalid producer operation for genesis");
 
-                uint64_t nClaimedReward;
-                producer.ssOperation >> nClaimedReward;
+                uint256_t hashAddress = 0;
+                producer[0] >> hashAddress;
+
+                uint64_t nClaimedReward = 0;
+                producer[0] >> nClaimedReward;
 
                 /* Get Genesis stake from the trust account pre-state balance. Genesis reward based on balance (that will move to stake) */
                 nStake = trustAccount.get<uint64_t>("balance");
@@ -614,7 +632,7 @@ namespace TAO
                     return debug::error(FUNCTION, "genesis cannot include transactions");
 
                 /* Calculate the Coinstake Age. */
-                const uint64_t nCoinAge = GetBlockTime() - trustAccount.nTimestamp;
+                const uint64_t nCoinAge = GetBlockTime() - trustAccount.nModified;
 
                 /* Validate that Genesis coin age exceeds required minimum. */
                 if(nCoinAge < MinCoinAge())

@@ -222,7 +222,7 @@ namespace TAO
                         if(!Transfer::Verify(contract))
                             return false;
 
-                        /* Extract the address from the tx.ssOperation. */
+                        /* Extract the address from the contract. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
@@ -281,7 +281,7 @@ namespace TAO
                         uint32_t nContract = 0;
                         contract >> nContract;
 
-                        /* Extract the address from the tx.ssOperation. */
+                        /* Extract the address from the contract. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 

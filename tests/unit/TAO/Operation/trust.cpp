@@ -45,7 +45,7 @@ TEST_CASE( "Trust Primitive Tests", "[operation]" )
             Object object = CreateTrust();
 
             //payload
-            tx[0] << uint8_t(OP::REGISTER) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+            tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));

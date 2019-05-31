@@ -97,130 +97,136 @@ namespace TAO
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;
 
-                /* Get the operation byte. */
-                uint8_t nType = 0;
-                tx.ssOperation >> nType;
-
-                /* Check for key operations. */
-                TAO::Register::State state;
-                switch(nType)
+                /* Loop through all transactions. */
+                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
                 {
-                    /* Break when at the register declaration. */
-                    case TAO::Operation::OP::REGISTER:
+                    /* Get the operation byte. */
+                    uint8_t nType = 0;
+                    tx[nContract] >> nType;
+
+                    /* Check for key operations. */
+                    TAO::Register::State state;
+                    switch(nType)
                     {
-                        /* Set hash last to zero to break. */
-                        hashLast = 0;
-
-                        break;
-                    }
-
-                    case TAO::Operation::OP::APPEND:
-                    {
-                        /* Seek past pre-state. */
-                        tx.ssRegister.seek(1);
-
-                        /* De-Serialize state register. */
-                        tx.ssRegister >> state;
-
-                        /* Generate return object. */
-                        json::json obj;
-                        obj["OP"]         = "APPEND";
-                        obj["owner"]      = state.hashOwner.ToString();
-                        obj["updated"]  = state.nTimestamp;
-
-                        /* Reset read position. */
-                        state.nReadPos = 0;
-
-                        /* Grab the last state. */
-                        while(!state.end())
+                        /* Break when at the register declaration. */
+                        case TAO::Operation::OP::CREATE:
                         {
-                            /* If the data type is string. */
-                            std::string data;
-                            state >> data;
+                            /* Set hash last to zero to break. */
+                            hashLast = 0;
 
-                            obj["checksum"] = state.hashChecksum;
-                            obj["data"]    = data;
+                            break;
                         }
 
-                        /* Push to return array. */
-                        ret.push_back(obj);
-
-                        break;
-                    }
-
-                    case TAO::Operation::OP::WRITE:
-                    {
-                        /* Seek past pre-state. */
-                        tx.ssRegister.seek(1);
-
-                        /* De-Serialize state register. */
-                        tx.ssRegister >> state;
-
-                        /* Generate return object. */
-                        json::json obj;
-                        obj["OP"]         = "WRITE";
-                        obj["owner"]      = state.hashOwner.ToString();
-                        obj["updated"]  = state.nTimestamp;
-
-                        /* Reset read position. */
-                        state.nReadPos = 0;
-
-                        /* Grab the last state. */
-                        while(!state.end())
+                        case TAO::Operation::OP::APPEND:
                         {
-                            /* If the data type is string. */
-                            std::string data;
-                            state >> data;
+                            /* Seek past pre-state. */
+                            uint8_t nState = 0;
+                            tx[nContract] >>= nState;
 
-                            obj["checksum"] = state.hashChecksum;
-                            obj["data"]    = data;
+                            /* De-Serialize state register. */
+                            tx[nContract] >>= state;
+
+                            /* Generate return object. */
+                            json::json obj;
+                            obj["OP"]         = "APPEND";
+                            obj["owner"]      = state.hashOwner.ToString();
+                            obj["updated"]  = state.nTimestamp;
+
+                            /* Reset read position. */
+                            state.nReadPos = 0;
+
+                            /* Grab the last state. */
+                            while(!state.end())
+                            {
+                                /* If the data type is string. */
+                                std::string data;
+                                state >> data;
+
+                                obj["checksum"] = state.hashChecksum;
+                                obj["data"]    = data;
+                            }
+
+                            /* Push to return array. */
+                            ret.push_back(obj);
+
+                            break;
                         }
 
-                        /* Push to return array. */
-                        ret.push_back(obj);
-
-                        break;
-                    }
-
-                    case TAO::Operation::OP::CLAIM:
-                    {
-                        /* Jump to proper sigchain. */
-                        tx.ssOperation >> hashLast;
-
-                        break;
-                    }
-
-                    /* Get old owner from transfer. */
-                    case TAO::Operation::OP::TRANSFER:
-                    {
-                         /* Generate return object. */
-                        json::json obj;
-                        obj["OP"]         = "TRANSFER";
-                        obj["owner"]      = tx.hashGenesis.ToString();
-                        obj["updated"]  = state.nTimestamp;
-
-                        /* Reset read position. */
-                        state.nReadPos = 0;
-
-                        /* Grab the last state. */
-                        while(!state.end())
+                        case TAO::Operation::OP::WRITE:
                         {
-                            /* If the data type is string. */
-                            std::string data;
-                            state >> data;
+                            /* Seek past pre-state. */
+                            uint8_t nState = 0;
+                            tx[nContract] >>= nState;
 
-                            obj["checksum"] = state.hashChecksum;
-                            obj["data"]    = data;
+                            /* De-Serialize state register. */
+                            tx[nContract] >>= state;
+
+                            /* Generate return object. */
+                            json::json obj;
+                            obj["OP"]         = "WRITE";
+                            obj["owner"]      = state.hashOwner.ToString();
+                            obj["updated"]  = state.nTimestamp;
+
+                            /* Reset read position. */
+                            state.nReadPos = 0;
+
+                            /* Grab the last state. */
+                            while(!state.end())
+                            {
+                                /* If the data type is string. */
+                                std::string data;
+                                state >> data;
+
+                                obj["checksum"] = state.hashChecksum;
+                                obj["data"]    = data;
+                            }
+
+                            /* Push to return array. */
+                            ret.push_back(obj);
+
+                            break;
                         }
 
-                        /* Push to return array. */
-                        ret.push_back(obj);
+                        case TAO::Operation::OP::CLAIM:
+                        {
+                            /* Jump to proper sigchain. */
+                            tx[nContract] >> hashLast;
 
-                        break;
+                            break;
+                        }
+
+                        /* Get old owner from transfer. */
+                        case TAO::Operation::OP::TRANSFER:
+                        {
+                             /* Generate return object. */
+                            json::json obj;
+                            obj["OP"]         = "TRANSFER";
+                            obj["owner"]      = tx.hashGenesis.ToString();
+                            obj["updated"]  = state.nTimestamp;
+
+                            /* Reset read position. */
+                            state.nReadPos = 0;
+
+                            /* Grab the last state. */
+                            while(!state.end())
+                            {
+                                /* If the data type is string. */
+                                std::string data;
+                                state >> data;
+
+                                obj["checksum"] = state.hashChecksum;
+                                obj["data"]    = data;
+                            }
+
+                            /* Push to return array. */
+                            ret.push_back(obj);
+
+                            break;
+                        }
+
+                        default:
+                            continue;
                     }
-
-                    default:
-                        continue;
                 }
             }
 

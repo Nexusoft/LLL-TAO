@@ -80,14 +80,14 @@ namespace TAO
 
                 /* Get the operation byte. */
                 uint8_t nType = 0;
-                tx.ssOperation >> nType;
+                tx[0] >> nType;
 
                 /* Check for key operations. */
                 TAO::Register::State state;
                 switch(nType)
                 {
                     /* Break when at the register declaration. */
-                    case TAO::Operation::OP::REGISTER:
+                    case TAO::Operation::OP::CREATE:
                     {
                         /* Set hash last to zero to break. */
                         hashLast = 0;
@@ -136,7 +136,7 @@ namespace TAO
                     case TAO::Operation::OP::CLAIM:
                     {
                         /* Jump to proper sigchain. */
-                        tx.ssOperation >> hashLast;
+                        tx[0] >> hashLast;
 
                         break;
                     }

@@ -176,7 +176,7 @@ namespace TAO
                     }
 
                     obj["hash"]          = tx.GetHash().ToString();
-                    obj["operation"]     = OperationToJSON(tx.ssOperation);
+                    obj["operation"]     = ContractToJSON(tx[0]);
 
                     if(obj["operation"]["OP"] == "DEBIT")
                     {
@@ -259,7 +259,7 @@ namespace TAO
                 }
 
                 obj["hash"]       = tx.GetHash().ToString();
-                obj["operation"]  = OperationToJSON(tx.ssOperation);
+                obj["contract"]   = ContractToJSON(tx[0]);
 
                 ret.push_back(obj);
 

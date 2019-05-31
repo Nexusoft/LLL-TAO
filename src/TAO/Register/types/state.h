@@ -50,7 +50,7 @@ namespace TAO
 
 
             /** The created timestamp of the register. **/
-            uint64_t nModified;
+            uint64_t nCreated;
 
 
             /** The modified timestamp of the register. **/
@@ -222,14 +222,14 @@ namespace TAO
             State& write(const char* pch, int nSize);
 
 
-            /** Operator Overload <<=
+            /** Operator Overload <<
              *
              *  Serializes data into vchOperations
              *
              *  @param[in] obj The object to serialize into ledger data
              *
              **/
-            template<typename Type> State& operator<<=(const Type& obj)
+            template<typename Type> State& operator<<(const Type& obj)
             {
                 /* Serialize to the stream. */
                 ::Serialize(*this, obj, (uint32_t)SER_REGISTER, nVersion); //temp versinos for now
@@ -238,14 +238,14 @@ namespace TAO
             }
 
 
-            /** Operator Overload >>=
+            /** Operator Overload >>
              *
              *  Serializes data into vchOperations
              *
              *  @param[out] obj The object to de-serialize from ledger data
              *
              **/
-            template<typename Type> const State& operator>>=(Type& obj) const
+            template<typename Type> const State& operator>>(Type& obj) const
             {
                 /* Unserialize from the stream. */
                 ::Unserialize(*this, obj, (uint32_t)SER_REGISTER, nVersion);

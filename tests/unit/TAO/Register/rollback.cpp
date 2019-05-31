@@ -51,7 +51,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         Object account = CreateToken(11, 1000, 100);
 
         //payload
-        tx[0] << uint8_t(OP::REGISTER) << hashRegister << uint8_t(REGISTER::OBJECT) << account.GetState();
+        tx[0] << uint8_t(OP::CREATE) << hashRegister << uint8_t(REGISTER::OBJECT) << account.GetState();
 
         //generate the prestates and poststates
         REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -91,7 +91,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::REGISTER) << hashRegister << uint8_t(REGISTER::APPEND) << std::vector<uint8_t>(10, 0xff);
+            tx[0] << uint8_t(OP::CREATE) << hashRegister << uint8_t(REGISTER::APPEND) << std::vector<uint8_t>(10, 0xff);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -195,7 +195,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::REGISTER) << hashRegister << uint8_t(REGISTER::RAW) << std::vector<uint8_t>(10, 0xff);
+            tx[0] << uint8_t(OP::CREATE) << hashRegister << uint8_t(REGISTER::RAW) << std::vector<uint8_t>(10, 0xff);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -266,7 +266,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::REGISTER) << hashRegister << uint8_t(REGISTER::RAW) << std::vector<uint8_t>(10, 0xff);
+            tx[0] << uint8_t(OP::CREATE) << hashRegister << uint8_t(REGISTER::RAW) << std::vector<uint8_t>(10, 0xff);
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -526,7 +526,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             Object token = CreateToken(11, 1000, 100);
 
             //payload
-            tx[0] << uint8_t(OP::REGISTER) << hashRegister << uint8_t(REGISTER::OBJECT) << token.GetState();
+            tx[0] << uint8_t(OP::CREATE) << hashRegister << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -547,7 +547,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             Object account = CreateAccount(11);
 
             //payload
-            tx[0] << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+            tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -628,7 +628,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 Object token = CreateToken(11, 1000, 100);
 
                 //payload
-                tx[0] << uint8_t(OP::REGISTER) << hashRegister << uint8_t(REGISTER::OBJECT) << token.GetState();
+                tx[0] << uint8_t(OP::CREATE) << hashRegister << uint8_t(REGISTER::OBJECT) << token.GetState();
 
                 //generate the prestates and poststates
                 REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -649,7 +649,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 Object account = CreateAccount(11);
 
                 //payload
-                tx[0] << uint8_t(OP::REGISTER) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+                tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
                 //generate the prestates and poststates
                 REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
@@ -931,7 +931,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             Object trust = CreateTrust();
 
             //payload
-            tx[0] << uint8_t(OP::REGISTER) << hashTrust << uint8_t(REGISTER::OBJECT) << trust.GetState();
+            tx[0] << uint8_t(OP::CREATE) << hashTrust << uint8_t(REGISTER::OBJECT) << trust.GetState();
 
             //generate the prestates and poststates
             REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));

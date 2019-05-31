@@ -108,7 +108,7 @@ namespace TAO
                 TAO::Register::Object account = TAO::Register::CreateAccount(hashIdentifier);
 
                 /* Submit the payload object. */
-                tx[0] << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
+                tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
 
             }
             else if(params["type"].get<std::string>() == "token")
@@ -139,7 +139,7 @@ namespace TAO
                                                                          nDigits);
 
                 /* Submit the payload object. */
-                tx[0] << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();
+                tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();
             }
             else
                 throw APIException(-27, "Unknown object register");

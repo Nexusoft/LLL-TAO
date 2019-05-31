@@ -171,9 +171,9 @@ namespace TAO
         }
 
 
-        /* Retrieves the number of digits that applies to amounts for this token or account object. 
-        *  If the object register passed in is a token account then we need to look at the token definition 
-        *  in order to get the digits.  The token is obtained by looking at the identifier field, 
+        /* Retrieves the number of digits that applies to amounts for this token or account object.
+        *  If the object register passed in is a token account then we need to look at the token definition
+        *  in order to get the digits.  The token is obtained by looking at the identifier field,
         *  which contains the register address of the issuing token
         */
         uint64_t GetTokenOrAccountDigits(const TAO::Register::Object& object)
@@ -192,7 +192,7 @@ namespace TAO
             else if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
             {
 
-                /* If debiting an account we need to look at the token definition in order to get the digits. 
+                /* If debiting an account we need to look at the token definition in order to get the digits.
                    The token is obtained by looking at the identifier field, which contains the register address of
                    the issuing token */
                 uint256_t nIdentifier = object.get<uint256_t>("identifier");
@@ -202,7 +202,7 @@ namespace TAO
                     nDigits = 1000000;
                 else
                 {
-                    
+
                     TAO::Register::Object token;
                     if(!LLD::regDB->ReadState(nIdentifier, token))
                         throw APIException(-24, "Token not found");
@@ -212,7 +212,7 @@ namespace TAO
                         throw APIException(-24, "Object failed to parse");
 
                     nDigits = token.get<uint64_t>("digits");
-                }   
+                }
             }
             else
             {
@@ -303,25 +303,25 @@ namespace TAO
             /* Basic TX info for level 2 and up */
             if(nTransactionVerbosity >= 2)
             {
-                txdata["type"] = tx.GetTxTypeString();
-                txdata["version"] = tx.nVersion;
-                txdata["sequence"] = tx.nSequence;
-                txdata["timestamp"] = tx.nTimestamp;
-                txdata["operation"]  = OperationToJSON(tx.ssOperation);
+                txdata["type"]          = tx.GetTxTypeString();
+                txdata["version"]       = tx.nVersion;
+                txdata["sequence"]      = tx.nSequence;
+                txdata["timestamp"]     = tx.nTimestamp;
+                txdata["contract"]      = ContractToJSON(tx[0]);
                 txdata["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
                 /* Genesis and hashes are verbose 3 and up. */
                 if(nTransactionVerbosity >= 3)
                 {
-                    txdata["genesis"] = tx.hashGenesis.ToString();
-                    txdata["nexthash"] = tx.hashNext.ToString();
-                    txdata["prevhash"] = tx.hashPrevTx.ToString();
-                
-                    txdata["pubkey"] = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
+                    txdata["genesis"]   = tx.hashGenesis.ToString();
+                    txdata["nexthash"]  = tx.hashNext.ToString();
+                    txdata["prevhash"]  = tx.hashPrevTx.ToString();
+
+                    txdata["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                     txdata["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                 }
 
-                
+
             }
 
             return txdata;
@@ -385,13 +385,13 @@ namespace TAO
 
 
         /* Converts a serialized operation stream to formattted JSON */
-        json::json OperationToJSON(const TAO::Operation::Stream& ssOperation)
+        json::json ContractToJSON(const TAO::Operation::Contract& contract)
         {
             /* Declare the return JSON object*/
             json::json ret;
 
             /* Start the stream at the beginning. */
-            ssOperation.seek(0, STREAM::BEGIN);
+            contract.Reset();
 
             /* Make sure no exceptions are thrown. */
             try
@@ -399,8 +399,8 @@ namespace TAO
                 /* Loop through the operations ssOperation. */
                 while(!ssOperation.end())
                 {
-                    uint8_t OPERATION;
-                    ssOperation >> OPERATION;
+                    uint8_t OPERATION = 0;
+                    contract >> OPERATION;
 
                     /* Check the current opcode. */
                     switch(OPERATION)
@@ -410,11 +410,11 @@ namespace TAO
                         {
                             /* Get the Address of the Register. */
                             uint256_t hashAddress;
-                            ssOperation >> hashAddress;
+                            contract >> hashAddress;
 
                             /* Deserialize the register from ssOperation. */
                             std::vector<uint8_t> vchData;
-                            ssOperation >> vchData;
+                            contract >> vchData;
 
                             /* Output the json information. */
                             ret["OP"]      = "WRITE";
@@ -430,11 +430,11 @@ namespace TAO
                         {
                             /* Get the Address of the Register. */
                             uint256_t hashAddress;
-                            ssOperation >> hashAddress;
+                            contract >> hashAddress;
 
                             /* Deserialize the register from ssOperation. */
                             std::vector<uint8_t> vchData;
-                            ssOperation >> vchData;
+                            contract >> vchData;
 
                             /* Output the json information. */
                             ret["OP"]      = "APPEND";
@@ -446,19 +446,19 @@ namespace TAO
 
 
                         /* Create a new register. */
-                        case TAO::Operation::OP::REGISTER:
+                        case TAO::Operation::OP::CREATE:
                         {
                             /* Extract the address from the ssOperation. */
                             uint256_t hashAddress;
-                            ssOperation >> hashAddress;
+                            contract >> hashAddress;
 
                             /* Extract the register type from ssOperation. */
                             uint8_t nType;
-                            ssOperation >> nType;
+                            contract >> nType;
 
                             /* Extract the register data from the ssOperation. */
                             std::vector<uint8_t> vchData;
-                            ssOperation >> vchData;
+                            contract >> vchData;
 
                             /* Output the json information. */
                             ret["OP"]      = "REGISTER";
@@ -476,11 +476,11 @@ namespace TAO
                         {
                             /* Extract the address from the ssOperation. */
                             uint256_t hashAddress;
-                            ssOperation >> hashAddress;
+                            contract >> hashAddress;
 
                             /* Read the register transfer recipient. */
                             uint256_t hashTransfer;
-                            ssOperation >> hashTransfer;
+                            contract >> hashTransfer;
 
                             /* Output the json information. */
                             ret["OP"]       = "TRANSFER";
@@ -495,13 +495,13 @@ namespace TAO
                         case TAO::Operation::OP::DEBIT:
                         {
                             uint256_t hashAddress; //the register address debit is being sent from. Hard reject if this register isn't account id
-                            ssOperation >> hashAddress;
+                            contract >> hashAddress;
 
                             uint256_t hashTransfer;   //the register address debit is being sent to. Hard reject if this register isn't an account id
-                            ssOperation >> hashTransfer;
+                            contract >> hashTransfer;
 
                             uint64_t  nAmount;  //the amount to be transfered
-                            ssOperation >> nAmount;
+                            contract >> nAmount;
 
                             /* Output the json information. */
                             ret["OP"]       = "DEBIT";
@@ -518,19 +518,19 @@ namespace TAO
                         {
                             /* The transaction that this credit is claiming. */
                             uint512_t hashTx;
-                            ssOperation >> hashTx;
+                            contract >> hashTx;
 
                             /* The proof this credit is using to make claims. */
                             uint256_t hashProof;
-                            ssOperation >> hashProof;
+                            contract >> hashProof;
 
                             /* The account that is being credited. */
                             uint256_t hashAccount;
-                            ssOperation >> hashAccount;
+                            contract >> hashAccount;
 
                             /* The total to be credited. */
                             uint64_t  nCredit;
-                            ssOperation >> nCredit;
+                            contract >> nCredit;
 
                             /* Output the json information. */
                             ret["OP"]      = "CREDIT";
@@ -549,11 +549,11 @@ namespace TAO
 
                             /* The total to be credited. */
                             uint64_t  nCredit;
-                            ssOperation >> nCredit;
+                            contract >> nCredit;
 
                             /* The extra nNonce available in script. */
                             uint64_t  nExtraNonce;
-                            ssOperation >> nExtraNonce;
+                            contract >> nExtraNonce;
 
                             /* Output the json information. */
                             ret["OP"]     = "COINBASE";
@@ -570,23 +570,23 @@ namespace TAO
 
                             /* The account that is being staked. */
                             uint256_t hashAccount;
-                            ssOperation >> hashAccount;
+                            contract >> hashAccount;
 
                             /* The previous trust block. */
                             uint1024_t hashLastTrust;
-                            ssOperation >> hashLastTrust;
+                            contract >> hashLastTrust;
 
                             /* Previous trust sequence number. */
                             uint32_t nSequence;
-                            ssOperation >> nSequence;
+                            contract >> nSequence;
 
                             /* The trust calculated. */
                             uint64_t nTrust;
-                            ssOperation >> nTrust;
+                            contract >> nTrust;
 
                             /* The total to be staked. */
                             uint64_t  nStake;
-                            ssOperation >> nStake;
+                            contract >> nStake;
 
                             /* Output the json information. */
                             ret["OP"]       = "TRUST";
@@ -605,11 +605,11 @@ namespace TAO
                         {
                             /* The transaction that you are authorizing. */
                             uint512_t hashTx;
-                            ssOperation >> hashTx;
+                            contract >> hashTx;
 
                             /* The proof you are using that you have rights. */
                             uint256_t hashProof;
-                            ssOperation >> hashProof;
+                            contract >> hashProof;
 
                             /* Output the json information. */
                             ret["OP"]    = "AUTHORIZE";
@@ -621,7 +621,7 @@ namespace TAO
                     }
                 }
             }
-            catch(const std::runtime_error& e)
+            catch(const std::exception& e)
             {
 
             }
@@ -719,7 +719,7 @@ namespace TAO
                     else if(nType == TAO::Register::TYPES::STRING )
                     {
                         object.Read<std::string>(strFieldName, strValue);
-                        
+
                         /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */
                         ret[strFieldName] = strValue.substr(0, strValue.find_last_not_of('\0') + 1);
                     }
@@ -727,7 +727,7 @@ namespace TAO
                     {
                         object.Read<std::vector<uint8_t>>(strFieldName, vchBytes);
 
-                        /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */                        
+                        /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */
                         vchBytes.erase(std::find(vchBytes.begin(), vchBytes.end(), '\0'), vchBytes.end());
 
                         ret[strFieldName] = encoding::EncodeBase64(&vchBytes[0], vchBytes.size()) ;

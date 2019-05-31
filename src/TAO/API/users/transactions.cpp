@@ -62,7 +62,7 @@ namespace TAO
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
             /* Get verbose levels. */
-            std::string strVerbose = "default"; 
+            std::string strVerbose = "default";
             if(params.find("verbose") != params.end())
                 strVerbose = params["verbose"].get<std::string>();
 
@@ -114,7 +114,7 @@ namespace TAO
                 json::json obj = TAO::API::TransactionToJSON(tx, blockState, nVerbose);
 
                 /* Add the operations to transaction json. */
-                obj["operation"]     = OperationToJSON(tx.ssOperation);
+                obj["contract"]     = ContractToJSON(tx[0]);
 
                 ret.push_back(obj);
             }

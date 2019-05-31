@@ -165,26 +165,26 @@ namespace TAO
                 if(nChannel != 0 && nChannel != 3)
                 {
                     /* Create coinbase transaction. */
-                    block.producer.ssOperation.SetNull();
-                    block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
+                    block.producer[0].Clear();
+                    block.producer[0] << uint8_t(TAO::Operation::OP::COINBASE);
 
                     /* The total to be credited. */
                     uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
-                    block.producer << nCredit;
+                    block.producer[0] << nCredit;
 
                     /* The extra nonce to coinbase. */
-                    block.producer << nExtraNonce;
+                    block.producer[0] << nExtraNonce;
                 }
                 else if(nChannel == 3)
                 {
                     /* Create an authorize producer. */
-                    block.producer << uint8_t(TAO::Operation::OP::AUTHORIZE);
+                    block.producer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
 
                     /* Get the sigchain txid. */
-                    block.producer << block.producer.hashPrevTx;
+                    block.producer[0] << block.producer.hashPrevTx;
 
                     /* Set the genesis operation. */
-                    block.producer << block.producer.hashGenesis;
+                    block.producer[0] << block.producer.hashGenesis;
                 }
 
                 /* Sign the producer transaction. */
@@ -232,25 +232,25 @@ namespace TAO
                 else if(nChannel < 3)
                 {
                     /* Create coinbase transaction. */
-                    block.producer << (uint8_t) TAO::Operation::OP::COINBASE;
+                    block.producer[0] << uint8_t(TAO::Operation::OP::COINBASE);
 
                     /* The total to be credited. */
                     uint64_t  nCredit = GetCoinbaseReward(stateBest, nChannel, 0);
-                    block.producer << nCredit;
+                    block.producer[0] << nCredit;
 
                     /* The extra nonce to coinbase. */
-                    block.producer << nExtraNonce;
+                    block.producer[0] << nExtraNonce;
                 }
                 else if(nChannel == 3)
                 {
                     /* Create an authorize producer. */
-                    block.producer << uint8_t(TAO::Operation::OP::AUTHORIZE);
+                    block.producer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
 
                     /* Get the sigchain txid. */
-                    block.producer << block.producer.hashPrevTx;
+                    block.producer[0] << block.producer.hashPrevTx;
 
                     /* Set the genesis operation. */
-                    block.producer << block.producer.hashGenesis;
+                    block.producer[0] << block.producer.hashGenesis;
                 }
 
                 /* Sign the producer transaction. */

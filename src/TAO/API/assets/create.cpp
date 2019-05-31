@@ -101,7 +101,7 @@ namespace TAO
                 ssData << params["data"].get<std::string>();
 
                 /* Submit the payload object. */
-                tx[0] << (uint8_t)TAO::Operation::OP::REGISTER << hashRegister << (uint8_t)TAO::Register::REGISTER::RAW << ssData.Bytes();
+                tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::RAW) << ssData.Bytes();
 
             }
             else if(strFormat == "basic")
@@ -144,8 +144,7 @@ namespace TAO
                     throw APIException(-25, "Missing asset value fields");
 
                 /* Submit the payload object. */
-                tx[0] << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
-
+                tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
             }
             else if(strFormat == "JSON")
             {
@@ -183,22 +182,22 @@ namespace TAO
                     /* Parse the values out of the definition json*/
                     std::string strName =  (*it)["name"].get<std::string>();
                     std::string strType =  (*it)["type"].get<std::string>();
-                    std::string strValue = (*it)["value"].get<std::string>();                                
+                    std::string strValue = (*it)["value"].get<std::string>();
                     bool fMutable = (*it)["mutable"].get<std::string>() == "true";
                     bool fBytesInvalid = false;
-                    std::vector<uint8_t> vchBytes; 
+                    std::vector<uint8_t> vchBytes;
 
                     /* Convert the value to bytes if the type is bytes */
-                    if(strType == "bytes" ) 
+                    if(strType == "bytes" )
                         vchBytes = encoding::DecodeBase64(strValue.c_str(), &fBytesInvalid) ;
 
                     /* Declare the max length variable */
                     size_t nMaxLength = 0;
-                    
-                    /* If this is a mutable string or byte fields then set the length.  
+
+                    /* If this is a mutable string or byte fields then set the length.
                        This can either be set by the caller in a  maxlength field or we will default it
                        based on the field data type.` */
-                    if(fMutable && 
+                    if(fMutable &&
                     (strType == "string" || strType == "bytes") )
                     {
                         /* Determine the length of the data passed in */
@@ -215,7 +214,7 @@ namespace TAO
                         }
                         else
                         {
-                            /* If the caller hasn't specified a maxlength then set a suitable default 
+                            /* If the caller hasn't specified a maxlength then set a suitable default
                                by rounding up the current length to the nearest 64 bytes. */
                             nMaxLength = (((uint8_t)(nDataLength / 64)) +1) * 64;
                         }
@@ -261,7 +260,7 @@ namespace TAO
 
                         /* Ensure that the serialized value is padded out to the max length */
                         vchBytes.resize(nMaxLength);
-                         
+
                         asset << uint8_t(TAO::Register::TYPES::BYTES) << vchBytes;
                     }
 
@@ -273,7 +272,7 @@ namespace TAO
                     throw APIException(-25, "Missing asset field definitions");
 
                 /* Submit the payload object. */
-                tx[0] << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
+                tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
             }
             else
             {

@@ -63,7 +63,8 @@ namespace TAO
                 READWRITE(nVersion);
                 READWRITE(nType);
                 READWRITE(hashOwner);
-                READWRITE(nTimestamp);
+                READWRITE(nCreated);
+                READWRITE(nModified);
                 READWRITE(vchState);
 
                 //checksum hash not serialized on gethash

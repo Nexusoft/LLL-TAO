@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_OPERATION_INCLUDE_EXECUTE_H
 #define NEXUS_TAO_OPERATION_INCLUDE_EXECUTE_H
 
-#include <cstdint.h>
+#include <cstdint>
 
 /* Global TAO namespace. */
 namespace TAO

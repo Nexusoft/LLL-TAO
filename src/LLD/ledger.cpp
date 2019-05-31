@@ -332,7 +332,8 @@ namespace LLD
 
 
     /* Writes a proof to disk. Proofs are used to keep track of spent temporal proofs. */
-    bool LedgerDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint32_t nContract, uint8_t nFlags)
+    bool LedgerDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction,
+                              const uint32_t nContract, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
@@ -357,7 +358,8 @@ namespace LLD
 
 
     /* Checks if a proof exists. Proofs are used to keep track of spent temporal proofs. */
-    bool LedgerDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint32_t nContract, uint8_t nFlags)
+    bool LedgerDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction,
+                            const uint32_t nContract, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
@@ -374,7 +376,8 @@ namespace LLD
 
 
     /* Remove a temporal proof from the database. */
-    bool LedgerDB::EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint32_t nContract, uint8_t nFlags)
+    bool LedgerDB::EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction,
+                              const uint32_t nContract, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
