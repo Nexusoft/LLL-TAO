@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
 #include <LLD/include/global.h>
@@ -76,24 +77,25 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction");
             }
 
-            /* Create trust account register name within the user sig chain namespace */
-            std::string strName = NamespaceHash(user->UserName()).ToString() + ":token:trust";
+            /* Create trust account register  within the user sig chain namespace */
+            /* Generate a random hash for this objects register address */
+            uint256_t hashRegister = LLC::GetRand256();
 
-            /* Get the register address from an SK256. */
-            uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+            /* Add a Name record for the trust account */
+            CreateName( user->Genesis(), "trust", hashRegister, tx);
 
             /* Set up tx operation to create the trust account register at the same time as sig chain genesis. */
             tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
 
-            /* Create a default NXS account called "default" for the new user */
-            strName = NamespaceHash(user->UserName()).ToString() + ":token:default";
-
-            /* Get the register address from an SK256. */
-            hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+            /* Generate a random hash for this objects register address */
+            hashRegister = LLC::GetRand256();
             
             /* Add the default account register operation to the transaction */
             tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateAccount(0).GetState();
             
+            /* Add a Name record for the default account */
+            CreateName( user->Genesis(), "default", hashRegister, tx);
+
             /* Calculate the prestates and poststates. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
             {

@@ -220,7 +220,7 @@ Additionally the API supports passing a field name in the URL after the token na
 
 ### Return values:
 
-`name` : The name identifying the token 
+`name` : The name identifying the token. For privacy purposes, this is only included in the response if the caller is the owner of the token 
 
 `address` : The register address of the token.  If the token was created with a token name then the address is a hash based on the owners username and token name.   
 
@@ -444,7 +444,7 @@ Additionally the API supports passing a field name in the URL after the account 
 
 ### Return values:
 
-`name` : The name identifying the token account.
+`name` : The name identifying the token account.  For privacy purposes, this is only included in the response if the caller is the owner of the token account
 
 `address` : The register address of the account.  The address is a hash based on the owners username and account name.
 

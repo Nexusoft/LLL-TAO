@@ -92,12 +92,13 @@ namespace TAO
         *  The token is obtained by looking at the token_address field, 
         *  which contains the register address of the issuing token
         *
+        *  @param[in] hashCaller genesis ID hash of the caller of the API
         *  @param[in] object The Object Register of the token account
         *
         *  @return the token name for the token that this account object is used for 
         *
         **/
-        std::string GetTokenNameForAccount(const TAO::Register::Object& object);
+        std::string GetTokenNameForAccount(const uint256_t& hashCaller, const TAO::Register::Object& object);
 
 
         /** GetRegistersOwnedBySigChain
@@ -110,6 +111,20 @@ namespace TAO
         *
         **/
         std::vector<uint256_t> GetRegistersOwnedBySigChain(uint512_t hashGenesis);
+
+
+        /** GetObjectName
+        *
+        *  Scans the Name records associated with the hashCaller sig chain to find an entry with a matching hashObject address
+        *
+        *  @param[in] hashObject register address of the object to look up
+        *  @param[in] hashCaller genesis ID hash of the caller of the API
+        *  @param[in] hashOwner genesid ID hash of the object owner
+        *
+        *  @return the name of the object, if one is found  
+        *
+        **/
+        std::string GetObjectRegisterName(const uint256_t& hashObject, const uint256_t& hashCaller, const uint256_t& hashOwner );
 
 
     }

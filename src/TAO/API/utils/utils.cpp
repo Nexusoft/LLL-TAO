@@ -291,7 +291,7 @@ namespace TAO
         /* Retrieves the token name for the token that this account object is used for. 
         *  The token is obtained by looking at the token_address field, 
         *  which contains the register address of the issuing token */
-        std::string GetTokenNameForAccount(const TAO::Register::Object& object)
+        std::string GetTokenNameForAccount(const uint256_t& hashCaller, const TAO::Register::Object& object)
         {
             /* Declare token name to return  */
             std::string strTokenName;
@@ -320,7 +320,9 @@ namespace TAO
                     if(!token.Parse())
                         throw APIException(-24, "Object failed to parse");
 
-                    strTokenName = "TODO";
+                    /* Look up the token name based on the Name records in thecaller's sig chain */
+                    strTokenName = GetObjectRegisterName(nIdentifier, hashCaller, token.hashOwner);
+ 
                 }   
             }
             else
@@ -563,6 +565,50 @@ namespace TAO
             }
 
             return vRegisters;
+        }
+
+
+        /* Scans the Name records associated with the hashCaller sig chain to find an entry with a matching hashObject address */
+        std::string GetObjectRegisterName(const uint256_t& hashObject, const uint256_t& hashCaller, const uint256_t& hashOwner )
+        {
+            /* Declare the return val */
+            std::string strName = "";
+
+            /* If the caller is the object owner then attempt to find a Name record to look up the Name of this object */
+            if( hashCaller == hashOwner)
+            {
+                /* Firstly get all object registers owned by this sig chain */   
+                std::vector<uint256_t> vRegisters = GetRegistersOwnedBySigChain(hashCaller);
+
+                /* Iterate through these to find all Name registers */
+                for(const auto& hashRegisterToCheck : vRegisters)
+                {
+                    /* Get the object from the register DB.  We can read it as an Object and then check its nType 
+                    to determine whether or not it is a Name. */
+                    TAO::Register::Object object;
+                    if(!LLD::regDB->ReadState(hashRegisterToCheck, object, TAO::Register::FLAGS::MEMPOOL))
+                        continue;
+
+                    if(object.nType == TAO::Register::REGISTER::OBJECT)
+                    {
+                        /* parse object so that the data fields can be accessed */
+                        object.Parse();
+
+                        if( object.Standard() != TAO::Register::OBJECTS::NAME)
+                            continue;
+
+                        /* Check to see whether the address stored in this Name matches the object being conveted to JSON */
+                        if(object.get<uint256_t>("address") == hashObject)
+                        {
+                            /* Get the name from the Name register and break out since we have a match */
+                            strName = object.get<std::string>("name");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return strName;
         }
     }
 }

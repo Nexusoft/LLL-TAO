@@ -178,7 +178,7 @@ Additionally the API supports passing a field name in the URL after the asset na
 ```
 ### Return values:
 
-`name` : The name identifying the asset. 
+`name` : The name identifying the asset. For privacy purposes, this is only included in the response if the caller is the owner of the asset
 
 `address` : The register address of the asset.  
 

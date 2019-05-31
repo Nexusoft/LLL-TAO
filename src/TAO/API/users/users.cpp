@@ -218,7 +218,7 @@ namespace TAO
 
 
         /* Returns the genesis ID from the account logged in. */
-        uint256_t Users::GetGenesis(uint64_t nSession) const
+        uint256_t Users::GetGenesis(uint64_t nSession, bool fThrow) const
         {
             LOCK(MUTEX);
 
@@ -227,13 +227,34 @@ namespace TAO
 
             if(!mapSessions.count(nSessionToUse))
             {
-                if(config::fAPISessions.load())
-                    throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
+                if( fThrow )
+                {
+                    if(config::fAPISessions.load())
+                        throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
+                    else
+                        throw APIException(-1, "User not logged in");
+                }
                 else
-                    throw APIException(-1, "User not logged in");
+                {
+                    return uint256_t(0);
+                }
+                
             }
 
             return mapSessions[nSessionToUse]->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
+        }
+
+
+        /* Returns the genesis ID from the calling session or the the account logged in.*/
+        uint256_t Users::GetCallersGenesis(const json::json & params) const
+        {
+            /* default to session 0 unless using multiuser mode */
+            uint64_t nSession = 0;
+            
+            if( config::fAPISessions.load() && params.find("session") != params.end() ) 
+                nSession = std::stoull(params["session"].get<std::string>());
+
+            return GetGenesis(nSession, false);
         }
 
 

@@ -107,7 +107,7 @@ Additionally the API supports passing a field name in the URL after the asset na
 
 `owner` : The genesis hash of the signature chain that owns this asset.
 
-`name` : The name identifying the item. 
+`name` : The name identifying the item. For privacy purposes, this is only included in the response if the caller is the owner of the asset
 
 `data` : The current value of the data in the item.
 
@@ -275,8 +275,6 @@ This will get the history of changes to an item, including both the data and it'
 ### Return values:
 
 The return value is a JSON array of objects for each entry in the item's history:
-
-`name` : The name identifying the item
 
 `checksum` : A checksum of the state register used for pruning.
 

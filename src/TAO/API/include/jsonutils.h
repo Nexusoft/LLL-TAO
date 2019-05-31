@@ -82,13 +82,14 @@ namespace TAO
         *
         *  Converts an Object Register to formattted JSON
         *
+        *  @param[in] params The paramets passed in the request
         *  @param[in] object The Object Register to convert
         *  @param[in] hashRegister The register address of the object
         *
         *  @return the formatted JSON object
         *
         **/
-        json::json ObjectRegisterToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister);
+        json::json ObjectRegisterToJSON(const json::json& params, const TAO::Register::Object& object, const uint256_t& hashRegister);
 
 
 

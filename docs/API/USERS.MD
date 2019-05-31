@@ -419,7 +419,7 @@ This will list off all of the assets owned by a signature chain.
 ```
 ### Return values:
 
-`name` : The name identifying the asset. 
+`name` : The name identifying the asset.  For privacy purposes, this is only included in the response if the caller is the owner of the asset
 
 `address` : The register address of the asset. 
 
@@ -478,9 +478,11 @@ This will list off all of the token accounts belonging to a particular signature
 ```
 ### Return values:
 
+`name` : The name identifying the account.  For privacy purposes, this is only included in the response if the caller is the owner of the account 
+
 `address` : The register address for the account
 
-`token_name` : The name of the token that this account can be used with.  
+`token_name` : The name of the token that this account can be used with.  For privacy purposes, this is only included in the response if the caller is the owner of the token 
 
 `token_address` : The register address of the token that this account can be used for.
 
@@ -537,7 +539,7 @@ This will list off all of the tokens that were created by a particular signature
 ```
 ### Return values:
 
-`name` : The name identifying the token 
+`name` : The name identifying the token.  For privacy purposes, this is only included in the response if the caller is the owner of the token 
 
 `address` : The register address for the account
 
