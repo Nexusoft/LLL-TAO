@@ -15,11 +15,16 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_ROLLBACK_H
 #define NEXUS_TAO_REGISTER_INCLUDE_ROLLBACK_H
 
-#include <TAO/Ledger/types/transaction.h>
-
 /* Global TAO namespace. */
 namespace TAO
 {
+
+    /* Register layer. */
+    namespace Operation
+    {
+        /* Forward declarations. */
+        class Contract;
+    }
 
     /* Register Layer namespace. */
     namespace Register

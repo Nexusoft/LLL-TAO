@@ -15,11 +15,18 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
 #define NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
 
-#include <TAO/Ledger/types/transaction.h>
+#include <TAO/Register/include/enum.h>
 
 /* Global TAO namespace. */
 namespace TAO
 {
+
+    /* Register layer. */
+    namespace Operation
+    {
+        /* Forward declarations. */
+        class Contract;
+    }
 
     /* Register Layer namespace. */
     namespace Register
