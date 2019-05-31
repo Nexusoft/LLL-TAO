@@ -71,6 +71,7 @@ namespace TAO
                         return true;
                     }
 
+
                     /* Check pre-state to database. */
                     case TAO::Operation::OP::APPEND:
                     {
@@ -98,9 +99,7 @@ namespace TAO
                     }
 
 
-                    /*
-                     * Erase the register
-                     */
+                    /* Delete the state on rollback. */
                     case TAO::Operation::OP::CREATE:
                     {
                         /* Get the address of the Register. */

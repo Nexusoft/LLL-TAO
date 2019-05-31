@@ -105,6 +105,30 @@ namespace TAO
         }
 
 
+        /* Connect a transaction object to the main chain. */
+        bool Connect(const uint8_t nFlags) const
+        {
+            /* Run through all the contracts. */
+            for(const auto& contract : vContracts)
+                if(!TAO::Operation::Execute(contract, nFlags))
+                    return false;
+
+            return true;
+        }
+
+
+        /* Disconnect a transaction object to the main chain. */
+        bool Disconnect() const
+        {
+            /* Run through all the contracts. */
+            for(const auto& contract : vContracts)
+                if(!TAO::Register::Rollback(contract))
+                    return false;
+
+            return true;
+        }
+
+
         /* Determines if the transaction is a coinbase transaction. */
         bool Transaction::IsCoinbase() const
         {

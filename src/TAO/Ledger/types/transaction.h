@@ -191,6 +191,30 @@ namespace TAO
             }
 
 
+            /** Connect
+             *
+             *  Connect a transaction object to the main chain.
+             *
+             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool Connect(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
+
+
+            /** Disconnect
+             *
+             *  Disconnect a transaction object to the main chain.
+             *
+             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool Disconnect(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
+
+
             /** IsValid
              *
              *  Determines if the transaction is a valid transaciton and passes ledger level checks.
