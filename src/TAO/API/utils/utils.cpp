@@ -396,228 +396,270 @@ namespace TAO
             /* Make sure no exceptions are thrown. */
             try
             {
-                /* Loop through the operations ssOperation. */
-                while(!ssOperation.end())
+                /* Get the contract operations. */
+                uint8_t OPERATION = 0;
+                contract >> OPERATION;
+
+                /* Check the current opcode. */
+                switch(OPERATION)
                 {
-                    uint8_t OPERATION = 0;
-                    contract >> OPERATION;
-
-                    /* Check the current opcode. */
-                    switch(OPERATION)
+                    /* Record a new state to the register. */
+                    case TAO::Operation::OP::WRITE:
                     {
-                        /* Record a new state to the register. */
-                        case TAO::Operation::OP::WRITE:
-                        {
-                            /* Get the Address of the Register. */
-                            uint256_t hashAddress;
-                            contract >> hashAddress;
+                        /* Get the Address of the Register. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
 
-                            /* Deserialize the register from ssOperation. */
-                            std::vector<uint8_t> vchData;
-                            contract >> vchData;
+                        /* Deserialize the register from ssOperation. */
+                        std::vector<uint8_t> vchData;
+                        contract >> vchData;
 
-                            /* Output the json information. */
-                            ret["OP"]      = "WRITE";
-                            ret["address"] = hashAddress.ToString();
-                            ret["data"]    = HexStr(vchData.begin(), vchData.end());
+                        /* Output the json information. */
+                        ret["OP"]      = "WRITE";
+                        ret["address"] = hashAddress.ToString();
+                        ret["data"]    = HexStr(vchData.begin(), vchData.end());
 
-                            break;
-                        }
+                        break;
+                    }
 
 
-                        /* Append a new state to the register. */
-                        case TAO::Operation::OP::APPEND:
-                        {
-                            /* Get the Address of the Register. */
-                            uint256_t hashAddress;
-                            contract >> hashAddress;
+                    /* Append a new state to the register. */
+                    case TAO::Operation::OP::APPEND:
+                    {
+                        /* Get the Address of the Register. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
 
-                            /* Deserialize the register from ssOperation. */
-                            std::vector<uint8_t> vchData;
-                            contract >> vchData;
+                        /* Deserialize the register from ssOperation. */
+                        std::vector<uint8_t> vchData;
+                        contract >> vchData;
 
-                            /* Output the json information. */
-                            ret["OP"]      = "APPEND";
-                            ret["address"] = hashAddress.ToString();
-                            ret["data"]    = HexStr(vchData.begin(), vchData.end());
+                        /* Output the json information. */
+                        ret["OP"]      = "APPEND";
+                        ret["address"] = hashAddress.ToString();
+                        ret["data"]    = HexStr(vchData.begin(), vchData.end());
 
-                            break;
-                        }
-
-
-                        /* Create a new register. */
-                        case TAO::Operation::OP::CREATE:
-                        {
-                            /* Extract the address from the ssOperation. */
-                            uint256_t hashAddress;
-                            contract >> hashAddress;
-
-                            /* Extract the register type from ssOperation. */
-                            uint8_t nType;
-                            contract >> nType;
-
-                            /* Extract the register data from the ssOperation. */
-                            std::vector<uint8_t> vchData;
-                            contract >> vchData;
-
-                            /* Output the json information. */
-                            ret["OP"]      = "REGISTER";
-                            ret["address"] = hashAddress.ToString();
-                            ret["type"]    = nType;
-                            ret["data"]    = HexStr(vchData.begin(), vchData.end());
+                        break;
+                    }
 
 
-                            break;
-                        }
+                    /* Create a new register. */
+                    case TAO::Operation::OP::CREATE:
+                    {
+                        /* Extract the address from the ssOperation. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
+
+                        /* Extract the register type from ssOperation. */
+                        uint8_t nType = 0;
+                        contract >> nType;
+
+                        /* Extract the register data from the ssOperation. */
+                        std::vector<uint8_t> vchData;
+                        contract >> vchData;
+
+                        /* Output the json information. */
+                        ret["OP"]      = "REGISTER";
+                        ret["address"] = hashAddress.ToString();
+                        ret["type"]    = nType;
+                        ret["data"]    = HexStr(vchData.begin(), vchData.end());
 
 
-                        /* Transfer ownership of a register to another signature chain. */
-                        case TAO::Operation::OP::TRANSFER:
-                        {
-                            /* Extract the address from the ssOperation. */
-                            uint256_t hashAddress;
-                            contract >> hashAddress;
-
-                            /* Read the register transfer recipient. */
-                            uint256_t hashTransfer;
-                            contract >> hashTransfer;
-
-                            /* Output the json information. */
-                            ret["OP"]       = "TRANSFER";
-                            ret["address"]  = hashAddress.ToString();
-                            ret["transfer"] = hashTransfer.ToString();
-
-                            break;
-                        }
+                        break;
+                    }
 
 
-                        /* Debit tokens from an account you own. */
-                        case TAO::Operation::OP::DEBIT:
-                        {
-                            uint256_t hashAddress; //the register address debit is being sent from. Hard reject if this register isn't account id
-                            contract >> hashAddress;
+                    /* Transfer ownership of a register to another signature chain. */
+                    case TAO::Operation::OP::TRANSFER:
+                    {
+                        /* Extract the address from the ssOperation. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
 
-                            uint256_t hashTransfer;   //the register address debit is being sent to. Hard reject if this register isn't an account id
-                            contract >> hashTransfer;
+                        /* Read the register transfer recipient. */
+                        uint256_t hashTransfer = 0;
+                        contract >> hashTransfer;
 
-                            uint64_t  nAmount;  //the amount to be transfered
-                            contract >> nAmount;
+                        /* Output the json information. */
+                        ret["OP"]       = "TRANSFER";
+                        ret["address"]  = hashAddress.ToString();
+                        ret["transfer"] = hashTransfer.ToString();
 
-                            /* Output the json information. */
-                            ret["OP"]       = "DEBIT";
-                            ret["address"]  = hashAddress.ToString();
-                            ret["transfer"] = hashTransfer.ToString();
-                            ret["amount"]   = nAmount;
-
-                            break;
-                        }
+                        break;
+                    }
 
 
-                        /* Credit tokens to an account you own. */
-                        case TAO::Operation::OP::CREDIT:
-                        {
-                            /* The transaction that this credit is claiming. */
-                            uint512_t hashTx;
-                            contract >> hashTx;
+                    /* Claim ownership of a register to another signature chain. */
+                    case TAO::Operation::OP::CLAIM:
+                    {
+                        /* Extract the transaction from contract. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
 
-                            /* The proof this credit is using to make claims. */
-                            uint256_t hashProof;
-                            contract >> hashProof;
+                        /* Extract the contract-id. */
+                        uint32_t nContract = 0;
+                        contract >> nContract;
 
-                            /* The account that is being credited. */
-                            uint256_t hashAccount;
-                            contract >> hashAccount;
+                        /* Extract the address from the contract. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
 
-                            /* The total to be credited. */
-                            uint64_t  nCredit;
-                            contract >> nCredit;
+                        /* Output the json information. */
+                        ret["OP"]         = "CLAIM";
+                        ret["txid"]       = hashTx.ToString();
+                        ret["output"]     = nContract;
+                        ret["address"]    = hashAddress.ToString();
 
-                            /* Output the json information. */
-                            ret["OP"]      = "CREDIT";
-                            ret["txid"]    = hashTx.ToString();
-                            ret["proof"]   = hashProof.ToString();
-                            ret["account"] = hashAccount.ToString();
-                            ret["amount"]  = nCredit;
-
-                            break;
-                        }
+                        break;
+                    }
 
 
-                        /* Coinbase operation. Creates an account if none exists. */
-                        case TAO::Operation::OP::COINBASE:
-                        {
+                    /* Coinbase operation. Creates an account if none exists. */
+                    case TAO::Operation::OP::COINBASE:
+                    {
+                        /* Get the genesis. */
+                        uint256_t hashGenesis = 0;
+                        contract >> hashGenesis;
 
-                            /* The total to be credited. */
-                            uint64_t  nCredit;
-                            contract >> nCredit;
+                        /* The total to be credited. */
+                        uint64_t nCredit = 0;
+                        contract >> nCredit;
 
-                            /* The extra nNonce available in script. */
-                            uint64_t  nExtraNonce;
-                            contract >> nExtraNonce;
+                        /* The extra nNonce available in script. */
+                        uint64_t nExtraNonce = 0;
+                        contract >> nExtraNonce;
 
-                            /* Output the json information. */
-                            ret["OP"]     = "COINBASE";
-                            ret["nonce"]  = nExtraNonce;
-                            ret["amount"] = nCredit;
+                        /* Output the json information. */
+                        ret["OP"]      = "COINBASE";
+                        ret["genesis"] = hashGenesis;
+                        ret["nonce"]   = nExtraNonce;
+                        ret["amount"]  = nCredit;
 
-                            break;
-                        }
-
-
-                        /* Coinstake operation. Requires an account. */
-                        case TAO::Operation::OP::TRUST:
-                        {
-
-                            /* The account that is being staked. */
-                            uint256_t hashAccount;
-                            contract >> hashAccount;
-
-                            /* The previous trust block. */
-                            uint1024_t hashLastTrust;
-                            contract >> hashLastTrust;
-
-                            /* Previous trust sequence number. */
-                            uint32_t nSequence;
-                            contract >> nSequence;
-
-                            /* The trust calculated. */
-                            uint64_t nTrust;
-                            contract >> nTrust;
-
-                            /* The total to be staked. */
-                            uint64_t  nStake;
-                            contract >> nStake;
-
-                            /* Output the json information. */
-                            ret["OP"]       = "TRUST";
-                            ret["account"]  = hashAccount.ToString();
-                            ret["last"]     = hashLastTrust.ToString();
-                            ret["sequence"] = nSequence;
-                            ret["trust"]    = nTrust;
-                            ret["amount"]   = nStake;
-
-                            break;
-                        }
+                        break;
+                    }
 
 
-                        /* Authorize a transaction to happen with a temporal proof. */
-                        case TAO::Operation::OP::AUTHORIZE:
-                        {
-                            /* The transaction that you are authorizing. */
-                            uint512_t hashTx;
-                            contract >> hashTx;
+                    /* Trust operation. Builds trust and generates reward. */
+                    case TAO::Operation::OP::TRUST:
+                    {
+                        /* Get the genesis. */
+                        uint256_t hashLastTrust = 0;
+                        contract >> hashLastTrust;
 
-                            /* The proof you are using that you have rights. */
-                            uint256_t hashProof;
-                            contract >> hashProof;
+                        /* The total trust score. */
+                        uint64_t nScore = 0;
+                        contract >> nScore;
 
-                            /* Output the json information. */
-                            ret["OP"]    = "AUTHORIZE";
-                            ret["txid"]  = hashTx.ToString();
-                            ret["proof"] = hashProof.ToString();
+                        /* The total trust reward. */
+                        uint64_t nReward = 0;
+                        contract >> nReward;
 
-                            break;
-                        }
+                        /* Output the json information. */
+                        ret["OP"]      = "TRUST";
+                        ret["last"]    = hashLastTrust;
+                        ret["score"]   = nScore;
+                        ret["amount"]  = nReward;
+
+                        break;
+                    }
+
+
+                    /* Genesis operation. Begins trust and stakes. */
+                    case TAO::Operation::OP::GENESIS:
+                    {
+                        /* Get the genesis. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
+
+                        /* The total trust reward. */
+                        uint64_t nReward = 0;
+                        contract >> nReward;
+
+                        /* Output the json information. */
+                        ret["OP"]        = "GENESIS";
+                        ret["address"]   = hashAddress;
+                        ret["amount"]    = nReward;
+
+                        break;
+                    }
+
+
+                    /* Debit tokens from an account you own. */
+                    case TAO::Operation::OP::DEBIT:
+                    {
+                        /* Get the register address. */
+                        uint256_t hashFrom = 0;
+                        contract >> hashFrom;
+
+                        /* Get the transfer address. */
+                        uint256_t hashTo = 0;
+                        contract >> hashTo;
+
+                        /* Get the transfer amount. */
+                        uint64_t  nAmount = 0;
+                        contract >> nAmount;
+
+                        /* Output the json information. */
+                        ret["OP"]       = "DEBIT";
+                        ret["from"]     = hashFrom.ToString();
+                        ret["to"]       = hashTo.ToString();
+                        ret["amount"]   = nAmount;
+
+                        break;
+                    }
+
+
+                    /* Credit tokens to an account you own. */
+                    case TAO::Operation::OP::CREDIT:
+                    {
+                        /* Extract the transaction from contract. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
+
+                        /* Extract the contract-id. */
+                        uint32_t nContract = 0;
+                        contract >> nContract;
+
+                        /* Get the transfer address. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
+
+                        /* Get the transfer address. */
+                        uint256_t hashProof = 0;
+                        contract >> hashProof;
+
+                        /* Get the transfer amount. */
+                        uint64_t  nCredit = 0;
+                        contract >> nCredit;
+
+                        /* Output the json information. */
+                        ret["OP"]      = "CREDIT";
+                        ret["txid"]    = hashTx.ToString();
+                        ret["output"]  = nContract;
+                        ret["proof"]   = hashProof.ToString();
+                        ret["account"] = hashAccount.ToString();
+                        ret["amount"]  = nCredit;
+
+                        break;
+                    }
+
+                    /* Authorize a transaction to happen with a temporal proof. */
+                    case TAO::Operation::OP::AUTHORIZE:
+                    {
+                        /* The transaction that you are authorizing. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
+
+                        /* The proof you are using that you have rights. */
+                        uint256_t hashProof = 0;
+                        contract >> hashProof;
+
+                        /* Output the json information. */
+                        ret["OP"]    = "AUTHORIZE";
+                        ret["txid"]  = hashTx.ToString();
+                        ret["proof"] = hashProof.ToString();
+
+                        break;
                     }
                 }
             }
