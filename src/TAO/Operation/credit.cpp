@@ -52,7 +52,7 @@ namespace TAO
                 /* Get the partial amount. */
                 uint64_t nClaimed = 0;
                 if(!LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
-                    nClaimed = 0; //resetting the value on failed read, just in case
+                    return debug::error(FUNCTION, "failed to read claimed amount");
 
                 /* Write the new claimed amount. */
                 if(!LLD::legDB->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
