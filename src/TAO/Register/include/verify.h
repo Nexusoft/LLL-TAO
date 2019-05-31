@@ -29,13 +29,13 @@ namespace TAO
          *
          *  Verify the pre-states of a register to current network state.
          *
-         *  @param[in] tx The transaction to verify pre-states with.
+         *  @param[in] contract The contract to verify.
          *  @param[in] nFlags The flags to verify for.
          *
          *  @return true if verified correctly, false otherwise.
          *
          **/
-        bool Verify(const TAO::Ledger::Transaction& tx, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool Verify(const TAO::Operation::Contract& contract, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
 
     }
 }

@@ -340,7 +340,7 @@ namespace TAO
                     case OP::COINBASE:
                     {
                         /* Seek to end. */
-                        contract.Seek(40);
+                        contract.Seek(48);
 
                         break;
                     }

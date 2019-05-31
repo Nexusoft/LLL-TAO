@@ -26,8 +26,13 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Transfer::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
+        bool Transfer::Commit(const TAO::Register::State& state,
+                              const uint256_t& hashAddress, const uint256_t& hashTransfer, const uint8_t nFlags)
         {
+            /* Write the transfer event. */
+            if(!LLD->legDB->WriteEvent(hashTransfer, nFlags))
+                return debug::error(FUNCTION, "failed to write event");
+
             return LLD::regDB->WriteState(hashAddress, state, nFlags);
         }
 

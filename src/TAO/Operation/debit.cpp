@@ -28,8 +28,17 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Debit::Commit(const TAO::Register::Object& account, const uint256_t& hashAddress, const uint8_t nFlags)
+        bool Debit::Commit(const TAO::Register::Object& account,
+                           const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags)
         {
+            /* Read the owner of register. */
+            if(!LLD::regDB->ReadState(hashTo, state, nFlags))
+                return debug::error(FUNCTION, "failed to read register to");
+
+            /* Commit an event for other sigchain. */
+            if(!LLD::legDB->WriteEvent(state.hashOwner, nFlags))
+                return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
+
             return LLD::regDB->WriteState(hashAddress, account, nFlags);
         }
 
