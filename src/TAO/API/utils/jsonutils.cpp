@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/utils.h>
 
 #include <Legacy/include/evaluate.h>
+#include <Legacy/include/money.h>
 
 #include <LLD/include/global.h>
 
@@ -33,6 +34,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/operations.h>
 
 #include <Util/include/args.h>
+#include <Util/include/convert.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
 #include <Util/include/base64.h>
@@ -140,12 +142,12 @@ namespace TAO
                     txdata["genesis"] = tx.hashGenesis.ToString();
                     txdata["nexthash"] = tx.hashNext.ToString();
                     txdata["prevhash"] = tx.hashPrevTx.ToString();
-                
+
                     txdata["pubkey"] = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                     txdata["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                 }
 
-                
+
             }
 
             return txdata;
@@ -185,7 +187,8 @@ namespace TAO
                         if(!Legacy::ExtractAddress(txprev.vout[txin.prevout.n].scriptPubKey, cAddress))
                             throw APIException(-5, "Unable to Extract Input Address");
 
-                        inputs.push_back(debug::safe_printstr("%s:%f", cAddress.ToString().c_str(), (double) tx.vout[txin.prevout.n].nValue / Legacy::COIN));
+                        inputs.push_back(debug::safe_printstr("%s:%f",
+                                cAddress.ToString().c_str(), (double) tx.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN));
                     }
                     txdata["inputs"] = inputs;
                 }
@@ -324,7 +327,7 @@ namespace TAO
 
                             /* Read the claimed transaction. */
                             TAO::Ledger::Transaction txClaim;
-                            
+
                             /* Check disk of writing new block. */
                             if((!LLD::legDB->ReadTx(hashTransferTx, txClaim) || !LLD::legDB->HasIndex(hashTransferTx)))
                                 return debug::error(FUNCTION, hashTransferTx.ToString(), " tx doesn't exist or not indexed");
@@ -390,7 +393,7 @@ namespace TAO
 
                             /* Read the corresponding debit transaction. */
                             TAO::Ledger::Transaction txDebit;
-                            
+
                             /* Check disk of writing new block. */
                             if((!LLD::legDB->ReadTx(hashTx, txDebit) || !LLD::legDB->HasIndex(hashTx)))
                                 return debug::error(FUNCTION, hashTx.ToString(), " tx doesn't exist or not indexed");
@@ -528,7 +531,7 @@ namespace TAO
                 ret["address"]    = hashRegister.ToString();
                 ret["timestamp"]  = object.nTimestamp;
                 ret["owner"]      = object.hashOwner.ToString();
-                
+
                 /* raw state assets only have one data member containing the raw hex-encoded data*/
                 std::string data;
                 object >> data;
@@ -547,7 +550,7 @@ namespace TAO
                     uint256_t nIdentifier = object.get<uint256_t>("token_address");
 
                     ret["token_address"] = object.get<uint256_t>("token_address").GetHex();
-                    
+
                     /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
                     Therefore, to convert the internal value to a floating point value we need to reduce the internal value
                     by 10^digits  */
@@ -564,15 +567,17 @@ namespace TAO
                     uint256_t nIdentifier = object.get<uint256_t>("token_address");
 
                     ret["token_address"] = object.get<uint256_t>("token_address").GetHex();
-                    
+
                     /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
                     Therefore, to convert the internal value to a floating point value we need to reduce the internal value
                     by 10^digits  */
                     uint64_t nDigits = GetTokenOrAccountDigits(object);
 
                     ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
-                    ret["trust"]    = (double)object.get<uint64_t>("trust") / pow(10, nDigits);
-                    ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDigits);
+
+                    /* General trust account output same as ACCOUNT. Leave off stake-related values */
+                    //ret["trust"]    = (double)object.get<uint64_t>("trust") / pow(10, nDigits);
+                    //ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDigits);
 
                 }
                 else if(nStandard == TAO::Register::OBJECTS::TOKEN)
@@ -592,12 +597,12 @@ namespace TAO
                 }
                 /* Must be a user-definable object register (asset) */
                 else
-                {                
+                {
                     /* Build the response JSON. */
                     ret["address"]    = hashRegister.ToString();
                     ret["timestamp"]  = object.nTimestamp;
                     ret["owner"]      = object.hashOwner.ToString();
-                    
+
                     /* Get List of field names in this asset object */
                     std::vector<std::string> vFieldNames = object.GetFieldNames();
 
@@ -656,7 +661,7 @@ namespace TAO
                         else if(nType == TAO::Register::TYPES::STRING )
                         {
                             object.Read<std::string>(strFieldName, strValue);
-                            
+
                             /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */
                             ret[strFieldName] = strValue.substr(0, strValue.find_last_not_of('\0') + 1);
                         }
@@ -664,7 +669,7 @@ namespace TAO
                         {
                             object.Read<std::vector<uint8_t>>(strFieldName, vchBytes);
 
-                            /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */                        
+                            /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */
                             vchBytes.erase(std::find(vchBytes.begin(), vchBytes.end(), '\0'), vchBytes.end());
 
                             ret[strFieldName] = encoding::EncodeBase64(&vchBytes[0], vchBytes.size()) ;
