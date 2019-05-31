@@ -138,10 +138,7 @@ namespace TAO
                 PRESTATE   = 0x01,
 
                 /* Post-State - for recording the checksum of register post-state. */
-                POSTSTATE  = 0x02,
-
-                /* Validation - for recording events in validation registers. */
-                VALIDATION = 0x03
+                POSTSTATE  = 0x02
             };
         };
     }

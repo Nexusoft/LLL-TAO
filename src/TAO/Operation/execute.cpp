@@ -70,7 +70,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::PRESTATE)
+                        if(nState != TAO::Register::STATES::PRESTATE)
                             return debug::error(FUNCTION, "OP::WRITE: register pre-state doesn't exist");
 
                         /* Read the register from database. */
@@ -86,7 +86,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::POSTSTATE)
+                        if(nState != TAO::Register::STATES::POSTSTATE)
                             return debug::error(FUNCTION, "OP::WRITE: register post-state doesn't exist");
 
                         /* Deserialize the checksum from contract. */
@@ -125,7 +125,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::PRESTATE)
+                        if(nState != TAO::Register::STATES::PRESTATE)
                             return debug::error(FUNCTION, "OP::APPEND: register pre-state doesn't exist");
 
                         /* Read the register from database. */
@@ -141,7 +141,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::POSTSTATE)
+                        if(nState != TAO::Register::STATES::POSTSTATE)
                             return debug::error(FUNCTION, "OP::APPEND: register post-state doesn't exist");
 
                         /* Deserialize the checksum from contract. */
@@ -196,7 +196,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::POSTSTATE)
+                        if(nState != TAO::Register::STATES::POSTSTATE)
                             return debug::error(FUNCTION, "OP::CREATE: register post-state doesn't exist");
 
                         /* Deserialize the checksum from contract. */
@@ -235,7 +235,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::PRESTATE)
+                        if(nState != TAO::Register::STATES::PRESTATE)
                             return debug::error(FUNCTION, "OP::TRANSFER: register pre-state doesn't exist");
 
                         /* Read the register from database. */
@@ -251,7 +251,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::POSTSTATE)
+                        if(nState != TAO::Register::STATES::POSTSTATE)
                             return debug::error(FUNCTION, "OP::TRANSFER: register post-state doesn't exist");
 
                         /* Deserialize the checksum from contract. */
@@ -311,7 +311,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::POSTSTATE)
+                        if(nState != TAO::Register::STATES::POSTSTATE)
                             return debug::error(FUNCTION, "OP::CLAIM: register post-state doesn't exist");
 
                         /* Deserialize the checksum from contract. */
@@ -362,7 +362,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::PRESTATE)
+                        if(nState != TAO::Register::STATES::PRESTATE)
                             return debug::error(FUNCTION, "OP::TRUST: register pre-state doesn't exist");
 
                         /* Read the register from database. */
@@ -378,7 +378,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::POSTSTATE)
+                        if(nState != TAO::Register::STATES::POSTSTATE)
                             return debug::error(FUNCTION, "OP::TRUST: register post-state doesn't exist");
 
                         /* Deserialize the checksum from contract. */
@@ -417,7 +417,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::PRESTATE)
+                        if(nState != TAO::Register::STATES::PRESTATE)
                             return debug::error(FUNCTION, "OP::GENESIS: register pre-state doesn't exist");
 
                         /* Read the register from database. */
@@ -433,7 +433,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::POSTSTATE)
+                        if(nState != TAO::Register::STATES::POSTSTATE)
                             return debug::error(FUNCTION, "OP::GENESIS: register post-state doesn't exist");
 
                         /* Deserialize the checksum from contract. */
@@ -476,7 +476,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::PRESTATE)
+                        if(nState != TAO::Register::STATES::PRESTATE)
                             return debug::error(FUNCTION, "OP::DEBIT: register pre-state doesn't exist");
 
                         /* Read the register from database. */
@@ -492,7 +492,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::POSTSTATE)
+                        if(nState != TAO::Register::STATES::POSTSTATE)
                             return debug::error(FUNCTION, "OP::DEBIT: register post-state doesn't exist");
 
                         /* Deserialize the checksum from contract. */
@@ -547,7 +547,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::PRESTATE)
+                        if(nState != TAO::Register::STATES::PRESTATE)
                             return debug::error(FUNCTION, "OP::CREDIT: register pre-state doesn't exist");
 
                         /* Read the register from database. */
@@ -563,7 +563,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::POSTSTATE)
+                        if(nState != TAO::Register::STATES::POSTSTATE)
                             return debug::error(FUNCTION, "OP::CREDIT: register post-state doesn't exist");
 
                         /* Deserialize the checksum from contract. */
@@ -612,7 +612,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::PRESTATE)
+                        if(nState != TAO::Register::STATES::PRESTATE)
                             return debug::error(FUNCTION, "OP::DEBIT: register pre-state doesn't exist");
 
                         /* Read the register from database. */
@@ -628,7 +628,7 @@ namespace TAO
                         contract >>= nState;
 
                         /* Check for pre-state. */
-                        if(nState != TAO::Register::FLAGS::POSTSTATE)
+                        if(nState != TAO::Register::STATES::POSTSTATE)
                             return debug::error(FUNCTION, "OP::DEBIT: register post-state doesn't exist");
 
                         /* Deserialize the checksum from contract. */

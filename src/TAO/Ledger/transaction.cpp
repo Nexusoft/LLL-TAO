@@ -119,9 +119,12 @@ namespace TAO
         /* Verify a transaction contracts. */
         bool Transaction::Verify() const
         {
+            /* Create a temporary map for pre-states. */
+            std::map<uint256_t, TAO::Register::State> mapStates;
+
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
-                if(!TAO::Register::Verify(contract, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!TAO::Register::Verify(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL))
                     return debug::error(FUNCTION, "transaction register layer failed to verify");
 
             return true;
@@ -131,10 +134,16 @@ namespace TAO
         /* Build the transaction contracts. */
         bool Transaction::Build()
         {
+            /* Create a temporary map for pre-states. */
+            std::map<uint256_t, TAO::Register::State> mapStates;
+
             /* Run through all the contracts. */
             for(auto& contract : vContracts)
-                if(!TAO::Register::Calculate(contract))
-                    return debug::error(FUNCTION, "transaction register layer failed to verify");
+            {
+                /* Calculate the pre-states and post-states. */
+                if(!TAO::Register::Build(contract, mapStates))
+                    return debug::error(FUNCTION, "transaction register layer failed to build");
+            }
 
             return true;
         }

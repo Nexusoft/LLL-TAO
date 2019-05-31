@@ -15,26 +15,39 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_CALCULATE_H
 #define NEXUS_TAO_REGISTER_INCLUDE_CALCULATE_H
 
-#include <TAO/Ledger/types/transaction.h>
+#include <LLC/types/uint1024.h>
+
+#include <map.h>
 
 /* Global TAO namespace. */
 namespace TAO
 {
+    /* Operation layer. */
+    namespace Operation
+    {
+        /* Forward declarations. */
+        class Contract;
+    }
+
 
     /* Register Layer namespace. */
     namespace Register
     {
+        /* Forward declarations. */
+        class State;
 
-        /** Calculate
+
+        /** Build
          *
-         *  Calculate the pre-states and post-state checksums for a contract.
+         *  Build the pre-states and post-state checksums for a contract.
          *
-         *  @param[in] contract The contract to calculate for
+         *  @param[out] contract The contract to calculate for
+         *  @param[out] mapStates The temporary states if pre-states rely on previous contracts.
          *
          *  @return true if verified correctly, false otherwise.
          *
          **/
-        bool Calculate(Contract& contract);
+        bool Build(Contract& contract, std::map<uint256_t, State>& mapStates);
 
     }
 }

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/verify.h>
+#include <TAO/Register/include/types.h>
 
 
 /* Global TAO namespace. */
@@ -28,7 +29,8 @@ namespace TAO
     {
 
         /* Verify the pre-states of a register to current network state. */
-        bool Verify(const TAO::Operation::Contract& contract, const uint8_t nFlags)
+        bool Verify(const TAO::Operation::Contract& contract,
+                    std::map<uint256_t, TAO::Register::State>& mapStates, const uint8_t nFlags)
         {
             /* Reset the contract streams. */
             contract.Reset();
@@ -62,9 +64,13 @@ namespace TAO
                         State prestate;
                         contract >>= prestate;
 
-                        /* Write the register from database. */
+                        /* Check temporary memory states first. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        if(mapStates.find(hashAddress) != mapStates.end())
+                            state = mapStates[hashAddress];
+
+                        /* Read the register from database. */
+                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::WRITE: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -74,6 +80,9 @@ namespace TAO
                         /* Check contract account */
                         if(contract.hashCaller != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::WRITE: not authorized ", contract.hashCaller.SubString());
+
+                        /* Write the state to memory map. */
+                        mapStates[hashAddress] = state;
 
                         return true;
                     }
@@ -98,9 +107,13 @@ namespace TAO
                         State prestate;
                         contract >>= prestate;
 
-                        /* Write the register from database. */
+                        /* Check temporary memory states first. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        if(mapStates.find(hashAddress) != mapStates.end())
+                            state = mapStates[hashAddress];
+
+                        /* Read the register from database. */
+                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::APPEND: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -110,6 +123,9 @@ namespace TAO
                         /* Check contract account */
                         if(contract.hashCaller != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::APPEND: not authorized ", contract.hashCaller.SubString());
+
+                        /* Write the state to memory map. */
+                        mapStates[hashAddress] = state;
 
                         return true;
                     }
@@ -141,9 +157,13 @@ namespace TAO
                         State prestate;
                         contract >>= prestate;
 
-                        /* Write the register from database. */
+                        /* Check temporary memory states first. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        if(mapStates.find(hashAddress) != mapStates.end())
+                            state = mapStates[hashAddress];
+
+                        /* Read the register from database. */
+                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -153,6 +173,9 @@ namespace TAO
                         /* Check contract account */
                         if(contract.hashCaller != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::TRANSFER: not authorized ", contract.hashCaller.SubString());
+
+                        /* Write the state to memory map. */
+                        mapStates[hashAddress] = state;
 
                         break;
                     }
@@ -180,14 +203,21 @@ namespace TAO
                         State prestate;
                         contract >>= prestate;
 
-                        /* Write the register from database. */
+                        /* Check temporary memory states first. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        if(mapStates.find(hashAddress) != mapStates.end())
+                            state = mapStates[hashAddress];
+
+                        /* Read the register from database. */
+                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::CLAIM: failed to read pre-state");
 
                         /* Check that the checksums match. */
                         if(prestate != state)
                             return debug::error(FUNCTION, "OP::CLAIM: pre-state verification failed");
+
+                        /* Write the state to memory map. */
+                        mapStates[hashAddress] = state;
 
                         break;
                     }
@@ -218,9 +248,13 @@ namespace TAO
                         State prestate;
                         contract >>= prestate;
 
-                        /* Write the register from database. */
+                        /* Check temporary memory states first. */
                         State state;
-                        if(!LLD::regDB->ReadTrust(contract.hashCaller, state))
+                        if(mapStates.count(contract.hashCaller)) //TODO: check here for duplicate register address (coudl have a collision between genesis and address)
+                            state = mapStates[contract.hashCaller];
+
+                        /* Read the register from database. */
+                        else if(!LLD::regDB->ReadTrust(contract.hashCaller, state))
                             return debug::error(FUNCTION, "OP::TRUST: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -230,6 +264,9 @@ namespace TAO
                         /* Check contract account */
                         if(contract.hashCaller != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::TRUST: not authorized ", contract.hashCaller.SubString());
+
+                        /* Write the state to memory map. */
+                        mapStates[contract.hashCaller] = state;
 
                         break;
                     }
@@ -254,9 +291,13 @@ namespace TAO
                         State prestate;
                         contract >>= prestate;
 
-                        /* Write the register from database. */
+                        /* Check temporary memory states first. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        if(mapStates.count(contract.hashCaller))
+                            state = mapStates[contract.hashCaller];
+
+                        /* Read the register from database. */
+                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -266,6 +307,9 @@ namespace TAO
                         /* Check contract account */
                         if(contract.hashCaller != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::GENESIS: not authorized ", contract.hashCaller.SubString());
+
+                        /* Write the state to memory map. */
+                        mapStates[contract.hashCaller] = state;
 
                         break;
                     }
@@ -290,9 +334,13 @@ namespace TAO
                         State prestate;
                         contract >>= prestate;
 
-                        /* Write the register from database. */
+                        /* Check temporary memory states first. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        if(mapStates.find(hashAddress) != mapStates.end())
+                            state = mapStates[hashAddress];
+
+                        /* Read the register from database. */
+                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -302,6 +350,9 @@ namespace TAO
                         /* Check contract account */
                         if(contract.hashCaller != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::DEBIT: not authorized ", contract.hashCaller.SubString());
+
+                        /* Write the state to memory map. */
+                        mapStates[hashAddress] = state;
 
                         break;
                     }
@@ -330,9 +381,13 @@ namespace TAO
                         State prestate;
                         contract >>= prestate;
 
-                        /* Write the register from database. */
+                        /* Check temporary memory states first. */
                         State state;
-                        if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        if(mapStates.find(hashAddress) != mapStates.end())
+                            state = mapStates[hashAddress];
+
+                        /* Read the register from database. */
+                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::CREDIT: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -342,6 +397,9 @@ namespace TAO
                         /* Check contract account */
                         if(contract.hashCaller != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::CREDIT: not authorized ", contract.hashCaller.SubString());
+
+                        /* Write the state to memory map. */
+                        mapStates[hashAddress] = state;
 
                         break;
                     }
