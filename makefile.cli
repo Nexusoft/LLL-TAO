@@ -310,8 +310,10 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_finance_credit.o \
 		build/API_finance_debit.o \
 		build/API_finance_get.o \
+		build/API_finance_info.o \
 		build/API_finance_initialize.o \
 		build/API_finance_list.o \
+		build/API_finance_stake.o \
 		build/API_ledger_block.o \
 		build/API_ledger_initialize.o \
 		build/API_ledger_state.o \
