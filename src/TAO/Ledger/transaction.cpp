@@ -253,30 +253,57 @@ namespace TAO
         /* Determines if the transaction is a coinbase transaction. */
         bool Transaction::IsCoinbase() const
         {
-            if(ssOperation.size() == 0)
+            /* Check for contracts. */
+            if(vContracts.size() == 0)
                 return false;
 
-            return ssOperation.get(0) == TAO::Operation::OP::COINBASE;
+            /* Check for empty first contract. */
+            if(vContracts[0].Empty())
+                return false;
+
+            /* Check for no conditions. */
+            if(vContracts[0].Conditions())
+                return false;
+
+            return (vContracts[0].Primitive() == TAO::Operation::OP::COINBASE);
         }
 
 
         /* Determines if the transaction is for a private block. */
         bool Transaction::IsPrivate() const
         {
-            if(ssOperation.size() == 0)
+            /* Check for contracts. */
+            if(vContracts.size() == 0)
                 return false;
 
-            return ssOperation.get(0) == TAO::Operation::OP::AUTHORIZE;
+            /* Check for empty first contract. */
+            if(vContracts[0].Empty())
+                return false;
+
+            /* Check for no conditions. */
+            if(vContracts[0].Conditions())
+                return false;
+
+            return (vContracts[0].Primitive() == TAO::Operation::OP::AUTHORIZE);
         }
 
 
         /* Determines if the transaction is a coinstake transaction. */
         bool Transaction::IsTrust() const
         {
-            if(ssOperation.size() == 0)
+            /* Check for contracts. */
+            if(vContracts.size() == 0)
                 return false;
 
-            return ssOperation.get(0) == TAO::Operation::OP::TRUST;
+            /* Check for empty first contract. */
+            if(vContracts[0].Empty())
+                return false;
+
+            /* Check for no conditions. */
+            if(vContracts[0].Conditions())
+                return false;
+
+            return (vContracts[0].Primitive() == TAO::Operation::OP::TRUST);
         }
 
 
@@ -297,10 +324,15 @@ namespace TAO
         /* Determines if the transaction is a genesis transaction */
         bool Transaction::IsGenesis() const
         {
-            if(ssOperation.size() == 0)
+            /* Check for contracts. */
+            if(vContracts.size() == 0)
                 return false;
 
-            return ssOperation.get(0) == TAO::Operation::OP::GENESIS;
+            /* Check for empty first contract. */
+            if(vContracts[0].Empty())
+                return false;
+
+            return (vContracts[0].Primitive() == TAO::Operation::OP::GENESIS);
         }
 
 
@@ -441,14 +473,14 @@ namespace TAO
                 "nVersion = ", nVersion, ", ",
                 "nSequence = ", nSequence, ", ",
                 "nTimestamp = ", nTimestamp, ", ",
-                "hashNext  = ",  hashNext.ToString().substr(0, 20), ", ",
+                "nextHash  = ",  hashNext.ToString().substr(0, 20), ", ",
+                "prevHash  = ",  PrevHash().ToString().substr(0, 20), ", ",
                 "hashPrevTx = ", hashPrevTx.ToString().substr(0, 20), ", ",
+                "hashNextTx = ", hashNextTx.ToString().substr(0, 20), ", ",
                 "hashGenesis = ", hashGenesis.ToString().substr(0, 20), ", ",
                 "pub = ", HexStr(vchPubKey).substr(0, 20), ", ",
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",
-                "hash = ", GetHash().ToString().substr(0, 20), ", ",
-                "register.size() = ", ssRegister.size(), ", ",
-                "operation.size() = ", ssOperation.size(), ")"
+                "hash = ", GetHash().ToString().substr(0, 20)
             );
         }
 

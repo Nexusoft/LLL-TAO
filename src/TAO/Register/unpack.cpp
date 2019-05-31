@@ -33,54 +33,54 @@ namespace TAO
     {
 
         /* Unpack a state register from operation scripts. */
-        bool Unpack(const TAO::Ledger::Transaction& tx, State &state, uint256_t &hashAddress)
+        bool Unpack(const TAO::Operation::Contract& contract, State &state, uint256_t &hashAddress)
         {
-            /* Start the stream at the beginning. */
-            tx.ssOperation.seek(0, STREAM::BEGIN);
+            /* Reset the contract. */
+            contract.Reset();
 
             /* Make sure no exceptions are thrown. */
             try
             {
+                /* De-Serialize the operation. */
+                uint8_t OPERATION = 0;
+                contract >> OPERATION;
 
-                /* Loop through the operations tx.ssOperation. */
-                while(!tx.ssOperation.end())
+                /* Check the current opcode. */
+                switch(OPERATION)
                 {
-                    uint8_t OPERATION;
-                    tx.ssOperation >> OPERATION;
-
-                    /* Check the current opcode. */
-                    switch(OPERATION)
+                    /* Create a new register. */
+                    case TAO::Operation::OP::CREATE:
                     {
+                        /* Extract the address from the contractn. */
+                        contract >> hashAddress;
 
-                        /* Create a new register. */
-                        case TAO::Operation::OP::CREATE:
-                        {
-                            /* Extract the address from the tx.ssOperation. */
-                            tx.ssOperation >> hashAddress;
+                        /* Extract the register type from contractn. */
+                        uint8_t nType = 0;
+                        contract >> nType;
 
-                            /* Extract the register type from tx.ssOperation. */
-                            uint8_t nType;
-                            tx.ssOperation >> nType;
+                        /* Extract the register data. */
+                        std::vector<uint8_t> vchData;
+                        contract >> vchData;
 
-                            /* Extract the register data from the tx.ssOperation. */
-                            std::vector<uint8_t> vchData;
-                            tx.ssOperation >> vchData;
+                        /* Create the register object. */
+                        state.nVersion   = 1;
+                        state.nType      = nType;
+                        state.hashOwner  = contract.hashCaller;
 
-                            /* Set the owner of this register. */
-                            if(!LLD::regDB->ReadState(hashAddress, state))
-                                return false;
-
-                            return true;
-                        }
-
-                        default:
-                        {
+                        /* Calculate the new operation. */
+                        if(!TAO::Opeartion::Create::Execute(state, vchData, contract.nTimestamp))
                             return false;
-                        }
+
+                        return true;
+                    }
+
+                    default:
+                    {
+                        return false;
                     }
                 }
             }
-            catch(const std::runtime_error& e)
+            catch(const std::exception& e)
             {
             }
 
@@ -89,44 +89,38 @@ namespace TAO
 
 
         /* Unpack a source register address from operation scripts. */
-        bool Unpack(const TAO::Ledger::Transaction& tx, uint256_t &hashAddress)
+        bool Unpack(const TAO::Operation::Contract& contract, uint256_t &hashAddress)
         {
-
-            /* Start the stream at the beginning. */
-            tx.ssOperation.seek(0, STREAM::BEGIN);
+            /* Reset the contract. */
+            contract.Reset();
 
             /* Make sure no exceptions are thrown. */
             try
             {
+                /* Deserialize the operation. */
+                uint8_t OPERATION = 0;
+                contract >> OPERATION;
 
-                /* Loop through the operations tx.ssOperation. */
-                while(!tx.ssOperation.end())
+                /* Check the current opcode. */
+                switch(OPERATION)
                 {
-                    uint8_t OPERATION;
-                    tx.ssOperation >> OPERATION;
-
-                    /* Check the current opcode. */
-                    switch(OPERATION)
+                    /* Create a new register. */
+                    case TAO::Operation::OP::DEBIT:
+                    case TAO::Operation::OP::TRANSFER:
                     {
+                        /* Extract the address from the contract. */
+                        contract >> hashAddress;
 
-                        /* Create a new register. */
-                        case TAO::Operation::OP::DEBIT:
-                        case TAO::Operation::OP::TRANSFER:
-                        {
-                            /* Extract the address from the tx.ssOperation. */
-                            tx.ssOperation >> hashAddress;
+                        return true;
+                    }
 
-                            return true;
-                        }
-
-                        default:
-                        {
-                            return false;
-                        }
+                    default:
+                    {
+                        return false;
                     }
                 }
             }
-            catch(const std::runtime_error& e)
+            catch(const std::exception& e)
             {
             }
 
@@ -135,44 +129,38 @@ namespace TAO
 
 
         /* Unpack a previous transaction from operation scripts. */
-        bool Unpack(const TAO::Ledger::Transaction& tx, uint512_t& hashPrevTx)
+        bool Unpack(const TAO::Operation::Contract& contract, uint512_t& hashPrevTx)
         {
-
-            /* Start the stream at the beginning. */
-            tx.ssOperation.seek(0, STREAM::BEGIN);
+            /* Reset the contract. */
+            contract.Reset();
 
             /* Make sure no exceptions are thrown. */
             try
             {
+                /* Deserialize the operation. */
+                uint8_t OPERATION = 0;
+                contract >> OPERATION;
 
-                /* Loop through the operations tx.ssOperation. */
-                while(!tx.ssOperation.end())
+                /* Check the current opcode. */
+                switch(OPERATION)
                 {
-                    uint8_t OPERATION;
-                    tx.ssOperation >> OPERATION;
-
-                    /* Check the current opcode. */
-                    switch(OPERATION)
+                    /* Create a new register. */
+                    case TAO::Operation::OP::CREDIT:
+                    case TAO::Operation::OP::CLAIM:
                     {
+                        /* Extract the address from the contract. */
+                        contract >> hashPrevTx;
 
-                        /* Create a new register. */
-                        case TAO::Operation::OP::CREDIT:
-                        case TAO::Operation::OP::CLAIM:
-                        {
-                            /* Extract the address from the tx.ssOperation. */
-                            tx.ssOperation >> hashPrevTx;
+                        return true;
+                    }
 
-                            return true;
-                        }
-
-                        default:
-                        {
-                            return false;
-                        }
+                    default:
+                    {
+                        return false;
                     }
                 }
             }
-            catch(const std::runtime_error& e)
+            catch(const std::exception& e)
             {
             }
 
@@ -181,34 +169,9 @@ namespace TAO
 
 
         /* Unpack a transaction and test for the operation it contains. */
-        bool Unpack(const TAO::Ledger::Transaction& tx, const uint8_t nCode)
+        bool Unpack(const TAO::Operation::Contract& contract, const uint8_t nCode)
         {
-
-            /* Start the stream at the beginning. */
-            tx.ssOperation.seek(0, STREAM::BEGIN);
-
-            /* Make sure no exceptions are thrown. */
-            try
-            {
-                /* Loop through the operations tx.ssOperation. */
-                while (!tx.ssOperation.end())
-                {
-                    uint8_t OPERATION;
-                    tx.ssOperation >> OPERATION;
-
-                    /* Check the current opcode. */
-                    if (OPERATION == nCode)
-                        return true;
-
-                    else
-                        return false;
-                }
-            }
-            catch(const std::runtime_error& e)
-            {
-            }
-
-            return false;
+            return contract.Primitive() == nCode;
         }
     }
 }

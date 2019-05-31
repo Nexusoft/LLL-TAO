@@ -410,7 +410,7 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
-                        /* Deserialize the register from ssOperation. */
+                        /* Deserialize the register from contract. */
                         std::vector<uint8_t> vchData;
                         contract >> vchData;
 
@@ -430,7 +430,7 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
-                        /* Deserialize the register from ssOperation. */
+                        /* Deserialize the register from contract. */
                         std::vector<uint8_t> vchData;
                         contract >> vchData;
 
@@ -446,15 +446,15 @@ namespace TAO
                     /* Create a new register. */
                     case TAO::Operation::OP::CREATE:
                     {
-                        /* Extract the address from the ssOperation. */
+                        /* Extract the address from the contract. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
-                        /* Extract the register type from ssOperation. */
+                        /* Extract the register type from contract. */
                         uint8_t nType = 0;
                         contract >> nType;
 
-                        /* Extract the register data from the ssOperation. */
+                        /* Extract the register data from the contract. */
                         std::vector<uint8_t> vchData;
                         contract >> vchData;
 
@@ -472,7 +472,7 @@ namespace TAO
                     /* Transfer ownership of a register to another signature chain. */
                     case TAO::Operation::OP::TRANSFER:
                     {
-                        /* Extract the address from the ssOperation. */
+                        /* Extract the address from the contract. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 

@@ -97,6 +97,213 @@ namespace TAO
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;
 
+                /* Check through all the contracts. */
+                for(uint32_t nContract = tx.Size() - 1; nContracts >= 0; ++nContracts)
+                {
+                    /* Get the contract. */
+                    const TAO::Operation::Contract& contract = tx[nContract];
+
+                    /* Get the operation byte. */
+                    uint8_t nType = 0;
+                    contract >> nType;
+
+                    /* Check for key operations. */
+                    switch(nType)
+                    {
+                        /* Break when at the register declaration. */
+                        case TAO::Operation::OP::CREATE:
+                        {
+                            /* Get the Address of the Register. */
+                            uint256_t hashAddress = 0;
+                            contract >> hashAddress;
+
+                            /* Check for same address. */
+                            if(hashAddress != hashRegister)
+                                break;
+
+                            /* Get the Register Type. */
+                            uint8_t nType = 0;
+                            contract >> nType;
+
+                            /* Get the register data. */
+                            std::vector<uint8_t> vchData;
+                            contract >> vchData;
+
+                            /* Create the register object. */
+                            TAO::Register::State state;
+                            state.nVersion   = 1;
+                            state.nType      = nType;
+                            state.hashOwner  = contract.hashCaller;
+
+                            /* Calculate the new operation. */
+                            if(!TAO::Operation::Create::Execute(state, vchData, contract.nTimestamp))
+                                return false;
+
+                            /* Generate return object. */
+                            json::json obj;
+                            obj["type"]       = "CREATE";
+                            obj["owner"]      = contract.hashCaller.ToString();
+
+                            /* Complete object parameters. */
+                            obj["modified"]   = state.nModified;
+                            obj["created"]    = state.nCreated;
+
+                            /* Reset read position. */
+                            state.nReadPos = 0;
+
+                            /* Grab the last state. */
+                            while(!state.end())
+                            {
+                                /* If the data type is string. */
+                                std::string data;
+                                state >> data;
+
+                                obj["checksum"] = state.hashChecksum;
+                                obj["data"]     = data;
+                            }
+
+                            /* Push to return array. */
+                            ret.push_back(obj);
+
+                            /* Set hash last to zero to break. */
+                            hashLast = 0;
+
+                            break;
+                        }
+
+                        case TAO::Operation::OP::APPEND:
+                        case TAO::Operation::OP::WRITE:
+                        {
+                            /* Get the address. */
+                            uint256_t hashAddress = 0;
+                            contract >> hashAddress;
+
+                            /* Check for same address. */
+                            if(hashAddress != hashRegister)
+                                break;
+
+                            /* Generate return object. */
+                            json::json obj;
+                            obj["type"]       = "MODIFY";
+                            obj["owner"]      = contract.hashCaller.ToString();
+
+                            /* Get the flag. */
+                            uint8_t nState = 0;
+                            contract >>= nState;
+
+                            /* Get the pre-state. */
+                            TAO::Register::State state;
+                            contract >>= state;
+
+                            /* Complete object parameters. */
+                            obj["modified"]   = state.nModified;
+                            obj["created"]    = state.nCreated;
+
+                            /* Reset read position. */
+                            state.nReadPos = 0;
+
+                            /* Grab the last state. */
+                            while(!state.end())
+                            {
+                                /* If the data type is string. */
+                                std::string data;
+                                state >> data;
+
+                                obj["checksum"] = state.hashChecksum;
+                                obj["data"]     = data;
+                            }
+
+                            /* Push to return array. */
+                            ret.push_back(obj);
+
+                            break;
+                        }
+
+
+                        case TAO::Operation::OP::CLAIM:
+                        {
+                            /* Extract the transaction from contract. */
+                            uint512_t hashTx = 0;
+                            contract >> hashTx;
+
+                            /* Extract the contract-id. */
+                            uint32_t nContract = 0;
+                            contract >> nContract;
+
+                            /* Extract the address from the contract. */
+                            uint256_t hashAddress = 0;
+                            contract >> hashAddress;
+
+                            /* Check for same address. */
+                            if(hashAddress != hashRegister)
+                                break;
+
+                            /* Generate return object. */
+                            json::json obj;
+                            obj["type"]       = "CLAIM";
+                            obj["owner"]      = contract.hashCaller.ToString();
+
+                            /* Get the flag. */
+                            uint8_t nState = 0;
+                            contract >>= nState;
+
+                            /* Get the pre-state. */
+                            TAO::Register::State state;
+                            contract >>= state;
+
+                            /* Complete object parameters. */
+                            obj["modified"]   = state.nModified;
+                            obj["created"]    = state.nCreated;
+
+                            /* Push to return array. */
+                            ret.push_back(obj);
+
+                            /* Get the previous txid. */
+                            hashLast = hashTx;
+
+                            break;
+                        }
+
+                        /* Get old owner from transfer. */
+                        case TAO::Operation::OP::TRANSFER:
+                        {
+                            /* Extract the address from the contract. */
+                            uint256_t hashAddress = 0;
+                            contract >> hashAddress;
+
+                            /* Check for same address. */
+                            if(hashAddress != hashRegister)
+                                break;
+
+                            /* Generate return object. */
+                            json::json obj;
+                            obj["type"]       = "TRANSFER";
+                            obj["owner"]      = contract.hashCaller.ToString();
+
+                            /* Get the flag. */
+                            uint8_t nState = 0;
+                            contract >>= nState;
+
+                            /* Get the pre-state. */
+                            TAO::Register::State state;
+                            contract >>= state;
+
+                            /* Complete object parameters. */
+                            obj["modified"]   = state.nModified;
+                            obj["created"]    = state.nCreated;
+
+                            /* Push to return array. */
+                            ret.push_back(obj);
+
+                            break;
+                        }
+
+                        default:
+                            continue;
+                    }
+                }
+
+
                 /* Loop through all transactions. */
                 for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
                 {
@@ -130,7 +337,7 @@ namespace TAO
                             json::json obj;
                             obj["OP"]         = "APPEND";
                             obj["owner"]      = state.hashOwner.ToString();
-                            obj["updated"]  = state.nTimestamp;
+                            obj["updated"]    = state.nTimestamp;
 
                             /* Reset read position. */
                             state.nReadPos = 0;

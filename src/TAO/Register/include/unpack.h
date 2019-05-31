@@ -31,47 +31,47 @@ namespace TAO
 
         /** Unpack
          *
-         *  Unpack a state register from operation scripts.
+         *  Unpack a state register from a contract
          *
-         *  @param[in] tx the transaction to unpack
+         *  @param[in] contract The contract to unpack from.
          *  @param[out] state the unpacked register
          *  @param[out] hashAddress the register address
          *
          *  @return true if register unpacked successfully
          *
          **/
-        bool Unpack(const TAO::Ledger::Transaction& tx, State &state, uint256_t &hashAddress);
+        bool Unpack(const TAO::Operation::Contract& contract, State &state, uint256_t &hashAddress);
 
 
         /** Unpack
          *
-         *  Unpack a source register address from operation scripts.
+         *  Unpack a source register address from a contract
          *
-         *  @param[in] tx the transaction to unpack
-         *  @param[out] hashAddress one or more op code values (combine multiple with bitwise | )
+         *  @param[in] contract The contract to unpack from.
+         *  @param[out] hashAddress register address to find.
          *
          *  @return true if the address unpacked successfully
          *
          **/
-        bool Unpack(const TAO::Ledger::Transaction& tx, uint256_t &hashAddress);
+        bool Unpack(const TAO::Operation::Contract& contract, uint256_t &hashAddress);
 
 
         /** Unpack
          *
-         *  Unpack a previous transaction from operation scripts.
+         *  Unpack a previous transaction from a contract
          *
-         *  @param[in] tx the transaction to unpack
+         *  @param[in] contract The contract to unpack from.
          *  @param[out] hashPrevTx finds a previous transaction
          *
          *  @return true if the previous tx hash was unpacked successfully
          *
          **/
-        bool Unpack(const TAO::Ledger::Transaction& tx, uint512_t& hashPrevTx);
+        bool Unpack(const TAO::Operation::Contract& contractuint512_t& hashPrevTx);
 
 
         /** Unpack
          *
-         *  Unpack a previous transaction and test for the operation it contains.
+         *  Unpack a contract to find it's primitive operation.
          *
          *  @param[in] tx the transaction to unpack
          *  @param[in] nCode op code value to test
@@ -79,7 +79,7 @@ namespace TAO
          *  @return true if the transaction contains the requested op code
          *
          **/
-        bool Unpack(const TAO::Ledger::Transaction& tx, const uint8_t nCode);
+        bool Unpack(const TAO::Operation::Contract& contract, const uint8_t nCode);
 
     }
 }

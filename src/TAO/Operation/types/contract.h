@@ -75,6 +75,50 @@ namespace TAO
             )
 
 
+            /** Primitive
+             *
+             *  Get the primitive operation.
+             *
+             *  @return The primitive instruction.
+             *
+             **/
+            const uint8_t Primitive() const
+            {
+                /* Sanity checks. */
+                if(ssOperation.size() == 0)
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "cannot get primitive when empty"));
+
+                /* Return first byte. */
+                return ssOperation.get(0);
+            }
+
+
+            /** Empty
+             *
+             *  Detect if the stream is empty.
+             *
+             *  @return true if operation stream is empty.
+             *
+             **/
+            const bool Empty() const
+            {
+                return (ssOperation.size() == 0);
+            }
+
+
+            /** Conditions
+             *
+             *  Detect if there are any conditions present.
+             *
+             *  @return false if condition stream is empty
+             *
+             **/
+            const bool Conditions() const
+            {
+                return (ssCondition.size() == 0);
+            }
+
+
             /** Reset
              *
              *  Reset the internal stream read pointers.
