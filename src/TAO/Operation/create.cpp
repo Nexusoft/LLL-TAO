@@ -208,6 +208,14 @@ namespace TAO
             if(TAO::Register::Reserved(hashAddress))
                 return debug::error(FUNCTION, "cannot create register with reserved address");
 
+            /* Get the object data size. */
+            std::vector<uint8_t> vchData;
+            contract >> vchData;
+
+            /* Check register size limits. */
+            if(vchData.size() > 1024)
+                return debug::error(FUNCTION, "register is beyond size limits");
+
             /* Seek read position to first position. */
             contract.Seek(1);
 

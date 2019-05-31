@@ -45,7 +45,6 @@ namespace TAO
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
         bool Transaction::Check() const
         {
-
             /* Checks for coinbase. */
             if(IsCoinbase())
             {
@@ -65,10 +64,6 @@ namespace TAO
             /* Check the timestamp. */
             if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION, "transaction timestamp too far in the future ", nTimestamp);
-
-            /* Check the size constraints of the ledger data. */
-            if(ssOperation.size() > 1024) //TODO: implement a constant max size
-                return debug::error(FUNCTION, "ledger data outside of maximum size constraints");
 
             /* Check for empty signatures. */
             if(vchSig.size() == 0)
