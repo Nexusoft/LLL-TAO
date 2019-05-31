@@ -297,12 +297,12 @@ namespace TAO
                             uint64_t nAmount;
                             tx.ssOperation >> nAmount;
 
-                            /* New account trust score after unstake. */
-                            uint64_t nTrustScore;
-                            tx.ssOperation >> nTrustScore;
+                            /* Trust score penalty from unstake. */
+                            uint64_t nTrustPenalty;
+                            tx.ssOperation >> nTrustPenalty;
 
                             /* Execute the operation method. */
-                            if(!Unstake(nAmount, nTrustScore, nFlags, tx))
+                            if(!Unstake(nAmount, nTrustPenalty, nFlags, tx))
                                 return false;
 
                             break;

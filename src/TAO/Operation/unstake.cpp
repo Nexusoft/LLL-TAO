@@ -26,7 +26,7 @@ namespace TAO
     {
 
         /* Move from stake to balance for trust account (unlock stake). */
-        bool Unstake(const uint64_t nAmount, const uint64_t nTrustScore, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        bool Unstake(const uint64_t nAmount, const uint64_t nTrustPenalty, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Read the register from the database. */
             TAO::Register::Object trustAccount;
@@ -66,18 +66,20 @@ namespace TAO
                 return debug::error(FUNCTION, "Failed to parse account object register");
 
             /* Get account starting values */
-            uint64_t nStakePrev = trustAccount.get<uint64_t>("stake");
+            uint64_t nTrustPrev = trustAccount.get<uint64_t>("trust");
             uint64_t nBalancePrev = trustAccount.get<uint64_t>("balance");
+            uint64_t nStakePrev = trustAccount.get<uint64_t>("stake");
 
             if(nAmount > nStakePrev)
                 return debug::error(FUNCTION, "cannot unstake more than existing stake balance");
 
             /* Move requested funds from stake to balance */
+            uint64_t nTrust = std::max((nTrustPrev - nTrustPenalty), (uint64_t)0);
             uint64_t nBalance = nBalancePrev + nAmount;
             uint64_t nStake = nStakePrev - nAmount;
 
             /* Write the new trust to object register. */
-            if(!trustAccount.Write("trust", nTrustScore))
+            if(!trustAccount.Write("trust", nTrust))
                 return debug::error(FUNCTION, "trust could not be written to object register");
 
             /* Write the new balance to object register. */

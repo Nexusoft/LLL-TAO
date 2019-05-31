@@ -205,14 +205,14 @@ namespace TAO
          *  Move from stake to balance for trust account (unlock stake).
          *
          *  @param[in] nAmount The amount of balance to unstake
-         *  @param[in] nTrustScore The new account trust score after the operation.
+         *  @param[in] nTrustPenalty The amount of trust reduction from removing stake balance.
          *  @param[in] nFlags The flag to determine if database state should be written.
          *  @param[out] tx The transaction calling operations
          *
          *  @return true if successful.
          *
          **/
-        bool Unstake(const uint64_t nAmount, const uint64_t nTrustScore, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
+        bool Unstake(const uint64_t nAmount, const uint64_t nTrustPenalty, const uint8_t nFlags, TAO::Ledger::Transaction &tx);
 
 
         /** Authorize
