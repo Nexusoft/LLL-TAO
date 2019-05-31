@@ -40,22 +40,14 @@ namespace TAO
             int32_t nLimits;
 
 
-            /** Reference of the stream that script exists on. **/
-            const Stream& ssOperations;
-
-
             /** Reference of the transaction executing script. **/
-            const TAO::Ledger::Transaction& tx;
-
-
-            /** The stream position this script starts on. **/
-            const uint64_t nStreamPos;
+            const Contract& contract;
 
 
         public:
 
             /** Default constructor. **/
-            Validate(const Stream& ssOperationIn, const TAO::Ledger::Transaction& txIn, int32_t nLimitsIn = 2048);
+            Validate(const Contract& contractIn, int32_t nLimitsIn = 2048);
 
 
             /** Copy constructor. **/

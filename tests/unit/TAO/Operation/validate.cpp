@@ -500,7 +500,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     }
 
     ssOperation.SetNull();
-    ssOperation << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::REGISTER::TIMESTAMP << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 3u << (uint8_t)OP::GREATERTHAN << (uint8_t) OP::GLOBAL::UNIFIED;
+    ssOperation << (uint8_t)OP::TYPES::UINT256_T << hash << (uint8_t)OP::REGISTER::MODIFIED << (uint8_t) OP::ADD << (uint8_t) OP::TYPES::UINT32_T << 3u << (uint8_t)OP::GREATERTHAN << (uint8_t) OP::GLOBAL::UNIFIED;
     {
         Validate script = Validate(ssOperation, tx);
         REQUIRE(script.Execute());

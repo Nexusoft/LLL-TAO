@@ -38,6 +38,10 @@ namespace TAO
             TAO::Operation::Stream ssOperation;
 
 
+            /** Contract conditional stream. */
+            TAO::Operation::Stream ssCondition;
+
+
             /** Contract register stream. **/
             TAO::Register::Stream  ssRegister;
 
@@ -55,6 +59,7 @@ namespace TAO
             /** Default Constructor. **/
             Contract()
             : ssOperation()
+            , ssCondition()
             , ssRegister()
             , nTimestamp(runtime::unifiedtimestamp())
             , hashCaller(0)
@@ -65,6 +70,7 @@ namespace TAO
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(ssOperation);
+                READWRITE(ssCondition);
                 READWRITE(ssRegister);
             )
 
@@ -79,6 +85,9 @@ namespace TAO
                 /* Set the operation stream to beginning. */
                 ssOperation.seek(0, STREAM::BEGIN);
 
+                /* Set the condition stream to beginning. */
+                ssCondition.seek(0, STREAM::BEGIN);
+
                 /* Set the register stream to beginning. */
                 ssRegister.seek(0, STREAM::BEGIN);
             }
@@ -89,10 +98,13 @@ namespace TAO
              *  Clears all contract data
              *
              **/
-            void Reset() const
+            void Clear() const
             {
                 /* Set the operation stream to beginning. */
                 ssOperation.SetNull();
+
+                /* Set the condition stream to beginning. */
+                ssCondition.SetNull();
 
                 /* Set the register stream to beginning. */
                 ssRegister.SetNull();
@@ -116,6 +128,32 @@ namespace TAO
             }
 
 
+            /** Operations
+             *
+             *  Get the raw operation bytes from the contract.
+             *
+             *  @return raw byte const reference
+             *
+             **/
+            const std::vector<uint8_t>& Operations() const
+            {
+                return ssOperation.Bytes();
+            }
+
+
+            /** Conditions
+             *
+             *  Get the raw condition bytes from the contract.
+             *
+             *  @return raw byte const reference
+             *
+             **/
+            const std::vector<uint8_t>& Conditions() const
+            {
+                return ssCondition.Bytes();
+            }
+
+
             /** Seek
              *
              *  Seek the internal operation stream read pointers.
@@ -130,6 +168,20 @@ namespace TAO
 
                 /* Set the register stream to beginning. */
                 ssRegister.seek(0, STREAM::BEGIN);
+            }
+
+
+            /** Seek
+             *
+             *  Seek the internal operation stream read pointers.
+             *
+             *  @param[in] nPos The position to seek to
+             *
+             **/
+            void Rewind(const uint32_t nPos) const
+            {
+                /* Set the operation stream to beginning. */
+                ssOperation.seek(int32_t(-1 * nPos));
             }
 
 
@@ -162,6 +214,40 @@ namespace TAO
             {
                 /* Serialize to the stream. */
                 ssOperation >> obj;
+
+                return (*this);
+            }
+
+
+            /** Operator Overload <=
+             *
+             *  Serializes data into ssCondition
+             *
+             *  @param[in] obj The object to serialize into ledger data
+             *
+             **/
+            template<typename Type>
+            Contract& operator<=(const Type& obj)
+            {
+                /* Serialize to the stream. */
+                ssCondition << obj;
+
+                return (*this);
+            }
+
+
+            /** Operator Overload <=
+             *
+             *  Serializes data into ssCondition
+             *
+             *  @param[in] obj The object to serialize into ledger data
+             *
+             **/
+            template<typename Type>
+            const Contract& operator>=(Type& obj) const
+            {
+                /* Serialize to the stream. */
+                ssCondition >> obj;
 
                 return (*this);
             }

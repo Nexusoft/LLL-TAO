@@ -28,7 +28,7 @@ namespace TAO
         //NETF - ORS - Object Register Standard - Document to define a specific object register for purpose of ADS standards, with NOS standards being capable of supporting methods
 
 
-        struct OP
+        namespace OP
         {
             /** Primitive Operations. **/
             enum
@@ -61,10 +61,6 @@ namespace TAO
                 ACK        = 0x30, //a vote to credit trust towards a proposal
                 NACK       = 0x31, //a vote to withdrawl trust from a proposal
 
-                //conditional operations
-                VALIDATE    = 0x40,
-                REQUIRE     = 0x41,
-
                 //legacy operations
                 LEGACY      = 0x50
 
@@ -73,7 +69,7 @@ namespace TAO
 
 
             /** Core validation types. **/
-            struct TYPES
+            namespace TYPES
             {
                 enum
                 {
@@ -88,7 +84,8 @@ namespace TAO
                     STRING      = 0x77,
                     BYTES       = 0x78,
                 };
-            };
+            }
+
 
             /** Core validation operations. **/
             enum
@@ -99,6 +96,7 @@ namespace TAO
                 GREATERTHAN = 0x82,
                 NOTEQUALS   = 0x83,
                 CONTAINS    = 0x84,
+                EMPTY       = 0x85,
 
 
                 //RESERVED to 0x9f
@@ -122,35 +120,54 @@ namespace TAO
 
 
             /** Register layer state values. **/
-            struct REGISTER
+            namespace REGISTER
             {
                 enum
                 {
-                    TIMESTAMP     = 0xb0,
-                    OWNER         = 0xb1,
-                    TYPE          = 0xb2,
-                    STATE         = 0xb3,
+                    CREATED       = 0xb0,
+                    MODIFIED      = 0xb1,
+                    OWNER         = 0xb2,
+                    TYPE          = 0xb3,
+                    STATE         = 0xb4,
 
                     //object registers
-                    VALUE         = 0xb4
+                    VALUE         = 0xb5
                 };
-            };
+            }
+
+
+            /** Register pre-state values. **/
+            namespace PRESTATE
+            {
+                enum
+                {
+                    CREATED       = 0xb6,
+                    MODIFIED      = 0xb7,
+                    OWNER         = 0xb8,
+                    TYPE          = 0xb9,
+                    STATE         = 0xba,
+
+                    //object registers
+                    VALUE         = 0xbb
+                };
+            }
 
 
             /** Caller Values (The validation script caller). **/
-            struct CALLER
+            namespace CALLER
             {
                 enum
                 {
                     GENESIS      = 0xc0,
                     TIMESTAMP    = 0xc1,
                     OPERATIONS   = 0xc2,
+                    CONDITIONS   = 0xc3,
                 };
-            };
+            }
 
 
             /* Ledger Layer State Values. */
-            struct LEDGER
+            namespace LEDGER
             {
                 enum
                 {
@@ -158,29 +175,29 @@ namespace TAO
                     SUPPLY        = 0xd1,
                     TIMESTAMP     = 0xd2
                 };
-            };
+            }
 
 
 
             /* Cryptographic operations. */
-            struct CRYPTO
+            namespace CRYPTO
             {
                 enum
                 {
                     SK256        = 0xe0,
                     SK512        = 0xe1
                 };
-            };
+            }
 
 
             /* Global state values. */
-            struct GLOBAL
+            namespace GLOBAL
             {
                 enum
                 {
                     UNIFIED       = 0xf0
                 };
-            };
+            }
         };
     }
 }

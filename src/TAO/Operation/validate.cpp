@@ -29,12 +29,10 @@ namespace TAO
     namespace Operation
     {
 
-        Validate::Validate(const Stream& ssOperationIn, const TAO::Ledger::Transaction& txIn, int32_t nLimitsIn)
+        Validate::Validate(const Contract& contractIn, int32_t nLimitsIn)
         : TAO::Register::BaseVM() //512 bytes of register memory.
         , nLimits(nLimitsIn)
-        , ssOperations(ssOperationIn)
-        , tx(txIn)
-        , nStreamPos(ssOperations.pos())
+        , contract(contractIn)
         {
         }
 
@@ -43,9 +41,7 @@ namespace TAO
         Validate::Validate(const Validate& in)
         : TAO::Register::BaseVM(in)
         , nLimits(in.nLimits)
-        , ssOperations(in.ssOperations)
-        , tx(in.tx)
-        , nStreamPos(ssOperations.pos())
+        , contract(in.contract)
         {
         }
 
@@ -53,7 +49,7 @@ namespace TAO
         /* Reset the validation script for re-executing. */
         void Validate::Reset()
         {
-            ssOperations.reset();
+            contract.Reset();
             nLimits = 2048;
 
             reset();
@@ -67,7 +63,7 @@ namespace TAO
             bool fRet = false;
 
             /* Loop through the operation validation code. */
-            while(!ssOperations.end())
+            while(!contract.End())
             {
                 /* Grab the first value */
                 TAO::Register::Value vFirst;
@@ -75,8 +71,8 @@ namespace TAO
                     return false;
 
                 /* Grab the next operation. */
-                uint8_t OPERATION;
-                ssOperations >> OPERATION;
+                uint8_t OPERATION = 0;
+                contract >> OPERATION;
 
                 /* Switch by operation code. */
                 switch(OPERATION)
@@ -177,6 +173,19 @@ namespace TAO
                     }
 
 
+                    /* Handle to check if a sequence of bytes is inside another. */
+                    case OP::EMPTY:
+                    {
+                        /* Compare both values to one another. */
+                        fRet = (vFirst.nSize == 0);
+
+                        /* Deallocate the values from the VM. */
+                        deallocate(vFirst);
+
+                        break;
+                    }
+
+
                     /* Handle for the && operator. */
                     case OP::AND:
                     {
@@ -221,12 +230,12 @@ namespace TAO
         {
 
             /* Iterate until end of stream. */
-            while(!ssOperations.end())
+            while(!contract.End())
             {
 
                 /* Extract the operation byte. */
-                uint8_t OPERATION;
-                ssOperations >> OPERATION;
+                uint8_t OPERATION = 0;
+                contract >> OPERATION;
 
 
                 /* Switch based on the operation. */
@@ -456,12 +465,12 @@ namespace TAO
                     case OP::SUBDATA:
                     {
                         /* Get the beginning iterator. */
-                        uint16_t nBegin;
-                        ssOperations >> nBegin;
+                        uint16_t nBegin = 0;
+                        contract >> nBegin;
 
                         /* Get the size to extract. */
-                        uint16_t nSize;
-                        ssOperations >> nSize;
+                        uint16_t nSize = 0;
+                        contract >> nSize;
 
                         /* Extract the string. */
                         std::vector<uint8_t> vData(vRet.size() * 8, 0);
@@ -483,8 +492,8 @@ namespace TAO
                     case OP::TYPES::UINT8_T:
                     {
                         /* Extract the byte. */
-                        uint8_t n;
-                        ssOperations >> n;
+                        uint8_t n = 0;
+                        contract >> n;
 
                         /* Set the register value. */
                         allocate((uint64_t)n, vRet);
@@ -500,8 +509,8 @@ namespace TAO
                     case OP::TYPES::UINT16_T:
                     {
                         /* Extract the short. */
-                        uint16_t n;
-                        ssOperations >> n;
+                        uint16_t n = 0;
+                        contract >> n;
 
                         /* Set the register value. */
                         allocate((uint64_t)n, vRet);
@@ -517,8 +526,8 @@ namespace TAO
                     case OP::TYPES::UINT32_T:
                     {
                         /* Extract the integer. */
-                        uint32_t n;
-                        ssOperations >> n;
+                        uint32_t n = 0;
+                        contract >> n;
 
                         /* Set the register value. */
                         allocate((uint64_t)n, vRet);
@@ -534,8 +543,8 @@ namespace TAO
                     case OP::TYPES::UINT64_T:
                     {
                         /* Extract the integer. */
-                        uint64_t n;
-                        ssOperations >> n;
+                        uint64_t n = 0;
+                        contract >> n;
 
                         /* Set the register value. */
                         allocate(n, vRet);
@@ -551,8 +560,8 @@ namespace TAO
                     case OP::TYPES::UINT256_T:
                     {
                         /* Extract the integer. */
-                        uint256_t n;
-                        ssOperations >> n;
+                        uint256_t n = 0;
+                        contract >> n;
 
                         /* Set the register value. */
                         allocate(n, vRet);
@@ -569,8 +578,8 @@ namespace TAO
                     case OP::TYPES::UINT512_T:
                     {
                         /* Extract the integer. */
-                        uint512_t n;
-                        ssOperations >> n;
+                        uint512_t n = 0;
+                        contract >> n;
 
                         /* Set the register value. */
                         allocate(n, vRet);
@@ -586,8 +595,8 @@ namespace TAO
                     case OP::TYPES::UINT1024_T:
                     {
                         /* Extract the integer. */
-                        uint1024_t n;
-                        ssOperations >> n;
+                        uint1024_t n = 0;
+                        contract >> n;
 
                         /* Set the register value. */
                         allocate(n, vRet);
@@ -604,7 +613,7 @@ namespace TAO
                     {
                         /* Extract the string. */
                         std::string str;
-                        ssOperations >> str;
+                        contract >> str;
 
                         /* Set the register value. */
                         allocate(str, vRet);
@@ -621,7 +630,7 @@ namespace TAO
                     {
                         /* Extract the string. */
                         std::vector<uint8_t> vData;
-                        ssOperations >> vData;
+                        contract >> vData;
 
                         /* Set the register value. */
                         allocate(vData, vRet);
@@ -650,19 +659,79 @@ namespace TAO
 
 
                     /* Get a register's timestamp and push to the return value. */
-                    case OP::REGISTER::TIMESTAMP:
+                    case OP::REGISTER::MODIFIED:
+                    case OP::PRESTATE::MODIFIED:
                     {
-                        /* Read the register address. */
-                        uint256_t hashRegister;
-                        deallocate(hashRegister, vRet);
-
-                        /* Read the register states. */
+                        /* Register state object. */
                         TAO::Register::State state;
-                        if(!LLD::regDB->Read(hashRegister, state))
-                            return false;
+
+                        /* Check for register enum. */
+                        if(OPERATION == OP::REGISTER::MODIFIED)
+                        {
+                            /* Read the register address. */
+                            uint256_t hashRegister;
+                            deallocate(hashRegister, vRet);
+
+                            /* Read the register states. */
+                            if(!LLD::regDB->Read(hashRegister, state))
+                                return false;
+                        }
+                        else
+                        {
+                            /* Reset the contract. */
+                            contract.Reset();
+
+                            /* Read the pre-state state. */
+                            uint8_t nState = 0;
+                            contract >>= nState;
+
+                            /* Get the pre-state. */
+                            contract >>= state;
+                        }
 
                         /* Set the register value. */
-                        allocate(state.nTimestamp, vRet);
+                        allocate(state.nModified, vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= 40;
+
+                        break;
+                    }
+
+
+                    /* Get a register's timestamp and push to the return value. */
+                    case OP::REGISTER::CREATED:
+                    case OP::PRESTATE::CREATED:
+                    {
+                        /* Register state object. */
+                        TAO::Register::State state;
+
+                        /* Check for register enum. */
+                        if(OPERATION == OP::REGISTER::CREATED)
+                        {
+                            /* Read the register address. */
+                            uint256_t hashRegister;
+                            deallocate(hashRegister, vRet);
+
+                            /* Read the register states. */
+                            if(!LLD::regDB->Read(hashRegister, state))
+                                return false;
+                        }
+                        else
+                        {
+                            /* Reset the contract. */
+                            contract.Reset();
+
+                            /* Read the pre-state state. */
+                            uint8_t nState = 0;
+                            contract >>= nState;
+
+                            /* Get the pre-state. */
+                            contract >>= state;
+                        }
+
+                        /* Set the register value. */
+                        allocate(state.nCreated, vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 40;
@@ -673,15 +742,34 @@ namespace TAO
 
                     /* Get a register's owner and push to the return value. */
                     case OP::REGISTER::OWNER:
+                    case OP::PRESTATE::OWNER:
                     {
-                        /* Read the register address. */
-                        uint256_t hashRegister;
-                        deallocate(hashRegister, vRet);
-
-                        /* Read the register states. */
+                        /* Register state object. */
                         TAO::Register::State state;
-                        if(!LLD::regDB->Read(hashRegister, state))
-                            return false;
+
+                        /* Check for register enum. */
+                        if(OPERATION == OP::REGISTER::OWNER)
+                        {
+                            /* Read the register address. */
+                            uint256_t hashRegister;
+                            deallocate(hashRegister, vRet);
+
+                            /* Read the register states. */
+                            if(!LLD::regDB->Read(hashRegister, state))
+                                return false;
+                        }
+                        else
+                        {
+                            /* Reset the contract. */
+                            contract.Reset();
+
+                            /* Read the pre-state state. */
+                            uint8_t nState = 0;
+                            contract >>= nState;
+
+                            /* Get the pre-state. */
+                            contract >>= state;
+                        }
 
                         /* Set the register value. */
                         allocate(state.hashOwner, vRet);
@@ -695,15 +783,34 @@ namespace TAO
 
                     /* Get a register's type and push to the return value. */
                     case OP::REGISTER::TYPE:
+                    case OP::PRESTATE::TYPE:
                     {
-                        /* Read the register address. */
-                        uint256_t hashRegister;
-                        deallocate(hashRegister, vRet);
-
-                        /* Read the register states. */
+                        /* Register state object. */
                         TAO::Register::State state;
-                        if(!LLD::regDB->Read(hashRegister, state))
-                            return false;
+
+                        /* Check for register enum. */
+                        if(OPERATION == OP::REGISTER::TYPE)
+                        {
+                            /* Read the register address. */
+                            uint256_t hashRegister;
+                            deallocate(hashRegister, vRet);
+
+                            /* Read the register states. */
+                            if(!LLD::regDB->Read(hashRegister, state))
+                                return false;
+                        }
+                        else
+                        {
+                            /* Reset the contract. */
+                            contract.Reset();
+
+                            /* Read the pre-state state. */
+                            uint8_t nState = 0;
+                            contract >>= nState;
+
+                            /* Get the pre-state. */
+                            contract >>= state;
+                        }
 
                         /* Push the type onto the return value. */
                         allocate((uint64_t)state.nType, vRet);
@@ -717,15 +824,34 @@ namespace TAO
 
                     /* Get a register's state and push to the return value. */
                     case OP::REGISTER::STATE:
+                    case OP::PRESTATE::STATE:
                     {
-                        /* Read the register address. */
-                        uint256_t hashRegister;
-                        deallocate(hashRegister, vRet);
-
-                        /* Read the register states. */
+                        /* Register state object. */
                         TAO::Register::State state;
-                        if(!LLD::regDB->Read(hashRegister, state))
-                            return false;
+
+                        /* Check for register enum. */
+                        if(OPERATION == OP::REGISTER::MODIFIED)
+                        {
+                            /* Read the register address. */
+                            uint256_t hashRegister;
+                            deallocate(hashRegister, vRet);
+
+                            /* Read the register states. */
+                            if(!LLD::regDB->Read(hashRegister, state))
+                                return false;
+                        }
+                        else
+                        {
+                            /* Reset the contract. */
+                            contract.Reset();
+
+                            /* Read the pre-state state. */
+                            uint8_t nState = 0;
+                            contract >>= nState;
+
+                            /* Get the pre-state. */
+                            contract >>= state;
+                        }
 
                         /* Allocate to the registers. */
                         allocate(state.GetState(), vRet);
@@ -739,19 +865,34 @@ namespace TAO
 
                     /* Get an account register's balance and push to the return value. */
                     case OP::REGISTER::VALUE:
+                    case OP::PRESTATE::VALUE:
                     {
-                        /* Read the register address. */
-                        uint256_t hashRegister;
-                        deallocate(hashRegister, vRet);
-
-                        /* Read the string for value name. */
-                        std::string strValue;
-                        ssOperations >> strValue;
-
-                        /* Read the register states. */
+                        /* Register state object. */
                         TAO::Register::Object object;
-                        if(!LLD::regDB->Read(hashRegister, object))
-                            return false;
+
+                        /* Check for register enum. */
+                        if(OPERATION == OP::REGISTER::MODIFIED)
+                        {
+                            /* Read the register address. */
+                            uint256_t hashRegister;
+                            deallocate(hashRegister, vRet);
+
+                            /* Read the register states. */
+                            if(!LLD::regDB->Read(hashRegister, object))
+                                return false;
+                        }
+                        else
+                        {
+                            /* Reset the contract. */
+                            contract.Reset();
+
+                            /* Read the pre-state state. */
+                            uint8_t nState = 0;
+                            contract >>= nState;
+
+                            /* Get the pre-state. */
+                            contract >>= object;
+                        }
 
                         /* Check for object register type. */
                         if(object.nType != TAO::Register::REGISTER::OBJECT)
@@ -918,7 +1059,7 @@ namespace TAO
                     case OP::CALLER::GENESIS:
                     {
                         /* Allocate to the registers. */
-                        allocate(tx.hashGenesis, vRet);
+                        allocate(contract.hashCaller, vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 128;
@@ -931,7 +1072,7 @@ namespace TAO
                     case OP::CALLER::TIMESTAMP:
                     {
                         /* Allocate to the registers. */
-                        allocate(tx.nTimestamp, vRet);
+                        allocate(contracct.nTimestamp, vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 1;
@@ -943,14 +1084,35 @@ namespace TAO
                     /* Get the operations of the transaction caller. */
                     case OP::CALLER::OPERATIONS:
                     {
+                        /* Get the bytes from caller. */
+                        const std::vector<uint8_t>& vBytes = contract.Operations();
+
                         /* Allocate to the registers. */
-                        allocate(tx.ssOperation.Bytes(), vRet);
+                        allocate(vBytes, vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= tx.ssOperation.Bytes().size();
+                        nLimits -= vBytes.size();
 
                         break;
                     }
+
+
+                    /* Get the operations of the transaction caller. */
+                    case OP::CALLER::CONDITIONS:
+                    {
+                        /* Get the bytes from caller. */
+                        const std::vector<uint8_t>& vBytes = contract.Conditions();
+
+                        /* Allocate to the registers. */
+                        allocate(vBytes, vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= vBytes.size();
+
+                        break;
+                    }
+
+
 
 
                     /* Get the current height of the chain. */
@@ -1040,7 +1202,7 @@ namespace TAO
                     default:
                     {
                         /* If no applicable instruction found, rewind and return. */
-                        ssOperations.seek(-1);
+                        contract.Rewind(1);
                         if(nLimits < 0)
                             debug::error(FUNCTION, "out of computational limits ", nLimits);
 
