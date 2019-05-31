@@ -600,37 +600,6 @@ namespace TAO
                     }
                     else
                     {
-                        /* Make sure the previous transaction is on disk. */
-                        TAO::Ledger::Transaction txPrev;
-                        if(!LLD::legDB->ReadTx(tx.hashPrevTx, txPrev))
-                            return debug::error(FUNCTION, "prev transaction not on disk");
-
-                        /* Double check sequence numbers here. */
-                        if(txPrev.nSequence + 1 != tx.nSequence)
-                            return debug::error(FUNCTION, "prev transaction incorrect sequence");
-
-                        /* Check the previous next hash that is being claimed. */
-                        if(txPrev.hashNext != tx.PrevHash())
-                            return debug::error(FUNCTION, "next hash mismatch with previous transaction");
-
-                        /* Check the previous sequence number. */
-                        if(txPrev.nSequence + 1 != tx.nSequence)
-                            return debug::error(FUNCTION, "prev sequence ", txPrev.nSequence, " broken ", tx.nSequence);
-
-                        /* Check the previous genesis. */
-                        if(txPrev.hashGenesis != tx.hashGenesis)
-                            return debug::error(FUNCTION,
-                                "genesis ", txPrev.hashGenesis.ToString().substr(0, 20),
-                                " broken ",     tx.hashGenesis.ToString().substr(0, 20));
-
-                        /* Check previous transaction next pointer. */
-                        if(!txPrev.IsHead())
-                            return debug::error(FUNCTION, "prev transaction not head of sigchain");
-
-                        /* Check previous transaction from disk hash. */
-                        if(txPrev.GetHash() != tx.hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
-                            return debug::error(FUNCTION, "prev transaction prevhash mismatch");
-
                         /* Check for the last hash. */
                         uint512_t hashLast = 0;
                         if(!LLD::legDB->ReadLast(tx.hashGenesis, hashLast))

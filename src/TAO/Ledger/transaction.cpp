@@ -114,11 +114,50 @@ namespace TAO
         /* Accept a transaction object into the main chain. */
         bool Transaction::Accept(const uint8_t nFlags) const
         {
+            /* Check the transaction first. */
+            if(!Check())
+                return false;
+
+            /* Make sure the previous transaction is on disk. */
+            TAO::Ledger::Transaction txPrev; //TODO: check nFlags for mempool to check mempool
+            if(!mempool.Get(hashPrevTx, txPrev) && !LLD::legDB->ReadTx(hashPrevTx, txPrev))
+                return debug::error(FUNCTION, "prev transaction not on disk");
+
+            /* Double check sequence numbers here. */
+            if(txPrev.nSequence + 1 != nSequence)
+                return debug::error(FUNCTION, "prev transaction incorrect sequence");
+
+            /* Check the previous next hash that is being claimed. */
+            if(txPrev.hashNext != PrevHash())
+                return debug::error(FUNCTION, "next hash mismatch with previous transaction");
+
+            /* Check the previous sequence number. */
+            if(txPrev.nSequence + 1 != nSequence)
+                return debug::error(FUNCTION, "prev sequence ", txPrev.nSequence, " broken ", nSequence);
+
+            /* Check the previous genesis. */
+            if(txPrev.hashGenesis != hashGenesis)
+                return debug::error(FUNCTION,
+                    "genesis ", txPrev.hashGenesis.SubString(),
+                    " broken ",     tx.hashGenesis.SubString());
+
+            /* Check previous transaction next pointer. */
+            if(!txPrev.IsHead())
+                return debug::error(FUNCTION, "prev transaction not head of sigchain");
+
+            /* Check previous transaction from disk hash. */
+            if(txPrev.GetHash() != hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
+                return debug::error(FUNCTION, "prev transaction prevhash mismatch");
+
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
             {
-                /* Verify the ledger layer. */
+                /* Verify the register layer. */
                 if(!TAO::Register::Verify(contract, nFlags))
+                    return debug::error(FUNCTION, "transaction register layer failed to verify");
+
+                /* Verify the operations layer. */
+                if(!TAO::Operation::Verify(contract, nFlags))
                     return debug::error(FUNCTION, "transaction register layer failed to verify");
             }
 
