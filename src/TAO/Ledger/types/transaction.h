@@ -223,16 +223,24 @@ namespace TAO
             bool Check() const;
 
 
-            /** Accept
+            /** Verify
              *
-             *  Accept a transaction object into the main chain.
-             *
-             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *  Verify a transaction contracts.
              *
              *  @return true if transaction is valid.
              *
              **/
-            bool Accept() const;
+            bool Verify() const;
+
+
+            /** Build
+             *
+             *  Build the transaction contracts.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool Build();
 
 
             /** Connect

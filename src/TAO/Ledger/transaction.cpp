@@ -120,6 +120,14 @@ namespace TAO
             if(!Check())
                 return false;
 
+            /* Accept to memory pool. */
+            return mempool.Accept(GetHash(), *this);
+        }
+
+
+        /* Verify a transaction contracts. */
+        bool Transaction::Verify() const
+        {
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
             {
@@ -132,7 +140,19 @@ namespace TAO
                     return debug::error(FUNCTION, "transaction register layer failed to verify");
             }
 
-            return mempool.Accept(GetHash(), *this);
+            return true;
+        }
+
+
+        /* Build the transaction contracts. */
+        bool Transaction::Build()
+        {
+            /* Run through all the contracts. */
+            for(auto& contract : vContracts)
+                if(!TAO::Register::Calculate(contract))
+                    return debug::error(FUNCTION, "transaction register layer failed to verify");
+
+            return true;
         }
 
 
@@ -225,6 +245,32 @@ namespace TAO
         /* Disconnect a transaction object to the main chain. */
         bool Transaction::Disconnect() const
         {
+            /* Set the proper next pointer. */
+            hashNextTx = STATE::UNCONFIRMED;
+            if(!LLD::legDB->WriteTx(GetHash(), *this))
+                return debug::error(FUNCTION, "failed to write valid next pointer");
+
+            /* Erase last for genesis. */
+            if(IsFirst() && !LLD::legDB->EraseLast(hashGenesis))
+                return debug::error(FUNCTION, "failed to erase last hash");
+            else
+            {
+                /* Make sure the previous transaction is on disk. */
+                TAO::Ledger::Transaction txPrev;
+                if(!LLD::legDB->ReadTx(hashPrevTx, txPrev))
+                    return debug::error(FUNCTION, "prev transaction not on disk");
+
+                /* Set the proper next pointer. */
+                txPrev.hashNextTx = STATE::HEAD;
+                if(!LLD::legDB->WriteTx(hashPrevTx, txPrev))
+                    return debug::error(FUNCTION, "failed to write valid next pointer");
+
+                /* Write proper last hash index. */
+                if(!LLD::legDB->WriteLast(hashGenesis, hashPrevTx))
+                    return debug::error(FUNCTION, "failed to write last hash");
+
+            }
+
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
                 if(!TAO::Register::Rollback(contract))
