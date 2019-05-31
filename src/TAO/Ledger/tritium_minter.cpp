@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 
 
+#include <LLC/hash/SK.h>
 #include <LLC/include/eckey.h>
 #include <LLC/types/bignum.h>
 
@@ -22,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/utils.h>
 
 #include <TAO/Ledger/types/tritium_minter.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -194,61 +196,41 @@ namespace TAO
         {
             isGenesis = true;
 
-            /* Staking Genesis for trust account */
-            uint512_t hashLast = 0;
-            bool fTrustAccountFound = false;
+            /* Staking Genesis for trust account. Trust account is not indexed, look up by register address. */
 
-            /* Get the most recent tx hash for the user account. */
-            if(!LLD::legDB->ReadLast(user->Genesis(), hashLast))
-                return false;
+            /* Register address is a hash of a name in the format of namespacehash:objecttype:name */
+            std::string strRegisterName = TAO::API::NamespaceHash(user->UserName()).ToString() + ":token:trust";
 
-            /* Loop until find trust account register operation or reach first transaction on user acount (hashLast == 0). */
-            while (hashLast != 0)
-            {
-                /* Get the transaction for the current hashLast. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadTx(hashLast, tx))
-                    return false;
+            /* Build the address from an SK256 hash of register name. */
+            uint256_t hashAddressTemp = LLC::SK256(std::vector<uint8_t>(strRegisterName.begin(), strRegisterName.end()));
 
-                /* Attempt to unpack register operation from the transaction */
-                uint256_t hashAddressTemp;
-                TAO::Register::Object reg;
+            TAO::Register::Object reg;
+            if(!LLD::regDB->ReadState(hashAddressTemp, reg))
+                return debug::error(FUNCTION, "Stake Minter unable to retrieve trust account for Genesis.");
 
-                if (TAO::Register::Unpack(tx, reg, hashAddressTemp))
-                {
-                    /* Transaction contains a register operation. Check if it is the trust account register for the user account */
-                    if (reg.Parse() && reg.Standard() == TAO::Register::OBJECTS::TRUST)
-                    {
-                        /* Found the trust account register transaction */
-                        hashAddress = hashAddressTemp;
-                        trustAccount = reg;
+            /* Verify we have trust account register for the user account */
+            if (!reg.Parse())
+                return debug::error(FUNCTION, "Stake Minter unable to parse trust account register for Genesis.");
 
-                        fTrustAccountFound = true;
-                        break;
-                    }
-                }
+            if (reg.Standard() != TAO::Register::OBJECTS::TRUST)
+                return debug::error(FUNCTION, "Invalid trust account register.");
 
-                /* Trust account creation not found, yet, iterate to next previous user tx */
-                hashLast = tx.hashPrevTx;
-            }
+            /* Found the trust account register */
+            hashAddress = hashAddressTemp;
+            trustAccount = reg;
 
-            if (fTrustAccountFound)
-            {
-                /* Validate that this is a new trust account staking Genesis */
+            /* Validate that this is a new trust account staking Genesis */
 
-                /* Check that there is no stake. */
-                if(trustAccount.get<uint64_t>("stake") != 0)
-                    return debug::error(FUNCTION, "Cannot create Genesis with already existing stake");
+            /* Check that there is no stake. */
+            if(trustAccount.get<uint64_t>("stake") != 0)
+                return debug::error(FUNCTION, "Cannot create Genesis with already existing stake");
 
-                /* Check that there is no trust. */
-                if(trustAccount.get<uint64_t>("trust") != 0)
-                    return debug::error(FUNCTION, "Cannot create Genesis with already existing trust");
-
-                return true;
-            }
+            /* Check that there is no trust. */
+            if(trustAccount.get<uint64_t>("trust") != 0)
+                return debug::error(FUNCTION, "Cannot create Genesis with already existing trust");
         }
 
-        return false;
+        return true;
     }
 
 
@@ -577,7 +559,7 @@ namespace TAO
         else
         {
             /* Genesis reward based on coin age as defined by register timestamp. */
-            nStakeTime = candidateBlock.GetBlockTime() - trustAccount.nTimestamp; 
+            nStakeTime = candidateBlock.GetBlockTime() - trustAccount.nTimestamp;
             nCoinstakeReward = GetCoinstakeReward(nStake, nStakeTime, 0, isGenesis);
         }
 
