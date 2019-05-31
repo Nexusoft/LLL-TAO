@@ -116,13 +116,6 @@ namespace TAO
                 if(!(nSerType & SER_GETHASH))
                 {
                     READWRITE(vchSig);
-
-                    /* When reading and writing transaciton, build memory only data for contracts. */
-                    for(auto& contract : vContracts)
-                    {
-                        contract.hashCaller = hashGenesis;
-                        contract.nTimestamp = nTimestamp;
-                    }
                 }
             )
 
@@ -178,13 +171,11 @@ namespace TAO
                 if(n >= vContracts.size())
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
 
-                /* Check timestamp memory values. */
-                if(vContracts[n].nTimestamp != nTimestamp)
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "contract timestamp mismatch"));
+                /* Set the caller hash. */
+                vContracts[n].hashCaller  = hashGenesis;
 
-                /* Check caller memory values. */
-                if(vContracts[n].hashCaller != hashGenesis)
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "contract caller mismatch"));
+                /* Set the contract timestamp. */
+                vContracts[n].nTimestamp  = nTimestamp;
 
                 return vContracts[n];
             }
@@ -262,19 +253,17 @@ namespace TAO
              *  @return true if transaction is valid.
              *
              **/
-            bool Connect(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK) const;
+            bool Connect(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
             /** Disconnect
              *
              *  Disconnect a transaction object to the main chain.
              *
-             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
-             *
              *  @return true if transaction is valid.
              *
              **/
-            bool Disconnect(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK) const;
+            bool Disconnect();
 
 
             /** IsCoinbase

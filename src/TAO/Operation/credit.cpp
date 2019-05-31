@@ -1,4 +1,4 @@
-contract./*__________________________________________________________________________________________
+/*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
@@ -15,7 +15,11 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/credit.h>
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/types/contract.h>
 
+#include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
 #include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
@@ -52,7 +56,7 @@ namespace TAO
                 /* Get the partial amount. */
                 uint64_t nClaimed = 0;
                 if(!LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
-                    return debug::error(FUNCTION, "failed to read claimed amount");
+                    nClaimed = 0; //reset value to double check here and continue
 
                 /* Write the new claimed amount. */
                 if(!LLD::legDB->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
@@ -286,7 +290,7 @@ namespace TAO
                 return debug::error(FUNCTION, "owner object is not a token");
 
             /* Check the ownership of proof register. */
-            if(proof.hashOwner != credit.hashCaller)
+            if(proof.hashOwner != contract.hashCaller)
                 return debug::error(FUNCTION, "not authorized to use this temporal proof");
 
             /* Get the state register of this register's owner. */

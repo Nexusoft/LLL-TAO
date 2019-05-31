@@ -86,11 +86,12 @@ namespace TAO
              *
              *  @param[in] debit The contract to claim.
              *  @param[in] credit The contract to verify.
+             *  @param[in] nFlags Flags to the LLD instance.
              *
              *  @return true if successful.
              *
              **/
-            bool Verify(const Contract& debit, const Contract& credit);
+            bool Verify(const Contract& debit, const Contract& credit, const uint8_t nFlags);
         }
     }
 }

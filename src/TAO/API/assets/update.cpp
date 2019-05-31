@@ -18,7 +18,6 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
-#include <TAO/Operation/include/operations.h>
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
@@ -153,10 +152,10 @@ namespace TAO
                             size_t nMaxLength = asset.Size(strDataField);
                             if( strValue.length() > nMaxLength)
                                 throw APIException(-25, debug::safe_printstr("Value longer than maximum length: ", strDataField));
-                            
+
                             /* Ensure that the serialized value is padded out to the max length */
                             strValue.resize(nMaxLength);
-                            
+
                             ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::STRING) << strValue;
                         }
                         else if(nType == TAO::Register::TYPES::BYTES)
@@ -172,7 +171,7 @@ namespace TAO
                             size_t nMaxLength = asset.Size(strDataField);
                             if( vchBytes.size() > nMaxLength)
                                 throw APIException(-25, debug::safe_printstr("Value longer than maximum length: ", strDataField));
-                            
+
                             /* Ensure that the serialized value is padded out to the max length */
                             vchBytes.resize(nMaxLength);
 

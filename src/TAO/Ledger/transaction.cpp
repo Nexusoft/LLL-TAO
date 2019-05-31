@@ -22,13 +22,19 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
+#include <TAO/Operation/include/execute.h>
+#include <TAO/Operation/include/enum.h>
+
+#include <TAO/Register/include/rollback.h>
+#include <TAO/Register/include/verify.h>
+#include <TAO/Register/include/build.h>
+#include <TAO/Register/types/state.h>
+
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
-
-#include <TAO/Operation/include/enum.h>
-
 
 #include <Util/include/debug.h>
 
@@ -98,14 +104,6 @@ namespace TAO
         }
 
 
-        /* Accept a transaction object into the main chain. */
-        bool Transaction::Accept() const
-        {
-            /* Accept to memory pool. */
-            return mempool.Accept(GetHash(), *this);
-        }
-
-
         /* Verify a transaction contracts. */
         bool Transaction::Verify() const
         {
@@ -140,15 +138,18 @@ namespace TAO
 
 
         /* Connect a transaction object to the main chain. */
-        bool Transaction::Connect(const uint8_t nFlags) const
+        bool Transaction::Connect(const uint8_t nFlags)
         {
+            /* Get the transaction's hash. */
+            uint512_t hash = GetHash();
+
             /* Check for first. */
-            if(tx.IsFirst())
+            if(IsFirst())
             {
                 //Check for duplicate genesis
 
                 /* Write the Genesis to disk. */
-                if((nFlags == TAO::Ledger::FLAGS::BLOCK) && !LLD::legDB->WriteGenesis(tx.hashGenesis, hash))
+                if((nFlags == TAO::Ledger::FLAGS::BLOCK) && !LLD::legDB->WriteGenesis(hashGenesis, hash))
                     return debug::error(FUNCTION, "failed to write genesis");
             }
             else
@@ -174,7 +175,7 @@ namespace TAO
                 if(txPrev.hashGenesis != hashGenesis)
                     return debug::error(FUNCTION,
                         "genesis ", txPrev.hashGenesis.SubString(),
-                        " broken ",     tx.hashGenesis.SubString());
+                        " broken ",     hashGenesis.SubString());
 
                 /* Check previous transaction from disk hash. */
                 if(txPrev.GetHash() != hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
@@ -191,11 +192,11 @@ namespace TAO
                     txPrev.hashNextTx = hash;
 
                     /* Write the next pointer. */
-                    if(!LLD::legDB->WriteTx(tx.hashPrevTx, txPrev))
+                    if(!LLD::legDB->WriteTx(hashPrevTx, txPrev))
                         return debug::error(FUNCTION, "failed to write last tx");
 
                     /* Set the proper next pointer. */
-                    hashNextTx = STATE::HEAD;
+                    hashNextTx = uint512_t(STATE::HEAD);
                     if(!LLD::legDB->WriteTx(hash, *this))
                         return debug::error(FUNCTION, "failed to write valid next pointer");
                 }
@@ -213,10 +214,10 @@ namespace TAO
 
 
         /* Disconnect a transaction object to the main chain. */
-        bool Transaction::Disconnect() const
+        bool Transaction::Disconnect()
         {
             /* Set the proper next pointer. */
-            hashNextTx = STATE::UNCONFIRMED;
+            hashNextTx = uint512_t(STATE::UNCONFIRMED);
             if(!LLD::legDB->WriteTx(GetHash(), *this))
                 return debug::error(FUNCTION, "failed to write valid next pointer");
 
@@ -262,7 +263,7 @@ namespace TAO
                 return false;
 
             /* Check for no conditions. */
-            if(vContracts[0].Conditions())
+            if(vContracts[0].HasConditions())
                 return false;
 
             return (vContracts[0].Primitive() == TAO::Operation::OP::COINBASE);
@@ -281,7 +282,7 @@ namespace TAO
                 return false;
 
             /* Check for no conditions. */
-            if(vContracts[0].Conditions())
+            if(vContracts[0].HasConditions())
                 return false;
 
             return (vContracts[0].Primitive() == TAO::Operation::OP::AUTHORIZE);
@@ -300,7 +301,7 @@ namespace TAO
                 return false;
 
             /* Check for no conditions. */
-            if(vContracts[0].Conditions())
+            if(vContracts[0].HasConditions())
                 return false;
 
             return (vContracts[0].Primitive() == TAO::Operation::OP::TRUST);

@@ -66,7 +66,7 @@ namespace TAO
          *  @return true if the previous tx hash was unpacked successfully
          *
          **/
-        bool Unpack(const TAO::Operation::Contract& contractuint512_t& hashPrevTx);
+        bool Unpack(const TAO::Operation::Contract& contract, uint512_t& hashPrevTx);
 
 
         /** Unpack

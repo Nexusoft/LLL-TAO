@@ -17,8 +17,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/state.h>
-
-#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -72,7 +72,7 @@ namespace TAO
             claim.Reset();
 
             /* Get operation byte. */
-            uintu_t OP = 0;
+            uint8_t OP = 0;
             claim >> OP;
 
             /* Check operation byte. */

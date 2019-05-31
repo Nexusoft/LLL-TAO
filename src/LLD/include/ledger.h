@@ -55,6 +55,8 @@ namespace LLD
 
         std::map<std::tuple<uint256_t, uint512_t, uint32_t>, uint32_t> mapProofs;
 
+        std::map<std::pair<uint512_t, uint32_t>, uint64_t> mapClaims;
+
 
     public:
 
@@ -163,11 +165,13 @@ namespace LLD
          *  @param[in] hashTransaction The txid of transaction to write.
          *  @param[in] nContract The contract partial payment.
          *  @param[in] nClaimed The partial amount to update.
+         *  @param[in] nFlags The flags to determine memory pool or disk
          *
          *  @return True if the partial was successfully written.
          *
          **/
-        bool WriteClaimed(const uint512_t& hashTransaction, const uint32_t nContract, const uint64_t nClaimed);
+        bool WriteClaimed(const uint512_t& hashTransaction, const uint32_t nContract, const uint64_t nClaimed,
+                          const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** ReadClaimed
@@ -177,11 +181,13 @@ namespace LLD
          *  @param[in] hashTransaction The txid of transaction to read.
          *  @param[in] nContract The contract partial payment.
          *  @param[in] nClaimed The partial amount to read.
+         *  @param[in] nFlags The flags to determine memory pool or disk
          *
          *  @return True if the partial was successfully read.
          *
          **/
-        bool ReadClaimed(const uint512_t& hashTransaction, const uint32_t nContract, uint64_t& nClaimed);
+        bool ReadClaimed(const uint512_t& hashTransaction, const uint32_t nContract, uint64_t& nClaimed,
+                         const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** HasIndex

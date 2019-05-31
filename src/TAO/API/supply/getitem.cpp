@@ -55,8 +55,9 @@ namespace TAO
             /* Build the response JSON. */
             //ret["version"]  = state.nVersion;
             //ret["type"]     = state.nType;
-            ret["timestamp"]  = state.nTimestamp;
-            ret["owner"]    = state.hashOwner.ToString();
+            ret["modified"]  = state.nModified;
+            ret["created"]   = state.nCreated;
+            ret["owner"]     = state.hashOwner.ToString();
 
             while(!state.end())
             {
@@ -68,12 +69,12 @@ namespace TAO
                 ret["data"] = data;
             }
 
-            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */            
+            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             if(params.find("fieldname") != params.end())
             {
                 /* First get the fieldname from the response */
                 std::string strFieldname =  params["fieldname"].get<std::string>();
-                
+
                 /* Iterate through the response keys */
                 for (auto it = ret.begin(); it != ret.end(); ++it)
                     /* If this key is not the one that was requested then erase it */

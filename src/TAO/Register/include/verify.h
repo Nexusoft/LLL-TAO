@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
 #define NEXUS_TAO_REGISTER_INCLUDE_VERIFY_H
 
+#include <LLC/types/uint1024.h>
+
 #include <TAO/Ledger/include/enum.h>
 
 /* Global TAO namespace. */
@@ -31,6 +33,7 @@ namespace TAO
     /* Register Layer namespace. */
     namespace Register
     {
+        class State;
 
         /** Verify
          *

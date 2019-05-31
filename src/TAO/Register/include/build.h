@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <map.h>
+#include <map>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -47,7 +47,7 @@ namespace TAO
          *  @return true if verified correctly, false otherwise.
          *
          **/
-        bool Build(Contract& contract, std::map<uint256_t, State>& mapStates);
+        bool Build(TAO::Operation::Contract& contract, std::map<uint256_t, State>& mapStates);
 
     }
 }

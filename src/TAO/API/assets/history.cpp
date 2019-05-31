@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/create.h>
+#include <TAO/Operation/include/write.h>
 
 #include <LLD/include/global.h>
 
@@ -57,7 +59,8 @@ namespace TAO
             /* Generate return object. */
             json::json obj;
             obj["owner"]      = state.hashOwner.ToString();
-            obj["timestamp"]  = state.nTimestamp;
+            obj["modified"]   = state.nModified;
+            obj["created"]    = state.nCreated;
 
             /* Push to return array. */
             ret.push_back(obj);
@@ -79,17 +82,17 @@ namespace TAO
                 hashLast = tx.hashPrevTx;
 
                 /* Check through all the contracts. */
-                for(uint32_t nContract = tx.Size() - 1; nContracts >= 0; ++nContracts)
+                for(int32_t nContract = tx.Size() - 1; nContract >= 0; --nContract)
                 {
                     /* Get the contract. */
                     const TAO::Operation::Contract& contract = tx[nContract];
 
                     /* Get the operation byte. */
-                    uint8_t nType = 0;
-                    contract >> nType;
+                    uint8_t OPERATION = 0;
+                    contract >> OPERATION;
 
                     /* Check for key operations. */
-                    switch(nType)
+                    switch(OPERATION)
                     {
                         /* Break when at the register declaration. */
                         case TAO::Operation::OP::CREATE:
@@ -152,7 +155,7 @@ namespace TAO
                             break;
                         }
 
-                        case TAO::Operation::OP::APPEND:
+
                         case TAO::Operation::OP::WRITE:
                         {
                             /* Get the address. */
@@ -162,6 +165,10 @@ namespace TAO
                             /* Check for same address. */
                             if(hashAddress != hashRegister)
                                 break;
+
+                            /* Get the register data. */
+                            std::vector<uint8_t> vchData;
+                            contract >> vchData;
 
                             /* Generate return object. */
                             json::json obj;
@@ -175,6 +182,10 @@ namespace TAO
                             /* Get the pre-state. */
                             TAO::Register::State state;
                             contract >>= state;
+
+                            /* Calculate the new operation. */
+                            if(!TAO::Operation::Write::Execute(state, vchData, contract.nTimestamp))
+                                return false;
 
                             /* Complete object parameters. */
                             obj["modified"]   = state.nModified;

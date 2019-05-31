@@ -94,7 +94,7 @@ namespace TAO
 
                 /* Attempt to unpack a register script. */
                 TAO::Register::Object object;
-                if(!TAO::Register::Unpack(tx, object, hashAddress))
+                if(!TAO::Register::Unpack(tx[0], object, hashAddress))
                     continue;
 
                 /* Check that it is an account. */
@@ -219,7 +219,7 @@ namespace TAO
 
                 /* Attempt to unpack a register script. */
                 uint256_t hashAddress;
-                if(!TAO::Register::Unpack(tx, hashAddress))
+                if(!TAO::Register::Unpack(tx[0], hashAddress))
                     continue;
 
                 /* Check claims against notifications. */

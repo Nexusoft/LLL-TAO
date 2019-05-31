@@ -27,7 +27,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/stake.h>
-#include <TAO/Ledger/types/minter.h>
+#include <TAO/Ledger/types/tritium_minter.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -208,7 +208,7 @@ namespace TAO
                     uint256_t hashAddressTemp;
                     TAO::Register::Object reg;
 
-                    if (TAO::Register::Unpack(tx, reg, hashAddressTemp))
+                    if (TAO::Register::Unpack(tx[0], reg, hashAddressTemp))
                     {
                         /* Transaction contains a register operation. Check if it is the trust account register for the user account */
                         if (reg.Parse() && reg.Standard() == TAO::Register::OBJECTS::TRUST)
@@ -252,11 +252,11 @@ namespace TAO
             uint512_t hashLast = 0;
 
             /* Get the most recent tx hash for the user account. */
-            if (!LLD::legDB->ReadLast(user->Genesis(), hashLast))
+            if(!LLD::legDB->ReadLast(user->Genesis(), hashLast))
                 return false;
 
             /* Loop until find stake transaction or reach first transaction on user acount (hashLast == 0). */
-            while (hashLast != 0)
+            while(hashLast != 0)
             {
                 /* Get the transaction for the current hashLast. */
                 TAO::Ledger::Transaction txCheck;
@@ -264,7 +264,8 @@ namespace TAO
                     return false;
 
                 /* Test whether the transaction contains a staking operation */
-                if (TAO::Register::Unpack(txCheck, TAO::Operation::OP::TRUST) || TAO::Register::Unpack(txCheck, TAO::Operation::OP::GENESIS))
+                if(TAO::Register::Unpack(txCheck[0], TAO::Operation::OP::TRUST)
+                || TAO::Register::Unpack(txCheck[0], TAO::Operation::OP::GENESIS))
                 {
                     /* Found last stake transaction. */
                     tx = txCheck;
@@ -282,7 +283,7 @@ namespace TAO
         /* Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process. */
         bool TritiumMinter::CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
         {
-            static const uint32_t stakingChannel = (uint32_t)0;
+            static const uint32_t nStakingChannel = (uint32_t)0;
 
             static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
@@ -295,7 +296,7 @@ namespace TAO
             candidateBlock = TritiumBlock();
 
             /* Create the base Tritium block. */
-            if (!TAO::Ledger::CreateBlock(user, strPIN, stakingChannel, candidateBlock))
+            if (!TAO::Ledger::CreateBlock(user, strPIN, nStakingChannel, candidateBlock))
                 return debug::error(FUNCTION, "Unable to create candidate block");
 
             if (!isGenesis)
@@ -359,7 +360,7 @@ namespace TAO
                 /* Initialize block producer for Trust operation with hashLastTrust, new trust score.
                  * The coinstake reward will be added based on time when block is found.
                  */
-                candidateBlock.producer << (uint8_t)TAO::Operation::OP::TRUST << txLast.GetHash() << nTrust;
+                candidateBlock.producer[0] << uint8_t(TAO::Operation::OP::TRUST) << txLast.GetHash() << nTrust;
             }
             else
             {
@@ -383,7 +384,7 @@ namespace TAO
                 /* Initialize block producer for Genesis operation with hashAddress of trust account register.
                  * The coinstake reward will be added based on time when block is found.
                  */
-                candidateBlock.producer << (uint8_t)TAO::Operation::OP::GENESIS << hashAddress;
+                candidateBlock.producer[0] << uint8_t(TAO::Operation::OP::GENESIS) << hashAddress;
 
             }
 
@@ -431,7 +432,7 @@ namespace TAO
                  * This means that, if someone adds more balance to trust account while staking Genesis, coin age is reset and they must wait
                  * the full time before staking Genesis again.
                  */
-                uint64_t nCoinAge = candidateBlock.GetBlockTime() - trustAccount.nTimestamp;
+                uint64_t nCoinAge = candidateBlock.GetBlockTime() - trustAccount.nModified;
 
                 /* Genesis has to wait for coin age to reach minimum. */
                 if (nCoinAge < MinCoinAge())
@@ -566,12 +567,12 @@ namespace TAO
             }
             else
             {
-                nStakeTime = candidateBlock.GetBlockTime() - trustAccount.nTimestamp; //"coin age";
+                nStakeTime = candidateBlock.GetBlockTime() - trustAccount.nModified; //"coin age";
                 nCoinstakeReward = CoinstakeReward(nStake, nStakeTime, 0, isGenesis);
             }
 
             /* Add coinstake reward to producer */
-            candidateBlock.producer << nCoinstakeReward;
+            candidateBlock.producer[0] << nCoinstakeReward;
 
             /* Execute operation pre- and post-state.
              *   - for OP::TRUST, the operation can obtain the trust account from candidateBlock.producer.hashGenesis
@@ -580,7 +581,7 @@ namespace TAO
              * This process also calculates the appropriate stake reward and encodes it into the post-state.
              */
             if (!candidateBlock.producer.Build())
-                return debug::error(FUNCTION, "Operation layer failed to execute pre-state/post-state for coinstake transaction");
+                return debug::error(FUNCTION, "failed to build coinstake transaction");
 
             /* Sign the block producer */
             candidateBlock.producer.Sign(user->Generate(candidateBlock.producer.nSequence, strPIN));

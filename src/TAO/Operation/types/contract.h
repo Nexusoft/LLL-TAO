@@ -82,7 +82,7 @@ namespace TAO
              *  @return The primitive instruction.
              *
              **/
-            const uint8_t Primitive() const
+            uint8_t Primitive() const
             {
                 /* Sanity checks. */
                 if(ssOperation.size() == 0)
@@ -100,7 +100,7 @@ namespace TAO
              *  @return true if operation stream is empty.
              *
              **/
-            const bool Empty() const
+            bool Empty() const
             {
                 return (ssOperation.size() == 0);
             }
@@ -113,7 +113,7 @@ namespace TAO
              *  @return false if condition stream is empty
              *
              **/
-            const bool Conditions() const
+            bool HasConditions() const
             {
                 return (ssCondition.size() == 0);
             }
@@ -142,7 +142,7 @@ namespace TAO
              *  Clears all contract data
              *
              **/
-            void Clear() const
+            void Clear()
             {
                 /* Set the operation stream to beginning. */
                 ssOperation.SetNull();

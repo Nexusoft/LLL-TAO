@@ -41,7 +41,7 @@ namespace TAO
     {
 
         /* Verify the pre-states of a register to current network state. */
-        bool Build(Contract &contract, std::map<uint256_t, State>& mapStates)
+        bool Build(TAO::Operation::Contract &contract, std::map<uint256_t, State>& mapStates)
         {
             /* Reset the contract streams. */
             contract.Reset();

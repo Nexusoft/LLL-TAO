@@ -16,8 +16,10 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/create.h>
 #include <TAO/Operation/include/enum.h>
 
-#include <TAO/Register/types/object.h>
+#include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
+#include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
 namespace TAO

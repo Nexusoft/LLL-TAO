@@ -198,7 +198,7 @@ namespace TAO
                     UNIFIED       = 0xf0
                 };
             }
-        };
+        }
     }
 }
 

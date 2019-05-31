@@ -30,6 +30,7 @@ namespace LLD
     : SectorDatabase(std::string("ledger"), nFlagsIn)
     , MEMORY_MUTEX()
     , mapProofs()
+    , mapClaims()
     {
     }
 
@@ -112,15 +113,48 @@ namespace LLD
 
 
     /* Writes a partial to the ledger DB. */
-    bool LedgerDB::WriteClaimed(const uint512_t& hashTransaction, const uint32_t nContract, const uint64_t nClaimed)
+    bool LedgerDB::WriteClaimed(const uint512_t& hashTransaction,
+                                const uint32_t nContract, const uint64_t nClaimed, const uint8_t nFlags)
     {
+        /* Memory mode for pre-database commits. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Write the new proof state. */
+            mapClaims[std::make_pair(hashTransaction, nContract)] = nClaimed;
+
+            return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Erase memory proof if they exist. */
+            if(mapClaims.count(std::make_pair(hashTransaction, nContract)))
+               mapClaims.erase(std::make_pair(hashTransaction, nContract));
+        }
+
         return Write(std::make_pair(hashTransaction, nContract), nClaimed);
     }
 
 
     /* Read a partial to the ledger DB. */
-    bool LedgerDB::ReadClaimed(const uint512_t& hashTransaction, const uint32_t nContract, uint64_t& nClaimed)
+    bool LedgerDB::ReadClaimed(const uint512_t& hashTransaction,
+                               const uint32_t nContract, uint64_t& nClaimed, const uint8_t nFlags)
     {
+        /* Memory mode for pre-database commits. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Read the new proof state. */
+            if(mapClaims.count(std::make_pair(hashTransaction, nContract)))
+                nClaimed = mapClaims[std::make_pair(hashTransaction, nContract)];
+
+            return true;
+        }
+
         return Read(std::make_pair(hashTransaction, nContract), nClaimed);
     }
 

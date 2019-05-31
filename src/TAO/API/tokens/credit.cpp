@@ -52,10 +52,6 @@ namespace TAO
             if(params.find("txid") == params.end())
                 throw APIException(-25, "Missing TxID.");
 
-            /* Check for credit parameter. */
-            if(params.find("amount") == params.end())
-                throw APIException(-25, "Missing Amount. (<amount>)");
-
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
@@ -87,18 +83,30 @@ namespace TAO
                 throw APIException(-22, "Missing to name or address");
 
             /* Get the transaction id. */
-            uint512_t hashTx;
+            uint512_t hashTx = 0;
             hashTx.SetHex(params["txid"].get<std::string>());
 
+            /* Get the contract-id. */
+            int32_t nContract = 0;
+
+            /* The total value of the credit. */
+            uint64_t nAmount = 0;
+
             /* Check for data parameter. */
-            uint256_t hashProof;
+            uint256_t hashProof = 0;
             if(params.find("name_proof") != params.end())
             {
+
                 /* If name_proof is provided then use this to deduce the register address */
                 hashProof = RegisterAddressFromName( params, "token", params["name_proof"].get<std::string>());
+
             }
+
+            /* Handle RAW hex-encoded proof address. */
             else if(params.find("proof") != params.end())
                 hashProof.SetHex(params["proof"].get<std::string>());
+
+            /* Search for a proof if none is supplied. */
             else
             {
                 /* Read the previous transaction. */
@@ -107,63 +115,76 @@ namespace TAO
                     throw APIException(-23, "Previous transaction not found.");
 
                 /* Loop through all transactions. */
-                for(uint32_t nContract = 0; nContract < txPrev.Size(); ++nContract)
+                for(nContract = txPrev.Size() - 1; nContract >= 0; --nContract)
                 {
+                    /* Get the contract. */
+                    const TAO::Operation::Contract& contract = txPrev[nContract];
+
                     /* Get the operation byte. */
                     uint8_t nType = 0;
-                    txPrev[nContract] >> nType;
+                    contract >> nType;
 
                     /* Check type. */
                     if(nType != TAO::Operation::OP::DEBIT)
-                        throw APIException(-32, "Previous transaction not debit.");
+                        continue;
 
                     /* Get the hashFrom from the previous transaction. */
                     uint256_t hashFrom = 0;
-                    txPrev[nContract] >> hashFrom;
+                    contract >> hashFrom;
+
+                    /* Get the hashFrom from the previous transaction. */
+                    uint256_t hashTo = 0;
+                    contract >> hashTo;
+
+                    /* Get the amount to respond to. */
+                    contract >> nAmount;
+
+                    /* Get the token / account object that we are crediting to. This is required as we need to determine the
+                       digits specification from the token definition, in order to convert the user supplied amount to the
+                       internal amount */
+                    TAO::Register::Object object;
+                    if(!LLD::regDB->ReadState(hashTo, object))
+                        continue;
+
+                    /* Check for the owner. */
+                    if(object.hashOwner == user->Genesis())
+                    {
+                        /* Parse the object register. */
+                        if(!object.Parse())
+                            throw APIException(-24, "Object failed to parse");
+
+                        /* Get the object standard. */
+                        uint8_t nStandard = object.Standard();
+
+                        /* Check the object standard. */
+                        if(nStandard == TAO::Register::OBJECTS::TOKEN || nStandard == TAO::Register::OBJECTS::ACCOUNT)
+                        {
+                            /* If the user requested a particular object type then check it is that type */
+                            std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
+                            if((strType == "token" && nStandard == TAO::Register::OBJECTS::ACCOUNT))
+                                continue;
+
+                            else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
+                                continue;
+                        }
+                        else
+                            continue;
+
+                        /* Set the proof if found. */
+                        hashProof = hashFrom;
+
+                        break;
+                    }
                 }
 
-                /* Assign hash proof to hash to. */
-                hashProof = hashFrom;
+                /* Check that output was found. */
+                if(nContract == -1)
+                    throw APIException(-24, "no valid contracts in previous tx");
+
             }
-
-            /* Get the token / account object that we are crediting to. This is required as we need to determine the
-               digits specification from the token definition, in order to convert the user supplied amount to the
-               internal amount */
-            TAO::Register::Object object;
-            if(!LLD::regDB->ReadState(hashTo, object))
-                throw APIException(-24, "Token/account not found");
-
-            /* Parse the object register. */
-            if(!object.Parse())
-                throw APIException(-24, "Object failed to parse");
-
-            /* Get the object standard. */
-            uint8_t nStandard = object.Standard();
-
-            uint64_t nDigits = 0;
-
-            /* Check the object standard. */
-            if( nStandard == TAO::Register::OBJECTS::TOKEN || nStandard == TAO::Register::OBJECTS::ACCOUNT)
-            {
-                /* If the user requested a particular object type then check it is that type */
-                std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
-                if((strType == "token" && nStandard == TAO::Register::OBJECTS::ACCOUNT))
-                    throw APIException(-24, "Object is not a token");
-                else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
-                    throw APIException(-24, "Object is not an account");
-
-                nDigits = GetTokenOrAccountDigits(object);
-            }
-            else
-            {
-                throw APIException(-27, "Unknown token / account." );
-            }
-
-            /* Get the credit. */
-            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDigits);
 
             /* Submit the payload object. */
-            tx[0] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashProof << hashTo << nAmount;
+            tx[0] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashProof << hashTo << nAmount;
 
             /* Execute the operations layer. */
             if(!tx.Build())

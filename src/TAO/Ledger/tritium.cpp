@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
 
+#include <TAO/Operation/include/enum.h>
+
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/types/tritium.h>
@@ -552,7 +554,7 @@ namespace TAO
             {
                 /* Extract values from producer operation */
                 uint8_t OP = 0;
-                producer[0] >> nOP;
+                producer[0] >> OP;
 
                 /* Double check OP code. */
                 if(OP != TAO::Operation::OP::TRUST)
@@ -612,10 +614,10 @@ namespace TAO
             {
                 /* Extract values from producer operation */
                 uint8_t OP = 0;
-                producer[0] >> nOP;
+                producer[0] >> OP;
 
                 /* Double check OP code. */
-                if(OP != TAO::Operation::OP::GENESIS
+                if(OP != TAO::Operation::OP::GENESIS)
                     return debug::error(FUNCTION, "invalid producer operation for genesis");
 
                 uint256_t hashAddress = 0;

@@ -26,7 +26,6 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/types/stream.h>
 #include <TAO/Operation/include/enum.h>
-#include <TAO/Operation/include/operations.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -531,7 +530,7 @@ namespace TAO
 
                         /* Output the json information. */
                         ret["OP"]      = "COINBASE";
-                        ret["genesis"] = hashGenesis;
+                        ret["genesis"] = hashGenesis.ToString();
                         ret["nonce"]   = nExtraNonce;
                         ret["amount"]  = nCredit;
 
@@ -556,7 +555,7 @@ namespace TAO
 
                         /* Output the json information. */
                         ret["OP"]      = "TRUST";
-                        ret["last"]    = hashLastTrust;
+                        ret["last"]    = hashLastTrust.ToString();
                         ret["score"]   = nScore;
                         ret["amount"]  = nReward;
 
@@ -577,7 +576,7 @@ namespace TAO
 
                         /* Output the json information. */
                         ret["OP"]        = "GENESIS";
-                        ret["address"]   = hashAddress;
+                        ret["address"]   = hashAddress.ToString();
                         ret["amount"]    = nReward;
 
                         break;
@@ -637,7 +636,7 @@ namespace TAO
                         ret["txid"]    = hashTx.ToString();
                         ret["output"]  = nContract;
                         ret["proof"]   = hashProof.ToString();
-                        ret["account"] = hashAccount.ToString();
+                        ret["account"] = hashAddress.ToString();
                         ret["amount"]  = nCredit;
 
                         break;
@@ -681,7 +680,8 @@ namespace TAO
             if(object.nType == TAO::Register::REGISTER::RAW)
             {
                 /* Build the response JSON for the raw format asset. */
-                ret["timestamp"]  = object.nTimestamp;
+                ret["created"]    = object.nCreated;
+                ret["modified"]   = object.nModified;
                 ret["owner"]      = object.hashOwner.ToString();
 
                 /* raw state assets only have one data member containing the raw hex-encoded data*/
@@ -695,7 +695,8 @@ namespace TAO
                 /* Build the response JSON. */
                 if(strDataField.empty())
                 {
-                    ret["timestamp"]  = object.nTimestamp;
+                    ret["created"]    = object.nCreated;
+                    ret["modified"]   = object.nModified;
                     ret["owner"]      = object.hashOwner.ToString();
                 }
 

@@ -224,14 +224,6 @@ namespace TAO
         }
 
 
-        /** The best block in the chain. **/
-        memory::atomic<BlockState> ChainState::stateBest;
-
-
-        /** The genesis block in the chain. **/
-        BlockState ChainState::stateGenesis;
-
-
         /* Get the hash of the genesis block. */
         uint1024_t ChainState::Genesis()
         {

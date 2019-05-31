@@ -13,11 +13,12 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/verify.h>
-#include <TAO/Operation/include/execute.h>
+#include <TAO/Operation/include/append.h>
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/state.h>
+#include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -91,7 +92,7 @@ namespace TAO
                 return debug::error(FUNCTION, "pre-state is in invalid state");
 
             /* Check for valid register types. */
-            if(state.nType != TAO::Register::APPEND)
+            if(state.nType != TAO::Register::REGISTER::APPEND)
                 return debug::error(FUNCTION, "cannot call on non append register");
 
             /* Check that the proper owner is commiting the write. */
