@@ -206,8 +206,10 @@ namespace TAO
                     /* Check coinbase rewards. */
                     nReleasedReserve[nType] =  (nReserve - nCoinbaseRewards[nType]);
 
-                    debug::log(2, "Reserve Balance ", nType, " | ", std::fixed, nReleasedReserve[nType] / 1000000.0,
-                        " Nexus | Released ", std::fixed, (nReserve - stateLast.nReleasedReserve[nType]) / 1000000.0);
+                    debug::log(2, "Reserve Balance ", nType, " | ",
+                        std::fixed, nReleasedReserve[nType] / (double)TAO::Ledger::NXS_COIN,
+                        " Nexus | Released ",
+                        std::fixed, (nReserve - stateLast.nReleasedReserve[nType]) / (double)TAO::Ledger::NXS_COIN);
                 }
             }
 
@@ -686,7 +688,7 @@ namespace TAO
             nMoneySupply = (prev.IsNull() ? 0 : prev.nMoneySupply) + nMint;
 
             /* Log how much was generated / destroyed. */
-            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / Legacy::COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / Legacy::COIN);
+            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN);
 
             /* Write the updated block state to disk. */
             if(!LLD::legDB->WriteBlock(GetHash(), *this))
