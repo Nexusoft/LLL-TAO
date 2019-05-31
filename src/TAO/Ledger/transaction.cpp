@@ -104,9 +104,23 @@ namespace TAO
             return true;
         }
 
+        /* Accept a transaction object into the main chain. */
+        bool Transaction::Accept(const uint8_t nFlags) const
+        {
+            /* Run through all the contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Verify the ledger layer. */
+                if(!TAO::Register::Verify(contract, nFlags))
+                    return debug::error(FUNCTION, "transaction register layer failed to verify");
+            }
+
+            return true;
+        }
+
 
         /* Connect a transaction object to the main chain. */
-        bool Connect(const uint8_t nFlags) const
+        bool Transaction::Connect(const uint8_t nFlags) const
         {
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
@@ -118,7 +132,7 @@ namespace TAO
 
 
         /* Disconnect a transaction object to the main chain. */
-        bool Disconnect() const
+        bool Transaction::Disconnect() const
         {
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)

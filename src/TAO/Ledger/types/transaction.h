@@ -191,6 +191,30 @@ namespace TAO
             }
 
 
+            /** IsValid
+             *
+             *  Determines if the transaction is a valid transaciton and passes ledger level checks.
+             *
+             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool IsValid(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
+
+
+            /** Accept
+             *
+             *  Accept a transaction object into the main chain.
+             *
+             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool Accept(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
+
+
             /** Connect
              *
              *  Connect a transaction object to the main chain.
@@ -213,18 +237,6 @@ namespace TAO
              *
              **/
             bool Disconnect(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
-
-
-            /** IsValid
-             *
-             *  Determines if the transaction is a valid transaciton and passes ledger level checks.
-             *
-             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
-             *
-             *  @return true if transaction is valid.
-             *
-             **/
-            bool IsValid(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
 
 
             /** IsCoinbase
