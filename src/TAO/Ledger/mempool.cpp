@@ -130,8 +130,8 @@ namespace TAO
                 return debug::error(FUNCTION, "coinbase ", hashTx.ToString().substr(0, 20), " not accepted in pool");
 
             /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsTrust())
-                return debug::error(FUNCTION, "trust ", hashTx.ToString().substr(0, 20), " not accepted in pool");
+            if(tx.IsCoinstake())
+                return debug::error(FUNCTION, "coinstake ", hashTx.ToString().substr(0, 20), " not accepted in pool");
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)

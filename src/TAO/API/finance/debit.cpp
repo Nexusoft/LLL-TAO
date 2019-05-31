@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
 
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -111,8 +112,8 @@ namespace TAO
             if( object.get<uint256_t>("token_address") != 0)
                 throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
 
-            
-            uint64_t nDigits = 1000000;
+
+            uint64_t nDigits = TAO::Ledger::NXS_DIGITS;
             uint64_t nCurrentBalance = object.get<uint64_t>("balance");;
 
             /* Get the amount to debit. */

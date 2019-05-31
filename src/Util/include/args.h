@@ -33,7 +33,6 @@ namespace config
     extern std::atomic<bool> fPrintToConsole;
     extern std::atomic<bool> fDaemon;
     extern std::atomic<bool> fClient;
-    extern std::atomic<bool> fServer;
     extern std::atomic<bool> fCommandLine;
     extern std::atomic<bool> fTestNet;
     extern std::atomic<bool> fListen;

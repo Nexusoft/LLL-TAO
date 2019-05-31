@@ -1024,11 +1024,7 @@ namespace Legacy
         /* Enforce the minimum trust key interval of 120 blocks. */
         const uint32_t nMinimumInterval = config::fTestNet.load()
                                             ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
-                                            : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
-                                                ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY
-                                                : (runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])
-                                                        ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL
-                                                        : TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
+                                            : TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
 
         if(state.nHeight - stateLast.nHeight < nMinimumInterval)
             return debug::error(FUNCTION, "trust key interval below minimum interval ", state.nHeight - stateLast.nHeight);

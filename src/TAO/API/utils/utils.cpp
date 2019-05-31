@@ -298,9 +298,9 @@ namespace TAO
         }
 
 
-        /* Retrieves the number of digits that applies to amounts for this token or account object. 
-        *  If the object register passed in is a token account then we need to look at the token definition 
-        *  in order to get the digits.  The token is obtained by looking at the identifier field, 
+        /* Retrieves the number of digits that applies to amounts for this token or account object.
+        *  If the object register passed in is a token account then we need to look at the token definition
+        *  in order to get the digits.  The token is obtained by looking at the identifier field,
         *  which contains the register address of the issuing token
         */
         uint64_t GetTokenOrAccountDigits(const TAO::Register::Object& object)
@@ -318,22 +318,22 @@ namespace TAO
             }
             else if(nStandard == TAO::Register::OBJECTS::TRUST)
             {
-                    nDigits = 1000000; // NXS token default digits
+                    nDigits = TAO::Ledger::NXS_DIGITS; // NXS token default digits
             }
             else if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
             {
 
-                /* If debiting an account we need to look at the token definition in order to get the digits. 
+                /* If debiting an account we need to look at the token definition in order to get the digits.
                    The token is obtained by looking at the token_address field, which contains the register address of
                    the issuing token */
                 uint256_t nIdentifier = object.get<uint256_t>("token_address");
 
                 /* Edge case for NXS token which has identifier 0, so no look up needed */
                 if( nIdentifier == 0)
-                    nDigits = 1000000;
+                    nDigits = TAO::Ledger::NXS_DIGITS;
                 else
                 {
-                    
+
                     TAO::Register::Object token;
                     if(!LLD::regDB->ReadState(nIdentifier, token))
                         throw APIException(-24, "Token not found");
@@ -343,7 +343,7 @@ namespace TAO
                         throw APIException(-24, "Object failed to parse");
 
                     nDigits = token.get<uint64_t>("digits");
-                }   
+                }
             }
             else
             {
@@ -409,20 +409,20 @@ namespace TAO
                 throw APIException(-28, "No transactions found");
 
             /* In order to work out which registers are currently owned by a particular sig chain
-               we must iterate through all of the transactions for the sig chain and track the history 
-               of each register.  By  iterating through the transactions from most recent backwards we 
-               can make some assumptions about the current owned state.  For example if we find a debit 
-               transaction for a register before finding a transfer then we must know we currently own it. 
-               Similarly if we find a transfer transaction for a register before any other transaction 
+               we must iterate through all of the transactions for the sig chain and track the history
+               of each register.  By  iterating through the transactions from most recent backwards we
+               can make some assumptions about the current owned state.  For example if we find a debit
+               transaction for a register before finding a transfer then we must know we currently own it.
+               Similarly if we find a transfer transaction for a register before any other transaction
                then we must know we currently to NOT own it. */
 
-            /* Keep a running list of owned and transferred registers. We use a set to store these registers because 
-               we are going to be checking them frequently to see if a hash is already in the container, 
+            /* Keep a running list of owned and transferred registers. We use a set to store these registers because
+               we are going to be checking them frequently to see if a hash is already in the container,
                and a set offers us near linear search time*/
             std::unordered_set<uint256_t> vTransferredRegisters;
             std::unordered_set<uint256_t> vOwnedRegisters;
-            
-            /* For also put the owned register hashes in a vector as we want to maintain the insertion order, with the 
+
+            /* For also put the owned register hashes in a vector as we want to maintain the insertion order, with the
                most recently updated register first*/
             std::vector<uint256_t> vRegisters;
 
@@ -460,9 +460,9 @@ namespace TAO
                             uint256_t hashAddress;
                             tx.ssOperation >> hashAddress;
 
-                            /* for these operations, if the address is NOT in the transferred list 
+                            /* for these operations, if the address is NOT in the transferred list
                                then we know that we must currently own this register */
-                            if( vTransferredRegisters.find(hashAddress) == vTransferredRegisters.end() 
+                            if( vTransferredRegisters.find(hashAddress) == vTransferredRegisters.end()
                             && vOwnedRegisters.find(hashAddress) == vOwnedRegisters.end())
                             {
                                 vOwnedRegisters.insert(hashAddress);
@@ -485,9 +485,9 @@ namespace TAO
                             uint256_t hashAddress;
                             tx.ssOperation >> hashAddress;
 
-                            /* If we find a credit before a transfer transaction for this register then 
+                            /* If we find a credit before a transfer transaction for this register then
                                we can know for certain that we must own it */
-                            if( vTransferredRegisters.find(hashAddress) == vTransferredRegisters.end() 
+                            if( vTransferredRegisters.find(hashAddress) == vTransferredRegisters.end()
                             && vOwnedRegisters.find(hashAddress) == vOwnedRegisters.end())
                             {
                                 vOwnedRegisters.insert(hashAddress);
@@ -503,17 +503,17 @@ namespace TAO
                             uint256_t hashAddress;
                             tx.ssOperation >> hashAddress;
 
-                            /* If we find a TRANSFER before any other transaction for this register then we can know 
+                            /* If we find a TRANSFER before any other transaction for this register then we can know
                                for certain that we no longer own it */
-                            if( vOwnedRegisters.find(hashAddress) == vOwnedRegisters.end() 
+                            if( vOwnedRegisters.find(hashAddress) == vOwnedRegisters.end()
                             && vTransferredRegisters.find(hashAddress) == vTransferredRegisters.end())
                             {
                                 vTransferredRegisters.insert(hashAddress);
                             }
-                            
+
                             if( std::find(vOwnedRegisters.begin(), vOwnedRegisters.end(), hashAddress) == vOwnedRegisters.end() )
                                 vTransferredRegisters.insert(hashAddress);
-                            
+
                             break;
                         }
 
@@ -525,7 +525,7 @@ namespace TAO
 
                             /* Read the claimed transaction. */
                             TAO::Ledger::Transaction txClaim;
-                            
+
                             /* Check disk of writing new block. */
                             if((!LLD::legDB->ReadTx(hashTransferTx, txClaim) || !LLD::legDB->HasIndex(hashTransferTx)))
                                 debug::error(FUNCTION, hashTransferTx.ToString(), " tx doesn't exist or not indexed");
@@ -542,22 +542,22 @@ namespace TAO
                             /* Extract the address  */
                             uint256_t hashAddress;
                             txClaim.ssOperation >> hashAddress;
-                            
+
 
                             /* If we find a CLAIM transaction before a TRANSFER, then we know that we must currently own this register */
-                            if( vTransferredRegisters.find(hashAddress) == vTransferredRegisters.end() 
+                            if( vTransferredRegisters.find(hashAddress) == vTransferredRegisters.end()
                             && vOwnedRegisters.find(hashAddress) == vOwnedRegisters.end())
                             {
                                 vOwnedRegisters.insert(hashAddress);
                                 vRegisters.push_back(hashAddress);
                             }
-                            
+
                             break;
                         }
 
                     }
 
-                    /* Seek the operation stream forward to the end of the operation by 
+                    /* Seek the operation stream forward to the end of the operation by
                        deserializing the data based on the operation type */
                     switch(OPERATION)
                     {
@@ -580,17 +580,17 @@ namespace TAO
                         }
                         case TAO::Operation::OP::DEBIT:
                         {
-                            uint256_t hashTransfer;   
+                            uint256_t hashTransfer;
                             tx.ssOperation >> hashTransfer;
 
-                            uint64_t  nAmount;  
+                            uint64_t  nAmount;
                             tx.ssOperation >> nAmount;
                             break;
 
                         }
                         case TAO::Operation::OP::CREDIT:
                         {
-                            /* Nothing to seek forward for a CREDIT as we already deserialized to the 
+                            /* Nothing to seek forward for a CREDIT as we already deserialized to the
                                end of the operation in order to get the account address.   */
                             break;
                         }
@@ -614,14 +614,14 @@ namespace TAO
                         {
                             uint256_t hashTransfer;
                             tx.ssOperation >> hashTransfer;
-                            
+
                             break;
                         }
                         case TAO::Operation::OP::CLAIM:
                         {
-                            /* Nothing to seek forward for a CLAIM as we already deserialized to the 
+                            /* Nothing to seek forward for a CLAIM as we already deserialized to the
                                end of the operation in order to get the txid. */
-                            
+
                             break;
                         }
 

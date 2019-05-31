@@ -141,6 +141,32 @@ namespace TAO
              **/
             json::json List(const json::json& params, bool fHelp);
 
+
+            /** Info
+             *
+             *  Get staking metrics for a trust account.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Info(const json::json& params, bool fHelp);
+
+
+            /** Stake
+             *
+             *  Set the stake amount for trust account (add/remove stake).
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Stake(const json::json& params, bool fHelp);
+
         };
     }
 }

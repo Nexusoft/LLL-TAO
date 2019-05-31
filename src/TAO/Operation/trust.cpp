@@ -16,10 +16,6 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/operations.h>
 
 #include <TAO/Register/types/object.h>
-#include <TAO/Register/include/system.h>
-
-#include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/stake.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -29,7 +25,7 @@ namespace TAO
     namespace Operation
     {
 
-        /* Commits funds from a coinbase transaction. */
+        /* Coinstake operation for a trust transaction. */
         bool Trust(const uint512_t& hashLastTrust, const uint64_t nTrustScore, const uint64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
         {
             /* Read the register from the database. */
@@ -63,7 +59,7 @@ namespace TAO
 
             /* Check ownership of register. */
             if(trustAccount.hashOwner != tx.hashGenesis)
-                return debug::error(FUNCTION, tx.hashGenesis.ToString(), "Caller not authorized to debit from register");
+                return debug::error(FUNCTION, tx.hashGenesis.ToString(), "Caller not authorized to stake trust for trust account");
 
             /* Parse the account object register. */
             if(!trustAccount.Parse())
@@ -72,7 +68,7 @@ namespace TAO
             /* Get account starting values */
             uint64_t nBalancePrev = trustAccount.get<uint64_t>("balance");
 
-            /* Update account balance with cointake reward */
+            /* Update account balance with coinstake reward */
             uint64_t nBalance = nBalancePrev + nCoinstakeReward;
 
             /* Write the new trust to object register. */

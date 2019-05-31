@@ -199,7 +199,7 @@ namespace TAO
                         {
                             /* Ensure that it as beginning of the tx.ssOperation. */
                             if(!tx.ssOperation.begin())
-                                return debug::error(FUNCTION, "coinbase opeartion has to be first");
+                                return debug::error(FUNCTION, "coinbase operation has to be first");
 
                             /* The total to be credited. */
                             uint64_t  nCredit;
@@ -217,12 +217,12 @@ namespace TAO
                         }
 
 
-                        /* Coinstake operation. Requires an account. */
+                        /* Coinstake operation for trust transaction. Requires an account. */
                         case OP::TRUST:
                         {
                             /* Ensure that it as beginning of the tx.ssOperation. */
                             if(!tx.ssOperation.begin())
-                                return debug::error(FUNCTION, "trust opeartion has to be first");
+                                return debug::error(FUNCTION, "trust operation has to be first");
 
                             /* The last stake transaction for the trust account register. */
                             uint512_t hashLastTrust;
@@ -248,28 +248,62 @@ namespace TAO
                         }
 
 
-                        /* Coinstake operation. Requires an account. */
+                        /* Coinstake operation for Genesis transaction. Requires an account. */
                         case OP::GENESIS:
                         {
                             /* Ensure that it as beginning of the tx.ssOperation. */
                             if(!tx.ssOperation.begin())
-                                return debug::error(FUNCTION, "genesis opeartion has to be first");
+                                return debug::error(FUNCTION, "genesis operation has to be first");
 
-                            /* The account that is being staked. */
-                            uint256_t hashAccount;
-                            tx.ssOperation >> hashAccount;
+                            /* The register address of the trust account that is being staked. */
+                            uint256_t hashAddress;
+                            tx.ssOperation >> hashAddress;
 
                             /* Coinstake reward paid to trust account by this operation. */
                             uint64_t nCoinstakeReward;
                             tx.ssOperation >> nCoinstakeReward;
 
                             /* Execute the operation method. */
-                            if(!Genesis(hashAccount, nCoinstakeReward, nFlags, tx))
+                            if(!Genesis(hashAddress, nCoinstakeReward, nFlags, tx))
                                 return false;
 
                             /* Ensure that it as end of tx.ssOperation. */
                             if(!tx.ssOperation.end())
                                 return debug::error(FUNCTION, "genesis can't have extra data");
+
+                            break;
+                        }
+
+
+                        /* Move funds from trust account balance to stake. Requires an account. */
+                        case OP::STAKE:
+                        {
+                            /* Amount to of funds to move. */
+                            uint64_t nAmount;
+                            tx.ssOperation >> nAmount;
+
+                            /* Execute the operation method. */
+                            if(!Stake(nAmount, nFlags, tx))
+                                return false;
+
+                            break;
+                        }
+
+
+                        /* Move funds from trust account stake to balance. Requires an account. */
+                        case OP::UNSTAKE:
+                        {
+                            /* Amount of funds to move. */
+                            uint64_t nAmount;
+                            tx.ssOperation >> nAmount;
+
+                            /* Trust score penalty from unstake. */
+                            uint64_t nTrustPenalty;
+                            tx.ssOperation >> nTrustPenalty;
+
+                            /* Execute the operation method. */
+                            if(!Unstake(nAmount, nTrustPenalty, nFlags, tx))
+                                return false;
 
                             break;
                         }

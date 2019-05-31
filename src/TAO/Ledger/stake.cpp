@@ -38,8 +38,8 @@ namespace TAO
     {
 
         /* Constants for use in staking calculations (move to TAO/Ledger/include/constants.h ?) */
-        const double LOG3 = log(3); 
-        const double LOG10 = log(10); 
+        const double LOG3 = log(3);
+        const double LOG10 = log(10);
 
 
         /* Retrieve the setting for maximum block age (time since last stake before trust decay begins. */
@@ -88,7 +88,7 @@ namespace TAO
 
 
         /* Calculate new trust score from parameters. */
-        uint64_t TrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge)
+        uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge)
         {
             uint64_t nTrust = 0;
             uint64_t nTrustMax = MaxTrustScore();
@@ -121,6 +121,25 @@ namespace TAO
         }
 
 
+        /* Calculate trust score penalty that results from unstaking a portion of stake balance. */
+        uint64_t GetUnstakePenalty(const uint64_t nTrustPrev, const uint64_t nStakePrev, const uint64_t nStakeNew)
+        {
+            /* Unstake penalty only applies if stake balance is reduced */
+            if (nStakeNew >= nStakePrev)
+                return nTrustPrev;
+
+            /* When unstake, new trust score is fraction of old trust score equal to fraction of balance remaining.
+             * (nStakeNew / nStakePrev) is fraction of balance remaining, multiply by old trust score to get new.
+             * Example: have 100 stake and remove 30, new stake is 70 and new trust score is (70 / 100) * old trust score
+             * Multiplication is done first to allow this to use integer math.
+             */
+            uint64_t nTrustNew = (nStakeNew * nTrustPrev) / nStakePrev;
+
+            /* Penalty is amount of trust reduction */
+            return (nTrustPrev - nTrustNew);
+        }
+
+
         /* Calculate the proof of stake block weight for a given block age. */
         double BlockWeight(const uint64_t nBlockAge)
         {
@@ -148,7 +167,7 @@ namespace TAO
         double TrustWeight(const uint64_t nTrust)
         {
             /* Trust Weight base is time for 50% score. Weight continues to grow with Trust Score until it reaches max of 90.0
-             * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base), 
+             * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base),
              * while requiring close to a year to reach maximum.
              */
             double nTrustWeightRatio = (double)nTrust / (double)TrustWeightBase();
@@ -158,14 +177,14 @@ namespace TAO
 
 
         /* Calculate the current threshold value for Proof of Stake. */
-        double CurrentThreshold(const uint64_t nBlockTime, const uint64_t nNonce)
+        double GetCurrentThreshold(const uint64_t nBlockTime, const uint64_t nNonce)
         {
             return (nBlockTime * 100.0) / nNonce;
         }
 
 
         /* Calculate the minimum Required Energy Efficiency Threshold. */
-        double RequiredThreshold(double nTrustWeight, double nBlockWeight, uint64_t nStake)
+        double GetRequiredThreshold(double nTrustWeight, double nBlockWeight, uint64_t nStake)
         {
             /*  Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
              *  Weight from staking balance reduces the required threshold by increasing the denominator.
@@ -189,7 +208,7 @@ namespace TAO
 
 
         /* Calculate the coinstake reward for a given stake. */
-        uint64_t CoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime, const uint64_t nTrust, const bool isGenesis)
+        uint64_t GetCoinstakeReward(const uint64_t nStake, const uint64_t nStakeTime, const uint64_t nTrust, const bool isGenesis)
         {
 
             double nStakeRate = StakeRate(nTrust, isGenesis);
@@ -200,7 +219,7 @@ namespace TAO
              * Thus, the appropriate way to write this (for clarity) would be: nStakeReward = nStake * nStakeRate * (nStakeTime / MaxTrustScore)
              * However, with integer arithmetic (nStakeTime / MaxTrustScore) would evaluate to 0 or 1, etc. and the overall nStakeReward would be erroneous
              *
-             * Therefore, we apply parentheses around the full multiplication portion before applying the division to get appropriate reward. 
+             * Therefore, we apply parentheses around the full multiplication portion before applying the division to get appropriate reward.
              */
             uint64_t nStakeReward = (nStake * nStakeRate * nStakeTime) / MaxTrustScore();
 

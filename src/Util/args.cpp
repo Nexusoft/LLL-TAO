@@ -31,7 +31,6 @@ namespace config
     std::atomic<bool> fDebug(false);
     std::atomic<bool> fPrintToConsole(false);
     std::atomic<bool> fDaemon(false);
-    std::atomic<bool> fServer(false);
     std::atomic<bool> fClient(false);
     std::atomic<bool> fCommandLine(false);
     std::atomic<bool> fTestNet(false);
@@ -164,7 +163,6 @@ namespace config
         fDebug                  = GetBoolArg("-debug", false);
         fPrintToConsole         = GetBoolArg("-printtoconsole", false);
         fDaemon                 = GetBoolArg("-daemon", false);
-        fServer                 = fDaemon.load() || GetBoolArg("-server", false);
         fTestNet                = GetArg("-testnet", 0) > 0;
         fListen                 = GetBoolArg("-listen", true);
         //fUseProxy               = GetBoolArg("-proxy")

@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/users.h>
+#include <TAO/Ledger/types/tritium_minter.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -37,6 +38,12 @@ namespace TAO
             LOCK(MUTEX);
 
             pActivePIN.free();
+
+            /* If stake minter is running, stop it */
+            TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
+
+            if (stakeMinter.IsStarted())
+                stakeMinter.StopStakeMinter();
 
             return true;
         }
