@@ -318,8 +318,8 @@ users_list_transactions = \
 users_list_notifications = \
     '{}users/list/notifications?genesis={}&page={}&limit={}{}'
 users_list_assets = '{}users/list/assets?genesis={}&page={}&limit={}{}'
-users_list_tokens = '{}users/list/tokens?genesis={}{}'
-users_list_accounts = '{}users/list/accounts?genesis={}{}'
+users_list_tokens = '{}users/list/tokens?genesis={}&page={}&limit={}{}'
+users_list_accounts = '{}users/list/accounts?genesis={}&page={}&limit={}{}'
 
 def build_users_html(sid, genid, o):
     f = form_footer
@@ -367,9 +367,9 @@ def build_users_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     genesis = form_parm.format("genesis", genid)
-    page = form_parm.format("page", "")
-    limit = form_parm.format("limit", "")
-    verbose = form_parm.format("verbose", "")
+    page = form_parm.format("page", "0")
+    limit = form_parm.format("limit", "100")
+    verbose = form_parm.format("verbose", "default")
     o += users_list_transactions.format(h,  genesis, page, limit, verbose, f)
     o += "</td></tr>"
 
@@ -378,8 +378,8 @@ def build_users_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     genesis = form_parm.format("genesis", genid)
-    page = form_parm.format("page", "")
-    limit = form_parm.format("limit", "")
+    page = form_parm.format("page", "0")
+    limit = form_parm.format("limit", "100")
     o += users_list_notifications.format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
@@ -388,8 +388,8 @@ def build_users_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     genesis = form_parm.format("genesis", genid)
-    page = form_parm.format("page", "")
-    limit = form_parm.format("limit", "")
+    page = form_parm.format("page", "0")
+    limit = form_parm.format("limit", "100")
     o += users_list_assets.format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
@@ -398,8 +398,8 @@ def build_users_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     genesis = form_parm.format("genesis", genid)
-    page = form_parm.format("page", "")
-    limit = form_parm.format("limit", "")
+    page = form_parm.format("page", "0")
+    limit = form_parm.format("limit", "100")
     o += users_list_tokens.format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
@@ -408,8 +408,8 @@ def build_users_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     genesis = form_parm.format("genesis", genid)
-    page = form_parm.format("page", "")
-    limit = form_parm.format("limit", "")
+    page = form_parm.format("page", "0")
+    limit = form_parm.format("limit", "100")
     o += users_list_accounts.format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
@@ -691,15 +691,17 @@ def do_users_list_accounts(sid=""):
 #
 supply_create_item = \
     '{}supply/create/item?pin={}&session={}&name={}&data={}{}'
-supply_get_item_name = '{}supply/get/item?name={}{}'
-supply_get_item_address = '{}supply/get/item?address={}{}'
+supply_get_item_name = '{}supply/get/item?session={}&name={}{}'
+supply_get_item_address = '{}supply/get/item?session={}&address={}{}'
 supply_update_item = \
     '{}supply/update/item?pin={}&session={}&address={}&data={}{}'
 supply_transfer_item = ('{}supply/transfer/item?pin={}&session={}' + \
     '&username={}&address={}&destination={}{}')
 supply_claim_item = '{}supply/claim/item?pin={}&session={}&txid={}{}'
-supply_list_item_history_name = '{}supply/list/item/history?name={}{}'
-supply_list_item_history_address = '{}supply/list/item/history?address={}{}'
+supply_list_item_history_name = \
+    '{}supply/list/item/history?session={}&name={}{}'
+supply_list_item_history_address = \
+    '{}supply/list/item/history?session={}&address={}{}'
 
 def build_supply_html(sid, genid, o):
     f = form_footer
@@ -707,18 +709,18 @@ def build_supply_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "supply-get-item-name"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
+    session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += supply_get_item_name.format(h, name, f)
+    o += supply_get_item_name.format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = "supply-get-item-address"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
+    session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += supply_get_item_address.format(h, address, f)
+    o += supply_get_item_address.format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -761,18 +763,18 @@ def build_supply_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "supply-list-item-history-name"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
+    session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += supply_list_item_history_name.format(h, name, f)
+    o += supply_list_item_history_name.format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = "supply-list-item-history-address"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
+    session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += supply_list_item_history_address.format(h, address, f)
+    o += supply_list_item_history_address.format(h, session, address, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -809,55 +811,55 @@ def do_supply_create_item():
 #enddef
 
 @bottle.route('/supply-get-item-name', method="post")
-@bottle.route('/supply-get-item-name/<sid>', method="post")
-def do_supply_get_item_name(sid=""):
+def do_supply_get_item_name():
+    session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if (no_parms(name)):
+    if (no_parms(session, name)):
         m = red("supply/get/item needs more input parameters")
-        return(show(m, sid))
+        return(show(m, session))
     #endif
 
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
     if (sdk_or_api):
-        sdk, output = sid_to_sdk(sid)
+        sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
         output = sdk.nexus_supply_get_item_by_name(name)
         genid = sdk.genesis_id
     else:
-        output = curl(supply_get_item_name.format("", name, ""))
+        output = curl(supply_get_item_name.format("", session, name, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
 
-    return(show(output, sid, genid))
+    return(show(output, session, genid))
 #enddef
 
 @bottle.route('/supply-get-item-address', method="post")
-@bottle.route('/supply-get-item-address/<sid>', method="post")
-def do_supply_get_item_address(sid=""):
+def do_supply_get_item_address():
+    session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
-    if (no_parms(address)):
+    if (no_parms(session, address)):
         m = red("supply/get/item needs more input parameters")
-        return(show(m, sid))
+        return(show(m, session))
     #endif
 
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
     if (sdk_or_api):
-        sdk, output = sid_to_sdk(sid)
+        sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
         output = sdk.nexus_supply_get_item_by_address(address)
         genid = sdk.genesis_id
     else:
-        output = curl(supply_get_item_address.format("", address, ""))
+        output = curl(supply_get_item_address.format("", session, address, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
 
-    return(show(output, sid, genid))
+    return(show(output, session, genid))
 #enddef
 
 @bottle.route('/supply-update-item', method="post")
@@ -947,55 +949,57 @@ def do_supply_claim_item():
 #enddef
 
 @bottle.route('/supply-list-item-history-name', method="post")
-@bottle.route('/supply-list-item-history-name/<sid>', method="post")
-def do_supply_list_item_history_name(sid=""):
+def do_supply_list_item_history_name():
+    session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if (no_parms(name)):
+    if (no_parms(session, name)):
         m = red("supply/list/item/history needs more input parameters")
-        return(show(m, sid))
+        return(show(m, session))
     #endif
 
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
     if (sdk_or_api):
-        sdk, output = sid_to_sdk(sid)
+        sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
         output = sdk.nexus_supply_list_item_history_by_name(name)
         genid = sdk.genesis_id
     else:
-        output = curl(supply_list_item_history_name.format("", name, ""))
+        output = curl(supply_list_item_history_name.format("", session, name,
+            ""))
         genid = ""
     #endif            
     output = json.dumps(output)
 
-    return(show(output, sid, genid))
+    return(show(output, session, genid))
 #enddef
 
 @bottle.route('/supply-list-item-history-address', method="post")
-@bottle.route('/supply-list-item-history-address/<sid>', method="post")
-def do_supply_list_item_history_address(sid=""):
+def do_supply_list_item_history_address():
+    session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
-    if (no_parms(address)):
+    if (no_parms(session, address)):
         m = red("supply/list/item/history needs more input parameters")
-        return(show(m, sid))
+        return(show(m, session))
     #endif
 
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
     if (sdk_or_api):
-        sdk, output = sid_to_sdk(sid)
+        sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
         output = sdk.nexus_supply_list_item_history_by_address(address)
         genid = sdk.genesis_id
     else:
-        output = curl(supply_list_item_history_address.format("", address, ""))
+        output = curl(supply_list_item_history_address.format("", session,
+            address, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
 
-    return(show(output, sid, genid))
+    return(show(output, session, genid))
 #enddef
 
 #------------------------------------------------------------------------------
@@ -1005,8 +1009,8 @@ def do_supply_list_item_history_address(sid=""):
 #
 assets_create_asset = \
     '{}assets/create/asset?pin={}&session={}&name={}&format=raw&data={}{}'
-assets_get_asset_name = '{}assets/get/asset?name={}{}'
-assets_get_asset_address = '{}assets/get/asset?address={}{}'
+assets_get_asset_name = '{}assets/get/asset?session={}&name={}{}'
+assets_get_asset_address = '{}assets/get/asset?session={}&address={}{}'
 assets_update_asset = \
     '{}assets/update/asset?pin={}&session={}&address={}&data={}{}'
 assets_transfer_asset = \
@@ -1014,8 +1018,10 @@ assets_transfer_asset = \
 assets_claim_asset = '{}assets/claim/asset?pin={}&session={}&txid={}{}'
 assets_tokenize_asset = \
     '{}assets/tokenize/asset?pin={}&session={}&token_name={}&asset_name={}{}'
-assets_list_asset_history_name = '{}assets/list/asset/history?name={}{}'
-assets_list_asset_history_address = '{}assets/list/asset/history?address={}{}'
+assets_list_asset_history_name = \
+    '{}assets/list/asset/history?session={}&name={}{}'
+assets_list_asset_history_address = \
+    '{}assets/list/asset/history?session={}&address={}{}'
 
 def build_assets_html(sid, genid, o):
     f = form_footer
@@ -1023,18 +1029,19 @@ def build_assets_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "assets-get-asset-name"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
+    session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += assets_get_asset_name.format(h, name, f)
+    o += assets_get_asset_name.format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = "assets-get-asset-address"
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
+    session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += assets_get_asset_address.format(h, address, f)
+    o += assets_get_asset_address.format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1086,18 +1093,18 @@ def build_assets_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "assets-list-asset-history-name"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
+    session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += assets_list_asset_history_name.format(h, name, f)
+    o += assets_list_asset_history_name.format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = "assets-list-asset-history-address"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
+    session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += assets_list_asset_history_address.format(h, address, f)
+    o += assets_list_asset_history_address.format(h, session, address, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -1163,55 +1170,56 @@ def do_assets_update_asset():
 #enddef
 
 @bottle.route('/assets-get-asset-name', method="post")
-@bottle.route('/assets-get-asset-name/<sid>', method="post")
-def do_assets_get_asset_name(sid=""):
+def do_assets_get_asset_name():
+    session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if (no_parms(name)):
+    if (no_parms(session, name)):
         m = red("assets/get/asset needs more input parameters")
-        return(show(m, sid))
+        return(show(m, session))
     #endif
 
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
     if (sdk_or_api):
-        sdk, output = sid_to_sdk(sid)
+        sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
         output = sdk.nexus_assets_get_asset_by_name(name)
         genid = sdk.genesis_id
     else:
-        output = curl(assets_get_asset_name.format("", name, ""))
+        output = curl(assets_get_asset_name.format("", session, name, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
 
-    return(show(output, sid, genid))
+    return(show(output, session, genid))
 #enddef
 
 @bottle.route('/assets-get-asset-address', method="post")
-@bottle.route('/assets-get-asset-address/<sid>', method="post")
-def do_assets_get_asset_address(sid=""):
+def do_assets_get_asset_address():
+    session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
-    if (no_parms(address)):
+    if (no_parms(session, address)):
         m = red("assets/get/asset needs more input parameters")
-        return(show(m, sid))
+        return(show(m, session))
     #endif
 
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
     if (sdk_or_api):
-        sdk, output = sid_to_sdk(sid)
+        sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
         output = sdk.nexus_assets_get_asset_by_address(address)
         genid = sdk.genesis_id
     else:
-        output = curl(assets_get_asset_address.format("", address, ""))
+        output = curl(assets_get_asset_address.format("", session, address,
+            ""))
         genid = ""
     #endif            
     output = json.dumps(output)
 
-    return(show(output, sid, genid))
+    return(show(output, session, genid))
 #enddef
 
 @bottle.route('/assets-transfer-asset', method="post")
@@ -1301,56 +1309,57 @@ def do_assets_tokenize_asset():
 #enddef
 
 @bottle.route('/assets-list-asset-history-name', method="post")
-@bottle.route('/assets-list-asset-history-name/<sid>', method="post")
-def do_assets_list_asset_history_name(sid=""):
+def do_assets_list_asset_history_name():
+    session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if (no_parms(name)):
+    if (no_parms(session, name)):
         m = red("assets/list/asset/history needs more input parameters")
-        return(show(m, sid))
+        return(show(m, session))
     #endif
 
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
     if (sdk_or_api):
-        sdk, output = sid_to_sdk(sid)
+        sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
         output = sdk.nexus_assets_list_asset_history_by_name(name)
         genid = sdk.genesis_id
     else:
-        output = curl(assets_list_asset_history_name.format("", name, ""))
-        genid = ""
-    #endif            
-    output = json.dumps(output)
-
-    return(show(output, sid, genid))
-#enddef
-
-@bottle.route('/assets-list-asset-history-address', method="post")
-@bottle.route('/assets-list-asset-history-address/<sid>', method="post")
-def do_assets_list_asset_history_address(sid=""):
-    address = bottle.request.forms.get("address")
-    if (no_parms(address)):
-        m = red("assets/list/asset/history needs more input parameters")
-        return(show(m, sid))
-    #endif
-
-    action = bottle.request.forms.get("action")
-    sdk_or_api = (action.find("SDK") != -1)
-    
-    if (sdk_or_api):
-        sdk, output = sid_to_sdk(sid)
-        if (sdk == None): return(output)
-        output = sdk.nexus_assets_list_asset_history_by_address(address)
-        genid = sdk.genesis_id
-    else:
-        output = curl(assets_list_asset_history_address.format("", address,
+        output = curl(assets_list_asset_history_name.format("", session, name,
             ""))
         genid = ""
     #endif            
     output = json.dumps(output)
 
-    return(show(output, sid, genid))
+    return(show(output, session, genid))
+#enddef
+
+@bottle.route('/assets-list-asset-history-address', method="post")
+def do_assets_list_asset_history_address():
+    session = bottle.request.forms.get("session")
+    address = bottle.request.forms.get("address")
+    if (no_parms(session, address)):
+        m = red("assets/list/asset/history needs more input parameters")
+        return(show(m, session))
+    #endif
+
+    action = bottle.request.forms.get("action")
+    sdk_or_api = (action.find("SDK") != -1)
+    
+    if (sdk_or_api):
+        sdk, output = sid_to_sdk(session)
+        if (sdk == None): return(output)
+        output = sdk.nexus_assets_list_asset_history_by_address(address)
+        genid = sdk.genesis_id
+    else:
+        output = curl(assets_list_asset_history_address.format("", session,
+            address, ""))
+        genid = ""
+    #endif            
+    output = json.dumps(output)
+
+    return(show(output, session, genid))
 #enddef
 
 #------------------------------------------------------------------------------
@@ -1362,8 +1371,8 @@ tokens_create_token = \
     '{}tokens/create/token?pin={}&session={}&name={}&supply={}{}'
 tokens_create_account = \
     '{}tokens/create/account?pin={}&session={}&name={}&token_name={}{}'
-tokens_get_token = '{}tokens/get/token?name={}{}'
-tokens_get_account = '{}tokens/get/account?name={}{}'
+tokens_get_token = '{}tokens/get/token?session={}&name={}{}'
+tokens_get_account = '{}tokens/get/account?session={}&name={}{}'
 tokens_debit_token = ('{}tokens/debit/token?pin={}&session={}&name={}' + \
     '&name_to={}&amount={}{}')
 tokens_credit_token = ('{}tokens/credit/token?pin={}&session={}&name={}' + \
@@ -1379,10 +1388,10 @@ def build_tokens_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "tokens-get-token"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
+    session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += tokens_get_token.format(h, name, f)
+    o += tokens_get_token.format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1418,10 +1427,10 @@ def build_tokens_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "tokens-get-account"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
+    session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += tokens_get_account.format(h, name, f)
+    o += tokens_get_account.format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1518,55 +1527,55 @@ def do_tokens_create_account():
 #enddef
 
 @bottle.route('/tokens-get-token', method="post")
-@bottle.route('/tokens-get-token/<sid>', method="post")
-def do_tokens_get_token(sid=""):
+def do_tokens_get_token():
+    session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if (no_parms(name)):
+    if (no_parms(session, name)):
         m = red("tokens/get/token needs more input parameters")
-        return(show(m, sid))
+        return(show(m, session))
     #endif
 
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
     if (sdk_or_api):
-        sdk, output = sid_to_sdk(sid)
+        sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
         output = sdk.nexus_tokens_get_token_by_name(name)
         genid = sdk.genesis_id
     else:
-        output = curl(tokens_get_token.format("", name, ""))
+        output = curl(tokens_get_token.format("", session, name, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
 
-    return(show(output, sid, genid))
+    return(show(output, session, genid))
 #enddef
 
 @bottle.route('/tokens-get-account', method="post")
-@bottle.route('/tokens-get-account/<sid>', method="post")
-def do_tokens_get_account(sid=""):
+def do_tokens_get_account():
+    session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if (no_parms(name)):
+    if (no_parms(session, name)):
         m = red("tokens/get/account needs more input parameters")
-        return(show(m, sid))
+        return(show(m, session))
     #endif
 
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
     if (sdk_or_api):
-        sdk, output = sid_to_sdk(sid)
+        sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
         output = sdk.nexus_tokens_get_account_by_name(name)
         genid = sdk.genesis_id
     else:
-        output = curl(tokens_get_account.format("", name, ""))
+        output = curl(tokens_get_account.format("", session, name, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
 
-    return(show(output, sid, genid))
+    return(show(output, session, genid))
 #enddef
 
 @bottle.route('/tokens-debit-token', method="post")
@@ -1696,13 +1705,15 @@ def do_tokens_credit_account():
 # build_finance_html
 #
 finance_create_account = '{}finance/create/account?pin={}&session={}&name={}{}'
-finance_get_account_name = '{}finance/get/account?name={}{}'
-finance_get_account_address = '{}finance/get/account?address={}{}'
+finance_get_account_name = '{}finance/get/account?session={}&name={}{}'
+finance_get_account_address = '{}finance/get/account?session={}&address={}{}'
 finance_debit_account = ('{}finance/debit/account?pin={}&session={}' + \
     '&amount={}&name_from={}&name_to={}{}')
 finance_credit_account = ('{}finance/credit/account?pin={}&session={}' + \
     '&txid={}&amount={}&name_to={}&name_proof={}{}')
 finance_list_accounts = '{}finance/list/accounts?session={}{}'
+finance_get_stakeinfo = '{}finance/get/stakeinfo?session={}{}'
+finance_set_stake = '{}finance/set/stake?pin={}&session={}&amount={}{}'
 
 def build_finance_html(sid, genid, o):
     f = form_footer
@@ -1710,18 +1721,18 @@ def build_finance_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "finance-get-account-name"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
+    session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += finance_get_account_name.format(h, name, f)
+    o += finance_get_account_name.format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = "finance-get-account-address"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
+    session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += finance_get_account_address.format(h, address, f)
+    o += finance_get_account_address.format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1763,60 +1774,75 @@ def build_finance_html(sid, genid, o):
     o += finance_list_accounts.format(h, session, f)
     o += "</td></tr>"
 
+    o += "<tr><td>"
+    h = form_header.format("finance-get-stakeinfo")
+    session = form_parm.format("session", sid)
+    o += finance_get_stakeinfo.format(h, session, f)
+    o += "</td></tr>"
+
+    o += "<tr><td>"
+    h = form_header.format("finance-set-stake")
+    pin = form_parm.format("pin", "")
+    session = form_parm.format("session", sid)
+    amount = form_parm.format("amount", "")
+    o += finance_set_stake.format(h, pin, session, amount, f)
+    o += "</td></tr>"
+
     o += '</table><br><hr size="5">'
     return(o)
 #enddef
 
 @bottle.route('/finance-get-account-name', method="post")
-@bottle.route('/finance-get-account-name/<sid>', method="post")
-def do_finance_get_account_name(sid=""):
+def do_finance_get_account_name():
+    session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if (no_parms(name)):
+    if (no_parms(session, name)):
         m = red("finance/get/account needs more input parameters")
-        return(show(m, sid))
+        return(show(m, session))
     #endif
 
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
     if (sdk_or_api):
-        sdk, output = sid_to_sdk(sid)
+        sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
         output = sdk.nexus_finance_get_account_by_name(name)
         genid = sdk.genesis_id
     else:
-        output = curl(finance_get_account_name.format("", name, ""))
+        output = curl(finance_get_account_name.format("", session, name, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
 
-    return(show(output, sid, genid))
+    return(show(output, session, genid))
 #enddef
 
 @bottle.route('/finance-get-account-address', method="post")
-@bottle.route('/finance-get-account-address/<sid>', method="post")
-def do_finance_get_account_address(sid=""):
+def do_finance_get_account_address():
+    session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
-    if (no_parms(address)):
+    if (no_parms(session, address)):
         m = red("finance/get/account needs more input parameters")
-        return(show(m, sid))
+        return(show(m, session))
     #endif
 
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
     if (sdk_or_api):
-        sdk, output = sid_to_sdk(sid)
+        sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
         output = sdk.nexus_finance_get_account_by_address(address)
         genid = sdk.genesis_id
     else:
-        output = curl(finance_get_account_address.format("", address, ""))
+        output = curl(finance_get_account_address.format("", session, address,
+            ""))
         genid = ""
     #endif            
     output = json.dumps(output)
 
-    return(show(output, sid, genid))
+    return(show(output, session, genid))
 #enddef
 
 @bottle.route('/finance-create-account', method="post")
@@ -1914,7 +1940,7 @@ def do_finance_credit_account():
 def do_list_accounts():
     session = bottle.request.forms.get("session")
     if (no_parms(session)):
-        m = red("finances/list/acccounts needs more input parameters")
+        m = red("finance/list/acccounts needs more input parameters")
         return(show(m, session))
     #endif
 
@@ -1928,6 +1954,58 @@ def do_list_accounts():
         genid = sdk.genesis_id
     else:
         output = curl(finance_list_accounts.format("", session, ""))
+        genid = ""
+    #endif            
+    output = json.dumps(output)
+
+    return(show(output, session, genid))
+#enddef
+
+@bottle.route('/finance-get-stakeinfo', method="post")
+def do_get_stakeinfo():
+    session = bottle.request.forms.get("session")
+    if (no_parms(session)):
+        m = red("finance/get/stakeinfo needs more input parameters")
+        return(show(m, session))
+    #endif
+
+    action = bottle.request.forms.get("action")
+    sdk_or_api = (action.find("SDK") != -1)
+    
+    if (sdk_or_api):
+        sdk, output = sid_to_sdk(session)
+        if (sdk == None): return(output)
+        output = sdk.nexus_finance_get_stakeinfo()
+        genid = sdk.genesis_id
+    else:
+        output = curl(finance_get_stakeinfo.format("", session, ""))
+        genid = ""
+    #endif            
+    output = json.dumps(output)
+
+    return(show(output, session, genid))
+#enddef
+
+@bottle.route('/finance-set-stake', method="post")
+def do_set_stake():
+    pin = bottle.request.forms.get("pin")
+    session = bottle.request.forms.get("session")
+    amount = bottle.request.forms.get("amount")
+    if (no_parms(pin, session, amount)):
+        m = red("finance/set/stake needs more input parameters")
+        return(show(m, session))
+    #endif
+
+    action = bottle.request.forms.get("action")
+    sdk_or_api = (action.find("SDK") != -1)
+    
+    if (sdk_or_api):
+        sdk, output = sid_to_sdk(session)
+        if (sdk == None): return(output)
+        output = sdk.nexus_finance_set_stake(amount)
+        genid = sdk.genesis_id
+    else:
+        output = curl(finance_set_stake.format("", pin, session, amount, ""))
         genid = ""
     #endif            
     output = json.dumps(output)

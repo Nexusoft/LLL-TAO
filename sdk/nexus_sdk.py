@@ -50,8 +50,8 @@ tokens/create/account     finance/debit/account
 tokens/get/token          finance/credit/account
 tokens/get/account        finance/get/account
 tokens/debit/token        finance/list/accounts
-tokens/debit/account
-tokens/credit/account
+tokens/debit/account      finance/get/stakeinfo
+tokens/credit/account     finance/set/stake
 
 """
 
@@ -164,7 +164,7 @@ class sdk_init():
         created by.
         """
 
-        parms = "?name={}&format=json".format(name)
+        parms = "?session={}&name={}&format=json".format(self.session_id, name)
 
         url = objects_url.format(sdk_url, "get/schema") + parms
         json_data = self.__get(url)
@@ -177,7 +177,8 @@ class sdk_init():
         from nexus_objects_create_schema_by_name().
         """
 
-        parms = "?address={}&format=json".format(address)
+        parms = "?session={}&address={}&format=json".format(self.session_id,
+            address)
 
         url = objects_url.format(sdk_url, "get/schema") + parms
         json_data = self.__get(url)
@@ -584,7 +585,7 @@ class sdk_init():
         Get supply chain item from blockchain using name specified in 'name'.
         """
 
-        parms = "?name={}".format(name)
+        parms = "?session={}&name={}".format(self.session_id, name)
 
         url = supply_url.format(sdk_url, "get/item") + parms
         json_data = self.__get(url)
@@ -605,7 +606,7 @@ class sdk_init():
         in 'address'.
         """
 
-        parms = "?address={}".format(address)
+        parms = "?session={}&address={}".format(self.session_id, address)
 
         url = supply_url.format(sdk_url, "get/item") + parms
         json_data = self.__get(url)
@@ -717,7 +718,7 @@ class sdk_init():
         List supply chain item history by name specified in 'name'.
         """
 
-        parms = "?name={}".format(name)
+        parms = "?session={}&name={}".format(self.session_id, name)
 
         url = supply_url.format(sdk_url, "list/item/history") + parms
         json_data = self.__get(url)
@@ -729,7 +730,7 @@ class sdk_init():
         List supply chain item history by address specified in 'address'.
         """
 
-        parms = "?address={}".format(address)
+        parms = "?session={}&address={}".format(self.session_id, address)
 
         url = supply_url.format(sdk_url, "list/item/history") + parms
         json_data = self.__get(url)
@@ -764,7 +765,7 @@ class sdk_init():
         Get asset with by name 'asset_name'.
         """
 
-        parms = "?name={}".format(asset_name)
+        parms = "?session={}&name={}".format(self.session_id, asset_name)
 
         url = assets_url.format(sdk_url, "get/asset") + parms
         json_data = self.__get(url)
@@ -784,7 +785,7 @@ class sdk_init():
         Get asset with by register address 'asset_address'.
         """
 
-        parms = "?address={}".format(asset_address)
+        parms = "?session={}&address={}".format(self.session_id, asset_address)
 
         url = assets_url.format(sdk_url, "get/asset") + parms
         json_data = self.__get(url)
@@ -911,7 +912,7 @@ class sdk_init():
         List assets history by name specified in 'name'.
         """
 
-        parms = "?name={}".format(asset_name)
+        parms = "?session={}&name={}".format(self.session_id, asset_name)
 
         url = assets_url.format(sdk_url, "list/asset/history") + parms
         json_data = self.__get(url)
@@ -923,7 +924,7 @@ class sdk_init():
         List assets history by address specified in 'address'.
         """
 
-        parms = "?address={}".format(asset_address)
+        parms = "?session={}&address={}".format(self.session_id, asset_address)
 
         url = assets_url.format(sdk_url, "list/asset/history") + parms
         json_data = self.__get(url)
@@ -966,7 +967,7 @@ class sdk_init():
         Get token by name specified in 'token_name'.
         """
 
-        parms = "?name={}".format(token_name)
+        parms = "?session={}&name={}".format(self.session_id, token_name)
 
         url = tokens_url.format(sdk_url, "get/token") + parms
         json_data = self.__get(url)
@@ -978,7 +979,7 @@ class sdk_init():
         Get token by address specified in 'token_address'.
         """
 
-        parms = "?address={}".format(token_address)
+        parms = "?session={}&address={}".format(self.session_id, token_address)
 
         url = tokens_url.format(sdk_url, "get/token") + parms
         json_data = self.__get(url)
@@ -990,7 +991,7 @@ class sdk_init():
         Get token account by name specified in 'account_name'.
         """
 
-        parms = "?name={}&type=account".format(account_name)
+        parms = "?session={}&name={}".format(self.session_id, account_name)
 
         url = tokens_url.format(sdk_url, "get/account") + parms
         json_data = self.__get(url)
@@ -1002,7 +1003,8 @@ class sdk_init():
         Get token account by address specified in 'account_address'.
         """
 
-        parms = "?address={}&type=account".format(account_address)
+        parms = "?session={}&address={}".format(self.session_id,
+            account_address)
 
         url = tokens_url.format(sdk_url, "get/account") + parms
         json_data = self.__get(url)
@@ -1288,6 +1290,33 @@ class sdk_init():
         parms = "?session={}".format(self.session_id)
 
         url = finance_url.format(sdk_url, "list/accounts") + parms
+        json_data = self.__get(url)
+        return(json_data)
+    #enddef
+
+    def nexus_finance_get_stakeinfo(self):
+        """
+        Get staking information for user.
+        """
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
+        parms = "?session={}".format(self.session_id)
+
+        url = finance_url.format(sdk_url, "get/stakeinfo") + parms
+        json_data = self.__get(url)
+        return(json_data)
+    #enddef
+
+    def nexus_finance_set_stake(self, amount):
+        """
+        Add amount specified in "amount" to staking account.
+        """
+        if (self.session_id == None): return(self.__error("Not logged in"))
+
+        parms = "?pin={}&session={}&amount={}".format(self.pin,
+            self.session_id, amount)
+
+        url = finance_url.format(sdk_url, "set/stake") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
