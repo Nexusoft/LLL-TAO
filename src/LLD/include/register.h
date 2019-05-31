@@ -64,7 +64,7 @@ namespace LLD
          *  @return True if write was successful, false otherwise.
          *
          **/
-        bool WriteState(const uint256_t& hashRegister, const TAO::Register::State& state, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool WriteState(const uint256_t& hashRegister, const TAO::Register::State& state, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** ReadState
@@ -77,7 +77,7 @@ namespace LLD
          *  @return True if read was successful, false otherwise.
          *
          **/
-        bool ReadState(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool ReadState(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** EraseState
@@ -90,7 +90,7 @@ namespace LLD
          *  @return True if erase was successful, false otherwise.
          *
          **/
-        bool EraseState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool EraseState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** IndexTrust
@@ -167,7 +167,7 @@ namespace LLD
          *  @return True if write was successful, false otherwise.
          *
          **/
-        bool WriteIdentifier(const uint256_t nIdentifier, const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool WriteIdentifier(const uint256_t nIdentifier, const uint256_t& hashRegister, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** EraseIdentifier
@@ -193,7 +193,7 @@ namespace LLD
          *  @return True if read was successful, false otherwise.
          *
          **/
-        bool ReadIdentifier(const uint256_t nIdentifier, uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool ReadIdentifier(const uint256_t nIdentifier, uint256_t& hashRegister, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** HasIdentifier
@@ -206,7 +206,7 @@ namespace LLD
          *  @return True if it exists, false otherwise.
          *
          **/
-        bool HasIdentifier(const uint256_t nIdentifier, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool HasIdentifier(const uint256_t nIdentifier, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** HasState
@@ -219,7 +219,7 @@ namespace LLD
          *  @return True if it exists, false otherwise.
          *
          **/
-        bool HasState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool HasState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** GetStates
@@ -232,7 +232,7 @@ namespace LLD
          *  @return True if any states were found, false otherwise.
          *
          **/
-        bool GetStates(const uint256_t& hashRegister, std::vector<TAO::Register::State>& states, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool GetStates(const uint256_t& hashRegister, std::vector<TAO::Register::State>& states, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
     };
 

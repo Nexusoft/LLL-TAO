@@ -144,30 +144,6 @@ namespace TAO
                 VALIDATION = 0x03
             };
         };
-
-
-        /** FLAGS
-         *
-         *  The flags on what to do to registers when executing operations.
-         *
-         **/
-        struct FLAGS
-        {
-            enum
-            {
-                /* Calculate the register's pre-states. */
-                PRESTATE  = (1 << 1),
-
-                /* Calculate the register post-state checksum. */
-                POSTSTATE = (1 << 2),
-
-                /* Write the registers post-state to database. */
-                WRITE     = (1 << 3),
-
-                /* Write the states into a mempool for checking pre-block. */
-                MEMPOOL   = (1 << 4)
-            };
-        };
     }
 }
 

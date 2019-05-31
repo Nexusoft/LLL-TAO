@@ -111,7 +111,7 @@ namespace LLD
          *  @return The contract object that was read.
          *
          **/
-        TAO::Operation::Contract ReadContract(const uint512_t& hashTransaction, const uint32_t nContract, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        TAO::Operation::Contract ReadContract(const uint512_t& hashTransaction, const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteTx
@@ -138,7 +138,7 @@ namespace LLD
          *  @return True if the transaction was successfully read, false otherwise.
          *
          **/
-        bool ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** EraseTx
@@ -421,7 +421,7 @@ namespace LLD
          *  @return True if the last was successfully written, false otherwise.
          *
          **/
-        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint64_t nContract, uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint64_t nContract, uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** HasProof
@@ -435,7 +435,7 @@ namespace LLD
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint64_t nContract, uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint64_t nContract, uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** EraseProof
@@ -449,7 +449,7 @@ namespace LLD
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint64_t nContract, uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction, const uint64_t nContract, uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteBlock

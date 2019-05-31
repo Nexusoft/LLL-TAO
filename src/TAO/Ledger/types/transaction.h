@@ -252,7 +252,7 @@ namespace TAO
              *  @return true if transaction is valid.
              *
              **/
-            bool Connect(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
+            bool Connect(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK) const;
 
 
             /** Disconnect
@@ -264,7 +264,7 @@ namespace TAO
              *  @return true if transaction is valid.
              *
              **/
-            bool Disconnect(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
+            bool Disconnect(const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK) const;
 
 
             /** IsCoinbase

@@ -146,7 +146,7 @@ namespace TAO
                 return false;
 
             /* Connect transaction in memory. */
-            if(!tx.Connect(TAO::RegisteR::FLAGS::MEMPOOL))
+            if(!tx.Connect(TAO::Ledger::FLAGS::MEMPOOL))
                 return false;
 
             {

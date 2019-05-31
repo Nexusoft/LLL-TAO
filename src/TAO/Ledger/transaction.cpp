@@ -126,7 +126,7 @@ namespace TAO
         {
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
-                if(!TAO::Register::Verify(contract, TAO::Register::FLAGS::MEMPOOL))
+                if(!TAO::Register::Verify(contract, TAO::Ledger::FLAGS::MEMPOOL))
                     return debug::error(FUNCTION, "transaction register layer failed to verify");
 
             return true;
@@ -154,7 +154,7 @@ namespace TAO
                 //Check for duplicate genesis
 
                 /* Write the Genesis to disk. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteGenesis(tx.hashGenesis, hash))
+                if((nFlags & TAO::Ledger::FLAGS::BLOCK) && !LLD::legDB->WriteGenesis(tx.hashGenesis, hash))
                     return debug::error(FUNCTION, "failed to write genesis");
             }
             else
@@ -187,7 +187,7 @@ namespace TAO
                     return debug::error(FUNCTION, "prev transaction prevhash mismatch");
 
                 /* Write specific transaction flags. */
-                if(nFlags & TAO::Register::FLAGS::WRITE)
+                if(nFlags & TAO::Ledger::FLAGS::BLOCK)
                 {
                     /* Check previous transaction next pointer. */
                     if(!txPrev.IsHead())

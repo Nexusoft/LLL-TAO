@@ -65,6 +65,24 @@ namespace TAO
 
             };
         };
+
+
+        /** FLAGS
+         *
+         *  The flags on what to do to registers when executing operations.
+         *
+         **/
+        struct FLAGS
+        {
+            enum
+            {
+                /* Write the registers post-state to database. */
+                BLOCK     = (1 << 1),
+
+                /* Write the states into a mempool for checking pre-block. */
+                MEMPOOL   = (1 << 2)
+            };
+        };
     }
 }
 

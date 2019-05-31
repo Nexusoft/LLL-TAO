@@ -42,7 +42,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
 
             //run the write operation.
             REQUIRE(Write(hash, stream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
-            REQUIRE(Write(hash, stream.Bytes(), TAO::Register::FLAGS::WRITE, tx));
+            REQUIRE(Write(hash, stream.Bytes(), TAO::Ledger::FLAGS::BLOCK, tx));
         }
 
         //check values all match
@@ -70,7 +70,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
 
             //run the write operation.
             REQUIRE(Write(hash, stream.Bytes(), TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE, tx));
-            REQUIRE(Write(hash, stream.Bytes(), TAO::Register::FLAGS::WRITE, tx));
+            REQUIRE(Write(hash, stream.Bytes(), TAO::Ledger::FLAGS::BLOCK, tx));
         }
 
         //check values all match

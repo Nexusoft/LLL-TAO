@@ -42,7 +42,7 @@ TEST_CASE( "OP::REGISTER  Benchmarks", "[operation]" )
             LLD::TxnBegin();
             for(int i = 0; i < vTx.size(); ++i)
             {
-                REQUIRE(TAO::Operation::Execute(vTx[i], TAO::Register::FLAGS::MEMPOOL));
+                REQUIRE(TAO::Operation::Execute(vTx[i], TAO::Ledger::FLAGS::MEMPOOL));
             }
             LLD::TxnCommit();
         }

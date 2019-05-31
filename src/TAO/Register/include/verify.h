@@ -42,7 +42,7 @@ namespace TAO
          *  @return true if verified correctly, false otherwise.
          *
          **/
-        bool Verify(const TAO::Operation::Contract& contract, const uint8_t nFlags = TAO::Register::FLAGS::WRITE);
+        bool Verify(const TAO::Operation::Contract& contract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
     }
 }
