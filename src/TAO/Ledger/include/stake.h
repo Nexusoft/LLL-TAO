@@ -15,24 +15,24 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_STAKE_H
 #define NEXUS_TAO_LEDGER_INCLUDE_STAKE_H
 
-#include <TAO/Ledger/types/sigchain.h> 
-#include <TAO/Ledger/types/state.h> 
-#include <TAO/Ledger/types/transaction.h> 
+#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/memory.h>
 
 
-/** 
+/**
  *  The functions defined here provide a single source for settings and calculations related to Nexus Proof of Stake.
- * 
- *  Settings-related functions replace direct references to defined constants in the code, allowing for 
- *  activation-triggered changes to be coded in one place rather than in multiple places throughout the code. 
+ *
+ *  Settings-related functions replace direct references to defined constants in the code, allowing for
+ *  activation-triggered changes to be coded in one place rather than in multiple places throughout the code.
  *  Any other changes, such as alternative forms of definition, would also be encapsulated within
  *  these functions and not require any change elsewhere in the code.
  *
  *  Similarly, functions that perform calculations isolate the definition of these calculations into a
  *  single location, supporting use in multiple places while only having the calculation itself
- *  coded once. 
+ *  coded once.
  *
  **/
 
@@ -57,7 +57,7 @@ namespace TAO
 
         /** MaxTrustScore
          *
-         *  Retrieve the setting for maximum trust score value allowed. 
+         *  Retrieve the setting for maximum trust score value allowed.
          *
          *  @return the current system setting for maximum trust score
          *
@@ -95,12 +95,12 @@ namespace TAO
         uint64_t TrustWeightBase();
 
 
-        /** GetTrustScore 
+        /** GetTrustScore
          *
          *  Calculate new trust score from parameters.
          *
          *  @param[in] nTrustPrev - previous trust score of trust account
-         *  @param[in] nStake - current stake balance  
+         *  @param[in] nStake - current stake balance
          *  @param[in] nBlockAge - current block age (time since last stake block for trust account)
          *
          *  @return new value for trust score
@@ -109,25 +109,25 @@ namespace TAO
         uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge);
 
 
-        /** GetUnstakePenalty 
+        /** GetUnstakePenalty
          *
-         *  Calculate new trust score that results from unstaking a portion of stake balance.
+         *  Calculate amount of trust score reduction that results from unstaking a portion of stake balance.
          *
          *  @param[in] nTrustPrev - previous trust score of trust account
          *  @param[in] nStakePrev - previous stake amount for trust account
-         *  @param[in] nStakeNew - new stake amount for trust account  
+         *  @param[in] nStakeNew - new stake amount for trust account
          *
-         *  @return new value for trust score
+         *  @return value trust score penalty
          *
          **/
         uint64_t GetUnstakePenalty(const uint64_t nTrustPrev, const uint64_t nStakePrev, const uint64_t nStakeNew);
 
 
-        /** BlockWeight 
+        /** BlockWeight
          *
          *  Calculate the proof of stake block weight for a given block age.
          *
-         *  @param[in] nBlockAge 
+         *  @param[in] nBlockAge
          *
          *  @return value for block weight
          *
@@ -135,11 +135,11 @@ namespace TAO
         double BlockWeight(const uint64_t nBlockAge);
 
 
-        /** GenesisWeight 
+        /** GenesisWeight
          *
          *  Calculate the equivalent proof of stake trust weight for staking Genesis with a given coin age.
          *
-         *  @param[in] nCoinAge 
+         *  @param[in] nCoinAge
          *
          *  @return value for trust weight
          *
@@ -147,11 +147,11 @@ namespace TAO
         double GenesisWeight(const uint64_t nCoinAge);
 
 
-        /** TrustWeight 
+        /** TrustWeight
          *
          *  Calculate the proof of stake trust weight for a given trust score.
          *
-         *  @param[in] nTrust - Trust score 
+         *  @param[in] nTrust - Trust score
          *
          *  @return value for trust weight
          *
@@ -159,7 +159,7 @@ namespace TAO
         double TrustWeight(const uint64_t nTrust);
 
 
-        /** GetCurrentThreshold 
+        /** GetCurrentThreshold
          *
          *  Calculate the current threshold value for Proof of Stake.
          *  This value must exceed required threshold for staking to proceed.
@@ -173,7 +173,7 @@ namespace TAO
         double GetCurrentThreshold(const uint64_t nBlockTime, const uint64_t nNonce);
 
 
-        /** GetRequiredThreshold 
+        /** GetRequiredThreshold
          *
          *  Calculate the minimum Required Energy Efficiency Threshold.
          *  Can only mine Proof of Stake when current threshold exceeds this value.
@@ -188,11 +188,11 @@ namespace TAO
         double GetRequiredThreshold(const double nTrustWeight, const double nBlockWeight, const uint64_t nStake);
 
 
-        /** StakeRate 
+        /** StakeRate
          *
          *  Calculate the stake rate corresponding to a given trust score.
          *
-         *  Returned value is absolute rate. To display a percent, multiply by 100. 
+         *  Returned value is absolute rate. To display a percent, multiply by 100.
          *
          *  @param[in] nTrust - Current trust score (ignored when fGenesis = true)
          *  @param[in] isGenesis - Set true if staking for Genesis transaction
@@ -203,7 +203,7 @@ namespace TAO
         double StakeRate(const uint64_t nTrust, const bool isGenesis = false);
 
 
-        /** GetCoinstakeReward 
+        /** GetCoinstakeReward
          *
          *  Calculate the coinstake reward for a given stake.
          *

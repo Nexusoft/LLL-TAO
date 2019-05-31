@@ -38,8 +38,8 @@ namespace TAO
     {
 
         /* Constants for use in staking calculations (move to TAO/Ledger/include/constants.h ?) */
-        const double LOG3 = log(3); 
-        const double LOG10 = log(10); 
+        const double LOG3 = log(3);
+        const double LOG10 = log(10);
 
 
         /* Retrieve the setting for maximum block age (time since last stake before trust decay begins. */
@@ -121,7 +121,7 @@ namespace TAO
         }
 
 
-        /* Calculate new trust score that results from unstaking a portion of stake balance. */
+        /* Calculate trust score penalty that results from unstaking a portion of stake balance. */
         uint64_t GetUnstakePenalty(const uint64_t nTrustPrev, const uint64_t nStakePrev, const uint64_t nStakeNew)
         {
             /* Unstake penalty only applies if stake balance is reduced */
@@ -131,9 +131,12 @@ namespace TAO
             /* When unstake, new trust score is fraction of old trust score equal to fraction of balance remaining.
              * (nStakeNew / nStakePrev) is fraction of balance remaining, multiply by old trust score to get new.
              * Example: have 100 stake and remove 30, new stake is 70 and new trust score is (70 / 100) * old trust score
-             * Multiplication is done first to allow this to use integer math. 
+             * Multiplication is done first to allow this to use integer math.
              */
-            return (nStakeNew * nTrustPrev) / nStakePrev;
+            uint64_t nTrustNew = (nStakeNew * nTrustPrev) / nStakePrev;
+
+            /* Penalty is amount of trust reduction */
+            return (nTrustPrev - nTrustNew);
         }
 
 
@@ -164,7 +167,7 @@ namespace TAO
         double TrustWeight(const uint64_t nTrust)
         {
             /* Trust Weight base is time for 50% score. Weight continues to grow with Trust Score until it reaches max of 90.0
-             * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base), 
+             * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base),
              * while requiring close to a year to reach maximum.
              */
             double nTrustWeightRatio = (double)nTrust / (double)TrustWeightBase();
@@ -216,7 +219,7 @@ namespace TAO
              * Thus, the appropriate way to write this (for clarity) would be: nStakeReward = nStake * nStakeRate * (nStakeTime / MaxTrustScore)
              * However, with integer arithmetic (nStakeTime / MaxTrustScore) would evaluate to 0 or 1, etc. and the overall nStakeReward would be erroneous
              *
-             * Therefore, we apply parentheses around the full multiplication portion before applying the division to get appropriate reward. 
+             * Therefore, we apply parentheses around the full multiplication portion before applying the division to get appropriate reward.
              */
             uint64_t nStakeReward = (nStake * nStakeRate * nStakeTime) / MaxTrustScore();
 
