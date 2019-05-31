@@ -69,6 +69,10 @@ namespace TAO
             /* Submit the payload object. */
             tx << (uint8_t)TAO::Operation::OP::CLAIM << hashTx;
 
+            /* If we are claiming a named asset, determine the name from the previous owner's sig chain 
+               and create a new Name record under our sig chain for the same name */
+            CreateNameFromTransfer(hashTx, user->Genesis(), tx);
+
             /* Execute the operations layer. */
             if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
                 throw APIException(-26, "Operations failed to execute");

@@ -131,6 +131,72 @@ namespace TAO
             /* Hash this in the same was as the caller would have to generate hashAddress */
             uint256_t hashName = LLC::SK256(vData);
 
+            /* First check to see whether the name already exists  */
+            TAO::Register::Object object;
+            if(LLD::regDB->ReadState(hashName, object, TAO::Register::FLAGS::MEMPOOL))
+                throw APIException(-23, "An object with this name already exists for this user.");
+
+            /* Create the Name register object pointing to hashRegister */
+            TAO::Register::Object name = TAO::Register::CreateName(strName, hashRegister);
+
+            /* Add the Name object register operation to the transaction */
+            tx << uint8_t(TAO::Operation::OP::REGISTER) << hashName << uint8_t(TAO::Register::REGISTER::OBJECT) << name.GetState();
+        }
+
+        /* Creates a new Name Object register for an object being transferred */
+        void CreateNameFromTransfer(const uint512_t& hashTransferTx, const uint256_t& hashGenesis, TAO::Ledger::Transaction& tx)
+        {
+            /* Firstly retrieve the transfer transaction that is being claimed so that we can get the address of the object */
+            TAO::Ledger::Transaction txTransfer;
+            /* Check disk of writing new block. */
+            if((!LLD::legDB->ReadTx(hashTransferTx, txTransfer) || !LLD::legDB->HasIndex(hashTransferTx)))
+                debug::error(FUNCTION, hashTransferTx.ToString(), " transfer tx doesn't exist or not indexed");
+            /* Check mempool or disk if not writing. */
+            else if(!TAO::Ledger::mempool.Get(hashTransferTx, txTransfer)
+            && !LLD::legDB->ReadTx(hashTransferTx, txTransfer))
+                debug::error(FUNCTION, hashTransferTx.ToString(), " transfer tx doesn't exist");
+
+            /* Extract the OP from tx. */
+            uint8_t TX_OP;
+            txTransfer.ssOperation >> TX_OP;
+
+            /* Extract the object register address  */
+            uint256_t hashObjectAddress;
+            txTransfer.ssOperation >> hashObjectAddress;    
+            
+            /* Ensure we are not claiming our own Transfer.  If we are then no need to create a Name object as we already have one */
+            if( txTransfer.hashGenesis != hashGenesis)
+            {
+                /* Now check the previous owners Name records to see if there was a Name for this object */
+                std::string strAssetName = GetObjectRegisterName( hashObjectAddress, txTransfer.hashGenesis, txTransfer.hashGenesis);
+                
+                /* If a name was found then create a Name record for the new owner using the same name */
+                if(!strAssetName.empty())
+                    CreateName( hashGenesis, strAssetName, hashObjectAddress, tx); 
+            }
+
+        }
+
+        /* Updates the register address of a Name object */
+        void UpdateName( const uint256_t& hashGenesis, const std::string strName, const uint256_t& hashRegister, TAO::Ledger::Transaction& tx)
+        {
+            /* Build vector to hold the genesis + name data for hashing */
+            std::vector<uint8_t> vData;
+
+            /* Insert the geneses hash of the transaction */
+            vData.insert(vData.end(), (uint8_t*)&hashGenesis, (uint8_t*)&hashGenesis + 32);
+            
+            /* Insert the name of from the Name object */
+            vData.insert(vData.end(), strName.begin(), strName.end());
+            
+            /* Hash this in the same was as the caller would have to generate hashAddress */
+            uint256_t hashName = LLC::SK256(vData);
+
+            /* First check to see whether the name already. */
+            TAO::Register::Object object;
+            if(LLD::regDB->ReadState(hashName, object, TAO::Register::FLAGS::MEMPOOL))
+                throw APIException(-23, "An object with this name already exists for this user.");
+
             /* Create the Name register object pointing to hashRegister */
             TAO::Register::Object name = TAO::Register::CreateName(strName, hashRegister);
 

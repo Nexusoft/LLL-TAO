@@ -47,6 +47,18 @@ namespace TAO
                         const uint256_t& hashRegister, TAO::Ledger::Transaction& tx );
 
 
+        /** CreateNameFromTransfer
+        *
+        *  Creates a new Name Object register for an object being transferred 
+        *   
+        *  @param[in] hashTransferTx The transaction ID of the transfer transaction being claimed
+        *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
+        *  @param[in] tx The Transaction that the register operation should be added to 
+        *   
+        **/
+        void CreateNameFromTransfer(const uint512_t& hashTransferTx, const uint256_t& hashGenesis, TAO::Ledger::Transaction& tx);
+
+
         /** RegisterAddressFromName
          *
          *  Resolves a register address from a name by looking up a Name object.
