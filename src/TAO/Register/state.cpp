@@ -29,7 +29,8 @@ namespace TAO
         : nVersion(1)
         , nType(0)
         , hashOwner(0)
-        , nTimestamp(runtime::unifiedtimestamp())
+        , nCreated(runtime::unifiedtimestamp())
+        , nModified(runtime::unifiedtimestamp())
         , vchState()
         , hashChecksum(0)
         , nReadPos(0)
@@ -43,7 +44,8 @@ namespace TAO
         : nVersion(1)
         , nType(nTypeIn)
         , hashOwner(0)
-        , nTimestamp(runtime::unifiedtimestamp())
+        , nCreated(runtime::unifiedtimestamp())
+        , nModified(runtime::unifiedtimestamp())
         , vchState()
         , hashChecksum(0)
         , nReadPos(0)
@@ -57,7 +59,8 @@ namespace TAO
         : nVersion(1)
         , nType(0)
         , hashOwner(0)
-        , nTimestamp(runtime::unifiedtimestamp())
+        , nCreated(runtime::unifiedtimestamp())
+        , nModified(runtime::unifiedtimestamp())
         , vchState(vchData)
         , nReadPos(0)
         {
@@ -69,7 +72,8 @@ namespace TAO
         : nVersion(1)
         , nType(nTypeIn)
         , hashOwner(hashOwnerIn)
-        , nTimestamp(runtime::unifiedtimestamp())
+        , nCreated(runtime::unifiedtimestamp())
+        , nModified(runtime::unifiedtimestamp())
         , vchState()
         , hashChecksum(0)
         , nReadPos(0)
@@ -82,7 +86,8 @@ namespace TAO
         : nVersion(1)
         , nType(nTypeIn)
         , hashOwner(hashOwnerIn)
-        , nTimestamp(runtime::unifiedtimestamp())
+        , nCreated(runtime::unifiedtimestamp())
+        , nModified(runtime::unifiedtimestamp())
         , vchState(vchData)
         , nReadPos(0)
         {
@@ -95,7 +100,8 @@ namespace TAO
         : nVersion(1)
         , nType(0)
         , hashOwner(0)
-        , nTimestamp(runtime::unifiedtimestamp())
+        , nCreated(runtime::unifiedtimestamp())
+        , nModified(runtime::unifiedtimestamp())
         , vchState()
         , hashChecksum(hashChecksumIn)
         , nReadPos(0)
@@ -129,7 +135,8 @@ namespace TAO
             nVersion     = 0;
             nType        = 0;
             hashOwner    = 0;
-            nTimestamp   = 0;
+            nCreated     = 0;
+            nModified    = 0;
             hashChecksum = 0;
 
             vchState.clear();
@@ -180,8 +187,12 @@ namespace TAO
                 return debug::error(FUNCTION, "register checksum (", GetHash(), ") mismatch (", hashChecksum, ")");
 
             /* Check the timestamp. */
-            if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
-                return debug::error(FUNCTION, "register timestamp too far in the future");
+            if(nCreated > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+                return debug::error(FUNCTION, "created timestamp too far in the future");
+
+            /* Check the timestamp. */
+            if(nModified > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+                return debug::error(FUNCTION, "modified timestamp too far in the future");
 
             /* Check register version. */
             if(nVersion != 1) //TODO: make this a global constant

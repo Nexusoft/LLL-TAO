@@ -28,116 +28,106 @@ namespace TAO
     namespace Operation
     {
 
-        /* Commits funds from a coinbase transaction. */
-        bool Genesis(const uint256_t& hashAddress, const uint64_t nCoinstakeReward, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        /* Commit the final state to disk. */
+        bool Genesis::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
         {
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashAddress))
-                return debug::error(FUNCTION, "cannot create genesis from register with reserved address");
-
             /* Check that a trust register exists. */
-            if(LLD::regDB->HasTrust(tx.hashGenesis))
+            if(LLD::regDB->HasTrust(state.hashOwner))
                 return debug::error(FUNCTION, "cannot create genesis when already exists");
 
-            TAO::Register::Object trustAccount;
+            /* Write the register to the database. */
+            if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
+                return debug::error(FUNCTION, "failed to write new state");
 
-            /* Write pre-states. */
-            if((nFlags & TAO::Register::FLAGS::PRESTATE))
-            {
-                
-                if(!LLD::regDB->ReadState(hashAddress, trustAccount, nFlags))
-                    return debug::error(FUNCTION, "register address doesn't exist ", hashAddress.ToString());
+            /* Update the register database with the index. */
+            if(!LLD::regDB->IndexTrust(state.hashOwner, hashAddress))
+                return debug::error(FUNCTION, "could not index the address to the genesis");
+        }
 
-                /* Set the register pre-states. */
-                tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << trustAccount;
-            }
 
-            /* Get pre-states on write. */
-            if(nFlags & TAO::Register::FLAGS::WRITE
-            || nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                /* Get the state byte. */
-                uint8_t nState = 0; //RESERVED
-                tx.ssRegister >> nState;
-
-                /* Check for the pre-state. */
-                if(nState != TAO::Register::STATES::PRESTATE)
-                    return debug::error(FUNCTION, "register script not in pre-state");
-
-                /* Get the pre-state. */
-                tx.ssRegister >> trustAccount;
-            }
-
-            /* Check ownership of register. */
-            if(trustAccount.hashOwner != tx.hashGenesis)
-                return debug::error(FUNCTION, tx.hashGenesis.ToString(), "caller not authorized to debit from register");
-
+        /* Commits funds from a coinbase transaction. */
+        bool Genesis::Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nTimestamp)
+        {
             /* Parse the account object register. */
-            if(!trustAccount.Parse())
+            if(!trust.Parse())
                 return debug::error(FUNCTION, "failed to parse trust account object register");
 
             /* Check that there is no stake. */
-            if(trustAccount.get<uint64_t>("stake") != 0)
+            if(trust.get<uint64_t>("stake") != 0)
                 return debug::error(FUNCTION, "cannot create genesis with already existing stake");
 
             /* Check that there is no trust. */
-            if(trustAccount.get<uint64_t>("trust") != 0)
+            if(trust.get<uint64_t>("trust") != 0)
                 return debug::error(FUNCTION, "cannot create genesis with already existing trust");
 
-            uint64_t nBalancePrev = trustAccount.get<uint64_t>("balance");
-
-            /* Check that account has balance. */
-            if(nBalancePrev == 0)
+            /* Check available balance to stake. */
+            if(trust.get<uint64_t>("balance") == 0)
                 return debug::error(FUNCTION, "cannot create genesis with no available balance");
 
             /* Move existing balance to stake. */
-            if(!trustAccount.Write("stake", nBalancePrev))
+            if(!trust.Write("stake", trust.get<uint64_t>("balance")))
                 return debug::error(FUNCTION, "stake could not be written to object register");
 
-            /* Write the new balance to object register. Previous balance was just moved to stake, so new balance is only the coinstake reward */
-            if(!trustAccount.Write("balance", nCoinstakeReward))
+            /* Write the stake reward to balance in object register. */
+            if(!trust.Write("balance", nReward))
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Update the state register's timestamp. */
-            trustAccount.nTimestamp = tx.nTimestamp;
-            trustAccount.SetChecksum();
+            trust.nModified = nTimestamp;
+            trust.SetChecksum();
 
             /* Check that the register is in a valid state. */
-            if(!trustAccount.IsValid())
-                return debug::error(FUNCTION, "memory address ", hashAddress.ToString(), " is in invalid state");
+            if(!trust.IsValid())
+                return debug::error(FUNCTION, "memory address is in invalid state");
 
-            /* Write post-state checksum. */
-            if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                tx.ssRegister << uint8_t(TAO::Register::STATES::POSTSTATE) << trustAccount.GetHash();
+            return true;
+        }
 
-            /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE
-            || nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                /* Check register post-state checksum. */
-                uint8_t nState = 0; //RESERVED
-                tx.ssRegister >> nState;
 
-                /* Check for the pre-state. */
-                if(nState != TAO::Register::STATES::POSTSTATE)
-                    return debug::error(FUNCTION, "register script not in post-state");
+        /* Verify trust validation rules and caller. */
+        bool Genesis::Verify(const Contract& contract)
+        {
+            /* Seek read position to first position. */
+            contract.Reset();
 
-                /* Get the post state checksum. */
-                uint64_t nChecksum;
-                tx.ssRegister >> nChecksum;
+            /* Get operation byte. */
+            uint8_t OP = 0;
+            contract >> OP;
 
-                /* Check for matching post states. */
-                if(nChecksum != trustAccount.GetHash())
-                    return debug::error(FUNCTION, "register script has invalid post-state");
+            /* Check operation byte. */
+            if(OP != OP::GENESIS)
+                return debug::error(FUNCTION, "called with incorrect OP");
 
-                /* Write the register to the database. */
-                if(!LLD::regDB->WriteState(hashAddress, trustAccount, nFlags))
-                    return debug::error(FUNCTION, "failed to write new state");
+            /* Extract the address from contract. */
+            uint256_t hashAddress = 0;
+            contract >> hashAddress;
 
-                /* Update the register database with the index. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->IndexTrust(tx.hashGenesis, hashAddress))
-                    return debug::error(FUNCTION, "could not index the address to the genesis");
-            }
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashAddress))
+                return debug::error(FUNCTION, "cannot write to register with reserved address");
+
+            /* Get the state byte. */
+            uint8_t nState = 0; //RESERVED
+            contract >>= nState;
+
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::PRESTATE)
+                return debug::error(FUNCTION, "register script not in pre-state");
+
+            /* Get the pre-state. */
+            TAO::Register::State state;
+            contract >>= state;
+
+            /* Check that pre-state is valid. */
+            if(!state.IsValid())
+                return debug::error(FUNCTION, "pre-state is in invalid state");
+
+            /* Check ownership of register. */
+            if(state.hashOwner != contract.hashCaller)
+                return debug::error(FUNCTION, "caller not authorized ", contract.hashCaller.SubString());
+
+            /* Seek read position to first position. */
+            contract.Seek(1);
 
             return true;
         }

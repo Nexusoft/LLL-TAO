@@ -12,33 +12,29 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_OPERATION_INCLUDE_EXECUTE_H
-#define NEXUS_TAO_OPERATION_INCLUDE_EXECUTE_H
+#ifndef NEXUS_TAO_REGISTER_INCLUDE_CALCULATE_H
+#define NEXUS_TAO_REGISTER_INCLUDE_CALCULATE_H
 
-#include <LLC/types/uint1024.h>
+#include <TAO/Ledger/types/transaction.h>
 
 /* Global TAO namespace. */
 namespace TAO
 {
-    /* Operation Layer namespace. */
-    namespace Operation
+
+    /* Register Layer namespace. */
+    namespace Register
     {
 
-        /* Forward declarations. */
-        class Contract;
-
-
-        /** Execute
+        /** Calculate
          *
-         *  Executes a given contract
+         *  Calculate the pre-states and post-state checksums for a contract.
          *
-         *  @param[in] contract The contract to execute
-         *  @param[in] nFlags The flags to execute with.
+         *  @param[in] contract The contract to calculate for
          *
-         *  @return True if operations executed successfully, false otherwise.
+         *  @return true if verified correctly, false otherwise.
          *
          **/
-        bool Execute(const Contract& contract, const uint8_t nFlags);
+        bool Calculate(Contract& contract);
 
     }
 }

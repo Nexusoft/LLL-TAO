@@ -25,22 +25,6 @@ namespace TAO
     namespace Ledger
     {
 
-        /* The best block height in the chain. */
-        std::atomic<uint32_t> ChainState::nBestHeight;
-
-
-        /* The best trust in the chain. */
-        std::atomic<uint64_t> ChainState::nBestChainTrust;
-
-
-        /* The best hash in the chain. */
-        memory::atomic<uint1024_t> ChainState::hashBestChain;
-
-
-        /** Hardened Checkpoint. **/
-        memory::atomic<uint1024_t> ChainState::hashCheckpoint;
-
-
         /* Flag to tell if initial blocks are downloading. */
         bool ChainState::Synchronizing()
         {

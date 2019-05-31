@@ -111,6 +111,44 @@ namespace TAO
             return true;
         }
 
+        /* Accept a transaction object into the main chain. */
+        bool Transaction::Accept(const uint8_t nFlags) const
+        {
+            /* Run through all the contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Verify the ledger layer. */
+                if(!TAO::Register::Verify(contract, nFlags))
+                    return debug::error(FUNCTION, "transaction register layer failed to verify");
+            }
+
+            return true;
+        }
+
+
+        /* Connect a transaction object to the main chain. */
+        bool Transaction::Connect(const uint8_t nFlags) const
+        {
+            /* Run through all the contracts. */
+            for(const auto& contract : vContracts)
+                if(!TAO::Operation::Execute(contract, nFlags))
+                    return false;
+
+            return true;
+        }
+
+
+        /* Disconnect a transaction object to the main chain. */
+        bool Transaction::Disconnect() const
+        {
+            /* Run through all the contracts. */
+            for(const auto& contract : vContracts)
+                if(!TAO::Register::Rollback(contract))
+                    return false;
+
+            return true;
+        }
+
 
         /* Determines if the transaction is a coinbase transaction. */
         bool Transaction::IsCoinbase() const

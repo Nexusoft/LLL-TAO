@@ -13,7 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/debit.h>
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
@@ -26,52 +27,29 @@ namespace TAO
     namespace Operation
     {
 
-        /* Authorizes funds from an account to an account */
-        bool Debit(const uint256_t& hashFrom, const uint256_t& hashTo, const uint64_t nAmount,
-                   const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        /* Commit the final state to disk. */
+        bool Debit::Commit(const TAO::Register::Object& account,
+                           const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags)
         {
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashFrom))
-                return debug::error(FUNCTION, "cannot debit from register with reserved address");
-
-            /* Check for debit to and from same account. */
-            if(hashFrom == hashTo)
-                return debug::error(FUNCTION, "cannot debit to the same address as from");
-
-            /* Read the register from the database. */
-            TAO::Register::Object account;
-
-            /* Write pre-states. */
-            if((nFlags & TAO::Register::FLAGS::PRESTATE))
+            /* Only commit events on new block. */
+            if(nFlags & FLAGS::WRITE)
             {
-                if(!LLD::regDB->ReadState(hashFrom, account, nFlags))
-                    return debug::error(FUNCTION, "register address doesn't exist ", hashFrom.ToString());
+                /* Read the owner of register. */
+                if(!LLD::regDB->ReadState(hashTo, state, nFlags))
+                    return debug::error(FUNCTION, "failed to read register to");
 
-                tx.ssRegister << (uint8_t)TAO::Register::STATES::PRESTATE << account;
+                /* Commit an event for other sigchain. */
+                if(!LLD::legDB->WriteEvent(state.hashOwner, nFlags))
+                    return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
             }
 
-            /* Get pre-states on write. */
-            if(nFlags & TAO::Register::FLAGS::WRITE
-            || nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                /* Get the state byte. */
-                uint8_t nState = 0; //RESERVED
-                tx.ssRegister >> nState;
+            return LLD::regDB->WriteState(hashAddress, account, nFlags);
+        }
 
-                /* Check for the pre-state. */
-                if(nState != TAO::Register::STATES::PRESTATE)
-                    return debug::error(FUNCTION, "register script not in pre-state");
 
-                /* Get the pre-state. */
-                tx.ssRegister >> account;
-            }
-
-            /* Check ownership of register. */
-            if(account.hashOwner != tx.hashGenesis)
-                return debug::error(FUNCTION, tx.hashGenesis.ToString(), " caller not authorized to debit from register");
-
-            //TODO: sanitize the account to and ensure that it will be creditable
-
+        /* Authorizes funds from an account to an account */
+        bool Debit::Execute(TAO::Register::Object &account, const uint64_t nAmount, const uint64_t nTimestamp)
+        {
             /* Parse the account object register. */
             if(!account.Parse())
                 return debug::error(FUNCTION, "failed to parse account object register");
@@ -82,57 +60,80 @@ namespace TAO
 
             /* Check the account balance. */
             if(nAmount > account.get<uint64_t>("balance"))
-                return debug::error(FUNCTION, hashFrom.ToString(), " account doesn't have sufficient balance");
+                return debug::error(FUNCTION, "account ", hashFrom.SubString(), " doesn't have sufficient balance");
 
             /* Write the new balance to object register. */
             if(!account.Write("balance", account.get<uint64_t>("balance") - nAmount))
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
-            /* Update the state register's timestamp. */
-            account.nTimestamp = tx.nTimestamp;
+            /* Update the register's checksum. */
+            account.nModified = nTimestamp;
             account.SetChecksum();
 
             /* Check that the register is in a valid state. */
             if(!account.IsValid())
-                return debug::error(FUNCTION, "memory address ", hashFrom.ToString(), " is in invalid state");
+                return debug::error(FUNCTION, "memory address is in invalid state");
 
-            /* Write post-state checksum. */
-            if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << account.GetHash();
+            return true;
+        }
 
-            /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE
-            || nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                /* Get the state byte. */
-                uint8_t nState = 0; //RESERVED
-                tx.ssRegister >> nState;
 
-                /* Check for the pre-state. */
-                if(nState != TAO::Register::STATES::POSTSTATE)
-                    return debug::error(FUNCTION, "register script not in post-state");
+        /* Verify debit validation rules and caller. */
+        bool Debit::Verify(const Contract& contract)
+        {
+            /* Seek read position to first position. */
+            contract.Reset();
 
-                /* Get the post state checksum. */
-                uint64_t nChecksum;
-                tx.ssRegister >> nChecksum;
+            /* Get operation byte. */
+            uint8_t OP = 0;
+            contract >> OP;
 
-                /* Check for matching post states. */
-                if(nChecksum != account.GetHash())
-                    return debug::error(FUNCTION, "register script has invalid post-state");
+            /* Check operation byte. */
+            if(OP != OP::DEBIT)
+                return debug::error(FUNCTION, "called with incorrect OP");
 
-                /* Read the register from the database. */
-                TAO::Register::State stateTo;
-                if(!LLD::regDB->ReadState(hashTo, stateTo, nFlags))
-                    return debug::error(FUNCTION, "register address doesn't exist ", hashTo.ToString());
+            /* Extract the address from contract. */
+            uint256_t hashFrom = 0;
+            contract >> hashFrom;
 
-                /* Write the register to the database. */
-                if(!LLD::regDB->WriteState(hashFrom, account, nFlags))
-                    return debug::error(FUNCTION, "failed to write new state");
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashFrom))
+                return debug::error(FUNCTION, "cannot transfer reserved address");
 
-                /* Write the event to the ledger database. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteEvent(stateTo.hashOwner, tx.GetHash()))
-                    return debug::error(FUNCTION, "failed to write event in register DB");
-            }
+            /* Extract the address from contract. */
+            uint256_t hashTo = 0;
+            contract >> hashTo;
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashTo))
+                return debug::error(FUNCTION, "cannot transfer register to reserved address");
+
+            /* Check for debit to and from same account. */
+            if(hashFrom == hashTo)
+                return debug::error(FUNCTION, "cannot debit to the same address as from");
+
+            /* Get the state byte. */
+            uint8_t nState = 0; //RESERVED
+            contract >>= nState;
+
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::PRESTATE)
+                return debug::error(FUNCTION, "register script not in pre-state");
+
+            /* Get the pre-state. */
+            TAO::Register::State state;
+            contract >>= state;
+
+            /* Check that pre-state is valid. */
+            if(!state.IsValid())
+                return debug::error(FUNCTION, "pre-state is in invalid state");
+
+            /* Check ownership of register. */
+            if(state.hashOwner != contract.hashCaller)
+                return debug::error(FUNCTION, "caller not authorized ", contract.hashCaller.SubString());
+
+            /* Seek read position to first position. */
+            contract.Seek(1);
 
             return true;
         }

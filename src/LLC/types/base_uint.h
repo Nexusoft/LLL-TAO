@@ -296,6 +296,14 @@ public:
     std::string ToString() const;
 
 
+    /** SubString
+     *
+     *  Returns a sub-string representation of the base_uint object.
+     *
+     **/
+    std::string SubString(const uint32_t nSize = 20) const;
+
+
     /** begin
      *
      *  Returns a byte pointer to the begin of the base_uint object.

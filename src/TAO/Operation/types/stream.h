@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_OPERATION_INCLUDE_STREAM_H
-#define NEXUS_TAO_OPERATION_INCLUDE_STREAM_H
+#ifndef NEXUS_TAO_OPERATION_TYPES_STREAM_H
+#define NEXUS_TAO_OPERATION_TYPES_STREAM_H
 
 #include <vector>
 #include <cstdint>

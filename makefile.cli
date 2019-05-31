@@ -336,7 +336,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_users_unlock.o \
 		build/API_users_users.o \
 		build/API_utils_utils.o \
-		build/Ledger_base_minter.o \
+		build/Ledger_minter.o \
 		build/Ledger_block.o \
 		build/Ledger_chainstate.o \
 		build/Ledger_checkpoints.o \
@@ -354,14 +354,12 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_tritium.o \
 		build/Ledger_tritium_minter.o \
 		build/Operation_append.o \
-		build/Operation_authorize.o \
 		build/Operation_claim.o \
-		build/Operation_coinbase.o \
+		build/Operation_create.o \
 		build/Operation_credit.o \
 		build/Operation_debit.o \
         build/Operation_execute.o \
 		build/Operation_genesis.o \
-		build/Operation_register.o \
 		build/Operation_transfer.o \
 		build/Operation_trust.o \
 		build/Operation_validate.o \

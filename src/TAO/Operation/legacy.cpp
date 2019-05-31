@@ -13,12 +13,11 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/trust.h>
+#include <TAO/Operation/include/legacy.h>
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
-
-#include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/stake.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -28,42 +27,46 @@ namespace TAO
     namespace Operation
     {
 
-        /*  Commit the final state to disk. */
-        bool Trust::Commit(const TAO::Register::State& state, const uint8_t nFlags)
+        /* Commit the final state to disk. */
+        bool Legacy::Commit(const TAO::Register::Object& account, const uint256_t& hashAddress, const uint8_t nFlags)
         {
-            return LLD::regDB->WriteTrust(state.hashOwner, state);
+            return LLD::regDB->WriteState(hashAddress, account, nFlags);
         }
 
 
-        /* Commits funds from a coinbase transaction. */
-        bool Trust::Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore, const uint64_t nTimestamp)
+        /* Authorizes funds from an account to an account */
+        bool Legacy::Execute(TAO::Register::Object &account, const uint64_t nAmount, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
-            if(!trust.Parse())
-                return debug::error(FUNCTION, "Failed to parse account object register");
+            if(!account.Parse())
+                return debug::error(FUNCTION, "failed to parse account object register");
 
-            /* Write the new trust to object register. */
-            if(!trust.Write("trust", nScore))
-                return debug::error(FUNCTION, "trust could not be written to object register");
+            /* Check for standard types. */
+            if(account.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                return debug::error(FUNCTION, "cannot debit from non-standard object register");
+
+            /* Check the account balance. */
+            if(nAmount > account.get<uint64_t>("balance"))
+                return debug::error(FUNCTION, "account ", hashFrom.SubString(), " doesn't have sufficient balance");
 
             /* Write the new balance to object register. */
-            if(!trust.Write("balance", trust.get<uint64_t>("balance") + nReward))
+            if(!account.Write("balance", account.get<uint64_t>("balance") - nAmount))
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
-            /* Update the state register's timestamp. */
-            trust.nModified = nTimestamp;
-            trust.SetChecksum();
+            /* Update the register's checksum. */
+            account.nModified = nTimestamp;
+            account.SetChecksum();
 
             /* Check that the register is in a valid state. */
-            if(!trust.IsValid())
-                return debug::error(FUNCTION, "trust address is in invalid state");
+            if(!account.IsValid())
+                return debug::error(FUNCTION, "memory address is in invalid state");
 
             return true;
         }
 
 
-        /* Verify trust validation rules and caller. */
-        bool Trust::Verify(const Contract& contract)
+        /* Verify debit validation rules and caller. */
+        bool Legacy::Verify(const Contract& contract)
         {
             /* Seek read position to first position. */
             contract.Reset();
@@ -73,8 +76,16 @@ namespace TAO
             contract >> OP;
 
             /* Check operation byte. */
-            if(OP != OP::TRUST)
+            if(OP != OP::LEGACY)
                 return debug::error(FUNCTION, "called with incorrect OP");
+
+            /* Extract the address from contract. */
+            uint256_t hashFrom = 0;
+            contract >> hashFrom;
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashFrom))
+                return debug::error(FUNCTION, "cannot transfer reserved address");
 
             /* Get the state byte. */
             uint8_t nState = 0; //RESERVED
@@ -85,15 +96,15 @@ namespace TAO
                 return debug::error(FUNCTION, "register script not in pre-state");
 
             /* Get the pre-state. */
-            TAO::Register::State trust;
-            contract >>= trust;
+            TAO::Register::State state;
+            contract >>= state;
 
             /* Check that pre-state is valid. */
             if(!state.IsValid())
                 return debug::error(FUNCTION, "pre-state is in invalid state");
 
             /* Check ownership of register. */
-            if(trust.hashOwner != contract.hashCaller)
+            if(state.hashOwner != contract.hashCaller)
                 return debug::error(FUNCTION, "caller not authorized ", contract.hashCaller.SubString());
 
             /* Seek read position to first position. */

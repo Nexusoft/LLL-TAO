@@ -13,11 +13,10 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/claim.h>
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/state.h>
-#include <TAO/Register/include/system.h>
 
 #include <TAO/Ledger/types/mempool.h>
 
@@ -29,108 +28,97 @@ namespace TAO
     namespace Operation
     {
 
-        /* Transfers a register between sigchains. */
-        bool Claim(const uint512_t& hashTx, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        /* Commit the final state to disk. */
+        bool Claim::Commit(const TAO::Register::State& state,
+            const uint256_t& hashAddress, const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
         {
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(tx.hashGenesis))
-                return debug::error(FUNCTION, "cannot claim register to reserved address");
+            /* Check if this transfer is already claimed. */
+            if(LLD::legDB->HasProof(hashAddress, hashTx, nContract, nFlags))
+                return debug::error(FUNCTION, "transfer is already claimed");
 
-            /* Check mempool or disk if not writing. */
-            TAO::Ledger::Transaction txClaim;
-            if(!TAO::Ledger::mempool.Get(hashTx, txClaim) && !LLD::legDB->ReadTx(hashTx, txClaim))
-                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " tx doesn't exist");
+            /* Write the claimed proof. */
+            if(!LLD::legDB->WriteProof(hashAddress, hashTx, nContract, nFlags))
+                return debug::error(FUNCTION, "transfer is already claimed");
 
-            /* Check disk of writing new block. */
-            if((nFlags & TAO::Register::FLAGS::WRITE) && !txClaim.IsConfirmed())
-                return debug::error(FUNCTION, hashTx.ToString().substr(0, 20), " prev tx is not confirmed");
+            return LLD::regDB->WriteState(hashAddress, state, nFlags);
+        }
 
-            /* Extract the state from tx. */
-            uint8_t TX_OP;
-            txClaim.ssOperation >> TX_OP;
 
-            /* Check for transfer. */
-            if(TX_OP != OP::TRANSFER)
+        /* Claims a register from a transfer. */
+        bool Claim::Execute(TAO::Register::State &state,
+            const uint256_t& hashClaim, const uint64_t nTimestamp)
+        {
+            /* Make sure the register claim is in SYSTEM pending from a transfer. */
+            if(state.hashOwner != 0)
+                return debug::error(FUNCTION, "can't claim untransferred register");
+
+            /* Set the new owner of the register. */
+            state.hashOwner  = hashClaim;
+            state.nModified = nTimestamp;
+            state.SetChecksum();
+
+            /* Check register for validity. */
+            if(!state.IsValid())
+                return debug::error(FUNCTION, "post-state is in invalid state");
+
+            return true;
+        }
+
+
+        /* Verify claim validation rules and caller. */
+        bool Claim::Verify(const Contract& contract, const Contract& claim)
+        {
+            /* Seek claim read position to first. */
+            claim.Reset();
+
+            /* Get operation byte. */
+            uintu_t OP = 0;
+            claim >> OP;
+
+            /* Check operation byte. */
+            if(OP != OP::TRANSFER)
                 return debug::error(FUNCTION, "cannot claim a register with no transfer");
 
             /* Extract the address  */
-            uint256_t hashAddress;
-            txClaim.ssOperation >> hashAddress;
+            uint256_t hashAddress = 0;
+            claim >> hashAddress;
 
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashAddress))
                 return debug::error(FUNCTION, "cannot claim register with reserved address");
 
-            /* Check if this transfer is already claimed. */
-            if(LLD::legDB->HasProof(hashAddress, hashTx, nFlags))
-                return debug::error(FUNCTION, "transfer is already claimed");
-
             /* Read the register transfer recipient. */
-            uint256_t hashTransfer;
-            txClaim.ssOperation >> hashTransfer;
+            uint256_t hashTransfer = 0;
+            claim >> hashTransfer;
 
-            /* Check for claim back to self. */
-            if(txClaim.hashGenesis == tx.hashGenesis)
-            {
-                /* Erase the previous event if claimed back to self. */
-                //if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->EraseEvent(hashTransfer))
-                //    return debug::error(FUNCTION, "can't erase event for return to self");
-            }
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashTransfer))
+                return debug::error(FUNCTION, "cannot claim register to reserved address");
+
+            /* Get the state byte. */
+            uint8_t nState = 0; //RESERVED
+            claim >>= nState;
+
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::PRESTATE)
+                return debug::error(FUNCTION, "register script not in pre-state");
+
+            /* Get the pre-state. */
+            TAO::Register::State state;
+            claim >>= state;
 
             /* Check the addresses match. */
-            else if(hashTransfer != tx.hashGenesis)
-                return debug::error(FUNCTION, "claim genesis mismatch with transfer address");
+            if(state.hashOwner != contract.hashCaller //claim to self
+            && hashTransfer    != contract.hashCaller //calim to transfer
+            && hashTransfer    != ~uint256_t(0))      //claim to wildcard (anyone)
+                return debug::error(FUNCTION, "claim public-id mismatch with transfer address");
 
-            /* Read the register from the database. */
-            TAO::Register::State state = TAO::Register::State();
-            if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
-                return debug::error(FUNCTION, "Register ", hashAddress.ToString(), " doesn't exist in register DB");
-
-            /* Make sure the register claim is in SYSTEM pending from a transfer. */
-            if(state.hashOwner != 0)
-                return debug::error(FUNCTION, tx.hashGenesis.ToString(), " not authorized to transfer register");
-
-            /* Set the new owner of the register. */
-            state.hashOwner  = tx.hashGenesis;
-            state.nTimestamp = tx.nTimestamp;
-            state.SetChecksum();
-
-            /* Check register for validity. */
+            /* Check that pre-state is valid. */
             if(!state.IsValid())
-                return debug::error(FUNCTION, "memory address ", hashAddress.ToString(), " is in invalid state");
+                return debug::error(FUNCTION, "pre-state is in invalid state");
 
-            /* Write post-state checksum. */
-            if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                tx.ssRegister << (uint8_t)TAO::Register::STATES::POSTSTATE << state.GetHash();
-
-            /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE
-            || nFlags & TAO::Register::FLAGS::MEMPOOL)
-            {
-                /* Get the state byte. */
-                uint8_t nState; //RESERVED
-                tx.ssRegister >> nState;
-
-                /* Check for the pre-state. */
-                if(nState != TAO::Register::STATES::POSTSTATE)
-                    return debug::error(FUNCTION, "register script not in post-state");
-
-                /* Get the post state checksum. */
-                uint64_t nChecksum;
-                tx.ssRegister >> nChecksum;
-
-                /* Check for matching post states. */
-                if(nChecksum != state.GetHash())
-                    return debug::error(FUNCTION, "register script has invalid post-state");
-
-                /* Write the register to the database. */
-                if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
-                    return debug::error(FUNCTION, "failed to write new state");
-
-                /* Write the proof to the database. */
-                if(!LLD::legDB->WriteProof(hashAddress, hashTx, nFlags))
-                    return debug::error(FUNCTION, "failed to write new state");
-            }
+            /* Seek read position to first position. */
+            claim.Reset();
 
             return true;
         }

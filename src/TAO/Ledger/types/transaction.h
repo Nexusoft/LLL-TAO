@@ -17,7 +17,8 @@ ________________________________________________________________________________
 
 #include <vector>
 
-#include <TAO/Operation/include/stream.h>
+#include <TAO/Operation/types/contract.h>
+
 #include <TAO/Register/types/stream.h>
 #include <TAO/Register/include/enum.h>
 
@@ -43,15 +44,10 @@ namespace TAO
          **/
         class Transaction
         {
+            /** For disk indexing on contract. **/
+            std::vector<TAO::Operation::Contract> vContracts;
+
         public:
-
-            /** The operations that create post-states. **/
-            TAO::Operation::Stream ssOperation;
-
-
-            /** The register pre-states. **/
-            TAO::Register::Stream  ssRegister;
-
 
             /** The transaction version. **/
             uint32_t nVersion;
@@ -98,11 +94,8 @@ namespace TAO
             /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
-                /* Operations layer. */
-                READWRITE(ssOperation);
-
-                /* Register layer. */
-                READWRITE(ssRegister);
+                /* Contracts layers. */
+                READWRITE(vContracts);
 
                 /* Ledger layer */
                 READWRITE(nVersion);
@@ -120,16 +113,24 @@ namespace TAO
                 READWRITE(nNextType);
                 READWRITE(vchPubKey);
 
-                /* Don't include signature in txid. */
+                /* Handle for when not getting hash. */
                 if(!(nSerType & SER_GETHASH))
+                {
                     READWRITE(vchSig);
+
+                    /* When reading and writing transaciton, build memory only data for contracts. */
+                    for(auto& contract : vContracts)
+                    {
+                        contract.hashCaller = hashGenesis;
+                        contract.nTimestamp = nTimestamp;
+                    }
+                }
             )
 
 
             /** Default Constructor. **/
             Transaction()
-            : ssOperation()
-            , ssRegister()
+            : vContracts()
             , nVersion(1)
             , nSequence(0)
             , nTimestamp(runtime::unifiedtimestamp())
@@ -143,32 +144,16 @@ namespace TAO
             , vchSig()
             {}
 
-            /** Operator Overload <<
-             *
-             *  Serializes data into vchOperations
-             *
-             *  @param[in] obj The object to serialize into ledger data
-             *
-             **/
-            template<typename Type>
-            Transaction& operator<<(const Type& obj)
-            {
-                /* Serialize to the stream. */
-                ssOperation << obj;
-
-                return (*this);
-            }
-
 
             /** Operator Overload >
              *
              *  Used for sorting transactions by sequence.
              *
              **/
-             bool operator>(const Transaction& tx) const
-             {
-                 return nSequence > tx.nSequence;
-             }
+            bool operator>(const Transaction& tx) const
+            {
+                return nSequence > tx.nSequence;
+            }
 
 
              /** Operator Overload <
@@ -176,10 +161,56 @@ namespace TAO
               *  Used for sorting transactions by sequence.
               *
               **/
-              bool operator<(const Transaction& tx) const
-              {
-                  return nSequence < tx.nSequence;
-              }
+            bool operator<(const Transaction& tx) const
+            {
+                return nSequence < tx.nSequence;
+            }
+
+
+            /** Operator Overload []
+             *
+             *  Access for the contract operator overload.
+             *  This is for read-only objects.
+             *
+             **/
+            const Contract& operator[](const uint32_t n) const
+            {
+                /* Check contract bounds. */
+                if(n >= vContracts.size())
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
+
+                /* Check timestamp memory values. */
+                if(vContracts[n].nTimestamp != nTimestamp)
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "contract timestamp mismatch"));
+
+                /* Check caller memory values. */
+                if(vContracts[n].hashCaller != hashGenesis)
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "contract caller mismatch"));
+
+                return vContracts[n];
+            }
+
+
+            /** Operator Overload []
+             *
+             *  Write access fot the contract operator overload.
+             *  This handles writes to create new contracts.
+             *
+             **/
+            Contract& operator[](const uint32_t n)
+            {
+                /* Allocate a new contract if on write. */
+                if(n >= vContracts.size())
+                    vContracts.resize(n + 1);
+
+                /* Set the caller hash. */
+                vContracts[n].hashCaller  = hashGenesis;
+
+                /* Set the contract timestamp. */
+                vContracts[n].nTimestamp  = nTimestamp;
+
+                return vContracts[n];
+            }
 
 
             /** Check
@@ -190,6 +221,42 @@ namespace TAO
              *
              **/
             bool Check() const;
+
+
+            /** Accept
+             *
+             *  Accept a transaction object into the main chain.
+             *
+             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool Accept(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
+
+
+            /** Connect
+             *
+             *  Connect a transaction object to the main chain.
+             *
+             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool Connect(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
+
+
+            /** Disconnect
+             *
+             *  Disconnect a transaction object to the main chain.
+             *
+             *  @param[in] nFlags Flag to tell whether transaction is a mempool check.
+             *
+             *  @return true if transaction is valid.
+             *
+             **/
+            bool Disconnect(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
 
 
             /** IsCoinbase

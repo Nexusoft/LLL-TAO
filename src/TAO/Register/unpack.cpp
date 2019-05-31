@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/stream.h>
+#include <TAO/Operation/types/stream.h>
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/operations.h>
 

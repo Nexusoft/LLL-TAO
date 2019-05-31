@@ -36,19 +36,19 @@ namespace TAO
                 RESERVED   = 0x00,
 
                 /* This type of register cannot have the data changed */
-                READONLY = 0x01,
+                READONLY   = 0x01,
 
                 /* This type of register can only be appended to. */
-                APPEND   = 0x02,
+                APPEND     = 0x02,
 
                 /* This type of register is just raw data that can be changed. */
-                RAW      = 0x03,
+                RAW        = 0x03,
 
                 /* This type of register has its data fields enforced by operations layer. */
-                OBJECT   = 0x04,
+                OBJECT     = 0x04,
 
                 /* This type of register handles general accounts and DEBITS / CREDITS */
-                SYSTEM   = 0x05,
+                SYSTEM     = 0x05,
             };
         };
 

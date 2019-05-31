@@ -12,10 +12,10 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_OPERATION_INCLUDE_VALIDATE_H
-#define NEXUS_TAO_OPERATION_INCLUDE_VALIDATE_H
+#ifndef NEXUS_TAO_OPERATION_TYPES_VALIDATE_H
+#define NEXUS_TAO_OPERATION_TYPES_VALIDATE_H
 
-#include <TAO/Operation/include/stream.h>
+#include <TAO/Operation/types/stream.h>
 
 #include <TAO/Register/types/basevm.h>
 #include <TAO/Register/types/value.h>
