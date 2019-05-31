@@ -704,51 +704,21 @@ namespace TAO
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
 
-                    /* Check if in memory pool. */
+                    /* Read from disk. */
                     TAO::Ledger::Transaction tx;
                     if(!LLD::legDB->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction is not on disk");
 
-                    /* Set the proper next pointer. */
-                    tx.hashNextTx = STATE::UNCONFIRMED;
-                    if(!LLD::legDB->WriteTx(hash, tx))
-                        return debug::error(FUNCTION, "failed to write valid next pointer");
-
-                    /* Rollback the register layer. */
-                    if(!TAO::Register::Rollback(tx))
-                        return debug::error(FUNCTION, "transaction register layer failed to rollback");
-
-                    /* Erase last for genesis. */
-                    if(tx.IsFirst())
-                    {
-                        /* Erase last hash pointer. */
-                        if(!LLD::legDB->EraseLast(tx.hashGenesis))
-                            return debug::error(FUNCTION, "failed to erase last hash");
-                    }
-                    else
-                    {
-                        /* Make sure the previous transaction is on disk. */
-                        TAO::Ledger::Transaction txPrev;
-                        if(!LLD::legDB->ReadTx(tx.hashPrevTx, txPrev))
-                            return debug::error(FUNCTION, "prev transaction not on disk");
-
-                        /* Set the proper next pointer. */
-                        txPrev.hashNextTx = STATE::HEAD;
-                        if(!LLD::legDB->WriteTx(tx.hashPrevTx, txPrev))
-                            return debug::error(FUNCTION, "failed to write valid next pointer");
-
-                        /* Write proper last hash index. */
-                        if(!LLD::legDB->WriteLast(tx.hashGenesis, tx.hashPrevTx))
-                            return debug::error(FUNCTION, "failed to write last hash");
-
-                    }
+                    /* Disconnect the transaction. */
+                    if(!tx.Disconnect())
+                        return debug::error(FUNCTION, "failed to disconnect transaction");
                 }
                 else if(proof.first == TYPE::LEGACY_TX)
                 {
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
 
-                    /* Check if in memory pool. */
+                    /* Read from disk. */
                     Legacy::Transaction tx;
                     if(!LLD::legacyDB->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction is not on disk");
