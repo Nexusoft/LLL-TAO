@@ -71,6 +71,10 @@ namespace TAO
                         if(prestate != state)
                             return debug::error(FUNCTION, "OP::WRITE: pre-state verification failed");
 
+                        /* Check contract account */
+                        if(contract.hashCaller != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::WRITE: not authorized ", contract.hashCaller.SubString());
+
                         return true;
                     }
 
@@ -102,6 +106,10 @@ namespace TAO
                         /* Check that the checksums match. */
                         if(prestate != state)
                             return debug::error(FUNCTION, "OP::APPEND: pre-state verification failed");
+
+                        /* Check contract account */
+                        if(contract.hashCaller != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::APPEND: not authorized ", contract.hashCaller.SubString());
 
                         return true;
                     }
@@ -141,6 +149,10 @@ namespace TAO
                         /* Check that the checksums match. */
                         if(prestate != state)
                             return debug::error(FUNCTION, "OP::TRANSFER: pre-state verification failed");
+
+                        /* Check contract account */
+                        if(contract.hashCaller != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::TRANSFER: not authorized ", contract.hashCaller.SubString());
 
                         break;
                     }
@@ -215,6 +227,10 @@ namespace TAO
                         if(prestate != state)
                             return debug::error(FUNCTION, "OP::TRUST: pre-state verification failed");
 
+                        /* Check contract account */
+                        if(contract.hashCaller != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::TRUST: not authorized ", contract.hashCaller.SubString());
+
                         break;
                     }
 
@@ -247,6 +263,10 @@ namespace TAO
                         if(prestate != state)
                             return debug::error(FUNCTION, "OP::GENESIS: pre-state verification failed");
 
+                        /* Check contract account */
+                        if(contract.hashCaller != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::GENESIS: not authorized ", contract.hashCaller.SubString());
+
                         break;
                     }
 
@@ -278,6 +298,10 @@ namespace TAO
                         /* Check that the checksums match. */
                         if(prestate != state)
                             return debug::error(FUNCTION, "OP::DEBIT: pre-state verification failed");
+
+                        /* Check contract account */
+                        if(contract.hashCaller != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::DEBIT: not authorized ", contract.hashCaller.SubString());
 
                         break;
                     }
@@ -314,6 +338,10 @@ namespace TAO
                         /* Check that the checksums match. */
                         if(prestate != state)
                             return debug::error(FUNCTION, "OP::CREDIT: pre-state verification failed");
+
+                        /* Check contract account */
+                        if(contract.hashCaller != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::CREDIT: not authorized ", contract.hashCaller.SubString());
 
                         break;
                     }

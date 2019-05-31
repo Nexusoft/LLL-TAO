@@ -589,16 +589,12 @@ namespace TAO
                     if(tx.IsConfirmed())
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
 
-                    /* Check for first. */
-                    if(tx.IsFirst())
-                    {
-                        //Check for duplicate genesis
+                    /* Connect the transaction. */
+                    if(!tx.Connect())
+                        return debug::error(FUNCTION, "failed to connect transaction");
 
-                        /* Write the Genesis to disk. */
-                        if(!LLD::legDB->WriteGenesis(tx.hashGenesis, hash))
-                            return debug::error(FUNCTION, "failed to write genesis");
-                    }
-                    else
+                    /* Check for first. */
+                    if(!tx.IsFirst())
                     {
                         /* Check for the last hash. */
                         uint512_t hashLast = 0;
@@ -627,27 +623,11 @@ namespace TAO
 
                             return debug::error(FUNCTION, "last hash hash mismatch");
                         }
-
-                        /* Set the previous transactions next hash. */
-                        txPrev.hashNextTx = hash;
-
-                        /* Write the next pointer. */
-                        if(!LLD::legDB->WriteTx(tx.hashPrevTx, txPrev))
-                            return debug::error(FUNCTION, "failed to write last tx");
                     }
-
-                    /* Set the proper next pointer. */
-                    tx.hashNextTx = STATE::HEAD;
-                    if(!LLD::legDB->WriteTx(hash, tx))
-                        return debug::error(FUNCTION, "failed to write valid next pointer");
 
                     /* Write the last to disk. */
                     if(!LLD::legDB->WriteLast(tx.hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write last hash");
-
-                    /* Execute the operations layers. */
-                    if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::WRITE))
-                        return debug::error(FUNCTION, "transaction operation layer failed to execute");
                 }
                 else if(proof.first == TYPE::LEGACY_TX)
                 {

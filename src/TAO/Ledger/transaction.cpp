@@ -45,6 +45,7 @@ namespace TAO
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
         bool Transaction::Check() const
         {
+
             /* Checks for coinbase. */
             if(IsCoinbase())
             {
@@ -111,63 +112,107 @@ namespace TAO
             return true;
         }
 
+
         /* Accept a transaction object into the main chain. */
-        bool Transaction::Accept(const uint8_t nFlags) const
+        bool Transaction::Accept() const
         {
             /* Check the transaction first. */
             if(!Check())
                 return false;
 
-            /* Make sure the previous transaction is on disk. */
-            TAO::Ledger::Transaction txPrev; //TODO: check nFlags for mempool to check mempool
-            if(!mempool.Get(hashPrevTx, txPrev) && !LLD::legDB->ReadTx(hashPrevTx, txPrev))
-                return debug::error(FUNCTION, "prev transaction not on disk");
-
-            /* Double check sequence numbers here. */
-            if(txPrev.nSequence + 1 != nSequence)
-                return debug::error(FUNCTION, "prev transaction incorrect sequence");
-
-            /* Check the previous next hash that is being claimed. */
-            if(txPrev.hashNext != PrevHash())
-                return debug::error(FUNCTION, "next hash mismatch with previous transaction");
-
-            /* Check the previous sequence number. */
-            if(txPrev.nSequence + 1 != nSequence)
-                return debug::error(FUNCTION, "prev sequence ", txPrev.nSequence, " broken ", nSequence);
-
-            /* Check the previous genesis. */
-            if(txPrev.hashGenesis != hashGenesis)
-                return debug::error(FUNCTION,
-                    "genesis ", txPrev.hashGenesis.SubString(),
-                    " broken ",     tx.hashGenesis.SubString());
-
-            /* Check previous transaction next pointer. */
-            if(!txPrev.IsHead())
-                return debug::error(FUNCTION, "prev transaction not head of sigchain");
-
-            /* Check previous transaction from disk hash. */
-            if(txPrev.GetHash() != hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
-                return debug::error(FUNCTION, "prev transaction prevhash mismatch");
-
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
             {
                 /* Verify the register layer. */
-                if(!TAO::Register::Verify(contract, nFlags))
+                if(!TAO::Register::Verify(contract, TAO::Register::FLAGS::MEMPOOL))
                     return debug::error(FUNCTION, "transaction register layer failed to verify");
 
                 /* Verify the operations layer. */
-                if(!TAO::Operation::Verify(contract, nFlags))
+                if(!TAO::Operation::Verify(contract, TAO::Register::FLAGS::MEMPOOL))
                     return debug::error(FUNCTION, "transaction register layer failed to verify");
             }
 
-            return true;
+            return mempool.Accept(GetHash(), *this);
         }
 
 
         /* Connect a transaction object to the main chain. */
         bool Transaction::Connect(const uint8_t nFlags) const
         {
+            /* Check for first. */
+            if(tx.IsFirst())
+            {
+                //Check for duplicate genesis
+
+                /* Write the Genesis to disk. */
+                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::legDB->WriteGenesis(tx.hashGenesis, hash))
+                    return debug::error(FUNCTION, "failed to write genesis");
+            }
+            else
+            {
+
+                /* Make sure the previous transaction is on disk or mempool. */
+                TAO::Ledger::Transaction txPrev;
+                if(nFlags & TAO::Register::FLAGS::MEMPOOL)
+                {
+                    /* Check the memory pool. */
+                    if(!mempool.Get(hashPrevTx, txPrev) && !LLD::legDB->ReadTx(hashPrevTx, txPrev))
+                        return debug::error(FUNCTION, "failed to get prev transaction");
+                }
+                else if(nFlags & TAO::Register::FLAGS::WRITE)
+                {
+                    /* Check the disk if connecting in a block. */
+                    if(!LLD::legDB->ReadTx(hashPrevTx, txPrev))
+                        return debug::error(FUNCTION, "prev transaction not on disk");
+                }
+                else
+                    return debug::error(FUNCTION, "invalid flags on connect");
+
+                /* Double check sequence numbers here. */
+                if(txPrev.nSequence + 1 != nSequence)
+                    return debug::error(FUNCTION, "prev transaction incorrect sequence");
+
+                /* Check the previous next hash that is being claimed. */
+                if(txPrev.hashNext != PrevHash())
+                    return debug::error(FUNCTION, "next hash mismatch with previous transaction");
+
+                /* Check the previous sequence number. */
+                if(txPrev.nSequence + 1 != nSequence)
+                    return debug::error(FUNCTION, "prev sequence ", txPrev.nSequence, " broken ", nSequence);
+
+                /* Check the previous genesis. */
+                if(txPrev.hashGenesis != hashGenesis)
+                    return debug::error(FUNCTION,
+                        "genesis ", txPrev.hashGenesis.SubString(),
+                        " broken ",     tx.hashGenesis.SubString());
+
+                /* Check previous transaction from disk hash. */
+                if(txPrev.GetHash() != hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
+                    return debug::error(FUNCTION, "prev transaction prevhash mismatch");
+
+                /* Write specific transaction flags. */
+                if(nFlags & TAO::Register::FLAGS::WRITE)
+                {
+                    /* Check previous transaction next pointer. */
+                    if(!txPrev.IsHead())
+                        return debug::error(FUNCTION, "prev transaction not head of sigchain");
+
+                    /* Set the previous transactions next hash. */
+                    txPrev.hashNextTx = hash;
+
+                    /* Write the next pointer. */
+                    if(!LLD::legDB->WriteTx(tx.hashPrevTx, txPrev))
+                        return debug::error(FUNCTION, "failed to write last tx");
+
+                    /* Set the proper next pointer. */
+                    hashNextTx = STATE::HEAD;
+                    if(!LLD::legDB->WriteTx(hash, *this))
+                        return debug::error(FUNCTION, "failed to write valid next pointer");
+                }
+
+                return true;
+            }
+
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
                 if(!TAO::Operation::Execute(contract, nFlags))

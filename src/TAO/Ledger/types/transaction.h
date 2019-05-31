@@ -232,7 +232,7 @@ namespace TAO
              *  @return true if transaction is valid.
              *
              **/
-            bool Accept(const uint8_t nFlags = TAO::Register::FLAGS::WRITE) const;
+            bool Accept() const;
 
 
             /** Connect
