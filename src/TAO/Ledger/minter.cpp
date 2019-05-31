@@ -579,7 +579,7 @@ namespace TAO
              *
              * This process also calculates the appropriate stake reward and encodes it into the post-state.
              */
-            if (!TAO::Operation::Execute(candidateBlock.producer, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
+            if (!candidateBlock.producer.Build())
                 return debug::error(FUNCTION, "Operation layer failed to execute pre-state/post-state for coinstake transaction");
 
             /* Sign the block producer */

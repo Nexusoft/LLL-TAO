@@ -29,7 +29,7 @@ TEST_CASE( "OP::REGISTER  Benchmarks", "[operation]" )
             tx.hashGenesis = LLC::GetRand256();
             tx << uint8_t(OP::REGISTER) << LLC::GetRand256() << uint8_t(TAO::Register::REGISTER::READONLY) << vData;
 
-            REQUIRE(TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             vTx.push_back(tx);
         }
@@ -42,7 +42,7 @@ TEST_CASE( "OP::REGISTER  Benchmarks", "[operation]" )
             LLD::TxnBegin();
             for(int i = 0; i < vTx.size(); ++i)
             {
-                REQUIRE(TAO::Operation::Execute(vTx[i], TAO::Ledger::FLAGS::MEMPOOL));
+                REQUIRE(vTx[i].Connect(TAO::Ledger::FLAGS::MEMPOOL));
             }
             LLD::TxnCommit();
         }

@@ -162,7 +162,7 @@ namespace TAO
             tx << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashProof << hashTo << nAmount;
 
             /* Execute the operations layer. */
-            if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
+            if(!tx.Build())
                 throw APIException(-26, "Operations failed to execute.");
 
             /* Sign the transaction. */

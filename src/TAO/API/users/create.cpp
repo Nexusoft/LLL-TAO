@@ -86,7 +86,7 @@ namespace TAO
             tx << uint8_t(TAO::Operation::OP::REGISTER) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
 
             /* Calculate the prestates and poststates. */
-            if(!TAO::Operation::Execute(tx, TAO::Register::FLAGS::PRESTATE | TAO::Register::FLAGS::POSTSTATE))
+            if(!tx.Build())
             {
                 user.free();
                 throw APIException(-26, "Operations failed to execute");
