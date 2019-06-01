@@ -77,8 +77,8 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::WRITE: pre-state verification failed");
 
                         /* Check contract account */
-                        if(contract.hashCaller != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::WRITE: not authorized ", contract.hashCaller.SubString());
+                        if(contract.Caller() != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::WRITE: not authorized ", contract.Caller().SubString());
 
                         /* Write the state to memory map. */
                         mapStates[hashAddress] = state;
@@ -120,8 +120,8 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::APPEND: pre-state verification failed");
 
                         /* Check contract account */
-                        if(contract.hashCaller != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::APPEND: not authorized ", contract.hashCaller.SubString());
+                        if(contract.Caller() != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::APPEND: not authorized ", contract.Caller().SubString());
 
                         /* Write the state to memory map. */
                         mapStates[hashAddress] = state;
@@ -170,8 +170,8 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::TRANSFER: pre-state verification failed");
 
                         /* Check contract account */
-                        if(contract.hashCaller != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::TRANSFER: not authorized ", contract.hashCaller.SubString());
+                        if(contract.Caller() != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::TRANSFER: not authorized ", contract.Caller().SubString());
 
                         /* Write the state to memory map. */
                         mapStates[hashAddress] = state;
@@ -184,7 +184,7 @@ namespace TAO
                     case TAO::Operation::OP::CLAIM:
                     {
                         /* Seek to address location. */
-                        contract.Seek(68);
+                        contract.Seek(69);
 
                         /* Get the address to update. */
                         uint256_t hashAddress = 0;
@@ -226,7 +226,7 @@ namespace TAO
                     case TAO::Operation::OP::COINBASE:
                     {
                         /* Seek through coinbase data. */
-                        contract.Seek(80);
+                        contract.Seek(49);
 
                         break;
                     }
@@ -249,11 +249,11 @@ namespace TAO
 
                         /* Check temporary memory states first. */
                         State state;
-                        if(mapStates.count(contract.hashCaller)) //TODO: check here for duplicate register address (coudl have a collision between genesis and address)
-                            state = mapStates[contract.hashCaller];
+                        if(mapStates.count(contract.Caller())) //TODO: check here for duplicate register address (coudl have a collision between genesis and address)
+                            state = mapStates[contract.Caller()];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadTrust(contract.hashCaller, state))
+                        else if(!LLD::regDB->ReadTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::TRUST: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -261,11 +261,11 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::TRUST: pre-state verification failed");
 
                         /* Check contract account */
-                        if(contract.hashCaller != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::TRUST: not authorized ", contract.hashCaller.SubString());
+                        if(contract.Caller() != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::TRUST: not authorized ", contract.Caller().SubString());
 
                         /* Write the state to memory map. */
-                        mapStates[contract.hashCaller] = state;
+                        mapStates[contract.Caller()] = state;
 
                         break;
                     }
@@ -292,8 +292,8 @@ namespace TAO
 
                         /* Check temporary memory states first. */
                         State state;
-                        if(mapStates.count(contract.hashCaller))
-                            state = mapStates[contract.hashCaller];
+                        if(mapStates.count(contract.Caller()))
+                            state = mapStates[contract.Caller()];
 
                         /* Read the register from database. */
                         else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
@@ -304,11 +304,11 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::GENESIS: pre-state verification failed");
 
                         /* Check contract account */
-                        if(contract.hashCaller != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::GENESIS: not authorized ", contract.hashCaller.SubString());
+                        if(contract.Caller() != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::GENESIS: not authorized ", contract.Caller().SubString());
 
                         /* Write the state to memory map. */
-                        mapStates[contract.hashCaller] = state;
+                        mapStates[contract.Caller()] = state;
 
                         break;
                     }
@@ -347,8 +347,8 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::DEBIT: pre-state verification failed");
 
                         /* Check contract account */
-                        if(contract.hashCaller != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::DEBIT: not authorized ", contract.hashCaller.SubString());
+                        if(contract.Caller() != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::DEBIT: not authorized ", contract.Caller().SubString());
 
                         /* Write the state to memory map. */
                         mapStates[hashAddress] = state;
@@ -398,8 +398,8 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::CREDIT: pre-state verification failed");
 
                         /* Check contract account */
-                        if(contract.hashCaller != prestate.hashOwner)
-                            return debug::error(FUNCTION, "OP::CREDIT: not authorized ", contract.hashCaller.SubString());
+                        if(contract.Caller() != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::CREDIT: not authorized ", contract.Caller().SubString());
 
                         /* Write the state to memory map. */
                         mapStates[hashAddress] = state;

@@ -136,16 +136,16 @@ namespace TAO
                             TAO::Register::State state;
                             state.nVersion   = 1;
                             state.nType      = nType;
-                            state.hashOwner  = contract.hashCaller;
+                            state.hashOwner  = contract.Caller();
 
                             /* Calculate the new operation. */
-                            if(!TAO::Operation::Create::Execute(state, vchData, contract.nTimestamp))
+                            if(!TAO::Operation::Create::Execute(state, vchData, contract.Timestamp()))
                                 return false;
 
                             /* Generate return object. */
                             json::json obj;
                             obj["type"]       = "CREATE";
-                            obj["owner"]      = contract.hashCaller.ToString();
+                            obj["owner"]      = contract.Caller().ToString();
 
                             /* Complete object parameters. */
                             obj["modified"]   = state.nModified;
@@ -191,7 +191,7 @@ namespace TAO
                             /* Generate return object. */
                             json::json obj;
                             obj["type"]       = "MODIFY";
-                            obj["owner"]      = contract.hashCaller.ToString();
+                            obj["owner"]      = contract.Caller().ToString();
 
                             /* Get the flag. */
                             uint8_t nState = 0;
@@ -202,7 +202,7 @@ namespace TAO
                             contract >>= state;
 
                             /* Handle for append registers. */
-                            if(!TAO::Operation::Append::Execute(state, vchData, contract.nTimestamp))
+                            if(!TAO::Operation::Append::Execute(state, vchData, contract.Timestamp()))
                                 return false;
 
                             /* Complete object parameters. */
@@ -251,7 +251,7 @@ namespace TAO
                             /* Generate return object. */
                             json::json obj;
                             obj["type"]       = "CLAIM";
-                            obj["owner"]      = contract.hashCaller.ToString();
+                            obj["owner"]      = contract.Caller().ToString();
 
                             /* Get the flag. */
                             uint8_t nState = 0;
@@ -288,7 +288,7 @@ namespace TAO
                             /* Generate return object. */
                             json::json obj;
                             obj["type"]       = "TRANSFER";
-                            obj["owner"]      = contract.hashCaller.ToString();
+                            obj["owner"]      = contract.Caller().ToString();
 
                             /* Get the flag. */
                             uint8_t nState = 0;

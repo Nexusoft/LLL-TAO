@@ -82,7 +82,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::CREATE) << hashRegister << uint8_t(REGISTER::APPEND) << std::vector<uint8_t>(10, 0xff);
+            tx[0] << uint8_t(OP::CREATE) << hashRegister << uint8_t(REGISTER::RAW) << std::vector<uint8_t>(10, 0xff);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -318,7 +318,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::CLAIM) << hashTx;
+            tx[0] << uint8_t(OP::CLAIM) << hashTx << uint32_t(0) << hashRegister;
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -378,7 +378,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::CLAIM) << hashTx;
+            tx[0] << uint8_t(OP::CLAIM) << hashTx << uint32_t(0) << hashRegister;
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -451,7 +451,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::CLAIM) << hashTx;
+            tx[0] << uint8_t(OP::CLAIM) << hashTx << uint32_t(0) << hashRegister;
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -535,7 +535,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            Object account = CreateAccount(11);
+            Object account = CreateAccount(hashRegister);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
@@ -634,7 +634,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx.nTimestamp  = runtime::timestamp();
 
                 //create object
-                Object account = CreateAccount(11);
+                Object account = CreateAccount(hashRegister);
 
                 //payload
                 tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
@@ -693,7 +693,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx.nTimestamp  = runtime::timestamp();
 
                 //payload
-                tx[0] << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashAccount << uint64_t(500);
+                tx[0] << uint8_t(OP::CREDIT) << hashTx << uint32_t(0) << hashAccount << hashRegister << uint64_t(500);
 
                 //generate the prestates and poststates
                 REQUIRE(tx.Build());
@@ -745,7 +745,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx.nTimestamp  = runtime::timestamp();
 
                 //payload
-                tx[0] << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashRegister << uint64_t(500);
+                tx[0] << uint8_t(OP::CREDIT) << hashTx << uint32_t(0) << hashRegister << hashRegister << uint64_t(500);
 
                 //generate the prestates and poststates
                 REQUIRE(tx.Build());
@@ -766,18 +766,6 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                     //check that proofs are removed
                     REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx, 0));
-
-                    /*
-                    {
-                        //check event is discarded
-                        uint32_t nSequence;
-                        REQUIRE(LLD::legDB->ReadSequence(hashGenesis2, nSequence));
-
-                        //check for tx
-                        TAO::Ledger::Transaction txEvent;
-                        REQUIRE(!LLD::legDB->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
-                    }
-                    */
                 }
 
                 //rollback
@@ -821,7 +809,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx.nTimestamp  = runtime::timestamp();
 
                 //payload
-                tx[0] << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashAccount << uint64_t(500);
+                tx[0] << uint8_t(OP::CREDIT) << hashTx << uint32_t(0) << hashAccount << hashRegister << uint64_t(500);
 
                 //generate the prestates and poststates
                 REQUIRE(tx.Build());
@@ -855,7 +843,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx.nTimestamp  = runtime::timestamp();
 
                 //payload
-                tx[0] << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashAccount << uint64_t(500);
+                tx[0] << uint8_t(OP::CREDIT) << hashTx << uint32_t(0) << hashAccount << hashRegister << uint64_t(500);
 
                 //generate the prestates and poststates
                 REQUIRE(!tx.Build());
@@ -871,7 +859,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx.nTimestamp  = runtime::timestamp();
 
                 //payload
-                tx[0] << uint8_t(OP::CREDIT) << hashTx << hashRegister << hashRegister << uint64_t(500);
+                tx[0] << uint8_t(OP::CREDIT) << hashTx << uint32_t(0) << hashRegister << hashRegister << uint64_t(500);
 
                 //generate the prestates and poststates
                 REQUIRE(!tx.Build());
@@ -937,7 +925,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::CREDIT) << hashTx << hashGenesis << hashTrust << uint64_t(5000);
+            tx[0] << uint8_t(OP::CREDIT) << hashTx << uint32_t(0) << hashTrust << hashGenesis << uint64_t(5000);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());

@@ -142,8 +142,8 @@ namespace TAO
             contract >>= account;
 
             /* Check contract account */
-            if(contract.hashCaller != account.hashOwner)
-                return debug::error(FUNCTION, "no write permissions for caller ", contract.hashCaller.SubString());
+            if(contract.Caller() != account.hashOwner)
+                return debug::error(FUNCTION, "no write permissions for caller ", contract.Caller().SubString());
 
             /* Parse the account. */
             if(!account.Parse())
@@ -160,7 +160,7 @@ namespace TAO
             if(OP == OP::COINBASE)
             {
                 /* Check that the proof is the genesis. */
-                if(hashProof != contract.hashCaller)
+                if(hashProof != contract.Caller())
                     return debug::error(FUNCTION, "proof for coinbase needs to be genesis");
 
                 /* Extract the coinbase public-id. */
@@ -168,7 +168,7 @@ namespace TAO
                 debit  >> hashPublic;
 
                 /* Make sure the claimed account is the debited account. */
-                if(hashPublic != contract.hashCaller)
+                if(hashPublic != contract.Caller())
                     return debug::error(FUNCTION, "cannot claim coinbase from different sigchain");
 
                 /* Get the coinbase amount. */
@@ -282,7 +282,7 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to parse owner object register");
 
             /* Compare the last timestamp update to transaction timestamp. */
-            if(proof.nModified > contract.nTimestamp)
+            if(proof.nModified > contract.Timestamp())
                 return debug::error(FUNCTION, "temporal proof is stale");
 
             /* Check that owner is of a valid type. */
@@ -290,7 +290,7 @@ namespace TAO
                 return debug::error(FUNCTION, "owner object is not a token");
 
             /* Check the ownership of proof register. */
-            if(proof.hashOwner != contract.hashCaller)
+            if(proof.hashOwner != contract.Caller())
                 return debug::error(FUNCTION, "not authorized to use this temporal proof");
 
             /* Get the state register of this register's owner. */

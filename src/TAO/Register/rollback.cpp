@@ -184,7 +184,7 @@ namespace TAO
                     case TAO::Operation::OP::COINBASE:
                     {
                         /* Seek through coinbase data. */
-                        contract.Seek(80);
+                        contract.Seek(49);
 
                         break;
                     }
@@ -206,7 +206,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Write the register from database. */
-                        if(!LLD::regDB->WriteTrust(contract.hashCaller, state))
+                        if(!LLD::regDB->WriteTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::TRUST: failed to rollback to pre-state");
 
                         break;
@@ -237,7 +237,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::GENESIS: failed to rollback to pre-state");
 
                         /* Erase the trust index. */
-                        if(!LLD::regDB->EraseTrust(contract.hashCaller))
+                        if(!LLD::regDB->EraseTrust(contract.Caller()))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to erase trust index");
 
                         break;
@@ -271,8 +271,13 @@ namespace TAO
                         if(!LLD::regDB->WriteState(hashFrom, state))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to rollback to pre-state");
 
+                        /* Read the owner of register. */
+                        TAO::Register::State stateTo;
+                        if(!LLD::regDB->ReadState(hashTo, stateTo))
+                            return debug::error(FUNCTION, "failed to read register to");
+
                         /* Write the event to the ledger database. */
-                        if(!LLD::legDB->EraseEvent(hashTo))
+                        if(!LLD::legDB->EraseEvent(stateTo.hashOwner))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to rollback event");
 
                         break;

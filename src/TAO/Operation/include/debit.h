@@ -50,6 +50,7 @@ namespace TAO
              *  Commit the final state to disk.
              *
              *  @param[in] account The account to commit.
+             *  @param[in] hashTx The tx-id of calling transaction.
              *  @param[in] hashFrom The register address to commit.
              *  @param[in] hashTo The register address to.
              *  @param[in] nFlags Flags to the LLD instance.
@@ -57,7 +58,7 @@ namespace TAO
              *  @return true if successful.
              *
              **/
-            bool Commit(const TAO::Register::Object& account,
+            bool Commit(const TAO::Register::Object& account, const uint512_t& hashTx,
                         const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags);
 
 

@@ -90,11 +90,55 @@ namespace TAO
             std::vector<uint8_t> vchSig;
 
 
-            /** Serialization **/
-            IMPLEMENT_SERIALIZE
+            //this is seperate because we need to pass our reference into transaction object for unserialize
+            SERIALIZE
             (
                 /* Contracts layers. */
                 READWRITE(vContracts);
+
+                /* Ledger layer */
+                READWRITE(nVersion);
+                READWRITE(nSequence);
+                READWRITE(nTimestamp);
+                READWRITE(hashNext);
+                READWRITE(hashGenesis);
+                READWRITE(hashPrevTx);
+
+                /* Only write hash next when to disk. */
+                if(!(nSerType & SER_GETHASH) && (nSerType & SER_LLD))
+                    READWRITE(hashNextTx);
+
+                READWRITE(nKeyType);
+                READWRITE(nNextType);
+                READWRITE(vchPubKey);
+
+                /* Handle for when not getting hash. */
+                if(!(nSerType & SER_GETHASH))
+                {
+                    READWRITE(vchSig);
+                }
+            )
+
+
+            //special method for giving contracts a reference of this transaction
+            UNSERIALIZE
+            (
+                vContracts.clear();
+                uint64_t nSize = ReadCompactSize(s);
+                uint64_t i = 0;
+                uint64_t nMid = 0;
+                while (nMid < nSize)
+                {
+                    nMid += static_cast<uint64_t>(5000000) / sizeof(TAO::Operation::Contract);
+
+                    if (nMid > nSize)
+                        nMid = nSize;
+                    for (; i < nMid; ++i)
+                    {
+                        vContracts.emplace_back(TAO::Operation::Contract(*this));
+                        ::Unserialize(s, vContracts[i], nSerType, nSerVersion);
+                    }
+                }
 
                 /* Ledger layer */
                 READWRITE(nVersion);
@@ -171,12 +215,6 @@ namespace TAO
                 if(n >= vContracts.size())
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
 
-                /* Set the caller hash. */
-                vContracts[n].hashCaller  = hashGenesis;
-
-                /* Set the contract timestamp. */
-                vContracts[n].nTimestamp  = nTimestamp;
-
                 return vContracts[n];
             }
 
@@ -190,14 +228,8 @@ namespace TAO
             TAO::Operation::Contract& operator[](const uint32_t n)
             {
                 /* Allocate a new contract if on write. */
-                if(n >= vContracts.size())
-                    vContracts.resize(n + 1);
-
-                /* Set the caller hash. */
-                vContracts[n].hashCaller  = hashGenesis;
-
-                /* Set the contract timestamp. */
-                vContracts[n].nTimestamp  = nTimestamp;
+                while(n >= vContracts.size())
+                    vContracts.emplace_back(TAO::Operation::Contract(*this));
 
                 return vContracts[n];
             }
@@ -208,7 +240,7 @@ namespace TAO
              *  Get the total contracts in transaction.
              *
              **/
-            uint32_t Size()
+            uint32_t Size() const
             {
                 return vContracts.size();
             }

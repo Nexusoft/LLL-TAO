@@ -108,8 +108,8 @@ namespace TAO
             claim >>= state;
 
             /* Check the addresses match. */
-            if(state.hashOwner != contract.hashCaller //claim to self
-            && hashTransfer    != contract.hashCaller //calim to transfer
+            if(state.hashOwner != contract.Caller() //claim to self
+            && hashTransfer    != contract.Caller() //calim to transfer
             && hashTransfer    != ~uint256_t(0))      //claim to wildcard (anyone)
                 return debug::error(FUNCTION, "claim public-id mismatch with transfer address");
 
@@ -118,7 +118,7 @@ namespace TAO
                 return debug::error(FUNCTION, "pre-state is in invalid state");
 
             /* Seek read position to first position. */
-            claim.Reset();
+            claim.Seek(1);
 
             return true;
         }

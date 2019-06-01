@@ -104,8 +104,8 @@ namespace TAO
                 return debug::error(FUNCTION, "pre-state is in invalid state");
 
             /* Check ownership of register. */
-            if(state.hashOwner != contract.hashCaller)
-                return debug::error(FUNCTION, "caller not authorized ", contract.hashCaller.SubString());
+            if(state.hashOwner != contract.Caller())
+                return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
             /* Seek read position to first position. */
             contract.Seek(1);

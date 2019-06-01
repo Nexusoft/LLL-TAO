@@ -22,6 +22,13 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO
 {
+    /* Ledger layer namespace. */
+    namespace Ledger
+    {
+        /* Forward declarations. */
+        class Transaction;
+    }
+
 
     /* Operation Layer namespace. */
     namespace Operation
@@ -34,6 +41,7 @@ namespace TAO
          **/
         class Contract
         {
+
             /** Contract operation stream. **/
             TAO::Operation::Stream ssOperation;
 
@@ -46,25 +54,30 @@ namespace TAO
             TAO::Register::Stream  ssRegister;
 
 
+            /** Const referance of the transaction. **/
+            TAO::Ledger::Transaction& tx;
+
+
         public:
 
-            /** MEMORY ONLY: Contract timestamp. **/
-            mutable uint64_t nTimestamp;
-
-
-            /** MEMORY ONLY: Caller public-id. **/
-            mutable uint256_t hashCaller;
+            /** Delete constructor without reference. **/
+            Contract() = delete;
 
 
             /** Default Constructor. **/
-            Contract()
-            : ssOperation()
-            , ssCondition()
-            , ssRegister()
-            , nTimestamp(runtime::unifiedtimestamp())
-            , hashCaller(0)
-            {
-            }
+            Contract(TAO::Ledger::Transaction& txIn);
+
+
+            /** Copy Constructor. **/
+            Contract(const Contract& contract);
+
+
+            /** Move Constructor. **/
+            Contract(const Contract&& contract);
+
+
+            /** Assignment Operator **/
+            Contract& operator=(const Contract& contract);
 
 
             IMPLEMENT_SERIALIZE
@@ -82,15 +95,37 @@ namespace TAO
              *  @return The primitive instruction.
              *
              **/
-            uint8_t Primitive() const
-            {
-                /* Sanity checks. */
-                if(ssOperation.size() == 0)
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "cannot get primitive when empty"));
+            uint8_t Primitive() const;
 
-                /* Return first byte. */
-                return ssOperation.get(0);
-            }
+
+            /** Timestamp
+             *
+             *  Get this contract's execution time.
+             *
+             *  @return the timestamp contract was executed.
+             *
+             **/
+            const uint64_t& Timestamp() const;
+
+
+            /** Caller
+             *
+             *  Get this contract's caller
+             *
+             *  @return the genesis-id of caller
+             *
+             **/
+            const uint256_t& Caller() const;
+
+
+            /** Hash
+             *
+             *  Get the hash of calling tx
+             *
+             *  @return the genesis-id of caller
+             *
+             **/
+            const uint512_t Hash() const;
 
 
             /** Empty
@@ -100,10 +135,7 @@ namespace TAO
              *  @return true if operation stream is empty.
              *
              **/
-            bool Empty() const
-            {
-                return (ssOperation.size() == 0);
-            }
+            bool Empty() const;
 
 
             /** Conditions
@@ -113,10 +145,7 @@ namespace TAO
              *  @return false if condition stream is empty
              *
              **/
-            bool HasConditions() const
-            {
-                return (ssCondition.size() == 0);
-            }
+            bool HasConditions() const;
 
 
             /** Reset
@@ -124,17 +153,7 @@ namespace TAO
              *  Reset the internal stream read pointers.
              *
              **/
-            void Reset() const
-            {
-                /* Set the operation stream to beginning. */
-                ssOperation.seek(0, STREAM::BEGIN);
-
-                /* Set the condition stream to beginning. */
-                ssCondition.seek(0, STREAM::BEGIN);
-
-                /* Set the register stream to beginning. */
-                ssRegister.seek(0, STREAM::BEGIN);
-            }
+            void Reset() const;
 
 
             /** Clear
@@ -142,23 +161,7 @@ namespace TAO
              *  Clears all contract data
              *
              **/
-            void Clear()
-            {
-                /* Set the operation stream to beginning. */
-                ssOperation.SetNull();
-
-                /* Set the condition stream to beginning. */
-                ssCondition.SetNull();
-
-                /* Set the register stream to beginning. */
-                ssRegister.SetNull();
-
-                /* Reset the timestamp. */
-                nTimestamp = runtime::unifiedtimestamp();
-
-                /* Reset the caller. */
-                hashCaller = 0;
-            }
+            void Clear();
 
 
             /** End
@@ -166,10 +169,7 @@ namespace TAO
              *  End of the internal stream.
              *
              **/
-            bool End() const
-            {
-                return ssOperation.end();
-            }
+            bool End() const;
 
 
             /** Operations
@@ -179,10 +179,7 @@ namespace TAO
              *  @return raw byte const reference
              *
              **/
-            const std::vector<uint8_t>& Operations() const
-            {
-                return ssOperation.Bytes();
-            }
+            const std::vector<uint8_t>& Operations() const;
 
 
             /** Conditions
@@ -192,10 +189,7 @@ namespace TAO
              *  @return raw byte const reference
              *
              **/
-            const std::vector<uint8_t>& Conditions() const
-            {
-                return ssCondition.Bytes();
-            }
+            const std::vector<uint8_t>& Conditions() const;
 
 
             /** Seek
@@ -205,14 +199,7 @@ namespace TAO
              *  @param[in] nPos The position to seek to
              *
              **/
-            void Seek(const uint32_t nPos) const
-            {
-                /* Set the operation stream to beginning. */
-                ssOperation.seek(nPos, STREAM::BEGIN);
-
-                /* Set the register stream to beginning. */
-                ssRegister.seek(0, STREAM::BEGIN);
-            }
+            void Seek(const uint32_t nPos) const;
 
 
             /** Seek
@@ -222,11 +209,7 @@ namespace TAO
              *  @param[in] nPos The position to seek to
              *
              **/
-            void Rewind(const uint32_t nPos) const
-            {
-                /* Set the operation stream to beginning. */
-                ssOperation.seek(int32_t(-1 * nPos));
-            }
+            void Rewind(const uint32_t nPos) const;
 
 
             /** Operator Overload <<

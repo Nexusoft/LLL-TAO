@@ -92,12 +92,12 @@ namespace TAO
                 return debug::error(FUNCTION, "pre-state is in invalid state");
 
             /* Check for valid register types. */
-            if(state.nType != TAO::Register::REGISTER::APPEND)
-                return debug::error(FUNCTION, "cannot call on non append register");
+            if(state.nType != TAO::Register::REGISTER::RAW && state.nType != TAO::Register::REGISTER::APPEND)
+                return debug::error(FUNCTION, "cannot call on non raw or append register");
 
             /* Check that the proper owner is commiting the write. */
-            if(contract.hashCaller != state.hashOwner)
-                return debug::error(FUNCTION, "caller not authorized ", contract.hashCaller.SubString());
+            if(contract.Caller() != state.hashOwner)
+                return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
             /* Seek read position to first position. */
             contract.Seek(1);

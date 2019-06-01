@@ -42,6 +42,9 @@ namespace TAO
         /* Executes a given operation byte sequence. */
         bool Execute(const Contract& contract, const uint8_t nFlags)
         {
+            /* Reset the contract streams. */
+            contract.Reset();
+
             /* Make sure no exceptions are thrown. */
             try
             {
@@ -81,7 +84,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Calculate the new operation. */
-                        if(!Write::Execute(state, vchData, contract.nTimestamp))
+                        if(!Write::Execute(state, vchData, contract.Timestamp()))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -136,7 +139,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Calculate the new operation. */
-                        if(!Append::Execute(state, vchData, contract.nTimestamp))
+                        if(!Append::Execute(state, vchData, contract.Timestamp()))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -188,10 +191,10 @@ namespace TAO
                         TAO::Register::State state;
                         state.nVersion   = 1;
                         state.nType      = nType;
-                        state.hashOwner  = contract.hashCaller;
+                        state.hashOwner  = contract.Caller();
 
                         /* Calculate the new operation. */
-                        if(!Create::Execute(state, vchData, contract.nTimestamp))
+                        if(!Create::Execute(state, vchData, contract.Timestamp()))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -246,7 +249,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Calculate the new operation. */
-                        if(!Transfer::Execute(state, hashTransfer, contract.nTimestamp))
+                        if(!Transfer::Execute(state, hashTransfer, contract.Timestamp()))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -266,7 +269,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::TRANSFER: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!Transfer::Commit(state, hashAddress, hashTransfer, nFlags))
+                        if(!Transfer::Commit(state, contract.Hash(), hashAddress, hashTransfer, nFlags))
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to write final state");
 
                         break;
@@ -306,7 +309,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Calculate the new operation. */
-                        if(!Claim::Execute(state, contract.hashCaller, contract.nTimestamp))
+                        if(!Claim::Execute(state, contract.Caller(), contract.Timestamp()))
                             return debug::error(FUNCTION, "OP::CLAIM: cannot generate post-state");
 
                         /* Deserialize the pre-state byte from contract. */
@@ -336,7 +339,7 @@ namespace TAO
                     case OP::COINBASE:
                     {
                         /* Seek to end. */
-                        contract.Seek(48);
+                        contract.Seek(49);
 
                         break;
                     }
@@ -350,7 +353,7 @@ namespace TAO
                             return false;
 
                         /* Seek to scores. */
-                        contract.Seek(64);
+                        contract.Seek(65);
 
                         /* Get the trust score. */
                         uint64_t nScore = 0;
@@ -373,7 +376,7 @@ namespace TAO
                         contract >>= object;
 
                         /* Calculate the new operation. */
-                        if(!Trust::Execute(object, nReward, nScore, contract.nTimestamp))
+                        if(!Trust::Execute(object, nReward, nScore, contract.Timestamp()))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -428,7 +431,7 @@ namespace TAO
                         contract >>= object;
 
                         /* Calculate the new operation. */
-                        if(!Genesis::Execute(object, nReward, contract.nTimestamp))
+                        if(!Genesis::Execute(object, nReward, contract.Timestamp()))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -487,7 +490,7 @@ namespace TAO
                         contract >>= object;
 
                         /* Calculate the new operation. */
-                        if(!Debit::Execute(object, nAmount, contract.nTimestamp))
+                        if(!Debit::Execute(object, nAmount, contract.Timestamp()))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -507,7 +510,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::DEBIT: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!Debit::Commit(object, hashFrom, hashTo, nFlags))
+                        if(!Debit::Commit(object, contract.Hash(), hashFrom, hashTo, nFlags))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to write final state");
 
                         break;
@@ -558,7 +561,7 @@ namespace TAO
                         contract >>= object;
 
                         /* Calculate the new operation. */
-                        if(!Credit::Execute(object, nAmount, contract.nTimestamp))
+                        if(!Credit::Execute(object, nAmount, contract.Timestamp()))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -623,7 +626,7 @@ namespace TAO
                         contract >>= object;
 
                         /* Calculate the new operation. */
-                        if(!Legacy::Execute(object, nAmount, contract.nTimestamp))
+                        if(!Legacy::Execute(object, nAmount, contract.Timestamp()))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */

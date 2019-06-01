@@ -310,7 +310,8 @@ namespace LLD
     {
         /* Get the current sequence number. */
         uint32_t nSequence = 0;
-        ReadSequence(hashAddress, nSequence); //don't check for failed sequence read here since it will always fail on first run
+        if(!ReadSequence(hashAddress, nSequence))
+            nSequence = 0; //reset value just in case
 
         /* Write the new sequence number iterated by one. */
         if(!WriteSequence(hashAddress, nSequence + 1))

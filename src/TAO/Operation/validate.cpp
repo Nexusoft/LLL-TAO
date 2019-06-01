@@ -1063,7 +1063,7 @@ namespace TAO
                     case OP::CALLER::GENESIS:
                     {
                         /* Allocate to the registers. */
-                        allocate(contract.hashCaller, vRet);
+                        allocate(contract.Caller(), vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 128;
@@ -1076,7 +1076,7 @@ namespace TAO
                     case OP::CALLER::TIMESTAMP:
                     {
                         /* Allocate to the registers. */
-                        allocate(contract.nTimestamp, vRet);
+                        allocate(contract.Timestamp(), vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 1;

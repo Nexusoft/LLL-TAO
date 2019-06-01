@@ -30,14 +30,14 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Transfer::Commit(const TAO::Register::State& state,
+        bool Transfer::Commit(const TAO::Register::State& state, const uint512_t& hashTx,
                               const uint256_t& hashAddress, const uint256_t& hashTransfer, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
             if(nFlags & TAO::Ledger::FLAGS::BLOCK)
             {
                 /* Write the transfer event. */
-                if(!LLD::legDB->WriteEvent(hashTransfer, nFlags))
+                if(!LLD::legDB->WriteEvent(hashTransfer, hashTx))
                     return debug::error(FUNCTION, "failed to write event");
             }
 
@@ -129,8 +129,8 @@ namespace TAO
             }
 
             /* Check that the proper owner is commiting the write. */
-            if(contract.hashCaller != state.hashOwner)
-                return debug::error(FUNCTION, "caller not authorized ", contract.hashCaller.SubString());
+            if(contract.Caller() != state.hashOwner)
+                return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
             /* Seek read position to first position. */
             contract.Seek(1);

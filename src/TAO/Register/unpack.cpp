@@ -66,10 +66,10 @@ namespace TAO
                         /* Create the register object. */
                         state.nVersion   = 1;
                         state.nType      = nType;
-                        state.hashOwner  = contract.hashCaller;
+                        state.hashOwner  = contract.Caller();
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Create::Execute(state, vchData, contract.nTimestamp))
+                        if(!TAO::Operation::Create::Execute(state, vchData, contract.Timestamp()))
                             return false;
 
                         return true;

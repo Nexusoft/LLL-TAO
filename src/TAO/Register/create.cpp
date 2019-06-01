@@ -24,14 +24,14 @@ namespace TAO
     {
 
         /* Generate a new account object register. */
-        Object CreateAccount(const uint256_t& nIdentifier)
+        Object CreateAccount(const uint256_t& hashIdentifier)
         {
             /* Create an account object register. */
             TAO::Register::Object account;
 
             /* Generate the object register values. */
-            account << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << nIdentifier;
+            account << std::string("balance")    << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << hashIdentifier;
 
             return account;
         }
@@ -44,9 +44,9 @@ namespace TAO
             TAO::Register::Object trust;
 
             /* Generate the object register values. */
-            trust   << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                    << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-                    << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+            trust   << std::string("balance")    << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("trust")      << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
+                    << std::string("stake")      << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                     << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
             return trust;
@@ -54,16 +54,16 @@ namespace TAO
 
 
         /* Generate a new token object register. */
-        Object CreateToken(const uint256_t& nIdentifier, const uint64_t nSupply, const uint64_t nDigits)
+        Object CreateToken(const uint256_t& hashIdentifier, const uint64_t nSupply, const uint64_t nDigits)
         {
             /* Create an token object register. */
             TAO::Register::Object token;
 
             /* Generate the object register values. */
-            token   << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << nSupply
-                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << nIdentifier
-                    << std::string("supply")     << uint8_t(TYPES::UINT64_T) << nSupply
-                    << std::string("digits")     << uint8_t(TYPES::UINT64_T) << nDigits;
+            token   << std::string("balance")    << uint8_t(TYPES::MUTABLE)   << uint8_t(TYPES::UINT64_T) << nSupply
+                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << hashIdentifier
+                    << std::string("supply")     << uint8_t(TYPES::UINT64_T)  << nSupply
+                    << std::string("digits")     << uint8_t(TYPES::UINT64_T)  << nDigits;
 
             return token;
         }

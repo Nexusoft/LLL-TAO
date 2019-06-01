@@ -55,9 +55,156 @@ namespace LLD
 }
 
 
+class Base;
+
+class Child
+{
+    const Base& ref;
+
+public:
+
+    uint32_t nTest;
+
+    IMPLEMENT_SERIALIZE
+    (
+        READWRITE(nTest);
+    )
+
+    Child() = delete;
+
+    Child(const Base& in)
+    : ref(in)
+    , nTest(22)
+    {
+    }
+
+    const uint32_t& Value() const;
+};
+
+
+class Base
+{
+    std::vector<Child> vChildren;
+
+public:
+
+    uint32_t nTotal;
+
+    Base()
+    : vChildren()
+    , nTotal(504)
+    {
+    }
+
+    SERIALIZE
+    (
+        READWRITE(vChildren);
+        READWRITE(nTotal);
+    )
+
+    UNSERIALIZE
+    (
+        vChildren.clear();
+        uint64_t nSize = ReadCompactSize(s);
+        uint64_t i = 0;
+        uint64_t nMid = 0;
+        while (nMid < nSize)
+        {
+            nMid += static_cast<uint64_t>(5000000) / sizeof(Child);
+
+            if (nMid > nSize)
+                nMid = nSize;
+            for (; i < nMid; ++i)
+            {
+                vChildren.push_back(Child(*this));
+                ::Unserialize(s, vChildren[i], nSerType, nSerVersion);
+            }
+        }
+
+        READWRITE(nTotal);
+    )
+
+    /** Operator Overload []
+     *
+     *  Access for the contract operator overload.
+     *  This is for read-only objects.
+     *
+     **/
+    const Child& operator[](const uint32_t n) const;
+
+
+    /** Operator Overload []
+     *
+     *  Write access fot the contract operator overload.
+     *  This handles writes to create new contracts.
+     *
+     **/
+    Child& operator[](const uint32_t n);
+};
+
+
+
+/** Operator Overload []
+ *
+ *  Access for the contract operator overload.
+ *  This is for read-only objects.
+ *
+ **/
+const Child& Base::operator[](const uint32_t n) const
+{
+    /* Check contract bounds. */
+    if(n >= vChildren.size())
+        throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
+
+    return vChildren[n];
+}
+
+
+/** Operator Overload []
+ *
+ *  Write access fot the contract operator overload.
+ *  This handles writes to create new contracts.
+ *
+ **/
+Child& Base::operator[](const uint32_t n)
+{
+    /* Allocate a new contract if on write. */
+    if(n >= vChildren.size())
+        vChildren.push_back(Child(*this));
+
+    return vChildren[n];
+}
+
+const uint32_t& Child::Value() const
+{
+    return ref.nTotal;
+}
+
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+
+    Base b;
+
+    b[0].nTest = 55;
+    b.nTotal = 38482438;
+    //b[0].Value() = 33;
+
+    debug::log(0, "Test ", b[0].nTest, " Ref ", b[0].Value());
+
+    TAO::Register::Stream stream;
+    stream << b;
+
+    uint32_t nSize = b.GetSerializeSize(1, 1);
+    debug::log(0, "Size ", nSize, " sizeof ", sizeof(b));
+
+    Base b2;
+    stream >> b2;
+
+    debug::log(0, "Test ", b2[0].nTest, " Ref ", b2[0].Value());
+
+    return 0;
 
 
 /*

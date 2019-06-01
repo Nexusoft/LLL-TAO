@@ -30,7 +30,7 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Debit::Commit(const TAO::Register::Object& account,
+        bool Debit::Commit(const TAO::Register::Object& account, const uint512_t& hashTx,
                            const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
@@ -42,7 +42,7 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to read register to");
 
                 /* Commit an event for other sigchain. */
-                if(!LLD::legDB->WriteEvent(state.hashOwner, nFlags))
+                if(!LLD::legDB->WriteEvent(state.hashOwner, hashTx))
                     return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
             }
 
@@ -132,8 +132,8 @@ namespace TAO
                 return debug::error(FUNCTION, "pre-state is in invalid state");
 
             /* Check ownership of register. */
-            if(state.hashOwner != contract.hashCaller)
-                return debug::error(FUNCTION, "caller not authorized ", contract.hashCaller.SubString());
+            if(state.hashOwner != contract.Caller())
+                return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
             /* Seek read position to first position. */
             contract.Seek(1);
