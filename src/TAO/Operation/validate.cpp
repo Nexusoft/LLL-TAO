@@ -63,7 +63,7 @@ namespace TAO
             bool fRet = false;
 
             /* Loop through the operation validation code. */
-            while(!contract.End())
+            while(!contract.End(1))
             {
                 /* Grab the first value */
                 TAO::Register::Value vFirst;
@@ -230,7 +230,7 @@ namespace TAO
         {
 
             /* Iterate until end of stream. */
-            while(!contract.End())
+            while(!contract.End(1))
             {
 
                 /* Extract the operation byte. */

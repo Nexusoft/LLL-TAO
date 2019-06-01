@@ -54,18 +54,22 @@ namespace TAO
             TAO::Register::Stream  ssRegister;
 
 
-            /** Const referance of the transaction. **/
-            TAO::Ledger::Transaction& tx;
+            /** MEMORY ONLY: the calling public-id. **/
+            mutable uint256_t hashCaller;
 
+
+            /** MEMORY ONLY: the calling timestamp. **/
+            mutable uint64_t nTimestamp;
+
+
+            /** MEMORY ONLY: the calling txid. **/
+            mutable uint512_t hashTx;
 
         public:
 
-            /** Delete constructor without reference. **/
-            Contract() = delete;
-
 
             /** Default Constructor. **/
-            Contract(TAO::Ledger::Transaction& txIn);
+            Contract();
 
 
             /** Copy Constructor. **/
@@ -86,6 +90,14 @@ namespace TAO
                 READWRITE(ssCondition);
                 READWRITE(ssRegister);
             )
+
+
+            /** Bind
+             *
+             *  Bind the contract to a transaction.
+             *
+             **/
+            void Bind(const TAO::Ledger::Transaction& tx) const;
 
 
             /** Primitive
@@ -125,7 +137,7 @@ namespace TAO
              *  @return the genesis-id of caller
              *
              **/
-            const uint512_t Hash() const;
+            const uint512_t& Hash() const;
 
 
             /** Empty
@@ -169,7 +181,7 @@ namespace TAO
              *  End of the internal stream.
              *
              **/
-            bool End() const;
+            bool End(const uint8_t nType = 0) const;
 
 
             /** Operations

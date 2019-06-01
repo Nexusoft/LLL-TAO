@@ -40,9 +40,6 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
     //create a list of transactions
     {
 
-        //cleanup
-        LLD::regDB->EraseIdentifier(11);
-
         //create object
         uint256_t hashGenesis  = LLC::GetRand256();
         uint512_t hashPrivKey1  = LLC::GetRand512();
@@ -62,7 +59,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
-            Object token = CreateToken(11, 1000, 100);
+            Object token = CreateToken(hashToken, 1000, 100);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
@@ -100,7 +97,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
-            Object account = CreateAccount(11);
+            Object account = CreateAccount(hashToken);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();

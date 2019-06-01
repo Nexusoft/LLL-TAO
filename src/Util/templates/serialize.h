@@ -142,52 +142,6 @@ enum
         {statements}                                                           \
     }
 
-#define SERIALIZE(statements)                                                  \
-    template<typename Stream>                                                  \
-    void Serialize(Stream& s, uint32_t nSerType, uint32_t nSerVersion) const   \
-    {                                                                          \
-        CSerActionSerialize ser_action;                                        \
-        const bool fGetSize = false;                                           \
-        const bool fWrite = true;                                              \
-        const bool fRead = false;                                              \
-        uint64_t nSerSize = 0;                                                 \
-        _unused(fGetSize); /* suppress warning */                              \
-        _unused(fWrite);   /* suppress warning */                              \
-        _unused(fRead);    /* suppress warning */                              \
-        {statements}                                                           \
-    }                                                                          \
-    uint64_t GetSerializeSize(uint32_t nSerType, uint32_t nSerVersion) const   \
-    {                                                                          \
-        CSerActionGetSerializeSize ser_action;                                 \
-        const bool fGetSize = true;                                            \
-        const bool fWrite = false;                                             \
-        const bool fRead = false;                                              \
-        uint64_t nSerSize = 0;                                                 \
-        ser_streamplaceholder s;                                               \
-        _unused(fGetSize); /* suppress warning */                              \
-        _unused(fWrite);   /* suppress warning */                              \
-        _unused(fRead);    /* suppress warning */                              \
-        s.nSerType = nSerType;                                                 \
-        s.nSerVersion = nSerVersion;                                           \
-        {statements}                                                           \
-        return nSerSize;                                                       \
-    }
-
-#define UNSERIALIZE(statements)                                                \
-    template<typename Stream>                                                  \
-    void Unserialize(Stream& s, uint32_t nSerType, uint32_t nSerVersion)       \
-    {                                                                          \
-        CSerActionUnserialize ser_action;                                      \
-        const bool fGetSize = false;                                           \
-        const bool fWrite = false;                                             \
-        const bool fRead = true;                                               \
-        uint64_t nSerSize = 0;                                                 \
-        _unused(fGetSize); /* suppress warning */                              \
-        _unused(fWrite);   /* suppress warning */                              \
-        _unused(fRead);    /* suppress warning */                              \
-        {statements}                                                           \
-    }
-
 
 #define READWRITE(obj) (nSerSize += ::SerReadWrite(s, (obj), nSerType, nSerVersion, ser_action))
 

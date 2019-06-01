@@ -24,11 +24,13 @@ namespace TAO
     {
 
         /** Default Constructor. **/
-        Contract::Contract(TAO::Ledger::Transaction& txIn)
+        Contract::Contract()
         : ssOperation()
         , ssCondition()
         , ssRegister()
-        , tx(txIn)
+        , hashCaller(0)
+        , nTimestamp(0)
+        , hashTx(0)
         {
         }
 
@@ -38,7 +40,9 @@ namespace TAO
         : ssOperation(contract.ssOperation)
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
-        , tx(contract.tx)
+        , hashCaller(contract.hashCaller)
+        , nTimestamp(contract.nTimestamp)
+        , hashTx(contract.hashTx)
         {
         }
 
@@ -48,7 +52,9 @@ namespace TAO
         : ssOperation(contract.ssOperation)
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
-        , tx(contract.tx)
+        , hashCaller(contract.hashCaller)
+        , nTimestamp(contract.nTimestamp)
+        , hashTx(contract.hashTx)
         {
         }
 
@@ -62,9 +68,21 @@ namespace TAO
             ssRegister  = contract.ssRegister;
 
             /* Set the transaction reference. */
-            tx          = contract.tx;
+            hashCaller  = contract.hashCaller;
+            nTimestamp  = contract.nTimestamp;
+            hashTx      = contract.hashTx;
+
 
             return *this;
+        }
+
+
+        /* Bind the contract to a transaction. */
+        void Contract::Bind(const TAO::Ledger::Transaction& tx) const
+        {
+            hashCaller = tx.hashGenesis;
+            nTimestamp = tx.nTimestamp;
+            hashTx     = tx.GetHash();
         }
 
 
@@ -83,21 +101,21 @@ namespace TAO
         /* Get this contract's execution time. */
         const uint64_t& Contract::Timestamp() const
         {
-            return tx.nTimestamp;
+            return nTimestamp;
         }
 
 
         /* Get this contract's caller */
         const uint256_t& Contract::Caller() const
         {
-            return tx.hashGenesis;
+            return hashCaller;
         }
 
 
         /* Get the hash of calling tx */
-        const uint512_t Contract::Hash() const
+        const uint512_t& Contract::Hash() const
         {
-            return tx.GetHash();
+            return hashTx;
         }
 
 
@@ -144,9 +162,12 @@ namespace TAO
 
 
         /*End of the internal stream.*/
-        bool Contract::End() const
+        bool Contract::End(const uint8_t nType) const
         {
-            return ssOperation.end();
+            if(nType == 0)
+                return ssOperation.end();
+
+            return ssCondition.end();
         }
 
 
@@ -157,7 +178,7 @@ namespace TAO
         }
 
 
-        /*Get the raw condition bytes from the contract.*/
+        /* Get the raw condition bytes from the contract.*/
         const std::vector<uint8_t>& Contract::Conditions() const
         {
             return ssCondition.Bytes();
@@ -182,7 +203,7 @@ namespace TAO
         void Contract::Rewind(const uint32_t nPos) const
         {
             /* Set the operation stream back current position. */
-            ssOperation.seek(int32_t(-1 * nPos));
+            ssCondition.seek(int32_t(-1 * nPos));
         }
     }
 }

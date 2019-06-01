@@ -717,7 +717,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 }
 
                 //rollback
-                REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+                REQUIRE(Rollback(tx[0]));
 
                 //check register values
                 {
@@ -846,7 +846,10 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx[0] << uint8_t(OP::CREDIT) << hashTx << uint32_t(0) << hashAccount << hashRegister << uint64_t(500);
 
                 //generate the prestates and poststates
-                REQUIRE(!tx.Build());
+                REQUIRE(tx.Build());
+
+                //make sure it fails
+                REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
             }
 
 
@@ -862,7 +865,10 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 tx[0] << uint8_t(OP::CREDIT) << hashTx << uint32_t(0) << hashRegister << hashRegister << uint64_t(500);
 
                 //generate the prestates and poststates
-                REQUIRE(!tx.Build());
+                REQUIRE(tx.Build());
+
+                //make sure it fails
+                REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
             }
         }
     }
@@ -886,7 +892,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::COINBASE) << uint64_t(5000);
+            tx[0] << uint8_t(OP::COINBASE) << hashGenesis << uint64_t(5000);
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));

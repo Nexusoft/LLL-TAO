@@ -271,10 +271,12 @@ namespace TAO
         void State::print() const
         {
             debug::log(0,
-                "State(version=", nVersion,
-                ", type=", (uint32_t)nType,
+                "State(version=", uint32_t(nVersion),
+                ", type=", uint32_t(nType),
                 ", length=", vchState.size(),
-                ", owner=", hashOwner.ToString().substr(0, 20),
+                ", owner=", hashOwner.SubString(),
+                ", created=", nCreated,
+                ", modified=", nModified,
                 ", checksum=", hashChecksum,
                 ", state=", HexStr(vchState.begin(), vchState.end()));
         }

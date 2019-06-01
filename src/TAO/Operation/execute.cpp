@@ -534,7 +534,7 @@ namespace TAO
                             return false;
 
                         /* Seek past transaction-id. */
-                        contract.Seek(68);
+                        contract.Seek(69);
 
                         /* Get the transfer address. */
                         uint256_t hashAddress = 0;
@@ -592,7 +592,7 @@ namespace TAO
                     case OP::AUTHORIZE:
                     {
                         /* Seek to address. */
-                        contract.Seek(96);
+                        contract.Seek(97);
 
                         break;
                     }

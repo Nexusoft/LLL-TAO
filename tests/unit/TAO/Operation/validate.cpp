@@ -38,13 +38,14 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     uint256_t hashFrom = LLC::GetRand256();
     uint256_t hashTo   = LLC::GetRand256();
     uint64_t  nAmount  = 500;
-    
+
     TAO::Ledger::Transaction tx;
     tx.nTimestamp  = 989798;
     tx.hashGenesis = LLC::GetRand256();
     tx[0] <= (uint8_t)OP::DEBIT <= hashFrom <= hashTo <= nAmount;
 
-    Contract contract = Contract(tx);
+    Contract contract = Contract();
+    contract.Bind(tx);
     contract <= (uint8_t)OP::TYPES::UINT32_T <= (uint32_t)7u <= (uint8_t) OP::MUL <= (uint8_t) OP::TYPES::UINT32_T <= (uint32_t)9u <= (uint8_t) OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= (uint32_t)63u;
 
 
