@@ -28,9 +28,9 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Legacy::Commit(const TAO::Register::Object& account, const uint256_t& hashAddress, const uint8_t nFlags)
+        bool Legacy::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
         {
-            return LLD::regDB->WriteState(hashAddress, account, nFlags);
+            return LLD::regDB->WriteState(hashAddress, state, nFlags);
         }
 
 
@@ -47,7 +47,7 @@ namespace TAO
 
             /* Check the account balance. */
             if(nAmount > account.get<uint64_t>("balance"))
-                return debug::error(FUNCTION, "account ", hashFrom.SubString(), " doesn't have sufficient balance");
+                return debug::error(FUNCTION, "account doesn't have sufficient balance");
 
             /* Write the new balance to object register. */
             if(!account.Write("balance", account.get<uint64_t>("balance") - nAmount))

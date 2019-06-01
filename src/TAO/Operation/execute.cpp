@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/types/uint1024.h>
+#include <LLD/include/global.h>
 
 #include <Legacy/types/script.h>
 
@@ -19,16 +19,19 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/append.h>
 #include <TAO/Operation/include/claim.h>
-#include <TAO/Opeartion/include/create.h>
-#include <TAO/Opeartion/include/credit.h>
-#include <TAO/Opeartion/include/debit.h>
-#include <TAO/Opeartion/include/genesis.h>
-#include <TAO/Opeartion/include/script.h>
-#include <TAO/Opeartion/include/transfer.h>
-#include <TAO/Opeartion/include/trust.h>
-#include <TAO/Opeartion/include/write.h>
+#include <TAO/Operation/include/create.h>
+#include <TAO/Operation/include/credit.h>
+#include <TAO/Operation/include/debit.h>
+#include <TAO/Operation/include/genesis.h>
+#include <TAO/Operation/include/legacy.h>
+#include <TAO/Operation/include/transfer.h>
+#include <TAO/Operation/include/trust.h>
+#include <TAO/Operation/include/write.h>
+
+#include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/object.h>
 
 namespace TAO
 {
@@ -263,7 +266,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::TRANSFER: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!Transfer::Commit(state, hashAddress, nFlags))
+                        if(!Transfer::Commit(state, hashAddress, hashTransfer, nFlags))
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to write final state");
 
                         break;
@@ -366,11 +369,11 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::TRUST: register pre-state doesn't exist");
 
                         /* Read the register from database. */
-                        TAO::Register::State state;
-                        contract >>= state;
+                        TAO::Register::Object object;
+                        contract >>= object;
 
                         /* Calculate the new operation. */
-                        if(!Trust::Execute(state, nReward, nScore, contract.nTimestamp))
+                        if(!Trust::Execute(object, nReward, nScore, contract.nTimestamp))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -386,11 +389,11 @@ namespace TAO
                         contract >>= nChecksum;
 
                         /* Check the post-state to register state. */
-                        if(nChecksum != state.GetHash())
+                        if(nChecksum != object.GetHash())
                             return debug::error(FUNCTION, "OP::TRUST: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!Trust::Commit(state, nFlags))
+                        if(!Trust::Commit(object, nFlags))
                             return debug::error(FUNCTION, "OP::TRUST: failed to write final state");
 
                         break;
@@ -421,11 +424,11 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::GENESIS: register pre-state doesn't exist");
 
                         /* Read the register from database. */
-                        TAO::Register::State state;
-                        contract >>= state;
+                        TAO::Register::Object object;
+                        contract >>= object;
 
                         /* Calculate the new operation. */
-                        if(!Genesis::Execute(state, nReward, contract.nTimestamp))
+                        if(!Genesis::Execute(object, nReward, contract.nTimestamp))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -441,11 +444,11 @@ namespace TAO
                         contract >>= nChecksum;
 
                         /* Check the post-state to register state. */
-                        if(nChecksum != state.GetHash())
+                        if(nChecksum != object.GetHash())
                             return debug::error(FUNCTION, "OP::GENESIS: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!Genesis::Commit(state, hashAddress, nFlags))
+                        if(!Genesis::Commit(object, hashAddress, nFlags))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to write final state");
 
                         break;
@@ -504,7 +507,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::DEBIT: invalid register post-state");
 
                         /* Commit the register to disk. */
-                        if(!Debit::Commit(object, hashFrom, nFlags))
+                        if(!Debit::Commit(object, hashFrom, hashTo, nFlags))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to write final state");
 
                         break;
@@ -613,7 +616,7 @@ namespace TAO
 
                         /* Check for pre-state. */
                         if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::DEBIT: register pre-state doesn't exist");
+                            return debug::error(FUNCTION, "OP::LEGACY: register pre-state doesn't exist");
 
                         /* Read the register from database. */
                         TAO::Register::Object object;
@@ -629,7 +632,7 @@ namespace TAO
 
                         /* Check for pre-state. */
                         if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::DEBIT: register post-state doesn't exist");
+                            return debug::error(FUNCTION, "OP::LEGACY: register post-state doesn't exist");
 
                         /* Deserialize the checksum from contract. */
                         uint64_t nChecksum = 0;
@@ -637,14 +640,14 @@ namespace TAO
 
                         /* Check the post-state to register state. */
                         if(nChecksum != object.GetHash())
-                            return debug::error(FUNCTION, "OP::DEBIT: invalid register post-state");
+                            return debug::error(FUNCTION, "OP::LEGACY: invalid register post-state");
 
                         /* Commit the register to disk. */
                         if(!Legacy::Commit(object, hashAddress, nFlags))
-                            return debug::error(FUNCTION, "OP::DEBIT: failed to write final state");
+                            return debug::error(FUNCTION, "OP::LEGACY: failed to write final state");
 
                         /* Get the script data. */
-                        Legacy:;Script script;
+                        ::Legacy::Script script;
                         contract >> script;
 
                         /* Check for OP_DUP OP_HASH256 <hash> OP_EQUALVERIFY. */
@@ -659,15 +662,8 @@ namespace TAO
 
                 /* Check for end of stream. */
                 if(!contract.End())
-                {
-                    /* Get the contract OP. */
-                    OP = 0;
-                    contract >> OP;
+                    return debug::error(FUNCTION, "contract cannot have more than one PRIMTIVE OP");
 
-                    /* Check for OP::REQUIRE. */
-                    if(OP != OP::REQUIRE && OP != OP::VALIDATE)
-                        return debug::error(FUNCTION, "contract cannot contain second OP beyond REQUIRE or VALIDATE");
-                }
             }
             catch(const std::exception& e)
             {

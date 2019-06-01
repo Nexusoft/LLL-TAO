@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/include/system.h>
 #include <TAO/Register/include/reserved.h>
 
 /* Global TAO namespace. */
@@ -48,6 +49,9 @@ namespace TAO
                 if(!object.Parse())
                     return debug::error(FUNCTION, "object register failed to parse");
 
+                /* Set to keep track of duplicate values. */
+                std::set<std::string> setValues;
+
                 /*  Loop through the stream.
                  *
                  *  Types here are stored in a special stream that
@@ -65,10 +69,12 @@ namespace TAO
                     if(TAO::Register::Reserved(strName))
                         return debug::error(FUNCTION, "cannot use reserved '", strName, "' field");
 
-                    //TODO: maybe we should catch duplicates?
-                    //no real point being that it will just overwrite a value in same transaction
-                    //as long as it is mutable.
-                    //but it might be best to be stricter here. to decide
+                    /* Check for duplicates. */
+                    if(setValues.find(strName) != setValues.end())
+                        return debug::error(FUNCTION, "cannot write same values twice");
+
+                    /* Insert new value into set. */
+                    setValues.insert(strName);
 
                     /* Deserialize the type. */
                     uint8_t nType;

@@ -29,7 +29,7 @@ namespace TAO
     {
 
         /* Verify the pre-states of a register to current network state. */
-        bool Rollback(const TAO::Operation::Contract& contract);
+        bool Rollback(const TAO::Operation::Contract& contract)
         {
             /* Reset the contract streams. */
             contract.Reset();
@@ -323,7 +323,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::CREDIT: failed to rollback to pre-state");
 
                         /* Read the debit. */
-                        const Contract debit = LLD::legDB->ReadContract(hashTx, nContract);
+                        const TAO::Operation::Contract debit = LLD::legDB->ReadContract(hashTx, nContract);
                         debit.Seek(1);
 
                         /* Get address from. */

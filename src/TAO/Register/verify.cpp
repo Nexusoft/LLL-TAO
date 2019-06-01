@@ -17,8 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/verify.h>
-#include <TAO/Register/include/types.h>
-
+#include <TAO/Register/include/enum.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -372,6 +371,10 @@ namespace TAO
                         /* Get the transfer address. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
+
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
 
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)

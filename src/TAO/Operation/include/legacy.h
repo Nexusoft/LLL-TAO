@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_OPERATION_INCLUDE_DEBIT_H
-#define NEXUS_TAO_OPERATION_INCLUDE_DEBIT_H
+#ifndef NEXUS_TAO_OPERATION_INCLUDE_LEGACY_H
+#define NEXUS_TAO_OPERATION_INCLUDE_LEGACY_H
 
 #include <LLC/types/uint1024.h>
 
@@ -26,6 +26,7 @@ namespace TAO
     {
         /* Forward declarations. */
         class Object;
+        class State;
     }
 
 
@@ -56,7 +57,8 @@ namespace TAO
              *  @return true if successful.
              *
              **/
-            bool Commit(const TAO::Register::Object& account, const uint256_t& hashAddress, const uint8_t nFlags);
+            bool Commit(const TAO::Register::State& account,
+                        const uint256_t& hashAddress, const uint8_t nFlags);
 
 
             /** Execute
@@ -78,12 +80,11 @@ namespace TAO
              *  Verify claim validation rules and caller.
              *
              *  @param[in] contract The contract to verify.
-             *  @param[in] hashCaller The contract caller.
              *
              *  @return true if successful.
              *
              **/
-            bool Verify(const Contract& contract, const uint256_t& hashCaller);
+            bool Verify(const Contract& contract);
         }
     }
 }

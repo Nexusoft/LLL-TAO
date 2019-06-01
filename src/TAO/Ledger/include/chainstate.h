@@ -38,19 +38,19 @@ namespace TAO
         {
 
             /** The best block height in the chain. **/
-            std::atomic<uint32_t> nBestHeight;
+            extern std::atomic<uint32_t> nBestHeight;
 
 
             /** The best trust in the chain. **/
-            std::atomic<uint64_t> nBestChainTrust;
+            extern std::atomic<uint64_t> nBestChainTrust;
 
 
             /** The best hash in the chain. */
-            memory::atomic<uint1024_t> hashBestChain;
+            extern memory::atomic<uint1024_t> hashBestChain;
 
 
             /** Hardened Checkpoint. **/
-            memory::atomic<uint1024_t> hashCheckpoint;
+            extern memory::atomic<uint1024_t> hashCheckpoint;
 
 
             /** Synchronizing
@@ -86,11 +86,11 @@ namespace TAO
 
 
             /** The best block in the chain. **/
-            memory::atomic<BlockState> stateBest;
+            extern memory::atomic<BlockState> stateBest;
 
 
             /** The best block in the chain. **/
-            BlockState stateGenesis;
+            extern BlockState stateGenesis;
 
         }
     }

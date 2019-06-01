@@ -13,7 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/genesis.h>
 
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
@@ -42,6 +43,8 @@ namespace TAO
             /* Update the register database with the index. */
             if(!LLD::regDB->IndexTrust(state.hashOwner, hashAddress))
                 return debug::error(FUNCTION, "could not index the address to the genesis");
+
+            return true;
         }
 
 

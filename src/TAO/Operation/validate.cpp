@@ -177,7 +177,7 @@ namespace TAO
                     case OP::EMPTY:
                     {
                         /* Compare both values to one another. */
-                        fRet = (vFirst.nSize == 0);
+                        fRet = (vFirst.nBytes == 0);
 
                         /* Deallocate the values from the VM. */
                         deallocate(vFirst);
@@ -894,6 +894,10 @@ namespace TAO
                             contract >>= object;
                         }
 
+                        /* Get the value string. */
+                        std::string strValue;
+                        contract >> strValue;
+
                         /* Check for object register type. */
                         if(object.nType != TAO::Register::REGISTER::OBJECT)
                             return false;
@@ -1072,7 +1076,7 @@ namespace TAO
                     case OP::CALLER::TIMESTAMP:
                     {
                         /* Allocate to the registers. */
-                        allocate(contracct.nTimestamp, vRet);
+                        allocate(contract.nTimestamp, vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 1;

@@ -26,6 +26,7 @@ namespace TAO
     {
         /* Forward declarations. */
         class State;
+        class Object;
     }
 
 
@@ -58,7 +59,7 @@ namespace TAO
             bool Commit(const TAO::Register::State& state, const uint8_t nFlags);
 
 
-            /** Trust
+            /** Execute
              *
              *  Handles the locking of stake in a stake register.
              *
@@ -70,7 +71,7 @@ namespace TAO
              *  @return true if successful.
              *
              **/
-            bool Trust(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore, const uint64_t nTimestamp);
+            bool Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nScore, const uint64_t nTimestamp);
 
 
             /** Verify

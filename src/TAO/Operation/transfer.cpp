@@ -11,11 +11,15 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <TAO/Operation/include/transfer.h>
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/system.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -30,10 +34,10 @@ namespace TAO
                               const uint256_t& hashAddress, const uint256_t& hashTransfer, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
-            if(nFlags & FLAGS::WRITE)
+            if(nFlags & TAO::Ledger::FLAGS::BLOCK)
             {
                 /* Write the transfer event. */
-                if(!LLD->legDB->WriteEvent(hashTransfer, nFlags))
+                if(!LLD::legDB->WriteEvent(hashTransfer, nFlags))
                     return debug::error(FUNCTION, "failed to write event");
             }
 
@@ -110,7 +114,7 @@ namespace TAO
                 return debug::error(FUNCTION, state.hashOwner.SubString(), " transfer to self");
 
             /* Check for valid register types. */
-            if(state.nType == TAO::Register::OBJECT)
+            if(state.nType == TAO::Register::REGISTER::OBJECT)
             {
                 /* Create an object to check values. */
                 TAO::Register::Object object = TAO::Register::Object(state);

@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
 
+#include <TAO/Ledger/include/enum.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -32,9 +34,10 @@ namespace TAO
                            const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
-            if(nFlags & FLAGS::WRITE)
+            if(nFlags & TAO::Ledger::FLAGS::BLOCK)
             {
                 /* Read the owner of register. */
+                TAO::Register::State state;
                 if(!LLD::regDB->ReadState(hashTo, state, nFlags))
                     return debug::error(FUNCTION, "failed to read register to");
 
@@ -43,7 +46,7 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
             }
 
-            return LLD::regDB->WriteState(hashAddress, account, nFlags);
+            return LLD::regDB->WriteState(hashFrom, account, nFlags);
         }
 
 
@@ -60,7 +63,7 @@ namespace TAO
 
             /* Check the account balance. */
             if(nAmount > account.get<uint64_t>("balance"))
-                return debug::error(FUNCTION, "account ", hashFrom.SubString(), " doesn't have sufficient balance");
+                return debug::error(FUNCTION, "account doesn't have sufficient balance");
 
             /* Write the new balance to object register. */
             if(!account.Write("balance", account.get<uint64_t>("balance") - nAmount))

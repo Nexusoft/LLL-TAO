@@ -16,8 +16,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/types/stream.h>
+
 #include <TAO/Operation/include/enum.h>
-#include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/create.h>
 
 #include <Util/include/hex.h>
 #include <Util/include/debug.h>
@@ -68,7 +69,7 @@ namespace TAO
                         state.hashOwner  = contract.hashCaller;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Opeartion::Create::Execute(state, vchData, contract.nTimestamp))
+                        if(!TAO::Operation::Create::Execute(state, vchData, contract.nTimestamp))
                             return false;
 
                         return true;

@@ -58,7 +58,7 @@ namespace TAO
              *
              **/
             bool Commit(const TAO::Register::Object& account,
-                        const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags)
+                        const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags);
 
 
             /** Execute
@@ -80,12 +80,11 @@ namespace TAO
              *  Verify claim validation rules and caller.
              *
              *  @param[in] contract The contract to verify.
-             *  @param[in] hashCaller The contract caller.
              *
              *  @return true if successful.
              *
              **/
-            bool Verify(const Contract& contract, const uint256_t& hashCaller);
+            bool Verify(const Contract& contract);
         }
     }
 }

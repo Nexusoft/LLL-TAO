@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/trust.h>
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -85,15 +86,15 @@ namespace TAO
                 return debug::error(FUNCTION, "register script not in pre-state");
 
             /* Get the pre-state. */
-            TAO::Register::State trust;
-            contract >>= trust;
+            TAO::Register::State state;
+            contract >>= state;
 
             /* Check that pre-state is valid. */
             if(!state.IsValid())
                 return debug::error(FUNCTION, "pre-state is in invalid state");
 
             /* Check ownership of register. */
-            if(trust.hashOwner != contract.hashCaller)
+            if(state.hashOwner != contract.hashCaller)
                 return debug::error(FUNCTION, "caller not authorized ", contract.hashCaller.SubString());
 
             /* Seek read position to first position. */

@@ -19,16 +19,18 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/append.h>
 #include <TAO/Operation/include/claim.h>
-#include <TAO/Opeartion/include/create.h>
-#include <TAO/Opeartion/include/credit.h>
-#include <TAO/Opeartion/include/debit.h>
-#include <TAO/Opeartion/include/genesis.h>
-#include <TAO/Opeartion/include/script.h>
-#include <TAO/Opeartion/include/transfer.h>
-#include <TAO/Opeartion/include/trust.h>
-#include <TAO/Opeartion/include/write.h>
+#include <TAO/Operation/include/create.h>
+#include <TAO/Operation/include/credit.h>
+#include <TAO/Operation/include/debit.h>
+#include <TAO/Operation/include/genesis.h>
+#include <TAO/Operation/include/legacy.h>
+#include <TAO/Operation/include/transfer.h>
+#include <TAO/Operation/include/trust.h>
+#include <TAO/Operation/include/write.h>
 
 #include <TAO/Register/include/build.h>
+#include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/object.h>
 
 #include <new> //std::bad_alloc
 
@@ -304,29 +306,29 @@ namespace TAO
                         contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
 
                         /* Check temporary memory states first. */
-                        State state;
+                        Object object;
                         if(mapStates.count(contract.hashCaller))
-                            state = mapStates[contract.hashCaller];
+                            object = TAO::Register::Object(mapStates[contract.hashCaller]);
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadTrust(contract.hashCaller, state))
+                        else if(!LLD::regDB->ReadTrust(contract.hashCaller, object))
                             return debug::error(FUNCTION, "OP::TRUST: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
-                        contract <<= state;
+                        contract <<= object;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Trust::Execute(state, nReward, nScore, contract.nTimestamp))
+                        if(!TAO::Operation::Trust::Execute(object, nReward, nScore, contract.nTimestamp))
                             return debug::error(FUNCTION, "OP::TRUST: cannot generate post-state");
 
                         /* Serialize the post-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::POSTSTATE);
 
                         /* Serialize the checksum into contract. */
-                        contract <<= state.GetHash();
+                        contract <<= object.GetHash();
 
                         /* Write the state to memory map. */
-                        mapStates[contract.hashCaller] = state;
+                        mapStates[contract.hashCaller] = TAO::Register::State(object);
 
                         break;
                     }
@@ -347,29 +349,29 @@ namespace TAO
                         contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
 
                         /* Check temporary memory states first. */
-                        State state;
+                        Object object;
                         if(mapStates.count(contract.hashCaller))
-                            state = mapStates[contract.hashCaller];
+                            object = TAO::Register::Object(mapStates[contract.hashCaller]);
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::regDB->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
                             return debug::error(FUNCTION, "OP::GENESIS: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
-                        contract <<= state;
+                        contract <<= object;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Genesis::Execute(state, nReward, contract.nTimestamp))
+                        if(!TAO::Operation::Genesis::Execute(object, nReward, contract.nTimestamp))
                             return debug::error(FUNCTION, "OP::GENESIS: cannot generate post-state");
 
                         /* Serialize the post-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::POSTSTATE);
 
                         /* Serialize the checksum into contract. */
-                        contract <<= state.GetHash();
+                        contract <<= object.GetHash();
 
                         /* Write the state to memory map. */
-                        mapStates[contract.hashCaller] = state;
+                        mapStates[contract.hashCaller] = TAO::Register::State(object);
 
                         break;
                     }
@@ -387,36 +389,36 @@ namespace TAO
                         contract >> hashTo;
 
                         /* Get the transfer amount. */
-                        uint64_t  nAmount = 0;
+                        uint64_t nAmount = 0;
                         contract >> nAmount;
 
                         /* Serialize the pre-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
 
                         /* Check temporary memory states first. */
-                        State state;
-                        if(mapStates.find(hashAddress) != mapStates.end())
-                            state = mapStates[hashAddress];
+                        Object object;
+                        if(mapStates.find(hashFrom) != mapStates.end())
+                            object = TAO::Register::Object(mapStates[hashFrom]);
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::regDB->ReadState(hashFrom, object, TAO::Ledger::FLAGS::MEMPOOL))
                             return debug::error(FUNCTION, "OP::DEBIT: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
-                        contract <<= state;
+                        contract <<= object;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Debit::Execute(state, nAmount, contract.nTimestamp))
+                        if(!TAO::Operation::Debit::Execute(object, nAmount, contract.nTimestamp))
                             return debug::error(FUNCTION, "OP::DEBIT: cannot generate post-state");
 
                         /* Serialize the post-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::POSTSTATE);
 
                         /* Serialize the checksum into contract. */
-                        contract <<= state.GetHash();
+                        contract <<= object.GetHash();
 
                         /* Write the state to memory map. */
-                        mapStates[hashAddress] = state;
+                        mapStates[hashFrom] = TAO::Register::State(object);
 
                         break;
                     }
@@ -430,7 +432,7 @@ namespace TAO
 
                         /* Get the transfer address. */
                         uint256_t hashAddress = 0;
-                        contract >> hashTo;
+                        contract >> hashAddress;
 
                         /* Get the transfer address. */
                         uint256_t hashProof = 0;
@@ -444,29 +446,29 @@ namespace TAO
                         contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
 
                         /* Check temporary memory states first. */
-                        State state;
+                        Object object;
                         if(mapStates.find(hashAddress) != mapStates.end())
-                            state = mapStates[hashAddress];
+                            object = TAO::Register::Object(mapStates[hashAddress]);
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, TAO::Ledger::FLAGS::MEMPOOL))
+                        else if(!LLD::regDB->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
                             return debug::error(FUNCTION, "OP::CREDIT: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
-                        contract <<= state;
+                        contract <<= object;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Credit::Execute(state, nAmount, contract.nTimestamp))
+                        if(!TAO::Operation::Credit::Execute(object, nAmount, contract.nTimestamp))
                             return debug::error(FUNCTION, "OP::CREDIT: cannot generate post-state");
 
                         /* Serialize the post-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::POSTSTATE);
 
                         /* Serialize the checksum into contract. */
-                        contract <<= state.GetHash();
+                        contract <<= object.GetHash();
 
                         /* Write the state to memory map. */
-                        mapStates[hashAddress] = state;
+                        mapStates[hashAddress] = TAO::Register::State(object);
 
                         break;
                     }
@@ -497,29 +499,29 @@ namespace TAO
                         contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
 
                         /* Check temporary memory states first. */
-                        State state;
+                        Object object;
                         if(mapStates.find(hashAddress) != mapStates.end())
-                            state = mapStates[hashAddress];
+                            object = TAO::Register::Object(mapStates[hashAddress]);
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, TAO::Ledger::FLAGS::MEMPOOL))
-                            return debug::error(FUNCTION, "OP::CREDIT: register pre-state doesn't exist");
+                        else if(!LLD::regDB->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
+                            return debug::error(FUNCTION, "OP::LEGACY: register pre-state doesn't exist");
 
                         /* Serialize the pre-state into contract. */
-                        contract <<= state;
+                        contract <<= object;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Legacy::Execute(state, nAmount, contract.nTimestamp))
-                            return debug::error(FUNCTION, "OP::CREDIT: cannot generate post-state");
+                        if(!TAO::Operation::Legacy::Execute(object, nAmount, contract.nTimestamp))
+                            return debug::error(FUNCTION, "OP::LEGACY: cannot generate post-state");
 
                         /* Serialize the post-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::POSTSTATE);
 
                         /* Serialize the checksum into contract. */
-                        contract <<= state.GetHash();
+                        contract <<= object.GetHash();
 
                         /* Get the script data. */
-                        Legacy:;Script script;
+                        ::Legacy::Script script;
                         contract >> script;
 
                         break;
@@ -529,18 +531,9 @@ namespace TAO
                         return debug::error(FUNCTION, "invalid code for register verification");
                 }
 
-
                 /* Check for end of stream. */
                 if(!contract.End())
-                {
-                    /* Get the contract OP. */
-                    OP = 0;
-                    contract >> OP;
-
-                    /* Check for OP::REQUIRE. */
-                    if(OP != TAO::Operation::OP::REQUIRE && OP != TAO::Operation::OP::VALIDATE)
-                        return debug::error(FUNCTION, "contract cannot contain second OP beyond REQUIRE or VALIDATE");
-                }
+                    return debug::error(FUNCTION, "contract cannot have more than one PRIMTIVE OP");
 
             }
             catch(const std::exception& e)
