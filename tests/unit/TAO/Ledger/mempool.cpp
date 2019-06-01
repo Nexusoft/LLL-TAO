@@ -68,7 +68,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -106,7 +106,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -147,7 +147,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -157,7 +157,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashAddress, object2, FLAGS::MEMPOOL));
+            REQUIRE(LLD::regDB->ReadState(hashAddress, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //make sure not on disk
             REQUIRE(!LLD::regDB->ReadState(hashAddress, object2));
@@ -198,7 +198,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::WRITE) << hashAddress << stream.Bytes();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -208,7 +208,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashAddress, object2, FLAGS::MEMPOOL));
+            REQUIRE(LLD::regDB->ReadState(hashAddress, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //parse
             REQUIRE(object2.Parse());
@@ -249,7 +249,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::WRITE) << hashAddress << stream.Bytes();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -259,7 +259,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashAddress, object2, FLAGS::MEMPOOL));
+            REQUIRE(LLD::regDB->ReadState(hashAddress, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //parse
             REQUIRE(object2.Parse());
@@ -296,7 +296,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100);
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -306,7 +306,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashToken, object2, FLAGS::MEMPOOL));
+            REQUIRE(LLD::regDB->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //parse
             REQUIRE(object2.Parse());
@@ -342,7 +342,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -352,7 +352,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashToken, object2, FLAGS::MEMPOOL));
+            REQUIRE(LLD::regDB->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //parse
             REQUIRE(object2.Parse());
@@ -388,7 +388,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300);
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -398,7 +398,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashToken, object2, FLAGS::MEMPOOL));
+            REQUIRE(LLD::regDB->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //parse
             REQUIRE(object2.Parse());
@@ -428,7 +428,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300);
 
             //generate the prestates and poststates
-            REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(!tx.Build());
         }
 
 
@@ -453,7 +453,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100);
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -463,7 +463,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashToken, object2, FLAGS::MEMPOOL));
+            REQUIRE(LLD::regDB->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //parse
             REQUIRE(object2.Parse());
@@ -491,15 +491,15 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                 REQUIRE(TAO::Ledger::mempool.Get(hash, tx));
 
                 LLD::legDB->WriteTx(hash, tx);
-                REQUIRE(Verify(tx, FLAGS::WRITE));
-                REQUIRE(Execute(tx, FLAGS::WRITE));
+                REQUIRE(tx.Verify());
+                REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
                 REQUIRE(TAO::Ledger::mempool.Remove(tx.GetHash()));
             }
 
             //check token balance with mempool flag on
             {
                 TAO::Register::Object object2;
-                REQUIRE(LLD::regDB->ReadState(hashToken, object2, FLAGS::MEMPOOL));
+                REQUIRE(LLD::regDB->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
                 //parse
                 REQUIRE(object2.Parse());
@@ -564,7 +564,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -602,7 +602,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -643,7 +643,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -684,7 +684,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -725,7 +725,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -766,7 +766,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -807,7 +807,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -848,7 +848,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -890,7 +890,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -931,7 +931,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //sign
             tx.Sign(hashPrivKey1);
@@ -965,8 +965,8 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                 REQUIRE(TAO::Ledger::mempool.Get(hash, tx));
 
                 LLD::legDB->WriteTx(hash, tx);
-                REQUIRE(Verify(tx, FLAGS::WRITE));
-                REQUIRE(Execute(tx, FLAGS::WRITE));
+                REQUIRE(tx.Verify());
+                REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
                 REQUIRE(TAO::Ledger::mempool.Remove(tx.GetHash()));
             }
         }

@@ -72,7 +72,7 @@ namespace TAO
 
                 /* Grab the next operation. */
                 uint8_t OPERATION = 0;
-                contract >> OPERATION;
+                contract >= OPERATION;
 
                 /* Switch by operation code. */
                 switch(OPERATION)
@@ -235,7 +235,7 @@ namespace TAO
 
                 /* Extract the operation byte. */
                 uint8_t OPERATION = 0;
-                contract >> OPERATION;
+                contract >= OPERATION;
 
 
                 /* Switch based on the operation. */
@@ -466,11 +466,11 @@ namespace TAO
                     {
                         /* Get the beginning iterator. */
                         uint16_t nBegin = 0;
-                        contract >> nBegin;
+                        contract >= nBegin;
 
                         /* Get the size to extract. */
                         uint16_t nSize = 0;
-                        contract >> nSize;
+                        contract >= nSize;
 
                         /* Extract the string. */
                         std::vector<uint8_t> vData(vRet.size() * 8, 0);
@@ -493,7 +493,7 @@ namespace TAO
                     {
                         /* Extract the byte. */
                         uint8_t n = 0;
-                        contract >> n;
+                        contract >= n;
 
                         /* Set the register value. */
                         allocate((uint64_t)n, vRet);
@@ -510,7 +510,7 @@ namespace TAO
                     {
                         /* Extract the short. */
                         uint16_t n = 0;
-                        contract >> n;
+                        contract >= n;
 
                         /* Set the register value. */
                         allocate((uint64_t)n, vRet);
@@ -527,7 +527,7 @@ namespace TAO
                     {
                         /* Extract the integer. */
                         uint32_t n = 0;
-                        contract >> n;
+                        contract >= n;
 
                         /* Set the register value. */
                         allocate((uint64_t)n, vRet);
@@ -544,7 +544,7 @@ namespace TAO
                     {
                         /* Extract the integer. */
                         uint64_t n = 0;
-                        contract >> n;
+                        contract >= n;
 
                         /* Set the register value. */
                         allocate(n, vRet);
@@ -561,7 +561,7 @@ namespace TAO
                     {
                         /* Extract the integer. */
                         uint256_t n = 0;
-                        contract >> n;
+                        contract >= n;
 
                         /* Set the register value. */
                         allocate(n, vRet);
@@ -579,7 +579,7 @@ namespace TAO
                     {
                         /* Extract the integer. */
                         uint512_t n = 0;
-                        contract >> n;
+                        contract >= n;
 
                         /* Set the register value. */
                         allocate(n, vRet);
@@ -596,7 +596,7 @@ namespace TAO
                     {
                         /* Extract the integer. */
                         uint1024_t n = 0;
-                        contract >> n;
+                        contract >= n;
 
                         /* Set the register value. */
                         allocate(n, vRet);
@@ -613,7 +613,7 @@ namespace TAO
                     {
                         /* Extract the string. */
                         std::string str;
-                        contract >> str;
+                        contract >= str;
 
                         /* Set the register value. */
                         allocate(str, vRet);
@@ -630,7 +630,7 @@ namespace TAO
                     {
                         /* Extract the string. */
                         std::vector<uint8_t> vData;
-                        contract >> vData;
+                        contract >= vData;
 
                         /* Set the register value. */
                         allocate(vData, vRet);
@@ -896,7 +896,7 @@ namespace TAO
 
                         /* Get the value string. */
                         std::string strValue;
-                        contract >> strValue;
+                        contract >= strValue;
 
                         /* Check for object register type. */
                         if(object.nType != TAO::Register::REGISTER::OBJECT)

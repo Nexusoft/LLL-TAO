@@ -51,7 +51,8 @@ TEST_CASE( "System Register Tests", "[register]" )
         REQUIRE(object.nVersion   == 1);
         REQUIRE(object.nType      == REGISTER::SYSTEM);
         REQUIRE(object.hashOwner  == 0);
-        REQUIRE(object.nTimestamp == 1409456199);
+        REQUIRE(object.nCreated   == 1409456199);
+        REQUIRE(object.nModified  == 1409456199);
 
         //check critical validation code
         object.hashOwner = 493494;

@@ -56,10 +56,10 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
 
@@ -77,10 +77,10 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
 
@@ -95,13 +95,13 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check register values
             {
@@ -120,8 +120,6 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
 
     //check a debit from token
     {
-        //cleanup
-        LLD::regDB->EraseIdentifier(11);
 
         //create object
         uint256_t hashToken = LLC::GetRand256();
@@ -136,16 +134,16 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            Object token = CreateToken(11, 1000, 100);
+            Object token = CreateToken(hashToken, 1000, 100);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
 
@@ -157,16 +155,16 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            Object account = CreateAccount(11);
+            Object account = CreateAccount(hashToken);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
 
@@ -181,13 +179,13 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(1000);
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check register values
             {
@@ -214,13 +212,13 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(1);
 
             //generate the prestates and poststates
-            REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(!Execute(tx, FLAGS::WRITE));
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -231,8 +229,6 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
 
     //check for failed by account balance
     {
-        //cleanup
-        LLD::regDB->EraseIdentifier(11);
 
         //create object
         uint256_t hashToken = LLC::GetRand256();
@@ -247,16 +243,16 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            Object token = CreateToken(11, 100, 100);
+            Object token = CreateToken(hashToken, 100, 100);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
 
@@ -268,16 +264,16 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            Object account = CreateAccount(11);
+            Object account = CreateAccount(hashToken);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
 
@@ -292,13 +288,13 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
-            REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(!Execute(tx, FLAGS::WRITE));
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -322,16 +318,16 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            Object account = CreateAccount(11);
+            Object account = CreateAccount(hashAccount);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
 
@@ -346,13 +342,13 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << uint256_t(0) << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
-            REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(!Execute(tx, FLAGS::WRITE));
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -376,16 +372,16 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            Object account = CreateAccount(11);
+            Object account = CreateAccount(hashAccount);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
 
@@ -400,13 +396,13 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << hashAccount << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
-            REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(!Execute(tx, FLAGS::WRITE));
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -445,10 +441,10 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::RAW) << token.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
         {
@@ -462,13 +458,13 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
-            REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(!Execute(tx, FLAGS::WRITE));
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -507,10 +503,10 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
         {
@@ -524,13 +520,13 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
-            REQUIRE(!Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(!Execute(tx, FLAGS::WRITE));
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();

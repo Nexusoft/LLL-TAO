@@ -48,10 +48,10 @@ TEST_CASE( "Trust Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
             //generate the prestates and poststates
-            REQUIRE(Execute(tx, FLAGS::PRESTATE | FLAGS::POSTSTATE));
+            REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(Execute(tx, FLAGS::WRITE));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
         {

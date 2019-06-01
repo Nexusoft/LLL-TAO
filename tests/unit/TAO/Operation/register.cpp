@@ -3,7 +3,7 @@
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
@@ -32,13 +32,15 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
+            //build the tx
+            tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+
             //run tests
-            REQUIRE(Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
-            REQUIRE(Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::MEMPOOL, tx));
+            REQUIRE(tx.Build());
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
 
             //reset the streams
-            tx.ssRegister.seek(0, STREAM::BEGIN);
-            REQUIRE(Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::WRITE, tx));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
         {
@@ -76,13 +78,15 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
                    << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
-            //run tests
-            REQUIRE(Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
-            REQUIRE(Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::MEMPOOL, tx));
+               //build the tx
+               tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
-            //reset the streams
-            tx.ssRegister.seek(0, STREAM::BEGIN);
-            REQUIRE(Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::WRITE, tx));
+               //run tests
+               REQUIRE(tx.Build());
+               REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+
+               //reset the streams
+               REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
         {
@@ -124,13 +128,15 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
                     << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(10);
 
+            //build the tx
+            tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
+
             //run tests
-            REQUIRE(Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
-            REQUIRE(Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::MEMPOOL, tx));
+            REQUIRE(tx.Build());
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
 
             //reset the streams
-            tx.ssRegister.seek(0, STREAM::BEGIN);
-            REQUIRE(Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::WRITE, tx));
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
         {
@@ -164,7 +170,8 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
                     << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(10);
 
             //run tests
-            REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
+            REQUIRE(tx.Build());
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -183,8 +190,9 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
-            //run tests
-            REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
+           //run tests
+           REQUIRE(tx.Build());
+           REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -205,8 +213,9 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
                    << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
-            //run tests
-            REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
+           //run tests
+           REQUIRE(tx.Build());
+           REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -227,8 +236,9 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
                    << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
-            //run tests
-            REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
+           //run tests
+           REQUIRE(tx.Build());
+           REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -249,8 +259,9 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
                    << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
-            //run tests
-            REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
+           //run tests
+           REQUIRE(tx.Build());
+           REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -271,8 +282,9 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
                    << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(55);
 
-            //run tests
-            REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
+           //run tests
+           REQUIRE(tx.Build());
+           REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -293,8 +305,9 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
                    << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(55);
 
-            //run tests
-            REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
+           //run tests
+           REQUIRE(tx.Build());
+           REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -316,7 +329,8 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
                     << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(10);
 
             //run tests
-            REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
+            REQUIRE(tx.Build());
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -338,7 +352,8 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
                     << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(10);
 
             //run tests
-            REQUIRE(!Register(hashAddress, REGISTER::OBJECT, object.GetState(), FLAGS::PRESTATE | FLAGS::POSTSTATE, tx));
+            REQUIRE(tx.Build());
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 }
