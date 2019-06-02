@@ -28,7 +28,7 @@ namespace TAO
          *  State registers that are available for use.
          *
          **/
-        struct REGISTER
+        namespace REGISTER
         {
             enum
             {
@@ -50,7 +50,7 @@ namespace TAO
                 /* This type of register handles general accounts and DEBITS / CREDITS */
                 SYSTEM     = 0x05,
             };
-        };
+        }
 
 
         /** SYSTEM
@@ -58,7 +58,7 @@ namespace TAO
          *  System registers with reserved indexes.
          *
          **/
-        struct SYSTEM
+        namespace SYSTEM
         {
             enum
             {
@@ -71,7 +71,7 @@ namespace TAO
                 /* LIMIT is defined as 256 values. */
                 LIMIT     = 0xff
             };
-        };
+        }
 
 
         /** OBJECT
@@ -79,7 +79,7 @@ namespace TAO
          *  Object registers that are available and standardized.
          *
          **/
-        struct OBJECTS
+        namespace OBJECTS
         {
             enum
             {
@@ -101,11 +101,11 @@ namespace TAO
                 /* Namespace Object Register. */
                 NAMESPACE    = 0x05
             };
-        };
+        }
 
 
         /** Object register data types. **/
-        struct TYPES
+        namespace TYPES
         {
             enum
             {
@@ -125,7 +125,7 @@ namespace TAO
                 //by default everything is read-only
                 MUTABLE     = 0xff
             };
-        };
+        }
 
 
         /** STATES
@@ -133,7 +133,7 @@ namespace TAO
          *  The states for the register script in transaction.
          *
          **/
-        struct STATES
+        namespace STATES
         {
             enum
             {
@@ -146,7 +146,7 @@ namespace TAO
                 /* Post-State - for recording the checksum of register post-state. */
                 POSTSTATE  = 0x02
             };
-        };
+        }
     }
 }
 

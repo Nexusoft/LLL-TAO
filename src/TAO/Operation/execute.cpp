@@ -645,6 +645,31 @@ namespace TAO
                     }
 
 
+                    /* Validate a previous contract's conditions */
+                    case OP::VALIDATE:
+                    {
+                        /* Extract the transaction from contract. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
+
+                        /* Extract the contract-id. */
+                        uint32_t nContract = 0;
+                        contract >> nContract;
+
+                        /* Verify the operation rules. */
+                        const Contract condition = LLD::legDB->ReadContract(hashTx, nContract);
+                        if(!condition.Conditions())
+                            return debug::error(FUNCTION, "OP::VALIDATE: cannot validate with no conditions");
+
+                        /* Build the validation script for execution. */
+                        Condition conditions = Condition(condition, contract);
+                        if(!conditions.Execute())
+                            return debug::error(FUNCTION, "OP::VALIDATE: conditions not satisfied");
+
+                        break;
+                    }
+
+
                     /* Create unspendable legacy script, that acts to debit from the account and make this unspendable. */
                     case OP::LEGACY:
                     {

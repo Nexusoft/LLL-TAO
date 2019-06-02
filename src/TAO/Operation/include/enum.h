@@ -61,8 +61,11 @@ namespace TAO
                 ACK        = 0x30, //a vote to credit trust towards a proposal
                 NACK       = 0x31, //a vote to withdrawl trust from a proposal
 
+                //conditional operations
+                VALIDATE   = 0x40,
+
                 //legacy operations
-                LEGACY      = 0x50
+                LEGACY     = 0x50
 
                 //0x31 = 0x6f RESERVED
             };

@@ -486,6 +486,15 @@ namespace TAO
                         break;
                     }
 
+                    /* Validate a previous contract's conditions */
+                    case TAO::Operation::OP::VALIDATE:
+                    {
+                        /* Seek past validate parameters. */
+                        contract.Seek(69);
+
+                        break;
+                    }
+
 
                     /* Create unspendable legacy script, that acts to debit from the account and make this unspendable. */
                     case TAO::Operation::OP::LEGACY:
