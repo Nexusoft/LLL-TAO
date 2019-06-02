@@ -12,18 +12,11 @@
 ____________________________________________________________________________________________*/
 #pragma once
 
-#include <LLC/hash/argon2.h>
-
 #include <Legacy/types/transaction.h>
-
-#include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/types/object.h>
 
-#include <TAO/Ledger/include/chainstate.h>
-
 #include <Util/include/json.h>
-
 
 /* Global TAO namespace. */
 namespace TAO
@@ -42,18 +35,43 @@ namespace TAO
         uint256_t NamespaceHash(const SecureString& strNamespace);
 
 
+        /** CreateName
+        *
+        *  Creates a new Name Object register for the given name and register address adds the register operation to the transaction
+        *
+        *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
+        *  @param[in] strName The Name of the object
+        *  @param[in] hashRegister The register address that the Name object should resolve to
+        *  @param[out] contract The contract to create a name for.
+        *
+        **/
+        void CreateName(const uint256_t& hashGenesis, const std::string strName,
+                        const uint256_t& hashRegister, TAO::Operation::Contract& contract);
+
+
+        /** CreateNameFromTransfer
+        *
+        *  Creates a new Name Object register for an object being transferred
+        *
+        *  @param[in] hashTransfer The transaction ID of the transfer transaction being claimed
+        *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
+        *  @param[out] contract The contract to create a name for.
+        *
+        **/
+        void CreateNameFromTransfer(const uint512_t& hashTransfer,
+                                    const uint256_t& hashGenesis, TAO::Operation::Contract& contract);
+
+
         /** RegisterAddressFromName
          *
-         *  Resolves a register address from a name.
-         *  The register address is a hash of the fully-namespaced name in the format of namespacehash:objecttype:name.
+         *  Resolves a register address from a name by looking up a Name object.
          *
          *  @param[in] params The json request params
-         *  @param[in] strObjectType The object type to include in the string to build the register hash from
          *  @param[in] strObjectName The name parameter to use in the register hash
          *
          *  @return The 256 bit hash of the object name.
          **/
-        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectType, const std::string& strObjectName);
+        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectName);
 
 
         /** IsRegisterAddress
@@ -68,77 +86,12 @@ namespace TAO
          **/
         bool IsRegisterAddress(const std::string& strValueToCheck);
 
-        /** BlockToJSON
-        *
-        *  Converts the block to formatted JSON
-        *
-        *  @param[in] block The block to convert
-        *  @param[in] nTransactionVerbosity determines the amount of transaction data to include in the response
-        *
-        *  @return the formatted JSON object
-        *
-        **/
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
-
-
-        /** TransactionToJSON
-        *
-        *  Converts the transaction to formatted JSON
-        *
-        *  @param[in] tx The transaction to convert to JSON
-        *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
-        *  @param[in] nTransactionVerbosity determines the amount of transaction data to include in the response
-        *
-        *  @return the formatted JSON object
-        *
-        **/
-        json::json TransactionToJSON(TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
-
-
-        /** TransactionToJSON
-        *
-        *  Converts the transaction to formatted JSON
-        *
-        *  @param[in] tx The transaction to convert to JSON
-        *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
-        *  @param[in] nTransactionVerbosity determines the amount of transaction data to include in the response
-        *
-        *  @return the formatted JSON object
-        *
-        **/
-        json::json TransactionToJSON(Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
-
-
-        /** ContractToJSON
-        *
-        *  Converts a serialized operation stream to formattted JSON
-        *
-        *  @param[in] ssOperation The serialized Operation stream to convert
-        *
-        *  @return the formatted JSON object
-        *
-        **/
-        json::json ContractToJSON(const TAO::Operation::Contract& ssOperation);
-
-
-        /** ObjectRegisterToJSON
-        *
-        *  Converts an Object Register to formattted JSON
-        *
-        *  @param[in] object The Object Register to convert
-        *  @param[in] strDataField An optional data field to filter the response on
-        *
-        *  @return the formatted JSON object
-        *
-        **/
-        json::json ObjectRegisterToJSON(const TAO::Register::Object& object, const std::string strDataField);
-
 
         /** GetTokenOrAccountDigits
         *
         *  Retrieves the number of digits that applies to amounts for this token or account object.
         *  If the object register passed in is a token account then we need to look at the token definition
-        *  in order to get the digits.  The token is obtained by looking at the identifier field,
+        *  in order to get the digits.  The token is obtained by looking at the token_address field,
         *  which contains the register address of the issuing token
         *
         *  @param[in] object The Object Register to determine the digits for
@@ -147,6 +100,48 @@ namespace TAO
         *
         **/
         uint64_t GetTokenOrAccountDigits(const TAO::Register::Object& object);
+
+
+        /** GetTokenNameForAccount
+        *
+        *  Retrieves the token name for the token that this account object is used for.
+        *  The token is obtained by looking at the token_address field,
+        *  which contains the register address of the issuing token
+        *
+        *  @param[in] hashCaller genesis ID hash of the caller of the API
+        *  @param[in] object The Object Register of the token account
+        *
+        *  @return the token name for the token that this account object is used for
+        *
+        **/
+        std::string GetTokenNameForAccount(const uint256_t& hashCaller, const TAO::Register::Object& object);
+
+
+        /** GetRegistersOwnedBySigChain
+        *
+        *  Scans a signature chain to work out all registers that it owns
+        *
+        *  @param[in] hashGenesis The genesis hash of the signature chain to scan
+        *  @param[out] vRegisters The list of register addresses from sigchain.
+        *
+        *  @return A vector of register addresses owned by the sig chain
+        *
+        **/
+        bool ListRegisters(const uint512_t& hashGenesis, std::vector<uint256_t>& vRegisters);
+
+
+        /** GetObjectName
+        *
+        *  Scans the Name records associated with the hashCaller sig chain to find an entry with a matching hashObject address
+        *
+        *  @param[in] hashObject register address of the object to look up
+        *  @param[in] hashCaller genesis ID hash of the caller of the API
+        *  @param[in] hashOwner genesid ID hash of the object owner
+        *
+        *  @return the name of the object, if one is found
+        *
+        **/
+        std::string GetRegisterName(const uint256_t& hashObject, const uint256_t& hashCaller, const uint256_t& hashOwner);
 
 
     }

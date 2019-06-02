@@ -61,6 +61,9 @@ namespace TAO
          *
          *  Create a new block object from the chain.
          *
+         *  For Proof of Stake (channel 0), this method does not populate the producer coinstake operations, sign the producer, or add transactions 
+         *  to the block. The stake minter must perform these steps so it can account for differences between Trust or Genesis stake.
+         *
          *  @param[in] user The signature chain to generate this block
          *  @param[in] pin The pin number to generate with.
          *  @param[in] nChannel The channel to create block for.

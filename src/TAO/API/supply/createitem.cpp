@@ -66,30 +66,24 @@ namespace TAO
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction");
 
-            /* Submit the transaction payload. */
-            uint256_t hashRegister = 0;
+            /* Generate a random hash for this objects register address */
+            uint256_t hashRegister = LLC::GetRand256();
 
-            /* Check for data parameter. */
-            if(params.find("name") != params.end())
-            {
-                /* Get the namespace hash to use for this object.  By default the namespace is the username for the sig chain */
-                uint256_t nNamespaceHash = NamespaceHash(user->UserName());
-
-                /* register address is a hash of a name in the format of namespacehash:objecttype:name */
-                std::string strName = nNamespaceHash.ToString() + ":item:" + params["name"].get<std::string>();
-
-                /* Build the address from an SK256 hash of API:NAME. */
-                hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
-            }
-            else
-                hashRegister = LLC::GetRand256();
+            /* name of the object, default to blank */
+            std::string strName = "";
 
             /* Test the payload feature. */
             DataStream ssData(SER_REGISTER, 1);
+
+            /* Then the raw data */
             ssData << params["data"].get<std::string>();
 
             /* Submit the payload object. */
             tx[0] << (uint8_t)TAO::Operation::OP::CREATE << hashRegister << (uint8_t)TAO::Register::REGISTER::APPEND << ssData.Bytes();
+
+            /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
+            if(params.find("name") != params.end())
+                CreateName( user->Genesis(), params["name"].get<std::string>(), hashRegister, tx[1]); 
 
             /* Execute the operations layer. */
             if(!tx.Build())

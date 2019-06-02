@@ -33,7 +33,6 @@ namespace TAO
             uint512_t hashTx;
             uint256_t hashFrom;
             uint256_t hashTo;
-            uint64_t nAmount = 0;
             uint64_t nSession = 0;
 
             /* Loop the events processing thread until shutdown. */
@@ -72,10 +71,12 @@ namespace TAO
                 {
                     json::json ret = Notifications(params, false);
 
+                    /* Print the JSON value for the notifications processed. */
+                    debug::log(0, FUNCTION, "\n", ret.dump(4));
+
                     for(const auto& notification : ret)
                     {
-                        if(notification["operation"]["OP"] == "DEBIT"
-                        || notification["operation"]["OP"] == "COINBASE")
+                        if(notification["operation"][0]["OP"] == "DEBIT")
                         {
                             /* Create the transaction. */
                             TAO::Ledger::Transaction tx;
@@ -84,11 +85,9 @@ namespace TAO
 
                             /* Set the transaction, to and from hashes. */
                             hashTx.SetHex(notification["hash"]);
-                            hashFrom.SetHex(notification["operation"]["address"]);
-                            hashTo.SetHex(notification["operation"]["transfer"]);
+                            hashFrom.SetHex(notification["operation"][0]["address_from"]);
+                            hashTo.SetHex(notification["operation"][0]["address_to"]);
 
-                            /* Get the credit. */
-                            nAmount = notification["operation"]["amount"];
 
                             // TODO:
                             // get identifer from notification (you need to add identifier to notification JSON)
@@ -103,7 +102,7 @@ namespace TAO
 
 
                             /* Submit the payload object. */
-                            tx[0] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashFrom << hashTo << nAmount;
+                            //tx[0] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashFrom << hashTo << nAmount;
 
                             /* Execute the operations layer. */
                             if(!tx.Build())
@@ -117,7 +116,11 @@ namespace TAO
                             if(!TAO::Ledger::mempool.Accept(tx))
                                 throw APIException(-26, "Failed to accept");
                         }
-                        else if(notification["operation"]["OP"] == "TRANSFER")
+                        else if(notification["operation"][0]["OP"] == "COINBASE")
+                        {
+
+                        }
+                        else if(notification["operation"][0]["OP"] == "TRANSFER")
                         {
                             /* Create the transaction. */
                             TAO::Ledger::Transaction tx;
@@ -143,9 +146,6 @@ namespace TAO
                                 throw APIException(-26, "Failed to accept");
                         }
                     }
-
-                    /* Print the JSON value for the notifications processed. */
-                    debug::log(0, FUNCTION, "\n", ret.dump(4));
 
                 }
                 catch(const APIException& e)

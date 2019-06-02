@@ -251,6 +251,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_falcon-vrfy.o \
 		build/LLC_frng.o \
 		build/LLC_shake.o \
+        build/LLC_x509_cert.o \
         build/LLD_address.o \
         build/LLD_ledger.o \
         build/LLD_legacy.o \
@@ -294,14 +295,22 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_trust_address.o \
 		build/API_global.o \
 		build/API_cmd.o \
+		build/API_assets_claim.o \
 		build/API_assets_create.o \
 		build/API_assets_get.o \
 		build/API_assets_history.o \
 		build/API_assets_initialize.o \
 		build/API_assets_tokenize.o \
 		build/API_assets_transfer.o \
-		build/API_assets_claim.o \
 		build/API_assets_update.o \
+		build/API_finance_create.o \
+		build/API_finance_credit.o \
+		build/API_finance_debit.o \
+		build/API_finance_get.o \
+		build/API_finance_info.o \
+		build/API_finance_initialize.o \
+		build/API_finance_list.o \
+		build/API_finance_stake.o \
 		build/API_ledger_block.o \
 		build/API_ledger_initialize.o \
 		build/API_ledger_state.o \
@@ -314,28 +323,32 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_RPC_network.o \
 		build/API_RPC_rpc.o \
 		build/API_RPC_wallet.o \
+		build/API_supply_claim.o \
 		build/API_supply_createitem.o \
 		build/API_supply_getitem.o \
 		build/API_supply_history.o \
 		build/API_supply_initialize.o \
 		build/API_supply_transfer.o \
-		build/API_supply_claim.o \
 		build/API_supply_updateitem.o \
 		build/API_tokens_create.o \
 		build/API_tokens_credit.o \
 		build/API_tokens_debit.o \
 		build/API_tokens_get.o \
 		build/API_tokens_initialize.o \
+		build/API_users_accounts.o \
+		build/API_users_assets.o \
 		build/API_users_create.o \
 		build/API_users_events.o \
 		build/API_users_lock.o \
 		build/API_users_login.o \
 		build/API_users_logout.o \
 		build/API_users_notifications.o \
+		build/API_users_tokens.o \
 		build/API_users_transactions.o \
 		build/API_users_unlock.o \
 		build/API_users_users.o \
 		build/API_utils_utils.o \
+		build/API_utils_jsonutils.o \
 		build/Operation_append.o \
 		build/Operation_claim.o \
 		build/Operation_contract.o \
@@ -509,6 +522,9 @@ build/API_%.o: ./src/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_assets_%.o: ./src/TAO/API/assets/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_finance_%.o: ./src/TAO/API/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_ledger_%.o: ./src/TAO/API/ledger/%.cpp $(HEADERS)
@@ -743,6 +759,13 @@ build/API_%.o: src/TAO/API/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_assets_%.o: src/TAO/API/assets/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_finance_%.o: src/TAO/API/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1110,6 +1133,13 @@ build/API_%.o: src/TAO/API/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_assets_%.o: src/TAO/API/assets/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_finance_%.o: src/TAO/API/finance/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

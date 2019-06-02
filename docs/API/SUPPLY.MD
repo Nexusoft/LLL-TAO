@@ -83,9 +83,9 @@ Additionally the API supports passing a field name in the URL after the asset na
 
 ### Parameters:
 
-`name` : The name identifying the item. This is optional if the address is provided.  The name should be in namespace:name format
+`name` : The name identifying the item. This is optional if the address is provided.  The name should be in username:name format.  However, if the item was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
-`namespace` : The namespace that the the item was create in. This is optional if the address is provided or the name is provided in the namespace:name format.  
+`session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the name in order to deduce the register address of the item.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
 `address` : The register address of the item. This is optional if the name is provided.
 
@@ -97,6 +97,7 @@ Additionally the API supports passing a field name in the URL after the asset na
 {
     "timestamp": "1553227128",
     "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
+    "name": "mysupplyitem",
     "data": "newregister"
 }
 ```
@@ -105,6 +106,8 @@ Additionally the API supports passing a field name in the URL after the asset na
 `timestamp` : The Unix timestamp of when the asset was last updated.
 
 `owner` : The genesis hash of the signature chain that owns this asset.
+
+`name` : The name identifying the item. For privacy purposes, this is only included in the response if the caller is the owner of the asset
 
 `data` : The current value of the data in the item.
 
@@ -127,9 +130,7 @@ This will transfer ownership of an item.  This is a generic endpoint requiring t
 
 `session` : For multi-user API mode (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the item. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the item to be transferred. This is optional if the address is provided.  The name should be in namespace:name format
-
-`namespace` : The namespace that the the item was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`name` : The name identifying the item to be transferred. This is optional if the address is provided.  The name should be in username:name format.  However, if the item was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `address` : The register address of the item to be transferred. This is optional if the name is provided.
 
@@ -207,9 +208,7 @@ This is the generic endpoint for updating the data value in an item.  The API su
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the supply should be created with. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the supply to update. This is optional if the address is provided.  The name should be in namespace:name format
-
-`namespace` : The namespace that the the supply was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`name` : The name identifying the supply to update. This is optional if the address is provided.  The name should be in username:name format.  However, if the item was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `address` : The register address of the supply to update. This is optional if the name is provided.
 
@@ -246,9 +245,9 @@ This will get the history of changes to an item, including both the data and it'
 
 ### Parameters:
 
-`name` : The name identifying the item. This is optional if the address is provided.  The name should be in namespace:name format
+`name` : The name identifying the item. This is optional if the address is provided.  The name should be in username:name format.  However, if the item was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
-`namespace` : The namespace that the the item was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the name in order to deduce the register address of the item.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
 `address` : The register address of the item. This is optional if the name is provided.
 
@@ -257,12 +256,14 @@ This will get the history of changes to an item, including both the data and it'
 ```
 [
     {
+        "name": "mysupplyitem",
         "checksum": 9070277379865698600,
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
         "state": "0b6e657764617461696e746f",
         "updated": 1546888868
     },
     {
+        "name": "mysupplyitem",
         "checksum": 9060775569865698900,
         "owner": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
         "state": "0b6e657764617461696e746f",

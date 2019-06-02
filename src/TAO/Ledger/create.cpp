@@ -128,7 +128,7 @@ namespace TAO
                     continue;
 
                 /* Don't add transactions that are coinbase or coinstake. */
-                if(tx.IsCoinbase() || tx.IsTrust())
+                if(tx.IsCoinbase() || tx.IsCoinstake())
                     continue;
 
                 /* Check for timestamp violations. */
@@ -157,12 +157,11 @@ namespace TAO
             /* Handle if the block is cached. Staking channel (channel 0) should never be cached, as it should only call CreateBlock when stateBest changes*/
             if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].load().hashPrevBlock && nChannel != 0)
             {
-
                 /* Set the block to cached block. */
                 block = blockCache[nChannel].load();
 
                 /* Use the extra nonce if block is coinbase. */
-                if(nChannel != 0 && nChannel != 3)
+                if(nChannel == 1 || nChannel == 2)
                 {
                     /* Create coinbase transaction. */
                     block.producer[0].Clear();
@@ -225,11 +224,11 @@ namespace TAO
                     /* Set the Coinstake timestamp. */
                      block.producer.nTimestamp = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() + 1;
 
-                     /* The remainder of Coinstake transaction not configured here. Stake minter must handle it depending on whether Genesis or Trust. */
+                     /* The remainder of Coinstake producer not configured here. Stake minter must handle it depending on whether Genesis or Trust. */
                 }
 
                 /* Create the Coinbase Transaction if the Channel specifies. */
-                else if(nChannel < 3)
+                else if(nChannel == 1 || nChannel == 2)
                 {
                     /* Create coinbase transaction. */
                     block.producer[0] << uint8_t(TAO::Operation::OP::COINBASE);
@@ -253,11 +252,15 @@ namespace TAO
                     block.producer[0] << block.producer.hashGenesis;
                 }
 
-                /* Sign the producer transaction. */
-                block.producer.Sign(user->Generate(block.producer.nSequence, pin));
+                /* Stake minter must perform Sign after producer completed and also do AddTransactions based on Genesis or Trust. */
+                if (nChannel != 0)
+                {
+                    /* Sign the producer transaction. */
+                    block.producer.Sign(user->Generate(block.producer.nSequence, pin));
 
-                /* Add the transactions to the block. */
-                AddTransactions(block);
+                    /* Add the transactions to the block. */
+                    AddTransactions(block);
+                }
 
                 /** Populate the Block Data. **/
                 block.hashPrevBlock   = stateBest.GetHash();

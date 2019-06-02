@@ -16,10 +16,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/genesis.h>
 
-#include <TAO/Register/types/object.h>
 #include <TAO/Register/include/system.h>
-
-#include <TAO/Ledger/include/stake.h>
+#include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
 namespace TAO

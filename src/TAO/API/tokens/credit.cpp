@@ -73,7 +73,7 @@ namespace TAO
             if(params.find("name") != params.end())
             {
                 /* If name_to is provided then use this to deduce the register address */
-                hashTo = RegisterAddressFromName( params, "token", params["name"].get<std::string>());
+                hashTo = RegisterAddressFromName( params, params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
@@ -86,27 +86,16 @@ namespace TAO
             uint512_t hashTx = 0;
             hashTx.SetHex(params["txid"].get<std::string>());
 
-            /* Get the contract-id. */
-            int32_t nContract = 0;
-
-            /* The total value of the credit. */
-            uint64_t nAmount = 0;
-
-            /* Check for data parameter. */
+            /* If name_proof is provided then use this to deduce the register address */
             uint256_t hashProof = 0;
             if(params.find("name_proof") != params.end())
             {
+                hashProof = RegisterAddressFromName(params, params["name_proof"].get<std::string>());
 
-                /* If name_proof is provided then use this to deduce the register address */
-                hashProof = RegisterAddressFromName( params, "token", params["name_proof"].get<std::string>());
-
+                //TODO: we need to check the proofs for partial credit here and build a multi-contract transaction
             }
-
-            /* Handle RAW hex-encoded proof address. */
-            else if(params.find("proof") != params.end())
-                hashProof.SetHex(params["proof"].get<std::string>());
-
-            /* Search for a proof if none is supplied. */
+            else if(params.find("address_proof") != params.end())
+                hashProof.SetHex(params["address_proof"].get<std::string>());
             else
             {
                 /* Read the previous transaction. */
@@ -115,7 +104,8 @@ namespace TAO
                     throw APIException(-23, "Previous transaction not found.");
 
                 /* Loop through all transactions. */
-                for(nContract = txPrev.Size() - 1; nContract >= 0; --nContract)
+                int32_t nCurrent = -1;
+                for(uint32_t nContract = 0; nContract < txPrev.Size(); ++nContract)
                 {
                     /* Get the contract. */
                     const TAO::Operation::Contract& contract = txPrev[nContract];
@@ -137,6 +127,7 @@ namespace TAO
                     contract >> hashTo;
 
                     /* Get the amount to respond to. */
+                    uint64_t nAmount = 0;
                     contract >> nAmount;
 
                     /* Get the token / account object that we are crediting to. This is required as we need to determine the
@@ -173,18 +164,21 @@ namespace TAO
                         /* Set the proof if found. */
                         hashProof = hashFrom;
 
+                        /* Increase the current contract (support multiple payloads if found). */
+                        ++nCurrent;
+
+                        /* Submit the payload object. */
+                        tx[nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashTo <<  hashProof << nAmount;
+
                         break;
                     }
                 }
 
                 /* Check that output was found. */
-                if(nContract == -1)
+                if(nCurrent == -1)
                     throw APIException(-24, "no valid contracts in previous tx");
 
             }
-
-            /* Submit the payload object. */
-            tx[0] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashProof << hashTo << nAmount;
 
             /* Execute the operations layer. */
             if(!tx.Build())

@@ -60,6 +60,30 @@ namespace TAO
          **/
         Object CreateToken(const uint256_t& hashIdentifier, const uint64_t nSupply, const uint64_t nDigits);
 
+
+        /** CreateAsset
+         *
+         *  Generate a new asset object register.
+         *
+         *  @return The object register just created.
+         *
+         **/
+        Object CreateAsset();
+
+
+        /** CreateName
+         *
+         *  Generate a new name object register.
+         *
+         *  @param[in] strName The name of the Object that this Name record represents
+         *  @param[in] hashRegister The register address that this name is aliasing
+         *
+         *  @return The object register just created.
+         *
+         **/
+        Object CreateName(const std::string& strName, const uint256_t& hashRegister);
+
+
     }
 }
 

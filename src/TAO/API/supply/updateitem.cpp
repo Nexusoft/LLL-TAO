@@ -69,10 +69,17 @@ namespace TAO
             /* Get the register address. */
             uint256_t hashRegister = 0;
 
+            /* name of the object, default to blank */
+            std::string strName = "";
+
             /* Check whether the caller has provided the asset name parameter. */
             if(params.find("name") != params.end())
+            {
+                /* Get the called-supplied name */
+                strName = params["name"].get<std::string>();
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = RegisterAddressFromName(params, "item", params["name"].get<std::string>());
+                hashRegister = RegisterAddressFromName(params, params["name"].get<std::string>());
+            }
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"]);
@@ -82,6 +89,10 @@ namespace TAO
 
             /* Test the payload feature. */
             DataStream ssData(SER_REGISTER, 1);
+            /* Add the name first */
+            ssData << strName;
+
+            /* Then the raw data */
             ssData << params["data"].get<std::string>();
 
             /* Submit the payload object. */

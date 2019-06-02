@@ -30,7 +30,7 @@ namespace TAO
             "balance",
 
             /* Used to identify a specific token. */
-            "identifier",
+            "token",
 
             /* Used to set validation script in object register. */
             "require",
@@ -50,7 +50,7 @@ namespace TAO
             /* Used for internal object register system memory. */
             "system",
 
-            /* USed for object register names. Reserved to never be changed. */
+            /* Used for object register names. Reserved to never be changed. */
             "name"
         };
 

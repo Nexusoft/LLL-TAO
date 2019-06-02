@@ -69,7 +69,7 @@ TEST_CASE( "Trust Primitive Tests", "[operation]" )
             //check values
             REQUIRE(object.get<uint64_t>("balance") == 0);
             REQUIRE(object.get<uint64_t>("trust")   == 0);
-            REQUIRE(object.get<uint256_t>("identifier") == 0);
+            REQUIRE(object.get<uint256_t>("token") == 0);
         }
     }
 }

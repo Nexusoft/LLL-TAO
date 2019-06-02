@@ -16,7 +16,6 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_INCLUDE_CONSTANTS_H
 
 #include <LLC/types/bignum.h>
-#include <Legacy/include/money.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -128,8 +127,16 @@ namespace TAO
         const uint32_t MAINNET_MINIMUM_INTERVAL = 250;
 
 
-        /** Set the Maximum Output Value of Coinstake Transaction. **/
-        const uint64_t MAX_STAKE_WEIGHT = 1000 * Legacy::COIN;
+        /** NXS token default digits. **/
+        const uint64_t NXS_DIGITS = 6;
+
+
+        /** Integral value for one NXS coin (1 * 10 ^ NXS_DIGITS). **/
+        const uint64_t NXS_COIN = 1000000;
+
+
+        /** The stake threshold weight multiplier. **/
+        const uint64_t MAX_STAKE_WEIGHT = 1000 * NXS_COIN;
     }
 }
 

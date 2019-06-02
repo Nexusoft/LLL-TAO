@@ -270,14 +270,14 @@ namespace TAO
             bool IsCoinbase() const;
 
 
-            /** IsTrust
+            /** IsCoinstake
              *
-             *  Determines if the transaction is a trust transaction.
+             *  Determines if the transaction is a coinstake (trust or genesis) transaction.
              *
-             *  @return true if transaction is a coinbase.
+             *  @return true if transaction is a coinstake.
              *
              **/
-            bool IsTrust() const;
+            bool IsCoinstake() const;
 
 
             /** IsHead
@@ -308,6 +308,16 @@ namespace TAO
              *
              **/
             bool IsPrivate() const;
+
+
+            /** IsTrust
+             *
+             *  Determines if the transaction is a trust transaction.
+             *
+             *  @return true if transaction is a coinbase.
+             *
+             **/
+            bool IsTrust() const;
 
 
             /** IsGenesis

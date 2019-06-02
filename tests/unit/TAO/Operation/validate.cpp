@@ -406,7 +406,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
                << std::string("test") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::STRING) << std::string("this string")
                << std::string("bytes") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::BYTES) << std::vector<uint8_t>(10, 0xff)
                << std::string("balance") << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-               << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
+               << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
        object.hashOwner = LLC::GetRand256();
        object.nType     = TAO::Register::REGISTER::OBJECT;
@@ -464,7 +464,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
 
 
        contract.Clear();
-       contract <= uint8_t(OP::TYPES::UINT256_T) <= hashObject <= uint8_t(OP::REGISTER::VALUE) <= std::string("identifier")
+       contract <= uint8_t(OP::TYPES::UINT256_T) <= hashObject <= uint8_t(OP::REGISTER::VALUE) <= std::string("token")
                    <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= uint256_t(0);
        {
            Validate script = Validate(contract, caller);
@@ -473,7 +473,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
 
 
        contract.Clear();
-       contract <= uint8_t(OP::TYPES::STRING) <= strObject <= uint8_t(OP::CRYPTO::SK256) <= uint8_t(OP::REGISTER::VALUE) <= std::string("identifier")
+       contract <= uint8_t(OP::TYPES::STRING) <= strObject <= uint8_t(OP::CRYPTO::SK256) <= uint8_t(OP::REGISTER::VALUE) <= std::string("token")
                    <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= uint256_t(0);
        {
            Validate script = Validate(contract, caller);

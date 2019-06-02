@@ -267,7 +267,14 @@ This will list off all of the transactions for the requested signature chain gen
     "signature": "30818402405f1b486b556912edc1b87139c822409e4be7e1aae73a92aadf4ad36f46c90d3c4190ee9bff04e6e79fe27fad4557670ea04533d1ccdb4581de252f04403e36b402401734b064192c106ff070d922349a11eec82c57942824a8b92e44fcb6f5702fa31f190946f9b3bb98815be12f98649cdf7b7204942d1437557635060fb91095c0",
     "timestamp": 1545445264,
     "version": 1
-    "operation", "Coinbase(nAmount=55)"
+    "operation": [
+            {
+                "OP": "REGISTER",
+                "address": "140e9de108b17a6c532e088cfa6ffa7f5075a10ef1daa07924ba3a27ff20edb9",
+                "type": 4,
+                "data": "0762616c616e6365ff040000000000000000057472757374ff040000000000000000057374616b65ff0400000000000000000d746f6b656e5f61646472657373050000000000000000000000000000000000000000000000000000000000000000"
+            }
+        ]
 },
 ```
 
@@ -335,7 +342,7 @@ This will list off all of the transactions sent to a particular genesis or usern
     "signature": "30818402405f1b486b556912edc1b87139c822409e4be7e1aae73a92aadf4ad36f46c90d3c4190ee9bff04e6e79fe27fad4557670ea04533d1ccdb4581de252f04403e36b402401734b064192c106ff070d922349a11eec82c57942824a8b92e44fcb6f5702fa31f190946f9b3bb98815be12f98649cdf7b7204942d1437557635060fb91095c0",
     "timestamp": 1545445264,
     "version": 1
-    "operation", "Coinbase(nAmount=55)"
+    "operation": "Coinbase(nAmount=55)"
 },
 ```
 
@@ -391,14 +398,18 @@ This will list off all of the assets owned by a signature chain.
 ```
 [
     {
-        "timestamp": "1553227128"
+        "name": "myasset1",
+        "address": "8195384518cc4daf2da54479a38c9d93fde145be0bbcd129f420054ff777917c",
+        "timestamp": "1553227256"
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
         "serial_number": "123456",
         "description": "This is the description of my asset",
         "shelf_location": "A9S2"
     },
     {
-        "timestamp": "1553227256"
+        "name": "myasset2",
+        "address": "2673bd356146d1b7ab34dac8f6503cd0c587158b6a017fb9e8ff3e627be8f01c",
+        "timestamp": "1553227128"
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
         "serial_number": "78901234",
         "description": "This is the description of another asset",
@@ -407,6 +418,10 @@ This will list off all of the assets owned by a signature chain.
 ]
 ```
 ### Return values:
+
+`name` : The name identifying the asset.  For privacy purposes, this is only included in the response if the caller is the owner of the asset
+
+`address` : The register address of the asset. 
 
 `timestamp` : The Unix timestamp of when the asset was last updated.
 
@@ -434,18 +449,27 @@ This will list off all of the token accounts belonging to a particular signature
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
 
 ### Return value JSON object:
 ```
 [
     {
+        "name": "default",
         "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
-        "identifier": "NXS",
+        "token_name": "NXS",
+        "token": "0",
         "balance": 5000
     },
     {
+        "name": "savings",
         "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
-        "identifier": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "token_name": "mytoken",
+        "token": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
         "balance": 60
     }
 
@@ -454,9 +478,13 @@ This will list off all of the token accounts belonging to a particular signature
 ```
 ### Return values:
 
+`name` : The name identifying the account.  For privacy purposes, this is only included in the response if the caller is the owner of the account 
+
 `address` : The register address for the account
 
-`identifer` : The identifier of the token that this account can be used for.
+`token_name` : The name of the token that this account can be used with.  For privacy purposes, this is only included in the response if the caller is the owner of the token 
+
+`token_address` : The register address of the token that this account can be used for.
 
 `balance` : The current balance of the token account.
 
@@ -480,23 +508,30 @@ This will list off all of the tokens that were created by a particular signature
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
 
 ### Return value JSON object:
 ```
 [
     {
+        "name": "mytoken1",
         "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
-        "identifier": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
         "balance": 0,
         "maxsupply": 26738388,
-        "currentsupply": 26738388
+        "currentsupply": 26738388,
+        "digits": 2
     },
     {
+        "name": "mytoken2",
         "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
-        "identifier": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
         "balance": 990,
         "maxsupply": 1000,
-        "currentsupply": 10
+        "currentsupply": 10,
+        "digits": 8
     }
 
 
@@ -504,14 +539,16 @@ This will list off all of the tokens that were created by a particular signature
 ```
 ### Return values:
 
-`address` : The register address for the account
+`name` : The name identifying the token.  For privacy purposes, this is only included in the response if the caller is the owner of the token 
 
-`identifer` : The identifier of the token that this account can be used for.
+`address` : The register address for the account
 
 `balance` : The current balance of the token account.
 
 `maxsupply` : The maximum available supply for this token.
 
 `currentsupply` : The current number of tokens that have been distributed from this token register.
+
+`digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
 
 ****

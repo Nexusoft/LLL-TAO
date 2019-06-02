@@ -73,7 +73,7 @@ namespace TAO
             /* If name_to is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
             if(params.find("name_to") != params.end())
-                hashTo = RegisterAddressFromName(params, "token", params["name_to"].get<std::string>());
+                hashTo = RegisterAddressFromName(params, params["name_to"].get<std::string>());
             else if(params.find("address_to") != params.end())
                 hashTo.SetHex(params["address_to"].get<std::string>());
             else
@@ -85,7 +85,7 @@ namespace TAO
             /* If name is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
             if(params.find("name") != params.end())
-                hashFrom = RegisterAddressFromName(params, "token", params["name"].get<std::string>());
+                hashFrom = RegisterAddressFromName(params, params["name"].get<std::string>());
             else if(params.find("address") != params.end())
                 hashFrom.SetHex(params["address"].get<std::string>());
             else
@@ -108,11 +108,11 @@ namespace TAO
             uint64_t nCurrentBalance = 0;
 
             /* Check the object standard. */
-            if( nStandard == TAO::Register::OBJECTS::TOKEN || nStandard == TAO::Register::OBJECTS::ACCOUNT)
+            if( nStandard == TAO::Register::OBJECTS::TOKEN || nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST)
             {
                 /* If the user requested a particular object type then check it is that type */
                 std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
-                if((strType == "token" && nStandard == TAO::Register::OBJECTS::ACCOUNT))
+                if(strType == "token" && (nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST))
                     throw APIException(-24, "Object is not a token");
                 else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
                     throw APIException(-24, "Object is not an account");

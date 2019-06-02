@@ -184,7 +184,7 @@ namespace LLD
 
         /** ReadIdentifier
          *
-         *  Read a token identifier from the register database.
+         *  Read a token address from the register database.
          *
          *  @param[in] nIdentifier The token identifier.
          *  @param[out] hashRegister The register address of token.

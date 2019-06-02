@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
 #include <LLD/include/global.h>
@@ -76,14 +77,26 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction");
             }
 
-            /* Create trust account register name within the user sig chain namespace */
-            std::string strName = NamespaceHash(user->UserName()).ToString() + ":token:trust";
+            /* Create trust account register  within the user sig chain namespace */
+            /* Generate a random hash for this objects register address */
+            uint256_t hashRegister = LLC::GetRand256();
 
-            /* Get the register address from an SK256. */
-            uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+            /* Add a Name record for the trust account */
+            CreateName(user->Genesis(), "trust", hashRegister, tx[0]);
 
             /* Set up tx operation to create the trust account register at the same time as sig chain genesis. */
-            tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
+            tx[1] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister
+                  << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
+
+            /* Generate a random hash for this objects register address */
+            hashRegister = LLC::GetRand256();
+
+            /* Add a Name record for the trust account */
+            CreateName(user->Genesis(), "default", hashRegister, tx[2]);
+
+            /* Add the default account register operation to the transaction */
+            tx[3] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister
+                  << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateAccount(0).GetState();
 
             /* Calculate the prestates and poststates. */
             if(!tx.Build())

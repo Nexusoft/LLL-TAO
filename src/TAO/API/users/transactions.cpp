@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/users.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/jsonutils.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -102,7 +103,7 @@ namespace TAO
                 if(nCurrentPage > nPage)
                     break;
 
-                if(nTotal > nLimit)
+                if(nTotal - (nPage * nLimit) > nLimit)
                     break;
 
                 /* Read the block state from the the ledger DB using the transaction hash index */

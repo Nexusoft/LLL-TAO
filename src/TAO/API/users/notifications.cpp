@@ -17,6 +17,9 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/users.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/jsonutils.h>
+
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/types/object.h>
@@ -89,29 +92,47 @@ namespace TAO
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;
 
-                /* Register address. */
-                uint256_t hashAddress;
+                /* Loop through all contracts. */
+                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                {
+                    /* Attempt to unpack a coinbase transaction. */
+                    if(TAO::Register::Unpack(tx[nContract], TAO::Operation::OP::COINBASE))
+                    {
+                        /* Create JSON return object. */
+                        json::json obj;
+                        obj["contract"] = ContractToJSON(tx[nContract]);
 
-                /* Attempt to unpack a register script. */
-                TAO::Register::Object object;
-                if(!TAO::Register::Unpack(tx[0], object, hashAddress))
-                    continue;
+                        /* Push back in vector. */
+                        ret.push_back(obj);
 
-                /* Check that it is an account. */
-                if(object.nType != TAO::Register::REGISTER::OBJECT)
-                    continue;
+                        continue;
+                    }
 
-                /* Parse out the object register. */
-                if(!object.Parse())
-                    continue;
+                    /* Register address. */
+                    uint256_t hashAddress;
 
-                /* Get the token address. */
-                uint256_t hashToken;
-                if(!LLD::regDB->ReadIdentifier(object.get<uint256_t>("identifier"), hashToken))
-                    continue;
+                    /* Attempt to unpack a register script. */
+                    TAO::Register::Object object;
+                    if(!TAO::Register::Unpack(tx[nContract], object, hashAddress))
+                        continue;
 
-                /* Push the token identifier to list to check. */
-                vRegisters.push_back(std::make_tuple(hashAddress, hashToken, object.get<uint64_t>("balance")));
+                    /* Check that it is an account. */
+                    if(object.nType != TAO::Register::REGISTER::OBJECT)
+                        continue;
+
+                    /* Parse out the object register. */
+                    if(!object.Parse())
+                        continue;
+
+                    /* Get the token address. */
+                    uint256_t hashToken;
+                    if(!LLD::regDB->ReadIdentifier(object.get<uint256_t>("token"), hashToken))
+                        continue;
+
+                    /* Push the token identifier to list to check. */
+                    vRegisters.push_back(std::make_tuple(hashAddress, hashToken, object.get<uint64_t>("balance")));
+
+                }
             }
 
             /* Start with sequence 0 (chronological order). */
@@ -147,7 +168,7 @@ namespace TAO
                     if(nCurrentPage > nPage)
                         break;
 
-                    if(nTotal > nLimit)
+                    if(nTotal - (nPage * nLimit) > nLimit)
                         break;
 
                     /* Read the object register. */
@@ -178,9 +199,9 @@ namespace TAO
                     obj["hash"]          = tx.GetHash().ToString();
                     obj["operation"]     = ContractToJSON(tx[0]);
 
-                    if(obj["operation"]["OP"] == "DEBIT")
+                    if(obj["operation"][0]["OP"] == "DEBIT")
                     {
-                        uint256_t hashTo = uint256_t(obj["operation"]["transfer"].get<std::string>());
+                        uint256_t hashTo = uint256_t(obj["operation"][0]["address_to"].get<std::string>());
 
                         TAO::Register::State stateTo;
                         if(!LLD::regDB->ReadState(hashTo, stateTo))
@@ -193,8 +214,8 @@ namespace TAO
                             if(!object.Parse())
                                 continue;
 
-                            /* Calculate the partial debit amount. */
-                            obj["operation"]["amount"] = (obj["operation"]["amount"].get<uint64_t>() * std::get<2>(hash)) / object.get<uint64_t>("supply");
+                            /* Calculate the partial debit amount (amount = amount * balance / supply). */
+                            obj["operation"][0]["amount"] = (obj["operation"][0]["amount"].get<uint64_t>() * std::get<2>(hash)) / object.get<uint64_t>("supply");
                         }
                     }
 
@@ -235,8 +256,8 @@ namespace TAO
                 if(nCurrentPage > nPage)
                     break;
 
-                if(nTotal > nLimit)
-                        break;
+                if(nTotal - (nPage * nLimit) > nLimit)
+                    break;
 
                 json::json obj;
                 obj["version"]   = tx.nVersion;

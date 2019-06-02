@@ -97,20 +97,42 @@ namespace TAO
             {
                 std::string strNameOrAddress;
 
-                
                 /* get the method name from the incoming string */
                 strMethodRewritten = strMethod.substr(0, nPos+5);
 
                 /* Get the name or address that comes after the /item/ part */
                 strNameOrAddress = strMethod.substr(nPos +6);
 
-                
                 /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
                 if(IsRegisterAddress(strNameOrAddress))
                     jsonParams["genesis"] = strNameOrAddress;
                 else
                     jsonParams["username"] = strNameOrAddress;
-                    
+
+                return strMethodRewritten;
+            }
+
+            /* support passing the username after a list method e.g. list/assets/myusername */
+            nPos = strMethod.find("list/");
+            if(nPos != std::string::npos)
+            {
+                std::string strNameOrAddress;
+
+                nPos = strMethod.find("/", nPos+5);
+
+                /* get the method name from the incoming string */
+                strMethodRewritten = strMethod.substr(0, nPos);
+
+                /* Get the name or address that comes after the /item/ part */
+                strNameOrAddress = strMethod.substr(nPos +1);
+
+                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
+                if(IsRegisterAddress(strNameOrAddress))
+                    jsonParams["genesis"] = strNameOrAddress;
+                else
+                    jsonParams["username"] = strNameOrAddress;
+
+                return strMethodRewritten;
             }
 
             return strMethodRewritten;
@@ -127,6 +149,10 @@ namespace TAO
             mapFunctions["unlock/user"]              = Function(std::bind(&Users::Unlock,          this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/transactions"]        = Function(std::bind(&Users::Transactions,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/notifications"]       = Function(std::bind(&Users::Notifications,   this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/assets"]              = Function(std::bind(&Users::Assets,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/tokens"]              = Function(std::bind(&Users::Tokens,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/accounts"]            = Function(std::bind(&Users::Accounts,    this, std::placeholders::_1, std::placeholders::_2));
+
         }
 
 
@@ -192,7 +218,7 @@ namespace TAO
 
 
         /* Returns the genesis ID from the account logged in. */
-        uint256_t Users::GetGenesis(uint64_t nSession) const
+        uint256_t Users::GetGenesis(uint64_t nSession, bool fThrow) const
         {
             LOCK(MUTEX);
 
@@ -201,13 +227,34 @@ namespace TAO
 
             if(!mapSessions.count(nSessionToUse))
             {
-                if(config::fAPISessions.load())
-                    throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
+                if( fThrow )
+                {
+                    if(config::fAPISessions.load())
+                        throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
+                    else
+                        throw APIException(-1, "User not logged in");
+                }
                 else
-                    throw APIException(-1, "User not logged in");
+                {
+                    return uint256_t(0);
+                }
+                
             }
 
             return mapSessions[nSessionToUse]->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
+        }
+
+
+        /* Returns the genesis ID from the calling session or the the account logged in.*/
+        uint256_t Users::GetCallersGenesis(const json::json & params) const
+        {
+            /* default to session 0 unless using multiuser mode */
+            uint64_t nSession = 0;
+            
+            if( config::fAPISessions.load() && params.find("session") != params.end() ) 
+                nSession = std::stoull(params["session"].get<std::string>());
+
+            return GetGenesis(nSession, false);
         }
 
 

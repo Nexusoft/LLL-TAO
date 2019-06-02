@@ -53,16 +53,13 @@ namespace TAO
             /* Check for data parameter. */
             if(params.find("token_name") != params.end())
             {
-                /* Get the address from the name. */
-                std::string strName = "Tokens:" + params["token_name"].get<std::string>();
-
-                /* Build the address from an SK256 hash of API:NAME. */
-                hashToken = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
+                /* If name is provided then use this to deduce the register address */
+                hashToken = RegisterAddressFromName( params, params["token_name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("token_address") != params.end())
-                hashToken.SetHex(params["token_address"]);
+            else if(params.find("token") != params.end())
+                hashToken.SetHex(params["token"]);
 
             /* Get the register address. */
             uint256_t hashRegister = 0;
@@ -71,7 +68,7 @@ namespace TAO
             if(params.find("name") != params.end())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = RegisterAddressFromName( params, "asset", params["name"].get<std::string>());
+                hashRegister = RegisterAddressFromName( params, params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */

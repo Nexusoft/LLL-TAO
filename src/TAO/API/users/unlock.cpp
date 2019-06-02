@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/types/tritium_minter.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -36,6 +36,7 @@ namespace TAO
             if(config::fAPISessions.load())
                 throw APIException(-23, "Unlock not supported for session-based API");
 
+            /* Check default session (unlock only supported in single user mode). */
             if(!mapSessions.count(0))
                 throw APIException(-1, "User not logged in.");
 
@@ -45,9 +46,10 @@ namespace TAO
 
             /* Check for unlock actions */
             uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to ALL actions
-            if(params.find("minting") != params.end()
-            && (params["minting"].get<std::string>() == "1"
-            || params["minting"].get<std::string>() == "true"))
+
+            /* Check for minting flag. */
+            if (params.find("minting") != params.end()
+            && (params["minting"].get<std::string>() == "1" || params["minting"].get<std::string>() == "true"))
             {
                  /* Check if already unlocked. */
                 if(!pActivePIN.IsNull() && pActivePIN->CanMint())
@@ -56,10 +58,9 @@ namespace TAO
                     nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::MINTING;
             }
 
-
-            if(params.find("transactions") != params.end()
-            && (params["transactions"].get<std::string>() == "1"
-            || params["transactions"].get<std::string>() == "true"))
+            /* Check unlocked actions. */
+            if (params.find("transactions") != params.end()
+            && (params["transactions"].get<std::string>() == "1" || params["transactions"].get<std::string>() == "true"))
             {
                  /* Check if already unlocked. */
                 if(!pActivePIN.IsNull() && pActivePIN->CanTransact())
@@ -76,8 +77,6 @@ namespace TAO
                 else
                     nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::ALL;
             }
-
-
 
             /* Get the sigchain from map of users. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[0];
@@ -122,6 +121,15 @@ namespace TAO
                 pActivePIN.free();
 
             pActivePIN = new TAO::Ledger::PinUnlock(params["pin"].get<std::string>().c_str(), nUnlockedActions);
+
+            /* After unlock complete, attempt to start stake minter if unlocked for minting */
+            if (pActivePIN->CanMint())
+            {
+                TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
+
+                if (!config::fAPISessions.load() && !stakeMinter.IsStarted())
+                    stakeMinter.StartStakeMinter();
+            }
 
             return true;
         }

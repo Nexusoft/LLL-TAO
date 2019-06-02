@@ -432,7 +432,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
 
             /* Generate the object register values. */
             token   << std::string("balance")    << uint8_t(TYPES::UINT64_T) << uint64_t(1000)
-                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(11)
+                    << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(11)
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T) << uint64_t(1000)
                     << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(100);
 
@@ -494,7 +494,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
 
             /* Generate the object register values. */
             token   << std::string("balance")    << uint8_t(TYPES::UINT64_T) << uint64_t(1000)
-                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(11)
+                    << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(11)
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T) << uint64_t(1000)
                     << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(100);
 

@@ -155,9 +155,9 @@ Additionally the API supports passing a field name in the URL after the asset na
 
 ### Parameters:
 
-`name` : The name identifying the asset. This is optional if the address is provided.  The name should be in namespace:name format
+`name` : The name identifying the asset. This is optional if the address is provided.  The name should be in username:name format.  However, if the asset was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
-`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.  
+`session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the name in order to deduce the register address of the asset.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
 `address` : The register address of the asset. This is optional if the name is provided.
 
@@ -167,6 +167,8 @@ Additionally the API supports passing a field name in the URL after the asset na
 ### Return value JSON object:
 ```
 {
+    "name": "watch",
+    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
     "timestamp": "1553227128",
     "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
     "serial_number": "123456789123456789",
@@ -175,6 +177,10 @@ Additionally the API supports passing a field name in the URL after the asset na
 }
 ```
 ### Return values:
+
+`name` : The name identifying the asset. For privacy purposes, this is only included in the response if the caller is the owner of the asset
+
+`address` : The register address of the asset.  
 
 `timestamp` : The Unix timestamp of when the asset was last updated.
 
@@ -205,9 +211,7 @@ This is the generic endpoint for updating one or more values in an asset.  The A
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the asset should be created with. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the asset to update. This is optional if the address is provided.  The name should be in namespace:name format
-
-`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`name` : The name identifying the asset to update. This is optional if the address is provided.  The name should be in username:name format.  However, if the asset was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `address` : The register address of the asset to update. This is optional if the name is provided.
 
@@ -261,9 +265,7 @@ This will transfer ownership of an asset or digital item.  This is a generic end
 
 `session` : For multi-user API mode (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the asset. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the asset to be transferred. This is optional if the address is provided.  The name should be in namespace:name format
-
-`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`name` : The name identifying the asset to be transferred. This is optional if the address is provided.  The name should be in username:name format.  However, if the asset was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `address` : The register address of the asset to be transferred. This is optional if the name is provided.
 
@@ -331,9 +333,9 @@ This will get the history of an asset or digital item as well as it's ownership.
 
 ### Parameters:
 
-`name` : The name identifying the asset. This is optional if the address is provided.  The name should be in namespace:name format
+`name` : The name identifying the asset. This is optional if the address is provided.  The name should be in username:name format.  However, if the asset was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
-`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the name in order to deduce the register address of the asset.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
 `address` : The register address of the asset. This is optional if the name is provided.
 
@@ -379,13 +381,11 @@ This will tokenize an asset into fungible tokens that represent ownership.  This
 
 `session` : For multi-user API mode (configured with multiuser=1) the session is required to identify which session (sig chain) owns the asset. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the asset to be tokenized. This is optional if the address is provided.  The name should be in namespace:name format
-
-`namespace` : The namespace that the the asset was create in. This is optional if the address is provided or the name is provided in the namespace:name format.
+`name` : The name identifying the asset to be tokenized. This is optional if the address is provided.  The name should be in username:name format.  However, if the asset was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `address` : The register address of the asset to be tokenized. This is optional if the name is provided.
 
-`token_name` : The name of a token to use to tokenize the asset. `token_address` can be supplied as an alternative to `token_name`.
+`token_name` : The name of a token to use to tokenize the asset. The name should be in username:token name format.  `token_address` can be supplied as an alternative to `token_name`.
 
 `token_address` : The register address of a token to use to tokenize the asset. `token_name` can be supplied as an alternative to `token_address`.
 

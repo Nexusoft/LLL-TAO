@@ -66,43 +66,34 @@ namespace TAO
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction");
 
-            /* Submit the transaction payload. */
-            uint256_t hashRegister = 0;
+            /* Generate a random hash for this objects register address */
+            uint256_t hashRegister = LLC::GetRand256();
 
-            /* Check for data parameter. */
-            if(params.find("name") != params.end())
-            {
-                /* Get the namespace hash to use for this object.  By default the namespace is the username for the sig chain */
-                uint256_t nNamespaceHash = NamespaceHash(user->UserName());
-
-                /* register address is a hash of a name in the format of namespacehash:objecttype:name */
-                std::string strName = nNamespaceHash.ToString() + ":token:" + params["name"].get<std::string>();
-
-                /* Build the address from an SK256 hash of API:NAME. */
-                hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
-
-            }
-            else
-                hashRegister = LLC::GetRand256();
+            /* name of the object, default to blank */
+            std::string strName = "";
 
             if(params["type"].get<std::string>() == "account")
             {
-                /* Check for identifier parameter. */
-                if(params.find("identifier") == params.end())
-                    throw APIException(-25, "Missing Identifier (<identifier>)");
+                std::string strTokenIdentifier = "";
 
-                /* The identifier is the register address of the token that this account is being created for.  The API supports passing the identifier
-                   in by name in the format of namespace:name, in which case we need to convert it to the register hash */
-                uint256_t hashIdentifier = 0;
-                std::string strIdentifier = params["identifier"].get<std::string>();
-
-                /* Edge case to allow identifer NXS or 0 to be specified for NXS token */
-                if( strIdentifier == "NXS" || strIdentifier == "0")
-                    hashIdentifier = uint256_t(0);
-                else if(IsRegisterAddress(strIdentifier))
-                    hashIdentifier = uint256_t(strIdentifier);
+                /* Check for token name/address parameter. */
+                if(params.find("token") != params.end())
+                    strTokenIdentifier = params["token"].get<std::string>();
+                else if(params.find("token_name") != params.end())
+                    strTokenIdentifier = params["token_name"].get<std::string>();
                 else
-                    hashIdentifier = RegisterAddressFromName(params, "token", strIdentifier);
+                    throw APIException(-25, "Missing token name / address");
+
+                uint256_t hashIdentifier = 0;
+
+                /* Convert token name to a register address if a name has been passed in */
+                /* Edge case to allow identifer NXS or 0 to be specified for NXS token */
+                if( strTokenIdentifier == "NXS" || strTokenIdentifier == "0")
+                    hashIdentifier = uint256_t(0);
+                else if(IsRegisterAddress(strTokenIdentifier))
+                    hashIdentifier = uint256_t(strTokenIdentifier);
+                else
+                    hashIdentifier = RegisterAddressFromName(params, strTokenIdentifier);
 
                 /* Create an account object register. */
                 TAO::Register::Object account = TAO::Register::CreateAccount(hashIdentifier);
@@ -131,7 +122,7 @@ namespace TAO
                     nDigits = std::stod(params["digits"].get<std::string>());
 
                 /* Multiply the supply by 10^digits to give the supply in the divisible units */
-                uint64_t nSupply = dSupply * pow(10, nDigits); 
+                uint64_t nSupply = dSupply * pow(10, nDigits);
 
                 /* Create a token object register. */
                 TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier,
@@ -143,6 +134,10 @@ namespace TAO
             }
             else
                 throw APIException(-27, "Unknown object register");
+
+            /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
+            if(params.find("name") != params.end())
+                CreateName(user->Genesis(), params["name"].get<std::string>(), hashRegister, tx[1]); 
 
             /* Execute the operations layer. */
             if(!tx.Build())

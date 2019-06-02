@@ -148,11 +148,24 @@ namespace TAO
              *  Returns the genesis ID from the account logged in.
              *
              *  @param[in] nSession The session identifier.
+             *  @param[in] fThrow Flag indicating whether to throw if the session is not found / not logged in.
              *
              *  @return The genesis ID if logged in.
              *
              **/
-            uint256_t GetGenesis(uint64_t nSession) const;
+            uint256_t GetGenesis(uint64_t nSession, bool fThrow = false) const;
+
+
+            /** GetCallersGenesis
+             *
+             *  Returns the genesis ID from the calling session or the the account logged in.
+             *
+             *  @param[in] params the parameters passed to the API method call.
+             *
+             *  @return The genesis ID if logged in.
+             *
+             **/
+            uint256_t GetCallersGenesis(const json::json & params) const;
 
 
             /** GetAccount
@@ -327,6 +340,45 @@ namespace TAO
              *
              **/
             json::json Notifications(const json::json& params, bool fHelp);
+
+
+            /** Assets
+             *
+             *  Get a list of assets owned by a signature chain
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Assets(const json::json& params, bool fHelp);
+
+
+            /** Tokens
+             *
+             *  Get a list of tokens owned by a signature chain
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Tokens(const json::json& params, bool fHelp);
+
+
+            /** Accounts
+             *
+             *  Get a list of accounts owned by a signature chain
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Accounts(const json::json& params, bool fHelp);
 
 
             /** EventsThread

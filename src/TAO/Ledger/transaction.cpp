@@ -281,6 +281,23 @@ namespace TAO
         }
 
 
+        /* Determines if the transaction is a coinstake (trust or genesis) transaction. */
+        bool Transaction::IsCoinstake() const
+        {
+            /* Check for contracts. */
+            if(vContracts.size() == 0)
+                return false;
+
+            /* Check for empty first contract. */
+            if(vContracts[0].Empty())
+                return false;
+
+            //TODO: check for conditions
+
+            return (vContracts[0].Primitive() == TAO::Operation::OP::TRUST || vContracts[0].Primitive() == TAO::Operation::OP::GENESIS);
+        }
+
+
         /* Determines if the transaction is for a private block. */
         bool Transaction::IsPrivate() const
         {

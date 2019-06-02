@@ -15,35 +15,97 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLC_INCLUDE_X509_CERT_H
 #define NEXUS_LLC_INCLUDE_X509_CERT_H
 
-#include <openssl/pem.h>
-#include <openssl/x509v3.h>
+#include <cstdint>
+
+/** Forward declarations. **/
+typedef struct ssl_st SSL;
+typedef struct rsa_st RSA;
+typedef struct evp_pkey_st EVP_PKEY;
+typedef struct x509_st X509;
+
 
 namespace LLC
 {
-
-    class Certificate
+    class X509Cert
     {
     public:
-        Certificate();
 
-        ~Certificate();
+        /** Default Constructor
+         *
+         *  @param[in] bits The number of bits used for RSA key generation.
+         *
+         **/
+        X509Cert(uint32_t bits = 2048);
+
+
+        /** Default Destructor **/
+        ~X509Cert();
+
+
+        /** Write
+         *
+         *  Writes the certificate and private key PEM files to an ssl folder located in the default directory path.
+         *  The ssl folder will be created if it doesn't exist.
+         *
+         *  @return Returns true if file writes are successful, false otherwise.
+         *
+         **/
+        bool Write();
+
+
+        /** Init_SSL
+         *
+         *  Modifies the SSL internal state with certificate and key information.
+         *
+         *  @param[in/out] ssl The ssl object to load certificate and private key information into.
+         *
+         *  @return Returns true if successfully applied, false otherwise.
+         *
+         **/
+        bool Init_SSL(SSL *ssl);
+
+
+        /** Print
+         *
+         *  Prints out information about the certificate with human readable format.
+         *
+         **/
+        void Print();
+
 
     private:
 
-        bool create_cert(X509 **px509, EVP_PKEY **pkey, uint32_t nBits, uint32_t nSerial, uint32_t nDays);
+        /** init_cert
+         *
+         *  Initializes and creates a new certificate signed with a unique RSA private key.
+         *
+         *  @return Returns true if certificate was successfully created, false otherwise.
+         *
+         **/
+        bool init_cert();
 
 
-        void free_cert(X509 *px509, EVP_PKEY *pkey);
+        /** free_cert
+         *
+         *  Frees memory associated with the certificate and key.
+         *
+         **/
+        void free_cert();
 
 
-        /* The OpenSSl x509 certificate object. */
+        /* The OpenSSL x509 certificate object. */
         X509 *px509;
 
-        /* The OpenSSL key object */
+        /* The OpenSSL key object. */
         EVP_PKEY *pkey;
 
+        /* The OpenSSL RSA key object. */
+        RSA *pRSA;
 
-    }
+        /* The number of bits for the RSA key generation. */
+        uint32_t nBits;
+
+    };
 
 
 

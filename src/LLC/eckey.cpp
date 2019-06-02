@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <openssl/ecdsa.h>
 #include <openssl/obj_mac.h>
 
+#include <LLC/include/key_error.h>
 #include <LLC/include/eckey.h>
 
 #include <Util/include/debug.h>

@@ -93,7 +93,10 @@ namespace TAO
                 TOKEN        = 0x02,
 
                 /* Trust Object Register. */
-                TRUST        = 0x03
+                TRUST        = 0x03,
+
+                /* Name Object Register. */
+                NAME        = 0x04
             };
         };
 

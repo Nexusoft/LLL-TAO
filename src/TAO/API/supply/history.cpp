@@ -44,9 +44,9 @@ namespace TAO
             /* Get the register address. */
             uint256_t hashRegister = 0;
 
-            /* Check whether the caller has provided the asset name parameter. */
+            /* If name is provided then use this to deduce the register address */
             if(params.find("name") != params.end())
-                hashRegister = RegisterAddressFromName(params, "item", params["name"].get<std::string>());
+                hashRegister = RegisterAddressFromName(params, params["name"].get<std::string>());
 
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
@@ -58,7 +58,7 @@ namespace TAO
 
             /* Get the register. */
             TAO::Register::State state;
-            if(!LLD::regDB->ReadState(hashRegister, state))
+            if(!LLD::regDB->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                 return ret; // no history so return empty array
 
             /* Generate return object. */
@@ -69,6 +69,10 @@ namespace TAO
 
             /* Reset read position. */
             state.nReadPos = 0;
+
+            /* Declare the name.  Since this is an append register the name will only exist
+               in the first entry  */
+            std::string strName = "";
 
             /* Grab the last state. */
             while(!state.end())

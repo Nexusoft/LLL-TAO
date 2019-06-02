@@ -22,6 +22,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/include/create.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -65,24 +66,8 @@ namespace TAO
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction");
 
-            /* Submit the transaction payload. */
-            uint256_t hashRegister = 0;
-
-            /* Check for data parameter. */
-            if(params.find("name") != params.end())
-            {
-                /* Get the namespace hash to use for this object.  By default the namespace is the username for the sig chain */
-                uint256_t nNamespaceHash = NamespaceHash(user->UserName());
-
-                /* register address is a hash of a name in the format of namespacehash:objecttype:name */
-                std::string strName = nNamespaceHash.ToString() + ":asset:" + params["name"].get<std::string>();
-
-                /* Build the address from an SK256 hash of API:NAME. */
-                hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
-            }
-            else
-                hashRegister = LLC::GetRand256();
-
+            /* Generate a random hash for this objects register address */
+            uint256_t hashRegister = LLC::GetRand256();
 
             /* Check for format parameter. */
             std::string strFormat = "basic"; // default to basic format if no foramt is specified
@@ -98,6 +83,8 @@ namespace TAO
 
                 /* Serialise the incoming data into a state register*/
                 DataStream ssData(SER_REGISTER, 1);
+
+                /* Then the raw data */
                 ssData << params["data"].get<std::string>();
 
                 /* Submit the payload object. */
@@ -107,7 +94,7 @@ namespace TAO
             else if(strFormat == "basic")
             {
                 /* declare the object register to hold the asset data*/
-                TAO::Register::Object asset;
+                TAO::Register::Object asset = TAO::Register::CreateAsset();
 
                 /* Track the number of fields so that we can check there is at least one */
                 uint32_t nFieldCount = 0;
@@ -156,7 +143,7 @@ namespace TAO
                     throw APIException(-25, "json field must be an array");
 
                 /* declare the object register to hold the asset data*/
-                TAO::Register::Object asset;
+                TAO::Register::Object asset = TAO::Register::CreateAsset();
 
                 json::json jsonAssetDefinition = params["json"];
 
@@ -194,31 +181,43 @@ namespace TAO
                     /* Declare the max length variable */
                     size_t nMaxLength = 0;
 
-                    /* If this is a mutable string or byte fields then set the length.
-                       This can either be set by the caller in a  maxlength field or we will default it
-                       based on the field data type.` */
-                    if(fMutable &&
-                    (strType == "string" || strType == "bytes") )
+                    if(strType == "string" || strType == "bytes")
                     {
                         /* Determine the length of the data passed in */
                         std::size_t nDataLength = strType == "string" ? strValue.length() : vchBytes.size();
 
-                        /* If the caller specifies a maxlength then use this to set the size of the string or bytes array */
-                        if( it->find("maxlength") != it->end() )
+                        /* If this is a mutable string or byte fields then set the length.
+                        This can either be set by the caller in a  maxlength field or we will default it
+                        based on the field data type.` */
+                        if( fMutable)
                         {
-                            nMaxLength = stoul((*it)["maxlength"].get<std::string>());
+                            /* Determine the length of the data passed in */
+                            std::size_t nDataLength = strType == "string" ? strValue.length() : vchBytes.size();
 
-                            /* If they specify a value less than the data length then error */
-                            if( nMaxLength < nDataLength )
-                                throw APIException(-25, "maxlength value is less than the specified data length.");
+                            /* If the caller specifies a maxlength then use this to set the size of the string or bytes array */
+                            if( it->find("maxlength") != it->end() )
+                            {
+                                nMaxLength = stoul((*it)["maxlength"].get<std::string>());
+
+                                /* If they specify a value less than the data length then error */
+                                if( nMaxLength < nDataLength )
+                                    throw APIException(-25, "maxlength value is less than the specified data length.");
+                            }
+                            else
+                            {
+                                /* If the caller hasn't specified a maxlength then set a suitable default
+                                by rounding up the current length to the nearest 64 bytes. */
+                                nMaxLength = (((uint8_t)(nDataLength / 64)) +1) * 64;
+                            }
                         }
                         else
                         {
-                            /* If the caller hasn't specified a maxlength then set a suitable default
-                               by rounding up the current length to the nearest 64 bytes. */
-                            nMaxLength = (((uint8_t)(nDataLength / 64)) +1) * 64;
+                            /* If the field is not mutable then the max length is simply the data length */
+                            nMaxLength = nDataLength;
                         }
+
                     }
+
 
                     /* Add the field to the Object based on the user defined type.
                        NOTE: all numeric values <= 64-bit are converted from string to the corresponding type.
@@ -278,6 +277,10 @@ namespace TAO
             {
                 throw APIException(-25, "Unsupported format specified");
             }
+
+            /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
+            if(params.find("name") != params.end())
+                CreateName(user->Genesis(), params["name"].get<std::string>(), hashRegister, tx[1]);
 
             /* Execute the operations layer. */
             if(!tx.Build())

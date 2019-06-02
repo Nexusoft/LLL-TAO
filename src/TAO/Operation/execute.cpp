@@ -296,6 +296,8 @@ namespace TAO
                         if(!Claim::Verify(contract, claim))
                             return false;
 
+                        /* Check for conditions. */
+
                         /* Get the state byte. */
                         uint8_t nState = 0; //RESERVED
                         contract >>= nState;

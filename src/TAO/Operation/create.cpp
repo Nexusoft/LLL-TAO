@@ -51,7 +51,7 @@ namespace TAO
                     case TAO::Register::OBJECTS::ACCOUNT:
                     {
                         /* Get the identifier. */
-                        uint256_t hashIdentifier = object.get<uint256_t>("identifier");
+                        uint256_t hashIdentifier = object.get<uint256_t>("token");
 
                         /* Check that the register doesn't exist yet. */
                         if(hashIdentifier != 0 && !LLD::regDB->HasState(hashIdentifier, nFlags))
@@ -65,7 +65,7 @@ namespace TAO
                     case TAO::Register::OBJECTS::TOKEN:
                     {
                         /* Get the identifier. */
-                        uint256_t hashIdentifier = object.get<uint256_t>("identifier");
+                        uint256_t hashIdentifier = object.get<uint256_t>("token");
 
                         /* Check identifier to address. */
                         if(hashIdentifier != hashAddress)
@@ -78,6 +78,27 @@ namespace TAO
                         /* Check that the current supply and max supply are the same. */
                         if(object.get<uint64_t>("supply") != object.get<uint64_t>("balance"))
                             return debug::error(FUNCTION, "token current supply and balance can't mismatch");
+
+                        break;
+                    }
+
+
+                    /* Enforce hash on Name objects to ensure that a Name cannot be created for someone elses genesis ID . */
+                    case TAO::Register::OBJECTS::NAME:
+                    {
+                        /* Build vector to hold the genesis + name data for hashing */
+                        std::vector<uint8_t> vData((uint8_t*)&state.hashOwner, (uint8_t*)&state.hashOwner + 32);
+
+                        /* Insert the name of from the Name object */
+                        std::string strName = object.get<std::string>("name");
+                        vData.insert(vData.end(), strName.begin(), strName.end());
+
+                        /* Hash this in the same was as the caller would have to generate hashAddress */
+                        uint256_t hashName = LLC::SK256(vData);
+
+                        /* Fail if caller didn't user their own genesis to create name. */
+                        if(hashName != hashAddress)
+                            return debug::error(FUNCTION, "incorrect name or genesis");
 
                         break;
                     }
@@ -148,9 +169,9 @@ namespace TAO
                             object.get<uint64_t>("trust"));
 
                         /* Check that token identifier hasn't been claimed. */
-                        if(object.get<uint256_t>("identifier") != 0)
+                        if(object.get<uint256_t>("token") != 0)
                             return debug::error(FUNCTION, "trust account can't be created with non-default identifier ",
-                            object.get<uint256_t>("identifier").SubString());
+                            object.get<uint256_t>("token").SubString());
 
                         break;
                     }
@@ -160,7 +181,7 @@ namespace TAO
                     case TAO::Register::OBJECTS::TOKEN:
                     {
                         /* Get the token identifier. */
-                        uint256_t nIdentifier = object.get<uint256_t>("identifier");
+                        uint256_t nIdentifier = object.get<uint256_t>("token");
 
                         /* Check for reserved native token. */
                         if(nIdentifier == 0)

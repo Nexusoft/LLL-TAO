@@ -29,7 +29,7 @@ TEST_CASE( "Object Register Tests", "[register]" )
                << std::string("test") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::STRING) << std::string("this string")
                << std::string("bytes") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::BYTES) << std::vector<uint8_t>(10, 0xff)
                << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-               << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
+               << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
         //parse object
         REQUIRE(object.Parse());
@@ -91,7 +91,7 @@ TEST_CASE( "Object Register Tests", "[register]" )
 
         //identifier
         uint256_t nIdentifier;
-        REQUIRE(object.Read("identifier", nIdentifier));
+        REQUIRE(object.Read("token", nIdentifier));
 
         //check
         REQUIRE(nIdentifier == uint64_t(0));
@@ -104,7 +104,7 @@ TEST_CASE( "Object Register Tests", "[register]" )
     {
         Object object;
         object << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-               << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0)
+               << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(0)
                << std::string("supply") << uint8_t(TYPES::UINT64_T) << uint64_t(888888);
 
         //parse object
@@ -120,7 +120,7 @@ TEST_CASE( "Object Register Tests", "[register]" )
         object << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(55)
                << std::string("trust")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
                << std::string("stake")      << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(0)
-               << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
+               << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
 
         //parse object
@@ -150,7 +150,7 @@ TEST_CASE( "Object Register Tests", "[register]" )
     {
         Object object;
         object << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-               << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(0)
+               << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(0)
                << std::string("supply") << uint8_t(TYPES::UINT64_T) << uint64_t(888888)
                << std::string("digits") << uint8_t(TYPES::UINT64_T) << uint64_t(100);
 
@@ -166,7 +166,7 @@ TEST_CASE( "Object Register Tests", "[register]" )
     {
         Object object;
         object << std::string("balance") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-               << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint64_t(0)
+               << std::string("token") << uint8_t(TYPES::UINT256_T) << uint64_t(0)
                << std::string("supply") << uint8_t(TYPES::UINT64_T) << uint64_t(888888)
                << std::string("digits") << uint8_t(TYPES::UINT64_T) << uint64_t(100);
 
