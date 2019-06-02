@@ -50,7 +50,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            Object token = CreateToken(11, 1000, 100);
+            Object token = CreateToken(hashToken, 1000, 100);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
@@ -71,7 +71,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            Object account = CreateAccount(11);
+            Object account = CreateAccount(hashToken);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
@@ -212,7 +212,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(1);
 
             //generate the prestates and poststates
-            REQUIRE(tx.Build());
+            REQUIRE(!tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
@@ -228,10 +228,11 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
 
 
     //check for failed by account balance
+    uint256_t hashToken = LLC::GetRand256();
     {
 
         //create object
-        uint256_t hashToken = LLC::GetRand256();
+
         uint256_t hashAccount  = LLC::GetRand256();
         uint256_t hashGenesis  = LLC::GetRand256();
 
@@ -288,7 +289,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
-            REQUIRE(tx.Build());
+            REQUIRE(!tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
@@ -318,7 +319,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            Object account = CreateAccount(hashAccount);
+            Object account = CreateAccount(hashToken);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
@@ -342,7 +343,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << uint256_t(0) << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
-            REQUIRE(tx.Build());
+            REQUIRE(!tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
@@ -352,7 +353,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
 
             //check for error
             std::string error = debug::GetLastError();
-            REQUIRE(error.find("cannot debit from register with reserved address") != std::string::npos);
+            REQUIRE(error.find("cannot debit with reserved address") != std::string::npos);
         }
     }
 
@@ -372,7 +373,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //create object
-            Object account = CreateAccount(hashAccount);
+            Object account = CreateAccount(hashToken);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
@@ -396,7 +397,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << hashAccount << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
-            REQUIRE(tx.Build());
+            REQUIRE(!tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
@@ -413,8 +414,6 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
 
     //check for failed by incorrect base
     {
-        //cleanup
-        LLD::regDB->EraseIdentifier(11);
 
         //create object
         uint256_t hashToken = LLC::GetRand256();
@@ -458,7 +457,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
-            REQUIRE(tx.Build());
+            REQUIRE(!tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
@@ -520,7 +519,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
 
             //generate the prestates and poststates
-            REQUIRE(tx.Build());
+            REQUIRE(!tx.Build());
 
             //write transaction
             REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));

@@ -143,6 +143,8 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << object.GetState();
 
+            debug::log(0, "Test with address ", hashAddress.SubString());
+
             //generate the prestates and poststates
             REQUIRE(tx.Build());
 
@@ -150,6 +152,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.Sign(hashPrivKey1);
 
             //commit to disk
+            debug::log(0, "MEMPOOL ", hashAddress.SubString());
             REQUIRE(TAO::Ledger::mempool.Accept(tx));
 
             //check values all match
@@ -555,7 +558,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
-            Object token = CreateToken(22, 1000, 100);
+            Object token = CreateToken(hashToken, 1000, 100);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashToken << uint8_t(REGISTER::OBJECT) << token.GetState();
@@ -593,7 +596,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //create object
-            Object account = CreateAccount(11);
+            Object account = CreateAccount(hashToken);
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();

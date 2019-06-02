@@ -40,14 +40,18 @@ namespace TAO
             int32_t nLimits;
 
 
-            /** Reference of the transaction executing script. **/
+            /** Reference of the contract being execute. **/
             const Contract& contract;
+
+
+            /** Reference of the contract that is calling validation. **/
+            const Contract& caller;
 
 
         public:
 
             /** Default constructor. **/
-            Validate(const Contract& contractIn, int32_t nLimitsIn = 2048);
+            Validate(const Contract& contractIn, const Contract& callerIn, int32_t nLimitsIn = 2048);
 
 
             /** Copy constructor. **/

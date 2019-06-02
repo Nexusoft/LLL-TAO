@@ -150,16 +150,6 @@ namespace TAO
             bool Empty() const;
 
 
-            /** Conditions
-             *
-             *  Detect if there are any conditions present.
-             *
-             *  @return false if condition stream is empty
-             *
-             **/
-            bool HasConditions() const;
-
-
             /** Reset
              *
              *  Reset the internal stream read pointers.

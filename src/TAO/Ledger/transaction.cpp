@@ -112,8 +112,14 @@ namespace TAO
 
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
+            {
+                /* Bind the contract to this transaction. */
+                contract.Bind(*this);
+
+                /* Verify the register pre-states. */
                 if(!TAO::Register::Verify(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL))
                     return debug::error(FUNCTION, "transaction register layer failed to verify");
+            }
 
             return true;
         }
@@ -128,6 +134,9 @@ namespace TAO
             /* Run through all the contracts. */
             for(auto& contract : vContracts)
             {
+                /* Bind the contract to this transaction. */
+                contract.Bind(*this);
+
                 /* Calculate the pre-states and post-states. */
                 if(!TAO::Register::Build(contract, mapStates))
                     return debug::error(FUNCTION, "transaction register layer failed to build");
@@ -200,14 +209,18 @@ namespace TAO
                     if(!LLD::legDB->WriteTx(hash, *this))
                         return debug::error(FUNCTION, "failed to write valid next pointer");
                 }
-
-                return true;
             }
 
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
+            {
+                /* Bind the contract to this transaction. */
+                contract.Bind(*this);
+
+                /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags))
                     return false;
+            }
 
             return true;
         }
@@ -262,9 +275,7 @@ namespace TAO
             if(vContracts[0].Empty())
                 return false;
 
-            /* Check for no conditions. */
-            if(vContracts[0].HasConditions())
-                return false;
+            //TODO: check for conditions
 
             return (vContracts[0].Primitive() == TAO::Operation::OP::COINBASE);
         }
@@ -281,9 +292,7 @@ namespace TAO
             if(vContracts[0].Empty())
                 return false;
 
-            /* Check for no conditions. */
-            if(vContracts[0].HasConditions())
-                return false;
+            //TODO: check for conditions
 
             return (vContracts[0].Primitive() == TAO::Operation::OP::AUTHORIZE);
         }
@@ -300,9 +309,7 @@ namespace TAO
             if(vContracts[0].Empty())
                 return false;
 
-            /* Check for no conditions. */
-            if(vContracts[0].HasConditions())
-                return false;
+            //TODO: check for conditions
 
             return (vContracts[0].Primitive() == TAO::Operation::OP::TRUST);
         }

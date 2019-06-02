@@ -42,15 +42,12 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     TAO::Ledger::Transaction tx;
     tx.nTimestamp  = 989798;
     tx.hashGenesis = LLC::GetRand256();
-    tx[0] <= (uint8_t)OP::DEBIT <= hashFrom <= hashTo <= nAmount;
+    tx[0] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount;
+
+    const Contract& caller = tx[0];
 
     Contract contract = Contract();
-    contract.Bind(tx);
     contract <= (uint8_t)OP::TYPES::UINT32_T <= (uint32_t)7u <= (uint8_t) OP::MUL <= (uint8_t) OP::TYPES::UINT32_T <= (uint32_t)9u <= (uint8_t) OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= (uint32_t)63u;
-
-
-
-
 
 
     uint256_t hash = LLC::GetRand256();
@@ -74,7 +71,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::STRING <= strName <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::STRING <= strName;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -82,7 +79,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract <= (uint8_t)OP::TYPES::STRING <= strName <= (uint8_t)OP::CRYPTO::SK256 <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT256_T <= hashRegister;
 
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -95,7 +92,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
 
 
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -106,7 +103,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t) OP::SUB <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(100) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         try
         {
             if(script.Execute())
@@ -123,7 +120,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(555) <= (uint8_t) OP::SUB <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(std::numeric_limits<uint64_t>::max()) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         try
         {
             if(script.Execute())
@@ -139,7 +136,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= std::numeric_limits<uint64_t>::max() <= (uint8_t) OP::ADD <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(100) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         try
         {
             if(script.Execute())
@@ -155,7 +152,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= std::numeric_limits<uint64_t>::max() <= (uint8_t) OP::DIV <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         try
         {
             if(script.Execute())
@@ -171,7 +168,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= std::numeric_limits<uint64_t>::max() <= (uint8_t) OP::MOD <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         try
         {
             if(script.Execute())
@@ -187,7 +184,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(std::numeric_limits<uint64_t>::max()) <= (uint8_t) OP::INC <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= uint32_t(222);
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         try
         {
             if(script.Execute())
@@ -203,7 +200,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t) OP::DEC <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= uint32_t(222);
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         try
         {
             if(script.Execute())
@@ -220,7 +217,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(555) <= (uint8_t) OP::EXP <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(9999) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         try
         {
             if(script.Execute())
@@ -237,7 +234,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(555323423434433443) <= (uint8_t) OP::MUL <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(2387438283734234423) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
         std::string strException = "";
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         try
         {
             if(script.Execute())
@@ -257,7 +254,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT256_T <= hash;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -265,7 +262,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::LESSTHAN <= (uint8_t)OP::TYPES::UINT256_T <= hash + 1;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -273,7 +270,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::GREATERTHAN <= (uint8_t)OP::TYPES::UINT256_T <= hash - 1;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -284,7 +281,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::NOTEQUALS <= (uint8_t)OP::TYPES::UINT256_T <= hash2;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -292,7 +289,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::NOTEQUALS <= (uint8_t)OP::TYPES::UINT256_T <= hash + 1;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -303,7 +300,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::STRING <= std::string("is there an atomic bear out there?") <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::STRING <= std::string("bear out");
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -311,7 +308,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::STRING <= std::string("is there an atomic bear out there?") <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::STRING <= std::string("is");
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -320,7 +317,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::STRING <= std::string("is there an atomic bear out there?") <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::STRING <= std::string("atomic bear out");
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -328,7 +325,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::STRING <= std::string("is there an atomic bear out there?") <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::STRING <= std::string("atomic fox");
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(!script.Execute());
     }
 
@@ -337,7 +334,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract <= (uint8_t)OP::TYPES::STRING <= std::string("is there an atomic bear out there?") <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::STRING <= std::string("atomic") <=
     (uint8_t)OP::AND <= (uint8_t)OP::TYPES::STRING <= std::string("is there an atomic bear out there?") <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::STRING <= std::string("bear");
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -346,9 +343,10 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract <= (uint8_t)OP::TYPES::STRING <= std::string("is there an atomic bear out there?") <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::STRING <= std::string("fox and bear") <=
     (uint8_t)OP::OR <= (uint8_t)OP::TYPES::STRING <= std::string("is there an atomic bear out there?") <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::STRING <= std::string("atomic bear");
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
+
 
 
     Stream ssCompare;
@@ -357,7 +355,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::CALLER::OPERATIONS <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::BYTES <= ssCompare.Bytes();
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -368,7 +366,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::CALLER::OPERATIONS <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::BYTES <= ssCompare.Bytes();
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(!script.Execute());
     }
 
@@ -379,7 +377,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::CALLER::OPERATIONS <= (uint8_t)OP::SUBDATA <= uint16_t(1) <= uint16_t(32) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT256_T <= hashFrom;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
         REQUIRE(script.available() == 512);
     }
@@ -389,7 +387,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::CALLER::OPERATIONS <= (uint8_t)OP::SUBDATA <= uint16_t(1) <= uint16_t(32) <= (uint8_t)OP::REGISTER::STATE <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT256_T <= hash2;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -425,7 +423,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
                   <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashObject;
 
       {
-          Validate script = Validate(contract);
+          Validate script = Validate(contract, caller);
           REQUIRE(script.Execute());
       }
 
@@ -433,7 +431,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
        contract <= uint8_t(OP::TYPES::UINT256_T) <= hashObject <= uint8_t(OP::REGISTER::VALUE) <= std::string("byte")
                    <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT8_T) <= uint8_t(55);
        {
-           Validate script = Validate(contract);
+           Validate script = Validate(contract, caller);
            REQUIRE(script.Execute());
        }
 
@@ -442,7 +440,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
        contract <= uint8_t(OP::TYPES::UINT256_T) <= hashObject <= uint8_t(OP::REGISTER::VALUE) <= std::string("test")
                    <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::STRING) <= std::string("this string");
        {
-           Validate script = Validate(contract);
+           Validate script = Validate(contract, caller);
            REQUIRE(script.Execute());
        }
 
@@ -451,7 +449,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
        contract <= uint8_t(OP::TYPES::UINT256_T) <= hashObject <= uint8_t(OP::REGISTER::VALUE) <= std::string("test")
                    <= uint8_t(OP::CONTAINS) <= uint8_t(OP::TYPES::STRING) <= std::string("this");
        {
-           Validate script = Validate(contract);
+           Validate script = Validate(contract, caller);
            REQUIRE(script.Execute());
        }
 
@@ -460,7 +458,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
        contract <= uint8_t(OP::TYPES::UINT256_T) <= hashObject <= uint8_t(OP::REGISTER::VALUE) <= std::string("balance")
                    <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(55);
        {
-           Validate script = Validate(contract);
+           Validate script = Validate(contract, caller);
            REQUIRE(script.Execute());
        }
 
@@ -469,7 +467,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
        contract <= uint8_t(OP::TYPES::UINT256_T) <= hashObject <= uint8_t(OP::REGISTER::VALUE) <= std::string("identifier")
                    <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= uint256_t(0);
        {
-           Validate script = Validate(contract);
+           Validate script = Validate(contract, caller);
            REQUIRE(script.Execute());
        }
 
@@ -478,7 +476,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
        contract <= uint8_t(OP::TYPES::STRING) <= strObject <= uint8_t(OP::CRYPTO::SK256) <= uint8_t(OP::REGISTER::VALUE) <= std::string("identifier")
                    <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= uint256_t(0);
        {
-           Validate script = Validate(contract);
+           Validate script = Validate(contract, caller);
            REQUIRE(script.Execute());
        }
     }
@@ -495,7 +493,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::REGISTER::STATE <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT256_T <= hash2;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -504,21 +502,21 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::REGISTER::OWNER <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT256_T <= state.hashOwner;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::REGISTER::MODIFIED <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 3u <= (uint8_t)OP::GREATERTHAN <= (uint8_t) OP::GLOBAL::UNIFIED;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::REGISTER::TYPE <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT64_T <= (uint64_t) 2;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -530,7 +528,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::CALLER::TIMESTAMP <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT64_T <= (uint64_t) 989798;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -538,7 +536,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::CALLER::GENESIS <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT256_T <= tx.hashGenesis;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -557,21 +555,21 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::LEDGER::TIMESTAMP <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT64_T <= (uint64_t)947384;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
     contract.Clear();
     contract <= (uint8_t)OP::LEDGER::HEIGHT <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT64_T <= (uint64_t)23030;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
     contract.Clear();
     contract <= (uint8_t)OP::LEDGER::SUPPLY <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT64_T <= (uint64_t)39239;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -583,7 +581,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT32_T <= 555u <= (uint8_t) OP::SUB <= (uint8_t) OP::TYPES::UINT32_T <= 333u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -591,14 +589,14 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT32_T <= 9234837u <= (uint8_t) OP::SUB <= (uint8_t) OP::TYPES::UINT32_T <= 384728u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 8850109u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT32_T <= 92382983u <= (uint8_t) OP::SUB <= (uint8_t) OP::TYPES::UINT32_T <= 1727272u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 90655711u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -608,7 +606,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT32_T <= 905u <= (uint8_t) OP::MOD <= (uint8_t) OP::TYPES::UINT32_T <= 30u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 5u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -616,7 +614,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT32_T <= 837438372u <= (uint8_t) OP::MOD <= (uint8_t) OP::TYPES::UINT32_T <= 128328u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 98172u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -624,7 +622,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT32_T <= 98247293u <= (uint8_t) OP::MOD <= (uint8_t) OP::TYPES::UINT32_T <= 2394839u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 58894u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -633,21 +631,21 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= (uint64_t)1000000000000 <= (uint8_t) OP::DIV <= (uint8_t) OP::TYPES::UINT64_T <= (uint64_t)30000 <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 33333333u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= (uint64_t)23984729837429387 <= (uint8_t) OP::DIV <= (uint8_t) OP::TYPES::UINT64_T <= (uint64_t)9238493893 <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 2596173u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= (uint64_t)23948392849238 <= (uint8_t) OP::DIV <= (uint8_t) OP::TYPES::UINT64_T <= (uint64_t)923239232 <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 25939u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -658,21 +656,21 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(5) <= uint8_t(OP::EXP) <= (uint8_t) OP::TYPES::UINT64_T <= uint64_t(15) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(30517578125);
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT32_T <= 2u <= (uint8_t) OP::EXP <= (uint8_t) OP::TYPES::UINT32_T <= 8u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 256u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT32_T <= 3u <= (uint8_t) OP::EXP <= (uint8_t) OP::TYPES::UINT32_T <= 10u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 59049u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -684,14 +682,14 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= (uint64_t)9837 <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT64_T <= (uint64_t)7878 <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 17715u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= (uint64_t)9837 <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 7878u <= (uint8_t)OP::LESSTHAN <= (uint8_t)OP::TYPES::UINT256_T <= uint256_t(17716);
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
 
@@ -704,7 +702,11 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     contract <= (uint8_t)OP::AND;
     contract <= (uint8_t)OP::TYPES::UINT32_T <= 9837u <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 7878u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 17715u;
     {
-        Validate script = Validate(contract);
+        Validate script = Validate(contract, caller);
         REQUIRE(script.Execute());
     }
+
+
+
+
 }

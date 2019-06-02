@@ -126,13 +126,6 @@ namespace TAO
         }
 
 
-        /* Detect if there are any conditions present.*/
-        bool Contract::HasConditions() const
-        {
-            return (ssCondition.size() == 0);
-        }
-
-
         /*Reset the internal stream read pointers.*/
         void Contract::Reset() const
         {
@@ -175,13 +168,6 @@ namespace TAO
         const std::vector<uint8_t>& Contract::Operations() const
         {
             return ssOperation.Bytes();
-        }
-
-
-        /* Get the raw condition bytes from the contract.*/
-        const std::vector<uint8_t>& Contract::Conditions() const
-        {
-            return ssCondition.Bytes();
         }
 
 

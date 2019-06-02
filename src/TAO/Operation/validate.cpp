@@ -29,10 +29,11 @@ namespace TAO
     namespace Operation
     {
 
-        Validate::Validate(const Contract& contractIn, int32_t nLimitsIn)
+        Validate::Validate(const Contract& contractIn, const Contract& callerIn, int32_t nLimitsIn)
         : TAO::Register::BaseVM() //512 bytes of register memory.
         , nLimits(nLimitsIn)
         , contract(contractIn)
+        , caller(callerIn)
         {
         }
 
@@ -42,6 +43,7 @@ namespace TAO
         : TAO::Register::BaseVM(in)
         , nLimits(in.nLimits)
         , contract(in.contract)
+        , caller(in.caller)
         {
         }
 
@@ -167,19 +169,6 @@ namespace TAO
 
                         /* Deallocate the values from the VM. */
                         deallocate(vSecond);
-                        deallocate(vFirst);
-
-                        break;
-                    }
-
-
-                    /* Handle to check if a sequence of bytes is inside another. */
-                    case OP::EMPTY:
-                    {
-                        /* Compare both values to one another. */
-                        fRet = (vFirst.nBytes == 0);
-
-                        /* Deallocate the values from the VM. */
                         deallocate(vFirst);
 
                         break;
@@ -830,7 +819,7 @@ namespace TAO
                         TAO::Register::State state;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::MODIFIED)
+                        if(OPERATION == OP::REGISTER::STATE)
                         {
                             /* Read the register address. */
                             uint256_t hashRegister;
@@ -871,7 +860,7 @@ namespace TAO
                         TAO::Register::Object object;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::MODIFIED)
+                        if(OPERATION == OP::REGISTER::VALUE)
                         {
                             /* Read the register address. */
                             uint256_t hashRegister;
@@ -1063,7 +1052,7 @@ namespace TAO
                     case OP::CALLER::GENESIS:
                     {
                         /* Allocate to the registers. */
-                        allocate(contract.Caller(), vRet);
+                        allocate(caller.Caller(), vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 128;
@@ -1076,7 +1065,7 @@ namespace TAO
                     case OP::CALLER::TIMESTAMP:
                     {
                         /* Allocate to the registers. */
-                        allocate(contract.Timestamp(), vRet);
+                        allocate(caller.Timestamp(), vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 1;
@@ -1089,7 +1078,7 @@ namespace TAO
                     case OP::CALLER::OPERATIONS:
                     {
                         /* Get the bytes from caller. */
-                        const std::vector<uint8_t>& vBytes = contract.Operations();
+                        const std::vector<uint8_t>& vBytes = caller.Operations();
 
                         /* Allocate to the registers. */
                         allocate(vBytes, vRet);
@@ -1099,24 +1088,6 @@ namespace TAO
 
                         break;
                     }
-
-
-                    /* Get the operations of the transaction caller. */
-                    case OP::CALLER::CONDITIONS:
-                    {
-                        /* Get the bytes from caller. */
-                        const std::vector<uint8_t>& vBytes = contract.Conditions();
-
-                        /* Allocate to the registers. */
-                        allocate(vBytes, vRet);
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= vBytes.size();
-
-                        break;
-                    }
-
-
 
 
                     /* Get the current height of the chain. */

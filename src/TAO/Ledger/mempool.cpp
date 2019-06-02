@@ -106,7 +106,9 @@ namespace TAO
                 && !LLD::legDB->ReadTx(tx.hashPrevTx, txPrev))
                 {
                     /* Debug output. */
-                    debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ", tx.nSequence, " genesis ", tx.hashGenesis.ToString().substr(0, 20), " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
+                    debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
+                        tx.nSequence, " genesis ", tx.hashGenesis.SubString(),
+                        " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
 
                     /* Push to orphan queue. */
                     mapOrphans[tx.hashPrevTx] = tx;

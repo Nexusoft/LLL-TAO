@@ -101,7 +101,7 @@ namespace TAO
 
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashFrom))
-                return debug::error(FUNCTION, "cannot transfer reserved address");
+                return debug::error(FUNCTION, "cannot debit with reserved address");
 
             /* Extract the address from contract. */
             uint256_t hashTo = 0;

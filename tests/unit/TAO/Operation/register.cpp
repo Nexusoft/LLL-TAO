@@ -124,7 +124,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
 
             TAO::Register::Object object;
             object  << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
-                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(55)
+                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << hashAddress
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
                     << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(10);
 
@@ -154,7 +154,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
             //check values
             REQUIRE(object.get<uint64_t>("balance")    == 5555);
             REQUIRE(object.get<uint64_t>("supply")     == 5555);
-            REQUIRE(object.get<uint256_t>("identifier") == 55);
+            REQUIRE(object.get<uint256_t>("identifier") == hashAddress);
             REQUIRE(object.get<uint64_t>("digits")     == 10);
         }
 
@@ -165,7 +165,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
 
             TAO::Register::Object object;
             object  << std::string("balance")    << uint8_t(TYPES::MUTABLE)  << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
-                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << uint256_t(55)
+                    << std::string("identifier") << uint8_t(TYPES::UINT256_T) << hashAddress
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T) << uint64_t(5555)
                     << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(10);
 
