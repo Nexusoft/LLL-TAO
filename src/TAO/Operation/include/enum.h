@@ -63,6 +63,7 @@ namespace TAO
 
                 //conditional operations
                 VALIDATE   = 0x40,
+                CONDITION  = 0x41,
 
                 //legacy operations
                 LEGACY     = 0x50

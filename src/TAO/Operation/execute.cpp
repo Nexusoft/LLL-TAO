@@ -661,6 +661,50 @@ namespace TAO
                         if(!condition.Conditions())
                             return debug::error(FUNCTION, "OP::VALIDATE: cannot validate with no conditions");
 
+                        /* Get the validation type. */
+                        uint8_t nType = 0;
+                        condition >> nType;
+
+                        /* Switch based on type. */
+                        switch(nType)
+                        {
+                            /* Handle for transfer validation. */
+                            case OP::TRANSFER:
+                            {
+                                /* Get the address. */
+                                uint256_t hashAddress = 0;
+                                condition >> hashAddress;
+
+                                /* Get the transfer. */
+                                uint256_t hashTransfer = 0;
+                                condition >> hashTransfer;
+
+                                /* Check that transfer is wildcard. */
+                                if(hashTransfer != ~uint256_t(0))
+                                    return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
+
+                                /* Check for condition. */
+                                if(condition.End())
+                                    return debug::error(FUNCTION, "OP::VALIDATE: couldn't get validate op");
+
+                                /* Read the condition. */
+                                uint8_t nOP = 0;
+                                condition >> nOP;
+
+                                /* Check for condition. */
+                                if(nOP != OP::CONDITION)
+                                    return debug::error(FUNCTION, "OP::VALIDATE: incorrect condition op");
+
+                                break;
+                            }
+
+                            /* Handle for debit validation. */
+                            case OP::DEBIT:
+                            {
+                                break;
+                            }
+                        }
+
                         /* Build the validation script for execution. */
                         Condition conditions = Condition(condition, contract);
                         if(!conditions.Execute())
