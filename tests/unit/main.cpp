@@ -38,12 +38,13 @@ TEST_CASE("Arguments Tests", "[args]")
     }
 
     /* Create the database instances. */
-    LLD::Register = new LLD::Register(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-    LLD::Local = new LLD::Local(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-    LLD::Ledger = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Contract = new LLD::ContractDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Register = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Local    = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Ledger   = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
 
     /* Initialize the Legacy Database. */
-    LLD::Trust  = new LLD::Trust(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-    LLD::Legacy = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Trust    = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Legacy   = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 }

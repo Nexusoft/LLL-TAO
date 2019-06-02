@@ -61,12 +61,7 @@ namespace TAO
         /* Execute the validation script. */
         bool Condition::Execute()
         {
-            /* Reset contract. */
-            contract.Reset();
 
-            /* Reset the caller. */
-            caller.Reset();
-            
             /* Keep track of previous execution return value. */
             bool fRet = false;
 
