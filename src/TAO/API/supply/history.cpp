@@ -59,34 +59,7 @@ namespace TAO
             /* Get the register. */
             TAO::Register::State state;
             if(!LLD::regDB->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                return ret; // no history so return empty array
-
-            /* Generate return object. */
-            json::json first;
-            first["owner"]      = state.hashOwner.ToString();
-            first["modified"]   = state.nModified;
-            first["created"]    = state.nCreated;
-
-            /* Reset read position. */
-            state.nReadPos = 0;
-
-            /* Declare the name.  Since this is an append register the name will only exist
-               in the first entry  */
-            std::string strName = "";
-
-            /* Grab the last state. */
-            while(!state.end())
-            {
-                /* If the data type is string. */
-                std::string data;
-                state >> data;
-
-                first["checksum"] = state.hashChecksum;
-                first["data"]     = data;
-            }
-
-            /* Push to return array. */
-            ret.push_back(first);
+                throw APIException(-24, "Item not found");
 
             /* Read the last hash of owner. */
             uint512_t hashLast = 0;

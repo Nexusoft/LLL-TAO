@@ -56,15 +56,6 @@ namespace TAO
             if(!LLD::regDB->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-24, "No state found");
 
-            /* Generate return object. */
-            json::json obj;
-            obj["owner"]      = state.hashOwner.ToString();
-            obj["modified"]   = state.nModified;
-            obj["created"]    = state.nCreated;
-
-            /* Push to return array. */
-            ret.push_back(obj);
-
             /* Read the last hash of owner. */
             uint512_t hashLast = 0;
             if(!LLD::legDB->ReadLast(state.hashOwner, hashLast))
@@ -75,7 +66,7 @@ namespace TAO
             {
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadTx(hashLast, tx))
+                if(!LLD::legDB->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-28, "Failed to read transaction");
 
                 /* Set the next last. */
