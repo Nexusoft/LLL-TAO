@@ -78,6 +78,19 @@ namespace LLD
         bool ReadContract(const std::pair<uint512_t, uint32_t>& pairContract, uint256_t& hashCaller,
                           const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
+
+        /** HasCaontract
+         *
+         *  Checks if a contract is already fulfilled.
+         *
+         *  @param[in] pairContract The origin contract.
+         *  @param[in] nFlags The flags for memory or not.
+         *
+         *  @return True if a contract exists
+         *
+         **/
+        bool HasContract(const std::pair<uint512_t, uint32_t>& pairContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
     };
 }
 

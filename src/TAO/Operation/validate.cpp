@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <TAO/Operation/include/validate.h>
 #include <TAO/Operation/types/contract.h>
 
@@ -24,6 +26,10 @@ namespace TAO
          /* Commit validation proofs. **/
         bool Validate::Commit(const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
         {
+            /* Check that contract hasn't already been completed. */
+            if(LLD::Contract->HasContract(std::make_pair(hashTx, nContract)))
+                return debug::error(FUNCTION, "cannot validate when already fulfilled");
+
             return true;
         }
 
