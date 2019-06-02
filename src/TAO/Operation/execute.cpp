@@ -60,6 +60,10 @@ namespace TAO
                     /* Generate pre-state to database. */
                     case OP::WRITE:
                     {
+                        /* Make sure there are no conditions. */
+                        if(contract.Conditions())
+                            return debug::error(FUNCTION, "OP::WRITE: conditions not allowed on write");
+
                         /* Verify the operation rules. */
                         if(!Write::Verify(contract))
                             return false;
@@ -115,6 +119,10 @@ namespace TAO
                     /* Generate pre-state to database. */
                     case OP::APPEND:
                     {
+                        /* Make sure there are no conditions. */
+                        if(contract.Conditions())
+                            return debug::error(FUNCTION, "OP::APPEND: conditions not allowed on append");
+
                         /* Verify the operation rules. */
                         if(!Append::Verify(contract))
                             return false;
@@ -172,6 +180,10 @@ namespace TAO
                      */
                     case OP::CREATE:
                     {
+                        /* Make sure there are no conditions. */
+                        if(contract.Conditions())
+                            return debug::error(FUNCTION, "OP::CREATE: conditions not allowed on create");
+
                         /* Verify the operation rules. */
                         if(!Create::Verify(contract))
                             return false;
@@ -280,6 +292,10 @@ namespace TAO
                     /* Transfer ownership of a register to another signature chain. */
                     case OP::CLAIM:
                     {
+                        /* Make sure there are no conditions. */
+                        if(contract.Conditions())
+                            return debug::error(FUNCTION, "OP::CLAIM: conditions not allowed on claim");
+
                         /* Extract the transaction from contract. */
                         uint512_t hashTx = 0;
                         contract >> hashTx;
@@ -293,19 +309,15 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Verify the operation rules. */
-                        const Contract claim = LLD::legDB->ReadContract(hashTx, nContract);
-                        if(!Claim::Verify(contract, claim))
+                        const Contract transfer = LLD::legDB->ReadContract(hashTx, nContract);
+                        if(!Claim::Verify(contract, transfer))
                             return false;
 
                         /* Check for conditions. */
-                        if(claim.Conditions())
+                        if(transfer.Conditions())
                         {
-                            /* Conditions are not allowed when executing prior conditions. */
-                            if(contract.Conditions())
-                                return debug::error(FUNCTION, "OP::CLAIM: no validation script allowed");
-
                             /* Build the validation script for execution. */
-                            Validate validate = Validate(claim, contract);
+                            Validate validate = Validate(transfer, contract);
                             if(!validate.Execute())
                                 return debug::error(FUNCTION, "OP::CLAIM: validation script failed");
                         }
@@ -362,6 +374,10 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case OP::TRUST:
                     {
+                        /* Make sure there are no conditions. */
+                        if(contract.Conditions())
+                            return debug::error(FUNCTION, "OP::TRUST: conditions not allowed on trust");
+
                         /* Verify the operation rules. */
                         if(!Trust::Verify(contract))
                             return false;
@@ -420,6 +436,10 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case OP::GENESIS:
                     {
+                        /* Make sure there are no conditions. */
+                        if(contract.Conditions())
+                            return debug::error(FUNCTION, "OP::GENESIS: conditions not allowed on genesis");
+
                         /* Verify the operation rules. */
                         if(!Genesis::Verify(contract))
                             return false;
@@ -534,6 +554,10 @@ namespace TAO
                     /* Credit tokens to an account you own. */
                     case OP::CREDIT:
                     {
+                        /* Make sure there are no conditions. */
+                        if(contract.Conditions())
+                            return debug::error(FUNCTION, "OP::CREDIT: conditions not allowed on credit");
+
                         /* Extract the transaction from contract. */
                         uint512_t hashTx = 0;
                         contract >> hashTx;
@@ -550,10 +574,6 @@ namespace TAO
                         /* Check for conditions. */
                         if(debit.Conditions())
                         {
-                            /* Conditions are not allowed when executing prior conditions. */
-                            if(contract.Conditions())
-                                return debug::error(FUNCTION, "OP::CREDIT: no validation script allowed");
-
                             /* Build the validation script for execution. */
                             Validate validate = Validate(debit, contract);
                             if(!validate.Execute())
@@ -628,6 +648,10 @@ namespace TAO
                     /* Create unspendable legacy script, that acts to debit from the account and make this unspendable. */
                     case OP::LEGACY:
                     {
+                        /* Make sure there are no conditions. */
+                        if(contract.Conditions())
+                            return debug::error(FUNCTION, "OP::LEGACY: conditions not allowed on legacy");
+
                         /* Verify the operation rules. */
                         if(!Legacy::Verify(contract))
                             return false;
