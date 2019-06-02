@@ -64,7 +64,7 @@ namespace TAO
             uint256_t hashNext;
 
 
-            /** The recovery hash which can be changed at any time. */
+            /** The recovery hash which can be changed only when in recovery mode. */
             uint256_t hashRecovery;
 
 
