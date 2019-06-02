@@ -180,6 +180,7 @@ namespace TAO
                     return debug::error(FUNCTION, "prev transaction incorrect sequence");
 
                 /* Check the previous next hash that is being claimed. */
+                bool fRecovery = false;
                 if(txPrev.hashNext != PrevHash())
                 {
                     /* Check that previous hash matches recovery. */
@@ -191,14 +192,17 @@ namespace TAO
 
                         /* Log that transaction is being recovered. */
                         debug::log(0, FUNCTION, "NOTICE: transaction is using recovery hash");
+
+                        /* Set recovery mode to be enabled. */
+                        fRecovery = true;
                     }
                     else
                         return debug::error(FUNCTION, "next hash mismatch with previous transaction");
                 }
 
                 /* Check recovery hash is sequenced from previous tx (except for changing from 0) */
-                if(txPrev.hashRecovery != hashRecovery && txPrev.hashRecovery != 0)
-                    return debug::error(FUNCTION, "recovery hash broken chain");
+                if(!fRecovery && txPrev.hashRecovery != hashRecovery && txPrev.hashRecovery != 0)
+                    return debug::error(FUNCTION, "recovery hash broken chain"); //this can only be updated when recovery executed
 
                 /* Check the previous sequence number. */
                 if(txPrev.nSequence + 1 != nSequence)
