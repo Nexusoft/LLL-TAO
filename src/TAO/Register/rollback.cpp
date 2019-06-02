@@ -52,6 +52,10 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
+                        /* Unpack the post-state vector. */
+                        std::vector<uint8_t> vchState;
+                        contract >> vchState;
+
                         /* Verify the first register code. */
                         uint8_t nState = 0;
                         contract >>= nState;
@@ -83,6 +87,10 @@ namespace TAO
                         uint8_t nState = 0;
                         contract >>= nState;
 
+                        /* Unpack the post-state vector. */
+                        std::vector<uint8_t> vchState;
+                        contract >> vchState;
+
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
                             return debug::error(FUNCTION, "OP::APPEND: egister state not in pre-state");
@@ -106,6 +114,14 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
+                        /* Unpack the register type. */
+                        uint8_t nType = 0;
+                        contract >> nType;
+
+                        /* Unpack the post-state vector. */
+                        std::vector<uint8_t> vchState;
+                        contract >> vchState;
+
                         /* Erase the register from database. */
                         if(!LLD::Register->EraseState(hashAddress))
                             return debug::error(FUNCTION, "OP::CREATE: failed to erase post-state");
@@ -120,6 +136,9 @@ namespace TAO
                         /* Get the Address of the Register. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
+
+                        /* Seek to end. */
+                        contract.Seek(65);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -193,6 +212,9 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case TAO::Operation::OP::TRUST:
                     {
+                        /* Seek to end. */
+                        contract.Seek(81);
+
                         /* Verify the first register code. */
                         uint8_t nState = 0;
                         contract >>= nState;
@@ -219,6 +241,9 @@ namespace TAO
                         /* Get last trust block. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
+
+                        /* Seek to end. */
+                        contract.Seek(41);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -254,6 +279,9 @@ namespace TAO
                         /* Get last trust block. */
                         uint256_t hashTo = 0;
                         contract >> hashTo;
+
+                        /* Seek to end. */
+                        contract.Seek(73);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -356,12 +384,25 @@ namespace TAO
                     }
 
 
+                    /* Authorize is enabled in private mode only. */
+                    case TAO::Operation::OP::AUTHORIZE:
+                    {
+                        /* Seek to address. */
+                        contract.Seek(97);
+
+                        break;
+                    }
+
+
                     /* Debit tokens from an account you own. */
                     case TAO::Operation::OP::LEGACY:
                     {
                         /* Get last trust block. */
                         uint256_t hashFrom = 0;
                         contract >> hashFrom;
+
+                        /* Seek to end. */
+                        contract.Seek(41);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -381,6 +422,55 @@ namespace TAO
 
                         break;
                     }
+
+                    default:
+                        return debug::error(FUNCTION, "invalid code for contract execution");
+
+                }
+
+                /* Check for end of stream. */
+                if(!contract.End())
+                {
+                    /* Get the contract OP. */
+                    OP = 0;
+                    contract >> OP;
+
+                    /* Check the current opcode. */
+                    switch(OP)
+                    {
+
+                        /* Condition that allows a validation to occur. */
+                        case TAO::Operation::OP::CONDITION:
+                        {
+                            /* Condition has no parameters. */
+                            break;
+                        }
+
+
+                        /* Validate a previous contract's conditions */
+                        case TAO::Operation::OP::VALIDATE:
+                        {
+                            /* Extract the transaction from contract. */
+                            uint512_t hashTx = 0;
+                            contract >> hashTx;
+
+                            /* Extract the contract-id. */
+                            uint32_t nContract = 0;
+                            contract >> nContract;
+
+                            //erase the validator.
+
+
+                            break;
+                        }
+
+                        default:
+                            return debug::error(FUNCTION, "invalid end code for contract execution");
+                    }
+
+                    /* Ensure that there are no more operations. */
+                    if(!contract.End())
+                        return debug::error(FUNCTION, "contract cannot contain any more primitives");
                 }
             }
             catch(const std::exception& e)

@@ -61,7 +61,6 @@ namespace TAO
         /* Execute the validation script. */
         bool Condition::Execute()
         {
-
             /* Keep track of previous execution return value. */
             bool fRet = false;
 
