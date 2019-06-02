@@ -64,6 +64,10 @@ namespace TAO
             uint256_t hashNext;
 
 
+            /** The recovery hash which can be changed at any time. */
+            uint256_t hashRecovery;
+
+
             /** The genesis ID hash. **/
             uint256_t hashGenesis;
 
@@ -101,6 +105,7 @@ namespace TAO
                 READWRITE(nSequence);
                 READWRITE(nTimestamp);
                 READWRITE(hashNext);
+                READWRITE(hashRecovery);
                 READWRITE(hashGenesis);
                 READWRITE(hashPrevTx);
 
@@ -127,6 +132,7 @@ namespace TAO
             , nSequence(0)
             , nTimestamp(runtime::unifiedtimestamp())
             , hashNext(0)
+            , hashRecovery(0)
             , hashGenesis(0)
             , hashPrevTx(0)
             , hashNextTx(0)

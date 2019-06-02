@@ -181,7 +181,20 @@ namespace TAO
 
                 /* Check the previous next hash that is being claimed. */
                 if(txPrev.hashNext != PrevHash())
-                    return debug::error(FUNCTION, "next hash mismatch with previous transaction");
+                {
+                    /* Check that previous hash matches recovery. */
+                    if(txPrev.hashRecovery != 0 && PrevHash() == txPrev.hashRecovery)
+                    {
+                        /* Log that transaction is being recovered. */
+                        debug::log(0, FUNCTION, "NOTICE: transaction is using recovery hash");
+                    }
+                    else
+                        return debug::error(FUNCTION, "next hash mismatch with previous transaction");
+                }
+
+                /* Check recovery hash is sequenced from previous tx (except for changing from 0) */
+                if(txPrev.hashRecovery != hashRecovery && txPrev.hashRecovery != 0)
+                    return debug::error(FUNCTION, "recovery hash broken chain");
 
                 /* Check the previous sequence number. */
                 if(txPrev.nSequence + 1 != nSequence)
@@ -189,9 +202,7 @@ namespace TAO
 
                 /* Check the previous genesis. */
                 if(txPrev.hashGenesis != hashGenesis)
-                    return debug::error(FUNCTION,
-                        "genesis ", txPrev.hashGenesis.SubString(),
-                        " broken ",     hashGenesis.SubString());
+                    return debug::error(FUNCTION, "genesis hash broken chain");
 
                 /* Check previous transaction from disk hash. */
                 if(txPrev.GetHash() != hashPrevTx) //NOTE: this is being extra paranoid. Consider removing.
