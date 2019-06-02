@@ -354,6 +354,33 @@ namespace TAO
 
                         break;
                     }
+
+
+                    /* Debit tokens from an account you own. */
+                    case TAO::Operation::OP::LEGACY:
+                    {
+                        /* Get last trust block. */
+                        uint256_t hashFrom = 0;
+                        contract >> hashFrom;
+
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::LEGACY: register state not in pre-state");
+
+                        /* Verify the register's prestate. */
+                        State state;
+                        contract >>= state;
+
+                        /* Write the register from database. */
+                        if(!LLD::Register->WriteState(hashFrom, state))
+                            return debug::error(FUNCTION, "OP::LEGACY: failed to rollback to pre-state");
+
+                        break;
+                    }
                 }
             }
             catch(const std::exception& e)
