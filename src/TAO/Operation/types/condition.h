@@ -33,7 +33,7 @@ namespace TAO
          *  An object to handle the executing of validation scripts.
          *
          **/
-        class Validate : public TAO::Register::BaseVM
+        class Condition : public TAO::Register::BaseVM
         {
 
             /** Computational limits for validation script. **/
@@ -51,11 +51,11 @@ namespace TAO
         public:
 
             /** Default constructor. **/
-            Validate(const Contract& contractIn, const Contract& callerIn, int32_t nLimitsIn = 2048);
+            Condition(const Contract& contractIn, const Contract& callerIn, int32_t nLimitsIn = 2048);
 
 
             /** Copy constructor. **/
-            Validate(const Validate& in);
+            Condition(const Condition& in);
 
 
             /** Reset

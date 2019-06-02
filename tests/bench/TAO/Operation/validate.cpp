@@ -15,7 +15,7 @@
 
 #include <LLC/aes/aes.h>
 
-#include <TAO/Operation/types/validate.h>
+#include <TAO/Operation/types/condition.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -60,7 +60,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]" )
         runtime::timer bench;
         bench.Reset();
         {
-            Validate script = Validate(ssOperation, tx);
+            Condition script = Condition(ssOperation, tx);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -85,7 +85,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]" )
         runtime::timer bench;
         bench.Reset();
         {
-            Validate script = Validate(ssOperation, tx);
+            Condition script = Condition(ssOperation, tx);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -111,7 +111,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]" )
         runtime::timer bench;
         bench.Reset();
         {
-            Validate script = Validate(ssOperation, tx);
+            Condition script = Condition(ssOperation, tx);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -137,7 +137,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]" )
         runtime::timer bench;
         bench.Reset();
         {
-            Validate script = Validate(ssOperation, tx);
+            Condition script = Condition(ssOperation, tx);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -163,7 +163,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]" )
         runtime::timer bench;
         bench.Reset();
         {
-            Validate script = Validate(ssOperation, tx);
+            Condition script = Condition(ssOperation, tx);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -189,7 +189,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]" )
         runtime::timer bench;
         bench.Reset();
         {
-            Validate script = Validate(ssOperation, tx);
+            Condition script = Condition(ssOperation, tx);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -215,7 +215,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]" )
         runtime::timer bench;
         bench.Reset();
         {
-            Validate script = Validate(ssOperation, tx);
+            Condition script = Condition(ssOperation, tx);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -241,7 +241,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]" )
         runtime::timer bench;
         bench.Reset();
         {
-            Validate script = Validate(ssOperation, tx);
+            Condition script = Condition(ssOperation, tx);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -268,7 +268,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]" )
         runtime::timer bench;
         bench.Reset();
         {
-            Validate script = Validate(ssOperation, tx);
+            Condition script = Condition(ssOperation, tx);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -294,7 +294,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]" )
         runtime::timer bench;
         bench.Reset();
         {
-            Validate script = Validate(ssOperation, tx);
+            Condition script = Condition(ssOperation, tx);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());

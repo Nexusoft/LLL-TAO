@@ -29,7 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/write.h>
 
 #include <TAO/Operation/types/contract.h>
-#include <TAO/Operation/types/validate.h>
+#include <TAO/Operation/types/condition.h>
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
@@ -317,9 +317,9 @@ namespace TAO
                         if(transfer.Conditions())
                         {
                             /* Build the validation script for execution. */
-                            Validate validate = Validate(transfer, contract);
-                            if(!validate.Execute())
-                                return debug::error(FUNCTION, "OP::CLAIM: validation script failed");
+                            Condition condition = Condition(transfer, contract);
+                            if(!condition.Execute())
+                                return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
                         }
 
                         /* Get the state byte. */
@@ -575,9 +575,9 @@ namespace TAO
                         if(debit.Conditions())
                         {
                             /* Build the validation script for execution. */
-                            Validate validate = Validate(debit, contract);
-                            if(!validate.Execute())
-                                return debug::error(FUNCTION, "OP::CREDIT: validation script failed");
+                            Condition conditions = Condition(debit, contract);
+                            if(!conditions.Execute())
+                                return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
                         }
 
                         /* Seek past transaction-id. */

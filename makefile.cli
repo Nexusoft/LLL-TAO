@@ -201,7 +201,7 @@ ifdef UNIT_TESTS
 		   build/Tests_debit.o \
 		   build/Tests_trust.o \
 		   build/Tests_write.o \
-		   build/Tests_validate.o \
+		   build/Tests_conditions.o \
            build/Tests_hex.o
 
 	DEFS += -DUNIT_TESTS
@@ -351,6 +351,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_utils_jsonutils.o \
 		build/Operation_append.o \
 		build/Operation_claim.o \
+		build/Operation_condition.o \
 		build/Operation_contract.o \
 		build/Operation_create.o \
 		build/Operation_credit.o \
@@ -360,7 +361,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Operation_legacy.o \
 		build/Operation_transfer.o \
 		build/Operation_trust.o \
-		build/Operation_validate.o \
 		build/Operation_write.o \
 		build/Register_basevm.o \
 		build/Register_build.o \

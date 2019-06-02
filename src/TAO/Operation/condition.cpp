@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/types/validate.h>
+#include <TAO/Operation/types/condition.h>
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
@@ -29,7 +29,7 @@ namespace TAO
     namespace Operation
     {
 
-        Validate::Validate(const Contract& contractIn, const Contract& callerIn, int32_t nLimitsIn)
+        Condition::Condition(const Contract& contractIn, const Contract& callerIn, int32_t nLimitsIn)
         : TAO::Register::BaseVM() //512 bytes of register memory.
         , nLimits(nLimitsIn)
         , contract(contractIn)
@@ -39,7 +39,7 @@ namespace TAO
 
 
         /** Copy constructor. **/
-        Validate::Validate(const Validate& in)
+        Condition::Condition(const Condition& in)
         : TAO::Register::BaseVM(in)
         , nLimits(in.nLimits)
         , contract(in.contract)
@@ -49,7 +49,7 @@ namespace TAO
 
 
         /* Reset the validation script for re-executing. */
-        void Validate::Reset()
+        void Condition::Reset()
         {
             contract.Reset();
             nLimits = 2048;
@@ -59,7 +59,7 @@ namespace TAO
 
 
         /* Execute the validation script. */
-        bool Validate::Execute()
+        bool Condition::Execute()
         {
             /* Keep track of previous execution return value. */
             bool fRet = false;
@@ -215,7 +215,7 @@ namespace TAO
          *  Get a value from the register virtual machine.
          *
          **/
-        bool Validate::GetValue(TAO::Register::Value& vRet)
+        bool Condition::GetValue(TAO::Register::Value& vRet)
         {
 
             /* Iterate until end of stream. */
