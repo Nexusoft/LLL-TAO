@@ -377,12 +377,13 @@ namespace TAO
         {
             /* Declare token name to return  */
             std::string strTokenName;
+
             /* Get the object standard. */
             uint8_t nStandard = object.Standard();
 
+            /* Check the object register standard. */
             if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
             {
-
                 /* If debiting an account we need to look at the token definition in order to get the digits.
                    The token is obtained by looking at the token_address field, which contains the register address of
                    the issuing token */

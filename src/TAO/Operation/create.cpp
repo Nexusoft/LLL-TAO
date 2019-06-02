@@ -102,6 +102,26 @@ namespace TAO
 
                         break;
                     }
+
+
+                    /* Enforce hash on Name objects to ensure that a Name cannot be created for someone elses genesis ID . */
+                    case TAO::Register::OBJECTS::NAMESPACE:
+                    {
+                        /* Insert the name of from the Name object */
+                        std::string strNamespace = object.get<std::string>("namespace");
+
+                        /* Build vector to hold the genesis + name data for hashing */
+                        std::vector<uint8_t> vData(strNamespace.begin(), strNamespace.end());
+
+                        /* Hash this in the same was as the caller would have to generate hashAddress */
+                        uint256_t hashName = LLC::SK256(vData);
+
+                        /* Fail if caller didn't user their own genesis to create name. */
+                        if(hashName != hashAddress)
+                            return debug::error(FUNCTION, "incorrect name or genesis");
+
+                        break;
+                    }
                 }
             }
 

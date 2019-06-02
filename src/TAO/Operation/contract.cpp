@@ -171,6 +171,13 @@ namespace TAO
         }
 
 
+        /* Returns whether this contract contains conditions. */
+        bool Contract::Conditions() const
+        {
+            return ssCondition.size() != 0;
+        }
+
+
         /*Seek the internal operation stream read pointers.*/
         void Contract::Seek(const uint32_t nPos) const
         {

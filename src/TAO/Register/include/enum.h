@@ -96,7 +96,10 @@ namespace TAO
                 TRUST        = 0x03,
 
                 /* Name Object Register. */
-                NAME        = 0x04
+                NAME         = 0x04,
+
+                /* Namespace Object Register. */
+                NAMESPACE    = 0x05
             };
         };
 

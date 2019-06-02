@@ -29,6 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/write.h>
 
 #include <TAO/Operation/types/contract.h>
+#include <TAO/Operation/types/validate.h>
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
@@ -297,6 +298,17 @@ namespace TAO
                             return false;
 
                         /* Check for conditions. */
+                        if(claim.Conditions())
+                        {
+                            /* Conditions are not allowed when executing prior conditions. */
+                            if(contract.Conditions())
+                                return debug::error(FUNCTION, "OP::CLAIM: no validation script allowed");
+
+                            /* Build the validation script for execution. */
+                            Validate validate = Validate(contract, claim);
+                            if(!validate.Execute())
+                                return debug::error(FUNCTION, "OP::CLAIM: validation script failed");
+                        }
 
                         /* Get the state byte. */
                         uint8_t nState = 0; //RESERVED
@@ -534,6 +546,19 @@ namespace TAO
                         const Contract debit = LLD::legDB->ReadContract(hashTx, nContract);
                         if(!Credit::Verify(contract, debit, nFlags))
                             return false;
+
+                        /* Check for conditions. */
+                        if(debit.Conditions())
+                        {
+                            /* Conditions are not allowed when executing prior conditions. */
+                            if(contract.Conditions())
+                                return debug::error(FUNCTION, "OP::DEBIT: no validation script allowed");
+
+                            /* Build the validation script for execution. */
+                            Validate validate = Validate(contract, debit);
+                            if(!validate.Execute())
+                                return debug::error(FUNCTION, "OP::DEBIT: validation script failed");
+                        }
 
                         /* Seek past transaction-id. */
                         contract.Seek(69);

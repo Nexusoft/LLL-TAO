@@ -186,12 +186,12 @@ namespace TAO
 
             /** Conditions
              *
-             *  Get the raw condition bytes from the contract.
+             *  Returns whether this contract contains conditions.
              *
-             *  @return raw byte const reference
+             *  @return true if contract contains conditions
              *
              **/
-            const std::vector<uint8_t>& Conditions() const;
+            bool Conditions() const;
 
 
             /** Seek
