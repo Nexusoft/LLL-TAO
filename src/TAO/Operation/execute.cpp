@@ -305,7 +305,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "OP::CLAIM: no validation script allowed");
 
                             /* Build the validation script for execution. */
-                            Validate validate = Validate(contract, claim);
+                            Validate validate = Validate(claim, contract);
                             if(!validate.Execute())
                                 return debug::error(FUNCTION, "OP::CLAIM: validation script failed");
                         }
@@ -552,12 +552,12 @@ namespace TAO
                         {
                             /* Conditions are not allowed when executing prior conditions. */
                             if(contract.Conditions())
-                                return debug::error(FUNCTION, "OP::DEBIT: no validation script allowed");
+                                return debug::error(FUNCTION, "OP::CREDIT: no validation script allowed");
 
                             /* Build the validation script for execution. */
-                            Validate validate = Validate(contract, debit);
+                            Validate validate = Validate(debit, contract);
                             if(!validate.Execute())
-                                return debug::error(FUNCTION, "OP::DEBIT: validation script failed");
+                                return debug::error(FUNCTION, "OP::CREDIT: validation script failed");
                         }
 
                         /* Seek past transaction-id. */
