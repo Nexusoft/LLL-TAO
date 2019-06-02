@@ -183,8 +183,12 @@ namespace TAO
                 if(txPrev.hashNext != PrevHash())
                 {
                     /* Check that previous hash matches recovery. */
-                    if(txPrev.hashRecovery != 0 && PrevHash() == txPrev.hashRecovery)
+                    if(txPrev.hashRecovery == PrevHash())
                     {
+                        /* Check that recovery hash is not 0. */
+                        if(txPrev.hashRecovery == 0)
+                            return debug::error(FUNCTION, "NOTICE: recovery hash disabled");
+
                         /* Log that transaction is being recovered. */
                         debug::log(0, FUNCTION, "NOTICE: transaction is using recovery hash");
                     }
