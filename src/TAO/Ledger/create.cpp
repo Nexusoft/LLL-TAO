@@ -83,10 +83,10 @@ namespace TAO
             }
 
             /* Get the last transaction. */
-            else if(LLD::legDB->ReadLast(user->Genesis(), hashLast))
+            else if(LLD::Ledger->ReadLast(user->Genesis(), hashLast))
             {
                 /* Get previous transaction */
-                if(!LLD::legDB->ReadTx(hashLast, txPrev))
+                if(!LLD::Ledger->ReadTx(hashLast, txPrev))
                     return debug::error(FUNCTION, "no prev tx ", hashLast.ToString(), " in ledger db");
 
                 /* Build new transaction object. */
@@ -286,7 +286,7 @@ namespace TAO
         {
             uint1024_t genesisHash = TAO::Ledger::ChainState::Genesis();
 
-            if(!LLD::legDB->ReadBlock(genesisHash, ChainState::stateGenesis))
+            if(!LLD::Ledger->ReadBlock(genesisHash, ChainState::stateGenesis))
             {
                 /* Build the first transaction for genesis. */
                 const char* pszTimestamp = "Silver Doctors [2-19-2014] BANKER CLEAN-UP: WE ARE AT THE PRECIPICE OF SOMETHING BIG";
@@ -339,12 +339,12 @@ namespace TAO
                 ChainState::stateBest = ChainState::stateGenesis;
 
                 /* Write the block to disk. */
-                if(!LLD::legDB->WriteBlock(genesisHash, ChainState::stateGenesis))
+                if(!LLD::Ledger->WriteBlock(genesisHash, ChainState::stateGenesis))
                     return debug::error(FUNCTION, "genesis didn't commit to disk");
 
                 /* Write the best chain to the database. */
                 ChainState::hashBestChain = genesisHash;
-                if(!LLD::legDB->WriteBestChain(genesisHash))
+                if(!LLD::Ledger->WriteBestChain(genesisHash))
                     return debug::error(FUNCTION, "couldn't write best chain.");
             }
 
@@ -367,11 +367,11 @@ namespace TAO
 
             /* Check for duplicates in ledger db. */
             TAO::Ledger::Transaction txPrev;
-            if(LLD::legDB->HasGenesis(hashGenesis))
+            if(LLD::Ledger->HasGenesis(hashGenesis))
             {
                 /* Get the last transaction. */
                 uint512_t hashLast;
-                if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+                if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
                 {
                     debug::error(FUNCTION, "No previous transaction found... closing");
 
@@ -379,7 +379,7 @@ namespace TAO
                 }
 
                 /* Get previous transaction */
-                if(!LLD::legDB->ReadTx(hashLast, txPrev))
+                if(!LLD::Ledger->ReadTx(hashLast, txPrev))
                 {
                     debug::error(FUNCTION, "No previous transaction found... closing");
 

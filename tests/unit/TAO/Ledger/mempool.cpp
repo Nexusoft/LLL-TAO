@@ -157,10 +157,10 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashAddress, object2, TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE(LLD::Register->ReadState(hashAddress, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //make sure not on disk
-            REQUIRE(!LLD::regDB->ReadState(hashAddress, object2));
+            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
 
             //parse
             REQUIRE(object2.Parse());
@@ -208,7 +208,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashAddress, object2, TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE(LLD::Register->ReadState(hashAddress, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //parse
             REQUIRE(object2.Parse());
@@ -218,7 +218,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(object2.get<std::string>("test") == std::string("stRInGISNew"));
 
             //make sure not on disk
-            REQUIRE(!LLD::regDB->ReadState(hashAddress, object2));
+            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
 
             //set previous
             hashPrevTx = tx.GetHash();
@@ -259,7 +259,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashAddress, object2, TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE(LLD::Register->ReadState(hashAddress, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //parse
             REQUIRE(object2.Parse());
@@ -269,7 +269,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(object2.get<std::string>("test") == std::string("stRInGISNew"));
 
             //make sure not on disk
-            REQUIRE(!LLD::regDB->ReadState(hashAddress, object2));
+            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
 
             //set previous
             hashPrevTx = tx.GetHash();
@@ -306,7 +306,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE(LLD::Register->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //parse
             REQUIRE(object2.Parse());
@@ -315,7 +315,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(object2.get<uint64_t>("balance") == 900);
 
             //make sure not on disk
-            REQUIRE(!LLD::regDB->ReadState(hashAddress, object2));
+            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
 
             //set previous
             hashPrevTx = tx.GetHash();
@@ -352,7 +352,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE(LLD::Register->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //parse
             REQUIRE(object2.Parse());
@@ -361,7 +361,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(object2.get<uint64_t>("balance") == 400);
 
             //make sure not on disk
-            REQUIRE(!LLD::regDB->ReadState(hashAddress, object2));
+            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
 
             //set previous
             hashPrevTx = tx.GetHash();
@@ -398,7 +398,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE(LLD::Register->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //parse
             REQUIRE(object2.Parse());
@@ -407,7 +407,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(object2.get<uint64_t>("balance") == 100);
 
             //make sure not on disk
-            REQUIRE(!LLD::regDB->ReadState(hashAddress, object2));
+            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
 
             //set previous
             hashPrevTx = tx.GetHash();
@@ -463,7 +463,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE(LLD::Register->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //parse
             REQUIRE(object2.Parse());
@@ -472,7 +472,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(object2.get<uint64_t>("balance") == 0);
 
             //make sure not on disk
-            REQUIRE(!LLD::regDB->ReadState(hashAddress, object2));
+            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
 
             //set previous
             hashPrevTx = tx.GetHash();
@@ -490,7 +490,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                 TAO::Ledger::Transaction tx;
                 REQUIRE(TAO::Ledger::mempool.Get(hash, tx));
 
-                LLD::legDB->WriteTx(hash, tx);
+                LLD::Ledger->WriteTx(hash, tx);
                 REQUIRE(tx.Verify());
                 REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
                 REQUIRE(TAO::Ledger::mempool.Remove(tx.GetHash()));
@@ -499,7 +499,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             //check token balance with mempool flag on
             {
                 TAO::Register::Object object2;
-                REQUIRE(LLD::regDB->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
+                REQUIRE(LLD::Register->ReadState(hashToken, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
                 //parse
                 REQUIRE(object2.Parse());
@@ -512,7 +512,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             //check token balance from disk only
             {
                 TAO::Register::Object object2;
-                REQUIRE(LLD::regDB->ReadState(hashToken, object2));
+                REQUIRE(LLD::Register->ReadState(hashToken, object2));
 
                 //parse
                 REQUIRE(object2.Parse());
@@ -534,7 +534,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
     {
 
         //cleanup
-        LLD::regDB->EraseIdentifier(22);
+        LLD::Register->EraseIdentifier(22);
 
         //vector to shuffle
         std::vector<TAO::Ledger::Transaction> vTX;
@@ -964,7 +964,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
                 TAO::Ledger::Transaction tx;
                 REQUIRE(TAO::Ledger::mempool.Get(hash, tx));
 
-                LLD::legDB->WriteTx(hash, tx);
+                LLD::Ledger->WriteTx(hash, tx);
                 REQUIRE(tx.Verify());
                 REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
                 REQUIRE(TAO::Ledger::mempool.Remove(tx.GetHash()));

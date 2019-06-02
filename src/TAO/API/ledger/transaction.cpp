@@ -60,7 +60,7 @@ namespace TAO
 
 
             /* Read the block state from the the ledger DB using the transaction hash index */
-            LLD::legDB->ReadBlock(hash, blockState);
+            LLD::Ledger->ReadBlock(hash, blockState);
 
 
             /* Declare the JSON return object */
@@ -69,13 +69,13 @@ namespace TAO
 
             /* Get the transaction either from disk or mempool.
                First try to see if it is a tritium tx in the leger db*/
-            if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::legDB->ReadTx(hash, txTritium))
+            if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::Ledger->ReadTx(hash, txTritium))
             {
                 ret = TAO::API::TransactionToJSON (txTritium, blockState, nTransactionVerbosity);
             }
 
             /* If it is not a tritium transaction then see if it is a legacy tx in the legacy DB */
-            else if(TAO::Ledger::mempool.Get(hash, txLegacy) || LLD::legacyDB->ReadTx(hash, txLegacy))
+            else if(TAO::Ledger::mempool.Get(hash, txLegacy) || LLD::Legacy->ReadTx(hash, txLegacy))
             {
                 ret = TAO::API::TransactionToJSON (txLegacy, blockState, nTransactionVerbosity);
             }

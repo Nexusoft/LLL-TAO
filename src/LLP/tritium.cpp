@@ -479,7 +479,7 @@ namespace LLP
                 for(const auto& have : locator.vHave)
                 {
                     /* Check the database for the ancestor block. */
-                    if(LLD::legDB->ReadBlock(have, state))
+                    if(LLD::Ledger->ReadBlock(have, state))
                         break;
                 }
 
@@ -598,7 +598,7 @@ namespace LLP
                         if(inv.GetType() == MSG_BLOCK_LEGACY || inv.GetType() == MSG_BLOCK_TRITIUM)
                         {
                             /* Check the LLD for block. */
-                            if(!LLD::legDB->HasBlock(inv.GetHash()))
+                            if(!LLD::Ledger->HasBlock(inv.GetHash()))
                             {
                                 /* Add this item to request queue. */
                                 vGet.push_back(inv);
@@ -668,7 +668,7 @@ namespace LLP
 
                         /* Read the block from disk. */
                         TAO::Ledger::BlockState state;
-                        if(!LLD::legDB->ReadBlock(inv.GetHash(), state))
+                        if(!LLD::Ledger->ReadBlock(inv.GetHash(), state))
                         {
                             debug::log(3, NODE "getdata readblock failed ", inv.GetHash().ToString().substr(0, 20));
                             continue;
@@ -698,7 +698,7 @@ namespace LLP
                     {
                         TAO::Ledger::Transaction tx;
                         if(!TAO::Ledger::mempool.Get(uint512_t(inv.GetHash()), tx)
-                        && !LLD::legDB->ReadTx(uint512_t(inv.GetHash()), tx))
+                        && !LLD::Ledger->ReadTx(uint512_t(inv.GetHash()), tx))
                             continue;
 
                         PushMessage(DAT_TRANSACTION, (uint8_t)LLP::MSG_TX_TRITIUM, tx);
@@ -707,7 +707,7 @@ namespace LLP
                     {
                         Legacy::Transaction tx;
                         if(!TAO::Ledger::mempool.Get((uint512_t)inv.GetHash(), tx)
-                        && !LLD::legacyDB->ReadTx((uint512_t)inv.GetHash(), tx))
+                        && !LLD::Legacy->ReadTx((uint512_t)inv.GetHash(), tx))
                             continue;
 
                         PushMessage(DAT_TRANSACTION, (uint8_t)LLP::MSG_TX_LEGACY, tx);
@@ -740,7 +740,7 @@ namespace LLP
 
             //     /* Check if you have it. */
             //     TAO::Ledger::Transaction tx;
-            //     if(LLD::legDB->ReadTx(hash, tx) || TAO::Ledger::mempool.Get(hash, tx))
+            //     if(LLD::Ledger->ReadTx(hash, tx) || TAO::Ledger::mempool.Get(hash, tx))
             //         PushMessage(DAT_TRANSACTION, tx);
 
             //     break;
@@ -769,7 +769,7 @@ namespace LLP
 
             //     /* Check if you have it. */
             //     TAO::Ledger::BlockState state;
-            //     if(LLD::legDB->ReadBlock(hash, state))
+            //     if(LLD::Ledger->ReadBlock(hash, state))
             //     {
             //         TAO::Ledger::TritiumBlock block(state);
             //         PushMessage(DAT_BLOCK, block);
@@ -793,7 +793,7 @@ namespace LLP
 
 
                     /* Check if we have it. */
-                    if(!LLD::legDB->HasTx(tx.GetHash()))
+                    if(!LLD::Ledger->HasTx(tx.GetHash()))
                     {
                         /* Debug output for tx. */
                         debug::log(3, NODE "Received tx ", tx.GetHash().ToString().substr(0, 20));
@@ -824,7 +824,7 @@ namespace LLP
 
 
                     /* Check if we have it. */
-                    if(!LLD::legacyDB->HasTx(tx.GetHash()))
+                    if(!LLD::Legacy->HasTx(tx.GetHash()))
                     {
                         /* Debug output for tx. */
                         debug::log(3, NODE "Received tx ", tx.GetHash().ToString().substr(0, 20));
@@ -1009,7 +1009,7 @@ namespace LLP
             return false;
 
         /* Check for orphan. */
-        if(!LLD::legDB->HasBlock(block.hashPrevBlock))
+        if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
         {
             /* Fast sync block requests. */
             if(!TAO::Ledger::ChainState::Synchronizing())

@@ -37,11 +37,11 @@ namespace TAO
             if(nFlags & TAO::Ledger::FLAGS::BLOCK)
             {
                 /* Write the transfer event. */
-                if(!LLD::legDB->WriteEvent(hashTransfer, hashTx))
+                if(!LLD::Ledger->WriteEvent(hashTransfer, hashTx))
                     return debug::error(FUNCTION, "failed to write event");
             }
 
-            return LLD::regDB->WriteState(hashAddress, state, nFlags);
+            return LLD::Register->WriteState(hashAddress, state, nFlags);
         }
 
 

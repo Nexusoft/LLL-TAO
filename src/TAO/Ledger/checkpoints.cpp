@@ -41,12 +41,12 @@ namespace TAO
 
             /* Get previous block state. */
             BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(state.hashPrevBlock, statePrev))
+            if(!LLD::Ledger->ReadBlock(state.hashPrevBlock, statePrev))
                 return true;
 
             /* Get checkpoint state. */
             BlockState stateCheck;
-            if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheck))
+            if(!LLD::Ledger->ReadBlock(state.hashCheckpoint, stateCheck))
                 return debug::error(FUNCTION, "failed to read checkpoint");
 
             /* Calculate the time differences. */
@@ -65,7 +65,7 @@ namespace TAO
 
             /* Get checkpoint state. */
             BlockState stateCheckpoint;
-            if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheckpoint))
+            if(!LLD::Ledger->ReadBlock(state.hashCheckpoint, stateCheckpoint))
                 return debug::error(FUNCTION, "failed to read checkpoint");
 
             /* Check The Block Hash */

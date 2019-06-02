@@ -86,7 +86,7 @@ namespace TAO
 
             /* Check for duplicates in ledger db. */
             TAO::Ledger::Transaction txPrev;
-            if(!LLD::legDB->HasGenesis(hashGenesis))
+            if(!LLD::Ledger->HasGenesis(hashGenesis))
             {
                 /* Check the memory pool and compare hashes. */
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
@@ -100,11 +100,11 @@ namespace TAO
             {
                 /* Get the last transaction. */
                 uint512_t hashLast;
-                if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+                if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
                     throw APIException(-27, "No previous transaction found");
 
                 /* Get previous transaction */
-                if(!LLD::legDB->ReadTx(hashLast, txPrev))
+                if(!LLD::Ledger->ReadTx(hashLast, txPrev))
                     throw APIException(-27, "No previous transaction found");
             }
 

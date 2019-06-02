@@ -53,7 +53,7 @@ namespace TAO
 
             /* Attempt to read the block state. */
             TAO::Ledger::BlockState state;
-            if(!LLD::legDB->ReadBlock(hashBlock, state))
+            if(!LLD::Ledger->ReadBlock(hashBlock, state))
                 return;
 
             /* On success, check back the blocks. */

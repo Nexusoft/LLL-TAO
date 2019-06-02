@@ -33,14 +33,14 @@ namespace TAO
             const uint256_t& hashAddress, const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
         {
             /* Check if this transfer is already claimed. */
-            if(LLD::legDB->HasProof(hashAddress, hashTx, nContract, nFlags))
+            if(LLD::Ledger->HasProof(hashAddress, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "transfer is already claimed");
 
             /* Write the claimed proof. */
-            if(!LLD::legDB->WriteProof(hashAddress, hashTx, nContract, nFlags))
+            if(!LLD::Ledger->WriteProof(hashAddress, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "transfer is already claimed");
 
-            return LLD::regDB->WriteState(hashAddress, state, nFlags);
+            return LLD::Register->WriteState(hashAddress, state, nFlags);
         }
 
 

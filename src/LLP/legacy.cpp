@@ -655,7 +655,7 @@ namespace LLP
 
                         /* Check the LLD for block. */
                         if(!cacheInventory.Has(hashBlock)
-                        && !LLD::legDB->HasBlock(hashBlock))
+                        && !LLD::Ledger->HasBlock(hashBlock))
                         {
                             /* Add this item to request queue. */
                             vGet.push_back(*inv);
@@ -745,7 +745,7 @@ namespace LLP
 
                     /* Read the block from disk. */
                     TAO::Ledger::BlockState state;
-                    if(!LLD::legDB->ReadBlock(hashBlock, state))
+                    if(!LLD::Ledger->ReadBlock(hashBlock, state))
                         continue;
 
                     /* Scan each transaction in the block and process those related to this wallet */
@@ -777,7 +777,7 @@ namespace LLP
                     hashTx = hashBlock;
 
                     Legacy::Transaction tx;
-                    if(!TAO::Ledger::mempool.Get(hashTx, tx) && !LLD::legacyDB->ReadTx(hashTx, tx))
+                    if(!TAO::Ledger::mempool.Get(hashTx, tx) && !LLD::Legacy->ReadTx(hashTx, tx))
                         continue;
 
                     PushMessage("tx", tx);
@@ -802,7 +802,7 @@ namespace LLP
             for(const auto& have : locator.vHave)
             {
                 /* Check the database for the ancestor block. */
-                if(LLD::legDB->ReadBlock(have, state))
+                if(LLD::Ledger->ReadBlock(have, state))
                     break;
             }
 
@@ -900,7 +900,7 @@ namespace LLP
             return false;
 
         /* Check for orphan. */
-        if(!LLD::legDB->HasBlock(block.hashPrevBlock))
+        if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
         {
             /* Fast sync block requests. */
             if(!TAO::Ledger::ChainState::Synchronizing())

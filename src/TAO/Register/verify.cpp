@@ -69,7 +69,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::WRITE: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -112,7 +112,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::APPEND: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -162,7 +162,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -208,7 +208,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::CLAIM: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -253,7 +253,7 @@ namespace TAO
                             state = mapStates[contract.Caller()];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadTrust(contract.Caller(), state))
+                        else if(!LLD::Register->ReadTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::TRUST: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -296,7 +296,7 @@ namespace TAO
                             state = mapStates[contract.Caller()];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -339,7 +339,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -390,7 +390,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::CREDIT: failed to read pre-state");
 
                         /* Check that the checksums match. */

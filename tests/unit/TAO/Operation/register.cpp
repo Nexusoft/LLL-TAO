@@ -46,7 +46,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
         {
             //check values all match
             TAO::Register::Object object;
-            REQUIRE(LLD::regDB->ReadState(hashAddress, object));
+            REQUIRE(LLD::Register->ReadState(hashAddress, object));
 
             //parse
             REQUIRE(object.Parse());
@@ -92,7 +92,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
         {
             //check values all match
             TAO::Register::Object object;
-            REQUIRE(LLD::regDB->ReadState(hashAddress, object));
+            REQUIRE(LLD::Register->ReadState(hashAddress, object));
 
             //parse
             REQUIRE(object.Parse());
@@ -112,7 +112,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
     //test token register
     {
         //erase identifier
-        LLD::regDB->EraseIdentifier(55);
+        LLD::Register->EraseIdentifier(55);
 
         //object register address
         uint256_t hashAddress = LLC::GetRand256();
@@ -142,7 +142,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
         {
             //check values all match
             TAO::Register::Object object;
-            REQUIRE(LLD::regDB->ReadState(hashAddress, object));
+            REQUIRE(LLD::Register->ReadState(hashAddress, object));
 
             //parse
             REQUIRE(object.Parse());

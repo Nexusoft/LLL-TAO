@@ -58,8 +58,8 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
     state << hash2;
 
 
-    REQUIRE(LLD::regDB->Write(hash, state));
-    REQUIRE(LLD::regDB->Write(hashFrom, state));
+    REQUIRE(LLD::Register->Write(hash, state));
+    REQUIRE(LLD::Register->Write(hashFrom, state));
 
     std::string strName = "colasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfin!!!";
     uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
@@ -415,7 +415,7 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
        std::string strObject = "register-vanity";
 
        uint256_t hashObject = LLC::SK256(std::vector<uint8_t>(strObject.begin(), strObject.end()));
-       REQUIRE(LLD::regDB->Write(hashObject, object));
+       REQUIRE(LLD::Register->Write(hashObject, object));
 
 
       contract.Clear();

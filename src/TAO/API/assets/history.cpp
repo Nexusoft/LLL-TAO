@@ -53,12 +53,12 @@ namespace TAO
 
             /* Get the register. */
             TAO::Register::State state;
-            if(!LLD::regDB->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-24, "No state found");
 
             /* Read the last hash of owner. */
             uint512_t hashLast = 0;
-            if(!LLD::legDB->ReadLast(state.hashOwner, hashLast))
+            if(!LLD::Ledger->ReadLast(state.hashOwner, hashLast))
                 throw APIException(-24, "No last hash found");
 
             /* Iterate through sigchain for register updates. */
@@ -66,7 +66,7 @@ namespace TAO
             {
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-28, "Failed to read transaction");
 
                 /* Set the next last. */

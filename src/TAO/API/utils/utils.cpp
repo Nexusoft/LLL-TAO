@@ -131,7 +131,7 @@ namespace TAO
 
             /* First check to see whether the name already exists  */
             TAO::Register::Object object;
-            if(LLD::regDB->ReadState(hashName, object, TAO::Ledger::FLAGS::MEMPOOL))
+            if(LLD::Register->ReadState(hashName, object, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-23, "An object with this name already exists for this user.");
 
             /* Create the Name register object pointing to hashRegister */
@@ -150,7 +150,7 @@ namespace TAO
             TAO::Ledger::Transaction txPrev;;
 
             /* Check disk of writing new block. */
-            if(!LLD::legDB->ReadTx(hashTransfer, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Ledger->ReadTx(hashTransfer, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
                 debug::error(FUNCTION, hashTransfer.SubString(), " transfer tx doesn't exist or not indexed");
 
             /* Ensure we are not claiming our own Transfer.  If we are then no need to create a Name object as we already have one */
@@ -206,7 +206,7 @@ namespace TAO
 
             /* First check to see whether the name already. */
             TAO::Register::Object object;
-            if(LLD::regDB->ReadState(hashName, object, TAO::Ledger::FLAGS::MEMPOOL))
+            if(LLD::Register->ReadState(hashName, object, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-23, "An object with this name already exists for this user.");
 
             /* Create the Name register object pointing to hashRegister */
@@ -282,7 +282,7 @@ namespace TAO
 
             /* Read the Name Object */
             TAO::Register::Object object;
-            if(!LLD::regDB->ReadState(hashName, object, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadState(hashName, object, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-24, "Failed to read object state.");
 
             /* Check that the name object is proper type. */
@@ -351,7 +351,7 @@ namespace TAO
                 {
 
                     TAO::Register::Object token;
-                    if(!LLD::regDB->ReadState(nIdentifier, token))
+                    if(!LLD::Register->ReadState(nIdentifier, token))
                         throw APIException(-24, "Token not found");
 
                     /* Parse the object register. */
@@ -396,7 +396,7 @@ namespace TAO
                 {
 
                     TAO::Register::Object token;
-                    if(!LLD::regDB->ReadState(nIdentifier, token))
+                    if(!LLD::Register->ReadState(nIdentifier, token))
                         throw APIException(-24, "Token not found");
 
                     /* Parse the object register. */
@@ -427,7 +427,7 @@ namespace TAO
         {
             /* Get the last transaction. */
             uint512_t hashLast = 0;
-            if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
                 return false;
 
             /* Keep a running list of owned and transferred registers. We use a set to store these registers because
@@ -442,7 +442,7 @@ namespace TAO
             {
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadTx(hashLast, tx))
+                if(!LLD::Ledger->ReadTx(hashLast, tx))
                     throw APIException(-28, "Failed to read transaction");
 
                 /* Set the next last. */
@@ -582,7 +582,7 @@ namespace TAO
                     /* Get the object from the register DB.  We can read it as an Object and then check its nType
                     to determine whether or not it is a Name. */
                     TAO::Register::Object object;
-                    if(!LLD::regDB->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+                    if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
                         continue;
 
                     if(object.nType == TAO::Register::REGISTER::OBJECT)

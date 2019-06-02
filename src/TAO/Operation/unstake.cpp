@@ -35,7 +35,7 @@ namespace TAO
             if((nFlags & TAO::Register::FLAGS::PRESTATE))
             {
                 /* Set the register pre-states. */
-                if(!LLD::regDB->ReadTrust(tx.hashGenesis, trustAccount)) //TODO: memory states for this index
+                if(!LLD::Register->ReadTrust(tx.hashGenesis, trustAccount)) //TODO: memory states for this index
                         return debug::error(FUNCTION, "Trust address doesn't exist ", tx.hashGenesis.ToString());
 
                 tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << trustAccount;
@@ -123,7 +123,7 @@ namespace TAO
                     return debug::error(FUNCTION, "register script has invalid post-state");
 
                 /* Update the register database with the index. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteTrust(tx.hashGenesis, trustAccount))
+                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::Register->WriteTrust(tx.hashGenesis, trustAccount))
                     return debug::error(FUNCTION, "failed to write new state");
 
             }

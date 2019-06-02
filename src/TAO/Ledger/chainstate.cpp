@@ -93,11 +93,11 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to create genesis");
 
             /* Read the best chain. */
-            if(!LLD::legDB->ReadBestChain(hashBestChain))
+            if(!LLD::Ledger->ReadBestChain(hashBestChain))
                 return debug::error(FUNCTION, "failed to read best chain");
 
             /* Get the best chain stats. */
-            if(!LLD::legDB->ReadBlock(hashBestChain.load(), stateBest))
+            if(!LLD::Ledger->ReadBlock(hashBestChain.load(), stateBest))
             {
                 debug::error(FUNCTION, "failed to read best block, attempting to recover database");
 
@@ -112,7 +112,7 @@ namespace TAO
                 }
 
                 hashBestChain = stateBest.load().GetHash();
-                if(!LLD::legDB->WriteBestChain(hashBestChain.load()))
+                if(!LLD::Ledger->WriteBestChain(hashBestChain.load()))
                     return debug::error(FUNCTION, "failed to write best chain");
 
                 debug::log(0, FUNCTION, "database successfully recovered" );
@@ -155,7 +155,7 @@ namespace TAO
                         if (item.first == TAO::Ledger::LEGACY_TX)
                         {
                             /* Read transaction from database */
-                            if (!LLD::legacyDB->ReadTx(item.second, tx))
+                            if (!LLD::Legacy->ReadTx(item.second, tx))
                             {
                                 debug::log(0, state.ToString(debug::flags::tx | debug::flags::header));
 
@@ -217,7 +217,7 @@ namespace TAO
             {
                 /* Search back until fail or different checkpoint. */
                 BlockState state;
-                if(!LLD::legDB->ReadBlock(hashCheckpoint.load(), state))
+                if(!LLD::Ledger->ReadBlock(hashCheckpoint.load(), state))
                     return debug::error(FUNCTION, "no pending checkpoint");
 
                 /* Get the previous state. */
@@ -235,8 +235,8 @@ namespace TAO
                 /* Try and retrieve the block state for the current block height via the height index.
                     If this fails then we know the block height index is not fully intact so we repair it*/
                 TAO::Ledger::BlockState state;
-                if(!LLD::legDB->ReadBlock(TAO::Ledger::ChainState::stateBest.load().nHeight, state))
-                     LLD::legDB->RepairIndexHeight();
+                if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::stateBest.load().nHeight, state))
+                     LLD::Ledger->RepairIndexHeight();
             }
 
 

@@ -57,10 +57,10 @@ namespace TAO
             TAO::Register::Object trustAccount;
             bool isGenesis = false;
 
-            if (LLD::regDB->HasTrust(user->Genesis()))
+            if (LLD::Register->HasTrust(user->Genesis()))
             {
                 /* Trust account is indexed */
-                if (!LLD::regDB->ReadTrust(user->Genesis(), trustAccount))
+                if (!LLD::Register->ReadTrust(user->Genesis(), trustAccount))
                    throw APIException(-24, "Unable to retrieve trust account.");
 
                 if(!trustAccount.Parse())
@@ -71,7 +71,7 @@ namespace TAO
                 /* Trust account is not indexed (staking is pre-Genesis) */
                 isGenesis = true;
 
-                if(!LLD::regDB->ReadState(hashRegister, trustAccount, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadState(hashRegister, trustAccount, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-24, "Trust account not found");
 
                 if(!trustAccount.Parse())

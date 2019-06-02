@@ -93,7 +93,7 @@ namespace TAO
                     {
                         /* Get the tritium transaction from the database*/
                         TAO::Ledger::Transaction tx;
-                        if(LLD::legDB->ReadTx(vtx.second, tx))
+                        if(LLD::Ledger->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
                             json::json txdata = TransactionToJSON(tx, block, nTransactionVerbosity);
@@ -105,7 +105,7 @@ namespace TAO
                     {
                         /* Get the legacy transaction from the database. */
                         Legacy::Transaction tx;
-                        if(LLD::legacyDB->ReadTx(vtx.second, tx))
+                        if(LLD::Legacy->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
                             json::json txdata = TransactionToJSON(tx, block, nTransactionVerbosity);
@@ -194,7 +194,7 @@ namespace TAO
                     {
                         /* Read the previous transaction in order to get its outputs */
                         Legacy::Transaction txprev;
-                        if(!LLD::legacyDB->ReadTx(txin.prevout.hash, txprev))
+                        if(!LLD::Legacy->ReadTx(txin.prevout.hash, txprev))
                             throw APIException(-5, "Invalid transaction id");
 
                         /* Extract the Nexus Address. */

@@ -622,7 +622,7 @@ namespace Legacy
                         prevTx = *mapWalletPrev[prevoutTxHash];
 
                     }
-                    else if (!config::fClient && LLD::legacyDB->ReadTx(prevoutTxHash, parentTransaction))
+                    else if (!config::fClient && LLD::Legacy->ReadTx(prevoutTxHash, parentTransaction))
                     {
                         /* Found transaction in database, but it isn't in wallet. Create a new WalletTx from it to use as prevTx */
                         prevTx = WalletTx(ptransactionWallet, parentTransaction);
@@ -666,7 +666,7 @@ namespace Legacy
             if (!(tx.IsCoinBase() || tx.IsCoinStake()))
             {
                 uint512_t hash = tx.GetHash();
-                if (!LLD::legacyDB->HasTx(hash))
+                if (!LLD::Legacy->HasTx(hash))
                 {
                     std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_LEGACY) };
                     if( LLP::LEGACY_SERVER)
@@ -686,7 +686,7 @@ namespace Legacy
             uint512_t hash = GetHash();
 
             /* Relay this tx if we don't have it in our database, yet */
-            if (!LLD::legacyDB->HasTx(hash))
+            if (!LLD::Legacy->HasTx(hash))
             {
                 debug::log(0, FUNCTION, "Relaying wtx ", hash.ToString().substr(0,10));
 

@@ -64,7 +64,7 @@ namespace TAO
 
             /* Check for duplicates in ledger db. */
             TAO::Ledger::Transaction tx;
-            if(LLD::legDB->HasGenesis(hashGenesis))
+            if(LLD::Ledger->HasGenesis(hashGenesis))
             {
                 user.free();
                 throw APIException(-26, "Account already exists");

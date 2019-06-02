@@ -81,7 +81,7 @@ namespace TAO
             vtx.erase(vtx.begin());
 
             /* Read the producer transaction from disk. */
-            if(!LLD::legDB->ReadTx(state.vtx[0].second, producer))
+            if(!LLD::Ledger->ReadTx(state.vtx[0].second, producer))
                 debug::error(FUNCTION, "failed to read producer");
         }
 
@@ -273,7 +273,7 @@ namespace TAO
                 {
                     /* Check the memory pool. */
                     Legacy::Transaction tx;
-                    if(!mempool.Get(proof.second, tx) && !LLD::legacyDB->ReadTx(proof.second, tx))
+                    if(!mempool.Get(proof.second, tx) && !LLD::Legacy->ReadTx(proof.second, tx))
                     {
                         vMissingTx.push_back(proof);
                         continue;
@@ -293,7 +293,7 @@ namespace TAO
                 {
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
-                    if(!mempool.Get(proof.second, tx) && !LLD::legDB->ReadTx(proof.second, tx))
+                    if(!mempool.Get(proof.second, tx) && !LLD::Ledger->ReadTx(proof.second, tx))
                     {
                         vMissingTx.push_back(proof);
                         continue;
@@ -393,13 +393,13 @@ namespace TAO
         bool TritiumBlock::Accept() const
         {
             /* Read ledger DB for duplicate block. */
-            if(LLD::legDB->HasBlock(GetHash()))
+            if(LLD::Ledger->HasBlock(GetHash()))
                 return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20));
 
 
             /* Read ledger DB for previous block. */
             TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
+            if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
                 return debug::error(FUNCTION, "previous block state not found");
 
 
@@ -541,7 +541,7 @@ namespace TAO
 
             /* Get previous block. Block time used for block age/coin age calculation */
             TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
+            if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
                 return debug::error(FUNCTION, "prev block not in database");
 
             /* Calculate weights */
@@ -576,7 +576,7 @@ namespace TAO
 
                 /* Get the last stake block. */
                 TAO::Ledger::BlockState stateLast;
-                if(!LLD::legDB->ReadBlock(hashLastTrust, stateLast))
+                if(!LLD::Ledger->ReadBlock(hashLastTrust, stateLast))
                     return debug::error(FUNCTION, "last block not in database");
 
                 /* Enforce the minimum interval between stake blocks. */

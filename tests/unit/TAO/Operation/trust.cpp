@@ -57,7 +57,7 @@ TEST_CASE( "Trust Primitive Tests", "[operation]" )
         {
             //check values all match
             TAO::Register::Object object;
-            REQUIRE(LLD::regDB->ReadState(hashAddress, object));
+            REQUIRE(LLD::Register->ReadState(hashAddress, object));
 
             //parse
             REQUIRE(object.Parse());

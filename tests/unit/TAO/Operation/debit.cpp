@@ -35,7 +35,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
     //check a debit from token
     {
         //cleanup
-        LLD::regDB->EraseIdentifier(11);
+        LLD::Register->EraseIdentifier(11);
 
         //create object
         uint256_t hashToken = LLC::GetRand256();
@@ -98,7 +98,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             REQUIRE(tx.Build());
 
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -106,7 +106,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             //check register values
             {
                 Object token;
-                REQUIRE(LLD::regDB->ReadState(hashToken, token));
+                REQUIRE(LLD::Register->ReadState(hashToken, token));
 
                 //parse register
                 REQUIRE(token.Parse());
@@ -182,7 +182,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             REQUIRE(tx.Build());
 
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -190,7 +190,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             //check register values
             {
                 Object token;
-                REQUIRE(LLD::regDB->ReadState(hashToken, token));
+                REQUIRE(LLD::Register->ReadState(hashToken, token));
 
                 //parse register
                 REQUIRE(token.Parse());
@@ -215,7 +215,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             REQUIRE(!tx.Build());
 
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
             REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -292,7 +292,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             REQUIRE(!tx.Build());
 
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
             REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -346,7 +346,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             REQUIRE(!tx.Build());
 
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
             REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -400,7 +400,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             REQUIRE(!tx.Build());
 
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
             REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -460,7 +460,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             REQUIRE(!tx.Build());
 
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
             REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -475,7 +475,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
     //check for failed by incorrect base
     {
         //cleanup
-        LLD::regDB->EraseIdentifier(11);
+        LLD::Register->EraseIdentifier(11);
 
         //create object
         uint256_t hashToken = LLC::GetRand256();
@@ -522,7 +522,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]" )
             REQUIRE(!tx.Build());
 
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
             REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));

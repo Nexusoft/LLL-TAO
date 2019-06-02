@@ -334,7 +334,7 @@ namespace Legacy
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
+            if(!LLD::Ledger->ReadBlock(vin[nIndex].prevout.hash, statePrev))
                 return debug::error(FUNCTION, "no block for previous transaction");
 
             /* Time is from current transaction to previous block time. */
@@ -379,7 +379,7 @@ namespace Legacy
         {
             /* Read the trust key from the disk. */
             Legacy::TrustKey trustKey;
-            if(LLD::trustDB->ReadTrustKey(cKey, trustKey))
+            if(LLD::Trust->ReadTrustKey(cKey, trustKey))
                 nStakeRate = trustKey.StakeRate(block, nTime);
 
             /* Check if it failed to read and this is genesis. */
@@ -395,13 +395,13 @@ namespace Legacy
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
-            if(!LLD::legDB->ReadBlock(vin[nIndex].prevout.hash, statePrev))
-                if(!LLD::legDB->RepairIndex(vin[nIndex].prevout.hash, block))
+            if(!LLD::Ledger->ReadBlock(vin[nIndex].prevout.hash, statePrev))
+                if(!LLD::Ledger->RepairIndex(vin[nIndex].prevout.hash, block))
                     return debug::error(FUNCTION, "failed to read previous tx block");
 
             /* Read the previous transaction. */
             Legacy::Transaction txPrev;
-            if(!LLD::legacyDB->ReadTx(vin[nIndex].prevout.hash, txPrev))
+            if(!LLD::Legacy->ReadTx(vin[nIndex].prevout.hash, txPrev))
                 return debug::error(FUNCTION, "failed to read previous tx");
 
             /* Calculate the Age and Value of given output. */
@@ -765,12 +765,12 @@ namespace Legacy
                 continue;
 
             /* Check for existing indexes. */
-            if(!LLD::legDB->HasIndex(prevout.hash))
+            if(!LLD::Ledger->HasIndex(prevout.hash))
                 return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), "not connected");
 
             /* Read the previous transaction. */
             Transaction txPrev;
-            if(!LLD::legacyDB->ReadTx(prevout.hash, txPrev))
+            if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
             {
                 //TODO: check the memory pool for previous
                 return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), " not found");
@@ -837,7 +837,7 @@ namespace Legacy
             else if(IsTrust())
             {
                 /* No Trust Transaction without a Genesis. */
-                if(!LLD::trustDB->ReadTrustKey(cKey, trustKey))
+                if(!LLD::Trust->ReadTrustKey(cKey, trustKey))
                 {
                     /* FindGenesis will set hashPrevBlock to genesis block. Don't want to change that here, so use temp hash */
                     if(!FindGenesis(cKey, state.hashPrevBlock, trustKey))
@@ -850,7 +850,7 @@ namespace Legacy
 
                 /* Trust Keys can only exist after the Genesis Transaction. */
                 TAO::Ledger::BlockState stateGenesis;
-                if(!LLD::legDB->ReadBlock(trustKey.hashGenesisBlock, stateGenesis))
+                if(!LLD::Ledger->ReadBlock(trustKey.hashGenesisBlock, stateGenesis))
                     return debug::error(FUNCTION, "genesis block not found");
 
                 /* Double Check the Genesis Transaction. */
@@ -869,7 +869,7 @@ namespace Legacy
             trustKey.nStakeRate     = trustKey.StakeRate(state, nBlockTime);
 
             /* Write the trust key. */
-            LLD::trustDB->WriteTrustKey(cKey, trustKey);
+            LLD::Trust->WriteTrustKey(cKey, trustKey);
 
             /* Check that the trust score is accurate. */
             if(state.nVersion >= 5 && !CheckTrust(state))
@@ -899,8 +899,8 @@ namespace Legacy
             if (txPrev.IsCoinBase() || txPrev.IsCoinStake())
             {
                 TAO::Ledger::BlockState statePrev;
-                if(!LLD::legDB->ReadBlock(txPrev.GetHash(), statePrev))
-                    if(!LLD::legDB->RepairIndex(txPrev.GetHash(), state))
+                if(!LLD::Ledger->ReadBlock(txPrev.GetHash(), statePrev))
+                    if(!LLD::Ledger->RepairIndex(txPrev.GetHash(), state))
                         return debug::error(FUNCTION, "failed to read previous tx block");
 
                 /* Check the maturity. */
@@ -918,7 +918,7 @@ namespace Legacy
                 return debug::error(FUNCTION, "txin values out of range");
 
             /* Check for double spends. */
-            if(LLD::legacyDB->IsSpent(prevout.hash, prevout.n))
+            if(LLD::Legacy->IsSpent(prevout.hash, prevout.n))
                 return debug::error(FUNCTION, "prev tx ", prevout.hash.ToString().substr(0, 20), " is already spent");
 
             /* Check the ECDSA signatures. (...When not syncronizing) */
@@ -926,7 +926,7 @@ namespace Legacy
                 return debug::error(FUNCTION, "signature is invalid");
 
             /* Commit to disk if flagged. */
-            if((nFlags == FLAGS::BLOCK) && !LLD::legacyDB->WriteSpend(prevout.hash, prevout.n))
+            if((nFlags == FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
                 return debug::error(FUNCTION, "failed to write spend");
 
         }
@@ -967,7 +967,7 @@ namespace Legacy
             for (uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
             {
                 /* Erase the spends. */
-                if(!LLD::legacyDB->EraseSpend(vin[i].prevout.hash, vin[i].prevout.n))
+                if(!LLD::Legacy->EraseSpend(vin[i].prevout.hash, vin[i].prevout.n))
                     return debug::error(FUNCTION, "failed to erase spends.");
             }
         }
@@ -1008,17 +1008,17 @@ namespace Legacy
 
         /* Check that the last trust block is in the block database. */
         TAO::Ledger::BlockState stateLast;
-        if(!LLD::legDB->ReadBlock(hashLastBlock, stateLast))
+        if(!LLD::Ledger->ReadBlock(hashLastBlock, stateLast))
             return debug::error(FUNCTION, "last block not in database");
 
         /* Check that the previous block is in the block database. */
         TAO::Ledger::BlockState statePrev;
-        if(!LLD::legDB->ReadBlock(state.hashPrevBlock, statePrev))
+        if(!LLD::Ledger->ReadBlock(state.hashPrevBlock, statePrev))
             return debug::error(FUNCTION, "prev block not in database");
 
         /* Get the last coinstake transaction. */
         Transaction txLast;
-        if(!LLD::legacyDB->ReadTx(stateLast.vtx[0].second, txLast))
+        if(!LLD::Legacy->ReadTx(stateLast.vtx[0].second, txLast))
             return debug::error(FUNCTION, "last state coinstake tx not found");
 
         /* Enforce the minimum trust key interval of 120 blocks. */
@@ -1060,7 +1060,7 @@ namespace Legacy
         {
             /* Check the trust pool - this should only execute once transitioning from version 4 to version 5 trust keys. */
             Legacy::TrustKey trustKey;
-            if(!LLD::trustDB->ReadTrustKey(cKey, trustKey))
+            if(!LLD::Trust->ReadTrustKey(cKey, trustKey))
                 return debug::error(FUNCTION, "couldn't find the genesis");
 
             /* Enforce sequence number of 1 for anything made from version 4 blocks. */

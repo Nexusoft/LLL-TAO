@@ -38,15 +38,15 @@ namespace TAO
             {
                 /* Read the owner of register. */
                 TAO::Register::State state;
-                if(!LLD::regDB->ReadState(hashTo, state, nFlags))
+                if(!LLD::Register->ReadState(hashTo, state, nFlags))
                     return debug::error(FUNCTION, "failed to read register to");
 
                 /* Commit an event for other sigchain. */
-                if(!LLD::legDB->WriteEvent(state.hashOwner, hashTx))
+                if(!LLD::Ledger->WriteEvent(state.hashOwner, hashTx))
                     return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
             }
 
-            return LLD::regDB->WriteState(hashFrom, account, nFlags);
+            return LLD::Register->WriteState(hashFrom, account, nFlags);
         }
 
 

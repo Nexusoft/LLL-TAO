@@ -30,7 +30,7 @@ namespace TAO
         /* Commit the final state to disk. */
         bool Legacy::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
         {
-            return LLD::regDB->WriteState(hashAddress, state, nFlags);
+            return LLD::Register->WriteState(hashAddress, state, nFlags);
         }
 
 

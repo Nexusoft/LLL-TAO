@@ -31,15 +31,15 @@ namespace TAO
         bool Genesis::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
         {
             /* Check that a trust register exists. */
-            if(LLD::regDB->HasTrust(state.hashOwner))
+            if(LLD::Register->HasTrust(state.hashOwner))
                 return debug::error(FUNCTION, "cannot create genesis when already exists");
 
             /* Write the register to the database. */
-            if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
+            if(!LLD::Register->WriteState(hashAddress, state, nFlags))
                 return debug::error(FUNCTION, "failed to write new state");
 
             /* Update the register database with the index. */
-            if(!LLD::regDB->IndexTrust(state.hashOwner, hashAddress))
+            if(!LLD::Register->IndexTrust(state.hashOwner, hashAddress))
                 return debug::error(FUNCTION, "could not index the address to the genesis");
 
             return true;

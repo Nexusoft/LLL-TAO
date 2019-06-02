@@ -144,7 +144,7 @@ namespace Legacy
 
         /* Get the previous coinstake transaction. */
         Legacy::Transaction tx;
-        if(!LLD::legacyDB->ReadTx(block.vtx[0].second, tx))
+        if(!LLD::Legacy->ReadTx(block.vtx[0].second, tx))
             return debug::error(FUNCTION, "Failed to read coinstake from legacy DB");
 
         if(!tx.IsCoinStake())

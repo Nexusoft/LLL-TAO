@@ -309,7 +309,7 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Verify the operation rules. */
-                        const Contract transfer = LLD::legDB->ReadContract(hashTx, nContract);
+                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract);
                         if(!Claim::Verify(contract, transfer))
                             return false;
 
@@ -567,7 +567,7 @@ namespace TAO
                         contract >> nContract;
 
                         /* Verify the operation rules. */
-                        const Contract debit = LLD::legDB->ReadContract(hashTx, nContract);
+                        const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
                         if(!Credit::Verify(contract, debit, nFlags))
                             return false;
 
@@ -657,7 +657,7 @@ namespace TAO
                         contract >> nContract;
 
                         /* Verify the operation rules. */
-                        const Contract condition = LLD::legDB->ReadContract(hashTx, nContract);
+                        const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
                         if(!condition.Conditions())
                             return debug::error(FUNCTION, "OP::VALIDATE: cannot validate with no conditions");
 

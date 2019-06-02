@@ -65,7 +65,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Write the register from database. */
-                        if(!LLD::regDB->WriteState(hashAddress, state))
+                        if(!LLD::Register->WriteState(hashAddress, state))
                             return debug::error(FUNCTION, "OP::WRITE: failed to rollback to pre-state");
 
                         return true;
@@ -92,7 +92,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Write the register from database. */
-                        if(!LLD::regDB->WriteState(hashAddress, state))
+                        if(!LLD::Register->WriteState(hashAddress, state))
                             return debug::error(FUNCTION, "OP::APPEND: failed to rollback to pre-state");
 
                         return true;
@@ -107,7 +107,7 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Erase the register from database. */
-                        if(!LLD::regDB->EraseState(hashAddress))
+                        if(!LLD::Register->EraseState(hashAddress))
                             return debug::error(FUNCTION, "OP::CREATE: failed to erase post-state");
 
                         break;
@@ -134,7 +134,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Write the register from database. */
-                        if(!LLD::regDB->WriteState(hashAddress, state))
+                        if(!LLD::Register->WriteState(hashAddress, state))
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to rollback to pre-state");
 
                         break;
@@ -157,7 +157,7 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Erase the proof. */
-                        if(!LLD::legDB->EraseProof(hashAddress, hashTx, nContract))
+                        if(!LLD::Ledger->EraseProof(hashAddress, hashTx, nContract))
                             return debug::error(FUNCTION, "OP::CLAIM: failed to erase claim proof");
 
                         /* Verify the first register code. */
@@ -173,7 +173,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Write the register from database. */
-                        if(!LLD::regDB->WriteState(hashAddress, state))
+                        if(!LLD::Register->WriteState(hashAddress, state))
                             return debug::error(FUNCTION, "OP::CLAIM: failed to rollback to pre-state");
 
                         break;
@@ -206,7 +206,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Write the register from database. */
-                        if(!LLD::regDB->WriteTrust(contract.Caller(), state))
+                        if(!LLD::Register->WriteTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::TRUST: failed to rollback to pre-state");
 
                         break;
@@ -233,11 +233,11 @@ namespace TAO
                         contract >>= state;
 
                         /* Write the register from database. */
-                        if(!LLD::regDB->WriteState(hashAddress, state))
+                        if(!LLD::Register->WriteState(hashAddress, state))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to rollback to pre-state");
 
                         /* Erase the trust index. */
-                        if(!LLD::regDB->EraseTrust(contract.Caller()))
+                        if(!LLD::Register->EraseTrust(contract.Caller()))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to erase trust index");
 
                         break;
@@ -268,16 +268,16 @@ namespace TAO
                         contract >>= state;
 
                         /* Write the register from database. */
-                        if(!LLD::regDB->WriteState(hashFrom, state))
+                        if(!LLD::Register->WriteState(hashFrom, state))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to rollback to pre-state");
 
                         /* Read the owner of register. */
                         TAO::Register::State stateTo;
-                        if(!LLD::regDB->ReadState(hashTo, stateTo))
+                        if(!LLD::Register->ReadState(hashTo, stateTo))
                             return debug::error(FUNCTION, "failed to read register to");
 
                         /* Write the event to the ledger database. */
-                        if(!LLD::legDB->EraseEvent(stateTo.hashOwner))
+                        if(!LLD::Ledger->EraseEvent(stateTo.hashOwner))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to rollback event");
 
                         break;
@@ -308,7 +308,7 @@ namespace TAO
                         contract >> nAmount;
 
                         /* Write the claimed proof. */
-                        if(!LLD::legDB->EraseProof(hashProof, hashTx, nContract))
+                        if(!LLD::Ledger->EraseProof(hashProof, hashTx, nContract))
                             return debug::error(FUNCTION, "OP::CREDIT: failed to erase credit proof");
 
                         /* Verify the first register code. */
@@ -324,11 +324,11 @@ namespace TAO
                         contract >>= state;
 
                         /* Write the register from database. */
-                        if(!LLD::regDB->WriteState(hashAddress, state))
+                        if(!LLD::Register->WriteState(hashAddress, state))
                             return debug::error(FUNCTION, "OP::CREDIT: failed to rollback to pre-state");
 
                         /* Read the debit. */
-                        const TAO::Operation::Contract debit = LLD::legDB->ReadContract(hashTx, nContract);
+                        const TAO::Operation::Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
                         debit.Seek(1);
 
                         /* Get address from. */
@@ -340,7 +340,7 @@ namespace TAO
                         {
                             /* Get the partial amount. */
                             uint64_t nClaimed = 0;
-                            if(!LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed))
+                            if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed))
                                 return debug::error(FUNCTION, "OP::CREDIT: failed to read claimed amount");
 
                             /* Sanity check for claimed overflow. */
@@ -348,7 +348,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "OP::CREDIT: amount larger than claimed (overflow)");
 
                             /* Write the new claimed amount. */
-                            if(!LLD::legDB->WriteClaimed(hashTx, nContract, (nClaimed - nAmount)))
+                            if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed - nAmount)))
                                 return debug::error(FUNCTION, "OP::CREDIT: failed to rollback claimed amount");
                         }
 

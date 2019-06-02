@@ -160,11 +160,11 @@ namespace TAO
                 {
                     /* Set the proper next pointer. */
                     hashNextTx = uint512_t(STATE::HEAD);
-                    if(!LLD::legDB->WriteTx(hash, *this))
+                    if(!LLD::Ledger->WriteTx(hash, *this))
                         return debug::error(FUNCTION, "failed to write valid next pointer");
 
                     /* Write the genesis identifier. */
-                    if(!LLD::legDB->WriteGenesis(hashGenesis, hash))
+                    if(!LLD::Ledger->WriteGenesis(hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write genesis");
                 }
             }
@@ -172,7 +172,7 @@ namespace TAO
             {
                 /* Make sure the previous transaction is on disk or mempool. */
                 TAO::Ledger::Transaction txPrev;
-                if(!LLD::legDB->ReadTx(hashPrevTx, txPrev, nFlags))
+                if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
                     return debug::error(FUNCTION, "prev transaction not on disk");
 
                 /* Double check sequence numbers here. */
@@ -227,12 +227,12 @@ namespace TAO
                     txPrev.hashNextTx = hash;
 
                     /* Write the next pointer. */
-                    if(!LLD::legDB->WriteTx(hashPrevTx, txPrev))
+                    if(!LLD::Ledger->WriteTx(hashPrevTx, txPrev))
                         return debug::error(FUNCTION, "failed to write last tx");
 
                     /* Set the proper next pointer. */
                     hashNextTx = uint512_t(STATE::HEAD);
-                    if(!LLD::legDB->WriteTx(hash, *this))
+                    if(!LLD::Ledger->WriteTx(hash, *this))
                         return debug::error(FUNCTION, "failed to write valid next pointer");
                 }
             }
@@ -257,26 +257,26 @@ namespace TAO
         {
             /* Set the proper next pointer. */
             hashNextTx = uint512_t(STATE::UNCONFIRMED);
-            if(!LLD::legDB->WriteTx(GetHash(), *this))
+            if(!LLD::Ledger->WriteTx(GetHash(), *this))
                 return debug::error(FUNCTION, "failed to write valid next pointer");
 
             /* Erase last for genesis. */
-            if(IsFirst() && !LLD::legDB->EraseLast(hashGenesis))
+            if(IsFirst() && !LLD::Ledger->EraseLast(hashGenesis))
                 return debug::error(FUNCTION, "failed to erase last hash");
             else
             {
                 /* Make sure the previous transaction is on disk. */
                 TAO::Ledger::Transaction txPrev;
-                if(!LLD::legDB->ReadTx(hashPrevTx, txPrev))
+                if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev))
                     return debug::error(FUNCTION, "prev transaction not on disk");
 
                 /* Set the proper next pointer. */
                 txPrev.hashNextTx = STATE::HEAD;
-                if(!LLD::legDB->WriteTx(hashPrevTx, txPrev))
+                if(!LLD::Ledger->WriteTx(hashPrevTx, txPrev))
                     return debug::error(FUNCTION, "failed to write valid next pointer");
 
                 /* Write proper last hash index. */
-                if(!LLD::legDB->WriteLast(hashGenesis, hashPrevTx))
+                if(!LLD::Ledger->WriteLast(hashGenesis, hashPrevTx))
                     return debug::error(FUNCTION, "failed to write last hash");
 
             }

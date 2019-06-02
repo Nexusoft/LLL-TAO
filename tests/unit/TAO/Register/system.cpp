@@ -25,17 +25,17 @@ TEST_CASE( "System Register Tests", "[register]" )
     //test initialize
     {
         //erase the trust system register
-        LLD::regDB->EraseState(uint256_t(SYSTEM::TRUST));
+        LLD::Register->EraseState(uint256_t(SYSTEM::TRUST));
 
         //check that state is erased
         Object object;
-        REQUIRE(!LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), object));
+        REQUIRE(!LLD::Register->ReadState(uint256_t(SYSTEM::TRUST), object));
 
         //check the intialize function
         REQUIRE(TAO::Register::Initialize());
 
         //check the object
-        REQUIRE(LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), object));
+        REQUIRE(LLD::Register->ReadState(uint256_t(SYSTEM::TRUST), object));
 
         //check the register
         REQUIRE(object.IsValid());

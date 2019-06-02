@@ -103,7 +103,7 @@ namespace TAO
                 TAO::Ledger::Transaction txPrev;
                 if(!tx.IsFirst()
                 && !mapLedger.count(tx.hashPrevTx)
-                && !LLD::legDB->ReadTx(tx.hashPrevTx, txPrev))
+                && !LLD::Ledger->ReadTx(tx.hashPrevTx, txPrev))
                 {
                     /* Debug output. */
                     debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",

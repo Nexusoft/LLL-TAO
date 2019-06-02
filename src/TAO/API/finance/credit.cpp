@@ -99,7 +99,7 @@ namespace TAO
             {
                 /* Read the previous transaction. */
                 TAO::Ledger::Transaction txPrev;
-                if(!LLD::legDB->ReadTx(hashTx, txPrev))
+                if(!LLD::Ledger->ReadTx(hashTx, txPrev))
                     throw APIException(-23, "Previous transaction not found.");
 
                 /* Loop through all transactions. */
@@ -133,7 +133,7 @@ namespace TAO
                        digits specification from the token definition, in order to convert the user supplied amount to the
                        internal amount */
                     TAO::Register::Object object;
-                    if(!LLD::regDB->ReadState(hashTo, object))
+                    if(!LLD::Register->ReadState(hashTo, object))
                         continue;
 
                     /* Check for the owner. */
@@ -180,7 +180,7 @@ namespace TAO
 
             /* Get the account object that we are crediting to */
             TAO::Register::Object object;
-            if(!LLD::regDB->ReadState(hashTo, object))
+            if(!LLD::Register->ReadState(hashTo, object))
                 throw APIException(-24, "Account not found");
 
             /* Parse the object register. */

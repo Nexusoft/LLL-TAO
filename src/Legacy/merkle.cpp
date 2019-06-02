@@ -34,7 +34,7 @@ namespace Legacy
 
         // Find the block it claims to be in
         TAO::Ledger::BlockState blockState;
-        if (!LLD::legDB->ReadBlock(hashBlock, blockState))
+        if (!LLD::Ledger->ReadBlock(hashBlock, blockState))
             return 0;
 
         if (!blockState.IsInMainChain())

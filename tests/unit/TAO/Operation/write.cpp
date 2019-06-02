@@ -31,7 +31,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
 
         //write the object register for testing
         uint256_t hash = LLC::GetRand256();
-        REQUIRE(LLD::regDB->WriteState(hash, object));
+        REQUIRE(LLD::Register->WriteState(hash, object));
 
 
         //create an operation stream to set values.
@@ -56,7 +56,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check values all match
-            REQUIRE(LLD::regDB->ReadState(hash, object));
+            REQUIRE(LLD::Register->ReadState(hash, object));
 
             //should fail
             uint8_t nByte;
@@ -97,7 +97,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]" )
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hash, object2));
+            REQUIRE(LLD::Register->ReadState(hash, object2));
 
             //parse
             REQUIRE(object2.Parse());

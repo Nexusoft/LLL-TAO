@@ -32,7 +32,7 @@ namespace TAO
         /*  Commit the final state to disk. */
         bool Trust::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
-            return LLD::regDB->WriteTrust(state.hashOwner, state);
+            return LLD::Register->WriteTrust(state.hashOwner, state);
         }
 
 

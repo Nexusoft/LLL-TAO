@@ -76,10 +76,10 @@ namespace TAO
             /* Get trust account. Any trust account that has completed Genesis will be indexed. */
             TAO::Register::Object trustAccount;
 
-            if (LLD::regDB->HasTrust(user->Genesis()))
+            if (LLD::Register->HasTrust(user->Genesis()))
             {
                 /* Trust account is indexed */
-                if (!LLD::regDB->ReadTrust(user->Genesis(), trustAccount))
+                if (!LLD::Register->ReadTrust(user->Genesis(), trustAccount))
                    throw APIException(-24, "Unable to retrieve trust account.");
 
                 if(!trustAccount.Parse())
@@ -90,7 +90,7 @@ namespace TAO
                 /* TODO - Add "pending stake" to trust account and allow set/stake for pre-Genesis */
                 throw APIException(-25, "Cannot set stake for trust account until after Genesis transaction");
 
-                if(!LLD::regDB->ReadState(hashRegister, trustAccount, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadState(hashRegister, trustAccount, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-24, "Trust account not found");
 
                 if(!trustAccount.Parse())

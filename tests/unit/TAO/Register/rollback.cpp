@@ -57,13 +57,13 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
         //check that register exists
-        REQUIRE(LLD::regDB->HasState(hashRegister));
+        REQUIRE(LLD::Register->HasState(hashRegister));
 
         //rollback the transaction
         REQUIRE(Rollback(tx[0]));
 
         //make sure object is deleted
-        REQUIRE(!LLD::regDB->HasState(hashRegister));
+        REQUIRE(!LLD::Register->HasState(hashRegister));
     }
 
 
@@ -92,7 +92,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //check that register exists
             State state;
-            REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+            REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check data
             REQUIRE(state.vchState == std::vector<uint8_t>(10, 0xff));
@@ -118,7 +118,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //check that register exists
             State state;
-            REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+            REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check data
             REQUIRE(state.vchState == std::vector<uint8_t>(10, 0x1f));
@@ -127,7 +127,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             REQUIRE(Rollback(tx[0]));
 
             //grab the new state
-            REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+            REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check data
             REQUIRE(state.vchState == std::vector<uint8_t>(10, 0xff));
@@ -153,7 +153,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //check that register exists
             State state;
-            REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+            REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check data
             REQUIRE(state.vchState == std::vector<uint8_t>(20, 0xff));
@@ -162,7 +162,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             REQUIRE(Rollback(tx[0]));
 
             //grab the new state
-            REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+            REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check data
             REQUIRE(state.vchState == std::vector<uint8_t>(10, 0xff));
@@ -196,7 +196,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //check that register exists
             State state;
-            REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+            REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check owner
             REQUIRE(state.hashOwner == hashGenesis);
@@ -217,14 +217,14 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         REQUIRE(tx.Build());
 
         //write transaction
-        REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+        REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
         //commit to disk
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
         //check that register exists
         State state;
-        REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+        REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
         //check owner
         REQUIRE(state.hashOwner == 0);
@@ -233,7 +233,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         REQUIRE(Rollback(tx[0]));
 
         //grab the new state
-        REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+        REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
         //check owner
         REQUIRE(state.hashOwner == hashGenesis);
@@ -267,7 +267,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //check that register exists
             State state;
-            REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+            REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check owner
             REQUIRE(state.hashOwner == hashGenesis);
@@ -291,7 +291,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             REQUIRE(tx.Build());
 
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -301,7 +301,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //check that register exists
             State state;
-            REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+            REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check owner
             REQUIRE(state.hashOwner == 0);
@@ -329,14 +329,14 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check that register exists
             {
                 State state;
-                REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+                REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
                 //check owner
                 REQUIRE(state.hashOwner == hashGenesis2);
             }
 
             //check proof is active
-            REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx, 0));
+            REQUIRE(LLD::Ledger->HasProof(hashRegister, hashTx, 0));
 
             //rollback the transaction
             REQUIRE(Rollback(tx[0]));
@@ -344,23 +344,23 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //grab the new state
             {
                 State state;
-                REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+                REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
                 //check owner
                 REQUIRE(state.hashOwner == 0);
 
                 //check for the proof
-                REQUIRE(!LLD::legDB->HasProof(hashRegister, hashTx, 0));
+                REQUIRE(!LLD::Ledger->HasProof(hashRegister, hashTx, 0));
             }
 
             {
                 //check for event
                 uint32_t nSequence;
-                REQUIRE(LLD::legDB->ReadSequence(hashGenesis2, nSequence));
+                REQUIRE(LLD::Ledger->ReadSequence(hashGenesis2, nSequence));
 
                 //check for tx
                 TAO::Ledger::Transaction txEvent;
-                REQUIRE(LLD::legDB->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
+                REQUIRE(LLD::Ledger->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
 
                 //check the hashes match
                 REQUIRE(txEvent.GetHash() == hashTx);
@@ -389,24 +389,24 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check that register exists
             {
                 State state;
-                REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+                REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
                 //check owner
                 REQUIRE(state.hashOwner == hashGenesis);
             }
 
             //check proof is active
-            REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx, 0));
+            REQUIRE(LLD::Ledger->HasProof(hashRegister, hashTx, 0));
 
             /*
             {
                 //check event is discarded
                 uint32_t nSequence;
-                REQUIRE(LLD::legDB->ReadSequence(hashGenesis2, nSequence));
+                REQUIRE(LLD::Ledger->ReadSequence(hashGenesis2, nSequence));
 
                 //check for tx
                 TAO::Ledger::Transaction txEvent;
-                REQUIRE(!LLD::legDB->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
+                REQUIRE(!LLD::Ledger->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
             }
             */
 
@@ -416,23 +416,23 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //grab the new state
             {
                 State state;
-                REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+                REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
                 //check owner
                 REQUIRE(state.hashOwner == 0);
 
                 //check for the proof
-                REQUIRE(!LLD::legDB->HasProof(hashRegister, hashTx, 0));
+                REQUIRE(!LLD::Ledger->HasProof(hashRegister, hashTx, 0));
             }
 
             {
                 //check event is back
                 uint32_t nSequence;
-                REQUIRE(LLD::legDB->ReadSequence(hashGenesis2, nSequence));
+                REQUIRE(LLD::Ledger->ReadSequence(hashGenesis2, nSequence));
 
                 //check for tx
                 TAO::Ledger::Transaction txEvent;
-                REQUIRE(LLD::legDB->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
+                REQUIRE(LLD::Ledger->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
 
                 //check the hashes match
                 REQUIRE(txEvent.GetHash() == hashTx);
@@ -457,7 +457,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             REQUIRE(tx.Build());
 
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -465,19 +465,19 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check that register exists
             {
                 State state;
-                REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+                REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
                 //check owner
                 REQUIRE(state.hashOwner == hashGenesis2);
             }
 
             //check proof is active
-            REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx, 0));
+            REQUIRE(LLD::Ledger->HasProof(hashRegister, hashTx, 0));
 
             //grab the new state
             {
                 State state;
-                REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+                REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
                 //check owner
                 REQUIRE(state.hashOwner == hashGenesis2);
@@ -486,11 +486,11 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             {
                 //check for event
                 uint32_t nSequence;
-                REQUIRE(LLD::legDB->ReadSequence(hashGenesis2, nSequence));
+                REQUIRE(LLD::Ledger->ReadSequence(hashGenesis2, nSequence));
 
                 //check for tx
                 TAO::Ledger::Transaction txEvent;
-                REQUIRE(LLD::legDB->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
+                REQUIRE(LLD::Ledger->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
 
                 //check the hashes match
                 REQUIRE(txEvent.GetHash() == hashTx);
@@ -563,7 +563,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             REQUIRE(tx.Build());
 
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -571,7 +571,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object token;
-                REQUIRE(LLD::regDB->ReadState(hashRegister, token));
+                REQUIRE(LLD::Register->ReadState(hashRegister, token));
 
                 //parse register
                 REQUIRE(token.Parse());
@@ -586,7 +586,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object token;
-                REQUIRE(LLD::regDB->ReadState(hashRegister, token));
+                REQUIRE(LLD::Register->ReadState(hashRegister, token));
 
                 //parse register
                 REQUIRE(token.Parse());
@@ -663,7 +663,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(tx.Build());
 
                 //write transaction
-                REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+                REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
                 //commit to disk
                 REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -674,7 +674,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 //check register values
                 {
                     Object account;
-                    REQUIRE(LLD::regDB->ReadState(hashRegister, account));
+                    REQUIRE(LLD::Register->ReadState(hashRegister, account));
 
                     //parse register
                     REQUIRE(account.Parse());
@@ -704,7 +704,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 //check register values
                 {
                     Object account;
-                    REQUIRE(LLD::regDB->ReadState(hashAccount, account));
+                    REQUIRE(LLD::Register->ReadState(hashAccount, account));
 
                     //parse register
                     REQUIRE(account.Parse());
@@ -713,7 +713,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                     REQUIRE(account.get<uint64_t>("balance") == 500);
 
                     //check that proofs are established
-                    REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx, 0));
+                    REQUIRE(LLD::Ledger->HasProof(hashRegister, hashTx, 0));
                 }
 
                 //rollback
@@ -722,7 +722,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 //check register values
                 {
                     Object account;
-                    REQUIRE(LLD::regDB->ReadState(hashAccount, account));
+                    REQUIRE(LLD::Register->ReadState(hashAccount, account));
 
                     //parse register
                     REQUIRE(account.Parse());
@@ -731,7 +731,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                     REQUIRE(account.get<uint64_t>("balance") == 0);
 
                     //check that proofs are removed
-                    REQUIRE(!LLD::legDB->HasProof(hashRegister, hashTx, 0));
+                    REQUIRE(!LLD::Ledger->HasProof(hashRegister, hashTx, 0));
                 }
             }
 
@@ -756,7 +756,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 //check register values
                 {
                     Object account;
-                    REQUIRE(LLD::regDB->ReadState(hashRegister, account));
+                    REQUIRE(LLD::Register->ReadState(hashRegister, account));
 
                     //parse register
                     REQUIRE(account.Parse());
@@ -765,7 +765,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                     REQUIRE(account.get<uint64_t>("balance") == 1000);
 
                     //check that proofs are removed
-                    REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx, 0));
+                    REQUIRE(LLD::Ledger->HasProof(hashRegister, hashTx, 0));
                 }
 
                 //rollback
@@ -774,7 +774,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 //check register values
                 {
                     Object account;
-                    REQUIRE(LLD::regDB->ReadState(hashRegister, account));
+                    REQUIRE(LLD::Register->ReadState(hashRegister, account));
 
                     //parse register
                     REQUIRE(account.Parse());
@@ -783,16 +783,16 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                     REQUIRE(account.get<uint64_t>("balance") == 500);
 
                     //check that proofs are removed
-                    REQUIRE(!LLD::legDB->HasProof(hashRegister, hashTx, 0));
+                    REQUIRE(!LLD::Ledger->HasProof(hashRegister, hashTx, 0));
 
                     {
                         //check event is discarded
                         uint32_t nSequence;
-                        REQUIRE(LLD::legDB->ReadSequence(hashGenesis2, nSequence));
+                        REQUIRE(LLD::Ledger->ReadSequence(hashGenesis2, nSequence));
 
                         //check for tx
                         TAO::Ledger::Transaction txEvent;
-                        REQUIRE(LLD::legDB->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
+                        REQUIRE(LLD::Ledger->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
 
                         //make sure hashes match
                         REQUIRE(txEvent.GetHash() == hashTx);
@@ -820,7 +820,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 //check register values
                 {
                     Object account;
-                    REQUIRE(LLD::regDB->ReadState(hashAccount, account));
+                    REQUIRE(LLD::Register->ReadState(hashAccount, account));
 
                     //parse register
                     REQUIRE(account.Parse());
@@ -829,7 +829,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                     REQUIRE(account.get<uint64_t>("balance") == 500);
 
                     //check that proofs are established
-                    REQUIRE(LLD::legDB->HasProof(hashRegister, hashTx, 0));
+                    REQUIRE(LLD::Ledger->HasProof(hashRegister, hashTx, 0));
                 }
             }
 
@@ -895,7 +895,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx[0] << uint8_t(OP::COINBASE) << hashGenesis << uint64_t(5000);
 
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //set the hash
             hashTx = tx.GetHash();
@@ -942,7 +942,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trust;
-                REQUIRE(LLD::regDB->ReadState(hashTrust, trust));
+                REQUIRE(LLD::Register->ReadState(hashTrust, trust));
 
                 //parse register
                 REQUIRE(trust.Parse());
@@ -973,7 +973,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trust;
-                REQUIRE(LLD::regDB->ReadState(hashTrust, trust));
+                REQUIRE(LLD::Register->ReadState(hashTrust, trust));
 
                 //parse register
                 REQUIRE(trust.Parse());
@@ -985,7 +985,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trust.get<uint64_t>("stake") == 5000);
 
                 //check for trust index
-                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trust));
+                REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
             }
 
 
@@ -996,7 +996,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trust;
-                REQUIRE(LLD::regDB->ReadState(hashTrust, trust));
+                REQUIRE(LLD::Register->ReadState(hashTrust, trust));
 
                 //parse register
                 REQUIRE(trust.Parse());
@@ -1008,7 +1008,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trust.get<uint64_t>("stake") == 0);
 
                 //check for trust index
-                REQUIRE(!LLD::regDB->HasTrust(hashGenesis));
+                REQUIRE(!LLD::Register->HasTrust(hashGenesis));
             }
         }
 
@@ -1030,7 +1030,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trust;
-                REQUIRE(LLD::regDB->ReadState(hashTrust, trust));
+                REQUIRE(LLD::Register->ReadState(hashTrust, trust));
 
                 //parse register
                 REQUIRE(trust.Parse());
@@ -1042,7 +1042,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trust.get<uint64_t>("stake") == 0);
 
                 //check for trust index
-                REQUIRE(!LLD::regDB->HasTrust(hashGenesis));
+                REQUIRE(!LLD::Register->HasTrust(hashGenesis));
             }
         }
 
@@ -1070,7 +1070,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trust;
-                REQUIRE(LLD::regDB->ReadState(hashTrust, trust));
+                REQUIRE(LLD::Register->ReadState(hashTrust, trust));
 
                 //parse register
                 REQUIRE(trust.Parse());
@@ -1082,7 +1082,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(trust.get<uint64_t>("stake") == 5000);
 
                 //check for trust index
-                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trust));
+                REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
             }
         }
 
@@ -1107,7 +1107,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trust;
-                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trust));
+                REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
 
                 //parse register
                 REQUIRE(trust.Parse());
@@ -1144,7 +1144,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trust;
-                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trust));
+                REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
 
                 //parse register
                 REQUIRE(trust.Parse());
@@ -1165,7 +1165,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 Object trust;
-                REQUIRE(LLD::regDB->ReadTrust(hashGenesis, trust));
+                REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
 
                 //parse register
                 REQUIRE(trust.Parse());

@@ -662,7 +662,7 @@ namespace TAO
                             deallocate(hashRegister, vRet);
 
                             /* Read the register states. */
-                            if(!LLD::regDB->Read(hashRegister, state))
+                            if(!LLD::Register->Read(hashRegister, state))
                                 return false;
                         }
                         else
@@ -703,7 +703,7 @@ namespace TAO
                             deallocate(hashRegister, vRet);
 
                             /* Read the register states. */
-                            if(!LLD::regDB->Read(hashRegister, state))
+                            if(!LLD::Register->Read(hashRegister, state))
                                 return false;
                         }
                         else
@@ -744,7 +744,7 @@ namespace TAO
                             deallocate(hashRegister, vRet);
 
                             /* Read the register states. */
-                            if(!LLD::regDB->Read(hashRegister, state))
+                            if(!LLD::Register->Read(hashRegister, state))
                                 return false;
                         }
                         else
@@ -785,7 +785,7 @@ namespace TAO
                             deallocate(hashRegister, vRet);
 
                             /* Read the register states. */
-                            if(!LLD::regDB->Read(hashRegister, state))
+                            if(!LLD::Register->Read(hashRegister, state))
                                 return false;
                         }
                         else
@@ -826,7 +826,7 @@ namespace TAO
                             deallocate(hashRegister, vRet);
 
                             /* Read the register states. */
-                            if(!LLD::regDB->Read(hashRegister, state))
+                            if(!LLD::Register->Read(hashRegister, state))
                                 return false;
                         }
                         else
@@ -867,7 +867,7 @@ namespace TAO
                             deallocate(hashRegister, vRet);
 
                             /* Read the register states. */
-                            if(!LLD::regDB->Read(hashRegister, object))
+                            if(!LLD::Register->Read(hashRegister, object))
                                 return false;
                         }
                         else

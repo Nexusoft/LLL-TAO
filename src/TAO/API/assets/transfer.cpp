@@ -54,7 +54,7 @@ namespace TAO
                 throw APIException(-25, "Missing Destination");
 
             /* Check that the destination exists. */
-            if(!LLD::legDB->HasGenesis(hashTo))
+            if(!LLD::Ledger->HasGenesis(hashTo))
                 throw APIException(-25, "Destination doesn't exist");
 
             /* Get the register address. */

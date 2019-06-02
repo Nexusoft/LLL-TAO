@@ -54,7 +54,7 @@ namespace TAO
                         uint256_t hashIdentifier = object.get<uint256_t>("token");
 
                         /* Check that the register doesn't exist yet. */
-                        if(hashIdentifier != 0 && !LLD::regDB->HasState(hashIdentifier, nFlags))
+                        if(hashIdentifier != 0 && !LLD::Register->HasState(hashIdentifier, nFlags))
                             return debug::error(FUNCTION, "cannot create account without identifier");
 
                         break;
@@ -72,7 +72,7 @@ namespace TAO
                             return debug::error(FUNCTION, "token identifier must be token address");
 
                         /* Check for reserved native token. */
-                        if(hashIdentifier == 0 || LLD::regDB->HasState(hashIdentifier, nFlags))
+                        if(hashIdentifier == 0 || LLD::Register->HasState(hashIdentifier, nFlags))
                             return debug::error(FUNCTION, "token can't use reserved identifier ", hashIdentifier.SubString());
 
                         /* Check that the current supply and max supply are the same. */
@@ -126,10 +126,10 @@ namespace TAO
             }
 
             /* Check that the register doesn't exist yet. */
-            if(LLD::regDB->HasState(hashAddress, nFlags))
+            if(LLD::Register->HasState(hashAddress, nFlags))
                 return debug::error(FUNCTION, "cannot allocate register of same memory address ", hashAddress.SubString());
 
-            return LLD::regDB->WriteState(hashAddress, state, nFlags);
+            return LLD::Register->WriteState(hashAddress, state, nFlags);
         }
 
 
