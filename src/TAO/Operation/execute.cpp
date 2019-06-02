@@ -645,75 +645,6 @@ namespace TAO
                     }
 
 
-                    /* Validate a previous contract's conditions */
-                    case OP::VALIDATE:
-                    {
-                        /* Extract the transaction from contract. */
-                        uint512_t hashTx = 0;
-                        contract >> hashTx;
-
-                        /* Extract the contract-id. */
-                        uint32_t nContract = 0;
-                        contract >> nContract;
-
-                        /* Verify the operation rules. */
-                        const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
-                        if(!condition.Conditions())
-                            return debug::error(FUNCTION, "OP::VALIDATE: cannot validate with no conditions");
-
-                        /* Get the validation type. */
-                        uint8_t nType = 0;
-                        condition >> nType;
-
-                        /* Switch based on type. */
-                        switch(nType)
-                        {
-                            /* Handle for transfer validation. */
-                            case OP::TRANSFER:
-                            {
-                                /* Get the address. */
-                                uint256_t hashAddress = 0;
-                                condition >> hashAddress;
-
-                                /* Get the transfer. */
-                                uint256_t hashTransfer = 0;
-                                condition >> hashTransfer;
-
-                                /* Check that transfer is wildcard. */
-                                if(hashTransfer != ~uint256_t(0))
-                                    return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
-
-                                /* Check for condition. */
-                                if(condition.End())
-                                    return debug::error(FUNCTION, "OP::VALIDATE: couldn't get validate op");
-
-                                /* Read the condition. */
-                                uint8_t nOP = 0;
-                                condition >> nOP;
-
-                                /* Check for condition. */
-                                if(nOP != OP::CONDITION)
-                                    return debug::error(FUNCTION, "OP::VALIDATE: incorrect condition op");
-
-                                break;
-                            }
-
-                            /* Handle for debit validation. */
-                            case OP::DEBIT:
-                            {
-                                break;
-                            }
-                        }
-
-                        /* Build the validation script for execution. */
-                        Condition conditions = Condition(condition, contract);
-                        if(!conditions.Execute())
-                            return debug::error(FUNCTION, "OP::VALIDATE: conditions not satisfied");
-
-                        break;
-                    }
-
-
                     /* Create unspendable legacy script, that acts to debit from the account and make this unspendable. */
                     case OP::LEGACY:
                     {
@@ -779,14 +710,141 @@ namespace TAO
                     }
 
                     default:
-                        return debug::error(FUNCTION, "invalid code for register verification");
+                        return debug::error(FUNCTION, "invalid code for contract execution");
                 }
 
 
                 /* Check for end of stream. */
                 if(!contract.End())
-                    return debug::error(FUNCTION, "contract cannot have more than one PRIMTIVE OP");
+                {
+                    /* Get the contract OP. */
+                    OP = 0;
+                    contract >> OP;
 
+                    /* Check the current opcode. */
+                    switch(OP)
+                    {
+
+                        /* Condition that allows a validation to occur. */
+                        case OP::CONDITION:
+                        {
+                            /* Condition has no parameters. */
+                            break;
+                        }
+
+
+                        /* Validate a previous contract's conditions */
+                        case OP::VALIDATE:
+                        {
+                            /* Extract the transaction from contract. */
+                            uint512_t hashTx = 0;
+                            contract >> hashTx;
+
+                            /* Extract the contract-id. */
+                            uint32_t nContract = 0;
+                            contract >> nContract;
+
+                            /* Verify the operation rules. */
+                            const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
+                            if(!condition.Conditions())
+                                return debug::error(FUNCTION, "OP::VALIDATE: cannot validate with no conditions");
+
+                            /* Get the validation type. */
+                            uint8_t nType = 0;
+                            condition >> nType;
+
+                            /* Switch based on type. */
+                            switch(nType)
+                            {
+                                /* Handle for transfer validation. */
+                                case OP::TRANSFER:
+                                {
+                                    /* Get the address. */
+                                    uint256_t hashAddress = 0;
+                                    condition >> hashAddress;
+
+                                    /* Get the transfer. */
+                                    uint256_t hashTransfer = 0;
+                                    condition >> hashTransfer;
+
+                                    /* Check that transfer is wildcard. */
+                                    if(hashTransfer != ~uint256_t(0))
+                                        return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
+
+                                    /* Check for condition. */
+                                    if(condition.End())
+                                        return debug::error(FUNCTION, "OP::VALIDATE: couldn't get validate op");
+
+                                    /* Read the condition. */
+                                    uint8_t nOP = 0;
+                                    condition >> nOP;
+
+                                    /* Check for condition. */
+                                    if(nOP != OP::CONDITION)
+                                        return debug::error(FUNCTION, "OP::VALIDATE: incorrect condition op");
+
+                                    /* Check for condition. */
+                                    if(!condition.End()) //NOTE: this is an extra sanity check, possibly remove
+                                        return debug::error(FUNCTION, "OP::VALIDATE: can't validate with extra conditions");
+
+                                    break;
+                                }
+
+                                /* Handle for debit validation. */
+                                case OP::DEBIT:
+                                {
+                                    /* Get the address. */
+                                    uint256_t hashFrom = 0;
+                                    condition >> hashFrom;
+
+                                    /* Get the transfer. */
+                                    uint256_t hashTo = 0;
+                                    condition >> hashTo;
+
+                                    /* Get the amount. */
+                                    uint64_t nAmount = 0;
+                                    condition >> nAmount;
+
+                                    /* Check that transfer is wildcard. */
+                                    if(hashTo != ~uint256_t(0))
+                                        return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
+
+                                    /* Check for condition. */
+                                    if(condition.End())
+                                        return debug::error(FUNCTION, "OP::VALIDATE: couldn't get validate op");
+
+                                    /* Read the condition. */
+                                    uint8_t nOP = 0;
+                                    condition >> nOP;
+
+                                    /* Check for condition. */
+                                    if(nOP != OP::CONDITION)
+                                        return debug::error(FUNCTION, "OP::VALIDATE: incorrect condition op");
+
+                                    /* Check for condition. */
+                                    if(!condition.End()) //NOTE: this is an extra sanity check, possibly remove
+                                        return debug::error(FUNCTION, "OP::VALIDATE: can't validate with extra conditions");
+
+                                    break;
+                                }
+                            }
+
+                            /* Build the validation script for execution. */
+                            Condition conditions = Condition(condition, contract);
+                            if(!conditions.Execute())
+                                return debug::error(FUNCTION, "OP::VALIDATE: conditions not satisfied");
+
+                            break;
+                        }
+
+                        default:
+                            return debug::error(FUNCTION, "invalid end code for contract execution");
+                    }
+
+                    /* Ensure that there are no more operations. */
+                    if(!contract.End())
+                        return debug::error(FUNCTION, "contract cannot contain any more primitives");
+                }
             }
             catch(const std::exception& e)
             {

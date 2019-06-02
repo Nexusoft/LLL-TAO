@@ -545,8 +545,40 @@ namespace TAO
 
                 /* Check for end of stream. */
                 if(!contract.End())
-                    return debug::error(FUNCTION, "contract cannot have more than one PRIMTIVE OP");
+                {
+                    /* Get the contract OP. */
+                    OP = 0;
+                    contract >> OP;
 
+                    /* Check the current opcode. */
+                    switch(OP)
+                    {
+
+                        /* Condition that allows a validation to occur. */
+                        case TAO::Operation::OP::CONDITION:
+                        {
+                            /* Condition has no parameters. */
+                            break;
+                        }
+
+
+                        /* Validate a previous contract's conditions */
+                        case TAO::Operation::OP::VALIDATE:
+                        {
+                            /* Seek to end of stream. */
+                            contract.Seek(69);
+
+                            break;
+                        }
+
+                        default:
+                            return debug::error(FUNCTION, "invalid end code for contract execution");
+                    }
+
+                    /* Ensure that there are no more operations. */
+                    if(!contract.End())
+                        return debug::error(FUNCTION, "contract cannot contain any more primitives");
+                }
             }
             catch(const std::exception& e)
             {
