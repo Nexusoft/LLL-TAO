@@ -155,11 +155,18 @@ namespace TAO
             /* Check for first. */
             if(IsFirst())
             {
-                //Check for duplicate genesis
+                /* Write specific transaction flags. */
+                if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                {
+                    /* Set the proper next pointer. */
+                    hashNextTx = uint512_t(STATE::HEAD);
+                    if(!LLD::legDB->WriteTx(hash, *this))
+                        return debug::error(FUNCTION, "failed to write valid next pointer");
 
-                /* Write the Genesis to disk. */
-                if((nFlags == TAO::Ledger::FLAGS::BLOCK) && !LLD::legDB->WriteGenesis(hashGenesis, hash))
-                    return debug::error(FUNCTION, "failed to write genesis");
+                    /* Write the genesis identifier. */
+                    if(!LLD::legDB->WriteGenesis(hashGenesis, hash))
+                        return debug::error(FUNCTION, "failed to write genesis");
+                }
             }
             else
             {
