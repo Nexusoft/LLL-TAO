@@ -1835,14 +1835,6 @@ def build_finance_html(sid, genid, o):
         proof, f)
     o += "</td></tr>"
 
-    o = add_blank_row(o)
-
-    o += "<tr><td>"
-    h = form_header.format("finance-list-accounts")
-    session = form_parm.format("session", sid)
-    o += finance_list_accounts.format(h, session, f)
-    o += "</td></tr>"
-
     o += "<tr><td>"
     h = form_header.format("finance-get-stakeinfo")
     session = form_parm.format("session", sid)
@@ -1855,6 +1847,14 @@ def build_finance_html(sid, genid, o):
     session = form_parm.format("session", sid)
     amount = form_parm.format("amount", "")
     o += finance_set_stake.format(h, pin, session, amount, f)
+    o += "</td></tr>"
+
+    o = add_blank_row(o)
+
+    o += "<tr><td>"
+    h = form_header.format("finance-list-accounts")
+    session = form_parm.format("session", sid)
+    o += finance_list_accounts.format(h, session, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
