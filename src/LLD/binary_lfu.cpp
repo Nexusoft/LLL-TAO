@@ -227,7 +227,6 @@ namespace LLD
 
         /* Move last pointer if moving from back. */
         BinaryNodeLFU* pprev = pthis->pprev;
-        BinaryNodeLFU* pnext = pthis->pnext;
 
         /* Set the right link. */
         if(pprev->pprev)
