@@ -534,7 +534,8 @@ class sdk_init():
         """
         if (self.genesis_id == None): return(self.__error("Not logged in"))
 
-        parms = "?genesis={}&page={}&limit={}".format(self.genesis_id)
+        parms = "?genesis={}&page={}&limit={}".format(self.genesis_id, page,
+            limit)
 
         url = users_url.format(sdk_url, "list/tokens") + parms
         json_data = self.__get(url)

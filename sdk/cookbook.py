@@ -879,7 +879,7 @@ def do_supply_update_item():
     if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
-        output = sdk.nexus_supply_update_item(address, data)
+        output = sdk.nexus_supply_update_item_by_address(address, data)
         genid = sdk.genesis_id
     else:
         output = curl(supply_update_item.format("", pin, session, address,
@@ -1037,7 +1037,6 @@ def build_assets_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "assets-get-asset-address"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
@@ -1371,8 +1370,10 @@ tokens_create_token = \
     '{}tokens/create/token?pin={}&session={}&name={}&supply={}{}'
 tokens_create_account = \
     '{}tokens/create/account?pin={}&session={}&name={}&token_name={}{}'
-tokens_get_token = '{}tokens/get/token?session={}&name={}{}'
-tokens_get_account = '{}tokens/get/account?session={}&name={}{}'
+tokens_get_token_name = '{}tokens/get/token?session={}&name={}{}'
+tokens_get_token_address = '{}tokens/get/token?session={}&address={}{}'
+tokens_get_account_name = '{}tokens/get/account?session={}&name={}{}'
+tokens_get_account_address = '{}tokens/get/account?session={}&address={}{}'
 tokens_debit_token = ('{}tokens/debit/token?pin={}&session={}&name={}' + \
     '&name_to={}&amount={}{}')
 tokens_credit_token = ('{}tokens/credit/token?pin={}&session={}&name={}' + \
@@ -1387,11 +1388,19 @@ def build_tokens_html(sid, genid, o):
     o += "<br><b>Tokens API</b><br><br><table>"
 
     o += "<tr><td>"
-    h = "tokens-get-token"
+    h = "tokens-get-token-name"
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += tokens_get_token.format(h, session, name, f)
+    o += tokens_get_token_name.format(h, session, name, f)
+    o += "</td></tr>"
+
+    o += "<tr><td>"
+    h = "tokens-get-token-address"
+    h = form_header.format(h)
+    session = form_parm.format("session", sid)
+    address = form_parm.format("address", "")
+    o += tokens_get_token_address.format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1426,11 +1435,19 @@ def build_tokens_html(sid, genid, o):
     o = add_blank_row(o)
 
     o += "<tr><td>"
-    h = "tokens-get-account"
+    h = "tokens-get-account-name"
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += tokens_get_account.format(h, session, name, f)
+    o += tokens_get_account_name.format(h, session, name, f)
+    o += "</td></tr>"
+
+    o += "<tr><td>"
+    h = "tokens-get-account-address"
+    h = form_header.format(h)
+    session = form_parm.format("session", sid)
+    address = form_parm.format("address", "")
+    o += tokens_get_account_address.format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1526,8 +1543,8 @@ def do_tokens_create_account():
     return(show(output, session, genid))
 #enddef
 
-@bottle.route('/tokens-get-token', method="post")
-def do_tokens_get_token():
+@bottle.route('/tokens-get-token-name', method="post")
+def do_tokens_get_token_name():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
     if (no_parms(session, name)):
@@ -1544,7 +1561,7 @@ def do_tokens_get_token():
         output = sdk.nexus_tokens_get_token_by_name(name)
         genid = sdk.genesis_id
     else:
-        output = curl(tokens_get_token.format("", session, name, ""))
+        output = curl(tokens_get_token_name.format("", session, name, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
@@ -1552,8 +1569,35 @@ def do_tokens_get_token():
     return(show(output, session, genid))
 #enddef
 
-@bottle.route('/tokens-get-account', method="post")
-def do_tokens_get_account():
+@bottle.route('/tokens-get-token-address', method="post")
+def do_tokens_get_token_address():
+    session = bottle.request.forms.get("session")
+    address = bottle.request.forms.get("address")
+    if (no_parms(session, address)):
+        m = red("tokens/get/token needs more input parameters")
+        return(show(m, session))
+    #endif
+
+    action = bottle.request.forms.get("action")
+    sdk_or_api = (action.find("SDK") != -1)
+    
+    if (sdk_or_api):
+        sdk, output = sid_to_sdk(session)
+        if (sdk == None): return(output)
+        output = sdk.nexus_tokens_get_token_by_address(address)
+        genid = sdk.genesis_id
+    else:
+        output = curl(tokens_get_token_address.format("", session, address,
+            ""))
+        genid = ""
+    #endif            
+    output = json.dumps(output)
+
+    return(show(output, session, genid))
+#enddef
+
+@bottle.route('/tokens-get-account-name', method="post")
+def do_tokens_get_account_name():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
     if (no_parms(session, name)):
@@ -1570,7 +1614,34 @@ def do_tokens_get_account():
         output = sdk.nexus_tokens_get_account_by_name(name)
         genid = sdk.genesis_id
     else:
-        output = curl(tokens_get_account.format("", session, name, ""))
+        output = curl(tokens_get_account_name.format("", session, name, ""))
+        genid = ""
+    #endif            
+    output = json.dumps(output)
+
+    return(show(output, session, genid))
+#enddef
+
+@bottle.route('/tokens-get-account-address', method="post")
+def do_tokens_get_account_address():
+    session = bottle.request.forms.get("session")
+    address = bottle.request.forms.get("address")
+    if (no_parms(session, address)):
+        m = red("tokens/get/account needs more input parameters")
+        return(show(m, session))
+    #endif
+
+    action = bottle.request.forms.get("action")
+    sdk_or_api = (action.find("SDK") != -1)
+    
+    if (sdk_or_api):
+        sdk, output = sid_to_sdk(session)
+        if (sdk == None): return(output)
+        output = sdk.nexus_tokens_get_account_by_address(address)
+        genid = sdk.genesis_id
+    else:
+        output = curl(tokens_get_account_address.format("", session, address,
+            ""))
         genid = ""
     #endif            
     output = json.dumps(output)
@@ -2045,7 +2116,7 @@ def build_ledger_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     height = form_parm.format("height", "")
-    v = form_parm.format("verbose", "")
+    v = form_parm.format("verbose", "1")
     o += ledger_get_block_height.format(h, height, v, f)
     o += "</td></tr>"
 
@@ -2054,7 +2125,7 @@ def build_ledger_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     hsh = form_parm.format("hash", "")
-    v = form_parm.format("verbose", "")
+    v = form_parm.format("verbose", "1")
     o += ledger_get_block_hash.format(h, hsh, v, f)
 
     o += "<tr><td>"
@@ -2062,7 +2133,7 @@ def build_ledger_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     hsh = form_parm.format("hash", "")
-    v = form_parm.format("verbose", "")
+    v = form_parm.format("verbose", "1")
     o += ledger_get_transaction.format(h, hsh, v, f)
 
     o += "<tr><td>"
@@ -2079,8 +2150,8 @@ def build_ledger_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     height = form_parm.format("height", "")
-    l = form_parm.format("limit", "")
-    v = form_parm.format("verbose", "")
+    l = form_parm.format("limit", "100")
+    v = form_parm.format("verbose", "1")
     o += ledger_list_blocks_height.format(h, height, l, v, f)
 
     o += "<tr><td>"
@@ -2088,8 +2159,8 @@ def build_ledger_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     hsh = form_parm.format("hash", "")
-    l = form_parm.format("limit", "")
-    v = form_parm.format("verbose", "")
+    l = form_parm.format("limit", "100")
+    v = form_parm.format("verbose", "1")
     o += ledger_list_blocks_hash.format(h, hsh, l, v, f)
 
     o += '</table><br><hr size="5">'
@@ -2126,7 +2197,8 @@ def do_ledger_get_blockhash(sid=""):
 @bottle.route('/ledger-get-block-height/<sid>', method="post")
 def do_ledger_get_block_height(sid=""):
     height = bottle.request.forms.get("height")
-    if (no_parms(height)):
+    verbose = bottle.request.forms.get("verbose")
+    if (no_parms(height, verbose)):
         m = red("ledger/get/block needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2137,7 +2209,7 @@ def do_ledger_get_block_height(sid=""):
     if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
         if (sdk == None): return(output)
-        output = sdk.nexus_ledger_get_block_by_height(height)
+        output = sdk.nexus_ledger_get_block_by_height(height, verbose)
         genid = sdk.genesis_id
     else:
         output = curl(ledger_get_block_height.format("", height, ""))
@@ -2152,7 +2224,8 @@ def do_ledger_get_block_height(sid=""):
 @bottle.route('/ledger-get-block-hash/<sid>', method="post")
 def do_ledger_get_block_hash(sid=""):
     hsh = bottle.request.forms.get("hash")
-    if (no_parms(hsh)):
+    verbose = bottle.request.forms.get("verbose")
+    if (no_parms(hsh, verbose)):
         m = red("ledger/get/block needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2163,7 +2236,7 @@ def do_ledger_get_block_hash(sid=""):
     if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
         if (sdk == None): return(output)
-        output = sdk.nexus_ledger_get_block_by_hash(hsh)
+        output = sdk.nexus_ledger_get_block_by_hash(hsh, verbose)
         genid = sdk.genesis_id
     else:
         output = curl(ledger_get_block_hash.format("", hsh, ""))
@@ -2273,10 +2346,10 @@ def do_ledger_list_blocks_hash(sid=""):
     if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
         if (sdk == None): return(output)
-        output = sdk.nexus_ledger_list_blocks_by_hsh(hsh, l, verbose)
+        output = sdk.nexus_ledger_list_blocks_by_hash(hsh, l, verbose)
         genid = sdk.genesis_id
     else:
-        output = curl(ledger_list_blocks_hash("", hsh, l, verbose, ""))
+        output = curl(ledger_list_blocks_hash.format("", hsh, l, verbose, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
