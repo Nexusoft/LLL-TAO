@@ -2497,7 +2497,11 @@ def build_body_page(sid="", genid=""):
     output = build_assets_html(sid, genid, output)
     output = build_supply_html(sid, genid, output)
     output = build_finance_html(sid, genid, output)
-    output = build_objects_html(sid, genid, output)
+
+#
+#   Back end for objects API is not done yet. Don't show user.
+#
+#   output = build_objects_html(sid, genid, output)
     return(output)
 #enddef
 
