@@ -27,8 +27,10 @@ namespace LLD
         /** The next pointer. **/
         BinaryNode* pnext;
 
+        /** Store the key as 64-bit hash, since we have checksum to verify against too. **/
+        uint64_t hashKey;
+
         /** The data in the binary node. **/
-        std::vector<uint8_t> vKey;
         std::vector<uint8_t> vData;
 
         /** Default constructor **/
@@ -43,10 +45,10 @@ namespace LLD
 
 
     /** Default constructor **/
-    BinaryNode::BinaryNode(const std::vector<uint8_t>& vKeyIn, const std::vector<uint8_t>& vDataIn)
+    BinaryNode::BinaryNode(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn)
     : pprev(nullptr)
     , pnext(nullptr)
-    , vKey(vKeyIn)
+    , hashKey(XXH64(&vKey[0], vKey.size(), 0))
     , vData(vDataIn)
     {
     }
@@ -144,7 +146,11 @@ namespace LLD
             return false;
 
         /* Check the data is expected. */
-        return (pthis->vKey == vKey);
+        if(pthis->Checksum() != nChecksum)
+            return false;
+
+        /* Check the data is expected. */
+        return (pthis->hashKey == XXH64(&vKey[0], vKey.size(), 0));
     }
 
 
@@ -246,7 +252,7 @@ namespace LLD
             return false;
 
         /* Check the keys are correct. */
-        if(pthis->vKey != vKey)
+        if(pthis->hashKey != XXH64(&vKey[0], vKey.size(), 0))
             return false;
 
         /* Get the data. */
@@ -288,7 +294,7 @@ namespace LLD
                 pthis->pnext               = nullptr;
 
                 /* Reduce the current size. */
-                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size());
+                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 8);
 
                 /* Free the memory. */
                 delete pthis;
@@ -324,14 +330,17 @@ namespace LLD
 
             /* Clear the pointers. */
             hashmap[Bucket(pnode)]   = nullptr;
-            checksums[Bucket(pnode->vKey)] = 0;
+
+            /* Set the checksums. */
+            uint32_t nBucket = static_cast<uint32_t>(pnode->hashKey % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
+            checksums[nBucket] = 0;
 
             /* Reset the memory linking. */
             pnode->pprev = nullptr;
             pnode->pnext = nullptr;
 
             /* Free the memory */
-            nCurrentSize -= static_cast<uint32_t>(pnode->vKey.size() + pnode->vData.size());
+            nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() + 8);
 
             delete pnode;
         }
@@ -381,7 +390,7 @@ namespace LLD
         pthis->pnext             = nullptr;
 
         /* Free the memory. */
-        nCurrentSize -= static_cast<uint32_t>(vKey.size() + pthis->vData.size());
+        nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 8);
         checksums[Bucket(vKey)] = 0;
 
         delete pthis;
