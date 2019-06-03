@@ -16,6 +16,9 @@ ________________________________________________________________________________
 #define NEXUS_LLD_INCLUDE_ADDRESS_H
 
 #include <LLD/templates/sector.h>
+#include <LLD/cache/binary_lfu.h>
+#include <LLD/keychain/filemap.h>
+
 #include <LLP/include/trust_address.h>
 
 namespace LLD
@@ -26,7 +29,7 @@ namespace LLD
      *  The database class for peer addresses to determine trust relationships.
      *
      **/
-    class AddressDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
+    class AddressDB : public SectorDatabase<BinaryFileMap, BinaryLFU>
     {
     public:
 

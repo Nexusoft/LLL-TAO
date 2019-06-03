@@ -261,6 +261,7 @@ OBJS+=  build/LLC_base_uint.o \
         build/LLD_trust.o \
 		build/LLD_binary_key.o \
 		build/LLD_binary_lru.o \
+		build/LLD_binary_lfu.o \
 		build/LLD_filemap.o \
 		build/LLD_global.o \
 		build/LLD_hashmap.o \

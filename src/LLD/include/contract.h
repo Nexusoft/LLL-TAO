@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <LLD/templates/sector.h>
+#include <LLD/cache/binary_lfu.h>
+#include <LLD/keychain/hashmap.h>
 
 #include <TAO/Ledger/include/enum.h>
 
@@ -30,7 +32,7 @@ namespace LLD
    *  Database class for storing local wallet transactions.
    *
    **/
-    class ContractDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class ContractDB : public SectorDatabase<BinaryHashMap, BinaryLFU>
     {
         /** Internal mutex for MEMPOOL mode. **/
         std::mutex MEMORY_MUTEX;

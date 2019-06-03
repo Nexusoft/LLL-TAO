@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <LLD/templates/sector.h>
+#include <LLD/cache/binary_lfu.h>
+#include <LLD/keychain/hashmap.h>
 
 #include <Legacy/types/transaction.h>
 
@@ -30,7 +32,7 @@ namespace LLD
      *  Database class for storing legacy transactions.
      *
      **/
-    class LegacyDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class LegacyDB : public SectorDatabase<BinaryHashMap, BinaryLFU>
     {
     public:
 
@@ -130,7 +132,7 @@ namespace LLD
          *
          **/
         bool IsSpent(const uint512_t& hashTransaction, uint32_t nOutput);
-        
+
     };
 }
 
