@@ -46,7 +46,7 @@ namespace TAO
             Initialize();
 
             /* Events processor only enabled if multi-user session is disabled. */
-            //if(config::fAPISessions.load() == false)
+            //if(config::fMultiUser.load() == false)
                 //EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
         }
 
@@ -159,14 +159,14 @@ namespace TAO
         /* Determine if a sessionless user is logged in. */
         bool Users::LoggedIn() const
         {
-            return !config::fAPISessions.load() && mapSessions.count(0);
+            return !config::fMultiUser.load() && mapSessions.count(0);
         }
 
 
         /* Determine if the Users are locked. */
         bool Users::Locked() const
         {
-            if(config::fAPISessions.load() || pActivePIN.IsNull() || pActivePIN->PIN().empty())
+            if(config::fMultiUser.load() || pActivePIN.IsNull() || pActivePIN->PIN().empty())
                 return true;
 
             return false;
@@ -179,7 +179,7 @@ namespace TAO
          * need to be provided in each API call */
         bool Users::CanTransact() const
         {
-            if(config::fAPISessions.load() || pActivePIN.IsNull() || pActivePIN->CanTransact())
+            if(config::fMultiUser.load() || pActivePIN.IsNull() || pActivePIN->CanTransact())
                 return true;
 
             return false;
@@ -190,7 +190,7 @@ namespace TAO
          *  been unlocked to allow minting */
         bool Users::CanMint() const
         {
-            if(config::fAPISessions.load() || (!pActivePIN.IsNull() && pActivePIN->CanMint()))
+            if(config::fMultiUser.load() || (!pActivePIN.IsNull() && pActivePIN->CanMint()))
                 return true;
 
             return false;
@@ -203,11 +203,11 @@ namespace TAO
             LOCK(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSessionToUse = config::fAPISessions.load() ? nSession : 0;
+            uint64_t nSessionToUse = config::fMultiUser.load() ? nSession : 0;
 
             if(!mapSessions.count(nSessionToUse))
             {
-                if( config::fAPISessions.load())
+                if( config::fMultiUser.load())
                     throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
                 else
                     throw APIException(-1, "User not logged in");
@@ -223,13 +223,13 @@ namespace TAO
             LOCK(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSessionToUse = config::fAPISessions.load() ? nSession : 0;
+            uint64_t nSessionToUse = config::fMultiUser.load() ? nSession : 0;
 
             if(!mapSessions.count(nSessionToUse))
             {
                 if( fThrow )
                 {
-                    if(config::fAPISessions.load())
+                    if(config::fMultiUser.load())
                         throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
                     else
                         throw APIException(-1, "User not logged in");
@@ -251,7 +251,7 @@ namespace TAO
             /* default to session 0 unless using multiuser mode */
             uint64_t nSession = 0;
             
-            if( config::fAPISessions.load() && params.find("session") != params.end() ) 
+            if( config::fMultiUser.load() && params.find("session") != params.end() ) 
                 nSession = std::stoull(params["session"].get<std::string>());
 
             return GetGenesis(nSession, false);
@@ -265,7 +265,7 @@ namespace TAO
             LOCK(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSessionToUse = config::fAPISessions.load() ? nSession : 0;
+            uint64_t nSessionToUse = config::fMultiUser.load() ? nSession : 0;
 
             /* Check if you are logged in. */
             if(!mapSessions.count(nSessionToUse))
@@ -313,14 +313,14 @@ namespace TAO
             /* Check for session parameter. */
             uint64_t nSession = 0; // ID 0 is used for sessionless API
 
-            if(!config::fAPISessions.load() && !users->LoggedIn())
+            if(!config::fMultiUser.load() && !users->LoggedIn())
             {
                 if(fThrow)
                     throw APIException(-25, "User not logged in");
                 else
                     return -1;
             }
-            else if(config::fAPISessions.load())
+            else if(config::fMultiUser.load())
             {
                 if(params.find("session") == params.end())
                 {

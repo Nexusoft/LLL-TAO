@@ -81,7 +81,7 @@ namespace TAO
                 return debug::error(0, FUNCTION, "Attempt to start Stake Minter when already started.");
 
             /* Disable stake minter if not in sessionless mode. */
-            if (config::fAPISessions.load())
+            if (config::fMultiUser.load())
             {
                 debug::log(0, FUNCTION, "Stake minter disabled when use API sessions (multiuser).");
                 return false;
