@@ -1,4 +1,4 @@
-Finance API
+# Finance API
 -----------------------------------
 
 The Finance API provides methods for sending and receiving NXS coins (tokens) between users / accounts, creating accounts, and managing staking.
@@ -19,13 +19,13 @@ The logic for resolving the shortcut to either a name or address is that if the 
 
 The following methods are currently supported by this API
 
-[`create/account`](#createaccount)
-[`debit/account`](#debitaccount)
-[`credit/account`](#creditaccount)
-[`get/account`](#getaccount)
-[`list/accounts`](#listaccounts)
-[`get/stakeinfo`](#getstakeinfo)
-[`set/stake`](#setstake)
+[`create/account`](#createaccount)    
+[`debit/account`](#debitaccount)    
+[`credit/account`](#creditaccount)    
+[`get/account`](#getaccount)    
+[`list/accounts`](#listaccounts)    
+[`get/stakeinfo`](#getstakeinfo)    
+[`set/stake`](#setstake)    
 
 -----------------------------------
 ***
@@ -152,11 +152,15 @@ Increment an amount received from another NXS account to an account owned by you
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the account. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the account to credit. This is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
-
-`address` : The register address of the account to credit. This is optional if the name is provided.
-
 `txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.
+
+`name` : The name identifying the account to credit. This is only required for split payments (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+
+`address` : The register address of the account to credit. This is only required for split payments (where the receiving account is not included in the credit transaction) and is optional if the name is provided.
+
+`name_proof` : The name identifying the account that proves your ownership of the share of the debit. This is only required for split payments and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+
+`address_proof` : The register address of the account that proves your ownership of the share of the debit. This is only required for spit payments and is optional if the name is provided.
 
 
 ### Example:

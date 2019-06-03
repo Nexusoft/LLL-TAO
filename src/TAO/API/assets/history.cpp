@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/assets.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/jsonutils.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/create.h>
@@ -104,8 +105,15 @@ namespace TAO
                             std::vector<uint8_t> vchData;
                             contract >> vchData;
 
+                            if( nType != TAO::Register::REGISTER::APPEND
+                            && nType != TAO::Register::REGISTER::RAW
+                            && nType != TAO::Register::REGISTER::OBJECT)
+                            {
+                                throw APIException(-24, "Specified name/address is not an asset.");
+                            }
+
                             /* Create the register object. */
-                            TAO::Register::State state;
+                            TAO::Register::Object state;
                             state.nVersion   = 1;
                             state.nType      = nType;
                             state.hashOwner  = contract.Caller();
@@ -114,28 +122,27 @@ namespace TAO
                             if(!TAO::Operation::Create::Execute(state, vchData, contract.Timestamp()))
                                 return false;
 
+                            if(state.nType == TAO::Register::REGISTER::OBJECT)
+                            {
+                                /* parse object so that the data fields can be accessed */
+                                if(!state.Parse())
+                                    throw APIException(-24, "Failed to parse object register");
+
+                                /* Only include non standard object registers (assets) */
+                                if( state.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
+                                    throw APIException(-24, "Specified name/address is not an asset.");
+                            }
+
                             /* Generate return object. */
                             json::json obj;
-                            obj["type"]       = "CREATE";
-                            obj["owner"]      = contract.Caller().ToString();
+                            obj["type"] = "CREATE";
+                            obj["checksum"] = state.hashChecksum;
 
-                            /* Complete object parameters. */
-                            obj["modified"]   = state.nModified;
-                            obj["created"]    = state.nCreated;
+                            json::json data  =TAO::API::ObjectRegisterToJSON(params, state, hashRegister);
 
-                            /* Reset read position. */
-                            state.nReadPos = 0;
+                            /* Copy the asset data in to the response after the type/checksum */
+                            obj.insert(data.begin(), data.end());
 
-                            /* Grab the last state. */
-                            while(!state.end())
-                            {
-                                /* If the data type is string. */
-                                std::string data;
-                                state >> data;
-
-                                obj["checksum"] = state.hashChecksum;
-                                obj["data"]     = data;
-                            }
 
                             /* Push to return array. */
                             ret.push_back(obj);
@@ -180,7 +187,8 @@ namespace TAO
 
                             /* Complete object parameters. */
                             obj["modified"]   = state.nModified;
-                            obj["created"]    = state.nCreated;
+                            obj["checksum"] = state.hashChecksum;
+
 
                             /* Push to return array. */
                             ret.push_back(obj);

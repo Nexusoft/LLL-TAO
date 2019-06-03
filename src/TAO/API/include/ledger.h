@@ -127,6 +127,19 @@ namespace TAO
             json::json Transaction(const json::json& params, bool fHelp);
 
 
+            /** Submit
+             *
+             *  Submits a raw transaction to the network
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Submit(const json::json& params, bool fHelp);
+
+
             /** MiningInfo
             *
             *  Returns an object containing mining-related information

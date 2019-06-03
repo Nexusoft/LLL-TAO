@@ -123,11 +123,22 @@ namespace TAO
                     throw APIException(-25, "Block not found");
             }
 
-            uint32_t nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
-            if( params.count("txverbose") > 0 && IsAllDigit(params["txverbose"].get<std::string>()))
-                nTransactionVerbosity = std::stoul(params["txverbose"].get<std::string>());
+            std::string strVerbose = "default";
+            if(params.find("verbose") != params.end())
+                strVerbose = params["verbose"].get<std::string>();
 
-            json::json ret = TAO::API::BlockToJSON(blockState, nTransactionVerbosity);
+            /* Default to verbosity 1 which includes only the hash */
+            uint32_t nVerbose = 1;
+            if( strVerbose == "none")
+                nVerbose = 0;
+            else if( strVerbose == "default")
+                nVerbose = 1;
+            else if( strVerbose == "summary")
+                nVerbose = 2;
+            else if( strVerbose == "detail")
+                nVerbose = 3;
+
+            json::json ret = TAO::API::BlockToJSON(blockState, nVerbose);
 
             return ret;
         }
@@ -143,18 +154,16 @@ namespace TAO
             /* Declare the BlockState to load from the DB */
             TAO::Ledger::BlockState blockState;
 
-            /* The number of blocks to return, default 10*/
-            int nCount = 10;
-            if(params.find("count") != params.end())
-            {
-                std::string strCount = params["count"].get<std::string>();
-                if( !IsAllDigit(strCount) )
-                    throw APIException(-25, "Invalid count parameter");
-                nCount = std::stoi( strCount);
+            /* Check for page parameter. */
+            uint32_t nPage = 0;
+            if(params.find("page") != params.end())
+                nPage = std::stoul(params["page"].get<std::string>());
 
-                if( nCount < 1 || nCount > 1000 )
-                    throw APIException(-25, "Invalid count parameter");
-            }
+            /* Get the limit parameter, default to 10. */
+            uint32_t nLimit = 10;
+            if(params.find("limit") != params.end())
+                nLimit = std::stoul(params["limit"].get<std::string>());
+
             /* look up by height*/
             if(params.find("height") != params.end())
             {
@@ -191,25 +200,54 @@ namespace TAO
             }
 
             /* Get the transaction verbosity level from the request*/
-            uint32_t nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
-            if( params.count("txverbose") > 0 && IsAllDigit(params["txverbose"].get<std::string>()))
-                nTransactionVerbosity = std::stoul(params["txverbose"].get<std::string>());
+            std::string strVerbose = "default";
+            if(params.find("verbose") != params.end())
+                strVerbose = params["verbose"].get<std::string>();
+
+            /* Default to verbosity 1 which includes only the hash */
+            uint32_t nVerbose = 1;
+            if( strVerbose == "none")
+                nVerbose = 0;
+            else if( strVerbose == "default")
+                nVerbose = 1;
+            else if( strVerbose == "summary")
+                nVerbose = 2;
+            else if( strVerbose == "detail")
+                nVerbose = 3;
 
             /* Declare the JSON array to return */
             json::json ret = json::json::array();
 
-            /* Iterate through nCount number of blocks*/
-            for(int i=0; i<nCount; i++)
+            /* Iterate through blocks until we hit the limit or no more blocks*/
+            uint32_t nTotal = 0;
+            while(!blockState.IsNull())
             {
-                /* convert the block to JSON data and add it to the return JSON array*/
-                ret.push_back(TAO::API::BlockToJSON(blockState, nTransactionVerbosity));
+                /* Get the current page. */
+                uint32_t nCurrentPage = nTotal / nLimit;
+
+                ++nTotal;
+
+                TAO::Ledger::BlockState blockToAdd = blockState;
 
                 /* Move on to the next block in the sequence*/
                 blockState = blockState.Next();
 
-                /* Ensure the next block exists*/
-                if( !blockState)
+                /* Check the paged data. */
+                if(nCurrentPage < nPage)
+                    continue;
+
+                if(nCurrentPage > nPage)
                     break;
+
+                if(nTotal - (nPage * nLimit) > nLimit)
+                    break;
+
+
+                /* convert the block to JSON data and add it to the return JSON array*/
+                ret.push_back(TAO::API::BlockToJSON(blockToAdd, nVerbose));
+
+                ;
+
             }
             return ret;
         }

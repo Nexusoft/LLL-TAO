@@ -27,11 +27,12 @@ namespace TAO
         void Ledger::Initialize()
         {
             mapFunctions["create"] = Function(std::bind(&Ledger::Create, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["blockhash"] = Function(std::bind(&Ledger::BlockHash, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["block"] = Function(std::bind(&Ledger::Block, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["blocks"] = Function(std::bind(&Ledger::Blocks, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["transaction"] = Function(std::bind(&Ledger::Transaction, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["mininginfo"] = Function(std::bind(&Ledger::MiningInfo, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/blockhash"] = Function(std::bind(&Ledger::BlockHash, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/block"] = Function(std::bind(&Ledger::Block, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/blocks"] = Function(std::bind(&Ledger::Blocks, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/transaction"] = Function(std::bind(&Ledger::Transaction, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["submit/transaction"] = Function(std::bind(&Ledger::Submit, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/mininginfo"] = Function(std::bind(&Ledger::MiningInfo, this, std::placeholders::_1, std::placeholders::_2));
         
         }
     }

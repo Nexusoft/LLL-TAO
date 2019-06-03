@@ -78,7 +78,16 @@ int main(int argc, char** argv)
         {
             int nRet = 0;
 
-            if(config::GetBoolArg(std::string("-api")))
+            /* As a helpful shortcut, if the method name includes a "/" then we will assume it is meant for the API
+               since none of the RPC commands support a "/" in the method name */
+            bool fIsAPI = false;
+
+            std::string endpoint = std::string(argv[i]);
+            std::string::size_type pos = endpoint.find('/');
+            if(pos != endpoint.npos || config::GetBoolArg(std::string("-api")))
+                fIsAPI = true;
+
+            if(fIsAPI)
                 nRet = TAO::API::CommandLineAPI(argc, argv, i);
             else
                 nRet = TAO::API::CommandLineRPC(argc, argv, i);

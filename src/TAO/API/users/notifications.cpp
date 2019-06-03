@@ -116,12 +116,16 @@ namespace TAO
                     if(!TAO::Register::Unpack(tx[nContract], object, hashAddress))
                         continue;
 
-                    /* Check that it is an account. */
+                    /* Check that it is an object. */
                     if(object.nType != TAO::Register::REGISTER::OBJECT)
                         continue;
 
                     /* Parse out the object register. */
                     if(!object.Parse())
+                        continue;
+
+                    /* Check that it is an account. */
+                    if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
                         continue;
 
                     /* Get the token address. */
