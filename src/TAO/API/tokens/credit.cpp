@@ -79,9 +79,7 @@ namespace TAO
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
                 hashTo.SetHex(params["address"].get<std::string>());
-            else
-                throw APIException(-22, "Missing to name or address");
-
+            
             /* Get the transaction id. */
             uint512_t hashTx = 0;
             hashTx.SetHex(params["txid"].get<std::string>());
