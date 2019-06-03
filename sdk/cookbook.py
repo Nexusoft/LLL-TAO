@@ -696,7 +696,7 @@ supply_get_item_address = '{}supply/get/item?session={}&address={}{}'
 supply_update_item = \
     '{}supply/update/item?pin={}&session={}&address={}&data={}{}'
 supply_transfer_item = ('{}supply/transfer/item?pin={}&session={}' + \
-    '&username={}&address={}&destination={}{}')
+    '&address={}&destination={}{}')
 supply_claim_item = '{}supply/claim/item?pin={}&session={}&txid={}{}'
 supply_list_item_history_name = \
     '{}supply/list/item/history?session={}&name={}{}'
@@ -745,10 +745,9 @@ def build_supply_html(sid, genid, o):
     h = form_header.format("supply-transfer-item")
     pin = form_parm.format("pin", "")
     session = form_parm.format("session", sid)
-    username = form_parm.format("username", "")
     address = form_parm.format("address", "")
     d = form_parm.format("destination", "")
-    o += supply_transfer_item.format(h, pin, session, username, address, d, f)
+    o += supply_transfer_item.format(h, pin, session, address, d, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -895,10 +894,9 @@ def do_supply_update_item():
 def do_supply_transfer_item():
     pin = bottle.request.forms.get("pin")
     session = bottle.request.forms.get("session")
-    username = bottle.request.forms.get("username")
     address = bottle.request.forms.get("address")
-    destination = bottle.request.forms.get("destinations")
-    if (no_parms(pin, session, username, address, destination)):
+    dest = bottle.request.forms.get("destination")
+    if (no_parms(pin, session, address, dest)):
         m = red("supply/transfer/item needs more input parameters")
         return(show(m, session))
     #endif
@@ -909,11 +907,11 @@ def do_supply_transfer_item():
     if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
-        output = sdk.nexus_supply_transfer_item(address, destination)
+        output = sdk.nexus_supply_transfer_item_by_address(address, dest)
         genid = sdk.genesis_id
     else:
-        output = curl(supply_transfer_item.format("", pin, session, username,
-            address, destination, ""))
+        output = curl(supply_transfer_item.format("", pin, session, address,
+            dest, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
@@ -1014,7 +1012,7 @@ assets_get_asset_address = '{}assets/get/asset?session={}&address={}{}'
 assets_update_asset = \
     '{}assets/update/asset?pin={}&session={}&address={}&data={}{}'
 assets_transfer_asset = \
-    '{}assets/transfer/asset?pin={}&session={}&username={}&name={}{}'
+    '{}assets/transfer/asset?pin={}&session={}&address={}&destination={}{}'
 assets_claim_asset = '{}assets/claim/asset?pin={}&session={}&txid={}{}'
 assets_tokenize_asset = \
     '{}assets/tokenize/asset?pin={}&session={}&token_name={}&asset_name={}{}'
@@ -1065,9 +1063,9 @@ def build_assets_html(sid, genid, o):
     h = form_header.format("assets-transfer-asset")
     pin = form_parm.format("pin", "")
     session = form_parm.format("session", sid)
-    username = form_parm.format("username", "")
-    name = form_parm.format("name", "")
-    o += assets_transfer_asset.format(h, pin, session, username, name, f)
+    address = form_parm.format("address", "")
+    d = form_parm.format("destination", "")
+    o += assets_transfer_asset.format(h, pin, session, address, d, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1225,9 +1223,9 @@ def do_assets_get_asset_address():
 def do_assets_transfer_asset():
     pin = bottle.request.forms.get("pin")
     session = bottle.request.forms.get("session")
-    username = bottle.request.forms.get("username")
-    name = bottle.request.forms.get("name")
-    if (no_parms(pin, session, username, name)):
+    address = bottle.request.forms.get("address")
+    dest = bottle.request.forms.get("destination")
+    if (no_parms(pin, session, address, dest)):
         m = red("assets/transfer/asset needs more input parameters")
         return(show(m, session))
     #endif
@@ -1238,11 +1236,11 @@ def do_assets_transfer_asset():
     if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
-        output = sdk.nexus_assets_transfer_asset_by_name(name, username)
+        output = sdk.nexus_assets_transfer_asset_by_address(address, dest)
         genid = sdk.genesis_id
     else:
-        output = curl(assets_transfer_asset.format("", pin, session, username,
-            name, ""))
+        output = curl(assets_transfer_asset.format("", pin, session, address,
+            dest, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
