@@ -143,9 +143,12 @@ namespace TAO
 
 
         /* Creates a new Name Object register for an object being transferred */
-        void CreateNameFromTransfer(const uint512_t& hashTransfer,
-                                    const uint256_t& hashGenesis, TAO::Operation::Contract& contract)
+        TAO::Operation::Contract CreateNameFromTransfer(const uint512_t& hashTransfer,
+                                    const uint256_t& hashGenesis)
         {
+            /* Declare the contract for the response */
+            TAO::Operation::Contract contract;
+
             /* Firstly retrieve the transfer transaction that is being claimed so that we can get the address of the object */
             TAO::Ledger::Transaction txPrev;;
 
@@ -185,6 +188,8 @@ namespace TAO
                     break;
                 }
             }
+
+            return contract;
         }
 
 
@@ -283,8 +288,12 @@ namespace TAO
             /* Read the Name Object */
             TAO::Register::Object object;
             if(!LLD::regDB->ReadState(hashName, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-24, "Failed to read object state.");
-
+            {
+                if(strNamespace.empty())
+                    throw APIException(-24, debug::safe_printstr( "Unknown name: ", strName));
+                else
+                    throw APIException(-24, debug::safe_printstr( "Unknown name: ", strNamespace, ":", strName));
+            }
             /* Check that the name object is proper type. */
             if(object.nType != TAO::Register::REGISTER::OBJECT)
                 throw APIException(-24, "Name must be of type object.");
