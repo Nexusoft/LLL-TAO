@@ -772,11 +772,11 @@ class sdk_init():
         json_data = self.__get(url)
 
         #
-        # Unquote data if "metadata" key is present.
+        # Unquote data if "data" key is present.
         #
         if (json_data.has_key("result")):
-            data = urllib.unquote_plus(json_data["result"]["metadata"])
-            json_data["result"]["metadata"] = data.replace("%26", "&")
+            data = urllib.unquote_plus(json_data["result"]["data"])
+            json_data["result"]["data"] = data.replace("%26", "&")
         #endif
         return(json_data)
     #enddef
@@ -792,11 +792,11 @@ class sdk_init():
         json_data = self.__get(url)
 
         #
-        # Unquote data if "metadataa" key is present.
+        # Unquote data if "data" key is present.
         #
         if (json_data.has_key("result")):
-            data = urllib.unquote_plus(json_data["result"]["metadata"])
-            json_data["result"]["metadata"] = data.replace("%26", "&")
+            data = urllib.unquote_plus(json_data["result"]["data"])
+            json_data["result"]["data"] = data.replace("%26", "&")
         #endif
         return(json_data)
     #enddef
