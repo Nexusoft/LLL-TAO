@@ -113,6 +113,16 @@ namespace LLD
          *
          *  Find a bucket for cache key management.
          *
+         *  @param[in] pnode The binary node to find bucket for
+         *
+         **/
+        uint32_t Bucket(const BinaryNode* pnode) const;
+
+
+        /** Bucket
+         *
+         *  Find a bucket for cache key management.
+         *
          *  @param[in] vKey The key to get bucket for.
          *
          **/

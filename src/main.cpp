@@ -348,7 +348,7 @@ int main(int argc, char** argv)
     {
         debug::log(0, FUNCTION, "Shutting down ContractDB");
 
-        delete LLD::Ledger;
+        delete LLD::Contract;
     }
 
     /* Cleanup the ledger database. */
