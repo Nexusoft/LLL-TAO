@@ -1,4 +1,4 @@
-Finance API
+# Finance API
 -----------------------------------
 
 The Finance API provides methods for sending and receiving NXS coins (tokens) between users / accounts, creating accounts, and managing staking.
@@ -19,13 +19,13 @@ The logic for resolving the shortcut to either a name or address is that if the 
 
 The following methods are currently supported by this API
 
-[`create/account`](#createaccount)
-[`debit/account`](#debitaccount)
-[`credit/account`](#creditaccount)
-[`get/account`](#getaccount)
-[`list/accounts`](#listaccounts)
-[`get/stakeinfo`](#getstakeinfo)
-[`set/stake`](#setstake)
+[`create/account`](#createaccount)    
+[`debit/account`](#debitaccount)    
+[`credit/account`](#creditaccount)    
+[`get/account`](#getaccount)    
+[`list/accounts`](#listaccounts)    
+[`get/stakeinfo`](#getstakeinfo)    
+[`set/stake`](#setstake)    
 
 -----------------------------------
 ***
