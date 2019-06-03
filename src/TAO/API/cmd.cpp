@@ -83,8 +83,12 @@ namespace TAO
                 /* Set the previous argument. */
                 prev = arg.substr(0, pos);
 
-                /* Add to parameters object. */
-                parameters[prev] = arg.substr(pos + 1);
+
+                // if the paramter is a JSON list or array then we need to parse it
+                if( arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
+                    parameters[prev]=json::json::parse(arg.substr(pos + 1));
+                else
+                    parameters[prev] = arg.substr(pos + 1);
             }
 
 
