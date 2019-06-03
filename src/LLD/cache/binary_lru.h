@@ -60,7 +60,11 @@ namespace LLD
 
 
         /* Map of the current holding data. */
-        std::vector<BinaryNode *> hashmap;
+        std::vector<BinaryNode*> hashmap;
+
+
+        /* Map of the current data checksum. */
+        std::vector<uint64_t> checksums;
 
 
         /* Keep track of the first object in linked list. */
@@ -97,12 +101,32 @@ namespace LLD
 
         /** Bucket
          *
+         *  Get the checksum of a data object.
+         *
+         *  @param[in] vData The data to get checksum of.
+         *
+         **/
+        uint64_t Checksum(const std::vector<uint8_t>& vData) const;
+
+
+        /** Bucket
+         *
          *  Find a bucket for cache key management.
          *
          *  @param[in] vKey The key to get bucket for.
          *
          **/
         uint32_t Bucket(const std::vector<uint8_t>& vKey) const;
+
+
+        /** Bucket
+         *
+         *  Find a bucket for checksum key management.
+         *
+         *  @param[in] nChecksum The checksum to get bucket for.
+         *
+         **/
+        uint32_t Bucket(const uint64_t nChecksum) const;
 
 
         /** Has

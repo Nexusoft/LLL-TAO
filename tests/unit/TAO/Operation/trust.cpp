@@ -106,10 +106,11 @@ TEST_CASE( "Trust Primitive Tests", "[operation]" )
             REQUIRE(LLD::Register->WriteTrust(hashGenesis, object));
         }
 
+
         {
             //check values all match
             TAO::Register::Object object;
-            REQUIRE(LLD::Register->ReadTrust(hashGenesis, object));
+            REQUIRE(LLD::Register->ReadState(hashAddress, object));
 
             //parse
             REQUIRE(object.Parse());
