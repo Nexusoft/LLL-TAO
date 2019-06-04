@@ -22,7 +22,6 @@ ________________________________________________________________________________
 #include <LLP/include/trust_address.h>
 
 #include <TAO/API/include/system.h>
-#include <TAO/API/include/lisp.h>
 #include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/debug.h>
@@ -45,6 +44,7 @@ namespace TAO
         {
             mapFunctions["get/info"] = Function(std::bind(&System::GetInfo,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/peers"] = Function(std::bind(&System::ListPeers,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/lisp-eids"] = Function(std::bind(&System::LispEIDs, this, std::placeholders::_1, std::placeholders::_2));
         }
 
 
@@ -94,10 +94,11 @@ namespace TAO
 
 
             // The EID's of this node if using LISP
-            if( LLP::EIDS.size() > 0)
+            std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
+            if(mapEIDs.size() > 0)
             {
                 json::json jsonEIDs = json::json::array();
-                for(const auto& eid : LLP::EIDS)
+                for(const auto& eid :mapEIDs)
                 {
                     jsonEIDs.push_back( eid.first);
                 }

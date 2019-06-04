@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/lisp.h>
+#include <TAO/API/include/system.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 
@@ -32,25 +32,15 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        
-        /* Standard initialization function. */
-        void Lisp::Initialize()
-        {
-            mapFunctions["eids"] = Function(std::bind(&Lisp::EIDs, this, std::placeholders::_1, std::placeholders::_2));
-        }
-
-
-
         /* Queries the lisp api and returns the EID's for this node. */
-        json::json Lisp::EIDs(const json::json& params, bool fHelp)
+        json::json System::LispEIDs(const json::json& params, bool fHelp)
         {
-            json::json jsonRet;
+            json::json jsonEIDs = json::json::array();
 
-            if(LLP::EIDS.size() > 0)
+            std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
+            if(mapEIDs.size() > 0)
             {
-                json::json jsonEIDs = json::json::array();
-
-                for(const auto& eid : LLP::EIDS)
+                for(const auto& eid : mapEIDs)
                 {
                     json::json jsonEID;
 
@@ -74,11 +64,9 @@ namespace TAO
 
                     jsonEIDs.push_back(jsonEID);
                 }
-
-                jsonRet["eids"] = jsonEIDs;
             }
 
-            return jsonRet;
+            return jsonEIDs;
 
         }
 

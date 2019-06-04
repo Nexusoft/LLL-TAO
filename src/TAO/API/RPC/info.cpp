@@ -30,7 +30,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/include/money.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/API/include/lisp.h>
+#include <TAO/API/include/system.h>
 #include <LLP/include/lisp.h>
 
 #include <vector>
@@ -96,10 +96,11 @@ namespace TAO
             obj["proxy"] = (config::fUseProxy.load() ? LLP::addrProxy.ToString() : std::string());
 
             // get the EID's if using LISP
-            if(LLP::EIDS.size() > 0)
+            std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
+            if(mapEIDs.size() > 0)
             {
                 json::json jsonEIDs = json::json::array();
-                for(const auto& eid : LLP::EIDS)
+                for(const auto& eid : mapEIDs)
                 {
                     jsonEIDs.push_back( eid.first);
                 }

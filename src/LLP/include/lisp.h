@@ -57,16 +57,12 @@ namespace LLP
         std::vector<RLOC> vRLOCs;
     };
 
-    /* The EID's and RLOC's are obtained at startup and cached */
-    extern std::map<std::string, EID> EIDS;
-
-    /** CacheEIDs
+    /** GetEIDs
     *
-    *  Asynchronously invokes the lispers.net API to obtain the EIDs and RLOCs used by this node 
-    *  and caches them for future use
+    *  Invokes the lispers.net API to obtain the EIDs and RLOCs used by this node
     *
     **/
-    void CacheEIDs();
+    std::map<std::string, EID> GetEIDs();
 
     /** LispersAPIRequest
     *

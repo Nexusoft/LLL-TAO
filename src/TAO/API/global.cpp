@@ -22,7 +22,6 @@ namespace TAO
         /* The API global instance pointers. */
         Assets* assets;
         Ledger* ledger;
-        Lisp* lisp;
         Register* reg;
         RPC* RPCCommands;
         Supply* supply;
@@ -40,7 +39,6 @@ namespace TAO
             /* Create the API instances. */
             assets      = new Assets();
             ledger      = new Ledger();
-            lisp        = new Lisp();
             reg         = new Register();
             RPCCommands = new RPC();
             supply      = new Supply();
@@ -61,9 +59,6 @@ namespace TAO
 
             if(ledger)
                 delete ledger;
-
-            if(lisp)
-                delete lisp;
 
             if(reg)
                 delete reg;

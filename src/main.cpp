@@ -256,12 +256,6 @@ int main(int argc, char** argv)
           LLP::TRITIUM_MINING_SERVER = LLP::CreateMiningServer<LLP::TritiumMiner>();
     }
 
-    /* cache the EIDs and RLOCs if using LISP so that we don't need to hit the lispers.net API
-       to obtain this data after this point.  NOTE that we do this in a separate thread because the API call
-       can take several seconds to timeout on Windows, if the user is not using LISP */
-    LLP::CacheEIDs();
-
-
     /* Elapsed Milliseconds from timer. */
     uint32_t nElapsed = timer.ElapsedMilliseconds();
     timer.Stop();

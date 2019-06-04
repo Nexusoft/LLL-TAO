@@ -26,9 +26,6 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /* The EID's and RLOC's are obtained at startup and cached */
-    std::map<std::string, EID> EIDS;
-
 
     /* Makes a request to the lispers.net API for the desired endpoint */
     std::string LispersAPIRequest(std::string strEndPoint)
@@ -93,91 +90,93 @@ namespace LLP
     }
 
 
-    /* Asynchronously invokes the lispers.net API to obtain the EIDs and RLOCs used by this node
-    *  and caches them for future use */
-    void CacheEIDs()
+    /* Invokes the lispers.net API to obtain the EIDs and RLOCs used by this node */
+    std::map<std::string, EID> GetEIDs()
     {
-        /* use a lambda here to cache the EIDs asynchronously*/
-        std::thread([=]()
+        /* Declare the return map */
+        std::map<std::string, EID> mapEIDs;
+
+        /* LISP not supported on Windows so don't attempt tp make the lispers.net API call, which can take 
+           several seconds to timeout on Windows */
+#ifdef WIN32
+        return mapEIDs;
+#else
+        try
         {
-            /* Empty the current EID's. */
-            EIDS.clear();
+            /* Attempt to contact the LISP API. */
+            std::string strResponse = LispersAPIRequest( "data/database-mapping");
 
-            try
+            /* Parse items if it succeeded. */
+            if(strResponse.length() > 0)
             {
-                /* Attempt to contact the LISP API. */
-                std::string strResponse = LispersAPIRequest( "data/database-mapping");
+                /* Parse out the response. */
+                json::json jsonLispResponse = json::json::parse(strResponse);
 
-                /* Parse items if it succeeded. */
-                if(strResponse.length() > 0)
+                /* Loop the response items. */
+                for(auto& el : jsonLispResponse.items())
                 {
-                    /* Parse out the response. */
-                    json::json jsonLispResponse = json::json::parse(strResponse);
+                    /* Declare the LLP-EID object. */
+                    LLP::EID EID;
 
-                    /* Loop the response items. */
-                    for(auto& el : jsonLispResponse.items())
+                    /* Grab the prefix from parsed JSON. */
+                    std::string strEIDPrefix = el.value()["eid-prefix"];
+
+                    /* Parse the beginning and end to find instance ID. */
+                    std::string::size_type nFindStart = strEIDPrefix.find("[") +1;
+                    std::string::size_type nFindEnd = strEIDPrefix.find("]") ;
+
+                    /* Assign the instance ID to the parsed substring. */
+                    EID.strInstanceID = strEIDPrefix.substr(nFindStart, nFindEnd - nFindStart);
+
+                    /* Iterate to the next position for finding address. */
+                    nFindStart = nFindEnd +1;
+                    nFindEnd = strEIDPrefix.find("/");
+
+                    /* Assign the address from the substring. */
+                    EID.strAddress = strEIDPrefix.substr(nFindStart, nFindEnd - nFindStart);
+
+                    /* Grab the rlocs from parsed JSON. */
+                    json::json jsonRLOCs = el.value()["rlocs"];
+
+                    /* Iterate the list of RLOC's. */
+                    for(const auto& rloc : jsonRLOCs.items())
                     {
-                        /* Declare the LLP-EID object. */
-                        LLP::EID EID;
-
-                        /* Grab the prefix from parsed JSON. */
-                        std::string strEIDPrefix = el.value()["eid-prefix"];
-
-                        /* Parse the beginning and end to find instance ID. */
-                        std::string::size_type nFindStart = strEIDPrefix.find("[") +1;
-                        std::string::size_type nFindEnd = strEIDPrefix.find("]") ;
-
-                        /* Assign the instance ID to the parsed substring. */
-                        EID.strInstanceID = strEIDPrefix.substr(nFindStart, nFindEnd - nFindStart);
-
-                        /* Iterate to the next position for finding address. */
-                        nFindStart = nFindEnd +1;
-                        nFindEnd = strEIDPrefix.find("/");
-
-                        /* Assign the address from the substring. */
-                        EID.strAddress = strEIDPrefix.substr(nFindStart, nFindEnd - nFindStart);
-
-                        /* Grab the rlocs from parsed JSON. */
-                        json::json jsonRLOCs = el.value()["rlocs"];
-
-                        /* Iterate the list of RLOC's. */
-                        for(const auto& rloc : jsonRLOCs.items())
+                        /* Search for 'interface' keyword. */
+                        if(rloc.value().find("interface") != rloc.value().end())
                         {
-                            /* Search for 'interface' keyword. */
-                            if(rloc.value().find("interface") != rloc.value().end())
-                            {
-                                /* Declare the RLOC object. */
-                                LLP::RLOC RLOC;
-                                RLOC.strInterface = rloc.value()["interface"];
-                                RLOC.strRLOCName = rloc.value()["rloc-name"];
+                            /* Declare the RLOC object. */
+                            LLP::RLOC RLOC;
+                            RLOC.strInterface = rloc.value()["interface"];
+                            RLOC.strRLOCName = rloc.value()["rloc-name"];
 
-                                /* if nodes are behind NAT then their public IP will be supplied
-                                    in a translated-rloc field, otherwise the public IP will be
-                                    supplied in the rloc field */
-                                if( rloc.value().count("translated-rloc") > 0 )
-                                    RLOC.strTranslatedRLOC = rloc.value()["translated-rloc"];
-                                else
-                                    RLOC.strTranslatedRLOC = rloc.value()["rloc"];
+                            /* if nodes are behind NAT then their public IP will be supplied
+                                in a translated-rloc field, otherwise the public IP will be
+                                supplied in the rloc field */
+                            if( rloc.value().count("translated-rloc") > 0 )
+                                RLOC.strTranslatedRLOC = rloc.value()["translated-rloc"];
+                            else
+                                RLOC.strTranslatedRLOC = rloc.value()["rloc"];
 
-                                /* Add to the cached data. */
-                                EID.vRLOCs.push_back(RLOC);
-                            }
+                            /* Add to the cached data. */
+                            EID.vRLOCs.push_back(RLOC);
                         }
-
-                        /* Assign the address to the cached map. */
-                        EIDS[EID.strAddress] = EID;
                     }
+
+                    /* Assign the address to the cached map. */
+                    mapEIDs[EID.strAddress] = EID;
                 }
             }
+        }
 
-            /* We want to absorb an API exception here as the lispers.net API might not be available or
-               LISP might not be running.  In which case there are no EIDs to cache, so just log the error and move on. */
-            catch(std::exception& e)
-            {
-                debug::log(3, FUNCTION, e.what());
-            }
-        }).detach();
+        /* We want to absorb an API exception here as the lispers.net API might not be available or
+            LISP might not be running.  In which case there are no EIDs to cache, so just log the error and move on. */
+        catch(std::exception& e)
+        {
+            debug::log(3, FUNCTION, e.what());
+        }
 
+        return mapEIDs;
+#endif
     }
 
 
