@@ -30,7 +30,7 @@ namespace TAO
             if(LLD::Contract->HasContract(std::make_pair(hashTx, nContract)))
                 return debug::error(FUNCTION, "cannot validate when already fulfilled");
 
-            return true;
+            return true; //LLD::Contract->WriteContract(std::make_pair(hashTx, nContract));
         }
 
 
