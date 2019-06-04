@@ -139,7 +139,7 @@ namespace TAO
 
                 /* Calculate the pre-states and post-states. */
                 if(!TAO::Register::Build(contract, mapStates))
-                    return debug::error(FUNCTION, "transaction register layer failed to build");
+                    return false;
             }
 
             return true;

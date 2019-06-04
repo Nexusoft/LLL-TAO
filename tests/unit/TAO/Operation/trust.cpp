@@ -59,54 +59,6 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
-
-            //write the trust index
-            REQUIRE(LLD::Register->IndexTrust(hashGenesis, hashTrust));
-        }
-
-        //create an operation stream to set values.
-        {
-            //create the mock transaction object
-            TAO::Ledger::Transaction tx;
-            tx.nTimestamp  = runtime::timestamp();
-            tx.nSequence   = 0;
-            tx.hashGenesis = hashGenesis;
-
-            //build stream
-            TAO::Operation::Stream stream;
-            stream << std::string("testing") << uint8_t(OP::TYPES::UINT256_T) << uint256_t(293923982);
-
-            //build transaction object
-            tx[0] << uint8_t(OP::WRITE) << hashTrust << stream.Bytes();
-
-            //run tests
-            REQUIRE(tx.Build());
-
-            //reset the streams
-            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
-        }
-
-        {
-            //check values all match
-            TAO::Register::Object object;
-            REQUIRE(LLD::Register->ReadTrust(hashGenesis, object));
-
-            //parse
-            REQUIRE(object.Parse());
-
-            //check standards
-            REQUIRE(object.Standard() == OBJECTS::TRUST);
-            REQUIRE(object.Base()     == OBJECTS::ACCOUNT);
-
-            //check values
-            REQUIRE(object.get<uint64_t>("balance") == 0);
-            REQUIRE(object.get<uint64_t>("trust")   == 0);
-            REQUIRE(object.get<uint256_t>("token") == 0);
-            REQUIRE(object.get<uint256_t>("testing") == 293923982);
-
-            //write trust
-            REQUIRE(object.Write("testing", uint256_t(1111)));
-            REQUIRE(LLD::Register->WriteTrust(hashGenesis, object));
         }
 
 
@@ -132,8 +84,10 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
             trustAccount.Write("balance", (uint64_t)5000);
             REQUIRE(trustAccount.get<uint64_t>("balance") == 5000);
             trustAccount.SetChecksum();
+
             REQUIRE(LLD::Register->WriteState(hashTrust, trustAccount));
         }
+
 
         {
             //verify update
