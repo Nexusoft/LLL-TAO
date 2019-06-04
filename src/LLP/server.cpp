@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 #include <LLP/types/legacy.h>
 #include <LLP/types/time.h>
-#include <LLP/types/corenode.h>
+#include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/legacy_miner.h>
 #include <LLP/types/tritium_miner.h>
@@ -690,7 +690,7 @@ namespace LLP
     template class Server<TritiumNode>;
     template class Server<LegacyNode>;
     template class Server<TimeNode>;
-    template class Server<CoreNode>;
+    template class Server<APINode>;
     template class Server<RPCNode>;
     template class Server<LegacyMiner>;
     template class Server<TritiumMiner>;

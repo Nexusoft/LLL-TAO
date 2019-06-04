@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 
-#include <LLP/types/corenode.h>
+#include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/include/base_address.h>
 #include <TAO/API/include/cmd.h>
@@ -109,7 +109,7 @@ namespace TAO
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
 
             /* Make the connection to the API server. */
-            LLP::CoreNode apiNode;
+            LLP::APINode apiNode;
 
             LLP::BaseAddress addr("127.0.0.1", 8080);
 

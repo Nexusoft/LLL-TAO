@@ -12,15 +12,15 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLP_TYPES_CORENODE_H
-#define NEXUS_LLP_TYPES_CORENODE_H
+#ifndef NEXUS_LLP_TYPES_APINODE_H
+#define NEXUS_LLP_TYPES_APINODE_H
 
-#include <LLP/types/http.h>
+#include <LLP/types/httpnode.h>
 #include <Util/include/json.h>
 
 namespace LLP
 {
-    /** CoreNode
+    /** APINode
      *
      * Core API
      *
@@ -34,7 +34,7 @@ namespace LLP
      *  This could also be used as the base for a HTTP-LLP server implementation.
      *
      **/
-    class CoreNode : public HTTPNode
+    class APINode : public HTTPNode
     {
     public:
 
@@ -43,32 +43,23 @@ namespace LLP
          *  Returns a string for the name of this type of Node.
          *
          **/
-        static std::string Name() { return "Core"; }
+        static std::string Name() { return "API"; }
+
 
         /** Default Constructor **/
-        CoreNode()
-        : HTTPNode()
-        {
-        }
-
-        /** Constructor **/
-        CoreNode(const LLP::Socket &SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false)
-        : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS)
-        {
-        }
+        APINode();
 
 
         /** Constructor **/
-        CoreNode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false)
-        : HTTPNode(DDOS_IN, isDDOS)
-        {
-        }
+        APINode(const LLP::Socket &SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false);
+
+
+        /** Constructor **/
+        APINode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Default Destructor **/
-        virtual ~CoreNode()
-        {
-        }
+        virtual ~APINode();
 
 
         /** Event

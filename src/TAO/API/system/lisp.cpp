@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/base64.h>
 
-#include <LLP/types/corenode.h>
+#include <LLP/types/apinode.h>
 #include <LLP/include/base_address.h>
 
 #include <LLP/include/lisp.h>

@@ -96,6 +96,63 @@ namespace LLP
     uint64_t TritiumNode::nSessionID = LLC::GetRand();
 
 
+    /** Default Constructor **/
+    TritiumNode::TritiumNode()
+    : BaseConnection<TritiumPacket>()
+    , nCurrentSession(0)
+    , nStartingHeight(0)
+    , nLastPing(0)
+    , nLastSamples(0)
+    , mapLatencyTracker()
+    , mapSentRequests()
+    , hashContinue(0)
+    , nConsecutiveFails(0)
+    , nConsecutiveOrphans(0)
+    , fInbound(false)
+    {
+    }
+
+
+    /** Constructor **/
+    TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
+    : BaseConnection<TritiumPacket>(SOCKET_IN, DDOS_IN, isDDOS)
+    , nCurrentSession(0)
+    , nStartingHeight(0)
+    , nLastPing(0)
+    , nLastSamples(0)
+    , mapLatencyTracker()
+    , mapSentRequests()
+    , hashContinue(0)
+    , nConsecutiveFails(0)
+    , nConsecutiveOrphans(0)
+    , fInbound(false)
+    {
+    }
+
+
+    /** Constructor **/
+    TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool isDDOS)
+    : BaseConnection<TritiumPacket>(DDOS_IN, isDDOS)
+    , nCurrentSession(0)
+    , nStartingHeight(0)
+    , nLastPing(0)
+    , nLastSamples(0)
+    , mapLatencyTracker()
+    , mapSentRequests()
+    , hashContinue(0)
+    , nConsecutiveFails(0)
+    , nConsecutiveOrphans(0)
+    , fInbound(false)
+    {
+    }
+
+
+    /** Default Destructor **/
+    TritiumNode::~TritiumNode()
+    {
+    }
+
+
     /* Helper function to switch the nodes on sync. */
     void TritiumNode::SwitchNode()
     {
@@ -1165,4 +1222,41 @@ namespace LLP
         /* Debug output for monitoring. */
         debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getinventory from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
     }
+
+
+    /*  Non-Blocking Packet reader to build a packet from TCP Connection.
+     *  This keeps thread from spending too much time for each Connection. */
+   void TritiumNode::ReadPacket()
+   {
+       if(!INCOMING.Complete())
+       {
+           /** Handle Reading Packet Length Header. **/
+           if(INCOMING.IsNull() && Available() >= 10)
+           {
+               std::vector<uint8_t> BYTES(10, 0);
+               if(Read(BYTES, 10) == 10)
+               {
+                   DataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
+                   ssHeader >> INCOMING;
+
+                   Event(EVENT_HEADER);
+               }
+           }
+
+           /** Handle Reading Packet Data. **/
+           uint32_t nAvailable = Available();
+           if(nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
+           {
+               /* Create the packet data object. */
+               std::vector<uint8_t> DATA( std::min( nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
+
+               /* Read up to 512 bytes of data. */
+               if(Read(DATA, DATA.size()) == DATA.size())
+               {
+                   INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
+                   Event(EVENT_PACKET, static_cast<uint32_t>(DATA.size()));
+               }
+           }
+       }
+   }
 }

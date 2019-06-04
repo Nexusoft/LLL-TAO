@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/include/money.h>
 
-#include <LLP/types/corenode.h>
+#include <LLP/types/apinode.h>
 #include <LLP/include/network.h>
 #include <LLP/include/global.h>
 #include <LLP/include/version.h>

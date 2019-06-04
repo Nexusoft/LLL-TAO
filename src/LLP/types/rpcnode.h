@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TYPES_RPCNODE_H
 #define NEXUS_LLP_TYPES_RPCNODE_H
 
-#include <LLP/types/http.h>
+#include <LLP/types/httpnode.h>
 #include <LLP/templates/ddos.h>
 #include <TAO/API/types/base.h>
 #include <Util/include/json.h>
@@ -36,37 +36,26 @@ namespace LLP
      *  {"method":"", "params":[]}
      *
      **/
-    class RPCNode : public LLP::HTTPNode
+    class RPCNode : public HTTPNode
     {
     public:
 
         static std::string Name() { return "RPC"; }
 
         /** Default Constructor **/
-        RPCNode()
-        : HTTPNode()
-        {
-        }
+        RPCNode();
 
 
         /** Constructor **/
-        RPCNode( LLP::Socket SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS)
-        {
-        }
+        RPCNode( LLP::Socket SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Constructor **/
-        RPCNode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false )
-        : HTTPNode(DDOS_IN, isDDOS)
-        {
-        }
+        RPCNode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Default Destructor **/
-        virtual ~RPCNode()
-        {
-        }
+        virtual ~RPCNode();
 
 
         /** Event

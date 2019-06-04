@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <Util/include/config.h>
 #include <Util/include/base64.h>
 
-#include <LLP/types/corenode.h>
+#include <LLP/types/apinode.h>
 #include <LLP/include/base_address.h>
 
 
@@ -43,7 +43,7 @@ namespace LLP
         std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
 
         /* Make the connection to the API server. */
-        LLP::CoreNode coreNode;
+        LLP::APINode coreNode;
 
         LLP::BaseAddress addr("127.0.0.1", 9090);
 

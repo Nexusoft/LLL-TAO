@@ -20,7 +20,7 @@ namespace LLP
     Server<LegacyNode> * LEGACY_SERVER;
     Server<TimeNode>   * TIME_SERVER;
 
-    Server<CoreNode>*     CORE_SERVER;
+    Server<APINode>*      API_SERVER;
     Server<RPCNode>*      RPC_SERVER;
     Server<LegacyMiner>*  LEGACY_MINING_SERVER;
     Server<TritiumMiner>* TRITIUM_MINING_SERVER;

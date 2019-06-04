@@ -57,63 +57,19 @@ namespace LLP
 
 
         /** Default Constructor **/
-        LegacyNode()
-        : BaseConnection<LegacyPacket>()
-        , strNodeVersion()
-        , nCurrentVersion(LLP::PROTOCOL_VERSION)
-        , nCurrentSession(0)
-        , nStartingHeight(0)
-        , nConsecutiveFails(0)
-        , nConsecutiveOrphans(0)
-        , fInbound(false)
-        , nLastPing(runtime::timestamp())
-        , hashContinue(0)
-        , mapLatencyTracker()
-        , mapSentRequests()
-        {
-
-        }
+        LegacyNode();
 
 
         /** Constructor **/
-        LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false)
-        : BaseConnection<LegacyPacket>(SOCKET_IN, DDOS_IN, isDDOS)
-        , strNodeVersion()
-        , nCurrentVersion(LLP::PROTOCOL_VERSION)
-        , nCurrentSession(0)
-        , nStartingHeight(0)
-        , nConsecutiveFails(0)
-        , nConsecutiveOrphans(0)
-        , fInbound(false)
-        , nLastPing(runtime::timestamp())
-        , hashContinue(0)
-        , mapLatencyTracker()
-        , mapSentRequests()
-        {
-        }
+        LegacyNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Constructor **/
-        LegacyNode(DDOS_Filter* DDOS_IN, bool isDDOS = false)
-        : BaseConnection<LegacyPacket>(DDOS_IN, isDDOS)
-        , strNodeVersion()
-        , nCurrentVersion(LLP::PROTOCOL_VERSION)
-        , nCurrentSession(0)
-        , nStartingHeight(0)
-        , nConsecutiveFails(0)
-        , nConsecutiveOrphans(0)
-        , fInbound(false)
-        , nLastPing(runtime::timestamp())
-        , hashContinue(0)
-        , mapLatencyTracker()
-        , mapSentRequests()
-        {
-        }
+        LegacyNode(DDOS_Filter* DDOS_IN, bool isDDOS = false);
+
 
         /* Virtual destructor. */
-        virtual ~LegacyNode()
-        {
-        }
+        virtual ~LegacyNode();
 
 
         /** Randomly generated session ID. **/
@@ -246,40 +202,7 @@ namespace LLP
          *  This keeps thread from spending too much time for each Connection.
          *
          **/
-        void ReadPacket() final
-        {
-            if(!INCOMING.Complete())
-            {
-                /** Handle Reading Packet Length Header. **/
-                if(INCOMING.IsNull() && Available() >= 24)
-                {
-                    std::vector<uint8_t> BYTES(24, 0);
-                    if(Read(BYTES, 24) == 24)
-                    {
-                        DataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
-                        ssHeader >> INCOMING;
-
-                        Event(EVENT_HEADER);
-                    }
-                }
-
-                /** Handle Reading Packet Data. **/
-                uint32_t nAvailable = Available();
-                if(nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
-                {
-
-                    /* Create the packet data object. */
-                    std::vector<uint8_t> DATA( std::min( nAvailable, (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size())), 0);
-
-                    /* Read up to 512 bytes of data. */
-                    if(Read(DATA, DATA.size()) == DATA.size())
-                    {
-                        INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.end());
-                        Event(EVENT_PACKET, static_cast<uint32_t>(DATA.size()));
-                    }
-                }
-            }
-        }
+        void ReadPacket() final;
 
 
         /** Push Get Blocks

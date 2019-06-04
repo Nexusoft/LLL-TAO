@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 #include <LLP/types/legacy.h>
 #include <LLP/types/time.h>
-#include <LLP/types/corenode.h>
+#include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/legacy_miner.h>
 #include <LLP/types/tritium_miner.h>
@@ -416,7 +416,7 @@ namespace LLP
     template class DataThread<TritiumNode>;
     template class DataThread<LegacyNode>;
     template class DataThread<TimeNode>;
-    template class DataThread<CoreNode>;
+    template class DataThread<APINode>;
     template class DataThread<RPCNode>;
     template class DataThread<LegacyMiner>;
     template class DataThread<TritiumMiner>;

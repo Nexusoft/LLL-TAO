@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 
-#include <LLP/types/corenode.h>
+#include <LLP/types/apinode.h>
 
 #include <TAO/API/types/exception.h>
 #include <TAO/API/include/global.h>
@@ -24,8 +24,35 @@ ________________________________________________________________________________
 namespace LLP
 {
 
+
+    /** Default Constructor **/
+    APINode::APINode()
+    : HTTPNode()
+    {
+    }
+
+    /** Constructor **/
+    APINode::APINode(const LLP::Socket &SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS)
+    : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS)
+    {
+    }
+
+
+    /** Constructor **/
+    APINode::APINode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS)
+    : HTTPNode(DDOS_IN, isDDOS)
+    {
+    }
+
+
+    /** Default Destructor **/
+    APINode::~APINode()
+    {
+    }
+
+
     /* Custom Events for Core API */
-    void CoreNode::Event(uint8_t EVENT, uint32_t LENGTH)
+    void APINode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
         //no events for now
         //TODO: see if at all possible to call from down in inheritance heirarchy
@@ -33,7 +60,7 @@ namespace LLP
 
 
     /** Main message handler once a packet is recieved. **/
-    bool CoreNode::ProcessPacket()
+    bool APINode::ProcessPacket()
     {
 
         if(!Authorized(INCOMING.mapHeaders))
@@ -161,7 +188,7 @@ namespace LLP
 
 
     /* Handles a reply error code and response. */
-    void CoreNode::ErrorReply(const json::json& jsonError)
+    void APINode::ErrorReply(const json::json& jsonError)
     {
         /* Default error status code is 500. */
         uint16_t nStatus = 500;
@@ -194,7 +221,7 @@ namespace LLP
     }
 
 
-    bool CoreNode::Authorized(std::map<std::string, std::string>& mapHeaders)
+    bool APINode::Authorized(std::map<std::string, std::string>& mapHeaders)
     {
         if(config::GetArg("-apiuser", "").empty() && config::GetArg("-apipassword", "").empty())
             return true;

@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLP_TYPES_HTTP_H
-#define NEXUS_LLP_TYPES_HTTP_H
+#ifndef NEXUS_LLP_TYPES_HTTPNODE_H
+#define NEXUS_LLP_TYPES_HTTPNODE_H
 
 #include <LLP/include/legacy_address.h>
 #include <LLP/include/network.h>

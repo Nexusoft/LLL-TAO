@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 
 #include <LLP/include/global.h>
-#include <LLP/types/corenode.h>
+#include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/legacy_miner.h>
 #include <LLP/types/tritium_miner.h>
@@ -217,7 +217,7 @@ int main(int argc, char** argv)
     port = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), 8080));
 
     /* Create the Core API Server. */
-    LLP::CORE_SERVER = new LLP::Server<LLP::CoreNode>(
+    LLP::API_SERVER = new LLP::Server<LLP::APINode>(
         port,
         10,
         30,
@@ -317,7 +317,7 @@ int main(int argc, char** argv)
     LLP::ShutdownServer<LLP::LegacyNode>(LLP::LEGACY_SERVER);
 
     /* Shutdown the core API server and its subsystems. */
-    LLP::ShutdownServer<LLP::CoreNode>(LLP::CORE_SERVER);
+    LLP::ShutdownServer<LLP::APINode>(LLP::API_SERVER);
 
     /* Shutdown the RPC server and its subsystems. */
     LLP::ShutdownServer<LLP::RPCNode>(LLP::RPC_SERVER);

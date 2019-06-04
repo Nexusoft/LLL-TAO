@@ -37,6 +37,34 @@ namespace LLP
     // http://www.codeproject.com/KB/recipes/JSON_Spirit.aspx
     //
 
+
+    /** Default Constructor **/
+    RPCNode::RPCNode()
+    : HTTPNode()
+    {
+    }
+
+
+    /** Constructor **/
+    RPCNode::RPCNode(LLP::Socket SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS)
+    : HTTPNode(SOCKET_IN, DDOS_IN, isDDOS)
+    {
+    }
+
+
+    /** Constructor **/
+    RPCNode::RPCNode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS)
+    : HTTPNode(DDOS_IN, isDDOS)
+    {
+    }
+
+
+    /** Default Destructor **/
+    RPCNode::~RPCNode()
+    {
+    }
+
+
     /* Custom Events for Core API */
     void RPCNode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
