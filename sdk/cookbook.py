@@ -66,6 +66,21 @@ def bold(string):
 #enddef
 
 #
+# hl - highlight string
+#
+# Take the string "{}<method>/<verb>/<noun>?" or "{}<method>/<verb>/<noun>{}"
+# and replacae the occurence of "<verb/<noun>" in blue.
+#
+def hl(string):
+    left = string.find("/")
+    right = string.find("?")
+    if (right == -1): right = string.find("{", 2)
+    s = string[left+1:right]
+    s = string.replace(s, blue(s))
+    return(s)
+#enddef
+
+#
 # curl
 #
 # Call curl and return json.
@@ -124,18 +139,6 @@ def no_parms(*args):
         if (a == "" or a == None): return(True)
     #endfor
     return(False)
-#enddef
-
-#
-# add_block_row
-#
-# Put blank line between token tokens and token accounts.
-#
-def add_blank_row(o):
-    o += "<tr><td>"
-    o += "&nbsp;"
-    o += "</td></tr>"
-    return(o)
 #enddef
 
 #------------------------------------------------------------------------------
@@ -233,19 +236,19 @@ def build_system_html(sid, genid, o):
 
     o += "<tr><td>"
     h = form_header.format("system-get-info")
-    o += system_get_info.format(h, "<br><br>" + f)
+    o += hl(system_get_info).format(h, "<br><br>" + f)
     o += "</td>"
     o += "<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>"
 
     o += "<td>"
     h = form_header.format("system-list-peers")
-    o += system_list_peers.format(h, "<br><br>" + f)
+    o += hl(system_list_peers).format(h, "<br><br>" + f)
     o += "</td>"
     o += "<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>"
 
     o += "<td>"
     h = form_header.format("system-list-lisp-eids")
-    o += system_list_lisp_eids.format(h, "<br><br>" + f)
+    o += hl(system_list_lisp_eids).format(h, "<br><br>" + f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -330,13 +333,13 @@ def build_users_html(sid, genid, o):
     username = form_parm.format("username", "")
     password = form_parm.format("password", "")
     pin = form_parm.format("pin", "")
-    o += users_login_user.format(h, username, password, pin, f)
+    o += hl(users_login_user).format(h, username, password, pin, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = form_header.format("users-logout-user")
     session = form_parm.format("session", sid)
-    o += users_logout_user.format(h, session, f)
+    o += hl(users_logout_user).format(h, session, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -344,23 +347,21 @@ def build_users_html(sid, genid, o):
     username = form_parm.format("username", "")
     password = form_parm.format("password", "")
     pin = form_parm.format("pin", "")
-    o += users_create_user.format(h, username, password, pin, f)
+    o += hl(users_create_user).format(h, username, password, pin, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = form_header.format("users-lock-user")
     session = form_parm.format("session", sid)
-    o += users_lock_user.format(h, session, f)
+    o += hl(users_lock_user).format(h, session, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = form_header.format("users-unlock-user")
     session = form_parm.format("session", sid)
     pin = form_parm.format("pin", "")
-    o += users_unlock_user.format(h, session, pin, f)
+    o += hl(users_unlock_user).format(h, session, pin, f)
     o += "</td></tr>"
-
-    o = add_blank_row(o)
 
     o += "<tr><td>"
     h = "users-list-transactions"
@@ -370,7 +371,8 @@ def build_users_html(sid, genid, o):
     page = form_parm.format("page", "0")
     limit = form_parm.format("limit", "100")
     verbose = form_parm.format("verbose", "default")
-    o += users_list_transactions.format(h,  genesis, page, limit, verbose, f)
+    o += hl(users_list_transactions).format(h,  genesis, page, limit, verbose,
+        f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -380,7 +382,7 @@ def build_users_html(sid, genid, o):
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
     limit = form_parm.format("limit", "100")
-    o += users_list_notifications.format(h, genesis, page, limit, f)
+    o += hl(users_list_notifications).format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -390,7 +392,7 @@ def build_users_html(sid, genid, o):
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
     limit = form_parm.format("limit", "100")
-    o += users_list_assets.format(h, genesis, page, limit, f)
+    o += hl(users_list_assets).format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -400,7 +402,7 @@ def build_users_html(sid, genid, o):
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
     limit = form_parm.format("limit", "100")
-    o += users_list_tokens.format(h, genesis, page, limit, f)
+    o += hl(users_list_tokens).format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -410,7 +412,7 @@ def build_users_html(sid, genid, o):
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
     limit = form_parm.format("limit", "100")
-    o += users_list_accounts.format(h, genesis, page, limit, f)
+    o += hl(users_list_accounts).format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -712,7 +714,7 @@ def build_supply_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += supply_get_item_name.format(h, session, name, f)
+    o += hl(supply_get_item_name).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -720,7 +722,7 @@ def build_supply_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += supply_get_item_address.format(h, session, address, f)
+    o += hl(supply_get_item_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -729,7 +731,7 @@ def build_supply_html(sid, genid, o):
     name = form_parm.format("name", "")
     data = form_parm.format("data", "")
     session = form_parm.format("session", sid)
-    o += supply_create_item.format(h, pin, session, name, data, f)
+    o += hl(supply_create_item).format(h, pin, session, name, data, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -738,7 +740,7 @@ def build_supply_html(sid, genid, o):
     data = form_parm.format("data", "")
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += supply_update_item.format(h, pin, session, address, data, f)
+    o += hl(supply_update_item).format(h, pin, session, address, data, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -747,7 +749,7 @@ def build_supply_html(sid, genid, o):
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
     d = form_parm.format("destination", "")
-    o += supply_transfer_item.format(h, pin, session, address, d, f)
+    o += hl(supply_transfer_item).format(h, pin, session, address, d, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -755,17 +757,15 @@ def build_supply_html(sid, genid, o):
     pin = form_parm.format("pin", "")
     session = form_parm.format("session", sid)
     txid = form_parm.format("txid", "")
-    o += supply_claim_item.format(h, pin, session, txid, f)
+    o += hl(supply_claim_item).format(h, pin, session, txid, f)
     o += "</td></tr>"
-
-    o = add_blank_row(o)
 
     o += "<tr><td>"
     h = "supply-list-item-history-name"
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += supply_list_item_history_name.format(h, session, name, f)
+    o += hl(supply_list_item_history_name).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -773,7 +773,7 @@ def build_supply_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += supply_list_item_history_address.format(h, session, address, f)
+    o += hl(supply_list_item_history_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -1030,7 +1030,7 @@ def build_assets_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += assets_get_asset_name.format(h, session, name, f)
+    o += hl(assets_get_asset_name).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1038,7 +1038,7 @@ def build_assets_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += assets_get_asset_address.format(h, session, address, f)
+    o += hl(assets_get_asset_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1047,7 +1047,7 @@ def build_assets_html(sid, genid, o):
     session = form_parm.format("session", sid)
     data = form_parm.format("data", "")
     name = form_parm.format("name", "")
-    o += assets_create_asset.format(h, pin, session, name, data, f)
+    o += hl(assets_create_asset).format(h, pin, session, name, data, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1056,7 +1056,7 @@ def build_assets_html(sid, genid, o):
     session = form_parm.format("session", sid)
     data = form_parm.format("data", "")
     address = form_parm.format("address", sid)
-    o += assets_update_asset.format(h, pin, session, data, address, f)
+    o += hl(assets_update_asset).format(h, pin, session, data, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1065,7 +1065,7 @@ def build_assets_html(sid, genid, o):
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
     d = form_parm.format("destination", "")
-    o += assets_transfer_asset.format(h, pin, session, address, d, f)
+    o += hl(assets_transfer_asset).format(h, pin, session, address, d, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1073,7 +1073,7 @@ def build_assets_html(sid, genid, o):
     pin = form_parm.format("pin", "")
     session = form_parm.format("session", sid)
     txid = form_parm.format("txid", "")
-    o += assets_claim_asset.format(h, pin, session, txid, f)
+    o += hl(assets_claim_asset).format(h, pin, session, txid, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1082,18 +1082,16 @@ def build_assets_html(sid, genid, o):
     session = form_parm.format("session", sid)
     token_name = form_parm.format("token_name", "")
     asset_name = form_parm.format("asset_name", "")
-    o += assets_tokenize_asset.format(h, pin, session, token_name, asset_name,
-        f)
+    o += hl(assets_tokenize_asset).format(h, pin, session, token_name,
+        asset_name, f)
     o += "</td></tr>"
-
-    o = add_blank_row(o)
 
     o += "<tr><td>"
     h = "assets-list-asset-history-name"
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += assets_list_asset_history_name.format(h, session, name, f)
+    o += hl(assets_list_asset_history_name).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1101,7 +1099,7 @@ def build_assets_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += assets_list_asset_history_address.format(h, session, address, f)
+    o += hl(assets_list_asset_history_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -1390,7 +1388,7 @@ def build_tokens_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += tokens_get_token_name.format(h, session, name, f)
+    o += hl(tokens_get_token_name).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1398,7 +1396,7 @@ def build_tokens_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += tokens_get_token_address.format(h, session, address, f)
+    o += hl(tokens_get_token_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1407,7 +1405,7 @@ def build_tokens_html(sid, genid, o):
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
     supply = form_parm.format("supply", "")
-    o += tokens_create_token.format(h, pin, session, name, supply, f)
+    o += hl(tokens_create_token).format(h, pin, session, name, supply, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1417,7 +1415,8 @@ def build_tokens_html(sid, genid, o):
     amount = form_parm.format("amount", "")
     name = form_parm.format("name", "")
     name_to = form_parm.format("name_to", "")
-    o += tokens_debit_token.format(h, pin, session, name, name_to, amount, f)
+    o += hl(tokens_debit_token).format(h, pin, session, name, name_to, amount,
+        f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1427,17 +1426,15 @@ def build_tokens_html(sid, genid, o):
     name = form_parm.format("name", "")
     amount = form_parm.format("amount", "")
     txid = form_parm.format("txid", "")
-    o += tokens_credit_token.format(h, pin, session, name, amount, txid, f)
+    o += hl(tokens_credit_token).format(h, pin, session, name, amount, txid, f)
     o += "</td></tr>"
-
-    o = add_blank_row(o)
 
     o += "<tr><td>"
     h = "tokens-get-account-name"
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += tokens_get_account_name.format(h, session, name, f)
+    o += hl(tokens_get_account_name).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1445,7 +1442,7 @@ def build_tokens_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += tokens_get_account_address.format(h, session, name, f)
+    o += hl(tokens_get_account_address).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1454,7 +1451,7 @@ def build_tokens_html(sid, genid, o):
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
     token_name = form_parm.format("token_name", "")
-    o += tokens_create_account.format(h, pin, session, name, token_name, f)
+    o += hl(tokens_create_account).format(h, pin, session, name, token_name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1464,7 +1461,8 @@ def build_tokens_html(sid, genid, o):
     amount = form_parm.format("amount", "")
     name = form_parm.format("name", "")
     name_to = form_parm.format("name_to", "")
-    o += tokens_debit_account.format(h, pin, session, amount, name, name_to, f)
+    o += hl(tokens_debit_account).format(h, pin, session, amount, name,
+        name_to, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1475,7 +1473,7 @@ def build_tokens_html(sid, genid, o):
     amount = form_parm.format("amount", "")
     name = form_parm.format("name", "")
     proof = form_parm.format("name_proof", "")
-    o += tokens_credit_account.format(h, pin, session, txid, amount, name,
+    o += hl(tokens_credit_account).format(h, pin, session, txid, amount, name,
         proof, f)
     o += "</td></tr>"
 
@@ -1793,7 +1791,7 @@ def build_finance_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += finance_get_account_name.format(h, session, name, f)
+    o += hl(finance_get_account_name).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1801,7 +1799,7 @@ def build_finance_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += finance_get_account_address.format(h, session, address, f)
+    o += hl(finance_get_account_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1809,7 +1807,7 @@ def build_finance_html(sid, genid, o):
     pin = form_parm.format("pin", "")
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += finance_create_account.format(h, pin, session, name, f)
+    o += hl(finance_create_account).format(h, pin, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1819,7 +1817,7 @@ def build_finance_html(sid, genid, o):
     amount = form_parm.format("amount", "")
     name_from = form_parm.format("name_from", "")
     name_to = form_parm.format("name_to", "")
-    o += finance_debit_account.format(h, pin, session, amount, name_from,
+    o += hl(finance_debit_account).format(h, pin, session, amount, name_from,
         name_to, f)
     o += "</td></tr>"
 
@@ -1831,14 +1829,14 @@ def build_finance_html(sid, genid, o):
     amount = form_parm.format("amount", "")
     name_to = form_parm.format("name_to", "")
     proof = form_parm.format("name_proof", "")
-    o += finance_credit_account.format(h, pin, session, txid, amount, name_to,
-        proof, f)
+    o += hl(finance_credit_account).format(h, pin, session, txid, amount,
+        name_to, proof, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = form_header.format("finance-get-stakeinfo")
     session = form_parm.format("session", sid)
-    o += finance_get_stakeinfo.format(h, session, f)
+    o += hl(finance_get_stakeinfo).format(h, session, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1846,15 +1844,13 @@ def build_finance_html(sid, genid, o):
     pin = form_parm.format("pin", "")
     session = form_parm.format("session", sid)
     amount = form_parm.format("amount", "")
-    o += finance_set_stake.format(h, pin, session, amount, f)
+    o += hl(finance_set_stake).format(h, pin, session, amount, f)
     o += "</td></tr>"
-
-    o = add_blank_row(o)
 
     o += "<tr><td>"
     h = form_header.format("finance-list-accounts")
     session = form_parm.format("session", sid)
-    o += finance_list_accounts.format(h, session, f)
+    o += hl(finance_list_accounts).format(h, session, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -2106,7 +2102,7 @@ def build_ledger_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     height = form_parm.format("height", "")
-    o += ledger_get_blockhash.format(h, height, f)
+    o += hl(ledger_get_blockhash).format(h, height, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -2115,7 +2111,7 @@ def build_ledger_html(sid, genid, o):
     h = form_header.format(h)
     height = form_parm.format("height", "")
     v = form_parm.format("verbose", "1")
-    o += ledger_get_block_height.format(h, height, v, f)
+    o += hl(ledger_get_block_height).format(h, height, v, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -2124,7 +2120,8 @@ def build_ledger_html(sid, genid, o):
     h = form_header.format(h)
     hsh = form_parm.format("hash", "")
     v = form_parm.format("verbose", "1")
-    o += ledger_get_block_hash.format(h, hsh, v, f)
+    o += hl(ledger_get_block_hash).format(h, hsh, v, f)
+    o += "</td></tr>"
 
     o += "<tr><td>"
     h = "ledger-get-transaction"
@@ -2132,16 +2129,16 @@ def build_ledger_html(sid, genid, o):
     h = form_header.format(h)
     hsh = form_parm.format("hash", "")
     v = form_parm.format("verbose", "1")
-    o += ledger_get_transaction.format(h, hsh, v, f)
+    o += hl(ledger_get_transaction).format(h, hsh, v, f)
+    o += "</td></tr>"
 
     o += "<tr><td>"
     h = "ledger-submit-transaction"
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     d = form_parm.format("data", "")
-    o += ledger_submit_transaction.format(h, d, f)
-
-    o = add_blank_row(o)
+    o += hl(ledger_submit_transaction).format(h, d, f)
+    o += "</td></tr>"
 
     o += "<tr><td>"
     h = "ledger-list-blocks-height"
@@ -2150,7 +2147,8 @@ def build_ledger_html(sid, genid, o):
     height = form_parm.format("height", "")
     l = form_parm.format("limit", "100")
     v = form_parm.format("verbose", "1")
-    o += ledger_list_blocks_height.format(h, height, l, v, f)
+    o += hl(ledger_list_blocks_height).format(h, height, l, v, f)
+    o += "</td></tr>"
 
     o += "<tr><td>"
     h = "ledger-list-blocks-hash"
@@ -2159,7 +2157,8 @@ def build_ledger_html(sid, genid, o):
     hsh = form_parm.format("hash", "")
     l = form_parm.format("limit", "100")
     v = form_parm.format("verbose", "1")
-    o += ledger_list_blocks_hash.format(h, hsh, l, v, f)
+    o += hl(ledger_list_blocks_hash).format(h, hsh, l, v, f)
+    o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
     return(o)
@@ -2374,7 +2373,7 @@ def build_objects_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     name = form_parm.format("name", "")
-    o += objects_get_schema_name.format(h, name, f)
+    o += hl(objects_get_schema_name).format(h, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -2382,7 +2381,7 @@ def build_objects_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     address = form_parm.format("address", "")
-    o += objects_get_schema_address.format(h, address, f)
+    o += hl(objects_get_schema_address).format(h, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -2392,7 +2391,7 @@ def build_objects_html(sid, genid, o):
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
     j = form_parm.format("json", "")
-    o += objects_create_schema.format(h, pin, session, name, j, f)
+    o += hl(objects_create_schema).format(h, pin, session, name, j, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
