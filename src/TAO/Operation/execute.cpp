@@ -24,8 +24,10 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/debit.h>
 #include <TAO/Operation/include/genesis.h>
 #include <TAO/Operation/include/legacy.h>
+#include <TAO/Operation/include/stake.h>
 #include <TAO/Operation/include/transfer.h>
 #include <TAO/Operation/include/trust.h>
+#include <TAO/Operation/include/unstake.h>
 #include <TAO/Operation/include/write.h>
 
 #include <TAO/Operation/types/contract.h>
@@ -361,6 +363,7 @@ namespace TAO
                         break;
                     }
 
+
                     /* Coinbase operation. Creates an account if none exists. */
                     case OP::COINBASE:
                     {
@@ -487,6 +490,120 @@ namespace TAO
                         /* Commit the register to disk. */
                         if(!Genesis::Commit(object, hashAddress, nFlags))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to write final state");
+
+                        break;
+                    }
+
+
+                    /* Move funds from trust account balance to stake. */
+                    case OP::STAKE:
+                    {
+                        /* Make sure there are no conditions. */
+                        if(contract.Conditions())
+                            return debug::error(FUNCTION, "OP::STAKE: conditions not allowed on stake");
+
+                        /* Verify the operation rules. */
+                        if(!Stake::Verify(contract))
+                            return false;
+
+                        /* Amount to of funds to move. */
+                        uint64_t nAmount;
+                        contract >> nAmount;
+
+                        /* Deserialize the pre-state byte from the contract. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check for pre-state. */
+                        if(nState != TAO::Register::STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::STAKE: register pre-state doesn't exist");
+
+                        /* Read the register from database. */
+                        TAO::Register::Object object;
+                        contract >>= object;
+
+                        /* Calculate the new operation. */
+                        if(!Stake::Execute(object, nAmount, contract.Timestamp()))
+                            return false;
+
+                        /* Deserialize the pre-state byte from contract. */
+                        nState = 0;
+                        contract >>= nState;
+
+                        /* Check for pre-state. */
+                        if(nState != TAO::Register::STATES::POSTSTATE)
+                            return debug::error(FUNCTION, "OP::STAKE: register post-state doesn't exist");
+
+                        /* Deserialize the checksum from contract. */
+                        uint64_t nChecksum = 0;
+                        contract >>= nChecksum;
+
+                        /* Check the post-state to register state. */
+                        if(nChecksum != object.GetHash())
+                            return debug::error(FUNCTION, "OP::STAKE: invalid register post-state");
+
+                        /* Commit the register to disk. */
+                        if(!Stake::Commit(object, nFlags))
+                            return debug::error(FUNCTION, "OP::STAKE: failed to write final state");
+
+                        break;
+                    }
+
+
+                    /* Move funds from trust account stake to balance. */
+                    case OP::UNSTAKE:
+                    {
+                        /* Make sure there are no conditions. */
+                        if(contract.Conditions())
+                            return debug::error(FUNCTION, "OP::UNSTAKE: conditions not allowed on unstake");
+
+                        /* Verify the operation rules. */
+                        if(!Unstake::Verify(contract))
+                            return false;
+
+                        /* Amount of funds to move. */
+                        uint64_t nAmount;
+                        contract >> nAmount;
+
+                        /* Trust score penalty from unstake. */
+                        uint64_t nTrustPenalty;
+                        contract >> nTrustPenalty;
+
+                        /* Deserialize the pre-state byte from the contract. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check for pre-state. */
+                        if(nState != TAO::Register::STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::UNSTAKE: register pre-state doesn't exist");
+
+                        /* Read the register from database. */
+                        TAO::Register::Object object;
+                        contract >>= object;
+
+                        /* Calculate the new operation. */
+                        if(!Unstake::Execute(object, nAmount, nTrustPenalty, contract.Timestamp()))
+                            return false;
+
+                        /* Deserialize the pre-state byte from contract. */
+                        nState = 0;
+                        contract >>= nState;
+
+                        /* Check for pre-state. */
+                        if(nState != TAO::Register::STATES::POSTSTATE)
+                            return debug::error(FUNCTION, "OP::UNSTAKE: register post-state doesn't exist");
+
+                        /* Deserialize the checksum from contract. */
+                        uint64_t nChecksum = 0;
+                        contract >>= nChecksum;
+
+                        /* Check the post-state to register state. */
+                        if(nChecksum != object.GetHash())
+                            return debug::error(FUNCTION, "OP::UNSTAKE: invalid register post-state");
+
+                        /* Commit the register to disk. */
+                        if(!Unstake::Commit(object, nFlags))
+                            return debug::error(FUNCTION, "OP::UNSTAKE: failed to write final state");
 
                         break;
                     }

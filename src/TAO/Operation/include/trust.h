@@ -61,7 +61,7 @@ namespace TAO
 
             /** Execute
              *
-             *  Handles the locking of stake in a stake register.
+             *  Handles the Coinstake operation for a trust transaction.
              *
              *  @param[out] trust The trust object register to stake.
              *  @param[in] nReward The reward to apply to trust account.
