@@ -432,11 +432,14 @@ namespace TAO
          * Similarly if we find a transfer transaction for a register before any other transaction
          * then we must know we currently to NOT own it.
          */
-        bool ListRegisters(const uint512_t& hashGenesis, std::vector<uint256_t>& vRegisters)
+        bool ListRegisters(const uint256_t& hashGenesis, std::vector<uint256_t>& vRegisters)
         {
             /* Get the last transaction. */
             uint512_t hashLast = 0;
-            if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+
+            /* Get the last transaction for this genesis.  NOTE that we include the mempool here as there may be registers that
+               have been created recently but not yet included in a block*/
+            if(!LLD::legDB->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 return false;
 
             /* Keep a running list of owned and transferred registers. We use a set to store these registers because
@@ -451,7 +454,7 @@ namespace TAO
             {
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadTx(hashLast, tx))
+                if(!LLD::legDB->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-28, "Failed to read transaction");
 
                 /* Set the next last. */
@@ -462,6 +465,9 @@ namespace TAO
                 {
                     /* Get the contract output. */
                     const TAO::Operation::Contract& contract = tx[nContract];
+
+                    /* Seek to start of the operation stream in case this a transaction from mempool that has already been read*/
+                    contract.Seek(0);
 
                     /* Deserialize the OP. */
                     uint8_t OP = 0;

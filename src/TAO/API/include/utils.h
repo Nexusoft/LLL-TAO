@@ -128,7 +128,7 @@ namespace TAO
         *  @return A vector of register addresses owned by the sig chain
         *
         **/
-        bool ListRegisters(const uint512_t& hashGenesis, std::vector<uint256_t>& vRegisters);
+        bool ListRegisters(const uint256_t& hashGenesis, std::vector<uint256_t>& vRegisters);
 
 
         /** GetObjectName
