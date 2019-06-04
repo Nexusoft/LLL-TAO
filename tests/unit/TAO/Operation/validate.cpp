@@ -26,7 +26,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "Condition Primitive Tests", "[operation]" )
+TEST_CASE( "Validate Primitive Tests", "[operation]" )
 {
     using namespace TAO::Register;
     using namespace TAO::Operation;
@@ -36,10 +36,15 @@ TEST_CASE( "Condition Primitive Tests", "[operation]" )
     {
 
         //create object
-        uint256_t hashToken    = LLC::GetRand256();
-        uint256_t hashAccount  = LLC::GetRand256();
-        uint256_t hashGenesis  = LLC::GetRand256();
+        uint256_t hashToken     = LLC::GetRand256();
+        uint256_t hashAccount   = LLC::GetRand256();
+        uint256_t hashGenesis   = LLC::GetRand256();
 
+        uint256_t hashToken2    = LLC::GetRand256();
+        uint256_t hashAccount2  = LLC::GetRand256();
+        uint256_t hashGenesis2  = LLC::GetRand256();
+
+        //make first sigchain accounts and tokens.
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -73,6 +78,50 @@ TEST_CASE( "Condition Primitive Tests", "[operation]" )
 
             //payload
             tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //commit to disk
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+        }
+
+
+
+        //make second account and token
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis2;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //create object
+            Object token = CreateToken(hashToken2, 1000, 100);
+
+            //payload
+            tx[0] << uint8_t(OP::CREATE) << hashToken2 << uint8_t(REGISTER::OBJECT) << token.GetState();
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //commit to disk
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+        }
+
+
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis2;
+            tx.nSequence   = 1;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //create object
+            Object account = CreateAccount(hashToken2);
+
+            //payload
+            tx[0] << uint8_t(OP::CREATE) << hashAccount2 << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
