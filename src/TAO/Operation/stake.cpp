@@ -13,7 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/operations.h>
+#include <TAO/Operation/include/stake.h>
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -25,42 +26,16 @@ namespace TAO
     namespace Operation
     {
 
-        /* Move balance to stake for trust account. */
-        bool Stake(const uint64_t nAmount, const uint8_t nFlags, TAO::Ledger::Transaction &tx)
+        /*  Commit the final state to disk. */
+        bool Stake::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
-            /* Read the register from the database. */
-            TAO::Register::Object trustAccount;
+            return LLD::regDB->WriteTrust(state.hashOwner, state);
+        }
 
-            /* Write pre-states. */
-            if((nFlags & TAO::Register::FLAGS::PRESTATE))
-            {
-                /* Set the register pre-states. */
-                if(!LLD::regDB->ReadTrust(tx.hashGenesis, trustAccount)) //TODO: memory states for this index
-                        return debug::error(FUNCTION, "Trust address doesn't exist ", tx.hashGenesis.ToString());
 
-                tx.ssRegister << uint8_t(TAO::Register::STATES::PRESTATE) << trustAccount;
-            }
-
-            /* Get pre-states on write. */
-            if(nFlags & TAO::Register::FLAGS::WRITE
-            || nFlags & TAO::Ledger::FLAGS::MEMPOOL)
-            {
-                /* Get the state byte. */
-                uint8_t nState = 0; //RESERVED
-                tx.ssRegister >> nState;
-
-                /* Check for the pre-state. */
-                if(nState != TAO::Register::STATES::PRESTATE)
-                        return debug::error(FUNCTION, "Register script not in pre-state");
-
-                /* Get the pre-state. */
-                tx.ssRegister >> trustAccount;
-            }
-
-            /* Check ownership of register. */
-            if(trustAccount.hashOwner != tx.hashGenesis)
-                return debug::error(FUNCTION, tx.hashGenesis.ToString(), "Caller not authorized to add stake to trust account");
-
+        /* Move balance to stake for trust account. */
+        bool Stake::Execute(TAO::Register::Object &trustAccount, const uint64_t nAmount, const uint64_t nTimestamp)
+        {
             /* Parse the account object register. */
             if(!trustAccount.Parse())
                 return debug::error(FUNCTION, "Failed to parse account object register");
@@ -72,55 +47,62 @@ namespace TAO
             if(nAmount > nBalancePrev)
                 return debug::error(FUNCTION, "cannot add stake exceeding existing trust account balance");
 
-            /* Move requested funds from balance to stake */
-            uint64_t nBalance = nBalancePrev - nAmount;
-            uint64_t nStake = nStakePrev + nAmount;
-
             /* Write the new balance to object register. */
-            if(!trustAccount.Write("balance", nBalance))
+            if(!trustAccount.Write("balance", nBalancePrev - nAmount))
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Write the new stake to object register. */
-            if(!trustAccount.Write("stake", nStake))
+            if(!trustAccount.Write("stake", nStakePrev + nAmount))
                 return debug::error(FUNCTION, "stake could not be written to object register");
 
             /* Update the state register's timestamp. */
-            trustAccount.nTimestamp = tx.nTimestamp;
+            trustAccount.nModified = nTimestamp;
             trustAccount.SetChecksum();
 
             /* Check that the register is in a valid state. */
             if(!trustAccount.IsValid())
-                return debug::error(FUNCTION, "trust address ", tx.hashGenesis.ToString(), " is in invalid state");
+                return debug::error(FUNCTION, "trust account is in invalid state");
 
-            /* Write post-state checksum. */
-            if((nFlags & TAO::Register::FLAGS::POSTSTATE))
-                tx.ssRegister << uint8_t(TAO::Register::STATES::POSTSTATE) << trustAccount.GetHash();
+            return true;
+        }
 
-            /* Verify the post-state checksum. */
-            if(nFlags & TAO::Register::FLAGS::WRITE
-            || nFlags & TAO::Ledger::FLAGS::MEMPOOL)
-            {
-                /* Check register post-state checksum. */
-                uint8_t nState = 0; //RESERVED
-                tx.ssRegister >> nState;
 
-                /* Check for the pre-state. */
-                if(nState != TAO::Register::STATES::POSTSTATE)
-                    return debug::error(FUNCTION, "register script not in post-state");
+        /* Verify trust validation rules and caller. */
+        bool Stake::Verify(const Contract& contract)
+        {
+            /* Seek read position to first position. */
+            contract.Reset();
 
-                /* Get the post state checksum. */
-                uint64_t nChecksum;
-                tx.ssRegister >> nChecksum;
+            /* Get operation byte. */
+            uint8_t OP = 0;
+            contract >> OP;
 
-                /* Check for matching post states. */
-                if(nChecksum != trustAccount.GetHash())
-                    return debug::error(FUNCTION, "register script has invalid post-state");
+            /* Check operation byte. */
+            if(OP != OP::STAKE)
+                return debug::error(FUNCTION, "called with incorrect OP");
 
-                /* Update the register database with the index. */
-                if((nFlags & TAO::Register::FLAGS::WRITE) && !LLD::regDB->WriteTrust(tx.hashGenesis, trustAccount))
-                    return debug::error(FUNCTION, "failed to write new state");
+            /* Get the state byte. */
+            uint8_t nState = 0; //RESERVED
+            contract >>= nState;
 
-            }
+            /* Check for the pre-state. */
+            if(nState != TAO::Register::STATES::PRESTATE)
+                return debug::error(FUNCTION, "register script not in pre-state");
+
+            /* Get the pre-state. */
+            TAO::Register::State state;
+            contract >>= state;
+
+            /* Check that pre-state is valid. */
+            if(!state.IsValid())
+                return debug::error(FUNCTION, "pre-state is in invalid state");
+
+            /* Check ownership of register. */
+            if(state.hashOwner != contract.Caller())
+                return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
+
+            /* Seek read position to first position. */
+            contract.Seek(1);
 
             return true;
         }
