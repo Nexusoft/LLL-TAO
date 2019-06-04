@@ -72,6 +72,11 @@ namespace TAO
             if(!LLD::legDB->ReadTx(hashClaim, txTranser))
                 throw APIException(-23, "Transfer transaction not found.");
 
+            /* Check to see whether they have provided a new name */
+            std::string strName;
+            if(params.find("name") != params.end())
+                strName = params["name"].get<std::string>();
+
             /* Loop through all transactions. */
             int32_t nCurrent = -1;
             for(uint32_t nContract = 0; nContract < txTranser.Size(); ++nContract)
@@ -102,12 +107,20 @@ namespace TAO
                 /* Submit the payload object. */
                 tx[++nCurrent] << (uint8_t)TAO::Operation::OP::CLAIM << hashClaim << uint32_t(nContract) << hashAddress;
 
-                /* If we are claiming a named asset, determine the name from the previous owner's sig chain
-                and create a new Name record under our sig chain for the same name */
-                TAO::Operation::Contract nameContract = CreateNameFromTransfer(hashClaim, user->Genesis());
-                /* If the Name contract operation was created then add it to the transaction */
-                if(!nameContract.Empty())
-                    tx[++nCurrent] = nameContract;
+                /* If the caller has passed in a name then create a name record using the new name */
+                if(!strName.empty())
+                {
+                    CreateName(user->Genesis(), strName, hashAddress, tx[++nCurrent]);
+                }
+                else
+                {
+                    /* Determine the name from the previous owner's sig chain and create a new 
+                       Name record under our sig chain for the same name */
+                    TAO::Operation::Contract nameContract = CreateNameFromTransfer(hashClaim, user->Genesis());
+                    /* If the Name contract operation was created then add it to the transaction */
+                    if(!nameContract.Empty())
+                        tx[++nCurrent] = nameContract;
+                }
 
             }
 
