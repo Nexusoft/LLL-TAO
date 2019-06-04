@@ -46,7 +46,11 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
             }
 
-            return LLD::Register->WriteState(hashFrom, account, nFlags);
+            /* Attempt to write to disk. */
+            if(!LLD::Register->WriteState(hashFrom, account, nFlags))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 
@@ -110,6 +114,11 @@ namespace TAO
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashTo))
                 return debug::error(FUNCTION, "cannot transfer register to reserved address");
+
+            /* Check the contract for conditions. */
+            if(hashTo == ~uint256_t(0) && !contract.Conditions())
+                return debug::error(FUNCTION, "cannot debit to wildcard with no conditions");
+
 
             /* Check for debit to and from same account. */
             if(hashFrom == hashTo)

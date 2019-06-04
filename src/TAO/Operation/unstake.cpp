@@ -29,7 +29,11 @@ namespace TAO
         /*  Commit the final state to disk. */
         bool Unstake::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
-            return LLD::Register->WriteTrust(state.hashOwner, state);
+            /* Attempt to write to disk. */
+            if(!LLD::Register->WriteTrust(state.hashOwner, state))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 

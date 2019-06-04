@@ -31,7 +31,11 @@ namespace TAO
         /* Commit the final state to disk. */
         bool Append::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
         {
-            return LLD::Register->WriteState(hashAddress, state, nFlags);
+            /* Attempt to write new state to disk. */
+            if(!LLD::Register->WriteState(hashAddress, state, nFlags))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 

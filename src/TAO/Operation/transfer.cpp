@@ -41,7 +41,11 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to write event");
             }
 
-            return LLD::Register->WriteState(hashAddress, state, nFlags);
+            /* Attempt to write the new state. */
+            if(!LLD::Register->WriteState(hashAddress, state, nFlags))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 
@@ -92,6 +96,10 @@ namespace TAO
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashTransfer))
                 return debug::error(FUNCTION, "cannot transfer register to reserved address");
+
+            /* Check the contract for conditions. */
+            if(hashTransfer == ~uint256_t(0) && !contract.Conditions())
+                return debug::error(FUNCTION, "cannot transfer to wildcard with no conditions");
 
             /* Get the state byte. */
             uint8_t nState = 0; //RESERVED

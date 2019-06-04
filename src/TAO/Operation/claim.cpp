@@ -40,7 +40,11 @@ namespace TAO
             if(!LLD::Ledger->WriteProof(hashAddress, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "transfer is already claimed");
 
-            return LLD::Register->WriteState(hashAddress, state, nFlags);
+            /* Attempt to write new state to disk. */
+            if(!LLD::Register->WriteState(hashAddress, state, nFlags))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 
@@ -110,7 +114,7 @@ namespace TAO
             /* Check the addresses match. */
             if(state.hashOwner != contract.Caller() //claim to self
             && hashTransfer    != contract.Caller() //calim to transfer
-            && hashTransfer    != ~uint256_t(0))      //claim to wildcard (anyone)
+            && hashTransfer    != ~uint256_t(0))   //claim to wildcard (anyone)
                 return debug::error(FUNCTION, "claim public-id mismatch with transfer address");
 
             /* Check that pre-state is valid. */

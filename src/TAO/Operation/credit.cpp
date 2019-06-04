@@ -64,7 +64,10 @@ namespace TAO
             }
 
             /* Write the new register's state. */
-            return LLD::Register->WriteState(hashAddress, account, nFlags);
+            if(!LLD::Register->WriteState(hashAddress, account, nFlags))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 

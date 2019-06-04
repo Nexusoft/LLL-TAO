@@ -449,7 +449,7 @@ namespace TAO
                     /* Debit tokens from an account you own. */
                     case TAO::Operation::OP::LEGACY:
                     {
-                        /* Get last trust block. */
+                        /* Get account from block. */
                         uint256_t hashFrom = 0;
                         contract >> hashFrom;
 
@@ -510,8 +510,9 @@ namespace TAO
                             uint32_t nContract = 0;
                             contract >> nContract;
 
-                            //erase the validator.
-
+                            /* Erase the contract validation record. */
+                            if(!LLD::Contract->EraseContract(std::make_pair(hashTx, nContract)))
+                                return debug::error(FUNCTION, "failed to erase validation contract");
 
                             break;
                         }

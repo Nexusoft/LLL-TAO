@@ -51,25 +51,26 @@ namespace TAO
              *
              *  @param[in] hashTx The transaction-id being claimed.
              *  @param[in] nContract The contract output being claimed.
+             *  @param[in] hashCaller The contract caller.
              *  @param[in] nFlags Flags to the LLD instance.
              *
              *  @return true if successful.
              *
              **/
-            bool Commit(const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags);
+            bool Commit(const uint512_t& hashTx, const uint32_t nContract, const uint256_t& hashCaller, const uint8_t nFlags);
 
 
             /** Verify
              *
              *  Verify validation rules and caller.
              *
-             *  @param[in] contract The 'calling' contract to verify.
-             *  @param[in] claim The 'transferred' contract to verify.
+             *  @param[in] contract The contract that is executing.
+             *  @param[in] condition The contract that is being verified.
              *
              *  @return true if successful.
              *
              **/
-            bool Verify(const Contract& contract, const Contract& claim);
+            bool Verify(const Contract& contract, const Contract& condition);
         }
     }
 }

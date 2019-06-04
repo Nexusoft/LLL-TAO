@@ -66,6 +66,18 @@ namespace LLD
                            const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
+        /** EraseContract
+         *
+         *  Erase a caller that fulfilled a conditional agreement.
+         *
+         *  @param[in] pairContract The origin contract
+         *
+         *  @return True if erased, false otherwise.
+         *
+         **/
+        bool EraseContract(const std::pair<uint512_t, uint32_t>& pairContract);
+
+
         /** ReadContract
          *
          *  Reads a caller that fulfilled a conditional agreement.

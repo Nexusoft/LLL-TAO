@@ -129,7 +129,11 @@ namespace TAO
             if(LLD::Register->HasState(hashAddress, nFlags))
                 return debug::error(FUNCTION, "cannot allocate register of same memory address ", hashAddress.SubString());
 
-            return LLD::Register->WriteState(hashAddress, state, nFlags);
+            /* Attempt to write new state to disk. */
+            if(!LLD::Register->WriteState(hashAddress, state, nFlags))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 

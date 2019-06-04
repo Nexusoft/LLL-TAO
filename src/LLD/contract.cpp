@@ -61,6 +61,19 @@ namespace LLD
     }
 
 
+    /* Writes a caller that fulfilled a conditional agreement.*/
+    bool ContractDB::EraseContract(const std::pair<uint512_t, uint32_t>& pairContract)
+    {
+        LOCK(MEMORY_MUTEX);
+
+        /* Remove the memory state if writing the disk state. */
+        if (mapContracts.count(pairContract))
+            mapContracts.erase(pairContract);
+
+        return Erase(pairContract);
+    }
+
+
     /* Reads a caller that fulfilled a conditional agreement.*/
     bool ContractDB::ReadContract(const std::pair<uint512_t, uint32_t>& pairContract, uint256_t& hashCaller, const uint8_t nFlags)
     {
