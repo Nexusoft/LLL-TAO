@@ -178,7 +178,7 @@ int main(int argc, char** argv)
         throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
 
     /* Set the bytes for the key. */
-    uint256_t hashKey;
+    uint512_t hashKey;
     hashKey.SetBytes(vHash);
 
     /* Get the secret from new key. */
