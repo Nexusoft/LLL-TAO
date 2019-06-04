@@ -28,9 +28,6 @@ alias tail-nexus        'tail -f /root/.TAO//debug.log'
 # interface for legacy compatibility, (2) the command-line API, and (3)
 # a restful HTTP/JSON interface.    
 #
-alias nexus-api          '/nexus/nexus -api'
-alias nexus-rpc          '/nexus/nexus'
-#alias nexus-rpc         '/nexus/nexus -testnet'
 alias curl-nexus         '/nexus/curl-nexus'
 alias getinfo            'nexus-rpc getinfo'
 alias getpeerinfo        'nexus-rpc getpeerinfo'

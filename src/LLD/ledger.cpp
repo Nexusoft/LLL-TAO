@@ -360,8 +360,21 @@ namespace LLD
 
 
     /* Reads the last txid of sigchain to disk indexed by genesis. */
-    bool LedgerDB::ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast)
+    bool LedgerDB::ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast, const uint8_t nFlags)
     {
+        /* If the caller has requested to include mempool transactions then check there first*/
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            TAO::Ledger::Transaction mempoolTx;
+            if(TAO::Ledger::mempool.Get(hashGenesis, mempoolTx))
+            {
+                hashLast = mempoolTx.GetHash();
+
+                return true;
+            }
+        }
+
+        /* If we haven't checked the mempool or haven't found one in the mempool then read the last from the ledger DB */
         return Read(std::make_pair(std::string("last"), hashGenesis), hashLast);
     }
 

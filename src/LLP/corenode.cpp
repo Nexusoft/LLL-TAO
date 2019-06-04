@@ -135,8 +135,6 @@ namespace LLP
                 ret = { {"result", TAO::API::assets->Execute(METHOD, params) } };
             else if(strAPI == "ledger")
                 ret = { {"result", TAO::API::ledger->Execute(METHOD, params) } };
-            else if(strAPI == "lisp")
-                ret = { {"result", TAO::API::lisp->Execute(METHOD, params) } };
             else if(strAPI == "tokens")
                 ret = { {"result", TAO::API::tokens->Execute(METHOD, params) } };
             else if(strAPI == "system")

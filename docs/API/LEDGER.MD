@@ -10,8 +10,8 @@ The following methods are currently supported by this API
 [`get/blockhash`](#getblockhash)  
 [`get/block`](#getblock)   
 [`list/blocks`](#listblocks)   
-[`get/transaction`](#gettransaction)  
-[`submit/transaction`](#submittransaction)  
+[`get/transaction`](#gettransaction)   
+[`submit/transaction`](#submittransaction)   
 [`get/mininginfo`](#getmininginfo)  
  
 
@@ -319,9 +319,8 @@ Retrieves transaction data for a given transaction hash.
 `hash` : The block hash to retrieve the block data for. This is ignored if `raw` format is requested.
 
 `verbose` : Optional, determines how much transaction data to include in the response. This is ignored if `raw` format is requested.  Supported values are :
- - `default` : hash, type, version, sequence, timestamp, and operation
- - `summary` : all of the above plus genesis, nexthash, and prevhash
- - `detail` : all of the above plus pubkey and signature
+ - `summary` : hash, type, version, sequence, timestamp, and operation.
+ - `detail` : genesis, nexthash, prevhash, pubkey and signature.
 
 
 ### Return value JSON object:
@@ -344,6 +343,8 @@ Retrieves transaction data for a given transaction hash.
 ```
 
 ### Return values:
+
+`data` : If `format` was specified as `raw` then the response will contain only the data field containing the raw, hex encoded, transaction data.
 
 `hash` : The transaction hash.
 

@@ -317,7 +317,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_ledger_initialize.o \
 		build/API_ledger_state.o \
 		build/API_ledger_transaction.o \
-		build/API_lisp_lisp.o \
+		build/API_system_lisp.o \
 		build/API_system_system.o \
 		build/API_RPC_account.o \
 		build/API_RPC_daemon.o \
@@ -361,9 +361,11 @@ OBJS+=  build/LLC_base_uint.o \
         build/Operation_execute.o \
 		build/Operation_genesis.o \
 		build/Operation_legacy.o \
+		build/Operation_stake.o \
 		build/Operation_transfer.o \
 		build/Operation_trust.o \
 		build/Operation_validate.o \
+		build/Operation_unstake.o \
 		build/Operation_write.o \
 		build/Register_basevm.o \
 		build/Register_build.o \
@@ -531,9 +533,6 @@ build/API_finance_%.o: ./src/TAO/API/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_ledger_%.o: ./src/TAO/API/ledger/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
-
-build/API_lisp_%.o: ./src/TAO/API/lisp/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_RPC_%.o: ./src/TAO/API/RPC/%.cpp $(HEADERS)
@@ -776,13 +775,6 @@ build/API_finance_%.o: src/TAO/API/finance/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_ledger_%.o: src/TAO/API/ledger/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_lisp_%.o: src/TAO/API/lisp/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1150,13 +1142,6 @@ build/API_finance_%.o: src/TAO/API/finance/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_ledger_%.o: src/TAO/API/ledger/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_lisp_%.o: src/TAO/API/lisp/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

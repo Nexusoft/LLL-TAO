@@ -158,32 +158,35 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_objects_get_schema_by_name(self, name):
-        """
-        Get object register scheme definition by supplying 'name' it was
-        created by.
-        """
-
-        parms = "?session={}&name={}&format=json".format(self.session_id, name)
-
-        url = objects_url.format(sdk_url, "get/schema") + parms
-        json_data = self.__get(url)
-        return(json_data)
-    #enddef
-
-    def nexus_objects_get_schema_by_address(self, address):
-        """
-        Get object register scheme definition by supplying 'address' returned
-        from nexus_objects_create_schema_by_name().
-        """
-
-        parms = "?session={}&address={}&format=json".format(self.session_id,
-            address)
-
-        url = objects_url.format(sdk_url, "get/schema") + parms
-        json_data = self.__get(url)
-        return(json_data)
-    #enddef
+#
+# Back-end objects API code not done yet.
+#
+#    def nexus_objects_get_schema_by_name(self, name):
+#        """
+#        Get object register scheme definition by supplying 'name' it was
+#        created by.
+#        """
+#
+#        parms = "?session={}&name={}&format=json".format(self.session_id, name)
+#
+#        url = objects_url.format(sdk_url, "get/schema") + parms
+#        json_data = self.__get(url)
+#        return(json_data)
+#    #enddef
+#
+#    def nexus_objects_get_schema_by_address(self, address):
+#        """
+#        Get object register scheme definition by supplying 'address' returned
+#        from nexus_objects_create_schema_by_name().
+#        """
+#
+#        parms = "?session={}&address={}&format=json".format(self.session_id,
+#            address)
+#
+#        url = objects_url.format(sdk_url, "get/schema") + parms
+#        json_data = self.__get(url)
+#        return(json_data)
+#    #enddef
 
     def nexus_ledger_get_blockhash(self, height):
         """
@@ -534,7 +537,8 @@ class sdk_init():
         """
         if (self.genesis_id == None): return(self.__error("Not logged in"))
 
-        parms = "?genesis={}&page={}&limit={}".format(self.genesis_id)
+        parms = "?genesis={}&page={}&limit={}".format(self.genesis_id, page,
+            limit)
 
         url = users_url.format(sdk_url, "list/tokens") + parms
         json_data = self.__get(url)
@@ -771,11 +775,11 @@ class sdk_init():
         json_data = self.__get(url)
 
         #
-        # Unquote data if "metadata" key is present.
+        # Unquote data if "data" key is present.
         #
         if (json_data.has_key("result")):
-            data = urllib.unquote_plus(json_data["result"]["metadata"])
-            json_data["result"]["metadata"] = data.replace("%26", "&")
+            data = urllib.unquote_plus(json_data["result"]["data"])
+            json_data["result"]["data"] = data.replace("%26", "&")
         #endif
         return(json_data)
     #enddef
@@ -791,11 +795,11 @@ class sdk_init():
         json_data = self.__get(url)
 
         #
-        # Unquote data if "metadataa" key is present.
+        # Unquote data if "data" key is present.
         #
         if (json_data.has_key("result")):
-            data = urllib.unquote_plus(json_data["result"]["metadata"])
-            json_data["result"]["metadata"] = data.replace("%26", "&")
+            data = urllib.unquote_plus(json_data["result"]["data"])
+            json_data["result"]["data"] = data.replace("%26", "&")
         #endif
         return(json_data)
     #enddef

@@ -10,7 +10,7 @@ The following methods are currently supported by this API
 
 [`get/info`](#getinfo)   
 [`list/peers`](#listpeers)   
-[`get/lisp-eids`](#getlisp-eids)   
+[`list/lisp-eids`](#listlisp-eids)   
 
 -----------------------------------
 ***
@@ -61,6 +61,8 @@ Returns a summary of information about this node
 `walletversion` : Legacy wallet version.
 
 `timestamp` : Current unified time as reported by this node.
+
+`hostname` : The local machine host name.
 
 `testnet` : If this node is running on the testnet then this shows the testnet number.
 
@@ -149,14 +151,14 @@ Returns a summary of information about the peers currently connected to this nod
 
 ***
 
-# `get\lisp-eids`
+# `list\lisp-eids`
 
-This will return the LISP Endpoint Indentifers (EID's) currently configured for this node.
+This will return the LISP Endpoint Indentifers (EID's) currently configured for this node.  If the lispers.net API is not running / available then this will return an empty array.
 
 
 ### Endpoint:
 
-`/objects/get/lisp-eids`
+`/system/list/lisp-eids`
 
 
 ### Parameters:
@@ -165,18 +167,46 @@ NONE
 
 ### Return value JSON object:
 ```
-{
-"eids":
-    [
-        "240.231.221.134/32",
-        "fe00::231:221:134/128"
-    ]
-}
+[
+    {
+        "instance-id": "200",
+        "eid": "240.139.76.244",
+        "rlocs": [
+            {
+                "interface": "wlp59s0",
+                "rloc-name": "mymachine",
+                "rloc": "102.162.64.46"
+            }
+        ]
+    },
+    {
+        "instance-id": "200",
+        "eid": "fe::139:76:244",
+        "rlocs": [
+            {
+                "interface": "wlp59s0",
+                "rloc-name": "mymachine",
+                "rloc": "102.162.64.46"
+            }
+        ]
+    }
+]
+
 ```
 
 ### Return values:
 
-`eids` : The array of LISP EID's currently configured for this node.
+`instance-id` : The LISP instance group that this EID belongs to.  
+
+`eid` : The endpoint identifier.  This can be either IPv4 or IPv6 format
+
+`rlocs` : The array of RLOC's (routing locators) associtated with the EID
+
+`interface` : Name of the device for the RLOC
+
+`rloc-name` : Hostname associated with the device
+
+`rloc` : The IP address associated with the device. 
 
 
 ***

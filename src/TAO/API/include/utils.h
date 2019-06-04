@@ -55,11 +55,12 @@ namespace TAO
         *
         *  @param[in] hashTransfer The transaction ID of the transfer transaction being claimed
         *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
-        *  @param[out] contract The contract to create a name for.
+        *  
+        *  @return contract The contract to create a name for.
         *
         **/
-        void CreateNameFromTransfer(const uint512_t& hashTransfer,
-                                    const uint256_t& hashGenesis, TAO::Operation::Contract& contract);
+        TAO::Operation::Contract CreateNameFromTransfer(const uint512_t& hashTransfer,
+                                    const uint256_t& hashGenesis);
 
 
         /** RegisterAddressFromName
@@ -127,7 +128,7 @@ namespace TAO
         *  @return A vector of register addresses owned by the sig chain
         *
         **/
-        bool ListRegisters(const uint512_t& hashGenesis, std::vector<uint256_t>& vRegisters);
+        bool ListRegisters(const uint256_t& hashGenesis, std::vector<uint256_t>& vRegisters);
 
 
         /** GetObjectName

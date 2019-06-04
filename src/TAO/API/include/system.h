@@ -82,6 +82,19 @@ namespace TAO
             json::json ListPeers(const json::json& params, bool fHelp);
 
 
+            /** LispEIDs
+             *
+             *  Queries the lisp api and returns the EID's for this node
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json LispEIDs(const json::json& params, bool fHelp);
+
+
 
         };
     }

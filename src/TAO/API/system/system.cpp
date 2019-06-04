@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <Legacy/include/money.h>
 
 #include <LLP/types/corenode.h>
+#include <LLP/include/network.h>
 #include <LLP/include/global.h>
 #include <LLP/include/version.h>
 #include <LLP/include/lisp.h>
@@ -22,7 +23,6 @@ ________________________________________________________________________________
 #include <LLP/include/trust_address.h>
 
 #include <TAO/API/include/system.h>
-#include <TAO/API/include/lisp.h>
 #include <TAO/Ledger/include/chainstate.h>
 
 #include <Util/include/debug.h>
@@ -45,6 +45,7 @@ namespace TAO
         {
             mapFunctions["get/info"] = Function(std::bind(&System::GetInfo,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/peers"] = Function(std::bind(&System::ListPeers,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/lisp-eids"] = Function(std::bind(&System::LispEIDs, this, std::placeholders::_1, std::placeholders::_2));
         }
 
 
@@ -66,6 +67,11 @@ namespace TAO
 
             /* Current unified time as reported by this node*/
             jsonRet["timestamp"] =  (int)runtime::unifiedtimestamp();
+
+            /* The hostname of this machine */
+            char hostname[128];
+            gethostname(hostname, sizeof(hostname));
+            jsonRet["hostname"] = std::string(hostname); 
 
             /* If this node is running on the testnet then this shows the testnet number*/
             jsonRet["testnet"] = config::GetArg("-testnet", 0);
@@ -94,10 +100,11 @@ namespace TAO
 
 
             // The EID's of this node if using LISP
-            if( LLP::EIDS.size() > 0)
+            std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
+            if(mapEIDs.size() > 0)
             {
                 json::json jsonEIDs = json::json::array();
-                for(const auto& eid : LLP::EIDS)
+                for(const auto& eid :mapEIDs)
                 {
                     jsonEIDs.push_back( eid.first);
                 }

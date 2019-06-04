@@ -38,7 +38,7 @@ namespace config
     std::atomic<bool> fUseProxy(false);
     std::atomic<bool> fAllowDNS(false);
     std::atomic<bool> fLogTimestamps(false);
-    std::atomic<bool> fMultiUser(false);
+    std::atomic<bool> fMultiuser(false);
 
     std::mutex ARGS_MUTEX;
 
@@ -168,7 +168,7 @@ namespace config
         //fUseProxy               = GetBoolArg("-proxy")
         fAllowDNS               = GetBoolArg("-allowdns", true);
         fLogTimestamps          = GetBoolArg("-logtimestamps", false);
-        fMultiUser            = GetBoolArg("-multiuser", false);
+        fMultiuser            = GetBoolArg("-multiuser", false);
 
 
         /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/

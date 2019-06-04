@@ -24,8 +24,10 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/debit.h>
 #include <TAO/Operation/include/genesis.h>
 #include <TAO/Operation/include/legacy.h>
+#include <TAO/Operation/include/stake.h>
 #include <TAO/Operation/include/transfer.h>
 #include <TAO/Operation/include/trust.h>
+#include <TAO/Operation/include/unstake.h>
 #include <TAO/Operation/include/write.h>
 
 #include <TAO/Register/include/build.h>
@@ -305,6 +307,10 @@ namespace TAO
                         uint64_t nReward = 0;
                         contract >> nReward;
 
+                        /* Check that indexed trust account exists. */
+                        if(!LLD::Register->HasTrust(contract.Caller()))
+                            return debug::error(FUNCTION, "OP::TRUST: no trust without genesis");
+
                         /* Serialize the pre-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
 
@@ -348,6 +354,10 @@ namespace TAO
                         uint64_t nReward = 0;
                         contract >> nReward;
 
+                        /* Check that no indexed trust account exists. */
+                        if(LLD::Register->HasTrust(contract.Caller()))
+                            return debug::error(FUNCTION, "OP::GENESIS: trust account previously indexed");
+
                         /* Serialize the pre-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
 
@@ -366,6 +376,96 @@ namespace TAO
                         /* Calculate the new operation. */
                         if(!TAO::Operation::Genesis::Execute(object, nReward, contract.Timestamp()))
                             return debug::error(FUNCTION, "OP::GENESIS: cannot generate post-state");
+
+                        /* Serialize the post-state byte into contract. */
+                        contract <<= uint8_t(TAO::Register::STATES::POSTSTATE);
+
+                        /* Serialize the checksum into contract. */
+                        contract <<= object.GetHash();
+
+                        /* Write the state to memory map. */
+                        mapStates[contract.Caller()] = TAO::Register::State(object);
+
+                        break;
+                    }
+
+
+                    /* Move funds from trust account balance to stake. */
+                    case TAO::Operation::OP::STAKE:
+                    {
+                        /* Amount to of funds to move. */
+                        uint64_t nAmount;
+                        contract >> nAmount;
+
+                        /* Check that indexed trust account exists. */
+                        if(!LLD::Register->HasTrust(contract.Caller()))
+                            return debug::error(FUNCTION, "OP::TRUST: cannot add stake without genesis");
+
+                        /* Serialize the pre-state byte into contract. */
+                        contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
+
+                        /* Check temporary memory states first. */
+                        Object object;
+                        if(mapStates.count(contract.Caller()))
+                            object = TAO::Register::Object(mapStates[contract.Caller()]);
+
+                        /* Read the register from database. */
+                        else if(!LLD::Register->ReadTrust(contract.Caller(), object))
+                            return debug::error(FUNCTION, "OP::STAKE: register pre-state doesn't exist");
+
+                        /* Serialize the pre-state into contract. */
+                        contract <<= object;
+
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Stake::Execute(object, nAmount, contract.Timestamp()))
+                            return debug::error(FUNCTION, "OP::STAKE: cannot generate post-state");
+
+                        /* Serialize the post-state byte into contract. */
+                        contract <<= uint8_t(TAO::Register::STATES::POSTSTATE);
+
+                        /* Serialize the checksum into contract. */
+                        contract <<= object.GetHash();
+
+                        /* Write the state to memory map. */
+                        mapStates[contract.Caller()] = TAO::Register::State(object);
+
+                        break;
+                    }
+
+
+                    /* Move funds from trust account stake to balance. */
+                    case TAO::Operation::OP::UNSTAKE:
+                    {
+                        /* Amount of funds to move. */
+                        uint64_t nAmount;
+                        contract >> nAmount;
+
+                        /* Trust score penalty from unstake. */
+                        uint64_t nTrustPenalty;
+                        contract >> nTrustPenalty;
+
+                        /* Check that indexed trust account exists. */
+                        if(!LLD::Register->HasTrust(contract.Caller()))
+                            return debug::error(FUNCTION, "OP::TRUST: cannot remove stake without genesis");
+
+                        /* Serialize the pre-state byte into contract. */
+                        contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
+
+                        /* Check temporary memory states first. */
+                        Object object;
+                        if(mapStates.count(contract.Caller()))
+                            object = TAO::Register::Object(mapStates[contract.Caller()]);
+
+                        /* Read the register from database. */
+                        else if(!LLD::Register->ReadTrust(contract.Caller(), object))
+                            return debug::error(FUNCTION, "OP::UNSTAKE: register pre-state doesn't exist");
+
+                        /* Serialize the pre-state into contract. */
+                        contract <<= object;
+
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Unstake::Execute(object, nAmount, nTrustPenalty, contract.Timestamp()))
+                            return debug::error(FUNCTION, "OP::UNSTAKE: cannot generate post-state");
 
                         /* Serialize the post-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::POSTSTATE);

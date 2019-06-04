@@ -53,7 +53,7 @@ namespace TAO
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
 
             /* Check for default sessions. */
-            else if(!config::fMultiUser.load() && mapSessions.count(0))
+            else if(!config::fMultiuser.load() && mapSessions.count(0))
                 hashGenesis = mapSessions[0]->Genesis();
             else
                 throw APIException(-25, "Missing Genesis or Username");

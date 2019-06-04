@@ -66,6 +66,21 @@ def bold(string):
 #enddef
 
 #
+# hl - highlight string
+#
+# Take the string "{}<method>/<verb>/<noun>?" or "{}<method>/<verb>/<noun>{}"
+# and replacae the occurence of "<verb/<noun>" in blue.
+#
+def hl(string):
+    left = string.find("/")
+    right = string.find("?")
+    if (right == -1): right = string.find("{", 2)
+    s = string[left+1:right]
+    s = string.replace(s, blue(s))
+    return(s)
+#enddef
+
+#
 # curl
 #
 # Call curl and return json.
@@ -124,18 +139,6 @@ def no_parms(*args):
         if (a == "" or a == None): return(True)
     #endfor
     return(False)
-#enddef
-
-#
-# add_block_row
-#
-# Put blank line between token tokens and token accounts.
-#
-def add_blank_row(o):
-    o += "<tr><td>"
-    o += "&nbsp;"
-    o += "</td></tr>"
-    return(o)
 #enddef
 
 #------------------------------------------------------------------------------
@@ -233,19 +236,19 @@ def build_system_html(sid, genid, o):
 
     o += "<tr><td>"
     h = form_header.format("system-get-info")
-    o += system_get_info.format(h, "<br><br>" + f)
+    o += hl(system_get_info).format(h, "<br><br>" + f)
     o += "</td>"
     o += "<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>"
 
     o += "<td>"
     h = form_header.format("system-list-peers")
-    o += system_list_peers.format(h, "<br><br>" + f)
+    o += hl(system_list_peers).format(h, "<br><br>" + f)
     o += "</td>"
     o += "<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>"
 
     o += "<td>"
     h = form_header.format("system-list-lisp-eids")
-    o += system_list_lisp_eids.format(h, "<br><br>" + f)
+    o += hl(system_list_lisp_eids).format(h, "<br><br>" + f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -330,13 +333,13 @@ def build_users_html(sid, genid, o):
     username = form_parm.format("username", "")
     password = form_parm.format("password", "")
     pin = form_parm.format("pin", "")
-    o += users_login_user.format(h, username, password, pin, f)
+    o += hl(users_login_user).format(h, username, password, pin, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = form_header.format("users-logout-user")
     session = form_parm.format("session", sid)
-    o += users_logout_user.format(h, session, f)
+    o += hl(users_logout_user).format(h, session, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -344,23 +347,21 @@ def build_users_html(sid, genid, o):
     username = form_parm.format("username", "")
     password = form_parm.format("password", "")
     pin = form_parm.format("pin", "")
-    o += users_create_user.format(h, username, password, pin, f)
+    o += hl(users_create_user).format(h, username, password, pin, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = form_header.format("users-lock-user")
     session = form_parm.format("session", sid)
-    o += users_lock_user.format(h, session, f)
+    o += hl(users_lock_user).format(h, session, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = form_header.format("users-unlock-user")
     session = form_parm.format("session", sid)
     pin = form_parm.format("pin", "")
-    o += users_unlock_user.format(h, session, pin, f)
+    o += hl(users_unlock_user).format(h, session, pin, f)
     o += "</td></tr>"
-
-    o = add_blank_row(o)
 
     o += "<tr><td>"
     h = "users-list-transactions"
@@ -370,7 +371,8 @@ def build_users_html(sid, genid, o):
     page = form_parm.format("page", "0")
     limit = form_parm.format("limit", "100")
     verbose = form_parm.format("verbose", "default")
-    o += users_list_transactions.format(h,  genesis, page, limit, verbose, f)
+    o += hl(users_list_transactions).format(h,  genesis, page, limit, verbose,
+        f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -380,7 +382,7 @@ def build_users_html(sid, genid, o):
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
     limit = form_parm.format("limit", "100")
-    o += users_list_notifications.format(h, genesis, page, limit, f)
+    o += hl(users_list_notifications).format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -390,7 +392,7 @@ def build_users_html(sid, genid, o):
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
     limit = form_parm.format("limit", "100")
-    o += users_list_assets.format(h, genesis, page, limit, f)
+    o += hl(users_list_assets).format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -400,7 +402,7 @@ def build_users_html(sid, genid, o):
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
     limit = form_parm.format("limit", "100")
-    o += users_list_tokens.format(h, genesis, page, limit, f)
+    o += hl(users_list_tokens).format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -410,7 +412,7 @@ def build_users_html(sid, genid, o):
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
     limit = form_parm.format("limit", "100")
-    o += users_list_accounts.format(h, genesis, page, limit, f)
+    o += hl(users_list_accounts).format(h, genesis, page, limit, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -696,7 +698,7 @@ supply_get_item_address = '{}supply/get/item?session={}&address={}{}'
 supply_update_item = \
     '{}supply/update/item?pin={}&session={}&address={}&data={}{}'
 supply_transfer_item = ('{}supply/transfer/item?pin={}&session={}' + \
-    '&username={}&address={}&destination={}{}')
+    '&address={}&destination={}{}')
 supply_claim_item = '{}supply/claim/item?pin={}&session={}&txid={}{}'
 supply_list_item_history_name = \
     '{}supply/list/item/history?session={}&name={}{}'
@@ -712,7 +714,7 @@ def build_supply_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += supply_get_item_name.format(h, session, name, f)
+    o += hl(supply_get_item_name).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -720,7 +722,7 @@ def build_supply_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += supply_get_item_address.format(h, session, address, f)
+    o += hl(supply_get_item_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -729,7 +731,7 @@ def build_supply_html(sid, genid, o):
     name = form_parm.format("name", "")
     data = form_parm.format("data", "")
     session = form_parm.format("session", sid)
-    o += supply_create_item.format(h, pin, session, name, data, f)
+    o += hl(supply_create_item).format(h, pin, session, name, data, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -738,17 +740,16 @@ def build_supply_html(sid, genid, o):
     data = form_parm.format("data", "")
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += supply_update_item.format(h, pin, session, address, data, f)
+    o += hl(supply_update_item).format(h, pin, session, address, data, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = form_header.format("supply-transfer-item")
     pin = form_parm.format("pin", "")
     session = form_parm.format("session", sid)
-    username = form_parm.format("username", "")
     address = form_parm.format("address", "")
     d = form_parm.format("destination", "")
-    o += supply_transfer_item.format(h, pin, session, username, address, d, f)
+    o += hl(supply_transfer_item).format(h, pin, session, address, d, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -756,17 +757,15 @@ def build_supply_html(sid, genid, o):
     pin = form_parm.format("pin", "")
     session = form_parm.format("session", sid)
     txid = form_parm.format("txid", "")
-    o += supply_claim_item.format(h, pin, session, txid, f)
+    o += hl(supply_claim_item).format(h, pin, session, txid, f)
     o += "</td></tr>"
-
-    o = add_blank_row(o)
 
     o += "<tr><td>"
     h = "supply-list-item-history-name"
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += supply_list_item_history_name.format(h, session, name, f)
+    o += hl(supply_list_item_history_name).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -774,7 +773,7 @@ def build_supply_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += supply_list_item_history_address.format(h, session, address, f)
+    o += hl(supply_list_item_history_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -879,7 +878,7 @@ def do_supply_update_item():
     if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
-        output = sdk.nexus_supply_update_item(address, data)
+        output = sdk.nexus_supply_update_item_by_address(address, data)
         genid = sdk.genesis_id
     else:
         output = curl(supply_update_item.format("", pin, session, address,
@@ -895,10 +894,9 @@ def do_supply_update_item():
 def do_supply_transfer_item():
     pin = bottle.request.forms.get("pin")
     session = bottle.request.forms.get("session")
-    username = bottle.request.forms.get("username")
     address = bottle.request.forms.get("address")
-    destination = bottle.request.forms.get("destinations")
-    if (no_parms(pin, session, username, address, destination)):
+    dest = bottle.request.forms.get("destination")
+    if (no_parms(pin, session, address, dest)):
         m = red("supply/transfer/item needs more input parameters")
         return(show(m, session))
     #endif
@@ -909,11 +907,11 @@ def do_supply_transfer_item():
     if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
-        output = sdk.nexus_supply_transfer_item(address, destination)
+        output = sdk.nexus_supply_transfer_item_by_address(address, dest)
         genid = sdk.genesis_id
     else:
-        output = curl(supply_transfer_item.format("", pin, session, username,
-            address, destination, ""))
+        output = curl(supply_transfer_item.format("", pin, session, address,
+            dest, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
@@ -1014,7 +1012,7 @@ assets_get_asset_address = '{}assets/get/asset?session={}&address={}{}'
 assets_update_asset = \
     '{}assets/update/asset?pin={}&session={}&address={}&data={}{}'
 assets_transfer_asset = \
-    '{}assets/transfer/asset?pin={}&session={}&username={}&name={}{}'
+    '{}assets/transfer/asset?pin={}&session={}&address={}&destination={}{}'
 assets_claim_asset = '{}assets/claim/asset?pin={}&session={}&txid={}{}'
 assets_tokenize_asset = \
     '{}assets/tokenize/asset?pin={}&session={}&token_name={}&asset_name={}{}'
@@ -1032,16 +1030,15 @@ def build_assets_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += assets_get_asset_name.format(h, session, name, f)
+    o += hl(assets_get_asset_name).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = "assets-get-asset-address"
-    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += assets_get_asset_address.format(h, session, address, f)
+    o += hl(assets_get_asset_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1050,7 +1047,7 @@ def build_assets_html(sid, genid, o):
     session = form_parm.format("session", sid)
     data = form_parm.format("data", "")
     name = form_parm.format("name", "")
-    o += assets_create_asset.format(h, pin, session, name, data, f)
+    o += hl(assets_create_asset).format(h, pin, session, name, data, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1059,16 +1056,16 @@ def build_assets_html(sid, genid, o):
     session = form_parm.format("session", sid)
     data = form_parm.format("data", "")
     address = form_parm.format("address", sid)
-    o += assets_update_asset.format(h, pin, session, data, address, f)
+    o += hl(assets_update_asset).format(h, pin, session, data, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = form_header.format("assets-transfer-asset")
     pin = form_parm.format("pin", "")
     session = form_parm.format("session", sid)
-    username = form_parm.format("username", "")
-    name = form_parm.format("name", "")
-    o += assets_transfer_asset.format(h, pin, session, username, name, f)
+    address = form_parm.format("address", "")
+    d = form_parm.format("destination", "")
+    o += hl(assets_transfer_asset).format(h, pin, session, address, d, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1076,7 +1073,7 @@ def build_assets_html(sid, genid, o):
     pin = form_parm.format("pin", "")
     session = form_parm.format("session", sid)
     txid = form_parm.format("txid", "")
-    o += assets_claim_asset.format(h, pin, session, txid, f)
+    o += hl(assets_claim_asset).format(h, pin, session, txid, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1085,18 +1082,16 @@ def build_assets_html(sid, genid, o):
     session = form_parm.format("session", sid)
     token_name = form_parm.format("token_name", "")
     asset_name = form_parm.format("asset_name", "")
-    o += assets_tokenize_asset.format(h, pin, session, token_name, asset_name,
-        f)
+    o += hl(assets_tokenize_asset).format(h, pin, session, token_name,
+        asset_name, f)
     o += "</td></tr>"
-
-    o = add_blank_row(o)
 
     o += "<tr><td>"
     h = "assets-list-asset-history-name"
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += assets_list_asset_history_name.format(h, session, name, f)
+    o += hl(assets_list_asset_history_name).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1104,7 +1099,7 @@ def build_assets_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += assets_list_asset_history_address.format(h, session, address, f)
+    o += hl(assets_list_asset_history_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -1226,9 +1221,9 @@ def do_assets_get_asset_address():
 def do_assets_transfer_asset():
     pin = bottle.request.forms.get("pin")
     session = bottle.request.forms.get("session")
-    username = bottle.request.forms.get("username")
-    name = bottle.request.forms.get("name")
-    if (no_parms(pin, session, username, name)):
+    address = bottle.request.forms.get("address")
+    dest = bottle.request.forms.get("destination")
+    if (no_parms(pin, session, address, dest)):
         m = red("assets/transfer/asset needs more input parameters")
         return(show(m, session))
     #endif
@@ -1239,11 +1234,11 @@ def do_assets_transfer_asset():
     if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
-        output = sdk.nexus_assets_transfer_asset_by_name(name, username)
+        output = sdk.nexus_assets_transfer_asset_by_address(address, dest)
         genid = sdk.genesis_id
     else:
-        output = curl(assets_transfer_asset.format("", pin, session, username,
-            name, ""))
+        output = curl(assets_transfer_asset.format("", pin, session, address,
+            dest, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
@@ -1371,8 +1366,10 @@ tokens_create_token = \
     '{}tokens/create/token?pin={}&session={}&name={}&supply={}{}'
 tokens_create_account = \
     '{}tokens/create/account?pin={}&session={}&name={}&token_name={}{}'
-tokens_get_token = '{}tokens/get/token?session={}&name={}{}'
-tokens_get_account = '{}tokens/get/account?session={}&name={}{}'
+tokens_get_token_name = '{}tokens/get/token?session={}&name={}{}'
+tokens_get_token_address = '{}tokens/get/token?session={}&address={}{}'
+tokens_get_account_name = '{}tokens/get/account?session={}&name={}{}'
+tokens_get_account_address = '{}tokens/get/account?session={}&address={}{}'
 tokens_debit_token = ('{}tokens/debit/token?pin={}&session={}&name={}' + \
     '&name_to={}&amount={}{}')
 tokens_credit_token = ('{}tokens/credit/token?pin={}&session={}&name={}' + \
@@ -1387,11 +1384,19 @@ def build_tokens_html(sid, genid, o):
     o += "<br><b>Tokens API</b><br><br><table>"
 
     o += "<tr><td>"
-    h = "tokens-get-token"
+    h = "tokens-get-token-name"
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += tokens_get_token.format(h, session, name, f)
+    o += hl(tokens_get_token_name).format(h, session, name, f)
+    o += "</td></tr>"
+
+    o += "<tr><td>"
+    h = "tokens-get-token-address"
+    h = form_header.format(h)
+    session = form_parm.format("session", sid)
+    address = form_parm.format("address", "")
+    o += hl(tokens_get_token_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1400,7 +1405,7 @@ def build_tokens_html(sid, genid, o):
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
     supply = form_parm.format("supply", "")
-    o += tokens_create_token.format(h, pin, session, name, supply, f)
+    o += hl(tokens_create_token).format(h, pin, session, name, supply, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1410,7 +1415,8 @@ def build_tokens_html(sid, genid, o):
     amount = form_parm.format("amount", "")
     name = form_parm.format("name", "")
     name_to = form_parm.format("name_to", "")
-    o += tokens_debit_token.format(h, pin, session, name, name_to, amount, f)
+    o += hl(tokens_debit_token).format(h, pin, session, name, name_to, amount,
+        f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1420,17 +1426,23 @@ def build_tokens_html(sid, genid, o):
     name = form_parm.format("name", "")
     amount = form_parm.format("amount", "")
     txid = form_parm.format("txid", "")
-    o += tokens_credit_token.format(h, pin, session, name, amount, txid, f)
+    o += hl(tokens_credit_token).format(h, pin, session, name, amount, txid, f)
     o += "</td></tr>"
 
-    o = add_blank_row(o)
-
     o += "<tr><td>"
-    h = "tokens-get-account"
+    h = "tokens-get-account-name"
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += tokens_get_account.format(h, session, name, f)
+    o += hl(tokens_get_account_name).format(h, session, name, f)
+    o += "</td></tr>"
+
+    o += "<tr><td>"
+    h = "tokens-get-account-address"
+    h = form_header.format(h)
+    session = form_parm.format("session", sid)
+    address = form_parm.format("address", "")
+    o += hl(tokens_get_account_address).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1439,7 +1451,7 @@ def build_tokens_html(sid, genid, o):
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
     token_name = form_parm.format("token_name", "")
-    o += tokens_create_account.format(h, pin, session, name, token_name, f)
+    o += hl(tokens_create_account).format(h, pin, session, name, token_name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1449,7 +1461,8 @@ def build_tokens_html(sid, genid, o):
     amount = form_parm.format("amount", "")
     name = form_parm.format("name", "")
     name_to = form_parm.format("name_to", "")
-    o += tokens_debit_account.format(h, pin, session, amount, name, name_to, f)
+    o += hl(tokens_debit_account).format(h, pin, session, amount, name,
+        name_to, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1460,7 +1473,7 @@ def build_tokens_html(sid, genid, o):
     amount = form_parm.format("amount", "")
     name = form_parm.format("name", "")
     proof = form_parm.format("name_proof", "")
-    o += tokens_credit_account.format(h, pin, session, txid, amount, name,
+    o += hl(tokens_credit_account).format(h, pin, session, txid, amount, name,
         proof, f)
     o += "</td></tr>"
 
@@ -1526,8 +1539,8 @@ def do_tokens_create_account():
     return(show(output, session, genid))
 #enddef
 
-@bottle.route('/tokens-get-token', method="post")
-def do_tokens_get_token():
+@bottle.route('/tokens-get-token-name', method="post")
+def do_tokens_get_token_name():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
     if (no_parms(session, name)):
@@ -1544,7 +1557,7 @@ def do_tokens_get_token():
         output = sdk.nexus_tokens_get_token_by_name(name)
         genid = sdk.genesis_id
     else:
-        output = curl(tokens_get_token.format("", session, name, ""))
+        output = curl(tokens_get_token_name.format("", session, name, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
@@ -1552,8 +1565,35 @@ def do_tokens_get_token():
     return(show(output, session, genid))
 #enddef
 
-@bottle.route('/tokens-get-account', method="post")
-def do_tokens_get_account():
+@bottle.route('/tokens-get-token-address', method="post")
+def do_tokens_get_token_address():
+    session = bottle.request.forms.get("session")
+    address = bottle.request.forms.get("address")
+    if (no_parms(session, address)):
+        m = red("tokens/get/token needs more input parameters")
+        return(show(m, session))
+    #endif
+
+    action = bottle.request.forms.get("action")
+    sdk_or_api = (action.find("SDK") != -1)
+    
+    if (sdk_or_api):
+        sdk, output = sid_to_sdk(session)
+        if (sdk == None): return(output)
+        output = sdk.nexus_tokens_get_token_by_address(address)
+        genid = sdk.genesis_id
+    else:
+        output = curl(tokens_get_token_address.format("", session, address,
+            ""))
+        genid = ""
+    #endif            
+    output = json.dumps(output)
+
+    return(show(output, session, genid))
+#enddef
+
+@bottle.route('/tokens-get-account-name', method="post")
+def do_tokens_get_account_name():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
     if (no_parms(session, name)):
@@ -1570,7 +1610,34 @@ def do_tokens_get_account():
         output = sdk.nexus_tokens_get_account_by_name(name)
         genid = sdk.genesis_id
     else:
-        output = curl(tokens_get_account.format("", session, name, ""))
+        output = curl(tokens_get_account_name.format("", session, name, ""))
+        genid = ""
+    #endif            
+    output = json.dumps(output)
+
+    return(show(output, session, genid))
+#enddef
+
+@bottle.route('/tokens-get-account-address', method="post")
+def do_tokens_get_account_address():
+    session = bottle.request.forms.get("session")
+    address = bottle.request.forms.get("address")
+    if (no_parms(session, address)):
+        m = red("tokens/get/account needs more input parameters")
+        return(show(m, session))
+    #endif
+
+    action = bottle.request.forms.get("action")
+    sdk_or_api = (action.find("SDK") != -1)
+    
+    if (sdk_or_api):
+        sdk, output = sid_to_sdk(session)
+        if (sdk == None): return(output)
+        output = sdk.nexus_tokens_get_account_by_address(address)
+        genid = sdk.genesis_id
+    else:
+        output = curl(tokens_get_account_address.format("", session, address,
+            ""))
         genid = ""
     #endif            
     output = json.dumps(output)
@@ -1724,7 +1791,7 @@ def build_finance_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += finance_get_account_name.format(h, session, name, f)
+    o += hl(finance_get_account_name).format(h, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1732,7 +1799,7 @@ def build_finance_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += finance_get_account_address.format(h, session, address, f)
+    o += hl(finance_get_account_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1740,7 +1807,7 @@ def build_finance_html(sid, genid, o):
     pin = form_parm.format("pin", "")
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
-    o += finance_create_account.format(h, pin, session, name, f)
+    o += hl(finance_create_account).format(h, pin, session, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1750,7 +1817,7 @@ def build_finance_html(sid, genid, o):
     amount = form_parm.format("amount", "")
     name_from = form_parm.format("name_from", "")
     name_to = form_parm.format("name_to", "")
-    o += finance_debit_account.format(h, pin, session, amount, name_from,
+    o += hl(finance_debit_account).format(h, pin, session, amount, name_from,
         name_to, f)
     o += "</td></tr>"
 
@@ -1762,22 +1829,14 @@ def build_finance_html(sid, genid, o):
     amount = form_parm.format("amount", "")
     name_to = form_parm.format("name_to", "")
     proof = form_parm.format("name_proof", "")
-    o += finance_credit_account.format(h, pin, session, txid, amount, name_to,
-        proof, f)
-    o += "</td></tr>"
-
-    o = add_blank_row(o)
-
-    o += "<tr><td>"
-    h = form_header.format("finance-list-accounts")
-    session = form_parm.format("session", sid)
-    o += finance_list_accounts.format(h, session, f)
+    o += hl(finance_credit_account).format(h, pin, session, txid, amount,
+        name_to, proof, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
     h = form_header.format("finance-get-stakeinfo")
     session = form_parm.format("session", sid)
-    o += finance_get_stakeinfo.format(h, session, f)
+    o += hl(finance_get_stakeinfo).format(h, session, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1785,7 +1844,13 @@ def build_finance_html(sid, genid, o):
     pin = form_parm.format("pin", "")
     session = form_parm.format("session", sid)
     amount = form_parm.format("amount", "")
-    o += finance_set_stake.format(h, pin, session, amount, f)
+    o += hl(finance_set_stake).format(h, pin, session, amount, f)
+    o += "</td></tr>"
+
+    o += "<tr><td>"
+    h = form_header.format("finance-list-accounts")
+    session = form_parm.format("session", sid)
+    o += hl(finance_list_accounts).format(h, session, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -2037,7 +2102,7 @@ def build_ledger_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     height = form_parm.format("height", "")
-    o += ledger_get_blockhash.format(h, height, f)
+    o += hl(ledger_get_blockhash).format(h, height, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -2045,8 +2110,8 @@ def build_ledger_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     height = form_parm.format("height", "")
-    v = form_parm.format("verbose", "")
-    o += ledger_get_block_height.format(h, height, v, f)
+    v = form_parm.format("verbose", "1")
+    o += hl(ledger_get_block_height).format(h, height, v, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -2054,43 +2119,46 @@ def build_ledger_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     hsh = form_parm.format("hash", "")
-    v = form_parm.format("verbose", "")
-    o += ledger_get_block_hash.format(h, hsh, v, f)
+    v = form_parm.format("verbose", "1")
+    o += hl(ledger_get_block_hash).format(h, hsh, v, f)
+    o += "</td></tr>"
 
     o += "<tr><td>"
     h = "ledger-get-transaction"
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     hsh = form_parm.format("hash", "")
-    v = form_parm.format("verbose", "")
-    o += ledger_get_transaction.format(h, hsh, v, f)
+    v = form_parm.format("verbose", "1")
+    o += hl(ledger_get_transaction).format(h, hsh, v, f)
+    o += "</td></tr>"
 
     o += "<tr><td>"
     h = "ledger-submit-transaction"
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     d = form_parm.format("data", "")
-    o += ledger_submit_transaction.format(h, d, f)
-
-    o = add_blank_row(o)
+    o += hl(ledger_submit_transaction).format(h, d, f)
+    o += "</td></tr>"
 
     o += "<tr><td>"
     h = "ledger-list-blocks-height"
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     height = form_parm.format("height", "")
-    l = form_parm.format("limit", "")
-    v = form_parm.format("verbose", "")
-    o += ledger_list_blocks_height.format(h, height, l, v, f)
+    l = form_parm.format("limit", "100")
+    v = form_parm.format("verbose", "1")
+    o += hl(ledger_list_blocks_height).format(h, height, l, v, f)
+    o += "</td></tr>"
 
     o += "<tr><td>"
     h = "ledger-list-blocks-hash"
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     hsh = form_parm.format("hash", "")
-    l = form_parm.format("limit", "")
-    v = form_parm.format("verbose", "")
-    o += ledger_list_blocks_hash.format(h, hsh, l, v, f)
+    l = form_parm.format("limit", "100")
+    v = form_parm.format("verbose", "1")
+    o += hl(ledger_list_blocks_hash).format(h, hsh, l, v, f)
+    o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
     return(o)
@@ -2126,7 +2194,8 @@ def do_ledger_get_blockhash(sid=""):
 @bottle.route('/ledger-get-block-height/<sid>', method="post")
 def do_ledger_get_block_height(sid=""):
     height = bottle.request.forms.get("height")
-    if (no_parms(height)):
+    verbose = bottle.request.forms.get("verbose")
+    if (no_parms(height, verbose)):
         m = red("ledger/get/block needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2137,7 +2206,7 @@ def do_ledger_get_block_height(sid=""):
     if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
         if (sdk == None): return(output)
-        output = sdk.nexus_ledger_get_block_by_height(height)
+        output = sdk.nexus_ledger_get_block_by_height(height, verbose)
         genid = sdk.genesis_id
     else:
         output = curl(ledger_get_block_height.format("", height, ""))
@@ -2152,7 +2221,8 @@ def do_ledger_get_block_height(sid=""):
 @bottle.route('/ledger-get-block-hash/<sid>', method="post")
 def do_ledger_get_block_hash(sid=""):
     hsh = bottle.request.forms.get("hash")
-    if (no_parms(hsh)):
+    verbose = bottle.request.forms.get("verbose")
+    if (no_parms(hsh, verbose)):
         m = red("ledger/get/block needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2163,7 +2233,7 @@ def do_ledger_get_block_hash(sid=""):
     if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
         if (sdk == None): return(output)
-        output = sdk.nexus_ledger_get_block_by_hash(hsh)
+        output = sdk.nexus_ledger_get_block_by_hash(hsh, verbose)
         genid = sdk.genesis_id
     else:
         output = curl(ledger_get_block_hash.format("", hsh, ""))
@@ -2273,10 +2343,10 @@ def do_ledger_list_blocks_hash(sid=""):
     if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
         if (sdk == None): return(output)
-        output = sdk.nexus_ledger_list_blocks_by_hsh(hsh, l, verbose)
+        output = sdk.nexus_ledger_list_blocks_by_hash(hsh, l, verbose)
         genid = sdk.genesis_id
     else:
-        output = curl(ledger_list_blocks_hash("", hsh, l, verbose, ""))
+        output = curl(ledger_list_blocks_hash.format("", hsh, l, verbose, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
@@ -2303,7 +2373,7 @@ def build_objects_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     name = form_parm.format("name", "")
-    o += objects_get_schema_name.format(h, name, f)
+    o += hl(objects_get_schema_name).format(h, name, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -2311,7 +2381,7 @@ def build_objects_html(sid, genid, o):
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     address = form_parm.format("address", "")
-    o += objects_get_schema_address.format(h, address, f)
+    o += hl(objects_get_schema_address).format(h, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -2321,7 +2391,7 @@ def build_objects_html(sid, genid, o):
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
     j = form_parm.format("json", "")
-    o += objects_create_schema.format(h, pin, session, name, j, f)
+    o += hl(objects_create_schema).format(h, pin, session, name, j, f)
     o += "</td></tr>"
 
     o += '</table><br><hr size="5">'
@@ -2426,7 +2496,11 @@ def build_body_page(sid="", genid=""):
     output = build_assets_html(sid, genid, output)
     output = build_supply_html(sid, genid, output)
     output = build_finance_html(sid, genid, output)
-    output = build_objects_html(sid, genid, output)
+
+#
+#   Back end for objects API is not done yet. Don't show user.
+#
+#   output = build_objects_html(sid, genid, output)
     return(output)
 #enddef
 

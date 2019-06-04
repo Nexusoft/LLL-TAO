@@ -102,7 +102,7 @@ namespace TAO
                         user.free();
 
                         ret["genesis"] = hashGenesis.ToString();
-                        if(config::fMultiUser.load())
+                        if(config::fMultiuser.load())
                             ret["session"] = debug::safe_printstr(std::dec, session.first);
 
                         return ret;
@@ -111,10 +111,10 @@ namespace TAO
             }
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSession = config::fMultiUser.load() ? LLC::GetRand() : 0;
+            uint64_t nSession = config::fMultiuser.load() ? LLC::GetRand() : 0;
             ret["genesis"] = hashGenesis.ToString();
 
-            if(config::fMultiUser.load())
+            if(config::fMultiuser.load())
                 ret["session"] = debug::safe_printstr(std::dec, nSession);
 
             /* Setup the account. */

@@ -269,6 +269,58 @@ namespace TAO
                     }
 
 
+                    /* Add stake */
+                    case TAO::Operation::OP::STAKE:
+                    {
+                        /* Seek to end. */
+                        contract.Seek(9);
+
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::STAKE: register state not in pre-state");
+
+                        /* Verify the register's prestate. */
+                        State state;
+                        contract >>= state;
+
+                        /* Write the register from database. */
+                        if(!LLD::Register->WriteTrust(contract.Caller(), state))
+                            return debug::error(FUNCTION, "OP::STAKE: failed to rollback to pre-state");
+
+                        break;
+                    }
+
+
+                    /* Remove stake */
+                    case TAO::Operation::OP::UNSTAKE:
+                    {
+                        /* Seek to end. */
+                        contract.Seek(17);
+
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::UNSTAKE: register state not in pre-state");
+
+                        /* Verify the register's prestate. */
+                        State state;
+                        contract >>= state;
+
+                        /* Write the register from database. */
+                        if(!LLD::Register->WriteTrust(contract.Caller(), state))
+                            return debug::error(FUNCTION, "OP::UNSTAKE: failed to rollback to pre-state");
+
+                        break;
+                    }
+
+
                     /* Debit tokens from an account you own. */
                     case TAO::Operation::OP::DEBIT:
                     {

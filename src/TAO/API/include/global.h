@@ -17,7 +17,6 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/assets.h>
 #include <TAO/API/include/ledger.h>
-#include <TAO/API/include/lisp.h>
 #include <TAO/API/include/register.h>
 #include <TAO/API/include/rpc.h>
 #include <TAO/API/include/supply.h>
@@ -32,7 +31,6 @@ namespace TAO
     {
         extern Assets* assets;
         extern Ledger* ledger;
-        extern Lisp* lisp;
         extern Register* reg;
         extern RPC* RPCCommands;
         extern Supply* supply;

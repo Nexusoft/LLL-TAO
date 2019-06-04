@@ -66,12 +66,62 @@ namespace TAO
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction.");
 
-            /* Submit the payload object. */
-            tx[0] << (uint8_t)TAO::Operation::OP::CLAIM << hashTx;
+            /* Read the Transfer transaction being claimed. */
+            TAO::Ledger::Transaction txTranser;
+            if(!LLD::Ledger->ReadTx(hashTx, txTranser))
+                throw APIException(-23, "Transfer transaction not found.");
 
-            /* If we are claiming a named asset, determine the name from the previous owner's sig chain
-               and create a new Name record under our sig chain for the same name */
-            //CreateNameFromTransfer(hashTx, user->Genesis(), tx);
+            /* Check to see whether they have provided a new name */
+            std::string strName;
+            if(params.find("name") != params.end())
+                strName = params["name"].get<std::string>();
+
+            /* Loop through all transactions. */
+            int32_t nCurrent = -1;
+            for(uint32_t nContract = 0; nContract < txTranser.Size(); ++nContract)
+            {
+                /* Get the contract. */
+                const TAO::Operation::Contract& contract = txTranser[nContract];
+
+                /* Get the operation byte. */
+                uint8_t nType = 0;
+                contract >> nType;
+
+                /* Check type. */
+                if(nType != TAO::Operation::OP::TRANSFER)
+                    continue;
+
+                /* Get the address of the asset being transferred from the transaction. */
+                uint256_t hashAddress = 0;
+                contract >> hashAddress;
+
+                /* Get the genesis hash (recipient) of the transfer*/
+                uint256_t hashGenesis = 0;
+                contract >> hashGenesis;
+
+                /* Ensure that this transfer was meant for this user or that we are claiming back our own transfer */
+                if(hashGenesis != tx.hashGenesis && tx.hashGenesis != txTranser.hashGenesis)
+                    continue;
+
+                /* Submit the payload object. */
+                tx[++nCurrent] << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << uint32_t(nContract) << hashAddress;
+
+                /* If the caller has passed in a name then create a name record using the new name */
+                if(!strName.empty())
+                {
+                    CreateName(user->Genesis(), strName, hashAddress, tx[++nCurrent]);
+                }
+                else
+                {
+                    /* Determine the name from the previous owner's sig chain and create a new
+                       Name record under our sig chain for the same name */
+                    TAO::Operation::Contract nameContract = CreateNameFromTransfer(hashTx, user->Genesis());
+                    /* If the Name contract operation was created then add it to the transaction */
+                    if(!nameContract.Empty())
+                        tx[++nCurrent] = nameContract;
+                }
+            }
+
 
             /* Execute the operations layer. */
             if(!tx.Build())

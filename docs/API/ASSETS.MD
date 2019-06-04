@@ -308,6 +308,7 @@ Assets that have been transferred need to be claimed by the recipient before the
 
 `txid` : The transaction ID (hash) of the corresponding asset transfer transaction for which you are claiming.
 
+`name` : This optional field allows the user to rename an asset when it is claimed.  By default the name is copied from the previous owner and a Name record is created for the asset in your user namespace.  If you already have an object for this name then you will need to provide a new name in order for the claim to succeed.   
 
 ### Return value JSON object:
 ```

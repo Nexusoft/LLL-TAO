@@ -249,7 +249,7 @@ namespace TAO
 
                         /* Check temporary memory states first. */
                         State state;
-                        if(mapStates.count(contract.Caller())) //TODO: check here for duplicate register address (coudl have a collision between genesis and address)
+                        if(mapStates.count(contract.Caller())) //TODO: check here for duplicate register address (could have a collision between genesis and address)
                             state = mapStates[contract.Caller()];
 
                         /* Read the register from database. */
@@ -306,6 +306,84 @@ namespace TAO
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::GENESIS: not authorized ", contract.Caller().SubString());
+
+                        /* Write the state to memory map. */
+                        mapStates[contract.Caller()] = state;
+
+                        break;
+                    }
+
+
+                    /* Move funds from trust account balance to stake. */
+                    case TAO::Operation::OP::STAKE:
+                    {
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::STAKE: register state not in pre-state");
+
+                        /* Verify the register's prestate. */
+                        State prestate;
+                        contract >>= prestate;
+
+                        /* Check temporary memory states first. */
+                        State state;
+                        if(mapStates.count(contract.Caller())) //TODO: check here for duplicate register address (could have a collision between genesis and address)
+                            state = mapStates[contract.Caller()];
+
+                        /* Read the register from database. */
+                        else if(!LLD::Register->ReadTrust(contract.Caller(), state))
+                            return debug::error(FUNCTION, "OP::STAKE: failed to read pre-state");
+
+                        /* Check that the checksums match. */
+                        if(prestate != state)
+                            return debug::error(FUNCTION, "OP::STAKE: pre-state verification failed");
+
+                        /* Check contract account */
+                        if(contract.Caller() != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::STAKE: not authorized ", contract.Caller().SubString());
+
+                        /* Write the state to memory map. */
+                        mapStates[contract.Caller()] = state;
+
+                        break;
+                    }
+
+
+                    /* Move funds from trust account stake to balance. */
+                    case TAO::Operation::OP::UNSTAKE:
+                    {
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::UNSTAKE: register state not in pre-state");
+
+                        /* Verify the register's prestate. */
+                        State prestate;
+                        contract >>= prestate;
+
+                        /* Check temporary memory states first. */
+                        State state;
+                        if(mapStates.count(contract.Caller())) //TODO: check here for duplicate register address (could have a collision between genesis and address)
+                            state = mapStates[contract.Caller()];
+
+                        /* Read the register from database. */
+                        else if(!LLD::Register->ReadTrust(contract.Caller(), state))
+                            return debug::error(FUNCTION, "OP::UNSTAKE: failed to read pre-state");
+
+                        /* Check that the checksums match. */
+                        if(prestate != state)
+                            return debug::error(FUNCTION, "OP::UNSTAKE: pre-state verification failed");
+
+                        /* Check contract account */
+                        if(contract.Caller() != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::UNSTAKE: not authorized ", contract.Caller().SubString());
 
                         /* Write the state to memory map. */
                         mapStates[contract.Caller()] = state;

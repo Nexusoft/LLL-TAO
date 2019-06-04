@@ -44,7 +44,7 @@ namespace TAO
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-            else if(!config::fMultiUser.load() && mapSessions.count(0))
+            else if(!config::fMultiuser.load() && mapSessions.count(0))
             {
                 /* If no specific genesis or username have been provided then fall back to the active sig chain */
                 hashGenesis = mapSessions[0]->Genesis();
@@ -77,7 +77,7 @@ namespace TAO
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;
-            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-28, "No transactions found");
 
             /* Loop until genesis. */
@@ -89,7 +89,7 @@ namespace TAO
 
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashLast, tx))
+                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-28, "Failed to read transaction");
 
                 /* Set the next last. */
@@ -108,8 +108,7 @@ namespace TAO
 
                 /* Read the block state from the the ledger DB using the transaction hash index */
                 TAO::Ledger::BlockState blockState;
-                if(!LLD::Ledger->ReadBlock(tx.GetHash(), blockState))
-                    throw APIException(-25, "Block not found");
+                LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
 
                 /* Get the transaction JSON. */
                 json::json obj = TAO::API::TransactionToJSON(tx, blockState, nVerbose);

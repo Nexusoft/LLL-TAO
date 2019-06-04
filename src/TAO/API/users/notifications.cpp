@@ -53,7 +53,7 @@ namespace TAO
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-            else if(!config::fMultiUser.load() && mapSessions.count(0))
+            else if(!config::fMultiuser.load() && mapSessions.count(0))
                 hashGenesis = mapSessions[0]->Genesis();
             else
                 throw APIException(-25, "Missing Genesis or Username");
@@ -116,12 +116,16 @@ namespace TAO
                     if(!TAO::Register::Unpack(tx[nContract], object, hashAddress))
                         continue;
 
-                    /* Check that it is an account. */
+                    /* Check that it is an object. */
                     if(object.nType != TAO::Register::REGISTER::OBJECT)
                         continue;
 
                     /* Parse out the object register. */
                     if(!object.Parse())
+                        continue;
+
+                    /* Check that it is an account. */
+                    if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
                         continue;
 
                     /* Get the token address. */

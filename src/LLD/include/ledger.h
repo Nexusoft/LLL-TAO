@@ -118,7 +118,8 @@ namespace LLD
          *  @return The contract object that was read.
          *
          **/
-        TAO::Operation::Contract ReadContract(const uint512_t& hashTransaction, const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+        TAO::Operation::Contract ReadContract(const uint512_t& hashTransaction,
+                                              const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteTx
@@ -414,11 +415,13 @@ namespace LLD
          *
          *  @param[in] hashGenesis The genesis hash to read.
          *  @param[in] hashLast The last hash (txid) to read.
+         *  @param[in] nFlags Determines if mempool transactions should be included (MEMPOOL) or only those in a block (BLOCK)
          *
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast);
+        bool ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast,
+                      const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteProof
