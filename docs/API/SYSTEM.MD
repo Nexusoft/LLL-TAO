@@ -62,6 +62,8 @@ Returns a summary of information about this node
 
 `timestamp` : Current unified time as reported by this node.
 
+`hostname` : The local machine host name.
+
 `testnet` : If this node is running on the testnet then this shows the testnet number.
 
 `private` : Whether this node is running in private mode.

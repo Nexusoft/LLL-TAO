@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <Legacy/include/money.h>
 
 #include <LLP/types/corenode.h>
+#include <LLP/include/network.h>
 #include <LLP/include/global.h>
 #include <LLP/include/version.h>
 #include <LLP/include/lisp.h>
@@ -66,6 +67,11 @@ namespace TAO
 
             /* Current unified time as reported by this node*/
             jsonRet["timestamp"] =  (int)runtime::unifiedtimestamp();
+
+            /* The hostname of this machine */
+            char hostname[128];
+            gethostname(hostname, sizeof(hostname));
+            jsonRet["hostname"] = std::string(hostname); 
 
             /* If this node is running on the testnet then this shows the testnet number*/
             jsonRet["testnet"] = config::GetArg("-testnet", 0);
