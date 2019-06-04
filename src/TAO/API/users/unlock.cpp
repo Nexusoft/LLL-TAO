@@ -33,7 +33,7 @@ namespace TAO
         json::json Users::Unlock(const json::json& params, bool fHelp)
         {
             /* Restrict Unlock to sessionless API */
-            if(config::fAPISessions.load())
+            if(config::fMultiuser.load())
                 throw APIException(-23, "Unlock not supported for session-based API");
 
             /* Check default session (unlock only supported in single user mode). */
@@ -127,7 +127,7 @@ namespace TAO
             {
                 TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
 
-                if (!config::fAPISessions.load() && !stakeMinter.IsStarted())
+                if (!config::fMultiuser.load() && !stakeMinter.IsStarted())
                     stakeMinter.StartStakeMinter();
             }
 

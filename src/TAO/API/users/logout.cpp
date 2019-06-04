@@ -38,11 +38,11 @@ namespace TAO
             json::json ret;
 
             /* Check for username parameter. */
-            if(config::fAPISessions.load() && params.find("session") == params.end())
+            if(config::fMultiuser.load() && params.find("session") == params.end())
                 throw APIException(-23, "Missing Session ID");
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSession = config::fAPISessions.load() ? std::stoull(params["session"].get<std::string>()) : 0;
+            uint64_t nSession = config::fMultiuser.load() ? std::stoull(params["session"].get<std::string>()) : 0;
 
             /* Delete the sigchan. */
             {

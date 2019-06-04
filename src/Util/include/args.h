@@ -39,7 +39,7 @@ namespace config
     extern std::atomic<bool> fUseProxy;
     extern std::atomic<bool> fAllowDNS;
     extern std::atomic<bool> fLogTimestamps;
-    extern std::atomic<bool> fAPISessions;
+    extern std::atomic<bool> fMultiuser;
 
 
     /** InterpretNegativeSetting

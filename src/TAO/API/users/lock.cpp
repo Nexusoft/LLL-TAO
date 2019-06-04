@@ -26,7 +26,7 @@ namespace TAO
         json::json Users::Lock(const json::json& params, bool fHelp)
         {
             /* Restrict Unlock / Lock to sessionless API */
-            if(config::fAPISessions.load())
+            if(config::fMultiuser.load())
                 throw APIException(-23, "Lock not supported for session-based API");
 
             /* Check if already unlocked. */
