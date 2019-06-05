@@ -430,6 +430,41 @@ namespace TAO
                     }
 
 
+                    /* Stake operation. Move amount from trust account balance to stake. */
+                    case TAO::Operation::OP::STAKE:
+                    {
+                        /* Amount to of funds to move. */
+                        uint64_t nAmount;
+                        contract >> nAmount;
+
+                        /* Output the json information. */
+                        ret["OP"]      = "STAKE";
+                        ret["amount"]  = nAmount;
+
+                        break;
+                    }
+
+
+                    /* Unstake operation. Move amount from trust account stake to balance (with trust penalty). */
+                    case TAO::Operation::OP::UNSTAKE:
+                    {
+                        /* Amount of funds to move. */
+                        uint64_t nAmount;
+                        contract >> nAmount;
+
+                        /* Trust score penalty from unstake. */
+                        uint64_t nTrustPenalty;
+                        contract >> nTrustPenalty;
+
+                        /* Output the json information. */
+                        ret["OP"]      = "UNSTAKE";
+                        ret["penalty"] = nTrustPenalty;
+                        ret["amount"]  = nAmount;
+
+                        break;
+                    }
+
+
                     /* Debit tokens from an account you own. */
                     case TAO::Operation::OP::DEBIT:
                     {
@@ -582,9 +617,7 @@ namespace TAO
 
                     ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
 
-                    /* General trust account output same as ACCOUNT. Leave off stake-related values */
-                    //ret["trust"]    = (double)object.get<uint64_t>("trust") / pow(10, nDigits);
-                    //ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDigits);
+                    /* General trust account output same as ACCOUNT. Leave off stake-related values (available using get/info) */
 
                 }
                 else if(nStandard == TAO::Register::OBJECTS::TOKEN)
