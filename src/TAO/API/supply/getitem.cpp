@@ -55,8 +55,9 @@ namespace TAO
             /* Build the response JSON. */
             //ret["version"]  = state.nVersion;
             //ret["type"]     = state.nType;
-            ret["modified"]  = state.nModified;
+            ret["address"]    = hashRegister.ToString();
             ret["created"]   = state.nCreated;
+            ret["modified"]  = state.nModified;
             ret["owner"]     = state.hashOwner.ToString();
 
             while(!state.end())
