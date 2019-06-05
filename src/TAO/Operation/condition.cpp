@@ -22,6 +22,7 @@ ________________________________________________________________________________
 
 #include <cmath>
 #include <limits>
+#include <stack>
 
 namespace TAO
 {
@@ -61,17 +62,19 @@ namespace TAO
         /* Execute the validation script. */
         bool Condition::Execute()
         {
-            /* Keep track of previous execution return value. */
-            bool fRet = false;
+            /* Reset the contract. */
+            contract.Reset();
+            caller.Reset();
+
+            /* Build the stack for nested grouping. */
+            std::stack<std::pair<bool, uint8_t>> vEvaluate;
+
+            /* Push base group, which is what contains final return value. */
+            vEvaluate.push(std::make_pair(false, OP::RESERVED));
 
             /* Loop through the operation validation code. */
             while(!contract.End(1))
             {
-                /* Grab the first value */
-                TAO::Register::Value vFirst;
-                if(!GetValue(vFirst))
-                    return false;
-
                 /* Grab the next operation. */
                 uint8_t OPERATION = 0;
                 contract >= OPERATION;
@@ -79,97 +82,60 @@ namespace TAO
                 /* Switch by operation code. */
                 switch(OPERATION)
                 {
-
-                    /* Handle for the == operator. */
-                    case OP::EQUALS:
+                    /* Handle for the && operator. */
+                    case OP::GROUP:
                     {
-                        /* Grab the second value. */
-                        TAO::Register::Value vSecond;
-                        if(!GetValue(vSecond))
-                            return false;
-
-                        /* Compare both values to one another. */
-                        fRet = (compare(vFirst, vSecond) == 0);
-
-                        /* Deallocate the values from the VM. */
-                        deallocate(vSecond);
-                        deallocate(vFirst);
+                        /* When grouping, add another group layer. */
+                        vEvaluate.push(std::make_pair(false, OP::RESERVED));
 
                         break;
                     }
 
 
-                    /* Handle for < operator. */
-                    case OP::LESSTHAN:
+                    /* Handle for the && operator. */
+                    case OP::UNGROUP:
                     {
-                        /* Grab the second value. */
-                        TAO::Register::Value vSecond;
-                        if(!GetValue(vSecond))
-                            return false;
+                        /* Check that nothing has been evaluated. */
+                        if(vEvaluate.empty())
+                            return debug::error(FUNCTION, "malformed conditional statement");
 
-                        /* Compare both values to one another. */
-                        fRet = (compare(vFirst, vSecond) < 0);
+                        /* Check for evalute state. */
+                        bool fEvaluate = vEvaluate.top().first;
 
-                        /* Deallocate the values from the VM. */
-                        deallocate(vSecond);
-                        deallocate(vFirst);
+                        /* Pop last group from stack. */
+                        vEvaluate.pop();
+                        switch(vEvaluate.top().second)
+                        {
+                            /* Handle if this is our first OP. */
+                            case OP::RESERVED:
+                            {
+                                /* Check that statement evaluates. */
+                                vEvaluate.top().first = fEvaluate;
 
-                        break;
-                    }
+                                break;
+                            }
 
+                            /* Handle logical AND operator. */
+                            case OP::AND:
+                            {
+                                /* Check that statement evaluates. */
+                                vEvaluate.top().first = (vEvaluate.top().first && fEvaluate);
 
-                    /* Handle for the > operator. */
-                    case OP::GREATERTHAN:
-                    {
-                        /* Grab the second value. */
-                        TAO::Register::Value vSecond;
-                        if(!GetValue(vSecond))
-                            return false;
+                                break;
+                            }
 
-                        /* Compare both values to one another. */
-                        fRet = (compare(vFirst, vSecond) > 0);
+                            /* Handle logical OR operator. */
+                            case OP::OR:
+                            {
+                                /* Check that statement evaluates. */
+                                vEvaluate.top().first = (vEvaluate.top().first || fEvaluate);
 
-                        /* Deallocate the values from the VM. */
-                        deallocate(vSecond);
-                        deallocate(vFirst);
+                                break;
+                            }
 
-                        break;
-                    }
-
-
-                    /* Handle for the != operator. */
-                    case OP::NOTEQUALS:
-                    {
-                        /* Grab the second value. */
-                        TAO::Register::Value vSecond;
-                        if(!GetValue(vSecond))
-                            return false;
-
-                        /* Compare both values to one another. */
-                        fRet = (compare(vFirst, vSecond) != 0);
-
-                        /* Deallocate the values from the VM. */
-                        deallocate(vSecond);
-                        deallocate(vFirst);
-
-                        break;
-                    }
-
-
-                    /* Handle to check if a sequence of bytes is inside another. */
-                    case OP::CONTAINS:
-                    {
-                        /* Grab the second value. */
-                        TAO::Register::Value vSecond;
-                        if(!GetValue(vSecond))
-                            return false;
-
-                        /* Compare both values to one another. */
-                        fRet = contains(vFirst, vSecond);
-
-                        /* Deallocate the values from the VM. */
-                        deallocate(vSecond);
-                        deallocate(vFirst);
+                            default:
+                                return debug::error(FUNCTION, "conditional type is unsupported");
+                        }
 
                         break;
                     }
@@ -178,31 +144,250 @@ namespace TAO
                     /* Handle for the && operator. */
                     case OP::AND:
                     {
-                        /* Recursively call for next statement. */
-                        return fRet && Execute();
+                        /* Check for an operation. */
+                        if(vEvaluate.empty())
+                            return debug::error(FUNCTION, "evaluate ungrouping count incomplete");
+
+                        /* Check that evaluate is default value. */
+                        if(vEvaluate.top().second == OP::OR)
+                            return debug::error(FUNCTION, "cannot evaluate OP::AND with previous OP::OR");
+
+                        /* Set the new evaluate state. */
+                        vEvaluate.top().second = OP::AND;
+
+                        break;
                     }
 
 
-                    //OP::GROUP or the ( operator
-                    //OP::UNGROUP or the ) operator
-
-                    /** Handle for the || operator. */
+                    /* Handle for the || operator. */
                     case OP::OR:
                     {
-                        /* Short circuit out early if possible. */
-                        if(fRet)
-                            return true;
+                        /* Check for an operation. */
+                        if(vEvaluate.empty())
+                            return debug::error(FUNCTION, "evaluate ungrouping count incomplete");
 
-                        /* Recursively call for next statement. */
-                        return Execute();
+                        /* Check that evaluate is default value. */
+                        if(vEvaluate.top().second == OP::AND)
+                            return debug::error(FUNCTION, "cannot evaluate OP::OR with previous OP::AND");
+
+                        /* Set the new evaluate state. */
+                        vEvaluate.top().second = OP::OR;
+
+                        break;
                     }
 
-                    /* For unknown codes, always fail. */
+
+                    /* For non specific operations, resort to evaluate. */
                     default:
                     {
-                        return false;
+                        /* If OP is unknown, evaluate. */
+                        contract.Rewind(1);
+
+                        /* Check that nothing has been evaluated. */
+                        if(vEvaluate.empty())
+                            return debug::error(FUNCTION, "malformed conditional statement");
+
+                        /* Check for evalute state. */
+                        switch(vEvaluate.top().second)
+                        {
+                            /* Handle if this is our first OP. */
+                            case OP::RESERVED:
+                            {
+                                /* Check that statement evaluates. */
+                                vEvaluate.top().first = Evaluate();
+
+                                break;
+                            }
+
+                            /* Handle logical AND operator. */
+                            case OP::AND:
+                            {
+                                /* Check that statement evaluates. */
+                                vEvaluate.top().first = (Evaluate() && vEvaluate.top().first);
+
+                                break;
+                            }
+
+                            /* Handle logical OR operator. */
+                            case OP::OR:
+                            {
+                                /* Check that statement evaluates. */
+                                vEvaluate.top().first = (Evaluate() || vEvaluate.top().first);
+
+                                break;
+                            }
+
+                            default:
+                                return debug::error(FUNCTION, "conditional type is unsupported");
+                        }
+
+                        break;
                     }
                 }
+            }
+
+            /* Check the values in groups. */
+            if(vEvaluate.size() != 1)
+                return debug::error(FUNCTION, "evaluate groups count incomplete");
+
+            /* Return final value. */
+            return vEvaluate.top().first;
+        }
+
+
+        /* Execute the validation script. */
+        bool Condition::Evaluate()
+        {
+            /* Flag to tell how it evaluated. */
+            bool fRet = false;
+
+            /* Grab the first value */
+            TAO::Register::Value vFirst;
+            if(!GetValue(vFirst))
+                return false;
+
+            /* Grab the next operation. */
+            uint8_t OPERATION = 0;
+            contract >= OPERATION;
+
+            /* Switch by operation code. */
+            switch(OPERATION)
+            {
+                /* Handle for the == operator. */
+                case OP::EQUALS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vSecond;
+                    if(!GetValue(vSecond))
+                        return false;
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vFirst, vSecond) == 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vSecond);
+                    deallocate(vFirst);
+
+                    break;
+                }
+
+
+                /* Handle for < operator. */
+                case OP::LESSTHAN:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vSecond;
+                    if(!GetValue(vSecond))
+                        return false;
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vFirst, vSecond) < 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vSecond);
+                    deallocate(vFirst);
+
+                    break;
+                }
+
+
+                /* Handle for the > operator. */
+                case OP::GREATERTHAN:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vSecond;
+                    if(!GetValue(vSecond))
+                        return false;
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vFirst, vSecond) > 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vSecond);
+                    deallocate(vFirst);
+
+                    break;
+                }
+
+
+                /* Handle for <= operator. */
+                case OP::LESSEQUALS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vSecond;
+                    if(!GetValue(vSecond))
+                        return false;
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vFirst, vSecond) <= 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vSecond);
+                    deallocate(vFirst);
+
+                    break;
+                }
+
+
+                /* Handle for the >= operator. */
+                case OP::GREATEREQUALS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vSecond;
+                    if(!GetValue(vSecond))
+                        return false;
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vFirst, vSecond) >= 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vSecond);
+                    deallocate(vFirst);
+
+                    break;
+                }
+
+
+                /* Handle for the != operator. */
+                case OP::NOTEQUALS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vSecond;
+                    if(!GetValue(vSecond))
+                        return false;
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vFirst, vSecond) != 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vSecond);
+                    deallocate(vFirst);
+
+                    break;
+                }
+
+
+                /* Handle to check if a sequence of bytes is inside another. */
+                case OP::CONTAINS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vSecond;
+                    if(!GetValue(vSecond))
+                        return false;
+
+                    /* Compare both values to one another. */
+                    fRet = contains(vFirst, vSecond);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vSecond);
+                    deallocate(vFirst);
+
+                    break;
+                }
+
+                /* For unknown codes, always fail. */
+                default:
+                    return debug::error(FUNCTION, "malformed conditions");
             }
 
             /* Return final response. */
@@ -221,11 +406,9 @@ namespace TAO
             /* Iterate until end of stream. */
             while(!contract.End(1))
             {
-
                 /* Extract the operation byte. */
                 uint8_t OPERATION = 0;
                 contract >= OPERATION;
-
 
                 /* Switch based on the operation. */
                 switch(OPERATION)

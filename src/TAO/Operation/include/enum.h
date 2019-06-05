@@ -66,9 +66,12 @@ namespace TAO
                 CONDITION  = 0x41,
 
                 //legacy operations
-                LEGACY     = 0x50
+                LEGACY     = 0x50,
 
                 //0x31 = 0x6f RESERVED
+
+                //final reserved ENUM
+                RESERVED   = 0xff
             };
 
 
@@ -95,12 +98,13 @@ namespace TAO
             enum
             {
                 //RESERVED to 0x8f
-                EQUALS      = 0x80,
-                LESSTHAN    = 0x81,
-                GREATERTHAN = 0x82,
-                NOTEQUALS   = 0x83,
-                CONTAINS    = 0x84,
-                EMPTY       = 0x85,
+                EQUALS        = 0x80,
+                LESSTHAN      = 0x81,
+                GREATERTHAN   = 0x82,
+                NOTEQUALS     = 0x83,
+                CONTAINS      = 0x84,
+                LESSEQUALS    = 0x85,
+                GREATEREQUALS = 0x86,
 
 
                 //RESERVED to 0x9f
@@ -119,7 +123,8 @@ namespace TAO
                 //RESERVED to 0x2f
                 AND         = 0xa0,
                 OR          = 0xa1,
-                IF          = 0xa2,
+                GROUP       = 0xa2,
+                UNGROUP     = 0xa3,
             };
 
 

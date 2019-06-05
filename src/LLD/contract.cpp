@@ -106,7 +106,6 @@ namespace LLD
 
             /* Set the state in the memory map. */
             if(mapContracts.count(pairContract))
-
                 return true;
         }
 

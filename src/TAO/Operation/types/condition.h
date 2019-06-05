@@ -74,6 +74,14 @@ namespace TAO
             bool Execute();
 
 
+            /** Evaluate
+             *
+             *  Evaluate the validation script.
+             *
+             **/
+            bool Evaluate();
+
+
             /** GetValue
              *
              *  Get a value from the register virtual machine.
