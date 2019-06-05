@@ -929,4 +929,51 @@ TEST_CASE( "Validation Script Tests", "[operation]" )
 
 
 
+
+
+    contract.Clear();
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(9837)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(7878)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(17715);
+
+    contract <= uint8_t(OP::AND);
+
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(556);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+    contract <= uint8_t(OP::OR);
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(556);
+
+    contract <= uint8_t(OP::OR);
+
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(555);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE(script.Execute());
+    }
+
 }
