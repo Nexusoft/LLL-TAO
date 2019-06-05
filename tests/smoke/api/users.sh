@@ -2,11 +2,26 @@ cd ../../../
 
 
 #Create
-echo "===Create==="
+echo "===Create/User==="
 ./nexus users/create/user/paul password=paul pin=1234
 
+echo "===Create/User==="
+./nexus users/create/user/jack password=jack pin=1234
+
 #Login
-echo "===Login==="
+echo "===Login/User==="
+./nexus users/login/user/paul password=paul pin=1234
+
+echo "===Unlock/User==="
+./nexus users/unlock/user/paul password=paul pin=1234
+
+echo "===Lock/User==="
+./nexus users/lock/user/paul password=paul pin=1234
+
+echo "===Logout/User==="
+./nexus users/logout/user/paul password=paul pin=1234
+
+echo "===Login/User==="
 ./nexus users/login/user/paul password=paul pin=1234
 
 #List your accounts (note that account names are only returned for the logged in user)
