@@ -255,6 +255,10 @@ namespace TAO
             if(TAO::Register::Reserved(hashAddress))
                 return debug::error(FUNCTION, "cannot create register with reserved address");
 
+            /* Check for wildcard. */
+            if(hashAddress == ~uint256_t(0))
+                return debug::error(FUNCTION, "cannot create register with wildcard address");
+
             /* Get the object data size. */
             std::vector<uint8_t> vchData;
             contract >> vchData;
