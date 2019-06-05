@@ -129,5 +129,53 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
+
+
+
+
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //create object
+            Object token = CreateToken(hashToken, 1000, 100);
+
+            //payload
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << ~uint256_t(0) << uint64_t(500);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //commit to disk
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+            //check for error
+            std::string error = debug::GetLastError();
+            REQUIRE(error.find("cannot debit to wildcard with no conditions") != std::string::npos);
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
 }
