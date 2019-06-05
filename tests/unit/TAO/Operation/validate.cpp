@@ -158,6 +158,28 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
         }
 
 
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //create object
+            Object token = CreateToken(hashToken, 1000, 100);
+
+            //payload
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << ~uint256_t(0) << uint64_t(500);
+            tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashGenesis;
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //commit to disk
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+        }
+
+
 
 
 
