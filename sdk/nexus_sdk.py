@@ -865,7 +865,7 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_assests_claim_asset(self, txid):
+    def nexus_assets_claim_asset(self, txid):
         """
         Claim an asset that has been transfered to username. The transaction 
         id, specified in 'txid' is returned from when the user did a 
@@ -876,7 +876,7 @@ class sdk_init():
         parms = "?pin={}&session={}&txid={}".format(self.pin, self.session_id,
             txid)
 
-        url = supply_url.format(sdk_url, "claim/asset") + parms
+        url = assets_url.format(sdk_url, "claim/asset") + parms
         json_data = self.__get(url)
         return(json_data)
     #enddef
