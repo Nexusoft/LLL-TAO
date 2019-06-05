@@ -110,11 +110,9 @@ namespace filesystem
     {
         LOCK(FILESYSTEM_MUTEX);
 
-        std::ifstream sourceFile(path, std::ios::in);
-        if(sourceFile.is_open())
-            return true;
+        struct stat statbuf;
 
-        return false;
+        return stat(path.c_str(), &statbuf) == 0;
     }
 
 
@@ -188,14 +186,31 @@ namespace filesystem
     /*  Recursively create directories along the path if they don't exist. */
     bool create_directories(const std::string &path)
     {
-        for(auto it = path.begin(); it != path.end(); ++it)
+        /* Start loop at 1. Allows for root (Linux) or relative path (Windows) separator at 0 */
+        for(uint32_t i = 1; i < path.length(); i++)
         {
-            if(*it == '/' && it != path.begin())
+            bool isSeparator = false;
+            const char& currentChar = path.at(i);
+
+        #ifdef WIN32
+            /* For Windows, support both / and \ directory separators.
+             * Ignore separator after drive designation, as in C:\
+             */
+            if((currentChar == '/' || currentChar == '\\')  && path.at(i-1) != ':')
+                isSeparator = true;
+        #else
+            if(currentChar == '/')
+                isSeparator = true;
+        #endif
+
+            if(isSeparator)
             {
-                if(!create_directory(std::string(path.begin(), it)))
+                std::string createPath(path, 0, i);
+                if(!create_directory(createPath))
                     return false;
             }
         }
+
         return true;
     }
 
