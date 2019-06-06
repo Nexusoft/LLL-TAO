@@ -47,44 +47,25 @@ namespace TAO
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
-            /* Register address is a hash of a name in the format of namespacehash:objecttype:name */
-            std::string strRegisterName = NamespaceHash(user->UserName()).ToString() + ":token:trust";
-
-            /* Build the address from an SK256 hash of register name. Need for indexed trust accounts, also, as return value */
-            uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strRegisterName.begin(), strRegisterName.end()));
+            /* Retrieve the trust register address from the trust account name */
+            uint256_t hashRegister = RegisterAddressFromName(params, std::string("trust"));
 
             /* Get trust account. Any trust account that has completed Genesis will be indexed. */
             TAO::Register::Object trustAccount;
-            bool isGenesis = false;
 
-            if (LLD::regDB->HasTrust(user->Genesis()))
-            {
-                /* Trust account is indexed */
-                if (!LLD::regDB->ReadTrust(user->Genesis(), trustAccount))
-                   throw APIException(-24, "Unable to retrieve trust account.");
+            if(!LLD::regDB->ReadState(hashRegister, trustAccount, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-24, "Trust account not found");
 
-                if(!trustAccount.Parse())
-                    throw APIException(-24, "Unable to parse trust account register.");
-            }
-            else
-            {
-                /* Trust account is not indexed (staking is pre-Genesis) */
-                isGenesis = true;
+            if(!trustAccount.Parse())
+                throw APIException(-24, "Unable to parse trust account.");
 
-                if(!LLD::regDB->ReadState(hashRegister, trustAccount, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-24, "Trust account not found");
+            /* Check the object standard. */
+            if( trustAccount.Standard() != TAO::Register::OBJECTS::TRUST)
+                throw APIException(-24, "Register is not a trust account");
 
-                if(!trustAccount.Parse())
-                    throw APIException(-24, "Unable to parse trust account.");
-
-                /* Check the object standard. */
-                if( trustAccount.Standard() != TAO::Register::OBJECTS::TRUST)
-                    throw APIException(-24, "Register is not a trust account");
-
-                /* Check the account is a NXS account */
-                if(trustAccount.get<uint256_t>("token") != 0)
-                    throw APIException(-24, "Trust account is not a NXS account.");
-            }
+            /* Check the account is a NXS account */
+            if(trustAccount.get<uint256_t>("token") != 0)
+                throw APIException(-24, "Trust account is not a NXS account.");
 
             /* Set trust account values for return data */
             ret["address"] = hashRegister.ToString();
@@ -95,17 +76,17 @@ namespace TAO
 
             /* Trust is returned as a percentage of maximum */
             uint64_t nTrustScore = trustAccount.get<uint64_t>("trust");
-            if(!isGenesis)
+            if(nTrustScore > 0)
                 ret["trust"] = ((double)nTrustScore * 100.0) / (double)TAO::Ledger::MaxTrustScore();
             else
                 ret["trust"] = 0.0;
 
-            /* Need the stake minter for accessing current staking metrics.
-             * Stake minter only runs in single-user mode, so it will match the user account used to retrieve trust account.
-             */
             TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
 
-            if (stakeMinter.IsStarted())
+            /* Need the stake minter running for accessing current staking metrics.
+             * Verifying current user ownership of trust account is a sanity check.
+             */
+            if (stakeMinter.IsStarted() && trustAccount.hashOwner == user->Genesis())
             {
                 /* If stake minter is running, get current stake rate it is using. */
                 ret["stakerate"] = stakeMinter.GetStakeRatePercent();
@@ -120,7 +101,7 @@ namespace TAO
             else
             {
                 /* When stake minter not running, return latest known value calculated from trust score (as an annual percent). */
-                ret["stakerate"] = TAO::Ledger::StakeRate(nTrustScore, isGenesis) * 100;
+                ret["stakerate"] = TAO::Ledger::StakeRate(nTrustScore, (nTrustScore == 0)) * 100;
 
                 /* Other staking metrics not available if stake minter not running */
                 ret["trustweight"] = 0.0;

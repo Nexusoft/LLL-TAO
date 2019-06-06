@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/create.h>
+#include <TAO/Register/include/utils.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -117,28 +118,21 @@ namespace TAO
         void CreateName(const uint256_t& hashGenesis, const std::string strName,
                         const uint256_t& hashRegister, TAO::Operation::Contract& contract)
         {
-            /* Build vector to hold the genesis + name data for hashing */
-            std::vector<uint8_t> vData;
+            uint256_t hashNameAddress;
 
-            /* Insert the geneses hash of the transaction */
-            vData.insert(vData.end(), (uint8_t*)&hashGenesis, (uint8_t*)&hashGenesis + 32);
+            /* Obtain the name register address for the genesis/name combination */
+            TAO::Register::GetNameRegisterAddress(hashGenesis, strName, hashNameAddress);
 
-            /* Insert the name of from the Name object */
-            vData.insert(vData.end(), strName.begin(), strName.end());
-
-            /* Hash this in the same was as the caller would have to generate hashAddress */
-            uint256_t hashName = LLC::SK256(vData);
-
-            /* First check to see whether the name already exists  */
+            /* Check to see whether the name already exists  */
             TAO::Register::Object object;
-            if(LLD::regDB->ReadState(hashName, object, TAO::Ledger::FLAGS::MEMPOOL))
+            if(LLD::regDB->ReadState(hashNameAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-23, "An object with this name already exists for this user.");
 
             /* Create the Name register object pointing to hashRegister */
             TAO::Register::Object name = TAO::Register::CreateName(strName, hashRegister);
 
             /* Add the Name object register operation to the transaction */
-            contract << uint8_t(TAO::Operation::OP::CREATE) << hashName << uint8_t(TAO::Register::REGISTER::OBJECT) << name.GetState();
+            contract << uint8_t(TAO::Operation::OP::CREATE) << hashNameAddress << uint8_t(TAO::Register::REGISTER::OBJECT) << name.GetState();
         }
 
 
@@ -197,28 +191,21 @@ namespace TAO
         void UpdateName(const uint256_t& hashGenesis, const std::string strName,
                         const uint256_t& hashRegister, TAO::Operation::Contract& contract)
         {
-            /* Build vector to hold the genesis + name data for hashing */
-            std::vector<uint8_t> vData;
+            uint256_t hashNameAddress;
 
-            /* Insert the geneses hash of the transaction */
-            vData.insert(vData.end(), (uint8_t*)&hashGenesis, (uint8_t*)&hashGenesis + 32);
+            /* Obtain a new name register address for the updated genesis/name combination */
+            TAO::Register::GetNameRegisterAddress(hashGenesis, strName, hashNameAddress);
 
-            /* Insert the name of from the Name object */
-            vData.insert(vData.end(), strName.begin(), strName.end());
-
-            /* Hash this in the same was as the caller would have to generate hashAddress */
-            uint256_t hashName = LLC::SK256(vData);
-
-            /* First check to see whether the name already. */
+            /* Check to see whether the name already. */
             TAO::Register::Object object;
-            if(LLD::regDB->ReadState(hashName, object, TAO::Ledger::FLAGS::MEMPOOL))
+            if(LLD::regDB->ReadState(hashNameAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-23, "An object with this name already exists for this user.");
 
-            /* Create the Name register object pointing to hashRegister */
+            /* Create a new Name register object pointing to hashRegister */
             TAO::Register::Object name = TAO::Register::CreateName(strName, hashRegister);
 
             /* Add the Name object register operation to the transaction */
-            contract << uint8_t(TAO::Operation::OP::CREATE) << hashName << uint8_t(TAO::Register::REGISTER::OBJECT) << name.GetState();
+            contract << uint8_t(TAO::Operation::OP::CREATE) << hashNameAddress << uint8_t(TAO::Register::REGISTER::OBJECT) << name.GetState();
         }
 
 
@@ -249,14 +236,15 @@ namespace TAO
                 nNamespaceHash = TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
             }
 
-            /* If not then check for the explicit namespace parameter*/
-            else if(params.find("namespace") != params.end())
-            {
-                strNamespace = params["namespace"].get<std::string>();
+            // ***namespace parameter removed***
+            // /* If not then check for the explicit namespace parameter*/
+            // else if(params.find("namespace") != params.end())
+            // {
+            //     strNamespace = params["namespace"].get<std::string>();
 
-                /* Get the namespace hash from the namespace name */
-                nNamespaceHash = TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
-            }
+            //     /* Get the namespace hash from the namespace name */
+            //     nNamespaceHash = TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
+            // }
 
             /* If neither of those then check to see if there is an active session to access the sig chain */
             else
@@ -273,38 +261,16 @@ namespace TAO
                 nNamespaceHash = user->Genesis();
             }
 
-            /* Build vector to hold the genesis + name data for hashing */
-            std::vector<uint8_t> vData;
-
-            /* Insert the geneses hash of the transaction */
-            vData.insert(vData.end(), (uint8_t*)&nNamespaceHash, (uint8_t*)&nNamespaceHash + 32);
-
-            /* Insert the name of from the Name object */
-            vData.insert(vData.end(), strName.begin(), strName.end());
-
-            /* Build the address from an SK256 hash of namespace + name. */
-            uint256_t hashName = LLC::SK256(vData);
-
             /* Read the Name Object */
             TAO::Register::Object object;
-            if(!LLD::regDB->ReadState(hashName, object, TAO::Ledger::FLAGS::MEMPOOL))
+
+            if (!TAO::Register::GetNameRegister(nNamespaceHash, strName, object))
             {
                 if(strNamespace.empty())
                     throw APIException(-24, debug::safe_printstr( "Unknown name: ", strName));
                 else
                     throw APIException(-24, debug::safe_printstr( "Unknown name: ", strNamespace, ":", strName));
             }
-            /* Check that the name object is proper type. */
-            if(object.nType != TAO::Register::REGISTER::OBJECT)
-                throw APIException(-24, "Name must be of type object.");
-
-            /* Parse the object. */
-            if(!object.Parse())
-                throw APIException(-24, "Failed to parse object");
-
-            /* Check that this is a Name register */
-            if( object.Standard() != TAO::Register::OBJECTS::NAME)
-                throw APIException(-24, "Unknown name");
 
             /* Get the address that this name register is pointing to */
             hashRegister = object.get<uint256_t>("address");
