@@ -75,11 +75,11 @@ CLASSES
      |  nexus_assets_list_asset_history_by_name(self, asset_name)
      |      List assets history by name specified in 'name'.
      |  
-     |  nexus_assets_tokenize_by_address(self, asset_address, token_address)
+     |  nexus_assets_tokenize_asset_by_address(self, asset_address, token_address)
      |      Tokenize an asset specified by 'asset_address' to a previously created 
      |      token specified by 'token_address'.
      |  
-     |  nexus_assets_tokenize_by_name(self, asset_name, token_name)
+     |  nexus_assets_tokenize_asset_by_name(self, asset_name, token_name)
      |      Tokenize an asset specified by 'asset_name' to a previously created 
      |      token specified by 'token_name'.
      |  
