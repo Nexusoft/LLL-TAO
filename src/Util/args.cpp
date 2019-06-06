@@ -50,10 +50,14 @@ namespace config
         {
             std::string positive("-");
             positive.append(name.begin()+3, name.end());
+
             if (mapSettingsRet.count(positive) == 0)
             {
-                bool value = !GetBoolArg(name);
-                mapSettingsRet[positive] = (value ? "1" : "0");
+                if (mapSettingsRet[name].empty())
+                    mapSettingsRet[positive] = "0";
+
+                else
+                    mapSettingsRet[positive] = (convert::atoi32(mapArgs[name]) == 0) ? "1" : "0";
             }
         }
     }
