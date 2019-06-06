@@ -116,16 +116,17 @@ def sid_to_sdk(sid):
 # format_transactions
 #
 # Put a line per array element so the eyes can parse each transaction record
-# just a tad better.
+# just a tad better. Used for most */list/* methods.
 #
 def format_transactions(data):
     if (data.has_key("result") == False): return(json.dumps(data))
     if (data["result"] == None): return('{"error": "no json returned"}')
 
-    output = ""
+    output = '{"result": [<br><br>'
     for tx in data["result"]:
         output += json.dumps(tx) + "<br><br>"
     #endfor
+    output += "]}"
     return(output)
 #enddef
 
@@ -600,7 +601,7 @@ def do_users_list_notifications(sid=""):
         output= curl(users_list_notifications.format("", genesis, page, limit,
             ""))
     #endif            
-    output = json.dumps(output)
+    output = format_transactions(output)
 
     return(show(output, sid, genesis))
 #enddef
@@ -627,7 +628,7 @@ def do_users_list_assets(sid=""):
         output= curl(users_list_notifications.format("", genesis, page, limit,
             ""))
     #endif            
-    output = json.dumps(output)
+    output = format_transactions(output)
 
     return(show(output, sid, genesis))
 #enddef
@@ -654,7 +655,7 @@ def do_users_list_tokens(sid=""):
         output= curl(users_list_notifications.format("", genesis, page, limit,
             ""))
     #endif            
-    output = json.dumps(output)
+    output = format_transactions(output)
 
     return(show(output, sid, genesis))
 #enddef
@@ -681,7 +682,7 @@ def do_users_list_accounts(sid=""):
         output= curl(users_list_notifications.format("", genesis, page, limit,
             ""))
     #endif            
-    output = json.dumps(output)
+    output = format_transactions(output)
 
     return(show(output, sid, genesis))
 #enddef
@@ -968,7 +969,7 @@ def do_supply_list_item_history_name():
             ""))
         genid = ""
     #endif            
-    output = json.dumps(output)
+    output = format_transactions(output)
 
     return(show(output, session, genid))
 #enddef
@@ -995,7 +996,7 @@ def do_supply_list_item_history_address():
             address, ""))
         genid = ""
     #endif            
-    output = json.dumps(output)
+    output = format_transactions(output)
 
     return(show(output, session, genid))
 #enddef
@@ -1325,7 +1326,7 @@ def do_assets_list_asset_history_name():
             ""))
         genid = ""
     #endif            
-    output = json.dumps(output)
+    output = format_transactions(output)
 
     return(show(output, session, genid))
 #enddef
@@ -1352,7 +1353,7 @@ def do_assets_list_asset_history_address():
             address, ""))
         genid = ""
     #endif            
-    output = json.dumps(output)
+    output = format_transactions(output)
 
     return(show(output, session, genid))
 #enddef
@@ -2098,11 +2099,12 @@ def build_ledger_html(sid, genid, o):
     o += "<br><b>Ledger API</b><br><br><table>"
 
     o += "<tr><td>"
-    h = "ledger-get-blockhash"
+    h = "ledger-get-transaction"
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
-    height = form_parm.format("height", "")
-    o += hl(ledger_get_blockhash).format(h, height, f)
+    hsh = form_parm.format("hash", "")
+    v = form_parm.format("verbose", "1")
+    o += hl(ledger_get_transaction).format(h, hsh, v, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -2124,12 +2126,11 @@ def build_ledger_html(sid, genid, o):
     o += "</td></tr>"
 
     o += "<tr><td>"
-    h = "ledger-get-transaction"
+    h = "ledger-get-blockhash"
     if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
-    hsh = form_parm.format("hash", "")
-    v = form_parm.format("verbose", "1")
-    o += hl(ledger_get_transaction).format(h, hsh, v, f)
+    height = form_parm.format("height", "")
+    o += hl(ledger_get_blockhash).format(h, height, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -2321,7 +2322,7 @@ def do_ledger_list_blocks_height(sid=""):
             ""))
         genid = ""
     #endif            
-    output = json.dumps(output)
+    output = format_transactions(output)
 
     return(show(output, sid, genid))
 #enddef
@@ -2349,7 +2350,7 @@ def do_ledger_list_blocks_hash(sid=""):
         output = curl(ledger_list_blocks_hash.format("", hsh, l, verbose, ""))
         genid = ""
     #endif            
-    output = json.dumps(output)
+    output = format_transactions(output)
 
     return(show(output, sid, genid))
 #enddef

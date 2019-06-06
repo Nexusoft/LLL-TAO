@@ -34,8 +34,6 @@ namespace TAO
         /* Login to a user account. */
         json::json Users::Logout(const json::json& params, bool fHelp)
         {
-            /* JSON return value. */
-            json::json ret;
 
             /* Check for username parameter. */
             if(config::fMultiuser.load() && params.find("session") == params.end())
@@ -56,16 +54,13 @@ namespace TAO
 
                 /* Erase the session. */
                 mapSessions.erase(nSession);
-                
+
                 if(!pActivePIN.IsNull())
                     pActivePIN.free();
 
             }
 
-            /* Set the return value. */
-            ret["genesis"] = GetGenesis(nSession).ToString();
-
-            return ret;
+            return true;
         }
     }
 }
