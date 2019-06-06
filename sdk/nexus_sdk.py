@@ -881,7 +881,7 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_assets_tokenize_by_name(self, asset_name, token_name):
+    def nexus_assets_tokenize_asset_by_name(self, asset_name, token_name):
         """
         Tokenize an asset specified by 'asset_name' to a previously created 
         token specified by 'token_name'.
@@ -896,7 +896,8 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_assets_tokenize_by_address(self, asset_address, token_address):
+    def nexus_assets_tokenize_asset_by_address(self, asset_address,
+        token_address):
         """
         Tokenize an asset specified by 'asset_address' to a previously created 
         token specified by 'token_address'.
