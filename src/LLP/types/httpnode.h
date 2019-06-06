@@ -23,6 +23,8 @@ ________________________________________________________________________________
 #include <LLP/templates/ddos.h>
 #include <Util/include/string.h>
 
+#include <algorithm>
+
 #define HTTPNODE ANSI_COLOR_FUNCTION "HTTPNode" ANSI_COLOR_RESET " : "
 
 namespace LLP

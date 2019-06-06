@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/tritium_minter.h>
 
+#include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/signals.h>
 #include <Util/include/daemon.h>

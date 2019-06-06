@@ -532,7 +532,7 @@ namespace TAO
                     std::string strCmd = config::GetArg("-blocknotify", "");
                     if (!strCmd.empty())
                     {
-                        replace_all(strCmd, "%s", ChainState::hashBestChain.load().GetHex());
+                        ReplaceAll(strCmd, "%s", ChainState::hashBestChain.load().GetHex());
                         std::thread t(runtime::command, strCmd);
                     }
 

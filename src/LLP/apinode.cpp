@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 #include <TAO/API/include/global.h>
 
+#include <Util/include/string.h>
 #include <Util/include/urlencode.h>
 #include <Util/include/config.h>
 #include <Util/include/base64.h>
