@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/cmd.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/types/tritium_minter.h>
 
 #include <Util/include/filesystem.h>
 #include <Util/include/signals.h>
@@ -306,6 +307,8 @@ int main(int argc, char** argv)
     /* Stop stake minter if it is running (before server shutdown). */
     if (config::GetBoolArg(std::string("-beta")))
         Legacy::LegacyMinter::GetInstance().StopStakeMinter();
+    else
+        TAO::Ledger::TritiumMinter::GetInstance().StopStakeMinter();
 
     /* Shutdown the time server and its subsystems. */
     LLP::ShutdownServer<LLP::TimeNode>(LLP::TIME_SERVER);
