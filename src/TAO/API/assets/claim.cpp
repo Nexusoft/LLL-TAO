@@ -116,6 +116,7 @@ namespace TAO
                     /* Determine the name from the previous owner's sig chain and create a new
                        Name record under our sig chain for the same name */
                     TAO::Operation::Contract nameContract = CreateNameFromTransfer(hashTx, user->Genesis());
+
                     /* If the Name contract operation was created then add it to the transaction */
                     if(!nameContract.Empty())
                         tx[++nCurrent] = nameContract;

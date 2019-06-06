@@ -301,7 +301,9 @@ namespace TAO
             if(vContracts[0].Empty())
                 return false;
 
-            //TODO: check for conditions
+            /* Check for conditions. */
+            if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
+                return false;
 
             return (vContracts[0].Primitive() == TAO::Operation::OP::COINBASE);
         }
@@ -318,7 +320,9 @@ namespace TAO
             if(vContracts[0].Empty())
                 return false;
 
-            //TODO: check for conditions
+            /* Check for conditions. */
+            if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
+                return false;
 
             return (vContracts[0].Primitive() == TAO::Operation::OP::TRUST || vContracts[0].Primitive() == TAO::Operation::OP::GENESIS);
         }
@@ -335,7 +339,9 @@ namespace TAO
             if(vContracts[0].Empty())
                 return false;
 
-            //TODO: check for conditions
+            /* Check for conditions. */
+            if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
+                return false;
 
             return (vContracts[0].Primitive() == TAO::Operation::OP::AUTHORIZE);
         }
@@ -352,7 +358,9 @@ namespace TAO
             if(vContracts[0].Empty())
                 return false;
 
-            //TODO: check for conditions
+            /* Check for conditions. */
+            if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
+                return false;
 
             return (vContracts[0].Primitive() == TAO::Operation::OP::TRUST);
         }
@@ -381,6 +389,10 @@ namespace TAO
 
             /* Check for empty first contract. */
             if(vContracts[0].Empty())
+                return false;
+
+            /* Check for conditions. */
+            if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
                 return false;
 
             return (vContracts[0].Primitive() == TAO::Operation::OP::GENESIS);

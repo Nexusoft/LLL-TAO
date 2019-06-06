@@ -184,7 +184,7 @@ namespace TAO
                     case TAO::Operation::OP::CLAIM:
                     {
                         /* Seek to address location. */
-                        contract.Seek(69);
+                        contract.Seek(68);
 
                         /* Get the address to update. */
                         uint256_t hashAddress = 0;
@@ -226,7 +226,7 @@ namespace TAO
                     case TAO::Operation::OP::COINBASE:
                     {
                         /* Seek through coinbase data. */
-                        contract.Seek(49);
+                        contract.Seek(48);
 
                         break;
                     }

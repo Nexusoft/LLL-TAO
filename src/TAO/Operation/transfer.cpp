@@ -98,7 +98,7 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot transfer register to reserved address");
 
             /* Check the contract for conditions. */
-            if(hashTransfer == ~uint256_t(0) && !contract.Conditions())
+            if(hashTransfer == ~uint256_t(0) && contract.Empty(Contract::CONDITIONS))
                 return debug::error(FUNCTION, "cannot transfer to wildcard with no conditions");
 
             /* Get the state byte. */
@@ -141,6 +141,7 @@ namespace TAO
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
             /* Seek read position to first position. */
+            contract.Reset();
             contract.Seek(1);
 
             return true;

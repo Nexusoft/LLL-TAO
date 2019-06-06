@@ -46,7 +46,7 @@ namespace TAO
         bool Validate::Verify(const Contract& contract, const Contract& condition)
         {
             /* Check for validation conditions. */
-            if(!condition.Conditions())
+            if(condition.Empty(Contract::CONDITIONS))
                 return debug::error(FUNCTION, "OP::VALIDATE: cannot validate with no conditions");
 
             /* Get the validation type. */

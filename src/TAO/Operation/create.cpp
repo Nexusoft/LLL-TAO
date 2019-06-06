@@ -268,6 +268,7 @@ namespace TAO
                 return debug::error(FUNCTION, "register is beyond size limits");
 
             /* Seek read position to first position. */
+            contract.Reset();
             contract.Seek(1);
 
             return true;

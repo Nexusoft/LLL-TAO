@@ -138,7 +138,7 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Seek to end. */
-                        contract.Seek(65);
+                        contract.Seek(32);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -203,7 +203,7 @@ namespace TAO
                     case TAO::Operation::OP::COINBASE:
                     {
                         /* Seek through coinbase data. */
-                        contract.Seek(49);
+                        contract.Seek(48);
 
                         break;
                     }
@@ -213,7 +213,7 @@ namespace TAO
                     case TAO::Operation::OP::TRUST:
                     {
                         /* Seek to end. */
-                        contract.Seek(81);
+                        contract.Seek(80);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -243,7 +243,7 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Seek to end. */
-                        contract.Seek(41);
+                        contract.Seek(8);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -273,7 +273,7 @@ namespace TAO
                     case TAO::Operation::OP::STAKE:
                     {
                         /* Seek to end. */
-                        contract.Seek(9);
+                        contract.Seek(8);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -299,7 +299,7 @@ namespace TAO
                     case TAO::Operation::OP::UNSTAKE:
                     {
                         /* Seek to end. */
-                        contract.Seek(17);
+                        contract.Seek(16);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -333,7 +333,7 @@ namespace TAO
                         contract >> hashTo;
 
                         /* Seek to end. */
-                        contract.Seek(73);
+                        contract.Seek(8);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -440,7 +440,7 @@ namespace TAO
                     case TAO::Operation::OP::AUTHORIZE:
                     {
                         /* Seek to address. */
-                        contract.Seek(97);
+                        contract.Seek(96);
 
                         break;
                     }
@@ -454,7 +454,7 @@ namespace TAO
                         contract >> hashFrom;
 
                         /* Seek to end. */
-                        contract.Seek(41);
+                        contract.Seek(8);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;

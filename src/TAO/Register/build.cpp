@@ -246,7 +246,7 @@ namespace TAO
                     case TAO::Operation::OP::CLAIM:
                     {
                         /* Seek to address. */
-                        contract.Seek(69);
+                        contract.Seek(68);
 
                         /* Get last trust block. */
                         uint256_t hashAddress = 0;
@@ -287,7 +287,7 @@ namespace TAO
                     case TAO::Operation::OP::COINBASE:
                     {
                         /* Seek to end. */
-                        contract.Seek(49);
+                        contract.Seek(48);
 
                         break;
                     }
@@ -297,7 +297,7 @@ namespace TAO
                     case TAO::Operation::OP::TRUST:
                     {
                         /* Seek to scores. */
-                        contract.Seek(65);
+                        contract.Seek(64);
 
                         /* Get the trust score. */
                         uint64_t nScore = 0;
@@ -394,7 +394,7 @@ namespace TAO
                     case TAO::Operation::OP::STAKE:
                     {
                         /* Amount to of funds to move. */
-                        uint64_t nAmount;
+                        uint64_t nAmount = 0;
                         contract >> nAmount;
 
                         /* Check that indexed trust account exists. */
@@ -437,12 +437,12 @@ namespace TAO
                     case TAO::Operation::OP::UNSTAKE:
                     {
                         /* Amount of funds to move. */
-                        uint64_t nAmount;
+                        uint64_t nAmount = 0;
                         contract >> nAmount;
 
                         /* Trust score penalty from unstake. */
-                        uint64_t nTrustPenalty;
-                        contract >> nTrustPenalty;
+                        uint64_t nPenalty = 0;
+                        contract >> nPenalty;
 
                         /* Check that indexed trust account exists. */
                         if(!LLD::Register->HasTrust(contract.Caller()))
@@ -464,7 +464,7 @@ namespace TAO
                         contract <<= object;
 
                         /* Calculate the new operation. */
-                        if(!TAO::Operation::Unstake::Execute(object, nAmount, nTrustPenalty, contract.Timestamp()))
+                        if(!TAO::Operation::Unstake::Execute(object, nAmount, nPenalty, contract.Timestamp()))
                             return debug::error(FUNCTION, "OP::UNSTAKE: cannot generate post-state");
 
                         /* Serialize the post-state byte into contract. */
@@ -531,7 +531,7 @@ namespace TAO
                     case TAO::Operation::OP::CREDIT:
                     {
                         /* Seek to address. */
-                        contract.Seek(69);
+                        contract.Seek(68);
 
                         /* Get the transfer address. */
                         uint256_t hashAddress = 0;
@@ -581,7 +581,7 @@ namespace TAO
                     case TAO::Operation::OP::AUTHORIZE:
                     {
                         /* Seek to address. */
-                        contract.Seek(97);
+                        contract.Seek(96);
 
                         break;
                     }
@@ -590,7 +590,7 @@ namespace TAO
                     case TAO::Operation::OP::VALIDATE:
                     {
                         /* Seek past validate parameters. */
-                        contract.Seek(69);
+                        contract.Seek(68);
 
                         break;
                     }
@@ -666,7 +666,7 @@ namespace TAO
                         case TAO::Operation::OP::VALIDATE:
                         {
                             /* Seek to end of stream. */
-                            contract.Seek(68, STREAM::CURSOR);
+                            contract.Seek(68);
 
                             break;
                         }

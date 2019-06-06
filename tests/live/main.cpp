@@ -73,6 +73,19 @@ void MoveForward(Node* pthis)
 
 }
 
+
+/* Proxy to handle locked LLD records. */
+class LockProxy
+{
+    const std::mutex& MUTEX;
+
+    LockProxy(const std::mutex& MUTEX_IN)
+    : MUTEX(MUTEX_IN)
+    {
+        MUTEX.lock();
+    }
+};
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {

@@ -44,6 +44,7 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to write credit proof");
 
             /* Read the debit. */
+            debit.Reset();
             debit.Seek(1);
 
             /* Get address from. */
@@ -186,6 +187,14 @@ namespace TAO
                 if(account.get<uint256_t>("token") != 0)
                     return debug::error(FUNCTION, "credit disabled for coinbase of non-native token");
 
+                /* Seek read position to first position. */
+                contract.Reset();
+                contract.Seek(1);
+
+                /* Reset debit read positions. */
+                debit.Reset();
+                debit.Seek(1);
+
                 return true;
             }
 
@@ -263,6 +272,14 @@ namespace TAO
                 else if(nDebit != nCredit)
                     return debug::error(FUNCTION, "debit and credit value mismatch");
 
+                /* Seek read position to first position. */
+                contract.Reset();
+                contract.Seek(1);
+
+                /* Reset debit read positions. */
+                debit.Reset();
+                debit.Seek(1);
+
                 return true;
             }
 
@@ -334,7 +351,12 @@ namespace TAO
                 return debug::error(FUNCTION, "credit is beyond claimable debit amount");
 
             /* Seek read position to first position. */
+            contract.Reset();
             contract.Seek(1);
+
+            /* Reset debit read positions. */
+            debit.Reset();
+            debit.Seek(1);
 
             return true;
         }

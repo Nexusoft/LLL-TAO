@@ -41,7 +41,6 @@ namespace TAO
          **/
         class Contract
         {
-
             /** Contract operation stream. **/
             TAO::Operation::Stream ssOperation;
 
@@ -66,6 +65,16 @@ namespace TAO
             mutable uint512_t hashTx;
 
         public:
+
+            /** Enumeration to handle setting aspects of the contract. */
+            enum
+            {
+                OPERATIONS = (1 << 1),
+                CONDITIONS = (1 << 2),
+                REGISTERS  = (1 << 3),
+
+                ALL        = OPERATIONS | CONDITIONS | REGISTERS
+            };
 
 
             /** Default Constructor. **/
@@ -144,36 +153,42 @@ namespace TAO
              *
              *  Detect if the stream is empty.
              *
-             *  @return true if operation stream is empty.
+             *  @param[in] nFlags The flags to determine which streams to check.
+             *
+             *  @return true if stream(s) is empty.
              *
              **/
-            bool Empty() const;
+            bool Empty(const uint8_t nFlags = OPERATIONS) const;
 
 
             /** Reset
              *
              *  Reset the internal stream read pointers.
              *
-             *  @param[in] nType The type to reset.
+             *  @param[in] nFlags The flags to determine which streams to reset.
              *
              **/
-            void Reset(const uint8_t nType = 0) const;
+            void Reset(const uint8_t nFlags = ALL) const;
 
 
             /** Clear
              *
              *  Clears all contract data
              *
+             *  @param[in] nFlags The flags to determine which streams to clear.
+             *
              **/
-            void Clear();
+            void Clear(const uint8_t nFlags = ALL);
 
 
             /** End
              *
              *  End of the internal stream.
              *
+             *  @param[in] nFlags The flags to determine which streams to check.
+             *
              **/
-            bool End(const uint8_t nType = 0) const;
+            bool End(const uint8_t nFlags = OPERATIONS) const;
 
 
             /** Operations
@@ -186,25 +201,16 @@ namespace TAO
             const std::vector<uint8_t>& Operations() const;
 
 
-            /** Conditions
-             *
-             *  Returns whether this contract contains conditions.
-             *
-             *  @return true if contract contains conditions
-             *
-             **/
-            bool Conditions() const;
-
-
             /** Seek
              *
              *  Seek the internal operation stream read pointers.
              *
              *  @param[in] nPos The position to seek to
+             *  @param[in] nFlags The flags to determine which streams to seek.
              *  @param[in] nType The type to seek (begin, cursor, end).
              *
              **/
-            void Seek(const uint32_t nPos, const uint8_t nType = STREAM::BEGIN) const;
+            void Seek(const uint32_t nPos, const uint8_t nFlags = OPERATIONS, const uint8_t nType = STREAM::CURSOR) const;
 
 
             /** Seek
@@ -214,7 +220,7 @@ namespace TAO
              *  @param[in] nPos The position to seek to
              *
              **/
-            void Rewind(const uint32_t nPos) const;
+            void Rewind(const uint32_t nPos, const uint8_t nFlags = CONDITIONS) const;
 
 
             /** Operator Overload <<

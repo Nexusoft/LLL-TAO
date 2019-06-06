@@ -122,6 +122,7 @@ namespace TAO
                 return debug::error(FUNCTION, "pre-state is in invalid state");
 
             /* Seek read position to first position. */
+            claim.Reset();
             claim.Seek(1);
 
             return true;

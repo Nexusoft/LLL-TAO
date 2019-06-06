@@ -82,6 +82,10 @@ namespace LLD
         uint8_t nFlags;
 
 
+        /* The key level locking hashmap. */
+        mutable std::vector<std::mutex> RECORD_MUTEX;
+
+
     public:
 
         /** Default Constructor **/

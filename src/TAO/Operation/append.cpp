@@ -104,6 +104,7 @@ namespace TAO
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
             /* Seek read position to first position. */
+            contract.Reset();
             contract.Seek(1);
 
             return true;

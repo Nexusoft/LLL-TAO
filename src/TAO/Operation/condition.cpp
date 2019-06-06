@@ -69,7 +69,7 @@ namespace TAO
             vEvaluate.push(std::make_pair(false, OP::RESERVED));
 
             /* Loop through the operation validation code. */
-            while(!contract.End(1))
+            while(!contract.End(Contract::CONDITIONS))
             {
                 /* Grab the next operation. */
                 uint8_t OPERATION = 0;
@@ -400,7 +400,7 @@ namespace TAO
         {
 
             /* Iterate until end of stream. */
-            while(!contract.End(1))
+            while(!contract.End(Contract::CONDITIONS))
             {
                 /* Extract the operation byte. */
                 uint8_t OPERATION = 0;
@@ -852,7 +852,7 @@ namespace TAO
                             case OP::CALLER::PRESTATE::MODIFIED:
                             {
                                 /* Reset the contract. */
-                                caller.Reset(1);
+                                caller.Reset(Contract::REGISTERS);
 
                                 /* Read the pre-state state. */
                                 uint8_t nState = 0;
@@ -862,7 +862,7 @@ namespace TAO
                                 caller >>= state;
 
                                 /* Reset the contract. */
-                                caller.Reset(1);
+                                caller.Reset(Contract::REGISTERS);
 
                                 break;
                             }
@@ -904,7 +904,7 @@ namespace TAO
                             case OP::CALLER::PRESTATE::CREATED:
                             {
                                 /* Reset the contract. */
-                                caller.Reset(1);
+                                caller.Reset(Contract::REGISTERS);
 
                                 /* Read the pre-state state. */
                                 uint8_t nState = 0;
@@ -914,7 +914,7 @@ namespace TAO
                                 caller >>= state;
 
                                 /* Reset the contract. */
-                                caller.Reset(1);
+                                caller.Reset(Contract::REGISTERS);
 
                                 break;
                             }
@@ -956,7 +956,7 @@ namespace TAO
                             case OP::CALLER::PRESTATE::OWNER:
                             {
                                 /* Reset the contract. */
-                                caller.Reset(1);
+                                caller.Reset(Contract::REGISTERS);
 
                                 /* Read the pre-state state. */
                                 uint8_t nState = 0;
@@ -966,7 +966,7 @@ namespace TAO
                                 caller >>= state;
 
                                 /* Reset the contract. */
-                                caller.Reset(1);
+                                caller.Reset(Contract::REGISTERS);
 
                                 break;
                             }
@@ -1008,7 +1008,7 @@ namespace TAO
                             case OP::CALLER::PRESTATE::TYPE:
                             {
                                 /* Reset the contract. */
-                                caller.Reset(1);
+                                caller.Reset(Contract::REGISTERS);
 
                                 /* Read the pre-state state. */
                                 uint8_t nState = 0;
@@ -1018,7 +1018,7 @@ namespace TAO
                                 caller >>= state;
 
                                 /* Reset the contract. */
-                                caller.Reset(1);
+                                caller.Reset(Contract::REGISTERS);
 
                                 break;
                             }
@@ -1060,7 +1060,7 @@ namespace TAO
                             case OP::CALLER::PRESTATE::STATE:
                             {
                                 /* Reset the contract. */
-                                caller.Reset(1);
+                                caller.Reset(Contract::REGISTERS);
 
                                 /* Read the pre-state state. */
                                 uint8_t nState = 0;
@@ -1070,7 +1070,7 @@ namespace TAO
                                 caller >>= state;
 
                                 /* Reset the contract. */
-                                caller.Reset(1);
+                                caller.Reset(Contract::REGISTERS);
 
                                 break;
                             }
@@ -1112,7 +1112,7 @@ namespace TAO
                             case OP::CALLER::PRESTATE::VALUE:
                             {
                                 /* Reset the contract. */
-                                caller.Reset(1);
+                                caller.Reset(Contract::REGISTERS);
 
                                 /* Read the pre-state state. */
                                 uint8_t nState = 0;
@@ -1122,7 +1122,7 @@ namespace TAO
                                 caller >>= object;
 
                                 /* Reset the contract. */
-                                caller.Reset(1);
+                                caller.Reset(Contract::REGISTERS);
 
                                 break;
                             }
@@ -1422,7 +1422,7 @@ namespace TAO
                     default:
                     {
                         /* If no applicable instruction found, rewind and return. */
-                        contract.Rewind(1);
+                        contract.Rewind(1, Contract::CONDITIONS);
                         if(nLimits < 0)
                             debug::error(FUNCTION, "out of computational limits ", nLimits);
 

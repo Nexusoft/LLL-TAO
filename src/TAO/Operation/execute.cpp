@@ -64,7 +64,7 @@ namespace TAO
                     case OP::WRITE:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::WRITE: conditions not allowed on write");
 
                         /* Verify the operation rules. */
@@ -123,7 +123,7 @@ namespace TAO
                     case OP::APPEND:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::APPEND: conditions not allowed on append");
 
                         /* Verify the operation rules. */
@@ -184,7 +184,7 @@ namespace TAO
                     case OP::CREATE:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::CREATE: conditions not allowed on create");
 
                         /* Verify the operation rules. */
@@ -296,7 +296,7 @@ namespace TAO
                     case OP::CLAIM:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::CLAIM: conditions not allowed on claim");
 
                         /* Extract the transaction from contract. */
@@ -317,14 +317,14 @@ namespace TAO
                             return false;
 
                         /* Check for conditions. */
-                        if(transfer.Conditions())
+                        if(!transfer.Empty(Contract::CONDITIONS))
                         {
                             /* Build the validation script for execution. */
                             Condition conditions = Condition(transfer, contract);
                             if(!conditions.Execute())
                             {
-                                /* Seek the debit to end. */
-                                transfer.Seek(65);
+                                /* Seek the transfer to end. */
+                                transfer.Seek(64);
 
                                 /* Check for condition operation. */
                                 if(!transfer.End())
@@ -352,7 +352,7 @@ namespace TAO
                         }
 
                         /* Check for conditions. */
-                        if(transfer.Conditions())
+                        if(!transfer.Empty(Contract::CONDITIONS))
                         {
                             /* Build the validation script for execution. */
                             Condition condition = Condition(transfer, contract);
@@ -404,7 +404,7 @@ namespace TAO
                     case OP::COINBASE:
                     {
                         /* Seek to end. */
-                        contract.Seek(49);
+                        contract.Seek(48);
 
                         break;
                     }
@@ -414,7 +414,7 @@ namespace TAO
                     case OP::TRUST:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::TRUST: conditions not allowed on trust");
 
                         /* Verify the operation rules. */
@@ -422,7 +422,7 @@ namespace TAO
                             return false;
 
                         /* Seek to scores. */
-                        contract.Seek(65);
+                        contract.Seek(64);
 
                         /* Get the trust score. */
                         uint64_t nScore = 0;
@@ -476,7 +476,7 @@ namespace TAO
                     case OP::GENESIS:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::GENESIS: conditions not allowed on genesis");
 
                         /* Verify the operation rules. */
@@ -535,7 +535,7 @@ namespace TAO
                     case OP::STAKE:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::STAKE: conditions not allowed on stake");
 
                         /* Verify the operation rules. */
@@ -590,7 +590,7 @@ namespace TAO
                     case OP::UNSTAKE:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::UNSTAKE: conditions not allowed on unstake");
 
                         /* Verify the operation rules. */
@@ -708,7 +708,7 @@ namespace TAO
                     case OP::CREDIT:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::CREDIT: conditions not allowed on credit");
 
                         /* Extract the transaction from contract. */
@@ -725,7 +725,7 @@ namespace TAO
                             return false;
 
                         /* Seek past transaction-id. */
-                        contract.Seek(69);
+                        contract.Seek(68);
 
                         /* Get the transfer address. */
                         uint256_t hashAddress = 0;
@@ -740,11 +740,10 @@ namespace TAO
                         contract >> nAmount;
 
                         /* Check for conditions. */
-                        if(debit.Conditions())
+                        if(!debit.Empty(Contract::CONDITIONS))
                         {
-
                             /* Seek the debit to end. */
-                            debit.Seek(73);
+                            debit.Seek(72);
 
                             /* Check for condition operation. */
                             Condition conditions = Condition(debit, contract);
@@ -817,7 +816,7 @@ namespace TAO
                     case OP::AUTHORIZE:
                     {
                         /* Seek to address. */
-                        contract.Seek(97);
+                        contract.Seek(96);
 
                         break;
                     }
@@ -827,7 +826,7 @@ namespace TAO
                     case OP::LEGACY:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::LEGACY: conditions not allowed on legacy");
 
                         /* Verify the operation rules. */
