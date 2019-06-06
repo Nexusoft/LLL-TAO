@@ -53,11 +53,11 @@ namespace TAO
             try
             {
                 /* Get the contract OP. */
-                uint8_t OP = 0;
-                contract >> OP;
+                uint8_t nOP = 0;
+                contract >> nOP;
 
                 /* Check the current opcode. */
-                switch(OP)
+                switch(nOP)
                 {
 
                     /* Generate pre-state to database. */
@@ -742,36 +742,35 @@ namespace TAO
                         /* Check for conditions. */
                         if(debit.Conditions())
                         {
-                            /* Build the validation script for execution. */
+
+                            /* Seek the debit to end. */
+                            debit.Seek(73);
+
+                            /* Check for condition operation. */
                             Condition conditions = Condition(debit, contract);
-                            if(!conditions.Execute())
+                            if(!debit.End())
                             {
-                                /* Seek the debit to end. */
-                                debit.Seek(73);
 
-                                /* Check for condition operation. */
-                                if(!debit.End())
-                                {
-                                    /* Get the condition. */
-                                    uint8_t nType = 0;
-                                    debit >> nType;
+                                /* Get the condition. */
+                                uint8_t nType = 0;
+                                debit >> nType;
 
-                                    /* Check for condition. */
-                                    if(nType != OP::CONDITION)
-                                        return debug::error(FUNCTION, "OP::CREDIT: condition OP missing");
+                                /* Check for condition. */
+                                if(nType != OP::CONDITION)
+                                    return debug::error(FUNCTION, "OP::CREDIT: condition OP missing");
 
-                                    /* Read the contract database. */
-                                    uint256_t hashValidator = 0;
-                                    if(!LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
-                                        return debug::error(FUNCTION, "OP::CREDIT: condition has not been validated");
+                                /* Read the contract database. */
+                                uint256_t hashValidator = 0;
+                                if(!LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
+                                    return debug::error(FUNCTION, "OP::CREDIT: condition has not been validated");
 
-                                    /* Check the validator to caller. */
-                                    if(hashValidator != contract.Caller())
-                                        return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
-                                }
-                                else
-                                    return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+                                /* Check the validator to caller. */
+                                if(hashValidator != contract.Caller() && !conditions.Execute())
+                                    return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
                             }
+                            else if(!conditions.Execute())
+                                return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+
                         }
 
                         /* Deserialize the pre-state byte from the contract. */
@@ -889,7 +888,7 @@ namespace TAO
                     }
 
                     default:
-                        return debug::error(FUNCTION, "invalid code for contract execution");
+                        return debug::error(FUNCTION, "invalid code for contract execution ", uint32_t(nOP));
                 }
 
 
@@ -897,16 +896,17 @@ namespace TAO
                 if(!contract.End())
                 {
                     /* Get the contract OP. */
-                    OP = 0;
-                    contract >> OP;
+                    uint8_t nLast = 0;
+                    contract >> nLast;
 
                     /* Check the current opcode. */
-                    switch(OP)
+                    switch(nLast)
                     {
 
                         /* Condition that allows a validation to occur. */
                         case OP::CONDITION:
                         {
+
                             /* Condition has no parameters. */
                             break;
                         }
@@ -936,12 +936,12 @@ namespace TAO
                         }
 
                         default:
-                            return debug::error(FUNCTION, "invalid end code for contract execution");
+                            return debug::error(FUNCTION, "OP::CONDITIONS:  invalid end code for contract execution ", uint32_t(nLast));
                     }
 
                     /* Ensure that there are no more operations. */
                     if(!contract.End())
-                        return debug::error(FUNCTION, "contract cannot contain any more primitives");
+                        return debug::error(FUNCTION, "OP::CONDITIONS: contract cannot contain any more primitives");
                 }
             }
             catch(const std::exception& e)

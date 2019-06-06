@@ -62,10 +62,6 @@ namespace TAO
         /* Execute the validation script. */
         bool Condition::Execute()
         {
-            /* Reset the contract. */
-            contract.Reset();
-            caller.Reset();
-
             /* Build the stack for nested grouping. */
             std::stack<std::pair<bool, uint8_t>> vEvaluate;
 
@@ -831,34 +827,45 @@ namespace TAO
 
 
                     /* Get a register's timestamp and push to the return value. */
+                    case OP::CALLER::PRESTATE::MODIFIED:
                     case OP::REGISTER::MODIFIED:
-                    case OP::PRESTATE::MODIFIED:
                     {
                         /* Register state object. */
                         TAO::Register::State state;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::MODIFIED)
+                        switch(OPERATION)
                         {
-                            /* Read the register address. */
-                            uint256_t hashRegister;
-                            deallocate(hashRegister, vRet);
+                            case OP::REGISTER::MODIFIED:
+                            {
+                                /* Read the register address. */
+                                uint256_t hashRegister;
+                                deallocate(hashRegister, vRet);
 
-                            /* Read the register states. */
-                            if(!LLD::Register->Read(hashRegister, state))
-                                return false;
-                        }
-                        else
-                        {
-                            /* Reset the contract. */
-                            contract.Reset();
+                                /* Read the register states. */
+                                if(!LLD::Register->Read(hashRegister, state))
+                                    return false;
 
-                            /* Read the pre-state state. */
-                            uint8_t nState = 0;
-                            contract >>= nState;
+                                break;
+                            }
 
-                            /* Get the pre-state. */
-                            contract >>= state;
+                            case OP::CALLER::PRESTATE::MODIFIED:
+                            {
+                                /* Reset the contract. */
+                                caller.Reset(1);
+
+                                /* Read the pre-state state. */
+                                uint8_t nState = 0;
+                                caller >>= nState;
+
+                                /* Get the pre-state. */
+                                caller >>= state;
+
+                                /* Reset the contract. */
+                                caller.Reset(1);
+
+                                break;
+                            }
                         }
 
                         /* Set the register value. */
@@ -872,34 +879,45 @@ namespace TAO
 
 
                     /* Get a register's timestamp and push to the return value. */
+                    case OP::CALLER::PRESTATE::CREATED:
                     case OP::REGISTER::CREATED:
-                    case OP::PRESTATE::CREATED:
                     {
                         /* Register state object. */
                         TAO::Register::State state;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::CREATED)
+                        switch(OPERATION)
                         {
-                            /* Read the register address. */
-                            uint256_t hashRegister;
-                            deallocate(hashRegister, vRet);
+                            case OP::REGISTER::CREATED:
+                            {
+                                /* Read the register address. */
+                                uint256_t hashRegister;
+                                deallocate(hashRegister, vRet);
 
-                            /* Read the register states. */
-                            if(!LLD::Register->Read(hashRegister, state))
-                                return false;
-                        }
-                        else
-                        {
-                            /* Reset the contract. */
-                            contract.Reset();
+                                /* Read the register states. */
+                                if(!LLD::Register->Read(hashRegister, state))
+                                    return false;
 
-                            /* Read the pre-state state. */
-                            uint8_t nState = 0;
-                            contract >>= nState;
+                                break;
+                            }
 
-                            /* Get the pre-state. */
-                            contract >>= state;
+                            case OP::CALLER::PRESTATE::CREATED:
+                            {
+                                /* Reset the contract. */
+                                caller.Reset(1);
+
+                                /* Read the pre-state state. */
+                                uint8_t nState = 0;
+                                caller >>= nState;
+
+                                /* Get the pre-state. */
+                                caller >>= state;
+
+                                /* Reset the contract. */
+                                caller.Reset(1);
+
+                                break;
+                            }
                         }
 
                         /* Set the register value. */
@@ -913,34 +931,45 @@ namespace TAO
 
 
                     /* Get a register's owner and push to the return value. */
+                    case OP::CALLER::PRESTATE::OWNER:
                     case OP::REGISTER::OWNER:
-                    case OP::PRESTATE::OWNER:
                     {
                         /* Register state object. */
                         TAO::Register::State state;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::OWNER)
+                        switch(OPERATION)
                         {
-                            /* Read the register address. */
-                            uint256_t hashRegister;
-                            deallocate(hashRegister, vRet);
+                            case OP::REGISTER::OWNER:
+                            {
+                                /* Read the register address. */
+                                uint256_t hashRegister;
+                                deallocate(hashRegister, vRet);
 
-                            /* Read the register states. */
-                            if(!LLD::Register->Read(hashRegister, state))
-                                return false;
-                        }
-                        else
-                        {
-                            /* Reset the contract. */
-                            contract.Reset();
+                                /* Read the register states. */
+                                if(!LLD::Register->Read(hashRegister, state))
+                                    return false;
 
-                            /* Read the pre-state state. */
-                            uint8_t nState = 0;
-                            contract >>= nState;
+                                break;
+                            }
 
-                            /* Get the pre-state. */
-                            contract >>= state;
+                            case OP::CALLER::PRESTATE::OWNER:
+                            {
+                                /* Reset the contract. */
+                                caller.Reset(1);
+
+                                /* Read the pre-state state. */
+                                uint8_t nState = 0;
+                                caller >>= nState;
+
+                                /* Get the pre-state. */
+                                caller >>= state;
+
+                                /* Reset the contract. */
+                                caller.Reset(1);
+
+                                break;
+                            }
                         }
 
                         /* Set the register value. */
@@ -954,34 +983,45 @@ namespace TAO
 
 
                     /* Get a register's type and push to the return value. */
+                    case OP::CALLER::PRESTATE::TYPE:
                     case OP::REGISTER::TYPE:
-                    case OP::PRESTATE::TYPE:
                     {
                         /* Register state object. */
                         TAO::Register::State state;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::TYPE)
+                        switch(OPERATION)
                         {
-                            /* Read the register address. */
-                            uint256_t hashRegister;
-                            deallocate(hashRegister, vRet);
+                            case OP::REGISTER::TYPE:
+                            {
+                                /* Read the register address. */
+                                uint256_t hashRegister;
+                                deallocate(hashRegister, vRet);
 
-                            /* Read the register states. */
-                            if(!LLD::Register->Read(hashRegister, state))
-                                return false;
-                        }
-                        else
-                        {
-                            /* Reset the contract. */
-                            contract.Reset();
+                                /* Read the register states. */
+                                if(!LLD::Register->Read(hashRegister, state))
+                                    return false;
 
-                            /* Read the pre-state state. */
-                            uint8_t nState = 0;
-                            contract >>= nState;
+                                break;
+                            }
 
-                            /* Get the pre-state. */
-                            contract >>= state;
+                            case OP::CALLER::PRESTATE::TYPE:
+                            {
+                                /* Reset the contract. */
+                                caller.Reset(1);
+
+                                /* Read the pre-state state. */
+                                uint8_t nState = 0;
+                                caller >>= nState;
+
+                                /* Get the pre-state. */
+                                caller >>= state;
+
+                                /* Reset the contract. */
+                                caller.Reset(1);
+
+                                break;
+                            }
                         }
 
                         /* Push the type onto the return value. */
@@ -995,34 +1035,45 @@ namespace TAO
 
 
                     /* Get a register's state and push to the return value. */
+                    case OP::CALLER::PRESTATE::STATE:
                     case OP::REGISTER::STATE:
-                    case OP::PRESTATE::STATE:
                     {
                         /* Register state object. */
                         TAO::Register::State state;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::STATE)
+                        switch(OPERATION)
                         {
-                            /* Read the register address. */
-                            uint256_t hashRegister;
-                            deallocate(hashRegister, vRet);
+                            case OP::REGISTER::STATE:
+                            {
+                                /* Read the register address. */
+                                uint256_t hashRegister;
+                                deallocate(hashRegister, vRet);
 
-                            /* Read the register states. */
-                            if(!LLD::Register->Read(hashRegister, state))
-                                return false;
-                        }
-                        else
-                        {
-                            /* Reset the contract. */
-                            contract.Reset();
+                                /* Read the register states. */
+                                if(!LLD::Register->Read(hashRegister, state))
+                                    return false;
 
-                            /* Read the pre-state state. */
-                            uint8_t nState = 0;
-                            contract >>= nState;
+                                break;
+                            }
 
-                            /* Get the pre-state. */
-                            contract >>= state;
+                            case OP::CALLER::PRESTATE::STATE:
+                            {
+                                /* Reset the contract. */
+                                caller.Reset(1);
+
+                                /* Read the pre-state state. */
+                                uint8_t nState = 0;
+                                caller >>= nState;
+
+                                /* Get the pre-state. */
+                                caller >>= state;
+
+                                /* Reset the contract. */
+                                caller.Reset(1);
+
+                                break;
+                            }
                         }
 
                         /* Allocate to the registers. */
@@ -1036,34 +1087,45 @@ namespace TAO
 
 
                     /* Get an account register's balance and push to the return value. */
+                    case OP::CALLER::PRESTATE::VALUE:
                     case OP::REGISTER::VALUE:
-                    case OP::PRESTATE::VALUE:
                     {
                         /* Register state object. */
                         TAO::Register::Object object;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::VALUE)
+                        switch(OPERATION)
                         {
-                            /* Read the register address. */
-                            uint256_t hashRegister;
-                            deallocate(hashRegister, vRet);
+                            case OP::REGISTER::VALUE:
+                            {
+                                /* Read the register address. */
+                                uint256_t hashRegister;
+                                deallocate(hashRegister, vRet);
 
-                            /* Read the register states. */
-                            if(!LLD::Register->Read(hashRegister, object))
-                                return false;
-                        }
-                        else
-                        {
-                            /* Reset the contract. */
-                            contract.Reset();
+                                /* Read the register states. */
+                                if(!LLD::Register->Read(hashRegister, object))
+                                    return false;
 
-                            /* Read the pre-state state. */
-                            uint8_t nState = 0;
-                            contract >>= nState;
+                                break;
+                            }
 
-                            /* Get the pre-state. */
-                            contract >>= object;
+                            case OP::CALLER::PRESTATE::VALUE:
+                            {
+                                /* Reset the contract. */
+                                caller.Reset(1);
+
+                                /* Read the pre-state state. */
+                                uint8_t nState = 0;
+                                caller >>= nState;
+
+                                /* Get the pre-state. */
+                                caller >>= object;
+
+                                /* Reset the contract. */
+                                caller.Reset(1);
+
+                                break;
+                            }
                         }
 
                         /* Get the value string. */

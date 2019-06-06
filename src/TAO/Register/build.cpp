@@ -54,11 +54,11 @@ namespace TAO
             try
             {
                 /* Get the contract OP. */
-                uint8_t OP = 0;
-                contract >> OP;
+                uint8_t nOP = 0;
+                contract >> nOP;
 
                 /* Check the current opcode. */
-                switch(OP)
+                switch(nOP)
                 {
 
                     /* Generate pre-state to database. */
@@ -647,11 +647,11 @@ namespace TAO
                 if(!contract.End())
                 {
                     /* Get the contract OP. */
-                    OP = 0;
-                    contract >> OP;
+                    uint8_t nLast = 0;
+                    contract >> nLast;
 
                     /* Check the current opcode. */
-                    switch(OP)
+                    switch(nLast)
                     {
 
                         /* Condition that allows a validation to occur. */
@@ -666,7 +666,7 @@ namespace TAO
                         case TAO::Operation::OP::VALIDATE:
                         {
                             /* Seek to end of stream. */
-                            contract.Seek(69);
+                            contract.Seek(68, STREAM::CURSOR);
 
                             break;
                         }

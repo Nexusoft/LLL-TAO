@@ -121,7 +121,7 @@ namespace TAO
             contract >> nContract;
 
             /* Read the to account that contract is operating on. */
-            uint256_t hashAccount;
+            uint256_t hashAccount = 0;
             contract >> hashAccount;
 
             /* Get the proof hash. */

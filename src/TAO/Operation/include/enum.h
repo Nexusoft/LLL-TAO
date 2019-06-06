@@ -145,23 +145,6 @@ namespace TAO
             }
 
 
-            /** Register pre-state values. **/
-            namespace PRESTATE
-            {
-                enum
-                {
-                    CREATED       = 0xb6,
-                    MODIFIED      = 0xb7,
-                    OWNER         = 0xb8,
-                    TYPE          = 0xb9,
-                    STATE         = 0xba,
-
-                    //object registers
-                    VALUE         = 0xbb
-                };
-            }
-
-
             /** Caller Values (The validation script caller). **/
             namespace CALLER
             {
@@ -172,6 +155,22 @@ namespace TAO
                     OPERATIONS   = 0xc2,
                     CONDITIONS   = 0xc3,
                 };
+
+                /** Register pre-state values. **/
+                namespace PRESTATE
+                {
+                    enum
+                    {
+                        CREATED       = 0xc4,
+                        MODIFIED      = 0xc5,
+                        OWNER         = 0xc6,
+                        TYPE          = 0xc7,
+                        STATE         = 0xc8,
+
+                        //object registers
+                        VALUE         = 0xc9
+                    };
+                }
             }
 
 

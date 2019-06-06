@@ -126,14 +126,18 @@ namespace TAO
         }
 
 
-        /*Reset the internal stream read pointers.*/
-        void Contract::Reset() const
+        /* Reset the internal stream read pointers.*/
+        void Contract::Reset(const uint8_t nType) const
         {
-            /* Set the operation stream to beginning. */
-            ssOperation.seek(0, STREAM::BEGIN);
+            /* If type is zero, reset all streams. */
+            if(nType == 0)
+            {
+                /* Set the operation stream to beginning. */
+                ssOperation.seek(0, STREAM::BEGIN);
 
-            /* Set the condition stream to beginning. */
-            ssCondition.seek(0, STREAM::BEGIN);
+                /* Set the condition stream to beginning. */
+                ssCondition.seek(0, STREAM::BEGIN);
+            }
 
             /* Set the register stream to beginning. */
             ssRegister.seek(0, STREAM::BEGIN);
@@ -179,10 +183,10 @@ namespace TAO
 
 
         /*Seek the internal operation stream read pointers.*/
-        void Contract::Seek(const uint32_t nPos) const
+        void Contract::Seek(const uint32_t nPos, const uint8_t nType) const
         {
             /* Set the operation stream to beginning. */
-            ssOperation.seek(nPos, STREAM::BEGIN);
+            ssOperation.seek(nPos, nType);
 
             /* Set the condition stream to beginning. */
             ssCondition.seek(0, STREAM::BEGIN);

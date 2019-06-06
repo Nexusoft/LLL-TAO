@@ -154,8 +154,10 @@ namespace TAO
              *
              *  Reset the internal stream read pointers.
              *
+             *  @param[in] nType The type to reset.
+             *
              **/
-            void Reset() const;
+            void Reset(const uint8_t nType = 0) const;
 
 
             /** Clear
@@ -199,9 +201,10 @@ namespace TAO
              *  Seek the internal operation stream read pointers.
              *
              *  @param[in] nPos The position to seek to
+             *  @param[in] nType The type to seek (begin, cursor, end).
              *
              **/
-            void Seek(const uint32_t nPos) const;
+            void Seek(const uint32_t nPos, const uint8_t nType = STREAM::BEGIN) const;
 
 
             /** Seek
