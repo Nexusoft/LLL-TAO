@@ -103,7 +103,7 @@ namespace LLP
          *  @param[in] nScore rhs DDOS_Score to add
          *
          **/
-        DDOS_Score &operator+=(const int& nScore);
+        DDOS_Score &operator+=(const uint32_t& nScore);
 
     };
 

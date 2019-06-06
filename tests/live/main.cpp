@@ -18,7 +18,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/base_address.h>
 #include <LLP/templates/socket.h>
-#include <LLP/types/corenode.h>
+#include <LLP/types/apinode.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/base64.h>
@@ -66,7 +66,7 @@ bool DownloadDictionary(std::vector<std::string> &vDictionary, const std::string
     debug::log(3, FUNCTION, "Endpoint: ", strEndpoint);
 
 
-    LLP::CoreNode apiNode;
+    LLP::APINode apiNode;
     LLP::BaseAddress addr(strHost, nPort, true);
 
     if(!apiNode.Connect(addr))
@@ -197,6 +197,11 @@ bool GenerateRecoveryHash(uint512_t &txRecoveryOut, const std::string &strUserna
     std::vector<uint8_t> vRecovery(strRecovery.begin(), strRecovery.end());
     std::vector<uint8_t> vHash(64);
 
+    const uint32_t nComputationalCost = 108;
+    const uint32_t nMemoryCostKB = 1 << 16;
+    const uint32_t nThreads = 1;
+    const uint32_t nLanes = 1;
+
     /* Create the hash context. */
     argon2_context context =
     {
@@ -204,29 +209,24 @@ bool GenerateRecoveryHash(uint512_t &txRecoveryOut, const std::string &strUserna
         &vHash[0],
         static_cast<uint32_t>(vHash.size()),
 
-        /* Password input data. */
+        /* Recovery input data. */
         &vRecovery[0],
         static_cast<uint32_t>(vRecovery.size()),
 
-        /* Password input data. */
+        /* Username input data. */
         &vUsername[0],
         static_cast<uint32_t>(vUsername.size()),
 
-        /* The salt for usernames */
+        /* The salt */
         reinterpret_cast<uint8_t *>(&nBirthdaySecret),
         static_cast<uint32_t>(sizeof(uint64_t)),
 
         /* Optional associated data */
         NULL, 0,
 
-        /* Computational Cost. */
-        108,
-
-        /* Memory Cost (64 MB). */
-        (1 << 16),
-
-        /* The number of threads and lanes */
-        1, 1,
+        nComputationalCost,
+        nMemoryCostKB,
+        nThreads, nLanes,
 
         /* Algorithm Version */
         ARGON2_VERSION_13,
@@ -287,11 +287,8 @@ int main(int argc, char** argv)
     }
 
 
-
     if(!GetRandomWordString(strRecovery, vDictionary, 20))
         return 0;
-
-    debug::log(0, strRecovery);
 
     std::string strUsername = "jack";
     uint64_t nSecret = GenerateBirthdaySecret(11, 17, 1991);
