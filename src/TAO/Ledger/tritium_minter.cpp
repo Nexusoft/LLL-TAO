@@ -35,6 +35,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/unpack.h>
+#include <TAO/Register/include/utils.h>
 
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
@@ -171,7 +172,7 @@ namespace TAO
             /*
              * Every user account should have a corresponding trust account created with its first transaction.
              * Upon staking Genesis, that account is indexed into the register DB and is directly retrievable.
-             * Pre-Genesis, we have to find its creation in the account transaction history.
+             * Pre-Genesis, we have to retrieve the name register to obtain the trust account address.
              *
              * If this process fails in any way, the user account has no trust account available and cannot stake.
              * This is logged as an error and the stake minter should be suspended pending stop/shutdown.
@@ -198,12 +199,16 @@ namespace TAO
 
                 /* Staking Genesis for trust account. Trust account is not indexed, look up by register address. */
 
-                /* Register address is a hash of a name in the format of namespacehash:objecttype:name */
-                std::string strRegisterName = TAO::API::NamespaceHash(user->UserName()).ToString() + ":token:trust";
+                /* Retrieve the name register for the user's trust account */
+                TAO::Register::Object nameRegister;
 
-                /* Build the address from an SK256 hash of register name. */
-                uint256_t hashAddressTemp = LLC::SK256(std::vector<uint8_t>(strRegisterName.begin(), strRegisterName.end()));
+                if (!TAO::Register::GetNameRegister(user->Genesis(), std::string("trust"), nameRegister))
+                    return debug::error(FUNCTION, "Stake Minter unknown trust account name.");
 
+                /* Retrieve the trust account address from the name register mapping. */
+                uint256_t hashAddressTemp = nameRegister.get<uint256_t>("address");
+
+                /* Retrieve the trust account */
                 TAO::Register::Object reg;
                 if(!LLD::regDB->ReadState(hashAddressTemp, reg))
                     return debug::error(FUNCTION, "Stake Minter unable to retrieve trust account for Genesis.");
