@@ -372,6 +372,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Register_state.o \
 		build/Register_system.o \
 		build/Register_unpack.o \
+		build/Register_utils.o \
 		build/Register_verify.o \
 		build/Ledger_base_minter.o \
 		build/Ledger_block.o \
