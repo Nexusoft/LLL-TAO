@@ -40,8 +40,8 @@ DESCRIPTION
     tokens/get/token          finance/credit/account
     tokens/get/account        finance/get/account
     tokens/debit/token        finance/list/accounts
-    tokens/debit/account
-    tokens/credit/account
+    tokens/debit/account      finance/get/stakeinfo
+    tokens/credit/account     finance/set/stake
 
 CLASSES
     sdk_init
@@ -54,7 +54,7 @@ CLASSES
      |      must be calledd to create a login instance before using any other
      |      calls.
      |  
-     |  nexus_assests_claim_asset(self, txid)
+     |  nexus_assets_claim_asset(self, txid)
      |      Claim an asset that has been transfered to username. The transaction 
      |      id, specified in 'txid' is returned from when the user did a 
      |      assets//transfer/asset API call.
@@ -126,8 +126,14 @@ CLASSES
      |      Get NXS crypto-currency account information with name specified in 
      |      'name'.
      |  
+     |  nexus_finance_get_stakeinfo(self)
+     |      Get staking information for user.
+     |  
      |  nexus_finance_list_accounts(self)
      |      List NXS transactions for user account.
+     |  
+     |  nexus_finance_set_stake(self, amount)
+     |      Add amount specified in "amount" to staking account.
      |  
      |  nexus_ledger_get_block_by_hash(self, block_hash, verbosity)
      |      Retrieve the block with supplied hash 'block_hash'. See API 
@@ -164,14 +170,6 @@ CLASSES
      |  nexus_objects_create_schema(self, name, data)
      |      Create object register schema. See API documentation for format
      |      of 'data' parameter.
-     |  
-     |  nexus_objects_get_schema_by_address(self, address)
-     |      Get object register scheme definition by supplying 'address' returned
-     |      from nexus_objects_create_schema_by_name().
-     |  
-     |  nexus_objects_get_schema_by_name(self, name)
-     |      Get object register scheme definition by supplying 'name' it was
-     |      created by.
      |  
      |  nexus_supply_claim_item(self, txid)
      |      Claim supply chain item that has been transfered to username. The
