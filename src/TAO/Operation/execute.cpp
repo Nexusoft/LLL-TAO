@@ -749,7 +749,6 @@ namespace TAO
                             Condition conditions = Condition(debit, contract);
                             if(!debit.End())
                             {
-
                                 /* Get the condition. */
                                 uint8_t nType = 0;
                                 debit >> nType;
@@ -760,12 +759,17 @@ namespace TAO
 
                                 /* Read the contract database. */
                                 uint256_t hashValidator = 0;
-                                if(!LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
-                                    return debug::error(FUNCTION, "OP::CREDIT: condition has not been validated");
+                                if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
+                                {
+                                    /* Check that the caller is the claimant. */
+                                    if(hashValidator != contract.Caller())
+                                        return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
+                                }
 
                                 /* Check the validator to caller. */
-                                if(hashValidator != contract.Caller() && !conditions.Execute())
-                                    return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
+                                else if(!conditions.Execute())
+                                    return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+
                             }
                             else if(!conditions.Execute())
                                 return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");

@@ -32,11 +32,11 @@ namespace TAO
         {
             /* Check that contract hasn't already been completed. */
             if(LLD::Contract->HasContract(std::make_pair(hashTx, nContract), nFlags))
-                return debug::error(FUNCTION, "cannot validate when already fulfilled");
+                return debug::error(FUNCTION, "OP::VALIDATE: cannot validate when already fulfilled");
 
             /* Write the contract caller. */
             if(!LLD::Contract->WriteContract(std::make_pair(hashTx, nContract), hashCaller, nFlags))
-                return debug::error(FUNCTION, "failed to write contract caller to disk");
+                return debug::error(FUNCTION, "OP::VALIDATE: failed to write contract caller to disk");
 
             return true;
         }

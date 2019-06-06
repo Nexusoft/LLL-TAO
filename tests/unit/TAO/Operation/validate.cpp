@@ -201,8 +201,6 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
             //check for error
             std::string error = debug::GetLastError();
-            printf("ERROR: %s\n", error.c_str());
-            
             REQUIRE(error.find("OP::CREDIT: conditions not satisfied") != std::string::npos);
         }
 
@@ -297,11 +295,11 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             //get tx hash
             hashTx = tx.GetHash();
 
-            //write transaction to disk
-            REQUIRE(LLD::Ledger->WriteTx(hashTx, tx));
-
             //generate the prestates and poststates
             REQUIRE(tx.Build());
+
+            //write transaction to disk
+            REQUIRE(LLD::Ledger->WriteTx(hashTx, tx));
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -326,16 +324,12 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            printf("Attempting double spending....\n");
             REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
-
-            printf("ERROR: %s\n", error.c_str());
-            //REQUIRE(error.find("credit is already claimed") != std::string::npos);
+            REQUIRE(error.find("OP::CREDIT: conditions not satisfied") != std::string::npos);
         }
-
 
 
         {
@@ -360,6 +354,42 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
         }
 
 
+        //check that caller is set
+        {
+            uint256_t hashCaller = 0;
+            REQUIRE(LLD::Contract->ReadContract(std::make_pair(hashTx, 0), hashCaller));
+
+            REQUIRE(hashCaller == hashGenesis2);
+        }
+
+
+        //try to double spend back to self
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx[0] << uint8_t(OP::CREDIT) << hashTx << uint32_t(0) << hashToken << hashToken << uint64_t(500);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //write transaction to disk
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+
+            //commit to disk
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+            //check for error
+            std::string error = debug::GetLastError();
+            REQUIRE(error.find("OP::CREDIT: caller is not authorized to claim validation") != std::string::npos);
+        }
+
+
+        //try to validate twice
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -379,6 +409,9 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             //commit to disk
             REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
+            //check for error
+            std::string error = debug::GetLastError();
+            REQUIRE(error.find("OP::VALIDATE: cannot validate when already fulfilled") != std::string::npos);
         }
 
 
