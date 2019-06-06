@@ -59,6 +59,62 @@ namespace TAO
                 /* Check the current opcode. */
                 switch(nOP)
                 {
+                    /* Condition that allows a validation to occur. */
+                    case OP::CONDITION:
+                    {
+                        /* Condition has no parameters. */
+                        contract >> nOP;
+
+                        /* Check for valid primitives that can have a condition. */
+                        switch(nOP)
+                        {
+                            /* Transfer and debit are the only permitted. */
+                            case OP::TRANSFER:
+                            case OP::DEBIT:
+                            {
+                                //transfer and debit are permitted
+                                break;
+                            }
+
+                            default:
+                                return debug::error(FUNCTION, "unsupported OP for condition");
+                        }
+
+                        break;
+                    }
+
+
+                    /* Validate a previous contract's conditions */
+                    case OP::VALIDATE:
+                    {
+                        /* Extract the transaction from contract. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
+
+                        /* Extract the contract-id. */
+                        uint32_t nContract = 0;
+                        contract >> nContract;
+
+                        /* Verify the operation rules. */
+                        const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
+                        if(!Validate::Verify(contract, condition))
+                            return false;
+
+                        /* Commit the validation to disk. */
+                        if(!Validate::Commit(hashTx, nContract, contract.Caller(), nFlags))
+                            return false;
+
+                        /* Get next OP. */
+                        contract >> nOP;
+
+                        break;
+                    }
+                }
+
+
+                /* Check the current opcode. */
+                switch(nOP)
+                {
 
                     /* Generate pre-state to database. */
                     case OP::WRITE:
@@ -319,45 +375,29 @@ namespace TAO
                         /* Check for conditions. */
                         if(!transfer.Empty(Contract::CONDITIONS))
                         {
-                            /* Build the validation script for execution. */
+                            /* Get the condition. */
+                            uint8_t nType = 0;
+                            transfer >> nType;
+
+                            /* Check for condition. */
                             Condition conditions = Condition(transfer, contract);
-                            if(!conditions.Execute())
+                            if(nType == OP::CONDITION)
                             {
-                                /* Seek the transfer to end. */
-                                transfer.Seek(64);
-
-                                /* Check for condition operation. */
-                                if(!transfer.End())
+                                /* Read the contract database. */
+                                uint256_t hashValidator = 0;
+                                if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
                                 {
-                                    /* Get the condition. */
-                                    uint8_t nType = 0;
-                                    transfer >> nType;
-
-                                    /* Check for condition. */
-                                    if(nType != OP::CONDITION)
-                                        return debug::error(FUNCTION, "OP::CLAIM: condition OP missing");
-
-                                    /* Read the contract database. */
-                                    uint256_t hashValidator = 0;
-                                    if(!LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
-                                        return debug::error(FUNCTION, "OP::CLAIM: condition has not been validated");
-
-                                    /* Check the validator to caller. */
+                                    /* Check that the caller is the claimant. */
                                     if(hashValidator != contract.Caller())
-                                        return debug::error(FUNCTION, "OP::CLAIM: caller is not authorized to claim validation");
+                                        return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
                                 }
-                                else
-                                    return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
-                            }
-                        }
 
-                        /* Check for conditions. */
-                        if(!transfer.Empty(Contract::CONDITIONS))
-                        {
-                            /* Build the validation script for execution. */
-                            Condition condition = Condition(transfer, contract);
-                            if(!condition.Execute())
-                                return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
+                                /* If no validate fulfilled, try to exeucte conditions. */
+                                else if(!conditions.Execute())
+                                    return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+                            }
+                            else if(!conditions.Execute())
+                                return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
                         }
 
                         /* Get the state byte. */
@@ -724,9 +764,6 @@ namespace TAO
                         if(!Credit::Verify(contract, debit, nFlags))
                             return false;
 
-                        /* Seek past transaction-id. */
-                        contract.Seek(68);
-
                         /* Get the transfer address. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
@@ -742,21 +779,14 @@ namespace TAO
                         /* Check for conditions. */
                         if(!debit.Empty(Contract::CONDITIONS))
                         {
-                            /* Seek the debit to end. */
-                            debit.Seek(72);
+                            /* Get the condition. */
+                            uint8_t nType = 0;
+                            debit >> nType;
 
-                            /* Check for condition operation. */
+                            /* Check for condition. */
                             Condition conditions = Condition(debit, contract);
-                            if(!debit.End())
+                            if(nType == OP::CONDITION)
                             {
-                                /* Get the condition. */
-                                uint8_t nType = 0;
-                                debit >> nType;
-
-                                /* Check for condition. */
-                                if(nType != OP::CONDITION)
-                                    return debug::error(FUNCTION, "OP::CREDIT: condition OP missing");
-
                                 /* Read the contract database. */
                                 uint256_t hashValidator = 0;
                                 if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
@@ -766,14 +796,12 @@ namespace TAO
                                         return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
                                 }
 
-                                /* Check the validator to caller. */
+                                /* If no validate fulfilled, try to exeucte conditions. */
                                 else if(!conditions.Execute())
                                     return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
-
                             }
                             else if(!conditions.Execute())
                                 return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
-
                         }
 
                         /* Deserialize the pre-state byte from the contract. */
@@ -894,58 +922,9 @@ namespace TAO
                         return debug::error(FUNCTION, "invalid code for contract execution ", uint32_t(nOP));
                 }
 
-
                 /* Check for end of stream. */
                 if(!contract.End())
-                {
-                    /* Get the contract OP. */
-                    uint8_t nLast = 0;
-                    contract >> nLast;
-
-                    /* Check the current opcode. */
-                    switch(nLast)
-                    {
-
-                        /* Condition that allows a validation to occur. */
-                        case OP::CONDITION:
-                        {
-
-                            /* Condition has no parameters. */
-                            break;
-                        }
-
-
-                        /* Validate a previous contract's conditions */
-                        case OP::VALIDATE:
-                        {
-                            /* Extract the transaction from contract. */
-                            uint512_t hashTx = 0;
-                            contract >> hashTx;
-
-                            /* Extract the contract-id. */
-                            uint32_t nContract = 0;
-                            contract >> nContract;
-
-                            /* Verify the operation rules. */
-                            const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
-                            if(!Validate::Verify(contract, condition))
-                                return false;
-
-                            /* Commit the validation to disk. */
-                            if(!Validate::Commit(hashTx, nContract, contract.Caller(), nFlags))
-                                return false;
-
-                            break;
-                        }
-
-                        default:
-                            return debug::error(FUNCTION, "OP::CONDITIONS:  invalid end code for contract execution ", uint32_t(nLast));
-                    }
-
-                    /* Ensure that there are no more operations. */
-                    if(!contract.End())
-                        return debug::error(FUNCTION, "OP::CONDITIONS: contract cannot contain any more primitives");
-                }
+                    return debug::error(FUNCTION, "contract can only have one PRIMITIVE");
             }
             catch(const std::exception& e)
             {

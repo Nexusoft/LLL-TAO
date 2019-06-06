@@ -95,7 +95,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check data
-            REQUIRE(state.vchState == std::vector<uint8_t>(10, 0xff));
+            REQUIRE(state.GetState() == std::vector<uint8_t>(10, 0xff));
 
         }
 
@@ -121,7 +121,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check data
-            REQUIRE(state.vchState == std::vector<uint8_t>(10, 0x1f));
+            REQUIRE(state.GetState() == std::vector<uint8_t>(10, 0x1f));
 
             //rollback the transaction
             REQUIRE(Rollback(tx[0]));
@@ -130,7 +130,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check data
-            REQUIRE(state.vchState == std::vector<uint8_t>(10, 0xff));
+            REQUIRE(state.GetState() == std::vector<uint8_t>(10, 0xff));
         }
 
 
@@ -156,7 +156,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check data
-            REQUIRE(state.vchState == std::vector<uint8_t>(20, 0xff));
+            REQUIRE(state.GetState() == std::vector<uint8_t>(20, 0xff));
 
             //rollback the transaction
             REQUIRE(Rollback(tx[0]));
@@ -165,7 +165,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             REQUIRE(LLD::Register->ReadState(hashRegister, state));
 
             //check data
-            REQUIRE(state.vchState == std::vector<uint8_t>(10, 0xff));
+            REQUIRE(state.GetState() == std::vector<uint8_t>(10, 0xff));
         }
     }
 
@@ -879,8 +879,8 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         uint256_t hashTrust    = LLC::GetRand256();
         uint256_t hashGenesis  = LLC::GetRand256();
 
-        uint512_t hashCoinbaseTx;
-        uint512_t hashLastTrust;
+        uint512_t hashCoinbaseTx = 0;
+        uint512_t hashLastTrust = LLC::GetRand512();
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;

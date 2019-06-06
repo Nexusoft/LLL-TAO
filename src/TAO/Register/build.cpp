@@ -48,7 +48,7 @@ namespace TAO
         bool Build(TAO::Operation::Contract &contract, std::map<uint256_t, State>& mapStates)
         {
             /* Reset the contract streams. */
-            contract.Reset();
+            contract.Reset(TAO::Operation::Contract::ALL);
 
             /* Make sure no exceptions are thrown. */
             try
@@ -56,6 +56,34 @@ namespace TAO
                 /* Get the contract OP. */
                 uint8_t nOP = 0;
                 contract >> nOP;
+
+                /* Check the current opcode. */
+                switch(nOP)
+                {
+
+                    /* Condition that allows a validation to occur. */
+                    case TAO::Operation::OP::CONDITION:
+                    {
+                        /* Get next operation. */
+                        contract >> nOP;
+
+                        /* Condition has no parameters. */
+                        break;
+                    }
+
+
+                    /* Validate a previous contract's conditions */
+                    case TAO::Operation::OP::VALIDATE:
+                    {
+                        /* Seek to end of stream. */
+                        contract.Seek(68);
+
+                        /* Get next operation. */
+                        contract >> nOP;
+
+                        break;
+                    }
+                }
 
                 /* Check the current opcode. */
                 switch(nOP)
@@ -645,40 +673,7 @@ namespace TAO
 
                 /* Check for end of stream. */
                 if(!contract.End())
-                {
-                    /* Get the contract OP. */
-                    uint8_t nLast = 0;
-                    contract >> nLast;
-
-                    /* Check the current opcode. */
-                    switch(nLast)
-                    {
-
-                        /* Condition that allows a validation to occur. */
-                        case TAO::Operation::OP::CONDITION:
-                        {
-                            /* Condition has no parameters. */
-                            break;
-                        }
-
-
-                        /* Validate a previous contract's conditions */
-                        case TAO::Operation::OP::VALIDATE:
-                        {
-                            /* Seek to end of stream. */
-                            contract.Seek(68);
-
-                            break;
-                        }
-
-                        default:
-                            return debug::error(FUNCTION, "invalid end code for contract execution");
-                    }
-
-                    /* Ensure that there are no more operations. */
-                    if(!contract.End())
-                        return debug::error(FUNCTION, "contract cannot contain any more primitives");
-                }
+                    return debug::error(FUNCTION, "can only include one PRIMITIVE OP");
             }
             catch(const std::exception& e)
             {

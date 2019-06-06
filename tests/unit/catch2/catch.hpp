@@ -2330,6 +2330,7 @@ namespace Catch {
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_TEST( macroName, resultDisposition, ... ) \
+    debug::strLastError = ""; \
     do { \
         Catch::AssertionHandler catchAssertionHandler( macroName##_catch_sr, CATCH_INTERNAL_LINEINFO, CATCH_INTERNAL_STRINGIFY(__VA_ARGS__), resultDisposition ); \
         INTERNAL_CATCH_TRY { \
@@ -2343,16 +2344,19 @@ namespace Catch {
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_IF( macroName, resultDisposition, ... ) \
+    debug::strLastError = ""; \
     INTERNAL_CATCH_TEST( macroName, resultDisposition, __VA_ARGS__ ); \
     if( Catch::getResultCapture().lastAssertionPassed() )
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_ELSE( macroName, resultDisposition, ... ) \
+    debug::strLastError = ""; \
     INTERNAL_CATCH_TEST( macroName, resultDisposition, __VA_ARGS__ ); \
     if( !Catch::getResultCapture().lastAssertionPassed() )
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_NO_THROW( macroName, resultDisposition, ... ) \
+    debug::strLastError = ""; \
     do { \
         Catch::AssertionHandler catchAssertionHandler( macroName##_catch_sr, CATCH_INTERNAL_LINEINFO, CATCH_INTERNAL_STRINGIFY(__VA_ARGS__), resultDisposition ); \
         try { \
@@ -2367,6 +2371,7 @@ namespace Catch {
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_THROWS( macroName, resultDisposition, ... ) \
+    debug::strLastError = ""; \
     do { \
         Catch::AssertionHandler catchAssertionHandler( macroName##_catch_sr, CATCH_INTERNAL_LINEINFO, CATCH_INTERNAL_STRINGIFY(__VA_ARGS__), resultDisposition); \
         if( catchAssertionHandler.allowThrows() ) \
@@ -2384,6 +2389,7 @@ namespace Catch {
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_THROWS_AS( macroName, exceptionType, resultDisposition, expr ) \
+    debug::strLastError = ""; \
     do { \
         Catch::AssertionHandler catchAssertionHandler( macroName##_catch_sr, CATCH_INTERNAL_LINEINFO, CATCH_INTERNAL_STRINGIFY(expr) ", " CATCH_INTERNAL_STRINGIFY(exceptionType), resultDisposition ); \
         if( catchAssertionHandler.allowThrows() ) \
@@ -2404,6 +2410,7 @@ namespace Catch {
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_MSG( macroName, messageType, resultDisposition, ... ) \
+    debug::strLastError = ""; \
     do { \
         Catch::AssertionHandler catchAssertionHandler( macroName##_catch_sr, CATCH_INTERNAL_LINEINFO, Catch::StringRef(), resultDisposition ); \
         catchAssertionHandler.handleMessage( messageType, ( Catch::MessageStream() << __VA_ARGS__ + ::Catch::StreamEndStop() ).m_stream.str() ); \
@@ -2412,20 +2419,24 @@ namespace Catch {
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_CAPTURE( varName, macroName, ... ) \
+    debug::strLastError = ""; \
     auto varName = Catch::Capturer( macroName, CATCH_INTERNAL_LINEINFO, Catch::ResultWas::Info, #__VA_ARGS__ ); \
     varName.captureValues( 0, __VA_ARGS__ )
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_INFO( macroName, log ) \
+    debug::strLastError = ""; \
     Catch::ScopedMessage INTERNAL_CATCH_UNIQUE_NAME( scopedMessage )( Catch::MessageBuilder( macroName##_catch_sr, CATCH_INTERNAL_LINEINFO, Catch::ResultWas::Info ) << log );
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_UNSCOPED_INFO( macroName, log ) \
+    debug::strLastError = ""; \
     Catch::getResultCapture().emplaceUnscopedMessage( Catch::MessageBuilder( macroName##_catch_sr, CATCH_INTERNAL_LINEINFO, Catch::ResultWas::Info ) << log )
 
 ///////////////////////////////////////////////////////////////////////////////
 // Although this is matcher-based, it can be used with just a string
 #define INTERNAL_CATCH_THROWS_STR_MATCHES( macroName, resultDisposition, matcher, ... ) \
+    debug::strLastError = ""; \
     do { \
         Catch::AssertionHandler catchAssertionHandler( macroName##_catch_sr, CATCH_INTERNAL_LINEINFO, CATCH_INTERNAL_STRINGIFY(__VA_ARGS__) ", " CATCH_INTERNAL_STRINGIFY(matcher), resultDisposition ); \
         if( catchAssertionHandler.allowThrows() ) \

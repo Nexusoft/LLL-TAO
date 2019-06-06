@@ -69,6 +69,7 @@ namespace TAO
             vEvaluate.push(std::make_pair(false, OP::RESERVED));
 
             /* Loop through the operation validation code. */
+            contract.Reset(Contract::CONDITIONS);
             while(!contract.End(Contract::CONDITIONS))
             {
                 /* Grab the next operation. */

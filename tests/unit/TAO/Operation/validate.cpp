@@ -272,7 +272,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken << ~uint256_t(0) << uint64_t(500) << uint8_t(OP::CONDITION);
+            tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::DEBIT) << hashToken << ~uint256_t(0) << uint64_t(500);
 
 
             //build condition requirement
@@ -343,7 +343,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200) << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0);
+            tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -404,7 +404,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200) << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0);
+            tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -491,8 +491,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(object.Parse());
 
             //check balance
-            //REQUIRE(object.get<uint64_t>("balance") == 800);
-            //TODO: need to find good solution to keep debit from failing
+            REQUIRE(object.get<uint64_t>("balance") == 800);
         }
 
 

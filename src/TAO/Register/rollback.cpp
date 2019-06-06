@@ -38,11 +38,48 @@ namespace TAO
             try
             {
                 /* Get the contract OP. */
-                uint8_t OP = 0;
-                contract >> OP;
+                uint8_t nOP = 0;
+                contract >> nOP;
 
                 /* Check the current opcode. */
-                switch(OP)
+                switch(nOP)
+                {
+
+                    /* Condition that allows a validation to occur. */
+                    case TAO::Operation::OP::CONDITION:
+                    {
+                        /* Condition has no parameters. */
+                        contract >> nOP;
+
+                        /* Condition has no parameters. */
+                        break;
+                    }
+
+
+                    /* Validate a previous contract's conditions */
+                    case TAO::Operation::OP::VALIDATE:
+                    {
+                        /* Extract the transaction from contract. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
+
+                        /* Extract the contract-id. */
+                        uint32_t nContract = 0;
+                        contract >> nContract;
+
+                        /* Erase the contract validation record. */
+                        if(!LLD::Contract->EraseContract(std::make_pair(hashTx, nContract)))
+                            return debug::error(FUNCTION, "failed to erase validation contract");
+
+                        /* Condition has no parameters. */
+                        contract >> nOP;
+
+                        break;
+                    }
+                }
+
+                /* Check the current opcode. */
+                switch(nOP)
                 {
 
                     /* Check pre-state to database. */
@@ -482,49 +519,7 @@ namespace TAO
 
                 /* Check for end of stream. */
                 if(!contract.End())
-                {
-                    /* Get the contract OP. */
-                    OP = 0;
-                    contract >> OP;
-
-                    /* Check the current opcode. */
-                    switch(OP)
-                    {
-
-                        /* Condition that allows a validation to occur. */
-                        case TAO::Operation::OP::CONDITION:
-                        {
-                            /* Condition has no parameters. */
-                            break;
-                        }
-
-
-                        /* Validate a previous contract's conditions */
-                        case TAO::Operation::OP::VALIDATE:
-                        {
-                            /* Extract the transaction from contract. */
-                            uint512_t hashTx = 0;
-                            contract >> hashTx;
-
-                            /* Extract the contract-id. */
-                            uint32_t nContract = 0;
-                            contract >> nContract;
-
-                            /* Erase the contract validation record. */
-                            if(!LLD::Contract->EraseContract(std::make_pair(hashTx, nContract)))
-                                return debug::error(FUNCTION, "failed to erase validation contract");
-
-                            break;
-                        }
-
-                        default:
-                            return debug::error(FUNCTION, "invalid end code for contract execution");
-                    }
-
-                    /* Ensure that there are no more operations. */
-                    if(!contract.End())
-                        return debug::error(FUNCTION, "contract cannot contain any more primitives");
-                }
+                    return debug::error(FUNCTION, "can only have one PRIMITIVE per contract");
             }
             catch(const std::exception& e)
             {

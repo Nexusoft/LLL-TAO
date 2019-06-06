@@ -7,7 +7,7 @@
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-            "If only you knew the magnificence of the 3, 6, and 9, then you 
+            "If only you knew the magnificence of the 3, 6, and 9, then you
              would have a key to the universe" - Nikola Tesla
 
 ____________________________________________________________________________________________*/
@@ -112,22 +112,22 @@ namespace TAO
 
 
         /* Allocate a byte stream into the VM register memory. */
-        void BaseVM::allocate(const std::vector<uint8_t>& data, Value& value)
+        void BaseVM::allocate(const std::vector<uint8_t>& data, Value& value, const uint32_t nOffset)
         {
             /* Get the size. */
-            uint32_t nSize = (data.size() / 8) + (data.size() % 8 == 0 ? 0 : 1);
+            uint32_t nSize = ((data.size() - nOffset) / 8) + ((data.size() - nOffset) % 8 == 0 ? 0 : 1);
 
             /* Set the value pointers. */
             value.nBegin = nPointer;
             value.nEnd   = nPointer + nSize;
-            value.nBytes = data.size();
+            value.nBytes = (data.size() - nOffset);
 
             /* Check for memory overflows. */
             if(value.nEnd >= vRegister.size())
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, " out of register memory"));
 
             /* Copy data into the registers. */
-            std::copy((uint8_t*)&data[0], (uint8_t*)&data[0] + value.nBytes, (uint8_t*)begin(value));
+            std::copy((uint8_t*)&data[nOffset], (uint8_t*)&data[nOffset] + value.nBytes, (uint8_t*)begin(value));
 
             /* Iterate the memory pointer. */
             nPointer += nSize;

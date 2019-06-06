@@ -72,12 +72,37 @@ namespace TAO
         /* Verify claim validation rules and caller. */
         bool Claim::Verify(const Contract& contract, const Contract& claim)
         {
-            /* Seek claim read position to first. */
-            claim.Reset();
+            /* Reset register streams. */
+            claim.Reset(Contract::REGISTERS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
             claim >> OP;
+
+            /* Check for condition or validate. */
+            switch(OP)
+            {
+                /* Handle a condition. */
+                case OP::CONDITION:
+                {
+                    /* Get new OP. */
+                    claim >> OP;
+
+                    break;
+                }
+
+                /* Handle a validate. */
+                case OP::VALIDATE:
+                {
+                    /* Seek past validate. */
+                    claim.Seek(68);
+
+                    /* Get new OP. */
+                    claim >> OP;
+
+                    break;
+                }
+            }
 
             /* Check operation byte. */
             if(OP != OP::TRANSFER)
@@ -121,9 +146,8 @@ namespace TAO
             if(!state.IsValid())
                 return debug::error(FUNCTION, "pre-state is in invalid state");
 
-            /* Seek read position to first position. */
-            claim.Reset();
-            claim.Seek(1);
+            /* Reset the register streams. */
+            claim.Reset(Contract::OPERATIONS | Contract::REGISTERS);
 
             return true;
         }

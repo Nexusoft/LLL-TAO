@@ -72,8 +72,11 @@ namespace TAO
         /* Verify debit validation rules and caller. */
         bool Legacy::Verify(const Contract& contract)
         {
-            /* Seek read position to first position. */
-            contract.Reset();
+            /* Rewind back on byte. */
+            contract.Rewind(1, Contract::OPERATIONS);
+
+            /* Reset register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
@@ -112,8 +115,10 @@ namespace TAO
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
             /* Seek read position to first position. */
-            contract.Reset();
-            contract.Seek(1);
+            contract.Rewind(32, Contract::OPERATIONS);
+
+            /* Reset the register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             return true;
         }

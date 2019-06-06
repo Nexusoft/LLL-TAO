@@ -74,8 +74,11 @@ namespace TAO
         /* Verify trust validation rules and caller. */
         bool Stake::Verify(const Contract& contract)
         {
-            /* Seek read position to first position. */
-            contract.Reset();
+            /* Rewind back on byte. */
+            contract.Rewind(1, Contract::OPERATIONS);
+
+            /* Reset register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
@@ -105,9 +108,8 @@ namespace TAO
             if(state.hashOwner != contract.Caller())
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
-            /* Seek read position to first position. */
-            contract.Reset();
-            contract.Seek(1);
+            /* Reset the register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             return true;
         }

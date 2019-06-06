@@ -102,8 +102,11 @@ namespace TAO
         /* Verify claim validation rules and caller. */
         bool Credit::Verify(const Contract& contract, const Contract& debit, const uint8_t nFlags)
         {
-            /* Extract current contract. */
-            contract.Reset();
+            /* Rewind to first OP. */
+            contract.Rewind(69, Contract::OPERATIONS);
+
+            /* Reset register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
@@ -160,6 +163,32 @@ namespace TAO
             OP = 0;
             debit >> OP;
 
+            /* Check for condition or validate. */
+            switch(OP)
+            {
+                /* Handle a condition. */
+                case OP::CONDITION:
+                {
+                    /* Get new OP. */
+                    debit >> OP;
+
+                    break;
+                }
+
+
+                /* Handle a validate. */
+                case OP::VALIDATE:
+                {
+                    /* Seek past validate. */
+                    debit.Seek(68);
+
+                    /* Get new OP. */
+                    debit >> OP;
+
+                    break;
+                }
+            }
+
             /* Check that prev is coinbase. */
             if(OP == OP::COINBASE)
             {
@@ -188,12 +217,11 @@ namespace TAO
                     return debug::error(FUNCTION, "credit disabled for coinbase of non-native token");
 
                 /* Seek read position to first position. */
-                contract.Reset();
-                contract.Seek(1);
+                contract.Rewind(72, Contract::OPERATIONS);
+                contract.Reset(Contract::REGISTERS);
 
-                /* Reset debit read positions. */
-                debit.Reset();
-                debit.Seek(1);
+                /* Seek read position to first position. */
+                debit.Reset(Contract::OPERATIONS | Contract::REGISTERS);
 
                 return true;
             }
@@ -273,12 +301,11 @@ namespace TAO
                     return debug::error(FUNCTION, "debit and credit value mismatch");
 
                 /* Seek read position to first position. */
-                contract.Reset();
-                contract.Seek(1);
+                contract.Rewind(72, Contract::OPERATIONS);
+                contract.Reset(Contract::REGISTERS);
 
-                /* Reset debit read positions. */
-                debit.Reset();
-                debit.Seek(1);
+                /* Seek read position to first position. */
+                debit.Reset(Contract::OPERATIONS | Contract::REGISTERS);
 
                 return true;
             }
@@ -351,12 +378,11 @@ namespace TAO
                 return debug::error(FUNCTION, "credit is beyond claimable debit amount");
 
             /* Seek read position to first position. */
-            contract.Reset();
-            contract.Seek(1);
+            contract.Rewind(72, Contract::OPERATIONS);
+            contract.Reset(Contract::REGISTERS);
 
-            /* Reset debit read positions. */
-            debit.Reset();
-            debit.Seek(1);
+            /* Seek read position to first position. */
+            debit.Reset(Contract::OPERATIONS | Contract::REGISTERS);
 
             return true;
         }

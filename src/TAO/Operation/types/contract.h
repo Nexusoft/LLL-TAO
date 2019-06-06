@@ -181,6 +181,16 @@ namespace TAO
             void Clear(const uint8_t nFlags = ALL);
 
 
+            /** ReadCompactSize
+             *
+             *  Get's a size from internal stream.
+             *
+             *  @param[in] nFlags The flags to determine which streams to check.
+             *
+             **/
+            uint64_t ReadCompactSize(const uint8_t nFlags = OPERATIONS) const;
+
+
             /** End
              *
              *  End of the internal stream.

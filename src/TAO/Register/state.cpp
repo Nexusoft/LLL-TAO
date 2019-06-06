@@ -26,12 +26,12 @@ namespace TAO
 
         /** Default Constructor **/
         State::State()
-        : nVersion(1)
+        : vchState()
+        , nVersion(1)
         , nType(0)
         , hashOwner(0)
         , nCreated(runtime::unifiedtimestamp())
         , nModified(runtime::unifiedtimestamp())
-        , vchState()
         , hashChecksum(0)
         , nReadPos(0)
         {
@@ -41,12 +41,12 @@ namespace TAO
 
         /** Basic Type Constructor **/
         State::State(uint8_t nTypeIn)
-        : nVersion(1)
+        : vchState()
+        , nVersion(1)
         , nType(nTypeIn)
         , hashOwner(0)
         , nCreated(runtime::unifiedtimestamp())
         , nModified(runtime::unifiedtimestamp())
-        , vchState()
         , hashChecksum(0)
         , nReadPos(0)
         {
@@ -56,12 +56,12 @@ namespace TAO
 
         /** Default Constructor **/
         State::State(const std::vector<uint8_t>& vchData)
-        : nVersion(1)
+        : vchState(vchData)
+        , nVersion(1)
         , nType(0)
         , hashOwner(0)
         , nCreated(runtime::unifiedtimestamp())
         , nModified(runtime::unifiedtimestamp())
-        , vchState(vchData)
         , nReadPos(0)
         {
             SetChecksum();
@@ -69,12 +69,12 @@ namespace TAO
 
         /** Default Constructor **/
         State::State(uint8_t nTypeIn, const uint256_t& hashOwnerIn)
-        : nVersion(1)
+        : vchState()
+        , nVersion(1)
         , nType(nTypeIn)
         , hashOwner(hashOwnerIn)
         , nCreated(runtime::unifiedtimestamp())
         , nModified(runtime::unifiedtimestamp())
-        , vchState()
         , hashChecksum(0)
         , nReadPos(0)
         {
@@ -83,12 +83,12 @@ namespace TAO
 
         /** Default Constructor **/
         State::State(std::vector<uint8_t> vchData, uint8_t nTypeIn, const uint256_t& hashOwnerIn)
-        : nVersion(1)
+        : vchState(vchData)
+        , nVersion(1)
         , nType(nTypeIn)
         , hashOwner(hashOwnerIn)
         , nCreated(runtime::unifiedtimestamp())
         , nModified(runtime::unifiedtimestamp())
-        , vchState(vchData)
         , nReadPos(0)
         {
             SetChecksum();
@@ -97,12 +97,12 @@ namespace TAO
 
         /** Default Constructor **/
         State::State(uint64_t hashChecksumIn)
-        : nVersion(1)
+        : vchState()
+        , nVersion(1)
         , nType(0)
         , hashOwner(0)
         , nCreated(runtime::unifiedtimestamp())
         , nModified(runtime::unifiedtimestamp())
-        , vchState()
         , hashChecksum(hashChecksumIn)
         , nReadPos(0)
         {
@@ -217,6 +217,15 @@ namespace TAO
         void State::SetState(const std::vector<uint8_t>& vchStateIn)
         {
             vchState = vchStateIn;
+
+            SetChecksum();
+        }
+
+
+        /* Set the State from Byte Vector. */
+        void State::Append(const std::vector<uint8_t>& vchStateIn)
+        {
+            vchState.insert(vchState.end(), vchStateIn.begin(), vchStateIn.end());
 
             SetChecksum();
         }

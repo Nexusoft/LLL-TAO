@@ -43,7 +43,7 @@ namespace TAO
         bool Append::Execute(TAO::Register::State &state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
         {
             /* Append the state data. */
-            state.vchState.insert(state.vchState.end(), vchData.begin(), vchData.end());
+            state.Append(vchData);
 
             /* Update the state register checksum. */
             state.nModified = nTimestamp;
@@ -60,8 +60,11 @@ namespace TAO
         /* Verify append validation rules and caller. */
         bool Append::Verify(const Contract& contract)
         {
-            /* Seek read position to first position. */
-            contract.Reset();
+            /* Rewind back on byte. */
+            contract.Rewind(1, Contract::OPERATIONS);
+
+            /* Reset register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
@@ -104,8 +107,11 @@ namespace TAO
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
             /* Seek read position to first position. */
-            contract.Reset();
-            contract.Seek(1);
+            contract.Rewind(32, Contract::OPERATIONS);
+
+            /* Reset the register streams. */
+            contract.Reset(Contract::REGISTERS);
+
 
             return true;
         }

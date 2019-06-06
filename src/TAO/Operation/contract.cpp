@@ -175,6 +175,26 @@ namespace TAO
         }
 
 
+        /* Get's a size from internal stream. */
+        uint64_t Contract::ReadCompactSize(const uint8_t nFlags) const
+        {
+            /* We don't use masks here, becuase it needs to be exclusive to the stream. */
+            switch(nFlags)
+            {
+                case OPERATIONS:
+                    return ::ReadCompactSize(ssOperation);
+
+                case CONDITIONS:
+                    return ::ReadCompactSize(ssCondition);
+
+                case REGISTERS:
+                    return ::ReadCompactSize(ssRegister);
+            }
+
+            return 0;
+        }
+
+
         /* End of the internal stream.*/
         bool Contract::End(const uint8_t nFlags) const
         {

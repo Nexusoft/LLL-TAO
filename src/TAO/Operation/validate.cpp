@@ -45,28 +45,28 @@ namespace TAO
         /* Verify validation rules and caller. */
         bool Validate::Verify(const Contract& contract, const Contract& condition)
         {
+            /* Reset the condition. */
+            condition.Reset();
+
             /* Check for validation conditions. */
             if(condition.Empty(Contract::CONDITIONS))
                 return debug::error(FUNCTION, "OP::VALIDATE: cannot validate with no conditions");
 
             /* Get the validation type. */
-            uint8_t nType = 0;
-            condition >> nType;
+            uint8_t nOP = 0;
+            condition >> nOP;
+
+            /* Check for condition. */
+            if(nOP != OP::CONDITION)
+                return debug::error(FUNCTION, "OP::VALIDATE: incorrect condition op");
 
             /* Switch based on type. */
-            switch(nType)
+            condition >> nOP;
+            switch(nOP)
             {
                 /* Handle for transfer validation. */
                 case OP::TRANSFER:
                 {
-                    /* Read the condition. */
-                    uint8_t nOP = 0;
-                    condition >> nOP;
-
-                    /* Check for condition. */
-                    if(nOP != OP::CONDITION)
-                        return debug::error(FUNCTION, "OP::VALIDATE: incorrect condition op");
-
                     /* Get the address. */
                     uint256_t hashAddress = 0;
                     condition >> hashAddress;
@@ -78,14 +78,6 @@ namespace TAO
                     /* Check that transfer is wildcard. */
                     if(hashTransfer != ~uint256_t(0))
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
-
-                    /* Check for condition. */
-                    if(condition.End())
-                        return debug::error(FUNCTION, "OP::VALIDATE: couldn't get validate op");
-
-                    /* Check for condition. */
-                    if(nOP != OP::CONDITION)
-                        return debug::error(FUNCTION, "OP::VALIDATE: incorrect condition op");
 
                     /* Check for condition. */
                     if(!condition.End()) //NOTE: this is an extra sanity check, possibly remove
@@ -112,18 +104,6 @@ namespace TAO
                     /* Check that transfer is wildcard. */
                     if(hashTo != ~uint256_t(0))
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
-
-                    /* Check for condition. */
-                    if(condition.End())
-                        return debug::error(FUNCTION, "OP::VALIDATE: couldn't get validate op");
-
-                    /* Read the condition. */
-                    uint8_t nOP = 0;
-                    condition >> nOP;
-
-                    /* Check for condition. */
-                    if(nOP != OP::CONDITION)
-                        return debug::error(FUNCTION, "OP::VALIDATE: incorrect condition op");
 
                     /* Check for condition. */
                     if(!condition.End()) //NOTE: this is an extra sanity check, possibly remove

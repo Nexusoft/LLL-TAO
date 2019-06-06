@@ -236,8 +236,8 @@ namespace TAO
         /* Verify Append and caller register. */
         bool Create::Verify(const Contract& contract)
         {
-            /* Seek read position to first position. */
-            contract.Reset();
+            /* Rewind back on byte. */
+            contract.Rewind(1, Contract::OPERATIONS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
@@ -260,16 +260,14 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot create register with wildcard address");
 
             /* Get the object data size. */
-            std::vector<uint8_t> vchData;
-            contract >> vchData;
+            uint32_t nSize = contract.ReadCompactSize(Contract::OPERATIONS);
 
             /* Check register size limits. */
-            if(vchData.size() > 1024)
+            if(nSize > 1024)
                 return debug::error(FUNCTION, "register is beyond size limits");
 
             /* Seek read position to first position. */
-            contract.Reset();
-            contract.Seek(1);
+            contract.Rewind(32 + GetSizeOfCompactSize(nSize), Contract::OPERATIONS);
 
             return true;
         }
