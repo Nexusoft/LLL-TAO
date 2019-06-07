@@ -238,7 +238,6 @@ namespace TAO
                 {
                     return uint256_t(0);
                 }
-                
             }
 
             return mapSessions[nSessionToUse]->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
@@ -250,8 +249,8 @@ namespace TAO
         {
             /* default to session 0 unless using multiuser mode */
             uint64_t nSession = 0;
-            
-            if(config::fMultiuser.load() && params.find("session") != params.end()) 
+
+            if(config::fMultiuser.load() && params.find("session") != params.end())
                 nSession = std::stoull(params["session"].get<std::string>());
 
             return GetGenesis(nSession, false);

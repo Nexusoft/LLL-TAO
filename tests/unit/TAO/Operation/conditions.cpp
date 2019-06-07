@@ -31,7 +31,7 @@
 
 
 
-TEST_CASE( "Validation Script Tests", "[operation]")
+TEST_CASE( "Conditions Tests", "[operation]" )
 {
     using namespace TAO::Operation;
 
@@ -58,8 +58,8 @@ TEST_CASE( "Validation Script Tests", "[operation]")
     state << hash2;
 
 
-    REQUIRE(LLD::regDB->Write(hash, state));
-    REQUIRE(LLD::regDB->Write(hashFrom, state));
+    REQUIRE(LLD::Register->Write(hash, state));
+    REQUIRE(LLD::Register->Write(hashFrom, state));
 
     std::string strName = "colasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfin!!!";
     uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
@@ -104,32 +104,15 @@ TEST_CASE( "Validation Script Tests", "[operation]")
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t) OP::SUB <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(100) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
         Condition script = Condition(contract, caller);
-        try
-        {
-            if(script.Execute())
-                REQUIRE(false);
-        }
-        catch(const std::runtime_error& e)
-        {
-            REQUIRE(e.what() == std::string("OP::SUB 64-bit value overflow"));
-        }
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::SUB 64-bit value overflow");
     }
 
 
-    ///////////////////EXCEPTIONS
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(555) <= (uint8_t) OP::SUB <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(std::numeric_limits<uint64_t>::max()) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
         Condition script = Condition(contract, caller);
-        try
-        {
-            if(script.Execute())
-                REQUIRE(false);
-        }
-        catch(const std::runtime_error& e)
-        {
-            REQUIRE(e.what() == std::string("OP::SUB 64-bit value overflow"));
-        }
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::SUB 64-bit value overflow");
     }
 
 
@@ -137,15 +120,7 @@ TEST_CASE( "Validation Script Tests", "[operation]")
     contract <= (uint8_t)OP::TYPES::UINT64_T <= std::numeric_limits<uint64_t>::max() <= (uint8_t) OP::ADD <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(100) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
         Condition script = Condition(contract, caller);
-        try
-        {
-            if(script.Execute())
-                REQUIRE(false);
-        }
-        catch(const std::runtime_error& e)
-        {
-            REQUIRE(e.what() == std::string("OP::ADD 64-bit value overflow"));
-        }
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::ADD 64-bit value overflow");
     }
 
 
@@ -153,15 +128,7 @@ TEST_CASE( "Validation Script Tests", "[operation]")
     contract <= (uint8_t)OP::TYPES::UINT64_T <= std::numeric_limits<uint64_t>::max() <= (uint8_t) OP::DIV <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
         Condition script = Condition(contract, caller);
-        try
-        {
-            if(script.Execute())
-                REQUIRE(false);
-        }
-        catch(const std::runtime_error& e)
-        {
-            REQUIRE(e.what() == std::string("OP::DIV cannot divide by zero"));
-        }
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::DIV cannot divide by zero");
     }
 
 
@@ -169,15 +136,7 @@ TEST_CASE( "Validation Script Tests", "[operation]")
     contract <= (uint8_t)OP::TYPES::UINT64_T <= std::numeric_limits<uint64_t>::max() <= (uint8_t) OP::MOD <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
         Condition script = Condition(contract, caller);
-        try
-        {
-            if(script.Execute())
-                REQUIRE(false);
-        }
-        catch(const std::runtime_error& e)
-        {
-            REQUIRE(e.what() == std::string("OP::MOD cannot divide by zero"));
-        }
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::MOD cannot divide by zero");
     }
 
 
@@ -185,15 +144,7 @@ TEST_CASE( "Validation Script Tests", "[operation]")
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(std::numeric_limits<uint64_t>::max()) <= (uint8_t) OP::INC <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= uint32_t(222);
     {
         Condition script = Condition(contract, caller);
-        try
-        {
-            if(script.Execute())
-                REQUIRE(false);
-        }
-        catch(const std::runtime_error& e)
-        {
-            REQUIRE(e.what() == std::string("OP::INC 64-bit value overflow"));
-        }
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::INC 64-bit value overflow");
     }
 
 
@@ -201,15 +152,7 @@ TEST_CASE( "Validation Script Tests", "[operation]")
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(0) <= (uint8_t) OP::DEC <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= uint32_t(222);
     {
         Condition script = Condition(contract, caller);
-        try
-        {
-            if(script.Execute())
-                REQUIRE(false);
-        }
-        catch(const std::runtime_error& e)
-        {
-            REQUIRE(e.what() == std::string("OP::DEC 64-bit value overflow"));
-        }
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::DEC 64-bit value overflow");
     }
 
 
@@ -218,36 +161,130 @@ TEST_CASE( "Validation Script Tests", "[operation]")
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(555) <= (uint8_t) OP::EXP <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(9999) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
         Condition script = Condition(contract, caller);
-        try
-        {
-            if(script.Execute())
-                REQUIRE(false);
-        }
-        catch(const std::runtime_error& e)
-        {
-            REQUIRE(e.what() == std::string("OP::EXP 64-bit value overflow"));
-        }
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::EXP 64-bit value overflow");
     }
 
 
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(555323423434433443) <= (uint8_t) OP::MUL <= (uint8_t)OP::TYPES::UINT64_T <= uint64_t(2387438283734234423) <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 222u;
     {
-        std::string strException = "";
         Condition script = Condition(contract, caller);
-        try
-        {
-            if(script.Execute())
-                REQUIRE(false);
-        }
-        catch(const std::runtime_error& e)
-        {
-            REQUIRE(e.what() == std::string("OP::MUL 64-bit value overflow"));
-        }
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::MUL 64-bit value overflow");
     }
 
 
+    contract.Clear();
+    contract <= (uint8_t)OP::TYPES::UINT256_T <= uint64_t(555323423434433443);
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE_THROWS(script.Execute());
+    }
 
+
+    contract.Clear();
+    contract <= (uint8_t)OP::TYPES::STRING <= std::string("") <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::STRING) <= std::string("");
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::TYPES::STRING string is empty");
+    }
+
+
+    contract.Clear();
+    contract <= (uint8_t)OP::TYPES::BYTES <= std::vector<uint8_t>() <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::BYTES) <= std::vector<uint8_t>();
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::TYPES::BYTES vector is empty");
+    }
+
+
+    contract.Clear();
+    contract <= (uint8_t)OP::REGISTER::MODIFIED;
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE_THROWS(script.Execute(), "OP::TYPES::BYTES vector is empty");
+    }
+
+
+    contract.Clear();
+    contract <= (uint8_t)OP::CALLER::OPERATIONS;
+    {
+        //temp to test exceptions with no operations
+        Contract temp;
+
+        Condition script = Condition(contract, temp);
+        REQUIRE_THROWS(script.Execute());
+    }
+
+
+    contract.Clear();
+    contract <= (uint8_t)OP::CALLER::OPERATIONS;
+    {
+        //temp to test exceptions with no operations
+        Contract temp;
+
+        Condition script = Condition(contract, temp);
+        REQUIRE_THROWS(script.Execute());
+    }
+
+
+    contract.Clear();
+    contract <= (uint8_t)OP::CALLER::OPERATIONS;
+    {
+        //temp to test exceptions with no operations
+        Contract temp;
+        temp << uint8_t(OP::VALIDATE);
+
+        Condition script = Condition(contract, temp);
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::CALLER::OPERATIONS offset is not within size");
+    }
+
+
+    contract.Clear();
+    contract <= (uint8_t)OP::CALLER::OPERATIONS;
+    {
+        //temp to test exceptions with no operations
+        Contract temp;
+        temp << uint8_t(OP::CONDITION);
+
+        Condition script = Condition(contract, temp);
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::CALLER::OPERATIONS offset is not within size");
+    }
+
+
+    contract.Clear();
+    contract <= (uint8_t)OP::CALLER::OPERATIONS;
+    {
+        //temp to test exceptions with no operations
+        Contract temp;
+        temp << uint8_t(OP::VALIDATE) << uint512_t(0) << uint32_t(0);
+
+        Condition script = Condition(contract, temp);
+        REQUIRE_THROWS_WITH(script.Execute(), "OP::CALLER::OPERATIONS offset is not within size");
+    }
+
+
+    contract.Clear();
+    contract <= uint8_t(OP::CALLER::OPERATIONS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT8_T) <= uint8_t(OP::DEBIT);
+    {
+        //temp to test exceptions with no operations
+        Contract temp;
+        temp << uint8_t(OP::VALIDATE) << uint512_t(0) << uint32_t(0) << uint8_t(OP::DEBIT);
+
+        Condition script = Condition(contract, temp);
+        REQUIRE(script.Execute());
+    }
+
+
+    contract.Clear();
+    contract <= uint8_t(OP::CALLER::OPERATIONS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT8_T) <= uint8_t(OP::DEBIT);
+    {
+        //temp to test exceptions with no operations
+        Contract temp;
+        temp << uint8_t(OP::CONDITION) << uint8_t(OP::DEBIT);
+
+        Condition script = Condition(contract, temp);
+        REQUIRE(script.Execute());
+    }
 
 
     //////////////COMPARISONS
@@ -326,7 +363,7 @@ TEST_CASE( "Validation Script Tests", "[operation]")
     contract <= (uint8_t)OP::TYPES::STRING <= std::string("is there an atomic bear out there?") <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::STRING <= std::string("atomic fox");
     {
         Condition script = Condition(contract, caller);
-        REQUIRE(!script.Execute());
+        REQUIRE_FALSE(script.Execute());
     }
 
 
@@ -367,7 +404,7 @@ TEST_CASE( "Validation Script Tests", "[operation]")
     contract <= (uint8_t)OP::CALLER::OPERATIONS <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::BYTES <= ssCompare.Bytes();
     {
         Condition script = Condition(contract, caller);
-        REQUIRE(!script.Execute());
+        REQUIRE_FALSE(script.Execute());
     }
 
 
@@ -415,7 +452,7 @@ TEST_CASE( "Validation Script Tests", "[operation]")
        std::string strObject = "register-vanity";
 
        uint256_t hashObject = LLC::SK256(std::vector<uint8_t>(strObject.begin(), strObject.end()));
-       REQUIRE(LLD::regDB->Write(hashObject, object));
+       REQUIRE(LLD::Register->Write(hashObject, object));
 
 
       contract.Clear();
@@ -698,8 +735,10 @@ TEST_CASE( "Validation Script Tests", "[operation]")
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT32_T <= 9837u <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 7878u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 17715u;
     contract <= (uint8_t)OP::AND;
+
     contract <= (uint8_t)OP::TYPES::UINT32_T <= 9837u <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 7878u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 17715u;
     contract <= (uint8_t)OP::AND;
+
     contract <= (uint8_t)OP::TYPES::UINT32_T <= 9837u <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 7878u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 17715u;
     {
         Condition script = Condition(contract, caller);
@@ -708,5 +747,325 @@ TEST_CASE( "Validation Script Tests", "[operation]")
 
 
 
+    //////////////// AND / OR
+    contract.Clear();
+    contract <= (uint8_t)OP::TYPES::UINT32_T <= 9837u <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 7878u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 17715u;
+
+    contract <= (uint8_t)OP::OR;
+
+    contract <= (uint8_t)OP::TYPES::UINT32_T <= 9837u <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 7878u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 17715u;
+
+    contract <= (uint8_t)OP::AND;
+
+    contract <= (uint8_t)OP::TYPES::UINT32_T <= 9837u <= (uint8_t) OP::ADD <= (uint8_t) OP::TYPES::UINT32_T <= 7878u <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= 17715u;
+
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE_FALSE(script.Execute());
+    }
+
+
+
+
+    //GROUPING
+    contract.Clear();
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(9837)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(7878)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(17715);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+
+    contract <= uint8_t(OP::AND);
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(556);
+
+    contract <= uint8_t(OP::OR);
+
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(555);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+
+    contract <= uint8_t(OP::AND);
+
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(555);
+
+    contract <= uint8_t(OP::OR);
+
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(588);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE(script.Execute());
+    }
+
+
+
+
+
+
+
+    contract.Clear();
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(9837)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(7878)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(17715);
+    //)
+
+
+    contract <= uint8_t(OP::AND);
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(556);
+
+    contract <= uint8_t(OP::AND);
+
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(555);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+
+    contract <= uint8_t(OP::AND);
+
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(555);
+
+    contract <= uint8_t(OP::AND);
+
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(588);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE_FALSE(script.Execute());
+
+        //check for error
+        std::string error = debug::GetLastError();
+        REQUIRE(error.find("evaluate groups count incomplete") != std::string::npos);
+    }
+
+
+
+
+    contract.Clear();
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(9837)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(7878)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(17715);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+
+    contract <= uint8_t(OP::AND);
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(556);
+
+    contract <= uint8_t(OP::OR);
+
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(555);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+
+    contract <= uint8_t(OP::OR);
+
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(555);
+
+    contract <= uint8_t(OP::AND);
+
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(588);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE_FALSE(script.Execute());
+
+        //check for error
+        std::string error = debug::GetLastError();
+        REQUIRE(error.find("cannot evaluate OP::OR with previous OP::AND") != std::string::npos);
+    }
+
+
+
+
+
+    contract.Clear();
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(9837)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(7878)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(17715);
+
+    contract <= uint8_t(OP::AND);
+
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(556);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+    contract <= uint8_t(OP::OR);
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(556);
+
+    contract <= uint8_t(OP::OR);
+
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(555);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE(script.Execute());
+    }
+
+
+
+    contract.Clear();
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(9837)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(7878)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(17715);
+    contract <= uint8_t(OP::UNGROUP);
+
+    contract <= uint8_t(OP::AND);
+
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(556);
+    contract <= uint8_t(OP::UNGROUP);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+    contract <= uint8_t(OP::OR);
+
+    //(
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(556);
+    contract <= uint8_t(OP::UNGROUP);
+
+    contract <= uint8_t(OP::OR);
+
+    contract <= uint8_t(OP::GROUP);
+    contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(333)
+             <= uint8_t(OP::ADD)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(222)
+             <= uint8_t(OP::EQUALS)
+             <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(555);
+    contract <= uint8_t(OP::UNGROUP);
+    contract <= uint8_t(OP::UNGROUP);
+    //)
+
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE(script.Execute());
+    }
 
 }

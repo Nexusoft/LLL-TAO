@@ -31,15 +31,15 @@ namespace TAO
         bool Genesis::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
         {
             /* Check that a trust register exists. */
-            if(LLD::regDB->HasTrust(state.hashOwner))
+            if(LLD::Register->HasTrust(state.hashOwner))
                 return debug::error(FUNCTION, "cannot create genesis when already exists");
 
             /* Write the register to the database. */
-            if(!LLD::regDB->WriteState(hashAddress, state, nFlags))
+            if(!LLD::Register->WriteState(hashAddress, state, nFlags))
                 return debug::error(FUNCTION, "failed to write new state");
 
             /* Update the register database with the index. */
-            if(!LLD::regDB->IndexTrust(state.hashOwner, hashAddress))
+            if(!LLD::Register->IndexTrust(state.hashOwner, hashAddress))
                 return debug::error(FUNCTION, "could not index the address to the genesis");
 
             return true;
@@ -88,8 +88,11 @@ namespace TAO
         /* Verify trust validation rules and caller. */
         bool Genesis::Verify(const Contract& contract)
         {
-            /* Seek read position to first position. */
-            contract.Reset();
+            /* Rewind back on byte. */
+            contract.Rewind(1, Contract::OPERATIONS);
+
+            /* Reset register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
@@ -127,8 +130,11 @@ namespace TAO
             if(state.hashOwner != contract.Caller())
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
-            /* Seek read position to first position. */
-            contract.Seek(1);
+            /* Rewind back to primitive byte. */
+            contract.Rewind(32, Contract::OPERATIONS);
+
+            /* Reset register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             return true;
         }

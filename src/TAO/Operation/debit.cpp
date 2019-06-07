@@ -34,19 +34,23 @@ namespace TAO
                            const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
-            if(nFlags & TAO::Ledger::FLAGS::BLOCK)
+            if((nFlags & TAO::Ledger::FLAGS::BLOCK) && hashTo != ~uint256_t(0))
             {
                 /* Read the owner of register. */
                 TAO::Register::State state;
-                if(!LLD::regDB->ReadState(hashTo, state, nFlags))
+                if(!LLD::Register->ReadState(hashTo, state, nFlags))
                     return debug::error(FUNCTION, "failed to read register to");
 
                 /* Commit an event for other sigchain. */
-                if(!LLD::legDB->WriteEvent(state.hashOwner, hashTx))
+                if(!LLD::Ledger->WriteEvent(state.hashOwner, hashTx))
                     return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
             }
 
-            return LLD::regDB->WriteState(hashFrom, account, nFlags);
+            /* Attempt to write to disk. */
+            if(!LLD::Register->WriteState(hashFrom, account, nFlags))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 
@@ -84,8 +88,11 @@ namespace TAO
         /* Verify debit validation rules and caller. */
         bool Debit::Verify(const Contract& contract)
         {
-            /* Seek read position to first position. */
-            contract.Reset();
+            /* Rewind back on byte. */
+            contract.Rewind(1, Contract::OPERATIONS);
+
+            /* Reset register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
@@ -111,6 +118,11 @@ namespace TAO
             if(TAO::Register::Reserved(hashTo))
                 return debug::error(FUNCTION, "cannot transfer register to reserved address");
 
+            /* Check the contract for conditions. */
+            if(hashTo == ~uint256_t(0) && contract.Empty(Contract::CONDITIONS))
+                return debug::error(FUNCTION, "cannot debit to wildcard with no conditions");
+
+
             /* Check for debit to and from same account. */
             if(hashFrom == hashTo)
                 return debug::error(FUNCTION, "cannot debit to the same address as from");
@@ -135,8 +147,11 @@ namespace TAO
             if(state.hashOwner != contract.Caller())
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
-            /* Seek read position to first position. */
-            contract.Seek(1);
+            /* Rewind back on byte. */
+            contract.Rewind(64, Contract::OPERATIONS);
+
+            /* Reset register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             return true;
         }

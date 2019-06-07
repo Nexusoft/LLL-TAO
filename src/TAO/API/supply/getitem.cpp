@@ -49,7 +49,7 @@ namespace TAO
 
             /* Get the history. */
             TAO::Register::State state;
-            if(!LLD::regDB->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-24, "No state found");
 
             /* Build the response JSON. */

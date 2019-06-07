@@ -79,7 +79,7 @@ namespace TAO
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
                 hashAccountTo.SetHex(params["address"].get<std::string>());
-            
+
             /* Get the transaction id. */
             uint512_t hashTx;
             hashTx.SetHex(params["txid"].get<std::string>());
@@ -93,10 +93,10 @@ namespace TAO
             }
             else if(params.find("address_proof") != params.end())
                 hashProof.SetHex(params["address_proof"].get<std::string>());
-            
+
             /* Read the previous transaction. */
             TAO::Ledger::Transaction txPrev;
-            if(!LLD::legDB->ReadTx(hashTx, txPrev))
+            if(!LLD::Ledger->ReadTx(hashTx, txPrev))
                 throw APIException(-23, "Previous transaction not found.");
 
             /* Loop through all transactions. */
@@ -128,7 +128,7 @@ namespace TAO
 
                 /* Get the token / account object that the debit was made to. */
                 TAO::Register::Object debitToObject;
-                if(!LLD::regDB->ReadState(hashTo, debitToObject))
+                if(!LLD::Register->ReadState(hashTo, debitToObject))
                     continue;
 
                 /* Parse the object register. */
@@ -138,12 +138,12 @@ namespace TAO
                 /* Get the object standard. */
                 uint8_t nStandard = debitToObject.Base() ;
 
-                /* In order to know how to process the credit we need to know whether it is a split payment or not. 
-                   for split payments the hashTo object will be an Asset, and the owner of that asset must be a token. 
+                /* In order to know how to process the credit we need to know whether it is a split payment or not.
+                   for split payments the hashTo object will be an Asset, and the owner of that asset must be a token.
                    If this is the case, then the caller must supply both an account to receive their payment, and the
                    token account that proves their entitlement to the split of the debit payment. */
 
-                /* Check for the owner. If this is the current user then it must be a payment to an account/token and 
+                /* Check for the owner. If this is the current user then it must be a payment to an account/token and
                    therefore not a split payment. */
                 if(debitToObject.hashOwner == user->Genesis())
                 {
@@ -170,21 +170,21 @@ namespace TAO
                 }
                 else
                 {
-                    /* If the debit has not been made to an account that we own then we need to see whether it is a split payment. 
+                    /* If the debit has not been made to an account that we own then we need to see whether it is a split payment.
                        This can be identified by the debitToObject being an asset AND the owner being a token.  If this is the case
-                       then the hashProof provided by the caller must be an account for the same token as the asset holder, 
+                       then the hashProof provided by the caller must be an account for the same token as the asset holder,
                        and hashAccountTo must be an account for the same token as the hashDebitFrom account.*/
                     if(nStandard == TAO::Register::OBJECTS::NONSTANDARD)
                     {
                         /* retrieve the owner and check that it is a token */
                         TAO::Register::Object assetOwner;
-                        if(!LLD::regDB->ReadState(debitToObject.hashOwner, assetOwner))
+                        if(!LLD::Register->ReadState(debitToObject.hashOwner, assetOwner))
                             continue;
 
                         /* Parse the object register. */
                         if(!assetOwner.Parse())
                             throw APIException(-25, "Failed to parse asset owner object");
-                        
+
                         if(assetOwner.Standard() == TAO::Register::OBJECTS::TOKEN)
                         {
                             /* This is definitely a split payment so we now need to verify the token account and proof that
@@ -195,10 +195,10 @@ namespace TAO
                             if(hashProof == 0)
                                 throw APIException(-25, "Missing name_proof / address_proof of token account that proves your credit share.");
 
-                            /* Retrieve the account that the user has specified to make the payment to and ensure that it is for 
+                            /* Retrieve the account that the user has specified to make the payment to and ensure that it is for
                                the same token as the debit hashFrom */
                             TAO::Register::Object accountToCredit;
-                            if(!LLD::regDB->ReadState(hashAccountTo, accountToCredit))
+                            if(!LLD::Register->ReadState(hashAccountTo, accountToCredit))
                                 throw APIException(-25, "Invalid name / address of account to credit. ");
 
                             /* Parse the object register. */
@@ -207,7 +207,7 @@ namespace TAO
 
                             /* Retrieve the account to debit from. */
                             TAO::Register::Object debitFromObject;
-                            if(!LLD::regDB->ReadState(hashDebitFrom, debitFromObject))
+                            if(!LLD::Register->ReadState(hashDebitFrom, debitFromObject))
                                 continue;
 
                             /* Parse the object register. */
@@ -222,7 +222,7 @@ namespace TAO
 
                             /* Retrieve the hash proof account and check that it is the same token type as the asset owner */
                             TAO::Register::Object proofObject;
-                            if(!LLD::regDB->ReadState(hashProof, proofObject))
+                            if(!LLD::Register->ReadState(hashProof, proofObject))
                                 continue;
 
                             /* Parse the object register. */
@@ -246,8 +246,8 @@ namespace TAO
                     }
                     else
                         continue;
-                }    
-                
+                }
+
             }
 
             /* Check that output was found. */

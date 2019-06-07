@@ -30,7 +30,7 @@ namespace TAO
         {
             /* Check if system register exists. */
             Object object;
-            if(!LLD::regDB->ReadState(uint256_t(SYSTEM::TRUST), object))
+            if(!LLD::Register->ReadState(uint256_t(SYSTEM::TRUST), object))
             {
                 /* Debug output that the trust system register is initializing. */
                 debug::log(0, FUNCTION, "Initializing Trust System Register");
@@ -48,7 +48,7 @@ namespace TAO
                 object.SetChecksum();
 
                 /* Write the system value. */
-                if(!LLD::regDB->WriteState(uint256_t(SYSTEM::TRUST), object))
+                if(!LLD::Register->WriteState(uint256_t(SYSTEM::TRUST), object))
                     return debug::error(FUNCTION, "failed to write system::trust register");
             }
 

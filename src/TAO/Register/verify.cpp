@@ -38,11 +38,39 @@ namespace TAO
             try
             {
                 /* Get the contract OP. */
-                uint8_t OP = 0;
-                contract >> OP;
+                uint8_t nOP = 0;
+                contract >> nOP;
 
                 /* Check the current opcode. */
-                switch(OP)
+                switch(nOP)
+                {
+
+                    /* Condition that allows a validation to occur. */
+                    case TAO::Operation::OP::CONDITION:
+                    {
+                        /* Condition has no parameters. */
+                        contract >> nOP;
+
+                        /* Condition has no parameters. */
+                        break;
+                    }
+
+
+                    /* Validate a previous contract's conditions */
+                    case TAO::Operation::OP::VALIDATE:
+                    {
+                        /* Extract the transaction from contract. */
+                        contract.Seek(68);
+
+                        /* Condition has no parameters. */
+                        contract >> nOP;
+
+                        break;
+                    }
+                }
+
+                /* Check the current opcode. */
+                switch(nOP)
                 {
                     /* Check pre-state to database. */
                     case TAO::Operation::OP::WRITE:
@@ -50,6 +78,12 @@ namespace TAO
                         /* Get the Address of the Register. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
+
+                        /* Get the object data size. */
+                        uint32_t nSize = contract.ReadCompactSize(TAO::Operation::Contract::OPERATIONS);
+
+                        /* Seek past state data. */
+                        contract.Seek(nSize);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -69,7 +103,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::WRITE: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -94,6 +128,12 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
+                        /* Get the object data size. */
+                        uint32_t nSize = contract.ReadCompactSize(TAO::Operation::Contract::OPERATIONS);
+
+                        /* Seek past state data. */
+                        contract.Seek(nSize);
+
                         /* Verify the first register code. */
                         uint8_t nState = 0;
                         contract >>= nState;
@@ -112,7 +152,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::APPEND: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -133,6 +173,15 @@ namespace TAO
                     /* Create does not have a pre-state. */
                     case TAO::Operation::OP::CREATE:
                     {
+                        /* Seek to the end. */
+                        contract.Seek(33);
+
+                        /* Get the object data size. */
+                        uint32_t nSize = contract.ReadCompactSize(TAO::Operation::Contract::OPERATIONS);
+
+                        /* Seek past state data. */
+                        contract.Seek(nSize);
+
                         break;
                     }
 
@@ -143,6 +192,9 @@ namespace TAO
                         /* Get the Address of the Register. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
+
+                        /* Seek to the end. */
+                        contract.Seek(33);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -162,7 +214,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -184,7 +236,7 @@ namespace TAO
                     case TAO::Operation::OP::CLAIM:
                     {
                         /* Seek to address location. */
-                        contract.Seek(69);
+                        contract.Seek(68);
 
                         /* Get the address to update. */
                         uint256_t hashAddress = 0;
@@ -208,7 +260,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::CLAIM: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -226,7 +278,7 @@ namespace TAO
                     case TAO::Operation::OP::COINBASE:
                     {
                         /* Seek through coinbase data. */
-                        contract.Seek(49);
+                        contract.Seek(48);
 
                         break;
                     }
@@ -235,6 +287,9 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case TAO::Operation::OP::TRUST:
                     {
+                        /* Seek to the end. */
+                        contract.Seek(80);
+
                         /* Verify the first register code. */
                         uint8_t nState = 0;
                         contract >>= nState;
@@ -253,7 +308,7 @@ namespace TAO
                             state = mapStates[contract.Caller()];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadTrust(contract.Caller(), state))
+                        else if(!LLD::Register->ReadTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::TRUST: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -278,6 +333,9 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
+                        /* Seek to the end. */
+                        contract.Seek(8);
+
                         /* Verify the first register code. */
                         uint8_t nState = 0;
                         contract >>= nState;
@@ -296,7 +354,7 @@ namespace TAO
                             state = mapStates[contract.Caller()];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -317,6 +375,9 @@ namespace TAO
                     /* Move funds from trust account balance to stake. */
                     case TAO::Operation::OP::STAKE:
                     {
+                        /* Seek to the end. */
+                        contract.Seek(8);
+
                         /* Verify the first register code. */
                         uint8_t nState = 0;
                         contract >>= nState;
@@ -335,7 +396,7 @@ namespace TAO
                             state = mapStates[contract.Caller()];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadTrust(contract.Caller(), state))
+                        else if(!LLD::Register->ReadTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::STAKE: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -356,6 +417,9 @@ namespace TAO
                     /* Move funds from trust account stake to balance. */
                     case TAO::Operation::OP::UNSTAKE:
                     {
+                        /* Seek to the end. */
+                        contract.Seek(16);
+
                         /* Verify the first register code. */
                         uint8_t nState = 0;
                         contract >>= nState;
@@ -374,7 +438,7 @@ namespace TAO
                             state = mapStates[contract.Caller()];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadTrust(contract.Caller(), state))
+                        else if(!LLD::Register->ReadTrust(contract.Caller(), state))
                             return debug::error(FUNCTION, "OP::UNSTAKE: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -399,6 +463,9 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
+                        /* Seek to the end. */
+                        contract.Seek(40);
+
                         /* Verify the first register code. */
                         uint8_t nState = 0;
                         contract >>= nState;
@@ -417,7 +484,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -450,6 +517,9 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
+                        /* Seek to the end. */
+                        contract.Seek(40);
+
                         /* Verify the first register code. */
                         uint8_t nState = 0;
                         contract >>= nState;
@@ -468,7 +538,7 @@ namespace TAO
                             state = mapStates[hashAddress];
 
                         /* Read the register from database. */
-                        else if(!LLD::regDB->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
                             return debug::error(FUNCTION, "OP::CREDIT: failed to read pre-state");
 
                         /* Check that the checksums match. */
@@ -484,7 +554,15 @@ namespace TAO
 
                         break;
                     }
+
+                    default:
+                        return debug::error(FUNCTION, "invalid code for contract verification");
+
                 }
+
+                /* Check for end of stream. */
+                if(!contract.End())
+                    return debug::error(FUNCTION, "can only have one PRIMITIVE per contract");
             }
             catch(const std::exception& e)
             {

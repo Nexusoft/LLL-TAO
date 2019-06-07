@@ -56,7 +56,7 @@ namespace TAO
             GetNameAddress(hashNamespace, strName, hashAddress);
 
             /* Read the Name Object */
-            if(!LLD::regDB->ReadState(hashAddress, nameRegister, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadState(hashAddress, nameRegister, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 debug::log(2, FUNCTION, "Name register not found: ", strName);
                 return false;

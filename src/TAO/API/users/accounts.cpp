@@ -71,7 +71,7 @@ namespace TAO
                 /* Get the asset from the register DB.  We can read it as an Object and then check its nType to determine
                    whether or not it is an asset. */
                 TAO::Register::Object object;
-                if(!LLD::regDB->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-24, "Account not found");
 
                 /* Check that this is a non-standard object type so that we can parse it and check the type*/
@@ -103,7 +103,7 @@ namespace TAO
                     break;
 
                 /* Convert the object to JSON */
-                ret.push_back(TAO::API::ObjectRegisterToJSON(params, object, hashRegister));
+                ret.push_back(TAO::API::ObjectToJSON(params, object, hashRegister));
             }
 
             return ret;

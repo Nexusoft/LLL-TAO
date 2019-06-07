@@ -29,7 +29,11 @@ namespace TAO
         /*  Commit the final state to disk. */
         bool Trust::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
-            return LLD::regDB->WriteTrust(state.hashOwner, state);
+            /* Attempt to write to disk. */
+            if(!LLD::Register->WriteTrust(state.hashOwner, state))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 
@@ -63,8 +67,11 @@ namespace TAO
         /* Verify trust validation rules and caller. */
         bool Trust::Verify(const Contract& contract)
         {
-            /* Seek read position to first position. */
-            contract.Reset();
+            /* Rewind back on byte. */
+            contract.Rewind(1, Contract::OPERATIONS);
+
+            /* Reset register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
@@ -94,8 +101,8 @@ namespace TAO
             if(state.hashOwner != contract.Caller())
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
-            /* Seek read position to first position. */
-            contract.Seek(1);
+            /* Reset the register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             return true;
         }

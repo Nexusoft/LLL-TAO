@@ -27,7 +27,6 @@ namespace TAO
         //NETF - NOS - Nexus Operation Standard - Document to define operation needs, formal design, and byte slot, and NETF engineers to develop the CASE statement
         //NETF - ORS - Object Register Standard - Document to define a specific object register for purpose of ADS standards, with NOS standards being capable of supporting methods
 
-
         namespace OP
         {
             /** Primitive Operations. **/
@@ -61,10 +60,17 @@ namespace TAO
                 ACK        = 0x30, //a vote to credit trust towards a proposal
                 NACK       = 0x31, //a vote to withdrawl trust from a proposal
 
+                //conditional operations
+                VALIDATE   = 0x40,
+                CONDITION  = 0x41,
+
                 //legacy operations
-                LEGACY      = 0x50
+                LEGACY     = 0x50,
 
                 //0x31 = 0x6f RESERVED
+
+                //final reserved ENUM
+                RESERVED   = 0xff
             };
 
 
@@ -91,12 +97,13 @@ namespace TAO
             enum
             {
                 //RESERVED to 0x8f
-                EQUALS      = 0x80,
-                LESSTHAN    = 0x81,
-                GREATERTHAN = 0x82,
-                NOTEQUALS   = 0x83,
-                CONTAINS    = 0x84,
-                EMPTY       = 0x85,
+                EQUALS        = 0x80,
+                LESSTHAN      = 0x81,
+                GREATERTHAN   = 0x82,
+                NOTEQUALS     = 0x83,
+                CONTAINS      = 0x84,
+                LESSEQUALS    = 0x85,
+                GREATEREQUALS = 0x86,
 
 
                 //RESERVED to 0x9f
@@ -115,7 +122,8 @@ namespace TAO
                 //RESERVED to 0x2f
                 AND         = 0xa0,
                 OR          = 0xa1,
-                IF          = 0xa2,
+                GROUP       = 0xa2,
+                UNGROUP     = 0xa3,
             };
 
 
@@ -136,23 +144,6 @@ namespace TAO
             }
 
 
-            /** Register pre-state values. **/
-            namespace PRESTATE
-            {
-                enum
-                {
-                    CREATED       = 0xb6,
-                    MODIFIED      = 0xb7,
-                    OWNER         = 0xb8,
-                    TYPE          = 0xb9,
-                    STATE         = 0xba,
-
-                    //object registers
-                    VALUE         = 0xbb
-                };
-            }
-
-
             /** Caller Values (The validation script caller). **/
             namespace CALLER
             {
@@ -163,6 +154,22 @@ namespace TAO
                     OPERATIONS   = 0xc2,
                     CONDITIONS   = 0xc3,
                 };
+
+                /** Register pre-state values. **/
+                namespace PRESTATE
+                {
+                    enum
+                    {
+                        CREATED       = 0xc4,
+                        MODIFIED      = 0xc5,
+                        OWNER         = 0xc6,
+                        TYPE          = 0xc7,
+                        STATE         = 0xc8,
+
+                        //object registers
+                        VALUE         = 0xc9
+                    };
+                }
             }
 
 
@@ -196,8 +203,26 @@ namespace TAO
                 enum
                 {
                     UNIFIED       = 0xf0
+
+                    //reserved to 0xf9
                 };
             }
+        }
+
+
+        /** Transfer operation enumeration. **/
+        namespace TRANSFER
+        {
+            enum
+            {
+                /* Transfer requiring claim. */
+                CLAIM = 0xfa,
+
+                /* Forced Transfer. */
+                FORCE = 0xfb
+
+                //TODO: possibly sanitize transfer to USER or ASSET
+            };
         }
     }
 }

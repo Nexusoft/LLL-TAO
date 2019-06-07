@@ -31,50 +31,50 @@ namespace LLD
 
 
     /* Writes a transaction to the legacy DB. */
-    bool LegacyDB::WriteTx(const uint512_t& hashTransaction, const Legacy::Transaction& tx)
+    bool LegacyDB::WriteTx(const uint512_t& hashTx, const Legacy::Transaction& tx)
     {
-        return Write(std::make_pair(std::string("tx"), hashTransaction), tx);
+        return Write(std::make_pair(std::string("tx"), hashTx), tx);
     }
 
 
     /* Reads a transaction from the legacy DB. */
-    bool LegacyDB::ReadTx(const uint512_t& hashTransaction, Legacy::Transaction& tx)
+    bool LegacyDB::ReadTx(const uint512_t& hashTx, Legacy::Transaction& tx)
     {
-        return Read(std::make_pair(std::string("tx"), hashTransaction), tx);
+        return Read(std::make_pair(std::string("tx"), hashTx), tx);
     }
 
 
     /* Erases a transaction from the ledger DB. */
-    bool LegacyDB::EraseTx(const uint512_t& hashTransaction)
+    bool LegacyDB::EraseTx(const uint512_t& hashTx)
     {
-        return Erase(std::make_pair(std::string("tx"), hashTransaction));
+        return Erase(std::make_pair(std::string("tx"), hashTx));
     }
 
 
     /* Checks if a transaction exists. */
-    bool LegacyDB::HasTx(const uint512_t& hashTransaction)
+    bool LegacyDB::HasTx(const uint512_t& hashTx)
     {
-        return Exists(std::make_pair(std::string("tx"), hashTransaction));
+        return Exists(std::make_pair(std::string("tx"), hashTx));
     }
 
 
     /* Writes an output as spent. */
-    bool LegacyDB::WriteSpend(const uint512_t& hashTransaction, uint32_t nOutput)
+    bool LegacyDB::WriteSpend(const uint512_t& hashTx, uint32_t nOutput)
     {
-        return Write(std::make_pair(hashTransaction, nOutput));
+        return Write(std::make_pair(hashTx, nOutput));
     }
 
 
     /* Removes a spend flag on an output. */
-    bool LegacyDB::EraseSpend(const uint512_t& hashTransaction, uint32_t nOutput)
+    bool LegacyDB::EraseSpend(const uint512_t& hashTx, uint32_t nOutput)
     {
-        return Erase(std::make_pair(hashTransaction, nOutput));
+        return Erase(std::make_pair(hashTx, nOutput));
     }
 
 
     /* Checks if an output was spent. */
-    bool LegacyDB::IsSpent(const uint512_t& hashTransaction, uint32_t nOutput)
+    bool LegacyDB::IsSpent(const uint512_t& hashTx, uint32_t nOutput)
     {
-        return Exists(std::make_pair(hashTransaction, nOutput));
+        return Exists(std::make_pair(hashTx, nOutput));
     }
 }

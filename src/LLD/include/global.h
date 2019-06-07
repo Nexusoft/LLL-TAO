@@ -20,16 +20,19 @@ ________________________________________________________________________________
 #include <LLD/include/local.h>
 #include <LLD/include/legacy.h>
 #include <LLD/include/trust.h>
+#include <LLD/include/contract.h>
 
 namespace LLD
 {
-    extern RegisterDB*   regDB;
-    extern LedgerDB*     legDB;
-    extern LocalDB*      locDB;
+
+    extern ContractDB*   Contract;
+    extern RegisterDB*   Register;
+    extern LedgerDB*     Ledger;
+    extern LocalDB*      Local;
 
     //for legacy objects
-    extern TrustDB*      trustDB;
-    extern LegacyDB*     legacyDB;
+    extern TrustDB*      Trust;
+    extern LegacyDB*     Legacy;
 
 
     /** TxnRecover

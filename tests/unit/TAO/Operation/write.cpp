@@ -31,7 +31,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
 
         //write the object register for testing
         uint256_t hash = LLC::GetRand256();
-        REQUIRE(LLD::regDB->WriteState(hash, object));
+        REQUIRE(LLD::Register->WriteState(hash, object));
 
 
         //create an operation stream to set values.
@@ -50,17 +50,20 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
 
             //run tests
             REQUIRE(tx.Build());
+
+            //verify the prestates and poststates
+            REQUIRE(tx.Verify());
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
 
             //reset the streams
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check values all match
-            REQUIRE(LLD::regDB->ReadState(hash, object));
+            REQUIRE(LLD::Register->ReadState(hash, object));
 
             //should fail
             uint8_t nByte;
-            REQUIRE(!object.Read("byte", nByte));
+            REQUIRE_FALSE(object.Read("byte", nByte));
 
             //parse
             REQUIRE(object.Parse());
@@ -90,6 +93,9 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
 
             //run tests
             REQUIRE(tx.Build());
+
+            //verify the prestates and poststates
+            REQUIRE(tx.Verify());
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
 
             //reset the streams
@@ -97,7 +103,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
 
             //check values all match
             TAO::Register::Object object2;
-            REQUIRE(LLD::regDB->ReadState(hash, object2));
+            REQUIRE(LLD::Register->ReadState(hash, object2));
 
             //parse
             REQUIRE(object2.Parse());
@@ -124,8 +130,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             tx[0] << uint8_t(OP::WRITE) << hash << stream.Bytes();
 
             //run tests
-            REQUIRE(!tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(tx.Build());
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
         {
@@ -142,8 +148,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             tx[0] << uint8_t(OP::WRITE) << hash << stream.Bytes();
 
             //run tests
-            REQUIRE(!tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(tx.Build());
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
 
         }
 
@@ -161,8 +167,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             tx[0] << uint8_t(OP::WRITE) << hash << stream.Bytes();
 
             //run tests
-            REQUIRE(!tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(tx.Build());
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
         {
@@ -179,8 +185,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             tx[0] << uint8_t(OP::WRITE) << hash << stream.Bytes();
 
             //run tests
-            REQUIRE(!tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(tx.Build());
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
         {
@@ -197,8 +203,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             tx[0] << uint8_t(OP::WRITE) << hash << stream.Bytes();
 
             //run tests
-            REQUIRE(!tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(tx.Build());
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
         {
@@ -215,8 +221,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             tx[0] << uint8_t(OP::WRITE) << hash << stream.Bytes();
 
             //run tests
-            REQUIRE(!tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(tx.Build());
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
         {
@@ -233,8 +239,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             tx[0] << uint8_t(OP::WRITE) << hash << stream.Bytes();
 
             //run tests
-            REQUIRE(!tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(tx.Build());
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
 
@@ -253,8 +259,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             tx[0] << uint8_t(OP::WRITE) << uint256_t(0) << stream.Bytes();
 
             //run tests
-            REQUIRE(!tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(tx.Build());
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
         {
@@ -271,8 +277,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             tx[0] << uint8_t(OP::WRITE) << uint256_t(1) << stream.Bytes();
 
             //run tests
-            REQUIRE(!tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(tx.Build());
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
         {
@@ -289,8 +295,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             tx[0] << uint8_t(OP::WRITE) << uint256_t(55) << stream.Bytes();
 
             //run tests
-            REQUIRE(!tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(tx.Build());
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
         {
@@ -307,8 +313,8 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
             tx[0] << uint8_t(OP::WRITE) << uint256_t(255) << stream.Bytes();
 
             //run tests
-            REQUIRE(!tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(tx.Build());
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
 
 

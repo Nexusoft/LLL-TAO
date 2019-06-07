@@ -1192,7 +1192,7 @@ namespace TAO
 
                 blockId.SetHex(params[0].get<std::string>());
 
-                if(!LLD::legDB->ReadBlock(blockId, block))
+                if (!LLD::Ledger->ReadBlock(blockId, block))
                 {
                     throw APIException(-1, "Unknown blockhash parameter");
                     return "";
@@ -1282,7 +1282,7 @@ namespace TAO
             Legacy::Transaction tx;
             if(!TAO::Ledger::mempool.Get(hash, tx))
             {
-                if(!LLD::legacyDB->ReadTx(hash, tx))
+                if(!LLD::Legacy->ReadTx(hash, tx))
                     throw APIException(-5, "No information available about transaction");
             }
 

@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <LLD/templates/sector.h>
+#include <LLD/cache/binary_lfu.h>
+#include <LLD/keychain/filemap.h>
 
 #include <Legacy/types/trustkey.h>
 
@@ -30,7 +32,7 @@ namespace LLD
      *  The database class for trust keys for both Legacy and Tritium.
      *
      **/
-    class TrustDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
+    class TrustDB : public SectorDatabase<BinaryFileMap, BinaryLFU>
     {
 
     public:

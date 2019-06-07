@@ -125,7 +125,7 @@ namespace TAO
             if(hashPrevBlock == 0)
                 return state;
 
-            if(LLD::legDB->ReadBlock(hashPrevBlock, state))
+            if(LLD::Ledger->ReadBlock(hashPrevBlock, state))
                 return state;
             else
                 debug::error("failed to read previous block state ", hashPrevBlock.ToString());
@@ -141,7 +141,7 @@ namespace TAO
             if(hashNextBlock == 0)
                 return state;
 
-            if(LLD::legDB->ReadBlock(hashNextBlock, state))
+            if(LLD::Ledger->ReadBlock(hashNextBlock, state))
                 return state;
 
             return state;
@@ -234,7 +234,7 @@ namespace TAO
 
 
             /* Write the block to disk. */
-            if(!LLD::legDB->WriteBlock(GetHash(), *this))
+            if(!LLD::Ledger->WriteBlock(GetHash(), *this))
                 return debug::error(FUNCTION, "block state failed to write");
 
 
@@ -249,7 +249,7 @@ namespace TAO
 
                     /* Check the database. */
                     TAO::Ledger::Transaction tx;
-                    if(LLD::legDB->ReadTx(hash, tx))
+                    if(LLD::Ledger->ReadTx(hash, tx))
                         continue;
 
                     /* Check the memory pool. */
@@ -257,7 +257,7 @@ namespace TAO
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
-                    if(!LLD::legDB->WriteTx(hash, tx))
+                    if(!LLD::Ledger->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
                     /* Remove indexed tx from memory pool. */
@@ -271,7 +271,7 @@ namespace TAO
 
                     /* Check the database. */
                     Legacy::Transaction tx;
-                    if(LLD::legacyDB->ReadTx(hash, tx))
+                    if(LLD::Legacy->ReadTx(hash, tx))
                         continue;
 
                     /* Check if in memory pool. */
@@ -279,7 +279,7 @@ namespace TAO
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
-                    if(!LLD::legacyDB->WriteTx(hash, tx))
+                    if(!LLD::Legacy->WriteTx(hash, tx))
                         return debug::error(FUNCTION, "failed to write tx to disk");
 
                     /* Remove indexed tx from memory pool. */
@@ -320,11 +320,11 @@ namespace TAO
             if(!ChainState::stateGenesis)
             {
                 /* Write the best chain pointer. */
-                if(!LLD::legDB->WriteBestChain(nHash))
+                if(!LLD::Ledger->WriteBestChain(nHash))
                     return debug::error(FUNCTION, "failed to write best chain");
 
                 /* Write the block to disk. */
-                if(!LLD::legDB->WriteBlock(nHash, *this))
+                if(!LLD::Ledger->WriteBlock(nHash, *this))
                     return debug::error(FUNCTION, "block state already exists");
 
                 /* Set the genesis block. */
@@ -407,7 +407,7 @@ namespace TAO
                             {
                                 /* Check if in memory pool. */
                                 TAO::Ledger::Transaction tx;
-                                if(!LLD::legDB->ReadTx(proof.second, tx))
+                                if(!LLD::Ledger->ReadTx(proof.second, tx))
                                     return debug::error(FUNCTION, "transaction is not on disk");
 
                                 /* Resurrect. */
@@ -418,7 +418,7 @@ namespace TAO
                             {
                                 /* Check if in memory pool. */
                                 Legacy::Transaction tx;
-                                if(!LLD::legacyDB->ReadTx(proof.second, tx))
+                                if(!LLD::Legacy->ReadTx(proof.second, tx))
                                     return debug::error(FUNCTION, "transaction is not on disk");
 
                                 /* Resurrect */
@@ -442,8 +442,8 @@ namespace TAO
                     /* Erase block if not connecting anything. */
                     if(vConnect.empty())
                     {
-                        LLD::legDB->EraseBlock(state.GetHash());
-                        //LLD::legDB->EraseIndex(state.nHeight);
+                        LLD::Ledger->EraseBlock(state.GetHash());
+                        //LLD::Ledger->EraseIndex(state.nHeight);
                     }
                 }
 
@@ -506,7 +506,7 @@ namespace TAO
 
 
                 /* Write the best chain pointer. */
-                if(!LLD::legDB->WriteBestChain(ChainState::hashBestChain.load()))
+                if(!LLD::Ledger->WriteBestChain(ChainState::hashBestChain.load()))
                     return debug::error(FUNCTION, "failed to write best chain");
 
 
@@ -584,7 +584,7 @@ namespace TAO
 
                     /* Make sure the transaction is on disk. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::legDB->ReadTx(hash, tx))
+                    if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
 
                     /* Check the next hash pointer. */
@@ -600,7 +600,7 @@ namespace TAO
                     {
                         /* Check for the last hash. */
                         uint512_t hashLast = 0;
-                        if(!LLD::legDB->ReadLast(tx.hashGenesis, hashLast))
+                        if(!LLD::Ledger->ReadLast(tx.hashGenesis, hashLast))
                             return debug::error(FUNCTION, "failed to read last on non-genesis");
 
                         /* Check that the last transaction is correct. */
@@ -608,7 +608,7 @@ namespace TAO
                         {
                             /* Make sure the transaction is on disk. */
                             TAO::Ledger::Transaction tx2;
-                            if(!LLD::legDB->ReadTx(hashLast, tx2))
+                            if(!LLD::Ledger->ReadTx(hashLast, tx2))
                                 return debug::error(FUNCTION, "last transaction not on disk");
 
                             tx2.print();
@@ -616,7 +616,7 @@ namespace TAO
 
                             for(uint32_t i = 0; i < 10; ++i)
                             {
-                                if(!LLD::legDB->ReadTx(tx.hashPrevTx, tx2))
+                                if(!LLD::Ledger->ReadTx(tx.hashPrevTx, tx2))
                                     break;
 
                                 tx2.print();
@@ -628,7 +628,7 @@ namespace TAO
                     }
 
                     /* Write the last to disk. */
-                    if(!LLD::legDB->WriteLast(tx.hashGenesis, hash))
+                    if(!LLD::Ledger->WriteLast(tx.hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write last hash");
                 }
                 else if(proof.first == TYPE::LEGACY_TX)
@@ -638,11 +638,11 @@ namespace TAO
 
                     /* Make sure the transaction isn't on disk. */
                     Legacy::Transaction tx;
-                    if(!LLD::legacyDB->ReadTx(hash, tx))
+                    if(!LLD::Legacy->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction not on disk");
 
                     /* Check for existing indexes. */
-                    if(LLD::legDB->HasIndex(hash))
+                    if(LLD::Ledger->HasIndex(hash))
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
 
                     /* Fetch the inputs. */
@@ -662,7 +662,7 @@ namespace TAO
                     return debug::error(FUNCTION, "using an unknown transaction type");
 
                 /* Write the indexing entries. */
-                LLD::legDB->IndexBlock(proof.second, GetHash());
+                LLD::Ledger->IndexBlock(proof.second, GetHash());
             }
 
             /* Update the previous state's next pointer. */
@@ -675,18 +675,18 @@ namespace TAO
             debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN);
 
             /* Write the updated block state to disk. */
-            if(!LLD::legDB->WriteBlock(GetHash(), *this))
+            if(!LLD::Ledger->WriteBlock(GetHash(), *this))
                 return debug::error(FUNCTION, "failed to update block state");
 
             /* Index the block by height if enabled. */
             if(config::GetBoolArg("-indexheight"))
-                LLD::legDB->IndexBlock(nHeight, GetHash());
+                LLD::Ledger->IndexBlock(nHeight, GetHash());
 
             /* Update chain pointer for previous block. */
             if(!prev.IsNull())
             {
                 prev.hashNextBlock = GetHash();
-                if(!LLD::legDB->WriteBlock(prev.GetHash(), prev))
+                if(!LLD::Ledger->WriteBlock(prev.GetHash(), prev))
                     return debug::error(FUNCTION, "failed to update previous block state");
             }
 
@@ -708,7 +708,7 @@ namespace TAO
 
                     /* Read from disk. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::legDB->ReadTx(hash, tx))
+                    if(!LLD::Ledger->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction is not on disk");
 
                     /* Disconnect the transaction. */
@@ -722,7 +722,7 @@ namespace TAO
 
                     /* Read from disk. */
                     Legacy::Transaction tx;
-                    if(!LLD::legacyDB->ReadTx(hash, tx))
+                    if(!LLD::Legacy->ReadTx(hash, tx))
                         return debug::error(FUNCTION, "transaction is not on disk");
 
                     /* Disconnect the inputs. */
@@ -735,19 +735,19 @@ namespace TAO
                 }
 
                 /* Write the indexing entries. */
-                LLD::legDB->EraseIndex(proof.second);
+                LLD::Ledger->EraseIndex(proof.second);
             }
 
             /* Erase the index for block by height. */
             if(config::GetBoolArg("-indexheight"))
-                LLD::legDB->EraseIndex(nHeight);
+                LLD::Ledger->EraseIndex(nHeight);
 
             /* Update the previous state's next pointer. */
             BlockState prev = Prev();
             if(!prev.IsNull())
             {
                 prev.hashNextBlock = 0;
-                LLD::legDB->WriteBlock(prev.GetHash(), prev);
+                LLD::Ledger->WriteBlock(prev.GetHash(), prev);
             }
 
             return true;
@@ -833,7 +833,7 @@ namespace TAO
             {
                 /* Get the tritium transaction  from the database*/
                 TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadTx(vtx[0].second, tx))
+                if(!LLD::Ledger->ReadTx(vtx[0].second, tx))
                     return debug::error(FUNCTION, "transaction is not on disk");
 
                 return Block::StakeHash( tx.IsGenesis(), tx.hashGenesis);
@@ -842,7 +842,7 @@ namespace TAO
             {
                 /* Get the legacy transaction from the database. */
                 Legacy::Transaction tx;
-                if(!LLD::legacyDB->ReadTx(vtx[0].second, tx))
+                if(!LLD::Legacy->ReadTx(vtx[0].second, tx))
                     return debug::error(FUNCTION, "transaction is not on disk");
 
                 /* Get the trust key. */

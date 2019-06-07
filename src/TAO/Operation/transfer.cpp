@@ -34,14 +34,18 @@ namespace TAO
                               const uint256_t& hashAddress, const uint256_t& hashTransfer, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
-            if(nFlags & TAO::Ledger::FLAGS::BLOCK)
+            if((nFlags & TAO::Ledger::FLAGS::BLOCK) && hashTransfer != ~uint256_t(0))
             {
                 /* Write the transfer event. */
-                if(!LLD::legDB->WriteEvent(hashTransfer, hashTx))
-                    return debug::error(FUNCTION, "failed to write event");
+                if(!LLD::Ledger->WriteEvent(hashTransfer, hashTx))
+                    return debug::error(FUNCTION, "failed to write event for ", hashTransfer.SubString());
             }
 
-            return LLD::regDB->WriteState(hashAddress, state, nFlags);
+            /* Attempt to write the new state. */
+            if(!LLD::Register->WriteState(hashAddress, state, nFlags))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 
@@ -66,8 +70,11 @@ namespace TAO
         /* Verify claim validation rules and caller. */
         bool Transfer::Verify(const Contract& contract)
         {
-            /* Seek read position to first position. */
-            contract.Reset();
+            /* Rewind back on byte. */
+            contract.Rewind(1, Contract::OPERATIONS);
+
+            /* Reset register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
@@ -92,6 +99,10 @@ namespace TAO
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashTransfer))
                 return debug::error(FUNCTION, "cannot transfer register to reserved address");
+
+            /* Check the contract for conditions. */
+            if(hashTransfer == ~uint256_t(0) && contract.Empty(Contract::CONDITIONS))
+                return debug::error(FUNCTION, "cannot transfer to wildcard with no conditions");
 
             /* Get the state byte. */
             uint8_t nState = 0; //RESERVED
@@ -133,7 +144,10 @@ namespace TAO
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
             /* Seek read position to first position. */
-            contract.Seek(1);
+            contract.Rewind(64, Contract::OPERATIONS);
+
+            /* Reset the register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             return true;
         }

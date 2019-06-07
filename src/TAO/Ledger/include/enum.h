@@ -32,7 +32,7 @@ namespace TAO
 
 
         /** State values for a transaction. **/
-        struct STATE
+        namespace STATE
         {
             enum
             {
@@ -43,11 +43,11 @@ namespace TAO
                 HEAD        = 0x01
 
             };
-        };
+        }
 
 
         /** Signature types for sigchain. **/
-        struct SIGNATURE
+        namespace SIGNATURE
         {
             enum
             {
@@ -63,7 +63,7 @@ namespace TAO
                 /** SECP256K1 ECDSA curve. **/
                 SECP256K1   = 0x03
             };
-        };
+        }
 
 
         /** FLAGS
@@ -71,7 +71,7 @@ namespace TAO
          *  The flags on what to do to registers when executing operations.
          *
          **/
-        struct FLAGS
+        namespace FLAGS
         {
             enum
             {
@@ -84,7 +84,7 @@ namespace TAO
                 /* Write data into memory on mempool. */
                 MEMPOOL     = 0x02
             };
-        };
+        }
     }
 }
 

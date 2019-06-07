@@ -103,7 +103,7 @@ namespace TAO
                 TAO::Ledger::Transaction txPrev;
                 if(!tx.IsFirst()
                 && !mapLedger.count(tx.hashPrevTx)
-                && !LLD::legDB->ReadTx(tx.hashPrevTx, txPrev))
+                && !LLD::Ledger->ReadTx(tx.hashPrevTx, txPrev))
                 {
                     /* Debug output. */
                     debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
@@ -344,6 +344,8 @@ namespace TAO
         bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount) const
         {
             RLOCK(MUTEX);
+
+            //TODO: need to check dependant transactions and sequence them properly otherwise this will fail
 
             /* Create map of transactions by genesis. */
             std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;

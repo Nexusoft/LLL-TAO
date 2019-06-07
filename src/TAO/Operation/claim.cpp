@@ -33,14 +33,18 @@ namespace TAO
             const uint256_t& hashAddress, const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
         {
             /* Check if this transfer is already claimed. */
-            if(LLD::legDB->HasProof(hashAddress, hashTx, nContract, nFlags))
+            if(LLD::Ledger->HasProof(hashAddress, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "transfer is already claimed");
 
             /* Write the claimed proof. */
-            if(!LLD::legDB->WriteProof(hashAddress, hashTx, nContract, nFlags))
+            if(!LLD::Ledger->WriteProof(hashAddress, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "transfer is already claimed");
 
-            return LLD::regDB->WriteState(hashAddress, state, nFlags);
+            /* Attempt to write new state to disk. */
+            if(!LLD::Register->WriteState(hashAddress, state, nFlags))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 
@@ -68,12 +72,37 @@ namespace TAO
         /* Verify claim validation rules and caller. */
         bool Claim::Verify(const Contract& contract, const Contract& claim)
         {
-            /* Seek claim read position to first. */
-            claim.Reset();
+            /* Reset register streams. */
+            claim.Reset(Contract::REGISTERS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
             claim >> OP;
+
+            /* Check for condition or validate. */
+            switch(OP)
+            {
+                /* Handle a condition. */
+                case OP::CONDITION:
+                {
+                    /* Get new OP. */
+                    claim >> OP;
+
+                    break;
+                }
+
+                /* Handle a validate. */
+                case OP::VALIDATE:
+                {
+                    /* Seek past validate. */
+                    claim.Seek(68);
+
+                    /* Get new OP. */
+                    claim >> OP;
+
+                    break;
+                }
+            }
 
             /* Check operation byte. */
             if(OP != OP::TRANSFER)
@@ -110,15 +139,15 @@ namespace TAO
             /* Check the addresses match. */
             if(state.hashOwner != contract.Caller() //claim to self
             && hashTransfer    != contract.Caller() //calim to transfer
-            && hashTransfer    != ~uint256_t(0))      //claim to wildcard (anyone)
+            && hashTransfer    != ~uint256_t(0))   //claim to wildcard (anyone)
                 return debug::error(FUNCTION, "claim public-id mismatch with transfer address");
 
             /* Check that pre-state is valid. */
             if(!state.IsValid())
                 return debug::error(FUNCTION, "pre-state is in invalid state");
 
-            /* Seek read position to first position. */
-            claim.Seek(1);
+            /* Reset the register streams. */
+            claim.Reset(Contract::OPERATIONS | Contract::REGISTERS);
 
             return true;
         }

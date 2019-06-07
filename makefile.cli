@@ -200,8 +200,10 @@ ifdef UNIT_TESTS
 		   build/Tests_register.o \
 		   build/Tests_debit.o \
 		   build/Tests_trust.o \
+		   build/Tests_validate.o \
 		   build/Tests_write.o \
 		   build/Tests_conditions.o \
+		   build/Tests_contract.o \
 		   build/Tests_transfer.o \
            build/Tests_hex.o
 
@@ -256,11 +258,13 @@ OBJS+=  build/LLC_base_uint.o \
         build/LLD_address.o \
         build/LLD_ledger.o \
         build/LLD_legacy.o \
+		build/LLD_contract.o \
         build/LLD_local.o \
         build/LLD_register.o \
         build/LLD_trust.o \
 		build/LLD_binary_key.o \
 		build/LLD_binary_lru.o \
+		build/LLD_binary_lfu.o \
 		build/LLD_filemap.o \
 		build/LLD_global.o \
 		build/LLD_hashmap.o \
@@ -364,6 +368,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Operation_stake.o \
 		build/Operation_transfer.o \
 		build/Operation_trust.o \
+		build/Operation_validate.o \
 		build/Operation_unstake.o \
 		build/Operation_write.o \
 		build/Register_basevm.o \

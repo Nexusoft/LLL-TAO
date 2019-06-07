@@ -94,7 +94,7 @@ namespace TAO
             
             /* Get the token / account object. */
             TAO::Register::Object object;
-            if(!LLD::regDB->ReadState(hashFrom, object))
+            if(!LLD::Register->ReadState(hashFrom, object))
                 throw APIException(-24, "Token/account not found");
 
             /* Parse the object register. */
@@ -118,7 +118,7 @@ namespace TAO
                     throw APIException(-24, "Object is not an account");
 
                 nCurrentBalance = object.get<uint64_t>("balance");
-                nDigits = GetTokenOrAccountDigits(object);
+                nDigits = GetDigits(object);
             }
             else
             {

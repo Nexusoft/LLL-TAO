@@ -36,14 +36,15 @@ namespace TAO
                             const uint32_t nContract, const uint64_t nAmount, const uint8_t nFlags)
         {
             /* Check if this transfer is already claimed. */
-            if(LLD::legDB->HasProof(hashProof, hashTx, nContract, nFlags))
+            if(LLD::Ledger->HasProof(hashProof, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "credit is already claimed");
 
             /* Write the claimed proof. */
-            if(!LLD::legDB->WriteProof(hashProof, hashTx, nContract, nFlags))
+            if(!LLD::Ledger->WriteProof(hashProof, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "failed to write credit proof");
 
             /* Read the debit. */
+            debit.Reset();
             debit.Seek(1);
 
             /* Get address from. */
@@ -55,16 +56,19 @@ namespace TAO
             {
                 /* Get the partial amount. */
                 uint64_t nClaimed = 0;
-                if(!LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+                if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
                     nClaimed = 0; //reset value to double check here and continue
 
                 /* Write the new claimed amount. */
-                if(!LLD::legDB->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
+                if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
                     return debug::error(FUNCTION, "failed to update claimed amount");
             }
 
             /* Write the new register's state. */
-            return LLD::regDB->WriteState(hashAddress, account, nFlags);
+            if(!LLD::Register->WriteState(hashAddress, account, nFlags))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 
@@ -98,8 +102,11 @@ namespace TAO
         /* Verify claim validation rules and caller. */
         bool Credit::Verify(const Contract& contract, const Contract& debit, const uint8_t nFlags)
         {
-            /* Extract current contract. */
-            contract.Reset();
+            /* Rewind to first OP. */
+            contract.Rewind(69, Contract::OPERATIONS);
+
+            /* Reset register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
@@ -118,7 +125,7 @@ namespace TAO
             contract >> nContract;
 
             /* Read the to account that contract is operating on. */
-            uint256_t hashAccount;
+            uint256_t hashAccount = 0;
             contract >> hashAccount;
 
             /* Get the proof hash. */
@@ -156,6 +163,32 @@ namespace TAO
             OP = 0;
             debit >> OP;
 
+            /* Check for condition or validate. */
+            switch(OP)
+            {
+                /* Handle a condition. */
+                case OP::CONDITION:
+                {
+                    /* Get new OP. */
+                    debit >> OP;
+
+                    break;
+                }
+
+
+                /* Handle a validate. */
+                case OP::VALIDATE:
+                {
+                    /* Seek past validate. */
+                    debit.Seek(68);
+
+                    /* Get new OP. */
+                    debit >> OP;
+
+                    break;
+                }
+            }
+
             /* Check that prev is coinbase. */
             if(OP == OP::COINBASE)
             {
@@ -182,6 +215,13 @@ namespace TAO
                 /* Check the identifier. */
                 if(account.get<uint256_t>("token") != 0)
                     return debug::error(FUNCTION, "credit disabled for coinbase of non-native token");
+
+                /* Seek read position to first position. */
+                contract.Rewind(72, Contract::OPERATIONS);
+                contract.Reset(Contract::REGISTERS);
+
+                /* Seek read position to first position. */
+                debit.Reset(Contract::OPERATIONS | Contract::REGISTERS);
 
                 return true;
             }
@@ -248,7 +288,7 @@ namespace TAO
                 {
                     /* Get the partial amount. */
                     uint64_t nClaimed = 0;
-                    if(LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+                    if(LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
                     {
                         /* Check the partial to the debit amount. */
                         if(nDebit != (nClaimed + nCredit))
@@ -260,12 +300,19 @@ namespace TAO
                 else if(nDebit != nCredit)
                     return debug::error(FUNCTION, "debit and credit value mismatch");
 
+                /* Seek read position to first position. */
+                contract.Rewind(72, Contract::OPERATIONS);
+                contract.Reset(Contract::REGISTERS);
+
+                /* Seek read position to first position. */
+                debit.Reset(Contract::OPERATIONS | Contract::REGISTERS);
+
                 return true;
             }
 
             /* Read the register to address. */
             TAO::Register::State stateTo;
-            if(!LLD::regDB->ReadState(hashTo, stateTo, nFlags))
+            if(!LLD::Register->ReadState(hashTo, stateTo, nFlags))
                 return debug::error(FUNCTION, "failed to read hash to");
 
             /* Credits specific to account objects. */
@@ -274,7 +321,7 @@ namespace TAO
 
             /* Get the state register of this register's owner. */
             TAO::Register::Object proof;
-            if(!LLD::regDB->ReadState(hashProof, proof, nFlags))
+            if(!LLD::Register->ReadState(hashProof, proof, nFlags))
                 return debug::error(FUNCTION, "failed to read credit proof");
 
             /* Parse the owner object register. */
@@ -295,7 +342,7 @@ namespace TAO
 
             /* Get the state register of this register's owner. */
             TAO::Register::Object token;
-            if(!LLD::regDB->ReadState(stateTo.hashOwner, token, nFlags))
+            if(!LLD::Register->ReadState(stateTo.hashOwner, token, nFlags))
                 return debug::error(FUNCTION, "credit from raw object can't be without owner");
 
             /* Parse the owner object register. */
@@ -323,7 +370,7 @@ namespace TAO
 
             /* Get the partial amount. */
             uint64_t nClaimed = 0;
-            if(!LLD::legDB->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+            if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
                 nClaimed = 0; //reset claimed on fail just in case
 
             /* Check the partial to the debit amount. */
@@ -331,7 +378,11 @@ namespace TAO
                 return debug::error(FUNCTION, "credit is beyond claimable debit amount");
 
             /* Seek read position to first position. */
-            contract.Seek(1);
+            contract.Rewind(72, Contract::OPERATIONS);
+            contract.Reset(Contract::REGISTERS);
+
+            /* Seek read position to first position. */
+            debit.Reset(Contract::OPERATIONS | Contract::REGISTERS);
 
             return true;
         }

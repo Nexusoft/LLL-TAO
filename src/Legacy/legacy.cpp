@@ -91,7 +91,7 @@ namespace Legacy
             {
                 /* Read transaction from database */
                 Transaction tx;
-                if(!LLD::legacyDB->ReadTx(item.second, tx))
+                if (!LLD::Legacy->ReadTx(item.second, tx))
                     continue;
 
                 vtx.push_back(tx);
@@ -379,7 +379,7 @@ namespace Legacy
     bool LegacyBlock::Accept() const
     {
         /* Check for duplicates */
-        if(LLD::legDB->HasBlock(GetHash()))
+        if(LLD::Ledger->HasBlock(GetHash()))
             return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20), " height=", nHeight);
 
         /* Print the block on verbose 2. */
@@ -388,7 +388,7 @@ namespace Legacy
 
         /* Read leger DB for previous block. */
         TAO::Ledger::BlockState statePrev;
-        if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
+        if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
             return debug::error(FUNCTION, "previous block state not found");
 
 
@@ -504,7 +504,7 @@ namespace Legacy
                 nTxHash = tx.GetHash();
 
                 /* Keep transactions in memory pool that aren't on disk. */
-                if(!LLD::legacyDB->HasTx(nTxHash))
+                if(!LLD::Legacy->HasTx(nTxHash))
                     continue;
 
                 TAO::Ledger::mempool.Remove(nTxHash);
@@ -633,12 +633,12 @@ namespace Legacy
 
         /* Check that the previous block is in the block database. */
         TAO::Ledger::BlockState stateLast;
-        if(!LLD::legDB->ReadBlock(hashLastBlock, stateLast))
+        if(!LLD::Ledger->ReadBlock(hashLastBlock, stateLast))
             return debug::error(FUNCTION, "last block not in database");
 
         /* Check that the previous block is in the block database. */
         TAO::Ledger::BlockState statePrev;
-        if(!LLD::legDB->ReadBlock(hashPrevBlock, statePrev))
+        if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
             return debug::error(FUNCTION, "prev block not in database");
 
         /* Read the previous block from disk. */

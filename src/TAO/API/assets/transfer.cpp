@@ -54,7 +54,7 @@ namespace TAO
                 throw APIException(-25, "Missing Destination");
 
             /* Check that the destination exists. */
-            if(!LLD::legDB->HasGenesis(hashTo))
+            if(!LLD::Ledger->HasGenesis(hashTo))
                 throw APIException(-25, "Destination doesn't exist");
 
             /* Get the register address. */
@@ -87,7 +87,7 @@ namespace TAO
 
             /* Submit the payload object.
                NOTE we pass false for the fForceTransfer parameter so that the Transfer requires a corresponding Claim */
-            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo << false;
+            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo << uint8_t(TAO::Operation::TRANSFER::CLAIM);
 
             /* Execute the operations layer. */
             if(!tx.Build())

@@ -36,7 +36,7 @@ namespace LLD
     , HASHMAP_MAX_CACHE_SIZE(10 * 1024)
     , HASHMAP_MAX_KEY_SIZE(32)
     , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
-    , nFlags(FLAGS::APPEND)
+    , RECORD_MUTEX(1024)
     {
     }
 
@@ -53,6 +53,7 @@ namespace LLD
     , HASHMAP_MAX_KEY_SIZE(32)
     , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
     , nFlags(nFlagsIn)
+    , RECORD_MUTEX(1024)
     {
         Initialize();
     }
@@ -70,6 +71,7 @@ namespace LLD
     , HASHMAP_MAX_KEY_SIZE(32)
     , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
     , nFlags(nFlagsIn)
+    , RECORD_MUTEX(1024)
     {
         Initialize();
     }

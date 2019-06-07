@@ -47,7 +47,7 @@ namespace Legacy
 
             /* Get the previous coinstake transaction. */
             Legacy::Transaction tx;
-            if(!LLD::legacyDB->ReadTx(state.vtx[0].second, tx))
+            if(!LLD::Legacy->ReadTx(state.vtx[0].second, tx))
                 return debug::error(FUNCTION, "failed to read coinstake from legacy DB");
 
             /* Extract the trust key from coinstake. */
@@ -67,7 +67,7 @@ namespace Legacy
 
         /* Create the state object. */
         TAO::Ledger::BlockState state;
-        if(!LLD::legDB->ReadBlock(hashTrustBlock, state))
+        if(!LLD::Ledger->ReadBlock(hashTrustBlock, state))
             return debug::error(FUNCTION, "couldn't find hash trust block");
 
         /* Loop through all previous blocks looking for most recent trust block. */
@@ -85,7 +85,7 @@ namespace Legacy
 
             /* Get the previous coinstake transaction. */
             Legacy::Transaction tx;
-            if(!LLD::legacyDB->ReadTx(state.vtx[0].second, tx))
+            if(!LLD::Legacy->ReadTx(state.vtx[0].second, tx))
                 return debug::error(FUNCTION, "failed to read coinstake from legacy DB");
 
             /* Extract the trust key from coinstake. */

@@ -11,8 +11,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLD_CACHE_BINARY_LRU_H
-#define NEXUS_LLD_CACHE_BINARY_LRU_H
+#ifndef NEXUS_LLD_CACHE_BINARY_LFU_H
+#define NEXUS_LLD_CACHE_BINARY_LFU_H
 
 #include <mutex>
 #include <cstdint>
@@ -28,7 +28,7 @@ namespace LLD
      *  Node to hold the binary data of the double linked list.
      *
      **/
-    struct BinaryNode;
+    struct BinaryNodeLFU;
 
 
     /** BinaryLRU
@@ -38,7 +38,7 @@ namespace LLD
     *   This class has no types, all objects are in binary forms.
     *
     **/
-    class BinaryLRU
+    class BinaryLFU
     {
 
     protected:
@@ -60,7 +60,7 @@ namespace LLD
 
 
         /* Map of the current holding data. */
-        std::vector<BinaryNode*> hashmap;
+        std::vector<BinaryNodeLFU*> hashmap;
 
 
         /* Map of the current data checksum. */
@@ -68,11 +68,11 @@ namespace LLD
 
 
         /* Keep track of the first object in linked list. */
-        BinaryNode* pfirst;
+        BinaryNodeLFU* pfirst;
 
 
         /* Keep track of the last object in linked list. */
-        BinaryNode* plast;
+        BinaryNodeLFU* plast;
 
 
 
@@ -84,7 +84,7 @@ namespace LLD
          *  MAX_CACHE_BUCKETS default value is 65,539 (2 bytes)
          *
          **/
-        BinaryLRU();
+        BinaryLFU();
 
 
         /** Cache Size Constructor
@@ -92,11 +92,11 @@ namespace LLD
          *  @param[in] nCacheSizeIn The maximum size of this Cache Pool
          *
          **/
-        BinaryLRU(uint32_t nCacheSizeIn);
+        BinaryLFU(uint32_t nCacheSizeIn);
 
 
         /** Class Destructor. **/
-        ~BinaryLRU();
+        ~BinaryLFU();
 
 
         /** Bucket
@@ -116,7 +116,7 @@ namespace LLD
          *  @param[in] pnode The binary node to find bucket for
          *
          **/
-        uint32_t Bucket(const BinaryNode* pnode) const;
+        uint32_t Bucket(const BinaryNodeLFU* pnode) const;
 
 
         /** Bucket
@@ -158,7 +158,7 @@ namespace LLD
          *  @param[in] pthis The node to remove from list.
          *
          **/
-        void RemoveNode(BinaryNode* pthis);
+        void RemoveNode(BinaryNodeLFU* pthis);
 
 
         /** MoveToFront
@@ -168,7 +168,7 @@ namespace LLD
          *  @param[in] pthis The node to move to front.
          *
          **/
-        void MoveToFront(BinaryNode* pthis);
+        void MoveForward(BinaryNodeLFU* pthis);
 
 
         /** Get

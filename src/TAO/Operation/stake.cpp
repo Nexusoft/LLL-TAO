@@ -29,38 +29,42 @@ namespace TAO
         /*  Commit the final state to disk. */
         bool Stake::Commit(const TAO::Register::State& state, const uint8_t nFlags)
         {
-            return LLD::regDB->WriteTrust(state.hashOwner, state);
+            /* Attempt to write to disk. */
+            if(!LLD::Register->WriteTrust(state.hashOwner, state))
+                return debug::error(FUNCTION, "failed to write post-state to disk");
+
+            return true;
         }
 
 
         /* Move balance to stake for trust account. */
-        bool Stake::Execute(TAO::Register::Object &trustAccount, const uint64_t nAmount, const uint64_t nTimestamp)
+        bool Stake::Execute(TAO::Register::Object &object, const uint64_t nAmount, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
-            if(!trustAccount.Parse())
+            if(!object.Parse())
                 return debug::error(FUNCTION, "Failed to parse account object register");
 
             /* Get account starting values */
-            uint64_t nStakePrev = trustAccount.get<uint64_t>("stake");
-            uint64_t nBalancePrev = trustAccount.get<uint64_t>("balance");
+            uint64_t nStakePrev = object.get<uint64_t>("stake");
+            uint64_t nBalancePrev = object.get<uint64_t>("balance");
 
             if(nAmount > nBalancePrev)
                 return debug::error(FUNCTION, "cannot add stake exceeding existing trust account balance");
 
             /* Write the new balance to object register. */
-            if(!trustAccount.Write("balance", nBalancePrev - nAmount))
+            if(!object.Write("balance", nBalancePrev - nAmount))
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Write the new stake to object register. */
-            if(!trustAccount.Write("stake", nStakePrev + nAmount))
+            if(!object.Write("stake", nStakePrev + nAmount))
                 return debug::error(FUNCTION, "stake could not be written to object register");
 
             /* Update the state register's timestamp. */
-            trustAccount.nModified = nTimestamp;
-            trustAccount.SetChecksum();
+            object.nModified = nTimestamp;
+            object.SetChecksum();
 
             /* Check that the register is in a valid state. */
-            if(!trustAccount.IsValid())
+            if(!object.IsValid())
                 return debug::error(FUNCTION, "trust account is in invalid state");
 
             return true;
@@ -70,8 +74,11 @@ namespace TAO
         /* Verify trust validation rules and caller. */
         bool Stake::Verify(const Contract& contract)
         {
-            /* Seek read position to first position. */
-            contract.Reset();
+            /* Rewind back on byte. */
+            contract.Rewind(1, Contract::OPERATIONS);
+
+            /* Reset register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             /* Get operation byte. */
             uint8_t OP = 0;
@@ -101,8 +108,8 @@ namespace TAO
             if(state.hashOwner != contract.Caller())
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
-            /* Seek read position to first position. */
-            contract.Seek(1);
+            /* Reset the register streams. */
+            contract.Reset(Contract::REGISTERS);
 
             return true;
         }

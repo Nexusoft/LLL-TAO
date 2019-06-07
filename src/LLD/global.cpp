@@ -16,13 +16,14 @@ ________________________________________________________________________________
 namespace LLD
 {
     /* The LLD global instance pointers. */
-    RegisterDB*   regDB;
-    LedgerDB*     legDB;
-    LocalDB*      locDB;
+    ContractDB*   Contract;
+    RegisterDB*   Register;
+    LedgerDB*     Ledger;
+    LocalDB*      Local;
 
     //for legacy objects
-    TrustDB*      trustDB;
-    LegacyDB*     legacyDB;
+    TrustDB*      Trust;
+    LegacyDB*     Legacy;
 
 
     /* Check the transactions for recovery. */
@@ -31,24 +32,28 @@ namespace LLD
         /* Flag to determine if there are any failures. */
         bool fRecovery = true;
 
+        /* Check the contract DB journal. */
+        if(!Contract->TxnRecovery())
+            fRecovery = false;
+
         /* Check the register DB journal. */
-        if(!regDB->TxnRecovery())
+        if(!Register->TxnRecovery())
             fRecovery = false;
 
         /* Check the ledger DB journal. */
-        if(!legDB->TxnRecovery())
+        if(!Ledger->TxnRecovery())
             fRecovery = false;
 
         /* Check the local DB journal. */
-        if(!locDB->TxnRecovery())
+        if(!Local->TxnRecovery())
             fRecovery = false;
 
         /* Check the ledger DB journal. */
-        if(!trustDB->TxnRecovery())
+        if(!Trust->TxnRecovery())
             fRecovery = false;
 
         /* Check the ledger DB journal. */
-        if(!legacyDB->TxnRecovery())
+        if(!Legacy->TxnRecovery())
             fRecovery = false;
 
         /* Commit the transactions if journals are recovered. */
@@ -56,20 +61,23 @@ namespace LLD
         {
             debug::log(0, FUNCTION, "all transactions are complete, recovering...");
 
+            /* Commit contract DB transaction. */
+            Contract->TxnCommit();
+
             /* Commit register DB transaction. */
-            regDB->TxnCommit();
+            Register->TxnCommit();
 
             /* Commit legacy DB transaction. */
-            legDB->TxnCommit();
+            Ledger->TxnCommit();
 
             /* Commit the local DB transaction. */
-            locDB->TxnCommit();
+            Local->TxnCommit();
 
             /* Commit the trust DB transaction. */
-            trustDB->TxnCommit();
+            Trust->TxnCommit();
 
             /* Commit the legacy DB transaction. */
-            legacyDB->TxnCommit();
+            Legacy->TxnCommit();
         }
 
         /* Abort all the transactions. */
@@ -80,91 +88,106 @@ namespace LLD
     /* Global handler for all LLD instances. */
     void TxnBegin()
     {
+        /* Start the contract DB transacdtion. */
+        Contract->TxnBegin();
+
         /* Start the register DB transacdtion. */
-        regDB->TxnBegin();
+        Register->TxnBegin();
 
         /* Start the ledger DB transaction. */
-        legDB->TxnBegin();
+        Ledger->TxnBegin();
 
         /* Start the local DB transaction. */
-        locDB->TxnBegin();
+        Local->TxnBegin();
 
         /* Start the trust DB transaction. */
-        trustDB->TxnBegin();
+        Trust->TxnBegin();
 
         /* Start the legacy DB transaction. */
-        legacyDB->TxnBegin();
+        Legacy->TxnBegin();
     }
 
 
     /* Global handler for all LLD instances. */
     void TxnAbort()
     {
+        /* Abort the contract DB transacdtion. */
+        Contract->TxnAbort();
+
         /* Abort the register DB transaction. */
-        regDB->TxnAbort();
+        Register->TxnAbort();
 
         /* Abort the ledger DB transaction. */
-        legDB->TxnAbort();
+        Ledger->TxnAbort();
 
         /* Abort the local DB transaction. */
-        locDB->TxnAbort();
+        Local->TxnAbort();
 
         /* Abort the trust DB transaction. */
-        trustDB->TxnAbort();
+        Trust->TxnAbort();
 
         /* Abort the legacy DB transaction. */
-        legacyDB->TxnAbort();
+        Legacy->TxnAbort();
     }
 
 
     /* Global handler for all LLD instances. */
     void TxnCommit()
     {
+        /* Set a checkpoint for contract DB. */
+        Contract->TxnCheckpoint();
+
         /* Set a checkpoint for register DB. */
-        regDB->TxnCheckpoint();
+        Register->TxnCheckpoint();
 
         /* Set a checkpoint for ledger DB. */
-        legDB->TxnCheckpoint();
+        Ledger->TxnCheckpoint();
 
         /* Set a checkpoint for local DB. */
-        locDB->TxnCheckpoint();
+        Local->TxnCheckpoint();
 
         /* Set a checkpoint for trust DB. */
-        trustDB->TxnCheckpoint();
+        Trust->TxnCheckpoint();
 
         /* Set a checkpoint for legacy DB. */
-        legacyDB->TxnCheckpoint();
+        Legacy->TxnCheckpoint();
 
+
+        /* Commit contract DB transaction. */
+        Contract->TxnCommit();
 
         /* Commit register DB transaction. */
-        regDB->TxnCommit();
+        Register->TxnCommit();
 
         /* Commit legacy DB transaction. */
-        legDB->TxnCommit();
+        Ledger->TxnCommit();
 
         /* Commit the local DB transaction. */
-        locDB->TxnCommit();
+        Local->TxnCommit();
 
         /* Commit the trust DB transaction. */
-        trustDB->TxnCommit();
+        Trust->TxnCommit();
 
         /* Commit the legacy DB transaction. */
-        legacyDB->TxnCommit();
+        Legacy->TxnCommit();
 
+
+        /* Release the contract DB journal. */
+        Contract->TxnRelease();
 
         /* Release the register DB journal. */
-        regDB->TxnRelease();
+        Register->TxnRelease();
 
         /* Release the ledger DB journal. */
-        legDB->TxnRelease();
+        Ledger->TxnRelease();
 
         /* Release the local DB journal. */
-        locDB->TxnRelease();
+        Local->TxnRelease();
 
         /* Release the trust DB journal. */
-        trustDB->TxnRelease();
+        Trust->TxnRelease();
 
         /* Release the legacy DB journal. */
-        legacyDB->TxnRelease();
+        Legacy->TxnRelease();
     }
 }

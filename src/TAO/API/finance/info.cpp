@@ -51,31 +51,34 @@ namespace TAO
             uint256_t hashRegister = RegisterAddressFromName(params, std::string("trust"));
 
             /* Get trust account. Any trust account that has completed Genesis will be indexed. */
-            TAO::Register::Object trustAccount;
+            TAO::Register::Object trust;
 
-            if(!LLD::regDB->ReadState(hashRegister, trustAccount, TAO::Ledger::FLAGS::MEMPOOL))
+            /* Check for trust index. */
+            if(!LLD::Register->ReadTrust(user->Genesis(), trust)
+            && !LLD::Register->ReadState(hashRegister, trust, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-24, "Trust account not found");
 
-            if(!trustAccount.Parse())
+            /* Parse the object. */
+            if(!trust.Parse())
                 throw APIException(-24, "Unable to parse trust account.");
 
             /* Check the object standard. */
-            if(trustAccount.Standard() != TAO::Register::OBJECTS::TRUST)
+            if(trust.Standard() != TAO::Register::OBJECTS::TRUST)
                 throw APIException(-24, "Register is not a trust account");
 
             /* Check the account is a NXS account */
-            if(trustAccount.get<uint256_t>("token") != 0)
+            if(trust.get<uint256_t>("token") != 0)
                 throw APIException(-24, "Trust account is not a NXS account.");
 
             /* Set trust account values for return data */
             ret["address"] = hashRegister.ToString();
 
-            ret["balance"] = (double)trustAccount.get<uint64_t>("balance") / TAO::Ledger::NXS_COIN;
+            ret["balance"] = (double)trust.get<uint64_t>("balance") / TAO::Ledger::NXS_COIN;
 
-            ret["stake"] = (double)trustAccount.get<uint64_t>("stake") / TAO::Ledger::NXS_COIN;
+            ret["stake"] = (double)trust.get<uint64_t>("stake") / TAO::Ledger::NXS_COIN;
 
             /* Trust is returned as a percentage of maximum */
-            uint64_t nTrustScore = trustAccount.get<uint64_t>("trust");
+            uint64_t nTrustScore = trust.get<uint64_t>("trust");
             if(nTrustScore > 0)
                 ret["trust"] = ((double)nTrustScore * 100.0) / (double)TAO::Ledger::MaxTrustScore();
             else
@@ -86,7 +89,7 @@ namespace TAO
             /* Need the stake minter running for accessing current staking metrics.
              * Verifying current user ownership of trust account is a sanity check.
              */
-            if(stakeMinter.IsStarted() && trustAccount.hashOwner == user->Genesis())
+            if(stakeMinter.IsStarted() && trust.hashOwner == user->Genesis())
             {
                 /* If stake minter is running, get current stake rate it is using. */
                 ret["stakerate"] = stakeMinter.GetStakeRatePercent();

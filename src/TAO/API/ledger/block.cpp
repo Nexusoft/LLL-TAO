@@ -68,7 +68,7 @@ namespace TAO
 
             TAO::Ledger::BlockState blockState;
             /* Read the block state from the the ledger DB using the height index */
-            if(!LLD::legDB->ReadBlock(nHeight, blockState))
+            if(!LLD::Ledger->ReadBlock(nHeight, blockState))
                 throw APIException(-25, "Block not found");
 
             json::json ret;
@@ -109,7 +109,7 @@ namespace TAO
                     throw APIException(-25, "Block number out of range.");
 
                 /* Read the block state from the the ledger DB using the height index */
-                if(!LLD::legDB->ReadBlock(nHeight, blockState))
+                if(!LLD::Ledger->ReadBlock(nHeight, blockState))
                     throw APIException(-25, "Block not found");
             }
             else if(params.find("hash") != params.end())
@@ -119,7 +119,7 @@ namespace TAO
                 blockHash.SetHex(params["hash"].get<std::string>());
 
                 /* Read the block state from the the ledger DB using the hash index */
-                if(!LLD::legDB->ReadBlock(blockHash, blockState))
+                if(!LLD::Ledger->ReadBlock(blockHash, blockState))
                     throw APIException(-25, "Block not found");
             }
 
@@ -185,7 +185,7 @@ namespace TAO
                     throw APIException(-25, "Block number out of range.");
 
                 /* Read the block state from the the ledger DB using the height index */
-                if(!LLD::legDB->ReadBlock(nHeight, blockState))
+                if(!LLD::Ledger->ReadBlock(nHeight, blockState))
                     throw APIException(-25, "Block not found");
             }
             else if(params.find("hash") != params.end())
@@ -195,7 +195,7 @@ namespace TAO
                 blockHash.SetHex(params["hash"].get<std::string>());
 
                 /* Read the block state from the the ledger DB using the hash index */
-                if(!LLD::legDB->ReadBlock(blockHash, blockState))
+                if(!LLD::Ledger->ReadBlock(blockHash, blockState))
                     throw APIException(-25, "Block not found");
             }
 

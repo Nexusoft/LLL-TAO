@@ -177,14 +177,15 @@ namespace TAO
              * If this process fails in any way, the user account has no trust account available and cannot stake.
              * This is logged as an error and the stake minter should be suspended pending stop/shutdown.
              */
-            if(LLD::regDB->HasTrust(user->Genesis()))
+
+            if (LLD::Register->HasTrust(user->Genesis()))
             {
                 isGenesis = false;
 
                 /* Staking Trust transaction */
 
                 /* Retrieve the trust account register */
-                if(!LLD::regDB->ReadTrust(user->Genesis(), trustAccount))
+                if (!LLD::Register->ReadTrust(user->Genesis(), trustAccount))
                    return debug::error(FUNCTION, "Stake Minter unable to retrieve trust account.");
 
                 if(!trustAccount.Parse())
@@ -209,7 +210,7 @@ namespace TAO
 
                 /* Retrieve the trust account */
                 TAO::Register::Object reg;
-                if(!LLD::regDB->ReadState(hashAddressTemp, reg))
+                if(!LLD::Register->ReadState(hashAddressTemp, reg))
                     return debug::error(FUNCTION, "Stake Minter unable to retrieve trust account for Genesis.");
 
                 /* Verify we have trust account register for the user account */
@@ -244,7 +245,7 @@ namespace TAO
             uint512_t hashLast = 0;
 
             /* Get the most recent tx hash for the user account. */
-            if(!LLD::legDB->ReadLast(user->Genesis(), hashLast))
+            if (!LLD::Ledger->ReadLast(user->Genesis(), hashLast))
                 return false;
 
             /* Loop until find stake transaction or reach first transaction on user acount (hashLast == 0). */
@@ -252,7 +253,7 @@ namespace TAO
             {
                 /* Get the transaction for the current hashLast. */
                 TAO::Ledger::Transaction txCheck;
-                if(!LLD::legDB->ReadTx(hashLast, txCheck))
+                if(!LLD::Ledger->ReadTx(hashLast, txCheck))
                     return false;
 
                 /* Test whether the transaction contains a staking operation */
@@ -317,7 +318,7 @@ namespace TAO
 
                 /* Get the block containing the last stake tx for the trust account. */
                 TAO::Ledger::BlockState stateLast;
-                if(!LLD::legDB->ReadBlock(txLast.GetHash(), stateLast))
+                if(!LLD::Ledger->ReadBlock(txLast.GetHash(), stateLast))
                     return debug::error(FUNCTION, "Failed to get last block for trust account");
 
                 nTimeLastStake = stateLast.GetBlockTime();

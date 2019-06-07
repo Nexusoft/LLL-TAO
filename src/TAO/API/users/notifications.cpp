@@ -75,7 +75,7 @@ namespace TAO
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;
-            if(!LLD::legDB->ReadLast(hashGenesis, hashLast))
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
                 throw APIException(-28, "No transactions found");
 
             /* Keep a running list of owned registers. */
@@ -86,7 +86,7 @@ namespace TAO
             {
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadTx(hashLast, tx))
+                if(!LLD::Ledger->ReadTx(hashLast, tx))
                     throw APIException(-28, "Failed to read transaction");
 
                 /* Set the next last. */
@@ -130,7 +130,7 @@ namespace TAO
 
                     /* Get the token address. */
                     uint256_t hashToken;
-                    if(!LLD::regDB->ReadIdentifier(object.get<uint256_t>("token"), hashToken))
+                    if(!LLD::Register->ReadIdentifier(object.get<uint256_t>("token"), hashToken))
                         continue;
 
                     /* Push the token identifier to list to check. */
@@ -156,11 +156,11 @@ namespace TAO
 
                     /* Get the transaction from disk. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::legDB->ReadEvent(std::get<1>(hash), nSequence, tx))
+                    if(!LLD::Ledger->ReadEvent(std::get<1>(hash), nSequence, tx))
                         break;
 
                     /* Check claims against notifications. */
-                    if(LLD::legDB->HasProof(std::get<0>(hash), tx.GetHash(), TAO::Ledger::FLAGS::MEMPOOL))
+                    if(LLD::Ledger->HasProof(std::get<0>(hash), tx.GetHash(), TAO::Ledger::FLAGS::MEMPOOL))
                         continue;
 
                     ++nTotal;
@@ -177,7 +177,7 @@ namespace TAO
 
                     /* Read the object register. */
                     TAO::Register::Object object;
-                    if(!LLD::regDB->ReadState(std::get<1>(hash), object))
+                    if(!LLD::Register->ReadState(std::get<1>(hash), object))
                         continue;
 
                     json::json obj;
@@ -208,7 +208,7 @@ namespace TAO
                         uint256_t hashTo = uint256_t(obj["operation"][0]["address_to"].get<std::string>());
 
                         TAO::Register::State stateTo;
-                        if(!LLD::regDB->ReadState(hashTo, stateTo))
+                        if(!LLD::Register->ReadState(hashTo, stateTo))
                             continue;
 
                         if(stateTo.nType == TAO::Register::REGISTER::RAW
@@ -239,7 +239,7 @@ namespace TAO
 
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadEvent(hashGenesis, nSequence, tx))
+                if(!LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
                     break;
 
                 /* Attempt to unpack a register script. */
@@ -248,7 +248,7 @@ namespace TAO
                     continue;
 
                 /* Check claims against notifications. */
-                if(LLD::legDB->HasProof(hashAddress, tx.GetHash(), TAO::Ledger::FLAGS::MEMPOOL))
+                if(LLD::Ledger->HasProof(hashAddress, tx.GetHash(), TAO::Ledger::FLAGS::MEMPOOL))
                     continue;
 
                 ++nTotal;

@@ -540,7 +540,7 @@ namespace LLP
                 hashBlock.SetBytes(PACKET.DATA);
 
                 /* Read the block state from disk. */
-                if(LLD::legDB->ReadBlock(hashBlock, state))
+                if(LLD::Ledger->ReadBlock(hashBlock, state))
                 {
                     /* If the block state is not in main chain, send a orphan response. */
                     if(!state.IsInMainChain())

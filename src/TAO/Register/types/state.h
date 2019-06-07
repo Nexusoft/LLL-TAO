@@ -36,6 +36,11 @@ namespace TAO
          **/
         class State
         {
+        protected:
+
+            /** The byte level data of the register. **/
+            std::vector<uint8_t> vchState;
+
         public:
             /** The version of the state register. */
             uint8_t nVersion;
@@ -55,10 +60,6 @@ namespace TAO
 
             /** The modified timestamp of the register. **/
             uint64_t nModified;
-
-
-            /** The byte level data of the register. **/
-            std::vector<uint8_t> vchState;
 
 
             /** The chechsum of the state register for use in pruning. */
@@ -182,6 +183,14 @@ namespace TAO
              *
              **/
             void SetState(const std::vector<uint8_t>& vchStateIn);
+
+
+            /** Append
+             *
+             *  Append to State from Byte Vector.
+             *
+             **/
+            void Append(const std::vector<uint8_t>& vchStateIn);
 
 
             /** ClearState

@@ -158,7 +158,7 @@ namespace TAO
             std::multimap<double, Legacy::TrustKey, std::greater<double> > mapTrustKeys;
 
             /* Retrieve all raw trust database keys from keychain */
-            const std::vector<std::vector<uint8_t> >& vKeys = LLD::trustDB->GetKeys();
+            const std::vector<std::vector<uint8_t> >& vKeys = LLD::Trust->GetKeys();
 
             /* Search through the trust keys. */
             for(const auto& key : vKeys)
@@ -170,7 +170,7 @@ namespace TAO
 
                 /* Use trust key hash to retrieve trust key */
                 Legacy::TrustKey trustKey;
-                if(!LLD::trustDB->ReadTrustKey(trustKeyHash, trustKey))
+                if (!LLD::Trust->ReadTrustKey(trustKeyHash, trustKey))
                     continue;
 
                 /* Ignore trust keys that are inactive (no blocks within timespan) */
@@ -340,7 +340,7 @@ namespace TAO
                 return std::string("Block number out of range.");
 
             TAO::Ledger::BlockState blockState;
-            if(!LLD::legDB->ReadBlock(nHeight, blockState))
+            if(!LLD::Ledger->ReadBlock(nHeight, blockState))
                 return std::string("Block not found");
 
             return blockState.GetHash().GetHex();
@@ -362,7 +362,7 @@ namespace TAO
             uint1024_t blockId = 0;
             blockId.SetHex(params[0].get<std::string>());
 
-            if(!LLD::legDB->ReadBlock(blockId, block))
+            if (!LLD::Ledger->ReadBlock(blockId, block))
             {
                 throw APIException(-5, "Block not found");
                 return "";
@@ -388,7 +388,7 @@ namespace TAO
             uint1024_t blockId = 0;
             blockId.SetHex(params[0].get<std::string>());
 
-            if(!LLD::legDB->ReadBlock(blockId, block))
+            if (!LLD::Ledger->ReadBlock(blockId, block))
             {
                 throw APIException(-5, "Block not found");
                 return "";

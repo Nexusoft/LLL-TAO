@@ -69,7 +69,7 @@ namespace TAO
 
             /* Read the Transfer transaction being claimed. */
             TAO::Ledger::Transaction txTranser;
-            if(!LLD::legDB->ReadTx(hashClaim, txTranser))
+            if(!LLD::Ledger->ReadTx(hashClaim, txTranser))
                 throw APIException(-23, "Transfer transaction not found.");
 
             /* Check to see whether they have provided a new name */

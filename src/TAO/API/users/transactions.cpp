@@ -77,7 +77,7 @@ namespace TAO
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;
-            if(!LLD::legDB->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-28, "No transactions found");
 
             /* Loop until genesis. */
@@ -89,7 +89,7 @@ namespace TAO
 
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-28, "Failed to read transaction");
 
                 /* Set the next last. */
@@ -108,7 +108,7 @@ namespace TAO
 
                 /* Read the block state from the the ledger DB using the transaction hash index */
                 TAO::Ledger::BlockState blockState;
-                LLD::legDB->ReadBlock(tx.GetHash(), blockState);
+                LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
 
                 /* Get the transaction JSON. */
                 json::json obj = TAO::API::TransactionToJSON(tx, blockState, nVerbose);

@@ -1212,7 +1212,7 @@ namespace Legacy
                 if(item.first == TAO::Ledger::LEGACY_TX)
                 {
                     /* Read transaction from database */
-                    if(!LLD::legacyDB->ReadTx(item.second, tx))
+                    if (!LLD::Legacy->ReadTx(item.second, tx))
                         continue;
 
                     /* Add to the wallet */
@@ -1363,7 +1363,7 @@ namespace Legacy
             /* Check all the outputs to make sure the flags are all set properly. */
             for(uint32_t n=0; n < walletTx.vout.size(); n++)
             {
-                bool isSpentOnChain = LLD::legacyDB->IsSpent(walletTx.GetHash(), n);
+                bool isSpentOnChain = LLD::Legacy->IsSpent(walletTx.GetHash(), n);
 
                 /* Handle when Transaction on chain records output as unspent but wallet accounting has it as spent */
                 if(IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && !isSpentOnChain)

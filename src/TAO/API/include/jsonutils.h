@@ -49,7 +49,7 @@ namespace TAO
         *  @return the formatted JSON object
         *
         **/
-        json::json TransactionToJSON(TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
+        json::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
 
 
         /** TransactionToJSON
@@ -63,7 +63,7 @@ namespace TAO
         *  @return the formatted JSON object
         *
         **/
-        json::json TransactionToJSON(Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
+        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
 
 
         /** OperationToJSON
@@ -78,7 +78,7 @@ namespace TAO
         json::json ContractToJSON(const TAO::Operation::Contract& contract);
 
 
-        /** ObjectRegisterToJSON
+        /** ObjectToJSON
         *
         *  Converts an Object Register to formattted JSON
         *
@@ -89,7 +89,7 @@ namespace TAO
         *  @return the formatted JSON object
         *
         **/
-        json::json ObjectRegisterToJSON(const json::json& params, const TAO::Register::Object& object, const uint256_t& hashRegister);
+        json::json ObjectToJSON(const json::json& params, const TAO::Register::Object& object, const uint256_t& hashRegister);
 
 
 

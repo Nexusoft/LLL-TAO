@@ -56,6 +56,9 @@ TEST_CASE( "Transfer Primitive Tests", "[operation]")
             //generate the prestates and poststates
             REQUIRE(tx.Build());
 
+            //verify the prestates and poststates
+            REQUIRE(tx.Verify());
+
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
@@ -80,6 +83,9 @@ TEST_CASE( "Transfer Primitive Tests", "[operation]")
             //generate the prestates and poststates
             REQUIRE(tx.Build());
 
+            //verify the prestates and poststates
+            REQUIRE(tx.Verify());
+
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
@@ -93,13 +99,16 @@ TEST_CASE( "Transfer Primitive Tests", "[operation]")
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::TRANSFER) << hashAsset << hashToken << true;
+            tx[0] << uint8_t(OP::TRANSFER) << hashAsset << hashToken << uint8_t(TAO::Operation::TRANSFER::FORCE);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
 
+            //verify the prestates and poststates
+            REQUIRE(tx.Verify());
+
             //write transaction
-            REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
@@ -107,7 +116,7 @@ TEST_CASE( "Transfer Primitive Tests", "[operation]")
             //check register values
             {
                 Object asset;
-                REQUIRE(LLD::regDB->ReadState(hashAsset, asset));
+                REQUIRE(LLD::Register->ReadState(hashAsset, asset));
 
                 /* check that the asset owner is the token, indicating that the forced transfer has worked
                    and no claim is required */

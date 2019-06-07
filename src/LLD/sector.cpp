@@ -12,6 +12,14 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/templates/sector.h>
+
+#include <LLD/cache/binary_lfu.h>
+#include <LLD/cache/binary_lru.h>
+
+#include <LLD/keychain/filemap.h>
+#include <LLD/keychain/hashmap.h>
+#include <LLD/keychain/hashtree.h>
+
 #include <Util/include/filesystem.h>
 #include <Util/include/hex.h>
 
@@ -33,7 +41,7 @@ namespace LLD
     , runtime()
     , pTransaction(nullptr)
     , pSectorKeys(nullptr)
-    , cachePool(new CacheType(static_cast<uint32_t>(config::GetArg("-maxcache", 64) * 1024 * 1024) / 4))
+    , cachePool(new CacheType(static_cast<uint32_t>(config::GetArg("-maxcache", 64) * 1024 * 1024) / 5))
     , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
     , nCurrentFile(0)
     , nCurrentFileSize(0)
@@ -782,7 +790,9 @@ namespace LLD
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class SectorDatabase<BinaryFileMap,  BinaryLRU>;
+    template class SectorDatabase<BinaryFileMap,  BinaryLFU>;
     template class SectorDatabase<BinaryHashMap,  BinaryLRU>;
+    template class SectorDatabase<BinaryHashMap,  BinaryLFU>;
     template class SectorDatabase<BinaryHashTree, BinaryLRU>;
 
 }

@@ -59,12 +59,12 @@ namespace TAO
 
             /* Get the register. */
             TAO::Register::State state;
-            if(!LLD::regDB->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-24, "Item not found");
 
             /* Read the last hash of owner. */
             uint512_t hashLast = 0;
-            if(!LLD::legDB->ReadLast(state.hashOwner, hashLast))
+            if(!LLD::Ledger->ReadLast(state.hashOwner, hashLast))
                 throw APIException(-24, "No last hash found");
 
             /* Iterate through sigchain for register updates. */
@@ -72,7 +72,7 @@ namespace TAO
             {
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::legDB->ReadTx(hashLast, tx))
+                if(!LLD::Ledger->ReadTx(hashLast, tx))
                     throw APIException(-28, "Failed to read transaction");
 
                 /* Set the next last. */
@@ -143,7 +143,7 @@ namespace TAO
                             obj["type"] = "CREATE";
                             obj["checksum"] = state.hashChecksum;
 
-                            json::json data  =TAO::API::ObjectRegisterToJSON(params, state, hashRegister);
+                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister);
 
                             /* Copy the asset data in to the response after the type/checksum */
                             obj.insert(data.begin(), data.end());

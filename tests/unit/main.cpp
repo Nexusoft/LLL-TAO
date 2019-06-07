@@ -16,6 +16,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/include/chainstate.h>
+
 #include <Util/include/filesystem.h>
 #include <Util/include/args.h>
 
@@ -34,16 +37,27 @@ TEST_CASE("Arguments Tests", "[args]")
     if(filesystem::exists(strPath))
     {
         REQUIRE(filesystem::remove_directories(strPath));
-        REQUIRE(!filesystem::exists(strPath));
+        REQUIRE_FALSE(filesystem::exists(strPath));
     }
 
     /* Create the database instances. */
-    LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-    LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-    LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Contract = new LLD::ContractDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Register = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Local    = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Ledger   = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
 
     /* Initialize the Legacy Database. */
-    LLD::trustDB  = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-    LLD::legacyDB = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Trust    = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Legacy   = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+
+    //initialize chain state
+    REQUIRE(TAO::Ledger::ChainState::Initialize());
+
+    //create best chain.
+    TAO::Ledger::BlockState state;
+    state.nHeight = 200;
+
+    //set best block
+    TAO::Ledger::ChainState::stateBest.store(state);
 }

@@ -22,6 +22,7 @@ ________________________________________________________________________________
 
 #include <cmath>
 #include <limits>
+#include <stack>
 
 namespace TAO
 {
@@ -61,17 +62,16 @@ namespace TAO
         /* Execute the validation script. */
         bool Condition::Execute()
         {
-            /* Keep track of previous execution return value. */
-            bool fRet = false;
+            /* Build the stack for nested grouping. */
+            std::stack<std::pair<bool, uint8_t>> vEvaluate;
+
+            /* Push base group, which is what contains final return value. */
+            vEvaluate.push(std::make_pair(false, OP::RESERVED));
 
             /* Loop through the operation validation code. */
-            while(!contract.End(1))
+            contract.Reset(Contract::CONDITIONS);
+            while(!contract.End(Contract::CONDITIONS))
             {
-                /* Grab the first value */
-                TAO::Register::Value vFirst;
-                if(!GetValue(vFirst))
-                    return false;
-
                 /* Grab the next operation. */
                 uint8_t OPERATION = 0;
                 contract >= OPERATION;
@@ -80,96 +80,60 @@ namespace TAO
                 switch(OPERATION)
                 {
 
-                    /* Handle for the == operator. */
-                    case OP::EQUALS:
+                    /* Handle for the && operator. */
+                    case OP::GROUP:
                     {
-                        /* Grab the second value. */
-                        TAO::Register::Value vSecond;
-                        if(!GetValue(vSecond))
-                            return false;
-
-                        /* Compare both values to one another. */
-                        fRet = (compare(vFirst, vSecond) == 0);
-
-                        /* Deallocate the values from the VM. */
-                        deallocate(vSecond);
-                        deallocate(vFirst);
+                        /* When grouping, add another group layer. */
+                        vEvaluate.push(std::make_pair(false, OP::RESERVED));
 
                         break;
                     }
 
 
-                    /* Handle for < operator. */
-                    case OP::LESSTHAN:
+                    /* Handle for the && operator. */
+                    case OP::UNGROUP:
                     {
-                        /* Grab the second value. */
-                        TAO::Register::Value vSecond;
-                        if(!GetValue(vSecond))
-                            return false;
+                        /* Check that nothing has been evaluated. */
+                        if(vEvaluate.empty())
+                            return debug::error(FUNCTION, "malformed conditional statement");
 
-                        /* Compare both values to one another. */
-                        fRet = (compare(vFirst, vSecond) < 0);
+                        /* Check for evalute state. */
+                        bool fEvaluate = vEvaluate.top().first;
 
-                        /* Deallocate the values from the VM. */
-                        deallocate(vSecond);
-                        deallocate(vFirst);
+                        /* Pop last group from stack. */
+                        vEvaluate.pop();
+                        switch(vEvaluate.top().second)
+                        {
+                            /* Handle if this is our first OP. */
+                            case OP::RESERVED:
+                            {
+                                /* Check that statement evaluates. */
+                                vEvaluate.top().first = fEvaluate;
 
-                        break;
-                    }
+                                break;
+                            }
 
+                            /* Handle logical AND operator. */
+                            case OP::AND:
+                            {
+                                /* Check that statement evaluates. */
+                                vEvaluate.top().first = (vEvaluate.top().first && fEvaluate);
 
-                    /* Handle for the > operator. */
-                    case OP::GREATERTHAN:
-                    {
-                        /* Grab the second value. */
-                        TAO::Register::Value vSecond;
-                        if(!GetValue(vSecond))
-                            return false;
+                                break;
+                            }
 
-                        /* Compare both values to one another. */
-                        fRet = (compare(vFirst, vSecond) > 0);
+                            /* Handle logical OR operator. */
+                            case OP::OR:
+                            {
+                                /* Check that statement evaluates. */
+                                vEvaluate.top().first = (vEvaluate.top().first || fEvaluate);
 
-                        /* Deallocate the values from the VM. */
-                        deallocate(vSecond);
-                        deallocate(vFirst);
+                                break;
+                            }
 
-                        break;
-                    }
-
-
-                    /* Handle for the != operator. */
-                    case OP::NOTEQUALS:
-                    {
-                        /* Grab the second value. */
-                        TAO::Register::Value vSecond;
-                        if(!GetValue(vSecond))
-                            return false;
-
-                        /* Compare both values to one another. */
-                        fRet = (compare(vFirst, vSecond) != 0);
-
-                        /* Deallocate the values from the VM. */
-                        deallocate(vSecond);
-                        deallocate(vFirst);
-
-                        break;
-                    }
-
-
-                    /* Handle to check if a sequence of bytes is inside another. */
-                    case OP::CONTAINS:
-                    {
-                        /* Grab the second value. */
-                        TAO::Register::Value vSecond;
-                        if(!GetValue(vSecond))
-                            return false;
-
-                        /* Compare both values to one another. */
-                        fRet = contains(vFirst, vSecond);
-
-                        /* Deallocate the values from the VM. */
-                        deallocate(vSecond);
-                        deallocate(vFirst);
+                            default:
+                                return debug::error(FUNCTION, "conditional type is unsupported");
+                        }
 
                         break;
                     }
@@ -178,31 +142,250 @@ namespace TAO
                     /* Handle for the && operator. */
                     case OP::AND:
                     {
-                        /* Recursively call for next statement. */
-                        return fRet && Execute();
+                        /* Check for an operation. */
+                        if(vEvaluate.empty())
+                            return debug::error(FUNCTION, "evaluate ungrouping count incomplete");
+
+                        /* Check that evaluate is default value. */
+                        if(vEvaluate.top().second == OP::OR)
+                            return debug::error(FUNCTION, "cannot evaluate OP::AND with previous OP::OR");
+
+                        /* Set the new evaluate state. */
+                        vEvaluate.top().second = OP::AND;
+
+                        break;
                     }
 
 
-                    //OP::GROUP or the ( operator
-                    //OP::UNGROUP or the) operator
-
-                    /** Handle for the || operator. */
+                    /* Handle for the || operator. */
                     case OP::OR:
                     {
-                        /* Short circuit out early if possible. */
-                        if(fRet)
-                            return true;
+                        /* Check for an operation. */
+                        if(vEvaluate.empty())
+                            return debug::error(FUNCTION, "evaluate ungrouping count incomplete");
 
-                        /* Recursively call for next statement. */
-                        return Execute();
+                        /* Check that evaluate is default value. */
+                        if(vEvaluate.top().second == OP::AND)
+                            return debug::error(FUNCTION, "cannot evaluate OP::OR with previous OP::AND");
+
+                        /* Set the new evaluate state. */
+                        vEvaluate.top().second = OP::OR;
+
+                        break;
                     }
 
-                    /* For unknown codes, always fail. */
+
+                    /* For non specific operations, resort to evaluate. */
                     default:
                     {
-                        return false;
+                        /* If OP is unknown, evaluate. */
+                        contract.Rewind(1);
+
+                        /* Check that nothing has been evaluated. */
+                        if(vEvaluate.empty())
+                            return debug::error(FUNCTION, "malformed conditional statement");
+
+                        /* Check for evalute state. */
+                        switch(vEvaluate.top().second)
+                        {
+                            /* Handle if this is our first OP. */
+                            case OP::RESERVED:
+                            {
+                                /* Check that statement evaluates. */
+                                vEvaluate.top().first = Evaluate();
+
+                                break;
+                            }
+
+                            /* Handle logical AND operator. */
+                            case OP::AND:
+                            {
+                                /* Check that statement evaluates. */
+                                vEvaluate.top().first = (Evaluate() && vEvaluate.top().first);
+
+                                break;
+                            }
+
+                            /* Handle logical OR operator. */
+                            case OP::OR:
+                            {
+                                /* Check that statement evaluates. */
+                                vEvaluate.top().first = (Evaluate() || vEvaluate.top().first);
+
+                                break;
+                            }
+
+                            default:
+                                return debug::error(FUNCTION, "conditional type is unsupported");
+                        }
+
+                        break;
                     }
                 }
+            }
+
+            /* Check the values in groups. */
+            if(vEvaluate.size() != 1)
+                return debug::error(FUNCTION, "evaluate groups count incomplete");
+
+            /* Return final value. */
+            return vEvaluate.top().first;
+        }
+
+
+        /* Execute the validation script. */
+        bool Condition::Evaluate()
+        {
+            /* Flag to tell how it evaluated. */
+            bool fRet = false;
+
+            /* Grab the first value */
+            TAO::Register::Value vLeft;
+            if(!GetValue(vLeft))
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get l-value"));
+
+            /* Grab the next operation. */
+            uint8_t OPERATION = 0;
+            contract >= OPERATION;
+
+            /* Switch by operation code. */
+            switch(OPERATION)
+            {
+                /* Handle for the == operator. */
+                case OP::EQUALS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vLeft, vRight) == 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+
+                /* Handle for < operator. */
+                case OP::LESSTHAN:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vLeft, vRight) < 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+
+                /* Handle for the > operator. */
+                case OP::GREATERTHAN:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vLeft, vRight) > 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+
+                /* Handle for <= operator. */
+                case OP::LESSEQUALS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vLeft, vRight) <= 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+
+                /* Handle for the >= operator. */
+                case OP::GREATEREQUALS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vLeft, vRight) >= 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+
+                /* Handle for the != operator. */
+                case OP::NOTEQUALS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+
+                    /* Compare both values to one another. */
+                    fRet = (compare(vLeft, vRight) != 0);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+
+                /* Handle to check if a sequence of bytes is inside another. */
+                case OP::CONTAINS:
+                {
+                    /* Grab the second value. */
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+
+                    /* Compare both values to one another. */
+                    fRet = contains(vLeft, vRight);
+
+                    /* Deallocate the values from the VM. */
+                    deallocate(vRight);
+                    deallocate(vLeft);
+
+                    break;
+                }
+
+                /* For unknown codes, always fail. */
+                default:
+                    return debug::error(FUNCTION, "malformed conditions");
             }
 
             /* Return final response. */
@@ -219,13 +402,11 @@ namespace TAO
         {
 
             /* Iterate until end of stream. */
-            while(!contract.End(1))
+            while(!contract.End(Contract::CONDITIONS))
             {
-
                 /* Extract the operation byte. */
                 uint8_t OPERATION = 0;
                 contract >= OPERATION;
-
 
                 /* Switch based on the operation. */
                 switch(OPERATION)
@@ -237,7 +418,7 @@ namespace TAO
                         /* Get the add from r-value. */
                         TAO::Register::Value vAdd;
                         if(!GetValue(vAdd))
-                            return false;
+                            throw std::runtime_error(debug::safe_printstr("OP::ADD failed to get r-value"));
 
                         /* Check computational bounds. */
                         if(vAdd.size() > 1 || vRet.size() > 1)
@@ -266,7 +447,7 @@ namespace TAO
                         /* Get the sub from r-value. */
                         TAO::Register::Value vSub;
                         if(!GetValue(vSub))
-                            return false;
+                            throw std::runtime_error(debug::safe_printstr("OP::SUB failed to get r-value"));
 
                         /* Check computational bounds. */
                         if(vSub.size() > 1 || vRet.size() > 1)
@@ -331,7 +512,7 @@ namespace TAO
                         /* Get the divisor from r-value. */
                         TAO::Register::Value vDiv;
                         if(!GetValue(vDiv))
-                            return false;
+                            throw std::runtime_error(debug::safe_printstr("OP::DIV failed to get r-value"));
 
                         /* Check computational bounds. */
                         if(vDiv.size() > 1 || vRet.size() > 1)
@@ -360,14 +541,14 @@ namespace TAO
                         /* Get the multiplier from r-value. */
                         TAO::Register::Value vMul;
                         if(!GetValue(vMul))
-                            return false;
+                            throw std::runtime_error(debug::safe_printstr("OP::MUL failed to get r-value"));
 
                         /* Check computational bounds. */
                         if(vMul.size() > 1 || vRet.size() > 1)
                             throw std::runtime_error(debug::safe_printstr("OP::MUL computation greater than 64-bits"));
 
                         /* Check for value overflows. */
-                        if(at(vRet) > std::numeric_limits<uint64_t>::max() / at(vMul))
+                        if (at(vMul) != 0 && at(vRet) > std::numeric_limits<uint64_t>::max() / at(vMul))
                             throw std::runtime_error(debug::safe_printstr("OP::MUL 64-bit value overflow"));
 
                         /* Compute the return value. */
@@ -389,7 +570,7 @@ namespace TAO
                         /* Get the exponent from r-value. */
                         TAO::Register::Value vExp;
                         if(!GetValue(vExp))
-                            return false;
+                            throw std::runtime_error(debug::safe_printstr("OP::EXP failed to get r-value"));
 
                         /* Check computational bounds. */
                         if(vExp.size() > 1 || vRet.size() > 1)
@@ -404,7 +585,7 @@ namespace TAO
                         for(uint64_t e = 1; e < at(vExp); ++e)
                         {
                             /* Check for value overflows. */
-                            if(at(vRet) > std::numeric_limits<uint64_t>::max() / nBase)
+                            if (nBase != 0 && at(vRet) > std::numeric_limits<uint64_t>::max() / nBase)
                                 throw std::runtime_error(debug::safe_printstr("OP::EXP 64-bit value overflow"));
 
                             /* Assign the return value. */
@@ -427,7 +608,7 @@ namespace TAO
                         /* Get the modulus from r-value. */
                         TAO::Register::Value vMod;
                         if(!GetValue(vMod))
-                            return false;
+                            throw std::runtime_error(debug::safe_printstr("OP::MOD failed to get r-value"));
 
                         /* Check computational bounds. */
                         if(vMod.size() > 1 || vRet.size() > 1)
@@ -604,6 +785,10 @@ namespace TAO
                         std::string str;
                         contract >= str;
 
+                        /* Check for empty string. */
+                        if(str.empty())
+                            throw std::runtime_error(debug::safe_printstr("OP::TYPES::STRING string is empty"));
+
                         /* Set the register value. */
                         allocate(str, vRet);
 
@@ -620,6 +805,10 @@ namespace TAO
                         /* Extract the string. */
                         std::vector<uint8_t> vData;
                         contract >= vData;
+
+                        /* Check for empty string. */
+                        if(vData.empty())
+                            throw std::runtime_error(debug::safe_printstr("OP::TYPES::BYTES vector is empty"));
 
                         /* Set the register value. */
                         allocate(vData, vRet);
@@ -648,34 +837,45 @@ namespace TAO
 
 
                     /* Get a register's timestamp and push to the return value. */
+                    case OP::CALLER::PRESTATE::MODIFIED:
                     case OP::REGISTER::MODIFIED:
-                    case OP::PRESTATE::MODIFIED:
                     {
                         /* Register state object. */
                         TAO::Register::State state;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::MODIFIED)
+                        switch(OPERATION)
                         {
-                            /* Read the register address. */
-                            uint256_t hashRegister;
-                            deallocate(hashRegister, vRet);
+                            case OP::REGISTER::MODIFIED:
+                            {
+                                /* Read the register address. */
+                                uint256_t hashRegister;
+                                deallocate(hashRegister, vRet);
 
-                            /* Read the register states. */
-                            if(!LLD::regDB->Read(hashRegister, state))
-                                return false;
-                        }
-                        else
-                        {
-                            /* Reset the contract. */
-                            contract.Reset();
+                                /* Read the register states. */
+                                if(!LLD::Register->Read(hashRegister, state))
+                                    return false;
 
-                            /* Read the pre-state state. */
-                            uint8_t nState = 0;
-                            contract >>= nState;
+                                break;
+                            }
 
-                            /* Get the pre-state. */
-                            contract >>= state;
+                            case OP::CALLER::PRESTATE::MODIFIED:
+                            {
+                                /* Reset the contract. */
+                                caller.Reset(Contract::REGISTERS);
+
+                                /* Read the pre-state state. */
+                                uint8_t nState = 0;
+                                caller >>= nState;
+
+                                /* Get the pre-state. */
+                                caller >>= state;
+
+                                /* Reset the contract. */
+                                caller.Reset(Contract::REGISTERS);
+
+                                break;
+                            }
                         }
 
                         /* Set the register value. */
@@ -689,34 +889,45 @@ namespace TAO
 
 
                     /* Get a register's timestamp and push to the return value. */
+                    case OP::CALLER::PRESTATE::CREATED:
                     case OP::REGISTER::CREATED:
-                    case OP::PRESTATE::CREATED:
                     {
                         /* Register state object. */
                         TAO::Register::State state;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::CREATED)
+                        switch(OPERATION)
                         {
-                            /* Read the register address. */
-                            uint256_t hashRegister;
-                            deallocate(hashRegister, vRet);
+                            case OP::REGISTER::CREATED:
+                            {
+                                /* Read the register address. */
+                                uint256_t hashRegister;
+                                deallocate(hashRegister, vRet);
 
-                            /* Read the register states. */
-                            if(!LLD::regDB->Read(hashRegister, state))
-                                return false;
-                        }
-                        else
-                        {
-                            /* Reset the contract. */
-                            contract.Reset();
+                                /* Read the register states. */
+                                if(!LLD::Register->Read(hashRegister, state))
+                                    return false;
 
-                            /* Read the pre-state state. */
-                            uint8_t nState = 0;
-                            contract >>= nState;
+                                break;
+                            }
 
-                            /* Get the pre-state. */
-                            contract >>= state;
+                            case OP::CALLER::PRESTATE::CREATED:
+                            {
+                                /* Reset the contract. */
+                                caller.Reset(Contract::REGISTERS);
+
+                                /* Read the pre-state state. */
+                                uint8_t nState = 0;
+                                caller >>= nState;
+
+                                /* Get the pre-state. */
+                                caller >>= state;
+
+                                /* Reset the contract. */
+                                caller.Reset(Contract::REGISTERS);
+
+                                break;
+                            }
                         }
 
                         /* Set the register value. */
@@ -730,34 +941,45 @@ namespace TAO
 
 
                     /* Get a register's owner and push to the return value. */
+                    case OP::CALLER::PRESTATE::OWNER:
                     case OP::REGISTER::OWNER:
-                    case OP::PRESTATE::OWNER:
                     {
                         /* Register state object. */
                         TAO::Register::State state;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::OWNER)
+                        switch(OPERATION)
                         {
-                            /* Read the register address. */
-                            uint256_t hashRegister;
-                            deallocate(hashRegister, vRet);
+                            case OP::REGISTER::OWNER:
+                            {
+                                /* Read the register address. */
+                                uint256_t hashRegister;
+                                deallocate(hashRegister, vRet);
 
-                            /* Read the register states. */
-                            if(!LLD::regDB->Read(hashRegister, state))
-                                return false;
-                        }
-                        else
-                        {
-                            /* Reset the contract. */
-                            contract.Reset();
+                                /* Read the register states. */
+                                if(!LLD::Register->Read(hashRegister, state))
+                                    return false;
 
-                            /* Read the pre-state state. */
-                            uint8_t nState = 0;
-                            contract >>= nState;
+                                break;
+                            }
 
-                            /* Get the pre-state. */
-                            contract >>= state;
+                            case OP::CALLER::PRESTATE::OWNER:
+                            {
+                                /* Reset the contract. */
+                                caller.Reset(Contract::REGISTERS);
+
+                                /* Read the pre-state state. */
+                                uint8_t nState = 0;
+                                caller >>= nState;
+
+                                /* Get the pre-state. */
+                                caller >>= state;
+
+                                /* Reset the contract. */
+                                caller.Reset(Contract::REGISTERS);
+
+                                break;
+                            }
                         }
 
                         /* Set the register value. */
@@ -771,34 +993,45 @@ namespace TAO
 
 
                     /* Get a register's type and push to the return value. */
+                    case OP::CALLER::PRESTATE::TYPE:
                     case OP::REGISTER::TYPE:
-                    case OP::PRESTATE::TYPE:
                     {
                         /* Register state object. */
                         TAO::Register::State state;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::TYPE)
+                        switch(OPERATION)
                         {
-                            /* Read the register address. */
-                            uint256_t hashRegister;
-                            deallocate(hashRegister, vRet);
+                            case OP::REGISTER::TYPE:
+                            {
+                                /* Read the register address. */
+                                uint256_t hashRegister;
+                                deallocate(hashRegister, vRet);
 
-                            /* Read the register states. */
-                            if(!LLD::regDB->Read(hashRegister, state))
-                                return false;
-                        }
-                        else
-                        {
-                            /* Reset the contract. */
-                            contract.Reset();
+                                /* Read the register states. */
+                                if(!LLD::Register->Read(hashRegister, state))
+                                    return false;
 
-                            /* Read the pre-state state. */
-                            uint8_t nState = 0;
-                            contract >>= nState;
+                                break;
+                            }
 
-                            /* Get the pre-state. */
-                            contract >>= state;
+                            case OP::CALLER::PRESTATE::TYPE:
+                            {
+                                /* Reset the contract. */
+                                caller.Reset(Contract::REGISTERS);
+
+                                /* Read the pre-state state. */
+                                uint8_t nState = 0;
+                                caller >>= nState;
+
+                                /* Get the pre-state. */
+                                caller >>= state;
+
+                                /* Reset the contract. */
+                                caller.Reset(Contract::REGISTERS);
+
+                                break;
+                            }
                         }
 
                         /* Push the type onto the return value. */
@@ -812,34 +1045,45 @@ namespace TAO
 
 
                     /* Get a register's state and push to the return value. */
+                    case OP::CALLER::PRESTATE::STATE:
                     case OP::REGISTER::STATE:
-                    case OP::PRESTATE::STATE:
                     {
                         /* Register state object. */
                         TAO::Register::State state;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::STATE)
+                        switch(OPERATION)
                         {
-                            /* Read the register address. */
-                            uint256_t hashRegister;
-                            deallocate(hashRegister, vRet);
+                            case OP::REGISTER::STATE:
+                            {
+                                /* Read the register address. */
+                                uint256_t hashRegister;
+                                deallocate(hashRegister, vRet);
 
-                            /* Read the register states. */
-                            if(!LLD::regDB->Read(hashRegister, state))
-                                return false;
-                        }
-                        else
-                        {
-                            /* Reset the contract. */
-                            contract.Reset();
+                                /* Read the register states. */
+                                if(!LLD::Register->Read(hashRegister, state))
+                                    return false;
 
-                            /* Read the pre-state state. */
-                            uint8_t nState = 0;
-                            contract >>= nState;
+                                break;
+                            }
 
-                            /* Get the pre-state. */
-                            contract >>= state;
+                            case OP::CALLER::PRESTATE::STATE:
+                            {
+                                /* Reset the contract. */
+                                caller.Reset(Contract::REGISTERS);
+
+                                /* Read the pre-state state. */
+                                uint8_t nState = 0;
+                                caller >>= nState;
+
+                                /* Get the pre-state. */
+                                caller >>= state;
+
+                                /* Reset the contract. */
+                                caller.Reset(Contract::REGISTERS);
+
+                                break;
+                            }
                         }
 
                         /* Allocate to the registers. */
@@ -853,34 +1097,45 @@ namespace TAO
 
 
                     /* Get an account register's balance and push to the return value. */
+                    case OP::CALLER::PRESTATE::VALUE:
                     case OP::REGISTER::VALUE:
-                    case OP::PRESTATE::VALUE:
                     {
                         /* Register state object. */
                         TAO::Register::Object object;
 
                         /* Check for register enum. */
-                        if(OPERATION == OP::REGISTER::VALUE)
+                        switch(OPERATION)
                         {
-                            /* Read the register address. */
-                            uint256_t hashRegister;
-                            deallocate(hashRegister, vRet);
+                            case OP::REGISTER::VALUE:
+                            {
+                                /* Read the register address. */
+                                uint256_t hashRegister;
+                                deallocate(hashRegister, vRet);
 
-                            /* Read the register states. */
-                            if(!LLD::regDB->Read(hashRegister, object))
-                                return false;
-                        }
-                        else
-                        {
-                            /* Reset the contract. */
-                            contract.Reset();
+                                /* Read the register states. */
+                                if(!LLD::Register->Read(hashRegister, object))
+                                    return false;
 
-                            /* Read the pre-state state. */
-                            uint8_t nState = 0;
-                            contract >>= nState;
+                                break;
+                            }
 
-                            /* Get the pre-state. */
-                            contract >>= object;
+                            case OP::CALLER::PRESTATE::VALUE:
+                            {
+                                /* Reset the contract. */
+                                caller.Reset(Contract::REGISTERS);
+
+                                /* Read the pre-state state. */
+                                uint8_t nState = 0;
+                                caller >>= nState;
+
+                                /* Get the pre-state. */
+                                caller >>= object;
+
+                                /* Reset the contract. */
+                                caller.Reset(Contract::REGISTERS);
+
+                                break;
+                            }
                         }
 
                         /* Get the value string. */
@@ -1080,8 +1335,39 @@ namespace TAO
                         /* Get the bytes from caller. */
                         const std::vector<uint8_t>& vBytes = caller.Operations();
 
+                        /* Check for empty operations. */
+                        if(vBytes.empty())
+                            throw std::runtime_error(debug::safe_printstr("OP::CALLER::OPERATIONS caller has empty operations"));
+
+                        /* Check for condition or validate. */
+                        uint8_t nOffset = 0;
+                        switch(vBytes.at(0))
+                        {
+                            /* Check for condition at start. */
+                            case OP::CONDITION:
+                            {
+                                /* Condition has offset of one. */
+                                nOffset = 1;
+
+                                break;
+                            }
+
+                            /* Check for validate at start. */
+                            case OP::VALIDATE:
+                            {
+                                /* Validate has offset of 69. */
+                                nOffset = 69;
+
+                                break;
+                            }
+                        }
+
+                        /* Check that offset is within memory range. */
+                        if(vBytes.size() <= nOffset)
+                            throw std::runtime_error(debug::safe_printstr("OP::CALLER::OPERATIONS offset is not within size"));
+
                         /* Allocate to the registers. */
-                        allocate(vBytes, vRet);
+                        allocate(vBytes, vRet, nOffset);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= vBytes.size();
@@ -1177,7 +1463,7 @@ namespace TAO
                     default:
                     {
                         /* If no applicable instruction found, rewind and return. */
-                        contract.Rewind(1);
+                        contract.Rewind(1, Contract::CONDITIONS);
                         if(nLimits < 0)
                             debug::error(FUNCTION, "out of computational limits ", nLimits);
 

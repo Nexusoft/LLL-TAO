@@ -622,7 +622,7 @@ namespace Legacy
                         prevTx = *mapWalletPrev[prevoutTxHash];
 
                     }
-                    else if(!config::fClient && LLD::legacyDB->ReadTx(prevoutTxHash, parentTransaction))
+                    else if (!config::fClient && LLD::Legacy->ReadTx(prevoutTxHash, parentTransaction))
                     {
                         /* Found transaction in database, but it isn't in wallet. Create a new WalletTx from it to use as prevTx */
                         prevTx = WalletTx(ptransactionWallet, parentTransaction);
@@ -642,7 +642,7 @@ namespace Legacy
                         /* vtxPrev gets loaded with inputs to this transaction, but when one of these inputs
                          * is recent (depth < copy depth) we go one deeper and also load its inputs (inputs of inputs).
                          * This helps assure, when transactions are relayed, that we transmit anything not yet added
-                         * to a block and included in legacyDB. Obviously, it is unikely that inputs of inputs are
+                         * to a block and included in Legacy. Obviously, it is unikely that inputs of inputs are
                          * within the copy depth because we'd be spending balance that probably is not confirmed,
                          * so this really should never be processed. Code is from legacy and left here intact just in case.
                          */
@@ -666,12 +666,12 @@ namespace Legacy
             if(!(tx.IsCoinBase() || tx.IsCoinStake()))
             {
                 uint512_t hash = tx.GetHash();
-                if(!LLD::legacyDB->HasTx(hash))
+                if (!LLD::Legacy->HasTx(hash))
                 {
                     std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_LEGACY) };
                     if(LLP::LEGACY_SERVER)
                         LLP::LEGACY_SERVER->Relay("inv", vInv);
-                    
+
                     if(LLP::TRITIUM_SERVER)
                         LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
 
@@ -686,15 +686,15 @@ namespace Legacy
             uint512_t hash = GetHash();
 
             /* Relay this tx if we don't have it in our database, yet */
-            if(!LLD::legacyDB->HasTx(hash))
+            if (!LLD::Legacy->HasTx(hash))
             {
                 debug::log(0, FUNCTION, "Relaying wtx ", hash.ToString().substr(0,10));
 
                 std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_LEGACY) };
-                
+
                 if(LLP::LEGACY_SERVER)
                     LLP::LEGACY_SERVER->Relay("inv", vInv);
-                
+
                 if(LLP::TRITIUM_SERVER)
                     LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
 

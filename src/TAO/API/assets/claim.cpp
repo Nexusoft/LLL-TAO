@@ -68,7 +68,7 @@ namespace TAO
 
             /* Read the Transfer transaction being claimed. */
             TAO::Ledger::Transaction txTranser;
-            if(!LLD::legDB->ReadTx(hashTx, txTranser))
+            if(!LLD::Ledger->ReadTx(hashTx, txTranser))
                 throw APIException(-23, "Transfer transaction not found.");
 
             /* Check to see whether they have provided a new name */
@@ -121,9 +121,10 @@ namespace TAO
                 }
                 else
                 {
-                    /* Determine the name from the previous owner's sig chain and create a new 
+                    /* Determine the name from the previous owner's sig chain and create a new
                        Name record under our sig chain for the same name */
                     TAO::Operation::Contract nameContract = CreateNameFromTransfer(hashTx, user->Genesis());
+
                     /* If the Name contract operation was created then add it to the transaction */
                     if(!nameContract.Empty())
                         tx[++nCurrent] = nameContract;

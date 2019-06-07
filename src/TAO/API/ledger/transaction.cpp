@@ -76,7 +76,7 @@ namespace TAO
 
 
             /* Read the block state from the the ledger DB using the transaction hash index */
-            LLD::legDB->ReadBlock(hash, blockState);
+            LLD::Ledger->ReadBlock(hash, blockState);
 
 
             /* Declare the JSON return object */
@@ -85,7 +85,7 @@ namespace TAO
 
             /* Get the transaction either from disk or mempool.
                First try to see if it is a tritium tx in the leger db*/
-            if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::legDB->ReadTx(hash, txTritium))
+            if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::Ledger->ReadTx(hash, txTritium))
             {
                 if(strFormat == "JSON")
                     ret = TAO::API::TransactionToJSON (txTritium, blockState, nVerbose);
@@ -95,11 +95,11 @@ namespace TAO
                     ssTx << (uint8_t)LLP::MSG_TX_TRITIUM << txTritium;
                     ret["data"] = HexStr(ssTx.begin(), ssTx.end());
                 }
-                
+
             }
 
             /* If it is not a tritium transaction then see if it is a legacy tx in the legacy DB */
-            else if(TAO::Ledger::mempool.Get(hash, txLegacy) || LLD::legacyDB->ReadTx(hash, txLegacy))
+            else if(TAO::Ledger::mempool.Get(hash, txLegacy) || LLD::Legacy->ReadTx(hash, txLegacy))
             {
                 if(strFormat == "JSON")
                     ret = TAO::API::TransactionToJSON (txLegacy, blockState, nVerbose);
@@ -147,7 +147,7 @@ namespace TAO
                 ssData >> tx;
 
                 /* Check if we have it. */
-                if(!LLD::legDB->HasTx(tx.GetHash()))
+                if(!LLD::Ledger->HasTx(tx.GetHash()))
                 {
                     /* Add the transaction to the memory pool. */
                     if(TAO::Ledger::mempool.Accept(tx, nullptr))
@@ -172,7 +172,7 @@ namespace TAO
 
 
                 /* Check if we have it. */
-                if(!LLD::legacyDB->HasTx(tx.GetHash()))
+                if(!LLD::Legacy->HasTx(tx.GetHash()))
                 {
                     /* Check if tx is valid. */
                     if(!tx.CheckTransaction())

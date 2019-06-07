@@ -45,7 +45,7 @@ namespace TAO
 
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-                
+
             else if(!config::fMultiuser.load() && mapSessions.count(0))
                 hashGenesis = mapSessions[0]->Genesis();
             else
@@ -73,7 +73,7 @@ namespace TAO
                 /* Get the asset from the register DB.  We can read it as an Object and then check its nType to determine
                    whether or not it is an asset. */
                 TAO::Register::Object object;
-                if(!LLD::regDB->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-24, "Asset not found");
 
                 /* Check that this is a non-standard object type so that we can parse it and check the type*/
@@ -104,7 +104,7 @@ namespace TAO
                     break;
 
                 /* Convert the object to JSON */
-                ret.push_back(TAO::API::ObjectRegisterToJSON(params, object, hashRegister));
+                ret.push_back(TAO::API::ObjectToJSON(params, object, hashRegister));
             }
 
             return ret;

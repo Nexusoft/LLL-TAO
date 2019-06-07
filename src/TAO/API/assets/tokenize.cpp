@@ -98,9 +98,9 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction");
 
             /* Submit the payload object.
-               NOTE we pass true for the fForceTransfer parameter so that the transfer is made immediately to the 
+               NOTE we pass true for the fForceTransfer parameter so that the transfer is made immediately to the
                token without requiring a Claim */
-            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashToken << true;  
+            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashToken << uint8_t(TAO::Operation::TRANSFER::FORCE);  
 
             /* Execute the operations layer. */
             if(!tx.Build())

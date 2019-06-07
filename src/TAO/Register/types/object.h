@@ -287,13 +287,36 @@ namespace TAO
             Type get(const char* strName) const
             {
                 /* Declare the return value. */
-                Type nRet;
+                Type ret;
 
                 /* Read the value from object. */
-                if(!Read(std::string(strName), nRet))
+                if(!Read(std::string(strName), ret))
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access read failed"));
 
-                return nRet;
+                return ret;
+            }
+
+
+            /** get
+             *
+             *  Template to access a member variable of an object register.
+             *
+             *  @param[in] strName The name to lookup value by.
+             *
+             *  @return The value to access.
+             *
+             **/
+            template<typename Type>
+            Type get(const std::string& strName) const
+            {
+                /* Declare the return value. */
+                Type ret;
+
+                /* Read the value from object. */
+                if(!Read(strName, ret))
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access read failed"));
+
+                return ret;
             }
 
 

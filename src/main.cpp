@@ -120,14 +120,15 @@ int main(int argc, char** argv)
 
 
     /* Create the database instances. */
-    LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
-    LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
-    LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::Contract = new LLD::ContractDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::Register = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::Local    = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::Ledger   = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
 
     /* Initialize the Legacy Database. */
-    LLD::trustDB  = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
-    LLD::legacyDB = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::Trust  = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    LLD::Legacy = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
 
     /* Handle database recovery mode. */
@@ -305,81 +306,100 @@ int main(int argc, char** argv)
     /* Shutdown metrics. */
     timer.Reset();
 
+
     /* Stop stake minter if it is running (before server shutdown). */
     if(config::GetBoolArg(std::string("-beta")))
         Legacy::LegacyMinter::GetInstance().StopStakeMinter();
     else
         TAO::Ledger::TritiumMinter::GetInstance().StopStakeMinter();
 
+
     /* Shutdown the time server and its subsystems. */
     LLP::ShutdownServer<LLP::TimeNode>(LLP::TIME_SERVER);
+
 
     /* Shutdown the tritium server and its subsystems. */
     LLP::ShutdownServer<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
 
+
     /* Shutdown the legacy server and its subsystems. */
     LLP::ShutdownServer<LLP::LegacyNode>(LLP::LEGACY_SERVER);
+
 
     /* Shutdown the core API server and its subsystems. */
     LLP::ShutdownServer<LLP::APINode>(LLP::API_SERVER);
 
+
     /* Shutdown the RPC server and its subsystems. */
     LLP::ShutdownServer<LLP::RPCNode>(LLP::RPC_SERVER);
+
 
     /* Shutdown the legacy mining server and its subsystems. */
     LLP::ShutdownServer<LLP::LegacyMiner>(LLP::LEGACY_MINING_SERVER);
 
+
     /* Shutdown the tritium mining server and its subsystems. */
     LLP::ShutdownServer<LLP::TritiumMiner>(LLP::TRITIUM_MINING_SERVER);
+
 
     /** After all servers shut down, clean up underlying networking resources **/
     LLP::NetworkShutdown();
 
+
     /* Cleanup the API. */
     TAO::API::Shutdown();
 
-    /* Cleanup the ledger database. */
-    if(LLD::legDB)
-    {
-        debug::log(0, FUNCTION, "Shutting down ledgerDB");
 
-        delete LLD::legDB;
+    /* Cleanup the ledger database. */
+    if(LLD::Contract)
+    {
+        debug::log(0, FUNCTION, "Shutting down ContractDB");
+
+        delete LLD::Contract;
+    }
+
+    /* Cleanup the ledger database. */
+    if(LLD::Ledger)
+    {
+        debug::log(0, FUNCTION, "Shutting down LedgerDB");
+
+        delete LLD::Ledger;
     }
 
 
     /* Cleanup the register database. */
-    if(LLD::regDB)
+    if(LLD::Register)
     {
-        debug::log(0, FUNCTION, "Shutting down registerDB");
+        debug::log(0, FUNCTION, "Shutting down RegisterDB");
 
-        delete LLD::regDB;
+        delete LLD::Register;
     }
 
 
     /* Cleanup the local database. */
-    if(LLD::locDB)
+    if(LLD::Local)
     {
-        debug::log(0, FUNCTION, "Shutting down localDB");
+        debug::log(0, FUNCTION, "Shutting down LocalDB");
 
-        delete LLD::locDB;
+        delete LLD::Local;
     }
 
 
     /* Cleanup the legacy database. */
-    if(LLD::legacyDB)
+    if(LLD::Legacy)
     {
-        debug::log(0, FUNCTION, "Shutting down legacyDB");
+        debug::log(0, FUNCTION, "Shutting down LegacyDB");
 
-        delete LLD::legacyDB;
+        delete LLD::Legacy;
     }
 
 
     /* Cleanup the trust database. */
-    if(LLD::trustDB)
+    if(LLD::Trust)
     {
-        debug::log(0, FUNCTION, "Shutting down trustDB");
+        debug::log(0, FUNCTION, "Shutting down TrustDB");
 
-        delete LLD::trustDB;
+        delete LLD::Trust;
     }
 
 

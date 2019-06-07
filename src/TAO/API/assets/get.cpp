@@ -57,7 +57,7 @@ namespace TAO
                If this fails then we try to read it as a base State type and assume it was
                created as a raw format asset */
             TAO::Register::Object object;
-            if(!LLD::regDB->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-24, "Asset not found");
 
             /* Only include raw and non-standard object types (assets)*/
@@ -80,7 +80,7 @@ namespace TAO
             }
 
             /* Convert the object to JSON */
-            ret = TAO::API::ObjectRegisterToJSON(params, object, hashRegister);
+            ret = TAO::API::ObjectToJSON(params, object, hashRegister);
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             if(params.find("fieldname") != params.end())

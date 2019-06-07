@@ -63,14 +63,14 @@ namespace TAO
              *
              *  Move balance to stake for trust account.
              *
-             *  @param[out] trustAccount The trust account object register.
+             *  @param[out] object The trust account object register.
              *  @param[in] nAmount The amount of balance to stake.
              *  @param[in] nTimestamp The timestamp to update register to.
              *
              *  @return true if successful.
              *
              **/
-            bool Execute(TAO::Register::Object &trustAccount, const uint64_t nAmount, const uint64_t nTimestamp);
+            bool Execute(TAO::Register::Object &object, const uint64_t nAmount, const uint64_t nTimestamp);
 
 
             /** Verify

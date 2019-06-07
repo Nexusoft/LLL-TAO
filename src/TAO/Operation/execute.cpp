@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/transfer.h>
 #include <TAO/Operation/include/trust.h>
 #include <TAO/Operation/include/unstake.h>
+#include <TAO/Operation/include/validate.h>
 #include <TAO/Operation/include/write.h>
 
 #include <TAO/Operation/types/contract.h>
@@ -49,21 +50,81 @@ namespace TAO
             contract.Reset();
 
             /* Make sure no exceptions are thrown. */
+            bool fValidate = false;
             try
             {
                 /* Get the contract OP. */
-                uint8_t OP = 0;
-                contract >> OP;
+                uint8_t nOP = 0;
+                contract >> nOP;
 
                 /* Check the current opcode. */
-                switch(OP)
+                switch(nOP)
+                {
+                    /* Condition that allows a validation to occur. */
+                    case OP::CONDITION:
+                    {
+                        /* Condition has no parameters. */
+                        contract >> nOP;
+
+                        /* Check for valid primitives that can have a condition. */
+                        switch(nOP)
+                        {
+                            /* Transfer and debit are the only permitted. */
+                            case OP::TRANSFER:
+                            case OP::DEBIT:
+                            {
+                                //transfer and debit are permitted
+                                break;
+                            }
+
+                            default:
+                                return debug::error(FUNCTION, "unsupported OP for condition");
+                        }
+
+                        break;
+                    }
+
+
+                    /* Validate a previous contract's conditions */
+                    case OP::VALIDATE:
+                    {
+                        /* Extract the transaction from contract. */
+                        uint512_t hashTx = 0;
+                        contract >> hashTx;
+
+                        /* Extract the contract-id. */
+                        uint32_t nContract = 0;
+                        contract >> nContract;
+
+                        /* Verify the operation rules. */
+                        const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
+                        if(!Validate::Verify(contract, condition))
+                            return false;
+
+                        /* Commit the validation to disk. */
+                        if(!Validate::Commit(hashTx, nContract, contract.Caller(), nFlags))
+                            return false;
+
+                        /* Get next OP. */
+                        contract >> nOP;
+
+                        /* Set validate flag. */
+                        fValidate = true;
+
+                        break;
+                    }
+                }
+
+
+                /* Check the current opcode. */
+                switch(nOP)
                 {
 
                     /* Generate pre-state to database. */
                     case OP::WRITE:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::WRITE: conditions not allowed on write");
 
                         /* Verify the operation rules. */
@@ -112,7 +173,7 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Write::Commit(state, hashAddress, nFlags))
-                            return debug::error(FUNCTION, "OP::WRITE: failed to write final state");
+                            return false;
 
                         break;
                     }
@@ -122,7 +183,7 @@ namespace TAO
                     case OP::APPEND:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::APPEND: conditions not allowed on append");
 
                         /* Verify the operation rules. */
@@ -171,7 +232,7 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Append::Commit(state, hashAddress, nFlags))
-                            return debug::error(FUNCTION, "OP::APPEND: failed to write final state");
+                            return false;
 
                         break;
                     }
@@ -183,7 +244,7 @@ namespace TAO
                     case OP::CREATE:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::CREATE: conditions not allowed on create");
 
                         /* Verify the operation rules. */
@@ -230,7 +291,7 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Create::Commit(state, hashAddress, nFlags))
-                            return debug::error(FUNCTION, "OP::CREATE: failed to write final state");
+                            return false;
 
                         break;
                     }
@@ -252,11 +313,11 @@ namespace TAO
                         contract >> hashTransfer;
 
                         /* Read the force transfer flag */
-                        bool fForceTransfer = false;
-                        contract >> fForceTransfer;
+                        uint8_t nType = 0;
+                        contract >> nType;
 
                         /* Register custody in SYSTEM ownership until claimed, unless the ForceTransfer flag has been set */
-                        uint256_t hashNewOwner = fForceTransfer ? hashTransfer : 0;
+                        uint256_t hashNewOwner = (nType == TRANSFER::FORCE ? hashTransfer : 0);
 
                         /* Deserialize the pre-state byte from the contract. */
                         uint8_t nState = 0;
@@ -292,7 +353,7 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Transfer::Commit(state, contract.Hash(), hashAddress, hashTransfer, nFlags))
-                            return debug::error(FUNCTION, "OP::TRANSFER: failed to write final state");
+                            return false;
 
                         break;
                     }
@@ -302,7 +363,7 @@ namespace TAO
                     case OP::CLAIM:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::CLAIM: conditions not allowed on claim");
 
                         /* Extract the transaction from contract. */
@@ -318,16 +379,35 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Verify the operation rules. */
-                        const Contract transfer = LLD::legDB->ReadContract(hashTx, nContract);
+                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract);
                         if(!Claim::Verify(contract, transfer))
                             return false;
 
                         /* Check for conditions. */
-                        if(transfer.Conditions())
+                        if(!transfer.Empty(Contract::CONDITIONS))
                         {
-                            /* Build the validation script for execution. */
-                            Condition condition = Condition(transfer, contract);
-                            if(!condition.Execute())
+                            /* Get the condition. */
+                            uint8_t nType = 0;
+                            transfer >> nType;
+
+                            /* Check for condition. */
+                            Condition conditions = Condition(transfer, contract);
+                            if(nType == OP::CONDITION)
+                            {
+                                /* Read the contract database. */
+                                uint256_t hashValidator = 0;
+                                if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
+                                {
+                                    /* Check that the caller is the claimant. */
+                                    if(hashValidator != contract.Caller())
+                                        return debug::error(FUNCTION, "OP::CLAIM: caller is not authorized to claim validation");
+                                }
+
+                                /* If no validate fulfilled, try to exeucte conditions. */
+                                else if(!conditions.Execute())
+                                    return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
+                            }
+                            else if(!conditions.Execute())
                                 return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
                         }
 
@@ -345,7 +425,7 @@ namespace TAO
 
                         /* Calculate the new operation. */
                         if(!Claim::Execute(state, contract.Caller(), contract.Timestamp()))
-                            return debug::error(FUNCTION, "OP::CLAIM: cannot generate post-state");
+                            return false;
 
                         /* Deserialize the pre-state byte from contract. */
                         nState = 0;
@@ -365,7 +445,7 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Claim::Commit(state, hashAddress, hashTx, nContract, nFlags))
-                            return debug::error(FUNCTION, "OP::CLAIM: failed to write final state");
+                            return false;
 
                         break;
                     }
@@ -374,8 +454,12 @@ namespace TAO
                     /* Coinbase operation. Creates an account if none exists. */
                     case OP::COINBASE:
                     {
+                        /* Check for validate. */
+                        if(fValidate)
+                            return debug::error(FUNCTION, "OP::COINBASE: cannot use OP::VALIDATE with coinbase");
+
                         /* Seek to end. */
-                        contract.Seek(49);
+                        contract.Seek(48);
 
                         break;
                     }
@@ -384,8 +468,12 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case OP::TRUST:
                     {
+                        /* Check for validate. */
+                        if(fValidate)
+                            return debug::error(FUNCTION, "OP::TRUST: cannot use OP::VALIDATE with trust");
+
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::TRUST: conditions not allowed on trust");
 
                         /* Verify the operation rules. */
@@ -393,7 +481,7 @@ namespace TAO
                             return false;
 
                         /* Seek to scores. */
-                        contract.Seek(65);
+                        contract.Seek(64);
 
                         /* Get the trust score. */
                         uint64_t nScore = 0;
@@ -437,7 +525,7 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Trust::Commit(object, nFlags))
-                            return debug::error(FUNCTION, "OP::TRUST: failed to write final state");
+                            return false;
 
                         break;
                     }
@@ -446,8 +534,12 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case OP::GENESIS:
                     {
+                        /* Check for validate. */
+                        if(fValidate)
+                            return debug::error(FUNCTION, "OP::GENESIS: cannot use OP::VALIDATE with genesis");
+
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::GENESIS: conditions not allowed on genesis");
 
                         /* Verify the operation rules. */
@@ -496,7 +588,7 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Genesis::Commit(object, hashAddress, nFlags))
-                            return debug::error(FUNCTION, "OP::GENESIS: failed to write final state");
+                            return false;
 
                         break;
                     }
@@ -505,8 +597,12 @@ namespace TAO
                     /* Move funds from trust account balance to stake. */
                     case OP::STAKE:
                     {
+                        /* Check for validate. */
+                        if(fValidate)
+                            return debug::error(FUNCTION, "OP::STAKE: cannot use OP::VALIDATE with stake");
+
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::STAKE: conditions not allowed on stake");
 
                         /* Verify the operation rules. */
@@ -551,7 +647,7 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Stake::Commit(object, nFlags))
-                            return debug::error(FUNCTION, "OP::STAKE: failed to write final state");
+                            return false;
 
                         break;
                     }
@@ -560,8 +656,12 @@ namespace TAO
                     /* Move funds from trust account stake to balance. */
                     case OP::UNSTAKE:
                     {
+                        /* Check for validate. */
+                        if(fValidate)
+                            return debug::error(FUNCTION, "OP::UNSTAKE: cannot use OP::VALIDATE with unstake");
+
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::UNSTAKE: conditions not allowed on unstake");
 
                         /* Verify the operation rules. */
@@ -569,12 +669,12 @@ namespace TAO
                             return false;
 
                         /* Amount of funds to move. */
-                        uint64_t nAmount;
+                        uint64_t nAmount = 0;
                         contract >> nAmount;
 
                         /* Trust score penalty from unstake. */
-                        uint64_t nTrustPenalty;
-                        contract >> nTrustPenalty;
+                        uint64_t nPenalty = 0;
+                        contract >> nPenalty;
 
                         /* Deserialize the pre-state byte from the contract. */
                         uint8_t nState = 0;
@@ -589,7 +689,7 @@ namespace TAO
                         contract >>= object;
 
                         /* Calculate the new operation. */
-                        if(!Unstake::Execute(object, nAmount, nTrustPenalty, contract.Timestamp()))
+                        if(!Unstake::Execute(object, nAmount, nPenalty, contract.Timestamp()))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */
@@ -610,7 +710,7 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Unstake::Commit(object, nFlags))
-                            return debug::error(FUNCTION, "OP::UNSTAKE: failed to write final state");
+                            return false;
 
                         break;
                     }
@@ -669,7 +769,7 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Debit::Commit(object, contract.Hash(), hashFrom, hashTo, nFlags))
-                            return debug::error(FUNCTION, "OP::DEBIT: failed to write final state");
+                            return false;
 
                         break;
                     }
@@ -679,7 +779,7 @@ namespace TAO
                     case OP::CREDIT:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::CREDIT: conditions not allowed on credit");
 
                         /* Extract the transaction from contract. */
@@ -691,21 +791,9 @@ namespace TAO
                         contract >> nContract;
 
                         /* Verify the operation rules. */
-                        const Contract debit = LLD::legDB->ReadContract(hashTx, nContract);
+                        const Contract debit = LLD::Ledger->ReadContract(hashTx, nContract);
                         if(!Credit::Verify(contract, debit, nFlags))
                             return false;
-
-                        /* Check for conditions. */
-                        if(debit.Conditions())
-                        {
-                            /* Build the validation script for execution. */
-                            Condition conditions = Condition(debit, contract);
-                            if(!conditions.Execute())
-                                return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
-                        }
-
-                        /* Seek past transaction-id. */
-                        contract.Seek(69);
 
                         /* Get the transfer address. */
                         uint256_t hashAddress = 0;
@@ -718,6 +806,34 @@ namespace TAO
                         /* Get the transfer amount. */
                         uint64_t  nAmount = 0;
                         contract >> nAmount;
+
+                        /* Check for conditions. */
+                        if(!debit.Empty(Contract::CONDITIONS))
+                        {
+                            /* Get the condition. */
+                            uint8_t nType = 0;
+                            debit >> nType;
+
+                            /* Check for condition. */
+                            Condition conditions = Condition(debit, contract);
+                            if(nType == OP::CONDITION)
+                            {
+                                /* Read the contract database. */
+                                uint256_t hashValidator = 0;
+                                if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
+                                {
+                                    /* Check that the caller is the claimant. */
+                                    if(hashValidator != contract.Caller())
+                                        return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
+                                }
+
+                                /* If no validate fulfilled, try to exeucte conditions. */
+                                else if(!conditions.Execute())
+                                    return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+                            }
+                            else if(!conditions.Execute())
+                                return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+                        }
 
                         /* Deserialize the pre-state byte from the contract. */
                         uint8_t nState = 0;
@@ -753,7 +869,7 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Credit::Commit(object, debit, hashAddress, hashProof, hashTx, nContract, nAmount, nFlags))
-                            return debug::error(FUNCTION, "OP::CREDIT: failed to write final state");
+                            return false;
 
                         break;
                     }
@@ -762,8 +878,10 @@ namespace TAO
                     /* Authorize is enabled in private mode only. */
                     case OP::AUTHORIZE:
                     {
+                        //TODO: decide more details on the use of authorize.
+
                         /* Seek to address. */
-                        contract.Seek(97);
+                        contract.Seek(96);
 
                         break;
                     }
@@ -773,7 +891,7 @@ namespace TAO
                     case OP::LEGACY:
                     {
                         /* Make sure there are no conditions. */
-                        if(contract.Conditions())
+                        if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::LEGACY: conditions not allowed on legacy");
 
                         /* Verify the operation rules. */
@@ -822,7 +940,7 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Legacy::Commit(object, hashAddress, nFlags))
-                            return debug::error(FUNCTION, "OP::LEGACY: failed to write final state");
+                            return false;
 
                         /* Get the script data. */
                         ::Legacy::Script script;
@@ -834,14 +952,12 @@ namespace TAO
                     }
 
                     default:
-                        return debug::error(FUNCTION, "invalid code for register verification");
+                        return debug::error(FUNCTION, "invalid code for contract execution ", uint32_t(nOP));
                 }
-
 
                 /* Check for end of stream. */
                 if(!contract.End())
-                    return debug::error(FUNCTION, "contract cannot have more than one PRIMTIVE OP");
-
+                    return debug::error(FUNCTION, "contract can only have one PRIMITIVE");
             }
             catch(const std::exception& e)
             {

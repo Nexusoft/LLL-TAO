@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <LLD/templates/sector.h>
+#include <LLD/cache/binary_lfu.h>
+#include <LLD/keychain/hashmap.h>
 
 #include <TAO/Operation/types/contract.h>
 
@@ -49,7 +51,7 @@ namespace LLD
      *  The database class for the Ledger Layer.
      *
      **/
-    class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLFU>
     {
         std::mutex MEMORY_MUTEX;
 
@@ -109,60 +111,61 @@ namespace LLD
          *
          *  Reads a contract from the ledger DB.
          *
-         *  @param[in] hashTransaction The txid of transaction to read.
+         *  @param[in] hashTx The txid of transaction to read.
          *  @param[in] nContract The contract output to read.
          *  @param[in] nFlags The flags to determine memory pool or disk
          *
          *  @return The contract object that was read.
          *
          **/
-        TAO::Operation::Contract ReadContract(const uint512_t& hashTransaction, const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+        TAO::Operation::Contract ReadContract(const uint512_t& hashTx,
+                                              const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteTx
          *
          *  Writes a transaction to the ledger DB.
          *
-         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] hashTx The txid of transaction to write.
          *  @param[in] tx The transaction object to write.
          *
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool WriteTx(const uint512_t& hashTransaction, const TAO::Ledger::Transaction& tx);
+        bool WriteTx(const uint512_t& hashTx, const TAO::Ledger::Transaction& tx);
 
 
         /** ReadTx
          *
          *  Reads a transaction from the ledger DB.
          *
-         *  @param[in] hashTransaction The txid of transaction to read.
+         *  @param[in] hashTx The txid of transaction to read.
          *  @param[in] tx The transaction object to read.
          *  @param[in] nFlags The flags to determine memory pool or disk
          *
          *  @return True if the transaction was successfully read, false otherwise.
          *
          **/
-        bool ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+        bool ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction& tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** EraseTx
          *
          *  Erases a transaction from the ledger DB.
          *
-         *  @param[in] hashTransaction The txid of transaction to erase.
+         *  @param[in] hashTx The txid of transaction to erase.
          *
          *  @return True if the transaction was successfully erased, false otherwise.
          *
          **/
-        bool EraseTx(const uint512_t& hashTransaction);
+        bool EraseTx(const uint512_t& hashTx);
 
 
         /** WriteClaimed
          *
          *  Writes a partial to the ledger DB.
          *
-         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] hashTx The txid of transaction to write.
          *  @param[in] nContract The contract partial payment.
          *  @param[in] nClaimed The partial amount to update.
          *  @param[in] nFlags The flags to determine memory pool or disk
@@ -170,7 +173,7 @@ namespace LLD
          *  @return True if the partial was successfully written.
          *
          **/
-        bool WriteClaimed(const uint512_t& hashTransaction, const uint32_t nContract, const uint64_t nClaimed,
+        bool WriteClaimed(const uint512_t& hashTx, const uint32_t nContract, const uint64_t nClaimed,
                           const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
@@ -178,7 +181,7 @@ namespace LLD
          *
          *  Read a partial to the ledger DB.
          *
-         *  @param[in] hashTransaction The txid of transaction to read.
+         *  @param[in] hashTx The txid of transaction to read.
          *  @param[in] nContract The contract partial payment.
          *  @param[in] nClaimed The partial amount to read.
          *  @param[in] nFlags The flags to determine memory pool or disk
@@ -186,7 +189,7 @@ namespace LLD
          *  @return True if the partial was successfully read.
          *
          **/
-        bool ReadClaimed(const uint512_t& hashTransaction, const uint32_t nContract, uint64_t& nClaimed,
+        bool ReadClaimed(const uint512_t& hashTx, const uint32_t nContract, uint64_t& nClaimed,
                          const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
@@ -194,32 +197,32 @@ namespace LLD
          *
          *  Determine if a transaction has already been indexed.
          *
-         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] hashTx The txid of transaction to write.
          *
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool HasIndex(const uint512_t& hashTransaction);
+        bool HasIndex(const uint512_t& hashTx);
 
 
         /** IndexBlock
          *
          *  Index a transaction hash to a block in keychain.
          *
-         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] hashTx The txid of transaction to write.
          *  @param[in] hashBlock The block hash to index to.
          *
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool IndexBlock(const uint512_t& hashTransaction, const uint1024_t& hashBlock);
+        bool IndexBlock(const uint512_t& hashTx, const uint1024_t& hashBlock);
 
 
         /** IndexBlock
          *
          *  Index a block height to a block in keychain.
          *
-         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] hashTx The txid of transaction to write.
          *  @param[in] nBlockHeight The block height to index to.
          *
          *  @return True if the transaction was successfully written, false otherwise.
@@ -232,12 +235,12 @@ namespace LLD
          *
          *  Erase a foreign index form the keychain
          *
-         *  @param[in] hashTransaction The txid of the index to erase.
+         *  @param[in] hashTx The txid of the index to erase.
          *
          *  @return True if the index was erased, false otherwise.
          *
          **/
-        bool EraseIndex(const uint512_t& hashTransaction);
+        bool EraseIndex(const uint512_t& hashTx);
 
         /** EraseIndex
          *
@@ -257,13 +260,13 @@ namespace LLD
          *  Fixes a corrupted database with a linear search for the hash tx up
          *  to the chain height.
          *
-         *  @param[in] hashTransaction The txid of transaction to write.
+         *  @param[in] hashTx The txid of transaction to write.
          *  @param[in] state The block state of the block the transaction belongs to.
          *
          *  @return True if the transaction was successfully written, false otherwise.
          *
          **/
-        bool RepairIndex(const uint512_t& hashTransaction, const TAO::Ledger::BlockState &state);
+        bool RepairIndex(const uint512_t& hashTx, const TAO::Ledger::BlockState &state);
 
 
         /** RepairIndexHeight
@@ -287,7 +290,7 @@ namespace LLD
          *  @return True if the read was successful, false otherwise.
          *
          **/
-        bool ReadBlock(const uint512_t& hashTransaction, TAO::Ledger::BlockState& state);
+        bool ReadBlock(const uint512_t& hashTx, TAO::Ledger::BlockState& state);
 
 
         /** ReadBlock
@@ -307,12 +310,12 @@ namespace LLD
          *
          *  Checks LedgerDB if a transaction exists.
          *
-         *  @param[in] hashTransaction The txid of transaction to check.
+         *  @param[in] hashTx The txid of transaction to check.
          *
          *  @return True if the transaction exists, false otherwise.
          *
          **/
-        bool HasTx(const uint512_t& hashTransaction);
+        bool HasTx(const uint512_t& hashTx);
 
 
         /** WriteSequence
@@ -417,7 +420,7 @@ namespace LLD
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast, 
+        bool ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast,
                       const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
@@ -426,14 +429,14 @@ namespace LLD
          *  Writes a proof to disk. Proofs are used to keep track of spent temporal proofs.
          *
          *  @param[in] hashProof The proof that is being spent.
-         *  @param[in] hashTransaction The transaction hash that proof is being spent for.
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
          *  @param[in] nContract The contract that proof is for
          *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE).
          *
          *  @return True if the last was successfully written, false otherwise.
          *
          **/
-        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction,
+        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTx,
                         const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
@@ -442,14 +445,14 @@ namespace LLD
          *  Checks if a proof exists. Proofs are used to keep track of spent temporal proofs.
          *
          *  @param[in] hashProof The proof that is being spent.
-         *  @param[in] hashTransaction The transaction hash that proof is being spent for.
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
          *  @param[in] nContract The contract that proof is for
          *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
          *
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction,
+        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTx,
                       const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
@@ -458,14 +461,14 @@ namespace LLD
          *  Remove a temporal proof from the database.
          *
          *  @param[in] hashProof The proof that is being spent.
-         *  @param[in] hashTransaction The transaction hash that proof is being spent for.
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
          *  @param[in] nContract The contract that proof is for
          *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
          *
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction,
+        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTx,
                         const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
@@ -549,12 +552,12 @@ namespace LLD
          *  Writes a genesis transaction-id to disk.
          *
          *  @param[in] hashGenesis The genesis ID to write for.
-         *  @param[in] hashTransaction The transaction-id to write for.
+         *  @param[in] hashTx The transaction-id to write for.
          *
          *  @return True if the genesis is written, false otherwise.
          *
          **/
-        bool WriteGenesis(const uint256_t& hashGenesis, const uint512_t& hashTransaction);
+        bool WriteGenesis(const uint256_t& hashGenesis, const uint512_t& hashTx);
 
 
         /** ReadGenesis
@@ -562,12 +565,12 @@ namespace LLD
          *  Reads a genesis transaction-id from disk.
          *
          *  @param[in] hashGenesis The genesis ID to read for.
-         *  @param[out] hashTransaction The transaction-id to read for.
+         *  @param[out] hashTx The transaction-id to read for.
          *
          *  @return True if the genesis was read, false otherwise.
          *
          **/
-        bool ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTransaction);
+        bool ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTx);
 
     };
 }

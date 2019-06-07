@@ -23,7 +23,7 @@ namespace TAO
     namespace Operation
     {
 
-        /** Default Constructor. **/
+        /* Default Constructor. */
         Contract::Contract()
         : ssOperation()
         , ssCondition()
@@ -35,7 +35,7 @@ namespace TAO
         }
 
 
-        /** Copy Constructor. **/
+        /* Copy Constructor. */
         Contract::Contract(const Contract& contract)
         : ssOperation(contract.ssOperation)
         , ssCondition(contract.ssCondition)
@@ -47,7 +47,7 @@ namespace TAO
         }
 
 
-        /** Move Constructor. **/
+        /* Move Constructor. */
         Contract::Contract(const Contract&& contract)
         : ssOperation(contract.ssOperation)
         , ssCondition(contract.ssCondition)
@@ -59,7 +59,7 @@ namespace TAO
         }
 
 
-        /** Assignment Operator **/
+        /* Assignment Operator */
         Contract& Contract::operator=(const Contract& contract)
         {
             /* Set the main streams. */
@@ -120,83 +120,141 @@ namespace TAO
 
 
         /* Detect if the stream is empty.*/
-        bool Contract::Empty() const
+        bool Contract::Empty(const uint8_t nFlags) const
         {
-            return (ssOperation.size() == 0);
+            /* Return flag. */
+            bool fRet = false;
+
+            /* Check the operations. */
+            if(nFlags & OPERATIONS)
+                fRet = (fRet || ssOperation.size() == 0);
+
+            /* Check the operations. */
+            if(nFlags & CONDITIONS)
+                fRet = (fRet || ssCondition.size() == 0);
+
+            /* Check the operations. */
+            if(nFlags & REGISTERS)
+                fRet = (fRet || ssRegister.size() == 0);
+
+            return fRet;
         }
 
 
-        /*Reset the internal stream read pointers.*/
-        void Contract::Reset() const
+        /* Reset the internal stream read pointers.*/
+        void Contract::Reset(const uint8_t nFlags) const
         {
-            /* Set the operation stream to beginning. */
-            ssOperation.seek(0, STREAM::BEGIN);
+            /* Check the operations. */
+            if(nFlags & OPERATIONS)
+                ssOperation.seek(0, STREAM::BEGIN);
 
-            /* Set the condition stream to beginning. */
-            ssCondition.seek(0, STREAM::BEGIN);
+            /* Check the operations. */
+            if(nFlags & CONDITIONS)
+                ssCondition.seek(0, STREAM::BEGIN);
 
-            /* Set the register stream to beginning. */
-            ssRegister.seek(0, STREAM::BEGIN);
+            /* Check the operations. */
+            if(nFlags & REGISTERS)
+                ssRegister.seek(0, STREAM::BEGIN);
         }
 
 
         /* Clears all contract data*/
-        void Contract::Clear()
+        void Contract::Clear(const uint8_t nFlags)
         {
-            /* Set the operation stream to beginning. */
-            ssOperation.SetNull();
+            /* Check the operations. */
+            if(nFlags & OPERATIONS)
+                ssOperation.SetNull();
 
-            /* Set the condition stream to beginning. */
-            ssCondition.SetNull();
+            /* Check the operations. */
+            if(nFlags & CONDITIONS)
+                ssCondition.SetNull();
 
-            /* Set the register stream to beginning. */
-            ssRegister.SetNull();
+            /* Check the operations. */
+            if(nFlags & REGISTERS)
+                ssRegister.SetNull();
         }
 
 
-        /*End of the internal stream.*/
-        bool Contract::End(const uint8_t nType) const
+        /* Get's a size from internal stream. */
+        uint64_t Contract::ReadCompactSize(const uint8_t nFlags) const
         {
-            if(nType == 0)
-                return ssOperation.end();
+            /* We don't use masks here, becuase it needs to be exclusive to the stream. */
+            switch(nFlags)
+            {
+                case OPERATIONS:
+                    return ::ReadCompactSize(ssOperation);
 
-            return ssCondition.end();
+                case CONDITIONS:
+                    return ::ReadCompactSize(ssCondition);
+
+                case REGISTERS:
+                    return ::ReadCompactSize(ssRegister);
+            }
+
+            return 0;
         }
 
 
-        /*Get the raw operation bytes from the contract.*/
+        /* End of the internal stream.*/
+        bool Contract::End(const uint8_t nFlags) const
+        {
+            /* Return flag. */
+            bool fRet = false;
+
+            /* Check the operations. */
+            if(nFlags & OPERATIONS)
+                fRet = (fRet || ssOperation.end());
+
+            /* Check the operations. */
+            if(nFlags & CONDITIONS)
+                fRet = (fRet || ssCondition.end());
+
+            /* Check the operations. */
+            if(nFlags & REGISTERS)
+                fRet = (fRet || ssRegister.end());
+
+            return fRet;
+        }
+
+
+        /* Get the raw operation bytes from the contract.*/
         const std::vector<uint8_t>& Contract::Operations() const
         {
             return ssOperation.Bytes();
         }
 
 
-        /* Returns whether this contract contains conditions. */
-        bool Contract::Conditions() const
+        /* Seek the internal operation stream read pointers.*/
+        void Contract::Seek(const uint32_t nPos, const uint8_t nFlags, const uint8_t nType) const
         {
-            return ssCondition.size() != 0;
+            /* Check the operations. */
+            if(nFlags & OPERATIONS)
+                ssOperation.seek(nPos, nType);
+
+            /* Check the operations. */
+            if(nFlags & CONDITIONS)
+                ssCondition.seek(nPos, nType);
+
+            /* Check the operations. */
+            if(nFlags & REGISTERS)
+                ssRegister.seek(nPos, nType);
         }
 
 
-        /*Seek the internal operation stream read pointers.*/
-        void Contract::Seek(const uint32_t nPos) const
+        /* Seek the internal operation stream read pointers.*/
+        void Contract::Rewind(const uint32_t nPos, const uint8_t nFlags) const
         {
-            /* Set the operation stream to beginning. */
-            ssOperation.seek(nPos, STREAM::BEGIN);
+            /* Check the operations. */
+            if(nFlags & OPERATIONS)
+                ssOperation.seek(int32_t(-1 * nPos));
 
-            /* Set the condition stream to beginning. */
-            ssCondition.seek(0, STREAM::BEGIN);
+            /* Check the operations. */
+            if(nFlags & CONDITIONS)
+                ssCondition.seek(int32_t(-1 * nPos));
 
-            /* Set the register stream to beginning. */
-            ssRegister.seek(0, STREAM::BEGIN);
-        }
-
-
-        /*Seek the internal operation stream read pointers.*/
-        void Contract::Rewind(const uint32_t nPos) const
-        {
-            /* Set the operation stream back current position. */
-            ssCondition.seek(int32_t(-1 * nPos));
+            /* Check the operations. */
+            if(nFlags & REGISTERS)
+                ssRegister.seek(int32_t(-1 * nPos));
         }
     }
 }

@@ -212,7 +212,7 @@ public:
      **/
     bool begin() const
     {
-        return nReadPos == 1;
+        return nReadPos == 0;
     }
 
 
