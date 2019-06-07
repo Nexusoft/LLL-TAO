@@ -118,7 +118,7 @@ namespace TAO
                     throw APIException(-24, "Object is not an account");
 
                 nCurrentBalance = object.get<uint64_t>("balance");
-                nDigits = GetTokenOrAccountDigits(object);
+                nDigits = GetDigits(object);
             }
             else
             {

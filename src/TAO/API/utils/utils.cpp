@@ -328,7 +328,7 @@ namespace TAO
         *  in order to get the digits.  The token is obtained by looking at the identifier field,
         *  which contains the register address of the issuing token
         */
-        uint64_t GetTokenOrAccountDigits(const TAO::Register::Object& object)
+        uint64_t GetDigits(const TAO::Register::Object& object)
         {
             /* Declare the nDigits to return */
             uint64_t nDigits = 0;

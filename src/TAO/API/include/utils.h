@@ -55,7 +55,7 @@ namespace TAO
         *
         *  @param[in] hashTransfer The transaction ID of the transfer transaction being claimed
         *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
-        *  
+        *
         *  @return contract The contract to create a name for.
         *
         **/
@@ -88,7 +88,7 @@ namespace TAO
         bool IsRegisterAddress(const std::string& strValueToCheck);
 
 
-        /** GetTokenOrAccountDigits
+        /** GetDigits
         *
         *  Retrieves the number of digits that applies to amounts for this token or account object.
         *  If the object register passed in is a token account then we need to look at the token definition
@@ -100,7 +100,7 @@ namespace TAO
         *  @return the number of digits that apply to amounts for this token or account
         *
         **/
-        uint64_t GetTokenOrAccountDigits(const TAO::Register::Object& object);
+        uint64_t GetDigits(const TAO::Register::Object& object);
 
 
         /** GetTokenNameForAccount
