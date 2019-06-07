@@ -524,5 +524,309 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
 
 
+        //create an asset object register.
+        uint256_t hashAsset = LLC::GetRand256();
+        {
+            Object object;
+            object << std::string("id")              << uint8_t(TYPES::UINT8_T)    << uint8_t(55)
+                   << std::string("description")     << uint8_t(TYPES::STRING)     << std::string("this is a string to test long forms");
+
+           {
+               //create the transaction object
+               TAO::Ledger::Transaction tx;
+               tx.hashGenesis = hashGenesis;
+               tx.nSequence   = 0;
+               tx.nTimestamp  = runtime::timestamp();
+
+               //create object
+               Object token = CreateToken(hashToken, 1000, 100);
+
+               //payload
+               tx[0] << uint8_t(OP::CREATE) << hashAsset << uint8_t(REGISTER::OBJECT) << object.GetState();
+
+               //generate the prestates and poststates
+               REQUIRE(tx.Build());
+
+               //commit to disk
+               REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+           }
+        }
+
+
+        //test DEX exchange between tokens
+        //build a debit by condition
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::TRANSFER) << hashAsset << ~uint256_t(0);
+
+
+            //build condition requirement
+            TAO::Operation::Stream compare;
+            compare << uint8_t(OP::DEBIT) << uint256_t(0) << hashAccount << uint64_t(200);
+
+            //conditions
+            tx[0] <= uint8_t(OP::GROUP);
+            tx[0] <= uint8_t(OP::CALLER::OPERATIONS) <= uint8_t(OP::CONTAINS) <= uint8_t(OP::TYPES::BYTES) <= compare.Bytes();
+            tx[0] <= uint8_t(OP::AND);
+            tx[0] <= uint8_t(OP::CALLER::PRESTATE::VALUE) <= std::string("token");
+            tx[0] <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashToken2;
+            tx[0] <= uint8_t(OP::UNGROUP);
+
+            tx[0] <= uint8_t(OP::OR);
+
+            tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashGenesis;
+
+
+            //get tx hash
+            hashTx = tx.GetHash();
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //write transaction to disk
+            REQUIRE(LLD::Ledger->WriteTx(hashTx, tx));
+
+            //commit to disk
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+        }
+
+
+
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis2;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx[0] << uint8_t(OP::CLAIM) << hashTx << uint32_t(0) << hashAsset;
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //write transaction to disk
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+
+            //commit to disk
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+            //check for error
+            std::string error = debug::GetLastError();
+            REQUIRE(error.find("failed to get l-value") != std::string::npos);
+        }
+
+
+
+        //lets now successfully validate the order
+        hashValidate = 0;
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis2;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //write transaction to disk
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+
+            //set hash
+            hashValidate = tx.GetHash();
+
+            //commit to disk
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+        }
+
+
+        //check that caller is set
+        {
+            uint256_t hashCaller = 0;
+            REQUIRE(LLD::Contract->ReadContract(std::make_pair(hashTx, 0), hashCaller));
+
+            REQUIRE(hashCaller == hashGenesis2);
+        }
+
+
+        //try to double spend back to self
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx[0] << uint8_t(OP::CLAIM) << hashTx << uint32_t(0) << hashAsset;
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //write transaction to disk
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+
+            //commit to disk
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+            //check for error
+            std::string error = debug::GetLastError();
+            printf("%s\n", error.c_str());
+            REQUIRE(error.find("OP::CLAIM: caller is not authorized to claim validation") != std::string::npos);
+        }
+
+
+        //try to validate twice
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis2;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //write transaction to disk
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+
+            //commit to disk
+            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+            //check for error
+            std::string error = debug::GetLastError();
+            REQUIRE(error.find("OP::VALIDATE: cannot validate when already fulfilled") != std::string::npos);
+        }
+
+
+
+        //now let's be honest and claim our rightful exchange
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx[0] << uint8_t(OP::CREDIT) << hashValidate << uint32_t(0) << hashAccount << hashToken2 << uint64_t(200);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //write transaction to disk
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+
+            //commit to disk
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+        }
+
+
+
+        //and now order fulfillment can claim theirs
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis2;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx[0] << uint8_t(OP::CLAIM) << hashTx << uint32_t(0) << hashAsset;
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //write transaction to disk
+            REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+
+            //commit to disk
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+        }
+
+
+
+        //let's check some expected values
+        {
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashToken, object));
+
+            //parse
+            REQUIRE(object.Parse());
+
+            //check balance
+            REQUIRE(object.get<uint64_t>("balance") == 500);
+        }
+
+
+
+        //let's check some expected values
+        {
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashToken2, object));
+
+            //parse
+            REQUIRE(object.Parse());
+
+            //check balance
+            REQUIRE(object.get<uint64_t>("balance") == 600);
+        }
+
+
+
+        //let's check some expected values
+        {
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashAccount2, object));
+
+            //parse
+            REQUIRE(object.Parse());
+
+            //check balance
+            REQUIRE(object.get<uint64_t>("balance") == 500);
+        }
+
+
+
+        //let's check some expected values
+        {
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashAccount, object));
+
+            //parse
+            REQUIRE(object.Parse());
+
+            //check balance
+            REQUIRE(object.get<uint64_t>("balance") == 400);
+        }
+
+
+
+        //let's check some expected values
+        {
+            TAO::Register::Object object;
+            REQUIRE(LLD::Register->ReadState(hashAsset, object));
+
+            //parse
+            REQUIRE(object.Parse());
+
+            //check balance
+            REQUIRE(object.hashOwner == hashGenesis2);
+        }
+
     }
 }

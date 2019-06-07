@@ -34,11 +34,11 @@ namespace TAO
                               const uint256_t& hashAddress, const uint256_t& hashTransfer, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
-            if(nFlags & TAO::Ledger::FLAGS::BLOCK)
+            if((nFlags & TAO::Ledger::FLAGS::BLOCK) && hashTransfer != ~uint256_t(0))
             {
                 /* Write the transfer event. */
                 if(!LLD::Ledger->WriteEvent(hashTransfer, hashTx))
-                    return debug::error(FUNCTION, "failed to write event");
+                    return debug::error(FUNCTION, "failed to write event for ", hashTransfer.SubString());
             }
 
             /* Attempt to write the new state. */

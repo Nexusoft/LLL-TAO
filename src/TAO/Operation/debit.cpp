@@ -34,7 +34,7 @@ namespace TAO
                            const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
-            if(nFlags & TAO::Ledger::FLAGS::BLOCK && hashTo != ~uint256_t(0))
+            if((nFlags & TAO::Ledger::FLAGS::BLOCK) && hashTo != ~uint256_t(0))
             {
                 /* Read the owner of register. */
                 TAO::Register::State state;

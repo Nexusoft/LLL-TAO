@@ -168,7 +168,7 @@ namespace TAO
              *  @param[out] value The value object containing memory locations.
              *
              **/
-            void allocate(const std::vector<uint8_t>& data, Value& value, const uint32_t nOffset = 0);
+            void allocate(const std::vector<uint8_t>& data, Value& value);
 
 
             /** allocate

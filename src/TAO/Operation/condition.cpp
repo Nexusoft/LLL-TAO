@@ -79,6 +79,7 @@ namespace TAO
                 /* Switch by operation code. */
                 switch(OPERATION)
                 {
+
                     /* Handle for the && operator. */
                     case OP::GROUP:
                     {
@@ -241,7 +242,7 @@ namespace TAO
             /* Grab the first value */
             TAO::Register::Value vFirst;
             if(!GetValue(vFirst))
-                return false;
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get l-value"));
 
             /* Grab the next operation. */
             uint8_t OPERATION = 0;
@@ -256,7 +257,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vSecond;
                     if(!GetValue(vSecond))
-                        return false;
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
                     fRet = (compare(vFirst, vSecond) == 0);
@@ -275,7 +276,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vSecond;
                     if(!GetValue(vSecond))
-                        return false;
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
                     fRet = (compare(vFirst, vSecond) < 0);
@@ -294,7 +295,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vSecond;
                     if(!GetValue(vSecond))
-                        return false;
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
                     fRet = (compare(vFirst, vSecond) > 0);
@@ -313,7 +314,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vSecond;
                     if(!GetValue(vSecond))
-                        return false;
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
                     fRet = (compare(vFirst, vSecond) <= 0);
@@ -332,7 +333,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vSecond;
                     if(!GetValue(vSecond))
-                        return false;
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
                     fRet = (compare(vFirst, vSecond) >= 0);
@@ -351,7 +352,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vSecond;
                     if(!GetValue(vSecond))
-                        return false;
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
                     fRet = (compare(vFirst, vSecond) != 0);
@@ -370,7 +371,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vSecond;
                     if(!GetValue(vSecond))
-                        return false;
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
                     fRet = contains(vFirst, vSecond);

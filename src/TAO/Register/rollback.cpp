@@ -175,7 +175,8 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Seek to end. */
-                        contract.Seek(32);
+                        uint256_t hashTransfer = 0;
+                        contract >> hashTransfer;
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -192,6 +193,10 @@ namespace TAO
                         /* Write the register from database. */
                         if(!LLD::Register->WriteState(hashAddress, state))
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to rollback to pre-state");
+
+                        /* Write the event to the ledger database. */
+                        if(hashTransfer != ~uint256_t(0) && !LLD::Ledger->EraseEvent(hashTransfer))
+                            return debug::error(FUNCTION, "OP::TRANSFER: failed to rollback event");
 
                         break;
                     }
@@ -394,7 +399,7 @@ namespace TAO
                             return debug::error(FUNCTION, "failed to read register to");
 
                         /* Write the event to the ledger database. */
-                        if(!LLD::Ledger->EraseEvent(stateTo.hashOwner))
+                        if(hashTo != ~uint256_t(0) && !LLD::Ledger->EraseEvent(stateTo.hashOwner))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to rollback event");
 
                         break;

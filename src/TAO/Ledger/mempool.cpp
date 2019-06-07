@@ -345,6 +345,8 @@ namespace TAO
         {
             RLOCK(MUTEX);
 
+            //TODO: need to check dependant transactions and sequence them properly otherwise this will fail
+
             /* Create map of transactions by genesis. */
             std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
 

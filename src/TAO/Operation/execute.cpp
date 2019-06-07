@@ -389,15 +389,15 @@ namespace TAO
                                 {
                                     /* Check that the caller is the claimant. */
                                     if(hashValidator != contract.Caller())
-                                        return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
+                                        return debug::error(FUNCTION, "OP::CLAIM: caller is not authorized to claim validation");
                                 }
 
                                 /* If no validate fulfilled, try to exeucte conditions. */
                                 else if(!conditions.Execute())
-                                    return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+                                    return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
                             }
                             else if(!conditions.Execute())
-                                return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+                                return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
                         }
 
                         /* Get the state byte. */
