@@ -432,7 +432,7 @@ namespace LLP
         /* Main listener loop. */
         while(!config::fShutdown.load())
         {
-            if (hListenSocket != INVALID_SOCKET)
+            if(hListenSocket != INVALID_SOCKET)
             {
                 /* Poll the sockets. */
                 fds[0].revents = 0;
@@ -455,7 +455,7 @@ namespace LLP
                     struct sockaddr_in sockaddr;
 
                     hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v4);
-                    if (hSocket != INVALID_SOCKET)
+                    if(hSocket != INVALID_SOCKET)
                         addr = BaseAddress(sockaddr);
                 }
                 else
@@ -463,13 +463,13 @@ namespace LLP
                     struct sockaddr_in6 sockaddr;
 
                     hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v6);
-                    if (hSocket != INVALID_SOCKET)
+                    if(hSocket != INVALID_SOCKET)
                         addr = BaseAddress(sockaddr);
                 }
 
-                if (hSocket == INVALID_SOCKET)
+                if(hSocket == INVALID_SOCKET)
                 {
-                    if (WSAGetLastError() != WSAEWOULDBLOCK)
+                    if(WSAGetLastError() != WSAEWOULDBLOCK)
                         debug::error(FUNCTION, "Socket error accept failed: ", WSAGetLastError());
                 }
                 else
@@ -537,9 +537,9 @@ namespace LLP
 
         /* Create socket for listening for incoming connections */
         hListenSocket = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-        if (hListenSocket == INVALID_SOCKET)
+        if(hListenSocket == INVALID_SOCKET)
         {
-            debug::error("Couldn't open socket for incoming connections (socket returned error )", WSAGetLastError());
+            debug::error("Couldn't open socket for incoming connections (socket returned error)", WSAGetLastError());
             return false;
         }
 
@@ -575,13 +575,13 @@ namespace LLP
             sockaddr.sin_family = AF_INET;
             sockaddr.sin_addr.s_addr = INADDR_ANY; // bind to all IPs on this computer
             sockaddr.sin_port = htons(PORT);
-            if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+            if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
                 int32_t nErr = WSAGetLastError();
-                if (nErr == WSAEADDRINUSE)
+                if(nErr == WSAEADDRINUSE)
                     debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer. Address already in use.");
                 else
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer (bind returned error )",  nErr);
+                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer (bind returned error)",  nErr);
 
                 return false;
             }
@@ -595,13 +595,13 @@ namespace LLP
             sockaddr.sin6_family = AF_INET6;
             sockaddr.sin6_addr = IN6ADDR_ANY_INIT; // bind to all IPs on this computer
             sockaddr.sin6_port = htons(PORT);
-            if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+            if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
                 int32_t nErr = WSAGetLastError();
-                if (nErr == WSAEADDRINUSE)
+                if(nErr == WSAEADDRINUSE)
                     debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer. Address already in use.");
                 else
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer (bind returned error )",  nErr);
+                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer (bind returned error)",  nErr);
 
                 return false;
             }
@@ -610,9 +610,9 @@ namespace LLP
         }
 
         /* Listen for incoming connections */
-        if (listen(hListenSocket, 4096) == SOCKET_ERROR)
+        if(listen(hListenSocket, 4096) == SOCKET_ERROR)
         {
-            debug::error("Listening for incoming connections failed (listen returned error )", WSAGetLastError());
+            debug::error("Listening for incoming connections failed (listen returned error)", WSAGetLastError());
             return false;
         }
 

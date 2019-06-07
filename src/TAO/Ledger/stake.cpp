@@ -66,13 +66,13 @@ namespace TAO
         /* Retrieve the minimum number of blocks required between an account's stake transactions.*/
         uint32_t MinStakeInterval()
         {
-            if (config::fTestNet.load())
+            if(config::fTestNet.load())
                 return TAO::Ledger::TESTNET_MINIMUM_INTERVAL;
 
-            else if (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
+            else if(TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
                 return TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
 
-            else if (runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])  //timelock activation for Tritium interval
+            else if(runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])  //timelock activation for Tritium interval
                 return TAO::Ledger::MAINNET_MINIMUM_INTERVAL;
 
             else
@@ -95,7 +95,7 @@ namespace TAO
             uint64_t nBlockAgeMax = MaxBlockAge();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
-            if (nBlockAge <= nBlockAgeMax)
+            if(nBlockAge <= nBlockAgeMax)
             {
                 nTrust = std::min((nTrustPrev + nBlockAge), nTrustMax);
             }
@@ -107,14 +107,14 @@ namespace TAO
                 uint64_t nPenalty = (nBlockAge - nBlockAgeMax) * (uint64_t)3;
 
                 /* Trust back to zero if penalty more than previous score. */
-                if (nPenalty < nTrustPrev)
+                if(nPenalty < nTrustPrev)
                     nTrust = nTrustPrev - nPenalty;
                 else
                     nTrust = 0;
             }
 
             /* Double check that the trust score cannot exceed the maximum */
-            if (nTrust > nTrustMax)
+            if(nTrust > nTrustMax)
                 nTrust = nTrustMax;
 
             return nTrust;
@@ -125,7 +125,7 @@ namespace TAO
         uint64_t GetUnstakePenalty(const uint64_t nTrustPrev, const uint64_t nStakePrev, const uint64_t nStakeNew)
         {
             /* Unstake penalty only applies if stake balance is reduced */
-            if (nStakeNew >= nStakePrev)
+            if(nStakeNew >= nStakePrev)
                 return nTrustPrev;
 
             /* When unstake, new trust score is fraction of old trust score equal to fraction of balance remaining.
@@ -197,7 +197,7 @@ namespace TAO
         double StakeRate(const uint64_t nTrust, const bool isGenesis)
         {
             /* Stake rate fixed at 0.005 (0.5%) when staking Genesis */
-            if (isGenesis)
+            if(isGenesis)
                 return 0.005;
 
             /* Stake rate starts at 0.005 (0.5%) and grows to 0.03 (3%) when trust score reaches maximum */

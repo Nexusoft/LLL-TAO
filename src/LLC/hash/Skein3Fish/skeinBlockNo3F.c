@@ -25,7 +25,7 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx, const u08b_t *blkPtr,
         words[1] = ((tweak[0] >> 32) & 0xffffffffL);
         words[2] = (tweak[1] & 0xffffffffL);
 
-        for (i = 0; i < 3; i++) {
+        for(i = 0; i < 3; i++) {
             carry += words[i];
             words[i] = carry;
             carry >>= 32;
@@ -49,7 +49,7 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx, const u08b_t *blkPtr,
         ctx->X[3] = ctx->X[3] ^ w[3];
 
         tweak[1] &= ~SKEIN_T1_FLAG_FIRST;
-    } while (--blkCnt);
+    } while(--blkCnt);
 
     ctx->h.T[0] = tweak[0];
     ctx->h.T[1] = tweak[1];
@@ -75,7 +75,7 @@ void Skein_512_Process_Block(Skein_512_Ctxt_t *ctx, const u08b_t *blkPtr,
         words[1] = ((tweak[0] >> 32) & 0xffffffffL);
         words[2] = (tweak[1] & 0xffffffffL);
 
-        for (i = 0; i < 3; i++) {
+        for(i = 0; i < 3; i++) {
             carry += words[i];
             words[i] = carry;
             carry >>= 32;
@@ -103,7 +103,7 @@ void Skein_512_Process_Block(Skein_512_Ctxt_t *ctx, const u08b_t *blkPtr,
         ctx->X[7] = ctx->X[7] ^ w[7];
 
         tweak[1] &= ~SKEIN_T1_FLAG_FIRST;
-    } while (--blkCnt);
+    } while(--blkCnt);
 
     ctx->h.T[0] = tweak[0];
     ctx->h.T[1] = tweak[1];
@@ -129,7 +129,7 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx, const u08b_t *blkPtr,
         words[1] = ((tweak[0] >> 32) & 0xffffffffL);
         words[2] = (tweak[1] & 0xffffffffL);
 
-        for (i = 0; i < 3; i++) {
+        for(i = 0; i < 3; i++) {
             carry += words[i];
             words[i] = carry;
             carry >>= 32;
@@ -165,7 +165,7 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx, const u08b_t *blkPtr,
         ctx->X[15] = ctx->X[15] ^ w[15];
 
         tweak[1] &= ~SKEIN_T1_FLAG_FIRST;
-    } while (--blkCnt);
+    } while(--blkCnt);
 
     ctx->h.T[0] = tweak[0];
     ctx->h.T[1] = tweak[1];

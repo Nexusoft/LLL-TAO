@@ -32,10 +32,10 @@ namespace LLP
     std::vector<BaseAddress> DNS_Lookup(const std::vector<std::string> &DNS_Seed)
     {
         std::vector<BaseAddress> vNodes;
-        for (int nSeed = 0; nSeed < DNS_Seed.size(); ++nSeed)
+        for(int nSeed = 0; nSeed < DNS_Seed.size(); ++nSeed)
         {
             debug::log(0, nSeed, " Host: ",  DNS_Seed[nSeed]);
-            if (LookupHost(DNS_Seed[nSeed].c_str(), vNodes))
+            if(LookupHost(DNS_Seed[nSeed].c_str(), vNodes))
             {
                 for(BaseAddress& ip : vNodes)
                 {
@@ -57,7 +57,7 @@ namespace LLP
                              bool fAllowLookup)
     {
         size_t s = strName.size();
-        if (s == 0 || s > 255)
+        if(s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
         vAddr.clear();
@@ -81,9 +81,9 @@ namespace LLP
         struct addrinfo *aiTrav = aiRes;
 
         /* Address info traversal */
-        while (aiTrav != nullptr && (nMaxSolutions == 0 || vAddr.size() < nMaxSolutions))
+        while(aiTrav != nullptr && (nMaxSolutions == 0 || vAddr.size() < nMaxSolutions))
         {
-            if (aiTrav->ai_family == AF_INET)
+            if(aiTrav->ai_family == AF_INET)
             {
                 if(aiTrav->ai_addrlen < sizeof(sockaddr_in))
                 {
@@ -94,7 +94,7 @@ namespace LLP
                 vAddr.push_back(BaseAddress(((struct sockaddr_in*)(aiTrav->ai_addr))->sin_addr));
             }
 
-            if (aiTrav->ai_family == AF_INET6)
+            if(aiTrav->ai_family == AF_INET6)
             {
                 if(aiTrav->ai_addrlen < sizeof(sockaddr_in6))
                 {
@@ -127,7 +127,7 @@ namespace LLP
                     bool fAllowLookup)
     {
         size_t s = strName.size();
-        if (s == 0 || s > 255)
+        if(s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
         return LookupIntern(strName, vAddr, nMaxSolutions, fAllowLookup);
@@ -140,7 +140,7 @@ namespace LLP
                            uint32_t nMaxSolutions)
     {
         size_t s = strName.size();
-        if (s == 0 || s > 255)
+        if(s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
 
@@ -157,7 +157,7 @@ namespace LLP
     {
 
         size_t s = strName.size();
-        if (s == 0 || s > 255)
+        if(s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
 
@@ -165,7 +165,7 @@ namespace LLP
             return false;
 
         /* Set the ports to the default port. */
-        for (uint32_t i = 0; i < vAddr.size(); ++i)
+        for(uint32_t i = 0; i < vAddr.size(); ++i)
             vAddr[i].SetPort(portDefault);
 
         return true;
@@ -179,7 +179,7 @@ namespace LLP
                 bool fAllowLookup)
     {
         size_t s = strName.size();
-        if (s == 0 || s > 255)
+        if(s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
         std::vector<BaseAddress> vAddr;
@@ -198,7 +198,7 @@ namespace LLP
                        uint16_t portDefault)
     {
         size_t s = strName.size();
-        if (s == 0 || s > 255)
+        if(s == 0 || s > 255)
             return debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
 
         return Lookup(strName, addr, portDefault, false);

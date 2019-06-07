@@ -209,11 +209,11 @@ namespace LLD
 
 
     template< typename Iter1, typename Iter2 >
-    int32_t compare( Iter1 begin1, Iter1 end1, Iter2 begin2, Iter2 end2 )
+    int32_t compare( Iter1 begin1, Iter1 end1, Iter2 begin2, Iter2 end2)
     {
-        while( begin1 != end1 && begin2 != end2 )
+        while(begin1 != end1 && begin2 != end2)
         {
-            if( *begin1 != *begin2 )
+            if(*begin1 != *begin2)
             {
                 return *begin1 - *begin2;
             }

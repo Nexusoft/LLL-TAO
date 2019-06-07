@@ -31,7 +31,7 @@
 #include <Legacy/include/evaluate.h>
 
 
-TEST_CASE( "Validation Script Benchmarks", "[operation]" )
+TEST_CASE( "Validation Script Benchmarks", "[operation]")
 {
     using namespace TAO::Operation;
 

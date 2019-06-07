@@ -106,14 +106,14 @@ namespace Legacy
 
         IMPLEMENT_SERIALIZE
         (
-            if (!(nSerType & SER_GETHASH))
+            if(!(nSerType & SER_GETHASH))
                 READWRITE(nSerVersion);
             /* Note: strAccount is serialized as part of the key, not here. */
             READWRITE(nCreditDebit);
             READWRITE(nTime);
             READWRITE(strOtherAccount);
             READWRITE(strComment);
-        )
+      )
     };
 
 }

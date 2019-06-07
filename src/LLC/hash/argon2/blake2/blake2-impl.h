@@ -35,7 +35,7 @@
    Additionally, the code will always be correct---this is only a performance
    tweak.
 */
-#if (defined(__BYTE_ORDER__) &&                                                \
+#if(defined(__BYTE_ORDER__) &&                                                \
      (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)) ||                           \
     defined(__LITTLE_ENDIAN__) || defined(__ARMEL__) || defined(__MIPSEL__) || \
     defined(__AARCH64EL__) || defined(__amd64__) || defined(__i386__) ||       \

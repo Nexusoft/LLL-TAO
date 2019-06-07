@@ -229,7 +229,7 @@ namespace Legacy
         IMPLEMENT_SERIALIZE
         (
             WalletTx* pthis = const_cast<WalletTx*>(this);
-            if (fRead)
+            if(fRead)
             {
                 pthis->fHaveWallet = false;
                 pthis->ptransactionWallet = nullptr;
@@ -237,7 +237,7 @@ namespace Legacy
             }
             bool fSpent = false;
 
-            if (!fRead)
+            if(!fRead)
             {
                 pthis->mapValue["fromaccount"] = pthis->strFromAccount;
 
@@ -245,7 +245,7 @@ namespace Legacy
                 for(bool f : vfSpent)
                 {
                     str += (f ? '1' : '0');
-                    if (f)
+                    if(f)
                         fSpent = true;
                 }
                 pthis->mapValue["spent"] = str;
@@ -261,11 +261,11 @@ namespace Legacy
             READWRITE(fFromMe);
             READWRITE(fSpent);
 
-            if (fRead)
+            if(fRead)
             {
                 pthis->strFromAccount = pthis->mapValue["fromaccount"];
 
-                if (mapValue.count("spent"))
+                if(mapValue.count("spent"))
                     for(char c : pthis->mapValue["spent"])
                         pthis->vfSpent.push_back(c != '0');
                 else
@@ -275,7 +275,7 @@ namespace Legacy
             pthis->mapValue.erase("fromaccount");
             pthis->mapValue.erase("version");
             pthis->mapValue.erase("spent");
-        )
+      )
 
 
         /** BindWallet

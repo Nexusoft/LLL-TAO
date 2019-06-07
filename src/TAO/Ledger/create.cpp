@@ -119,7 +119,7 @@ namespace TAO
             for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
-                if (::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 193 >= MAX_BLOCK_SIZE)
+                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 193 >= MAX_BLOCK_SIZE)
                     break;
 
                 /* Get the transaction from the memory pool. */
@@ -219,7 +219,7 @@ namespace TAO
 
 
                 /* Create the Coinbase Transaction if the Channel specifies. */
-                if (nChannel == 0)
+                if(nChannel == 0)
                 {
                     /* Set the Coinstake timestamp. */
                      block.producer.nTimestamp = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() + 1;
@@ -253,7 +253,7 @@ namespace TAO
                 }
 
                 /* Stake minter must perform Sign after producer completed and also do AddTransactions based on Genesis or Trust. */
-                if (nChannel != 0)
+                if(nChannel != 0)
                 {
                     /* Sign the producer transaction. */
                     block.producer.Sign(user->Generate(block.producer.nSequence, pin));
@@ -437,11 +437,11 @@ namespace TAO
                         LLC::FLKey key;
 
                         /* Set the secret parameter. */
-                        if (!key.SetSecret(vchSecret, true))
+                        if(!key.SetSecret(vchSecret, true))
                             continue;
 
                         /* Generate the signature. */
-                        if (!block.GenerateSignature(key))
+                        if(!block.GenerateSignature(key))
                             continue;
 
                         break;
@@ -454,11 +454,11 @@ namespace TAO
                         LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
 
                         /* Set the secret parameter. */
-                        if (!key.SetSecret(vchSecret, true))
+                        if(!key.SetSecret(vchSecret, true))
                             continue;
 
                         /* Generate the signature. */
-                        if (!block.GenerateSignature(key))
+                        if(!block.GenerateSignature(key))
                             continue;
 
                         break;

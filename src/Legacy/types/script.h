@@ -386,7 +386,7 @@ namespace Legacy
 
         Script& operator<<(opcodetype opcode)
         {
-            if (opcode < 0 || opcode > 0xff)
+            if(opcode < 0 || opcode > 0xff)
                 throw std::runtime_error("Script::operator<<() : invalid opcode");
             insert(end(), (uint8_t)opcode);
             return *this;
@@ -407,16 +407,16 @@ namespace Legacy
 
         Script& operator<<(const std::vector<uint8_t>& b)
         {
-            if (b.size() < OP_PUSHDATA1)
+            if(b.size() < OP_PUSHDATA1)
             {
                 insert(end(), (uint8_t)b.size());
             }
-            else if (b.size() <= 0xff)
+            else if(b.size() <= 0xff)
             {
                 insert(end(), OP_PUSHDATA1);
                 insert(end(), (uint8_t)b.size());
             }
-            else if (b.size() <= 0xffff)
+            else if(b.size() <= 0xffff)
             {
                 insert(end(), OP_PUSHDATA2);
                 uint16_t nSize = static_cast<uint16_t>(b.size());

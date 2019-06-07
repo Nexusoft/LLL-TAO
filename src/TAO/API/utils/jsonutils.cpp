@@ -74,11 +74,11 @@ namespace TAO
             result["mint"]       = Legacy::SatoshisToAmount(block.nMint);
 
             /* Add previous block if not null. */
-            if (block.hashPrevBlock != 0)
+            if(block.hashPrevBlock != 0)
                 result["previousblockhash"] = block.hashPrevBlock.GetHex();
 
             /* Add next hash if not null. */
-            if (block.hashNextBlock != 0)
+            if(block.hashNextBlock != 0)
                 result["nextblockhash"] = block.hashNextBlock.GetHex();
 
             /* Add the transaction data if the caller has requested it*/
@@ -698,7 +698,7 @@ namespace TAO
                             object.Read<uint1024_t>(strFieldName, nUint1024);
                             ret[strFieldName] = nUint1024.GetHex();
                         }
-                        else if(nType == TAO::Register::TYPES::STRING )
+                        else if(nType == TAO::Register::TYPES::STRING)
                         {
                             object.Read<std::string>(strFieldName, strValue);
 

@@ -29,7 +29,7 @@ namespace TAO
         *  Stop Nexus server */
         json::json RPC::Stop(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 0)
+            if(fHelp || params.size() != 0)
                 return std::string("stop - Stop Nexus server.");
             // Shutdown will take long enough that the response should get back
             Shutdown();
@@ -40,7 +40,7 @@ namespace TAO
            Returns the number of connections to other nodes */
         json::json RPC::GetConnectionCount(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 0)
+            if(fHelp || params.size() != 0)
                 return std::string(
                     "getconnectioncount"
                     " - Returns the number of connections to other nodes.");

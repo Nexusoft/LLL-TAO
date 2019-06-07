@@ -330,7 +330,7 @@ namespace TAO
 
                 /* Erase the claimed inputs */
                 uint32_t s = static_cast<uint32_t>(tx.vin.size());
-                for (uint32_t i = 0; i < s; ++i)
+                for(uint32_t i = 0; i < s; ++i)
                     mapInputs.erase(tx.vin[i].prevout);
 
                 mapLegacy.erase(hashTx);

@@ -88,7 +88,7 @@ namespace TAO
 
                 /* Convert token name to a register address if a name has been passed in */
                 /* Edge case to allow identifer NXS or 0 to be specified for NXS token */
-                if( strTokenIdentifier == "NXS" || strTokenIdentifier == "0")
+                if(strTokenIdentifier == "NXS" || strTokenIdentifier == "0")
                     hashIdentifier = uint256_t(0);
                 else if(IsRegisterAddress(strTokenIdentifier))
                     hashIdentifier = uint256_t(strTokenIdentifier);

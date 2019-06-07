@@ -190,7 +190,7 @@ namespace Legacy
         {
             LOCK(cs_db);
 
-            if (pdb == nullptr)
+            if(pdb == nullptr)
                 OpenHandle();
 
             /* Key */
@@ -209,7 +209,7 @@ namespace Legacy
             /*  Clear the key memory */
             memset(datKey.get_data(), 0, datKey.get_size());
 
-            if (datValue.get_data() == nullptr)
+            if(datValue.get_data() == nullptr)
                 return false; // Key not found or no value present, can safely return without free() because there is nothing to free
 
             /* Unserialize value */
@@ -257,7 +257,7 @@ namespace Legacy
         {
             LOCK(cs_db);
 
-            if (pdb == nullptr)
+            if(pdb == nullptr)
                 OpenHandle();
 
             /* Key */
@@ -299,7 +299,7 @@ namespace Legacy
         {
             LOCK(cs_db);
 
-            if (pdb == nullptr)
+            if(pdb == nullptr)
                 OpenHandle();
 
             /* Key */
@@ -332,7 +332,7 @@ namespace Legacy
         {
             LOCK(cs_db);
 
-            if (pdb == nullptr)
+            if(pdb == nullptr)
                 OpenHandle();
 
             /* Key */

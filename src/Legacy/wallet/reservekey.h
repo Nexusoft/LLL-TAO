@@ -83,7 +83,7 @@ namespace Legacy
          **/
         ~ReserveKey()
         {
-            if (!config::fShutdown.load())
+            if(!config::fShutdown.load())
                 ReturnKey();
         }
 

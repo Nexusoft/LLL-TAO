@@ -79,7 +79,7 @@ namespace LLP
             /* Mining server should never make outgoing connections. */
             false
 
-        );
+      );
     }
 
 
@@ -152,7 +152,7 @@ namespace LLP
             /* Flag to determine if the connection manager should try new connections. */
             config::GetBoolArg(std::string("-manager"), true)
 
-        );
+      );
     }
 
 

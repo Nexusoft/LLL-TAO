@@ -122,7 +122,7 @@ namespace TAO
                 {
                     READWRITE(vchSig);
                 }
-            )
+          )
 
 
             /** Default Constructor. **/

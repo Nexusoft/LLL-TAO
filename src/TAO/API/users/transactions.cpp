@@ -68,11 +68,11 @@ namespace TAO
                 strVerbose = params["verbose"].get<std::string>();
 
             uint32_t nVerbose = 1;
-            if( strVerbose == "default")
+            if(strVerbose == "default")
                 nVerbose = 1;
-            else if( strVerbose == "summary")
+            else if(strVerbose == "summary")
                 nVerbose = 2;
-            else if( strVerbose == "detail")
+            else if(strVerbose == "detail")
                 nVerbose = 3;
 
             /* Get the last transaction. */

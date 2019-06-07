@@ -27,10 +27,10 @@ set device = "eth0"
 # EID values will be passed to provision-lisp.py to provision the lisp.config
 # file with the supplied EIDs. Otherwise, random values will be created.
 #
-if ($?EID4 == 0) then
+if($?EID4 == 0) then
     set EID4 = ""
 endif
-if ($?EID6 == 0) then
+if($?EID6 == 0) then
     set EID6 = ""
 endif
 

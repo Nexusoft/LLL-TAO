@@ -175,7 +175,7 @@ namespace TAO
                     std::vector<uint8_t> vchBytes;
 
                     /* Convert the value to bytes if the type is bytes */
-                    if(strType == "bytes" )
+                    if(strType == "bytes")
                         vchBytes = encoding::DecodeBase64(strValue.c_str(), &fBytesInvalid) ;
 
                     /* Declare the max length variable */
@@ -189,18 +189,18 @@ namespace TAO
                         /* If this is a mutable string or byte fields then set the length.
                         This can either be set by the caller in a  maxlength field or we will default it
                         based on the field data type.` */
-                        if( fMutable)
+                        if(fMutable)
                         {
                             /* Determine the length of the data passed in */
                             std::size_t nDataLength = strType == "string" ? strValue.length() : vchBytes.size();
 
                             /* If the caller specifies a maxlength then use this to set the size of the string or bytes array */
-                            if( it->find("maxlength") != it->end() )
+                            if(it->find("maxlength") != it->end())
                             {
                                 nMaxLength = stoul((*it)["maxlength"].get<std::string>());
 
                                 /* If they specify a value less than the data length then error */
-                                if( nMaxLength < nDataLength )
+                                if(nMaxLength < nDataLength)
                                     throw APIException(-25, "maxlength value is less than the specified data length.");
                             }
                             else
@@ -254,7 +254,7 @@ namespace TAO
                     }
                     else if(strType == "bytes")
                     {
-                        if (fBytesInvalid)
+                        if(fBytesInvalid)
                             throw APIException(-5, "Malformed base64 encoding");
 
                         /* Ensure that the serialized value is padded out to the max length */

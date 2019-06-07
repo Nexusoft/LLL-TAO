@@ -58,7 +58,7 @@ namespace TAO
             for(auto& session : mapSessions)
             {
                 /* Check that is hasn't already been destroyed before freeing it*/
-                if( !session.second.IsNull())
+                if(!session.second.IsNull())
                     session.second.free();
             }
 
@@ -207,7 +207,7 @@ namespace TAO
 
             if(!mapSessions.count(nSessionToUse))
             {
-                if( config::fMultiuser.load())
+                if(config::fMultiuser.load())
                     throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
                 else
                     throw APIException(-1, "User not logged in");
@@ -227,7 +227,7 @@ namespace TAO
 
             if(!mapSessions.count(nSessionToUse))
             {
-                if( fThrow )
+                if(fThrow)
                 {
                     if(config::fMultiuser.load())
                         throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
@@ -251,7 +251,7 @@ namespace TAO
             /* default to session 0 unless using multiuser mode */
             uint64_t nSession = 0;
             
-            if( config::fMultiuser.load() && params.find("session") != params.end() ) 
+            if(config::fMultiuser.load() && params.find("session") != params.end()) 
                 nSession = std::stoull(params["session"].get<std::string>());
 
             return GetGenesis(nSession, false);

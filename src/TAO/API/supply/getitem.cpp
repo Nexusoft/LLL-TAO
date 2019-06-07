@@ -77,9 +77,9 @@ namespace TAO
                 std::string strFieldname =  params["fieldname"].get<std::string>();
 
                 /* Iterate through the response keys */
-                for (auto it = ret.begin(); it != ret.end(); ++it)
+                for(auto it = ret.begin(); it != ret.end(); ++it)
                     /* If this key is not the one that was requested then erase it */
-                    if( it.key() != strFieldname)
+                    if(it.key() != strFieldname)
                         ret.erase(it);
             }
 

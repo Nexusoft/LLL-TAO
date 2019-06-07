@@ -55,7 +55,7 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
 #endif
 
 #if SKEIN_UNROLL_256
-#if (RCNT % SKEIN_UNROLL_256)
+#if(RCNT % SKEIN_UNROLL_256)
 #error "Invalid SKEIN_UNROLL_256"               /* sanity check on unroll count */
 #endif
     size_t  r;
@@ -129,7 +129,7 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
     ts[r + (R)+2    ]   = ts[r+(R)-1];                              \
     Skein_Show_R_Ptr(BLK_BITS,&ctx->h,SKEIN_RND_KEY_INJECT,Xptr);
 
-    for (r=1;r < 2*RCNT;r+=2*SKEIN_UNROLL_256)  /* loop thru it */
+    for(r=1;r < 2*RCNT;r+=2*SKEIN_UNROLL_256)  /* loop thru it */
 #endif
         {
 #define R256_8_rounds(R)                  \
@@ -204,7 +204,7 @@ void Skein_256_Process_Block(Skein_256_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
 
         ts[1] &= ~SKEIN_T1_FLAG_FIRST;
         }
-    while (--blkCnt);
+    while(--blkCnt);
     ctx->h.T[0] = ts[0];
     ctx->h.T[1] = ts[1];
     }
@@ -240,7 +240,7 @@ void Skein_512_Process_Block(Skein_512_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
 #endif
 
 #if SKEIN_UNROLL_512
-#if (RCNT % SKEIN_UNROLL_512)
+#if(RCNT % SKEIN_UNROLL_512)
 #error "Invalid SKEIN_UNROLL_512"               /* sanity check on unroll count */
 #endif
     size_t  r;
@@ -333,7 +333,7 @@ void Skein_512_Process_Block(Skein_512_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
     ts[r +       (R)+2] = ts[r+(R)-1];                              \
     Skein_Show_R_Ptr(BLK_BITS,&ctx->h,SKEIN_RND_KEY_INJECT,Xptr);
 
-    for (r=1;r < 2*RCNT;r+=2*SKEIN_UNROLL_512)   /* loop thru it */
+    for(r=1;r < 2*RCNT;r+=2*SKEIN_UNROLL_512)   /* loop thru it */
 #endif                         /* end of looped code definitions */
         {
 #define R512_8_rounds(R)  /* do 8 full rounds */  \
@@ -412,7 +412,7 @@ void Skein_512_Process_Block(Skein_512_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
 
         ts[1] &= ~SKEIN_T1_FLAG_FIRST;
         }
-    while (--blkCnt);
+    while(--blkCnt);
     ctx->h.T[0] = ts[0];
     ctx->h.T[1] = ts[1];
     }
@@ -447,8 +447,8 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
 #define SKEIN_UNROLL_1024 (0)
 #endif
 
-#if (SKEIN_UNROLL_1024 != 0)
-#if (RCNT % SKEIN_UNROLL_1024)
+#if(SKEIN_UNROLL_1024 != 0)
+#if(RCNT % SKEIN_UNROLL_1024)
 #error "Invalid SKEIN_UNROLL_1024"              /* sanity check on unroll count */
 #endif
     size_t  r;
@@ -581,7 +581,7 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
     ts[r  +       (R)+ 2] = ts[r+(R)-1];                              \
     Skein_Show_R_Ptr(BLK_BITS,&ctx->h,SKEIN_RND_KEY_INJECT,Xptr);
 
-    for (r=1;r <= 2*RCNT;r+=2*SKEIN_UNROLL_1024)    /* loop thru it */
+    for(r=1;r <= 2*RCNT;r+=2*SKEIN_UNROLL_1024)    /* loop thru it */
 #endif
         {
 #define R1024_8_rounds(R)    /* do 8 full rounds */                               \
@@ -670,7 +670,7 @@ void Skein1024_Process_Block(Skein1024_Ctxt_t *ctx,const u08b_t *blkPtr,size_t b
         ts[1] &= ~SKEIN_T1_FLAG_FIRST;
         blkPtr += SKEIN1024_BLOCK_BYTES;
         }
-    while (--blkCnt);
+    while(--blkCnt);
     ctx->h.T[0] = ts[0];
     ctx->h.T[1] = ts[1];
     }

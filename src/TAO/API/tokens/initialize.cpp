@@ -66,7 +66,7 @@ namespace TAO
                     {
                         /* Passing in the fieldname is only supported for the /get/ method so if the user has 
                            requested a different method then just return the requested URL, which will in turn error */
-                        if( strMethodRewritten != "get")
+                        if(strMethodRewritten != "get")
                             return strMethod;
 
                         std::string strFieldName = strNameOrAddress.substr(nPos +1);
@@ -109,7 +109,7 @@ namespace TAO
                     {
                         /* Passing in the fieldname is only supported for the /get/ method so if the user has 
                            requested a different method then just return the requested URL, which will in turn error */
-                        if( strMethodRewritten != "get")
+                        if(strMethodRewritten != "get")
                             return strMethod;
 
                         std::string strFieldName = strNameOrAddress.substr(nPos +1);

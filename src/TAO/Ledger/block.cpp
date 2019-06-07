@@ -194,9 +194,9 @@ namespace TAO
             uint32_t j = 0;
             uint32_t nSize = static_cast<uint32_t>(vMerkleTree.size());
 
-            for (; nSize > 1; nSize = (nSize + 1) >> 1)
+            for(; nSize > 1; nSize = (nSize + 1) >> 1)
             {
-                for (i = 0; i < nSize; i += 2)
+                for(i = 0; i < nSize; i += 2)
                 {
                     /* get the references to the left and right leaves in the merkle tree */
                     uint512_t &left_tx = vMerkleTree[j+i];
@@ -246,7 +246,7 @@ namespace TAO
 
                 /* Check proof of work limits. */
                 uint32_t nPrimeBits = GetPrimeBits(GetPrime());
-                if (nPrimeBits < bnProofOfWorkLimit[1])
+                if(nPrimeBits < bnProofOfWorkLimit[1])
                     return debug::error(FUNCTION, "prime-cluster below minimum work" "(", nPrimeBits, ")");
 
                 /* Check the prime difficulty target. */
@@ -263,12 +263,12 @@ namespace TAO
                 bnTarget.SetCompact(nBits);
 
                 /* Check that the hash is within range. */
-                if (bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
+                if(bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[2])
                     return debug::error(FUNCTION, "proof-of-work hash not in range");
 
 
                 /* Check that the that enough work was done on this block. */
-                if (ProofHash() > bnTarget.getuint1024())
+                if(ProofHash() > bnTarget.getuint1024())
                     return debug::error(FUNCTION, "proof-of-work hash below target");
 
                 return true;
@@ -292,7 +292,7 @@ namespace TAO
         /* Check that the block signature is a valid signature. */
         bool Block::VerifySignature(const LLC::FLKey& key) const
         {
-            if (vchBlockSig.empty())
+            if(vchBlockSig.empty())
                 return false;
 
             return key.Verify(GetHash().GetBytes(), vchBlockSig);
@@ -308,7 +308,7 @@ namespace TAO
         /* Check that the block signature is a valid signature. */
         bool Block::VerifySignature(const LLC::ECKey& key) const
         {
-            if (vchBlockSig.empty())
+            if(vchBlockSig.empty())
                 return false;
 
             return key.Verify((nVersion == 4) ? SignatureHash() : GetHash(), vchBlockSig, 1024);

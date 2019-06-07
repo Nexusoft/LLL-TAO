@@ -29,12 +29,12 @@ namespace LLP
         WSADATA wsaData;
         int32_t ret = WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-        if (ret != NO_ERROR)
+        if(ret != NO_ERROR)
         {
             debug::error(FUNCTION, "TCP/IP socket library failed to start (WSAStartup returned error ", ret, ") ");
             return false;
         }
-        else if ( LOBYTE( wsaData.wVersion ) != 2 || HIBYTE( wsaData.wVersion ) != 2 )
+        else if(LOBYTE( wsaData.wVersion) != 2 || HIBYTE( wsaData.wVersion) != 2)
         {
             /* Winsock version incorrect */
             debug::error(FUNCTION, "Windows sockets does not support requested version 2.2");
@@ -76,7 +76,7 @@ namespace LLP
         /* Clean up Windows Sockets */
         int32_t ret = WSACleanup();
 
-        if (ret != NO_ERROR)
+        if(ret != NO_ERROR)
         {
             debug::error("Windows socket cleanup failed (WSACleanup returned error ", ret, ") ");
             return false;

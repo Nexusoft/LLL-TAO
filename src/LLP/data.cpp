@@ -207,7 +207,7 @@ namespace LLP
             /* We should have connections, as predicate of releasing condition wait.
              * This is a precaution, checking after getting MUTEX lock
              */
-            if (nConnections.load() == 0)
+            if(nConnections.load() == 0)
                 continue;
 
             /* Check the pollfd's size. */

@@ -46,9 +46,9 @@ namespace encoding
         str.reserve((pend - pbegin) * 138 / 100 + 1);
         LLC::CBigNum dv;
         LLC::CBigNum rem;
-        while (bn > bn0)
+        while(bn > bn0)
         {
-            if (!BN_div(dv.getBN(), rem.getBN(), bn.getBN(), bn58.getBN(), pctx))
+            if(!BN_div(dv.getBN(), rem.getBN(), bn.getBN(), bn58.getBN(), pctx))
                 throw LLC::bignum_error("EncodeBase58 : BN_div failed");
             bn = dv;
             unsigned int c = rem.getuint32();
@@ -56,7 +56,7 @@ namespace encoding
         }
 
         // Leading zeroes encoded as base58 zeros
-        for (const unsigned char* p = pbegin; p < pend && *p == 0; p++)
+        for(const unsigned char* p = pbegin; p < pend && *p == 0; p++)
             str += pszBase58[0];
 
         // Convert little endian std::string to big endian
@@ -80,23 +80,23 @@ namespace encoding
         LLC::CBigNum bn58 = 58;
         LLC::CBigNum bn = 0;
         LLC::CBigNum bnChar;
-        while (isspace(*psz))
+        while(isspace(*psz))
             psz++;
 
         // Convert big endian string to bignum
-        for (const char* p = psz; *p; p++)
+        for(const char* p = psz; *p; p++)
         {
             const char* p1 = strchr(pszBase58, *p);
-            if (p1 == nullptr)
+            if(p1 == nullptr)
             {
-                while (isspace(*p))
+                while(isspace(*p))
                     p++;
-                if (*p != '\0')
+                if(*p != '\0')
                     return false;
                 break;
             }
             bnChar.setuint32(p1 - pszBase58);
-            if (!BN_mul(bn.getBN(), bn.getBN(), bn58.getBN(), pctx))
+            if(!BN_mul(bn.getBN(), bn.getBN(), bn58.getBN(), pctx))
                 throw LLC::bignum_error("DecodeBase58 : BN_mul failed");
             bn += bnChar;
         }
@@ -105,12 +105,12 @@ namespace encoding
         std::vector<unsigned char> vchTmp = bn.getvch();
 
         // Trim off sign byte if present
-        if (vchTmp.size() >= 2 && vchTmp.end()[-1] == 0 && vchTmp.end()[-2] >= 0x80)
+        if(vchTmp.size() >= 2 && vchTmp.end()[-1] == 0 && vchTmp.end()[-2] >= 0x80)
             vchTmp.erase(vchTmp.end()-1);
 
         // Restore leading zeros
         int nLeadingZeros = 0;
-        for (const char* p = psz; *p == pszBase58[0]; p++)
+        for(const char* p = psz; *p == pszBase58[0]; p++)
             nLeadingZeros++;
         vchRet.assign(nLeadingZeros + vchTmp.size(), 0);
 
@@ -141,16 +141,16 @@ namespace encoding
     /* Decode into base58 inlucding a checksum */
     bool DecodeBase58Check(const char* psz, std::vector<uint8_t>& vchRet)
     {
-        if (!DecodeBase58(psz, vchRet))
+        if(!DecodeBase58(psz, vchRet))
             return false;
-        if (vchRet.size() < 4)
+        if(vchRet.size() < 4)
         {
             vchRet.clear();
             return false;
         }
         uint256_t hash = LLC::SK256(vchRet.begin(), vchRet.end()-4);
-        //if (memcmp(&hash, &vchRet.end()[-4], 4) != 0)
-        if (memory::compare((uint8_t *)&hash, (uint8_t *)&vchRet.end()[-4], 4) != 0)
+        //if(memcmp(&hash, &vchRet.end()[-4], 4) != 0)
+        if(memory::compare((uint8_t *)&hash, (uint8_t *)&vchRet.end()[-4], 4) != 0)
         {
             vchRet.clear();
             return false;
@@ -177,7 +177,7 @@ namespace encoding
     CBase58Data::~CBase58Data()
     {
         // zero the memory, as it may contain sensitive data
-        if (!vchData.empty())
+        if(!vchData.empty())
             memset(&vchData[0], 0, vchData.size());
     }
 
@@ -187,7 +187,7 @@ namespace encoding
     {
         nVersion = nVersionIn;
         vchData.resize(nSize);
-        if (!vchData.empty())
+        if(!vchData.empty())
             //memcpy(&vchData[0], pdata, nSize);
             std::copy((uint8_t *)pdata, (uint8_t *)pdata + nSize, &vchData[0]);
     }
@@ -205,7 +205,7 @@ namespace encoding
     {
         std::vector<uint8_t> vchTemp;
         DecodeBase58Check(psz, vchTemp);
-        if (vchTemp.empty())
+        if(vchTemp.empty())
         {
             vchData.clear();
             nVersion = 0;
@@ -213,7 +213,7 @@ namespace encoding
         }
         nVersion = vchTemp[0];
         vchData.resize(vchTemp.size() - 1);
-        if (!vchData.empty())
+        if(!vchData.empty())
             //memcpy(&vchData[0], &vchTemp[1], vchData.size());
             std::copy(&vchTemp[1], &vchTemp[1] + vchData.size(), &vchData[0]);
         memset(&vchTemp[0], 0, vchTemp.size());
@@ -240,10 +240,10 @@ namespace encoding
     /* Compare two Base58 objects */
     int CBase58Data::CompareTo(const CBase58Data& b58) const
     {
-        if (nVersion < b58.nVersion) return -1;
-        if (nVersion > b58.nVersion) return  1;
-        if (vchData < b58.vchData)   return -1;
-        if (vchData > b58.vchData)   return  1;
+        if(nVersion < b58.nVersion) return -1;
+        if(nVersion > b58.nVersion) return  1;
+        if(vchData < b58.vchData)   return -1;
+        if(vchData > b58.vchData)   return  1;
         return 0;
     }
 

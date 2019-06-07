@@ -13,7 +13,7 @@
 
 
 
-TEST_CASE( "Register Primitive Tests", "[operation]" )
+TEST_CASE( "Register Primitive Tests", "[operation]")
 {
     using namespace TAO::Register;
     using namespace TAO::Operation;

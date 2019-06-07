@@ -47,7 +47,7 @@ namespace Legacy
     /* Retrieve how old the Trust Key is at a given point in time. */
     uint64_t TrustKey::Age(const uint64_t nTime) const
     {
-        if (nTime < nGenesisTime)
+        if(nTime < nGenesisTime)
             return 0;
 
         return (uint64_t)(nTime - nGenesisTime);
@@ -70,7 +70,7 @@ namespace Legacy
     /* Determine if a key is expired at a given point in time. */
     bool TrustKey::Expired(const TAO::Ledger::BlockState& state) const
     {
-        if (BlockAge(state) > (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+        if(BlockAge(state) > (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
             return true;
 
         return false;
@@ -181,7 +181,7 @@ namespace Legacy
             "tx=", hashGenesisTx.ToString(), ", ",
             "time=", nGenesisTime, ", ",
             "age=", Age(runtime::unifiedtimestamp()), ", "
-        );
+      );
     }
 
 
@@ -190,7 +190,7 @@ namespace Legacy
     {
         debug::log(0,
             "TrustKey(", ToString(), ")"
-        );
+      );
     }
 
 }

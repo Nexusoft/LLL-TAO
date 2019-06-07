@@ -70,7 +70,7 @@ namespace LLC
 
         // This can take up to 2 seconds, so only do it every 10 minutes
         static int64_t nLastPerfmon;
-        if (runtime::timestamp() < nLastPerfmon + 10 * 60)
+        if(runtime::timestamp() < nLastPerfmon + 10 * 60)
             return;
         nLastPerfmon = runtime::timestamp();
 
@@ -82,7 +82,7 @@ namespace LLC
         unsigned long nSize = sizeof(pdata);
         long ret = RegQueryValueExA(HKEY_PERFORMANCE_DATA, "Global", nullptr, nullptr, pdata, &nSize);
         RegCloseKey(HKEY_PERFORMANCE_DATA);
-        if (ret == ERROR_SUCCESS)
+        if(ret == ERROR_SUCCESS)
         {
             RAND_add(pdata, nSize, nSize/100.0);
             memset(pdata, 0, nSize);
@@ -93,7 +93,7 @@ namespace LLC
 
     uint64_t GetRand(uint64_t nMax)
     {
-        if (nMax == 0)
+        if(nMax == 0)
             return 0;
 
         // The range of the random source must be a multiple of the modulus
@@ -104,7 +104,7 @@ namespace LLC
         {
             RAND_bytes((uint8_t*)&nRand, sizeof(nRand));
         }
-        while (nRand >= nRange);
+        while(nRand >= nRange);
 
         return (nRand % nMax);
     }

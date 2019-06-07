@@ -111,7 +111,7 @@ namespace LLP
 
         /* Make sure there is a string to lookup. */
         size_t s = strIp.size();
-        if (s == 0 || s > 255)
+        if(s == 0 || s > 255)
         {
             debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
             return;
@@ -119,7 +119,7 @@ namespace LLP
 
         if(fAllowLookup)
         {
-            if (Lookup(strIp, *this, portDefault, true))
+            if(Lookup(strIp, *this, portDefault, true))
                 debug::log(3, FUNCTION, strIp, " resolved to ", ToStringIP());
             else
                 debug::log(3, FUNCTION, strIp, " bad lookup");
@@ -265,11 +265,11 @@ namespace LLP
     bool BaseAddress::IsLocal() const
     {
         // IPv4 loopback
-        if (IsIPv4() && (GetByte(3) == 127 || GetByte(3) == 0))
+        if(IsIPv4() && (GetByte(3) == 127 || GetByte(3) == 0))
             return true;
 
         // IPv6 loopback (::1/128)
-        if (memory::compare(ip, pchLocal, 16) == 0)
+        if(memory::compare(ip, pchLocal, 16) == 0)
             return true;
 
         return false;
@@ -297,30 +297,30 @@ namespace LLP
         // header20 vectorlen3 addr26 addr26 addr26 header20 vectorlen3 addr26 addr26 addr26...
         // so if the first length field is garbled, it reads the second batch
         // of addr misaligned by 3 bytes.
-        //if (memcmp(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
-        if (memory::compare(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
+        //if(memcmp(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
+        if(memory::compare(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
             return false;
 
         // unspecified IPv6 address (::/128)
         uint8_t ipNone[16] = {};
-        if (memory::compare(ip, ipNone, 16) == 0)
+        if(memory::compare(ip, ipNone, 16) == 0)
             return false;
 
         // documentation IPv6 address
-        if (IsRFC3849())
+        if(IsRFC3849())
             return false;
 
-        if (IsIPv4())
+        if(IsIPv4())
         {
             // INADDR_NONE
             uint32_t ip_none = INADDR_NONE;
 
-            if (memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
+            if(memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
                 return false;
 
             ip_none = 0;
 
-            if (memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
+            if(memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
                 return false;
         }
 
@@ -348,10 +348,10 @@ namespace LLP
     {
         /* inet_ntop on mingw64 is void* (non-const), so compile fails if pass ip within const method. Make a non-const copy we can use */
         uint8_t ipCopy[16];
-        for (int i=0; i<16; ++i)
+        for(int i=0; i<16; ++i)
             ipCopy[i] = ip[i];
 
-        if (IsIPv4())
+        if(IsIPv4())
         {
             char dst[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, ipCopy + 12, dst, INET_ADDRSTRLEN);
@@ -403,33 +403,33 @@ namespace LLP
         int32_t nBits = 16;
 
         // all local addresses belong to the same group
-        if (IsLocal())
+        if(IsLocal())
         {
             nClass = 254;
             nBits = 0;
         }
 
         // all unroutable addresses belong to the same group
-        if (!IsRoutable())
+        if(!IsRoutable())
         {
             nClass = 255;
             nBits = 0;
         }
         // for IPv4 addresses, '1' + the 16 higher-order bits of the IP
         // includes mapped IPv4, SIIT translated IPv4, and the well-known prefix
-        else if (IsIPv4() || IsRFC6145() || IsRFC6052())
+        else if(IsIPv4() || IsRFC6145() || IsRFC6052())
         {
             nClass = 1;
             nStartByte = 12;
         }
         // for 6to4 tunneled addresses, use the encapsulated IPv4 address
-        else if (IsRFC3964())
+        else if(IsRFC3964())
         {
             nClass = 1;
             nStartByte = 2;
         }
         // for Teredo-tunneled IPv6 addresses, use the encapsulated IPv4 address
-        else if (IsRFC4380())
+        else if(IsRFC4380())
         {
             vchRet.push_back(1);
             vchRet.push_back(GetByte(3) ^ 0xFF);
@@ -437,20 +437,20 @@ namespace LLP
             return vchRet;
         }
         // for he.net, use /36 groups
-        else if (GetByte(15) == 0x20 && GetByte(14) == 0x11 && GetByte(13) == 0x04 && GetByte(12) == 0x70)
+        else if(GetByte(15) == 0x20 && GetByte(14) == 0x11 && GetByte(13) == 0x04 && GetByte(12) == 0x70)
             nBits = 36;
         // for the rest of the IPv6 network, use /32 groups
         else
             nBits = 32;
 
         vchRet.push_back(static_cast<uint8_t>(nClass));
-        while (nBits >= 8)
+        while(nBits >= 8)
         {
             vchRet.push_back(GetByte(static_cast<uint8_t>(15 - nStartByte)));
             ++nStartByte;
             nBits -= 8;
         }
-        if (nBits > 0)
+        if(nBits > 0)
         {
             uint8_t b = GetByte(static_cast<uint8_t>(15 - nStartByte));
             uint32_t c = static_cast<uint32_t>(b) | ((1 << nBits) - 1);
@@ -465,7 +465,7 @@ namespace LLP
     /* Gets an IPv4 address struct. */
     bool BaseAddress::GetInAddr(struct in_addr* pipv4Addr) const
     {
-        if (!IsIPv4())
+        if(!IsIPv4())
             return false;
 
         std::copy((uint8_t*)&ip[0] + 12, (uint8_t*)&ip[0] + 16, (uint8_t*)pipv4Addr);
@@ -484,14 +484,14 @@ namespace LLP
     /* Gets an IPv4 socket address struct. */
     bool BaseAddress::GetSockAddr(struct sockaddr_in* paddr) const
     {
-        if (!IsIPv4() || !paddr)
+        if(!IsIPv4() || !paddr)
             return false;
 
         paddr->sin_family = 0;
         paddr->sin_port = 0;
         paddr->sin_addr.s_addr = 0;
 
-        if (!GetInAddr(&paddr->sin_addr))
+        if(!GetInAddr(&paddr->sin_addr))
             return false;
 
         paddr->sin_family = AF_INET;
@@ -516,7 +516,7 @@ namespace LLP
 
         paddr->sin6_scope_id = 0;
 
-        if (!GetIn6Addr(&paddr->sin6_addr))
+        if(!GetIn6Addr(&paddr->sin6_addr))
             return false;
 
         paddr->sin6_family = AF_INET6;

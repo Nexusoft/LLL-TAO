@@ -34,7 +34,7 @@ namespace Legacy
     {
         assert(vchSecret.size() == 72);
         SetData(128 + (config::fTestNet.load() ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS), &vchSecret[0], vchSecret.size());
-        if (fCompressed)
+        if(fCompressed)
             vchData.push_back(1);
     }
 

@@ -359,7 +359,7 @@ namespace LLP
             READWRITE(portN);
             if(fRead)
                 pthis->nPort = ntohs(portN);
-        )
+      )
     };
 
     /* Proxy Settings for Nexus Core. */

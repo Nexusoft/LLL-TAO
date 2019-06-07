@@ -70,7 +70,7 @@ cleanse(void *data, size_t len)
 	volatile unsigned char *p;
 
 	p = (volatile unsigned char *)data;
-	while (len -- > 0) {
+	while(len -- > 0) {
 		*p ++ = 0;
 	}
 }
@@ -108,7 +108,7 @@ mod2_res_ternary(const int16_t *f, unsigned logn)
 	 */
 	n = MKN(logn, 1);
 	memset(b, 0, sizeof b);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		uint32_t bit;
 
 		bit = (uint32_t)f[u] & 1;
@@ -1503,8 +1503,8 @@ modp_Rx(unsigned x, uint32_t p, uint32_t p0i, uint32_t R2)
 	x --;
 	r = R2;
 	z = modp_R(p);
-	for (i = 0; (1U << i) <= x; i ++) {
-		if ((x & (1U << i)) != 0) {
+	for(i = 0; (1U << i) <= x; i ++) {
+		if((x & (1U << i)) != 0) {
 			z = modp_montymul(z, r, p, p0i);
 		}
 		r = modp_montymul(r, r, p, p0i);
@@ -1530,7 +1530,7 @@ modp_div(uint32_t a, uint32_t b, uint32_t p, uint32_t p0i, uint32_t R)
 
 	e = p - 2;
 	z = R;
-	for (i = 30; i >= 0; i --) {
+	for(i = 30; i >= 0; i --) {
 		uint32_t z2;
 
 		z = modp_montymul(z, z, p, p0i);
@@ -1674,14 +1674,14 @@ modp_mkgm2(uint32_t *restrict gm, uint32_t *restrict igm, unsigned logn,
 	 */
 	R2 = modp_R2(p, p0i);
 	g = modp_montymul(g, R2, p, p0i);
-	for (k = logn; k < 10; k ++) {
+	for(k = logn; k < 10; k ++) {
 		g = modp_montymul(g, g, p, p0i);
 	}
 
 	ig = modp_div(R2, g, p, p0i, modp_R(p));
 	k = 10 - logn;
 	x1 = x2 = modp_R(p);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		size_t v;
 
 		v = REV10[u << k];
@@ -1702,16 +1702,16 @@ modp_NTT2_ext(uint32_t *a, size_t stride, const uint32_t *gm, unsigned logn,
 {
 	size_t t, m, n;
 
-	if (logn == 0) {
+	if(logn == 0) {
 		return;
 	}
 	n = (size_t)1 << logn;
 	t = n;
-	for (m = 1; m < n; m <<= 1) {
+	for(m = 1; m < n; m <<= 1) {
 		size_t ht, u, v1;
 
 		ht = t >> 1;
-		for (u = 0, v1 = 0; u < m; u ++, v1 += t) {
+		for(u = 0, v1 = 0; u < m; u ++, v1 += t) {
 			uint32_t s;
 			size_t v;
 			uint32_t *r1, *r2;
@@ -1719,7 +1719,7 @@ modp_NTT2_ext(uint32_t *a, size_t stride, const uint32_t *gm, unsigned logn,
 			s = gm[m + u];
 			r1 = a + v1 * stride;
 			r2 = r1 + ht * stride;
-			for (v = 0; v < ht; v ++, r1 += stride, r2 += stride) {
+			for(v = 0; v < ht; v ++, r1 += stride, r2 += stride) {
 				uint32_t x, y;
 
 				x = *r1;
@@ -1743,17 +1743,17 @@ modp_iNTT2_ext(uint32_t *a, size_t stride, const uint32_t *igm, unsigned logn,
 	uint32_t ni;
 	uint32_t *r;
 
-	if (logn == 0) {
+	if(logn == 0) {
 		return;
 	}
 	n = (size_t)1 << logn;
 	t = 1;
-	for (m = n; m > 1; m >>= 1) {
+	for(m = n; m > 1; m >>= 1) {
 		size_t hm, dt, u, v1;
 
 		hm = m >> 1;
 		dt = t << 1;
-		for (u = 0, v1 = 0; u < hm; u ++, v1 += dt) {
+		for(u = 0, v1 = 0; u < hm; u ++, v1 += dt) {
 			uint32_t s;
 			size_t v;
 			uint32_t *r1, *r2;
@@ -1761,7 +1761,7 @@ modp_iNTT2_ext(uint32_t *a, size_t stride, const uint32_t *igm, unsigned logn,
 			s = igm[hm + u];
 			r1 = a + v1 * stride;
 			r2 = r1 + t * stride;
-			for (v = 0; v < t; v ++, r1 += stride, r2 += stride) {
+			for(v = 0; v < t; v ++, r1 += stride, r2 += stride) {
 				uint32_t x, y;
 
 				x = *r1;
@@ -1781,7 +1781,7 @@ modp_iNTT2_ext(uint32_t *a, size_t stride, const uint32_t *igm, unsigned logn,
 	 * a modular reduction.
 	 */
 	ni = (uint32_t)1 << (31 - logn);
-	for (k = 0, r = a; k < n; k ++, r += stride) {
+	for(k = 0, r = a; k < n; k ++, r += stride) {
 		*r = modp_montymul(*r, ni, p, p0i);
 	}
 }
@@ -1842,11 +1842,11 @@ modp_mkgm3(uint32_t *restrict gm, uint32_t *restrict igm,
 	 */
 	g = modp_montymul(g, R2, p, p0i);
 	k = logn;
-	if (!full) {
+	if(!full) {
 		g = modp_montymul(g, modp_montymul(g, g, p, p0i), p, p0i);
 		k ++;
 	}
-	while (k ++ < 9) {
+	while(k ++ < 9) {
 		g = modp_montymul(g, g, p, p0i);
 	}
 	ig = modp_div(R2, g, p, p0i, modp_R(p));
@@ -1854,7 +1854,7 @@ modp_mkgm3(uint32_t *restrict gm, uint32_t *restrict igm,
 	/*
 	 * Fill the last row, using bit-reversal order.
 	 */
-	if (logn == 1) {
+	if(logn == 1) {
 		gm[1] = g;
 		igm[1] = ig;
 	} else {
@@ -1869,7 +1869,7 @@ modp_mkgm3(uint32_t *restrict gm, uint32_t *restrict igm,
 		ig4 = modp_montymul(ig2, ig2, p, p0i);
 		k = 11 - logn;
 		b = (size_t)1 << (logn - 1);
-		for (u = 0; u < b; u += 2) {
+		for(u = 0; u < b; u += 2) {
 			gm[b + REV10[u << k]] = x;
 			igm[b + REV10[u << k]] = ix;
 			x = modp_montymul(x, g4, p, p0i);
@@ -1886,9 +1886,9 @@ modp_mkgm3(uint32_t *restrict gm, uint32_t *restrict igm,
 	 * cubes of the last row.
 	 */
 	k = logn - 1;
-	if (full) {
+	if(full) {
 		k --;
-		for (u = (size_t)1 << k; u < ((size_t)1 << (k + 1)); u ++) {
+		for(u = (size_t)1 << k; u < ((size_t)1 << (k + 1)); u ++) {
 			uint32_t y, z;
 
 			y = gm[u << 1];
@@ -1905,7 +1905,7 @@ modp_mkgm3(uint32_t *restrict gm, uint32_t *restrict igm,
 	/*
 	 * Fill other rows, with squares of the next one.
 	 */
-	for (u = ((size_t)1 << k) - 1; u > 0; u --) {
+	for(u = ((size_t)1 << k) - 1; u > 0; u --) {
 		size_t v;
 
 		v = u << 1;
@@ -1933,7 +1933,7 @@ modp_NTT3_ext(uint32_t *a, size_t stride, const uint32_t *gm,
 	uint32_t w;
 	uint32_t *r1, *r2;
 
-	if (logn == 0) {
+	if(logn == 0) {
 		return;
 	}
 	n = MKN(logn, full);
@@ -1950,7 +1950,7 @@ modp_NTT3_ext(uint32_t *a, size_t stride, const uint32_t *gm,
 	 *         = a0 + a1 - a1*w
 	 */
 	w = gm[1];
-	for (u = 0, r1 = a, r2 = a + hn * stride;
+	for(u = 0, r1 = a, r2 = a + hn * stride;
 		u < hn; u ++, r1 += stride, r2 += stride)
 	{
 		uint32_t a0, a1, b;
@@ -1966,18 +1966,18 @@ modp_NTT3_ext(uint32_t *a, size_t stride, const uint32_t *gm,
 	 * Intermediate passes, for doubling the degree repeatedly.
 	 */
 	t = hn;
-	for (m = 2; t > (1 + (full << 1)); m <<= 1) {
+	for(m = 2; t > (1 + (full << 1)); m <<= 1) {
 		size_t ht, u1, v1;
 
 		ht = t >> 1;
-		for (u1 = 0, v1 = 0; u1 < m; u1 ++, v1 += t) {
+		for(u1 = 0, v1 = 0; u1 < m; u1 ++, v1 += t) {
 			size_t v;
 			uint32_t s;
 
 			s = gm[m + u1];
 			r1 = a + v1 * stride;
 			r2 = r1 + ht * stride;
-			for (v = 0; v < ht; v ++, r1 += stride, r2 += stride) {
+			for(v = 0; v < ht; v ++, r1 += stride, r2 += stride) {
 				uint32_t x, y;
 
 				x = *r1;
@@ -1993,9 +1993,9 @@ modp_NTT3_ext(uint32_t *a, size_t stride, const uint32_t *gm,
 	/*
 	 * Final pass, to triple the degree.
 	 */
-	if (full) {
+	if(full) {
 		w = modp_montymul(gm[1], gm[1], p, p0i);
-		for (u = 0, r = (size_t)1 << (logn - 1), r1 = a;
+		for(u = 0, r = (size_t)1 << (logn - 1), r1 = a;
 			u < n; u += 3, r ++, r1 += 3 * stride)
 		{
 			uint32_t fA, fB, fC, fB0, fB1, fB2, fC0, fC1, fC2;
@@ -2033,7 +2033,7 @@ modp_iNTT3_ext(uint32_t *a, size_t stride, const uint32_t *igm,
 	size_t n, hn, u, r, m, t;
 	uint32_t w, ni, R, *r1, *r2;
 
-	if (logn == 0) {
+	if(logn == 0) {
 		return;
 	}
 	n = MKN(logn, full);
@@ -2048,9 +2048,9 @@ modp_iNTT3_ext(uint32_t *a, size_t stride, const uint32_t *igm,
 	/*
 	 * Divide degree by 3.
 	 */
-	if (full) {
+	if(full) {
 		w = modp_montymul(igm[1], igm[1], p, p0i);
-		for (u = 0, r = (size_t)1 << (logn - 1), r1 = a;
+		for(u = 0, r = (size_t)1 << (logn - 1), r1 = a;
 			u < n; u += 3, r ++, r1 += 3 * stride)
 		{
 			uint32_t f0, f1, f2, f11, f12, f21, f22;
@@ -2079,18 +2079,18 @@ modp_iNTT3_ext(uint32_t *a, size_t stride, const uint32_t *igm,
 	 * reverse order. Note the invariant: t*m = n.
 	 */
 	t = 2 + (full << 2);
-	for (m = (size_t)1 << (logn - 1 - full); t < n; m >>= 1) {
+	for(m = (size_t)1 << (logn - 1 - full); t < n; m >>= 1) {
 		size_t ht, u1, v1;
 
 		ht = t >> 1;
-		for (u1 = 0, v1 = 0; u1 < m; u1 ++, v1 += t) {
+		for(u1 = 0, v1 = 0; u1 < m; u1 ++, v1 += t) {
 			size_t v;
 			uint32_t s;
 
 			s = igm[m + u1];
 			r1 = a + v1 * stride;
 			r2 = r1 + ht * stride;
-			for (v = 0; v < ht; v ++, r1 += stride, r2 += stride) {
+			for(v = 0; v < ht; v ++, r1 += stride, r2 += stride) {
 				uint32_t x, y;
 
 				x = *r1;
@@ -2107,7 +2107,7 @@ modp_iNTT3_ext(uint32_t *a, size_t stride, const uint32_t *igm,
 	 * Final step: inverse NTT for polynomials modulo X^2-X+1.
 	 */
 	w = igm[0];
-	for (u = 0, r1 = a, r2 = a + hn * stride;
+	for(u = 0, r1 = a, r2 = a + hn * stride;
 		u < hn; u ++, r1 += stride, r2 += stride)
 	{
 		uint32_t a0, a1, b, c;
@@ -2125,7 +2125,7 @@ modp_iNTT3_ext(uint32_t *a, size_t stride, const uint32_t *igm,
 	 */
 	R = modp_R(p);
 	ni = modp_div(R, (uint32_t)n, p, p0i, R);
-	for (u = 0, r1 = a; u < n; u ++, r1 += stride) {
+	for(u = 0, r1 = a; u < n; u ++, r1 += stride) {
 		*r1 = modp_montymul(*r1, ni, p, p0i);
 	}
 }
@@ -2160,7 +2160,7 @@ modp_poly_rec_res(uint32_t *f, unsigned logn,
 	size_t hn, u;
 
 	hn = (size_t)1 << (logn - 1);
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		uint32_t w0, w1;
 
 		w0 = f[(u << 1) + 0];
@@ -2213,7 +2213,7 @@ zint_add(uint32_t *restrict a, const uint32_t *restrict b, size_t len)
 	uint32_t cc;
 
 	cc = 0;
-	for (u = 0; u < len; u ++) {
+	for(u = 0; u < len; u ++) {
 		uint32_t w;
 
 		w = a[u] + b[u] + cc;
@@ -2235,7 +2235,7 @@ zint_sub(uint32_t *restrict a, const uint32_t *restrict b, size_t len)
 	uint32_t cc;
 
 	cc = 0;
-	for (u = 0; u < len; u ++) {
+	for(u = 0; u < len; u ++) {
 		uint32_t w;
 
 		w = a[u] - b[u] - cc;
@@ -2256,7 +2256,7 @@ zint_mul_small(uint32_t *m, size_t mlen, uint32_t x)
 	uint32_t cc;
 
 	cc = 0;
-	for (u = 0; u < mlen; u ++) {
+	for(u = 0; u < mlen; u ++) {
 		uint64_t z;
 
 		z = (uint64_t)m[u] * (uint64_t)x + cc;
@@ -2290,7 +2290,7 @@ zint_mod_small_unsigned(const uint32_t *d, size_t dlen,
 	 */
 	x = 0;
 	u = dlen;
-	while (u -- > 0) {
+	while(u -- > 0) {
 		uint32_t w;
 
 		x = modp_montymul(x, R2, p, p0i);
@@ -2311,7 +2311,7 @@ zint_mod_small_signed(const uint32_t *d, size_t dlen,
 {
 	uint32_t z;
 
-	if (dlen == 0) {
+	if(dlen == 0) {
 		return 0;
 	}
 	z = zint_mod_small_unsigned(d, dlen, p, p0i, R2);
@@ -2331,7 +2331,7 @@ zint_add_mul_small(uint32_t *restrict x,
 	uint32_t cc;
 
 	cc = 0;
-	for (u = 0; u < len; u ++) {
+	for(u = 0; u < len; u ++) {
 		uint32_t xw, yw;
 		uint64_t z;
 
@@ -2356,7 +2356,7 @@ zint_rshift1(uint32_t *d, size_t len)
 
 	cc = 0;
 	k = len;
-	while (k -- > 0) {
+	while(k -- > 0) {
 		uint32_t w;
 
 		w = d[k];
@@ -2374,7 +2374,7 @@ zint_rshift1_mod(uint32_t *restrict x, const uint32_t *restrict p, size_t len)
 {
 	uint32_t hi;
 
-	if ((x[0] & 1) != 0) {
+	if((x[0] & 1) != 0) {
 		hi = zint_add(x, p, len);
 	} else {
 		hi = 0;
@@ -2390,7 +2390,7 @@ static void
 zint_sub_mod(uint32_t *restrict x, const uint32_t *restrict y,
 	const uint32_t *restrict p, size_t len)
 {
-	if (zint_sub(x, y, len)) {
+	if(zint_sub(x, y, len)) {
 		zint_add(x, p, len);
 	}
 }
@@ -2402,15 +2402,15 @@ zint_sub_mod(uint32_t *restrict x, const uint32_t *restrict y,
 static int
 zint_ucmp(const uint32_t *a, const uint32_t *b, size_t len)
 {
-	while (len -- > 0) {
+	while(len -- > 0) {
 		uint32_t wa, wb;
 
 		wa = a[len];
 		wb = b[len];
-		if (wa < wb) {
+		if(wa < wb) {
 			return -1;
 		}
-		if (wa > wb) {
+		if(wa > wb) {
 			return 1;
 		}
 	}
@@ -2430,15 +2430,15 @@ zint_norm_zero(uint32_t *restrict x, const uint32_t *restrict p, size_t len)
 
 	cc = 0;
 	u = len;
-	while (u -- > 0) {
+	while(u -- > 0) {
 		uint32_t w;
 
 		w = (p[u] >> 1) | (cc << 30);
 		cc = p[u] & 1;
-		if (x[u] < w) {
+		if(x[u] < w) {
 			return;
 		}
-		if (x[u] > w) {
+		if(x[u] > w) {
 			zint_sub(x, p, len);
 			return;
 		}
@@ -2468,7 +2468,7 @@ zint_rebuild_CRT(uint32_t *restrict xx, size_t xlen, size_t xstride,
 	uint32_t *x;
 
 	tmp[0] = primes[0].p;
-	for (u = 1; u < xlen; u ++) {
+	for(u = 1; u < xlen; u ++) {
 		/*
 		 * At the entry of each loop iteration:
 		 *  - the first u words of each array have been
@@ -2486,7 +2486,7 @@ zint_rebuild_CRT(uint32_t *restrict xx, size_t xlen, size_t xstride,
 		p0i = modp_ninv31(p);
 		R2 = modp_R2(p, p0i);
 
-		for (v = 0, x = xx; v < num; v ++, x += xstride) {
+		for(v = 0, x = xx; v < num; v ++, x += xstride) {
 			uint32_t xp, xq, xr;
 			/*
 			 * xp = the integer x modulo the prime p for this
@@ -2512,8 +2512,8 @@ zint_rebuild_CRT(uint32_t *restrict xx, size_t xlen, size_t xstride,
 	/*
 	 * Normalize the reconstructed values around 0.
 	 */
-	if (normalize_signed) {
-		for (u = 0, x = xx; u < num; u ++, x += xstride) {
+	if(normalize_signed) {
+		for(u = 0, x = xx; u < num; u ++, x += xstride) {
 			zint_norm_zero(x, tmp, xlen);
 		}
 	}
@@ -2526,8 +2526,8 @@ zint_rebuild_CRT(uint32_t *restrict xx, size_t xlen, size_t xstride,
 static size_t
 zint_exact_length(const uint32_t *x, size_t xlen)
 {
-	while (xlen > 0) {
-		if (x[xlen - 1] != 0) {
+	while(xlen > 0) {
+		if(x[xlen - 1] != 0) {
 			return xlen;
 		}
 		xlen --;
@@ -2559,7 +2559,7 @@ zint_co_reduce(uint32_t *a, uint32_t *b, size_t len,
 
 	cca = 0;
 	ccb = 0;
-	for (u = 0; u < len; u ++) {
+	for(u = 0; u < len; u ++) {
 		int32_t wa, wb;
 		int64_t za, zb;
 		uint32_t tta, ttb;
@@ -2568,7 +2568,7 @@ zint_co_reduce(uint32_t *a, uint32_t *b, size_t len,
 		wb = (int32_t)b[u];
 		za = (int64_t)wa * xa + (int64_t)wb * xb + cca;
 		zb = (int64_t)wa * ya + (int64_t)wb * yb + ccb;
-		if (u > 0) {
+		if(u > 0) {
 			a[u - 1] = (uint32_t)za & 0x7FFFFFFF;
 			b[u - 1] = (uint32_t)zb & 0x7FFFFFFF;
 		}
@@ -2580,11 +2580,11 @@ zint_co_reduce(uint32_t *a, uint32_t *b, size_t len,
 	a[len - 1] = (uint32_t)cca;
 	b[len - 1] = (uint32_t)ccb;
 	r = 0;
-	if (cca < 0) {
+	if(cca < 0) {
 		uint32_t c;
 
 		c = 1;
-		for (u = 0; u < len; u ++) {
+		for(u = 0; u < len; u ++) {
 			uint32_t w;
 
 			w = c + ~a[u];
@@ -2593,11 +2593,11 @@ zint_co_reduce(uint32_t *a, uint32_t *b, size_t len,
 		}
 		r |= 1;
 	}
-	if (ccb < 0) {
+	if(ccb < 0) {
 		uint32_t c;
 
 		c = 1;
-		for (u = 0; u < len; u ++) {
+		for(u = 0; u < len; u ++) {
 			uint32_t w;
 
 			w = c + ~b[u];
@@ -2629,7 +2629,7 @@ zint_co_reduce_mod(uint32_t *a, uint32_t *b, const uint32_t *m, size_t len,
 	fy = ((a[0] * (uint32_t)ya + b[0] * (uint32_t)yb) * m0i) & 0x7FFFFFFF;
 	cca = 0;
 	ccb = 0;
-	for (u = 0; u < len; u ++) {
+	for(u = 0; u < len; u ++) {
 		uint32_t wa, wb;
 		int64_t za, zb;
 		uint64_t tta, ttb;
@@ -2642,7 +2642,7 @@ zint_co_reduce_mod(uint32_t *a, uint32_t *b, const uint32_t *m, size_t len,
 		zb += ccb;
 		za += (uint64_t)m[u] * (uint64_t)fx;
 		zb += (uint64_t)m[u] * (uint64_t)fy;
-		if (u > 0) {
+		if(u > 0) {
 			a[u - 1] = (uint32_t)za & 0x7FFFFFFF;
 			b[u - 1] = (uint32_t)zb & 0x7FFFFFFF;
 		}
@@ -2671,17 +2671,17 @@ zint_co_reduce_mod(uint32_t *a, uint32_t *b, const uint32_t *m, size_t len,
 	 *  - if negative, add modulus
 	 *  - if positive and not lower than modulus, subtract modulus
 	 */
-	if (cca < 0) {
+	if(cca < 0) {
 		zint_add(a, m, len);
 	} else {
-		if (zint_ucmp(a, m, len) >= 0) {
+		if(zint_ucmp(a, m, len) >= 0) {
 			zint_sub(a, m, len);
 		}
 	}
-	if (ccb < 0) {
+	if(ccb < 0) {
 		zint_add(b, m, len);
 	} else {
-		if (zint_ucmp(b, m, len) >= 0) {
+		if(zint_ucmp(b, m, len) >= 0) {
 			zint_sub(b, m, len);
 		}
 	}
@@ -2698,7 +2698,7 @@ zint_reduce(uint32_t *a, const uint32_t *b, size_t len, int32_t k)
 	int32_t cc;
 
 	cc = 0;
-	for (u = 0; u < len; u ++) {
+	for(u = 0; u < len; u ++) {
 		int32_t wa, wb;
 		int64_t z;
 		uint32_t tt;
@@ -2706,18 +2706,18 @@ zint_reduce(uint32_t *a, const uint32_t *b, size_t len, int32_t k)
 		wa = (int32_t)a[u];
 		wb = (int32_t)b[u];
 		z = (int64_t)wb * k + (int64_t)wa + cc;
-		if (u > 0) {
+		if(u > 0) {
 			a[u - 1] = (uint32_t)z & 0x7FFFFFFF;
 		}
 		tt = (uint32_t)((uint64_t)z >> 31);
 		cc = *(int32_t *)&tt;
 	}
 	a[len - 1] = (uint32_t)cc;
-	if (cc < 0) {
+	if(cc < 0) {
 		uint32_t c;
 
 		c = 1;
-		for (u = 0; u < len; u ++) {
+		for(u = 0; u < len; u ++) {
 			uint32_t w;
 
 			w = c + ~a[u];
@@ -2744,7 +2744,7 @@ zint_reduce_mod(uint32_t *a, const uint32_t *b, const uint32_t *m,
 
 	f = ((a[0] + b[0] * (uint32_t)k) * m0i) & 0x7FFFFFFF;
 	cc = 0;
-	for (u = 0; u < len; u ++) {
+	for(u = 0; u < len; u ++) {
 		uint32_t wa, wb;
 		int64_t z;
 		uint32_t tt;
@@ -2753,7 +2753,7 @@ zint_reduce_mod(uint32_t *a, const uint32_t *b, const uint32_t *m,
 		wb = b[u];
 		z = (int64_t)wa + (int64_t)wb * (int64_t)k + cc;
 		z += (uint64_t)m[u] * (uint64_t)f;
-		if (u > 0) {
+		if(u > 0) {
 			a[u - 1] = (uint32_t)z & 0x7FFFFFFF;
 		}
 		tt = (uint32_t)((uint64_t)z >> 31);
@@ -2765,10 +2765,10 @@ zint_reduce_mod(uint32_t *a, const uint32_t *b, const uint32_t *m,
 	 * - if negative, add modulus
 	 * - if positive and not lower than modulus, subtract modulus
 	 */
-	if (cc < 0) {
+	if(cc < 0) {
 		zint_add(a, m, len);
 	} else {
-		if (zint_ucmp(a, m, len) >= 0) {
+		if(zint_ucmp(a, m, len) >= 0) {
 			zint_sub(a, m, len);
 		}
 	}
@@ -2841,7 +2841,7 @@ zint_bezout(uint32_t *restrict u, uint32_t *restrict v,
 	 *   x and y must not be zero.
 	 *   x and y must be odd.
 	 */
-	if (xlen == 0 || ylen == 0 || (x[0] & y[0] & 1) == 0) {
+	if(xlen == 0 || ylen == 0 || (x[0] & y[0] & 1) == 0) {
 		return 0;
 	}
 
@@ -2883,10 +2883,10 @@ zint_bezout(uint32_t *restrict u, uint32_t *restrict v,
 	 * and similarly v0 and v).
 	 * If y = 1, then the values in u1 and v1 must be returned.
 	 */
-	if (xlen == 1 && x[0] == 1) {
+	if(xlen == 1 && x[0] == 1) {
 		return 1;
 	}
-	if (ylen == 1 && y[0] == 1) {
+	if(ylen == 1 && y[0] == 1) {
 		memcpy(u, u1, ylen * sizeof *u);
 		memcpy(v, v1, xlen * sizeof *v);
 		return 1;
@@ -2898,14 +2898,14 @@ zint_bezout(uint32_t *restrict u, uint32_t *restrict v,
 	/*
 	 * We are now all set for the main algorithm.
 	 */
-	for (;;) {
+	for(;;) {
 		int r;
 
 		/*
 		 * If either word is large enough, we use the
 		 * accelerated approximation.
 		 */
-		if (alen >= 3 || blen >= 3) {
+		if(alen >= 3 || blen >= 3) {
 			size_t len;
 			uint64_t a_hi, b_hi;
 			uint32_t a_lo, b_lo;
@@ -2925,21 +2925,21 @@ zint_bezout(uint32_t *restrict u, uint32_t *restrict v,
 			uxb = 0;
 			uya = 0;
 			uyb = 1;
-			for (i = 0; i < 31; i ++) {
+			for(i = 0; i < 31; i ++) {
 				uint32_t m;
 
 				m = (uint32_t)1 << i;
-				if ((a_lo & m) == 0) {
+				if((a_lo & m) == 0) {
 					a_hi >>= 1;
 					b_lo <<= 1;
 					uya <<= 1;
 					uyb <<= 1;
-				} else if ((b_lo & m) == 0) {
+				} else if((b_lo & m) == 0) {
 					b_hi >>= 1;
 					a_lo <<= 1;
 					uxa <<= 1;
 					uxb <<= 1;
-				} else if (a_hi > b_hi) {
+				} else if(a_hi > b_hi) {
 					a_hi -= b_hi;
 					a_lo -= b_lo;
 					uxa -= uya;
@@ -2966,26 +2966,26 @@ zint_bezout(uint32_t *restrict u, uint32_t *restrict v,
 			 * specialized function, because that value will
 			 * not fit in an int32_t.
 			 */
-			if (uxa == 0x80000000) {
+			if(uxa == 0x80000000) {
 				int32_t ya;
 
-				if (uxb != 0 || uyb != 1) {
+				if(uxb != 0 || uyb != 1) {
 					return 0;
 				}
 				ya = *(int32_t *)&uya;
-				if (zint_reduce(b, a, len, ya)) {
+				if(zint_reduce(b, a, len, ya)) {
 					ya = -ya;
 				}
 				zint_reduce_mod(u1, u0, y, ylen, y0i, ya);
 				zint_reduce_mod(v1, v0, x, xlen, x0i, ya);
-			} else if (uyb == 0x80000000) {
+			} else if(uyb == 0x80000000) {
 				int32_t xb;
 
-				if (uya != 0 || uxa != 1) {
+				if(uya != 0 || uxa != 1) {
 					return 0;
 				}
 				xb = *(int32_t *)&uxb;
-				if (zint_reduce(a, b, len, xb)) {
+				if(zint_reduce(a, b, len, xb)) {
 					xb = -xb;
 				}
 				zint_reduce_mod(u0, u1, y, ylen, y0i, xb);
@@ -2999,11 +2999,11 @@ zint_bezout(uint32_t *restrict u, uint32_t *restrict v,
 				yb = *(int32_t *)&uyb;
 
 				r = zint_co_reduce(a, b, len, xa, xb, ya, yb);
-				if ((r & 1) != 0) {
+				if((r & 1) != 0) {
 					xa = -xa;
 					xb = -xb;
 				}
-				if ((r & 2) != 0) {
+				if((r & 2) != 0) {
 					ya = -ya;
 					yb = -yb;
 				}
@@ -3021,7 +3021,7 @@ zint_bezout(uint32_t *restrict u, uint32_t *restrict v,
 		/*
 		 * If a is even, divide it by 2 and adjust u0 and v0.
 		 */
-		if ((a[0] & 1) == 0) {
+		if((a[0] & 1) == 0) {
 			zint_rshift1(a, alen);
 			alen = zint_exact_length(a, alen);
 			zint_rshift1_mod(u0, y, ylen);
@@ -3032,7 +3032,7 @@ zint_bezout(uint32_t *restrict u, uint32_t *restrict v,
 		/*
 		 * If b is even, divide it by 2 and adjust u1 and v1.
 		 */
-		if ((b[0] & 1) == 0) {
+		if((b[0] & 1) == 0) {
 			zint_rshift1(b, blen);
 			blen = zint_exact_length(b, blen);
 			zint_rshift1_mod(u1, y, ylen);
@@ -3044,13 +3044,13 @@ zint_bezout(uint32_t *restrict u, uint32_t *restrict v,
 		 * Compare a to b. If equal, then the algorithm
 		 * terminates.
 		 */
-		if (alen < blen) {
+		if(alen < blen) {
 			r = -1;
-		} else if (alen > blen) {
+		} else if(alen > blen) {
 			r = 1;
 		} else {
 			r = zint_ucmp(a, b, alen);
-			if (r == 0) {
+			if(r == 0) {
 				/*
 				 * If a == b, then the algorithm terminate;
 				 * they both contain the GCD of x and y.
@@ -3071,7 +3071,7 @@ zint_bezout(uint32_t *restrict u, uint32_t *restrict v,
 		 * accordingly. Analysis shows that we will be able to
 		 * maintain 0 < u1 < y and 0 < v1 < x.
 		 */
-		if (r > 0) {
+		if(r > 0) {
 			zint_sub(a, b, alen);
 			alen = zint_exact_length(a, alen);
 			zint_sub_mod(u0, u1, y, ylen);
@@ -3132,17 +3132,17 @@ zint_signed_bit_length(const uint32_t *x, size_t xlen)
 {
 	uint32_t sign;
 
-	if (xlen == 0) {
+	if(xlen == 0) {
 		return 0;
 	}
 	sign = (-(x[xlen - 1] >> 30)) >> 1;
-	while (xlen > 0) {
-		if (x[xlen - 1] != sign) {
+	while(xlen > 0) {
+		if(x[xlen - 1] != sign) {
 			break;
 		}
 		xlen --;
 	}
-	if (xlen == 0) {
+	if(xlen == 0) {
 		return 0;
 	}
 	return (uint32_t)(xlen - 1) * 31 + bitlength(x[xlen - 1] ^ sign);
@@ -3159,7 +3159,7 @@ zint_get_top(const uint32_t *x, size_t xlen, uint32_t sc)
 	uint32_t sign, w0, w1, w2;
 	uint32_t k, off;
 
-	if (xlen == 0) {
+	if(xlen == 0) {
 		return 0;
 	}
 
@@ -3174,15 +3174,15 @@ zint_get_top(const uint32_t *x, size_t xlen, uint32_t sc)
 	/*
 	 * To obtain 63 bits, we always need exactly three words.
 	 */
-	if ((k + 2) < xlen) {
+	if((k + 2) < xlen) {
 		w0 = x[k + 0];
 		w1 = x[k + 1];
 		w2 = x[k + 2] | (sign << 31);
-	} else if ((k + 1) < xlen) {
+	} else if((k + 1) < xlen) {
 		w0 = x[k + 0];
 		w1 = x[k + 1];
 		w2 = sign;
-	} else if (k < xlen) {
+	} else if(k < xlen) {
 		w0 = x[k + 0];
 		w1 = sign;
 		w2 = sign;
@@ -3225,14 +3225,14 @@ zint_add_scaled_mul_small(uint32_t *restrict x, size_t xlen,
 	uint32_t ysign, tw;
 	int32_t cc;
 
-	if (ylen == 0) {
+	if(ylen == 0) {
 		return;
 	}
 
 	ysign = -(y[ylen - 1] >> 30) >> 1;
 	tw = 0;
 	cc = 0;
-	for (u = sch; u < xlen; u ++) {
+	for(u = sch; u < xlen; u ++) {
 		size_t v;
 		uint32_t wy, wys, ccu;
 		uint64_t z;
@@ -3285,14 +3285,14 @@ zint_sub_scaled(uint32_t *restrict x, size_t xlen,
 	uint32_t ysign, tw;
 	uint32_t cc;
 
-	if (ylen == 0) {
+	if(ylen == 0) {
 		return;
 	}
 
 	ysign = -(y[ylen - 1] >> 30) >> 1;
 	tw = 0;
 	cc = 0;
-	for (u = sch; u < xlen; u ++) {
+	for(u = sch; u < xlen; u ++) {
 		size_t v;
 		uint32_t w, wy, wys;
 
@@ -3337,11 +3337,11 @@ poly_max_bitlength(const uint32_t *f, size_t flen, size_t fstride,
 
 	n = MKN(logn, ter);
 	maxbl = 0;
-	for (u = 0; u < n; u ++, f += fstride) {
+	for(u = 0; u < n; u ++, f += fstride) {
 		uint32_t bl;
 
 		bl = zint_signed_bit_length(f, flen);
-		if (bl > maxbl) {
+		if(bl > maxbl) {
 			maxbl = bl;
 		}
 	}
@@ -3363,7 +3363,7 @@ poly_big_to_fp(fpr *d, const uint32_t *f, size_t flen, size_t fstride,
 
 	n = MKN(logn, ter);
 	off = maxbl < 63 ? 0 : maxbl - 63;
-	for (u = 0; u < n; u ++, f += fstride) {
+	for(u = 0; u < n; u ++, f += fstride) {
 		d[u] = fpr_scaled(zint_get_top(f, flen, off),
 			(int)(off - scale));
 	}
@@ -3381,11 +3381,11 @@ poly_big_to_small(int16_t *d, const uint32_t *s, unsigned logn, unsigned ter)
 	size_t n, u;
 
 	n = MKN(logn, ter);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		int32_t z;
 
 		z = zint_one_to_plain(s + u);
-		if (z < -2047 || z > 2047) {
+		if(z < -2047 || z > 2047) {
 			return 0;
 		}
 		d[u] = (int16_t)z;
@@ -3415,13 +3415,13 @@ poly_sub_scaled(uint32_t *restrict F, size_t Flen, size_t Fstride,
 	hn = n >> 1;
 	sch = sc / 31;
 	scl = sc % 31;
-	if (ternary) {
+	if(ternary) {
 		size_t off1, off2, off3;
 
 		off1 = hn * Fstride;
 		off2 = n * Fstride;
 		off3 = off1 + off2;
-		for (u = 0; u < n; u ++) {
+		for(u = 0; u < n; u ++) {
 			int32_t kf;
 			size_t v, j;
 			const uint32_t *y;
@@ -3429,12 +3429,12 @@ poly_sub_scaled(uint32_t *restrict F, size_t Flen, size_t Fstride,
 			kf = -k[u];
 			j = u * Fstride;
 			y = f;
-			for (v = 0; v < n; v ++, j += Fstride, y += fstride) {
-				if (u + v < n) {
+			for(v = 0; v < n; v ++, j += Fstride, y += fstride) {
+				if(u + v < n) {
 					zint_add_scaled_mul_small(
 						F + j, Flen,
 						y, flen, kf, sch, scl);
-				} else if (u + v < (n + hn)) {
+				} else if(u + v < (n + hn)) {
 					zint_add_scaled_mul_small(
 						F + j - off1, Flen,
 						y, flen, kf, sch, scl);
@@ -3449,7 +3449,7 @@ poly_sub_scaled(uint32_t *restrict F, size_t Flen, size_t Fstride,
 			}
 		}
 	} else {
-		for (u = 0; u < n; u ++) {
+		for(u = 0; u < n; u ++) {
 			int32_t kf;
 			size_t v;
 			uint32_t *x;
@@ -3458,10 +3458,10 @@ poly_sub_scaled(uint32_t *restrict F, size_t Flen, size_t Fstride,
 			kf = -k[u];
 			x = F + u * Fstride;
 			y = f;
-			for (v = 0; v < n; v ++) {
+			for(v = 0; v < n; v ++) {
 				zint_add_scaled_mul_small(
 					x, Flen, y, flen, kf, sch, scl);
-				if (u + v == n - 1) {
+				if(u + v == n - 1) {
 					x = F;
 					kf = -kf;
 				} else {
@@ -3502,7 +3502,7 @@ poly_sub_scaled_ntt(uint32_t *restrict F, size_t Flen, size_t Fstride,
 	/*
 	 * Compute k*f in fk[], in RNS notation.
 	 */
-	for (u = 0; u < tlen; u ++) {
+	for(u = 0; u < tlen; u ++) {
 		uint32_t p, p0i, R2, Rx;
 		size_t v;
 
@@ -3510,35 +3510,35 @@ poly_sub_scaled_ntt(uint32_t *restrict F, size_t Flen, size_t Fstride,
 		p0i = modp_ninv31(p);
 		R2 = modp_R2(p, p0i);
 		Rx = modp_Rx(flen, p, p0i, R2);
-		if (ternary) {
+		if(ternary) {
 			modp_mkgm3(gm, igm, logn, full, primes[u].g, p, p0i);
 		} else {
 			modp_mkgm2(gm, igm, logn, primes[u].g, p, p0i);
 		}
 
-		for (v = 0; v < n; v ++) {
+		for(v = 0; v < n; v ++) {
 			t1[v] = modp_set(k[v], p);
 		}
-		if (ternary) {
+		if(ternary) {
 			modp_NTT3(t1, gm, logn, full, p, p0i);
 		} else {
 			modp_NTT2(t1, gm, logn, p, p0i);
 		}
-		for (v = 0, y = f, x = fk + u;
+		for(v = 0, y = f, x = fk + u;
 			v < n; v ++, y += fstride, x += tlen)
 		{
 			*x = zint_mod_small_signed(y, flen, p, p0i, R2, Rx);
 		}
-		if (ternary) {
+		if(ternary) {
 			modp_NTT3_ext(fk + u, tlen, gm, logn, full, p, p0i);
 		} else {
 			modp_NTT2_ext(fk + u, tlen, gm, logn, p, p0i);
 		}
-		for (v = 0, x = fk + u; v < n; v ++, x += tlen) {
+		for(v = 0, x = fk + u; v < n; v ++, x += tlen) {
 			*x = modp_montymul(
 				modp_montymul(t1[v], *x, p, p0i), R2, p, p0i);
 		}
-		if (ternary) {
+		if(ternary) {
 			modp_iNTT3_ext(fk + u, tlen, igm, logn, full, p, p0i);
 		} else {
 			modp_iNTT2_ext(fk + u, tlen, igm, logn, p, p0i);
@@ -3555,7 +3555,7 @@ poly_sub_scaled_ntt(uint32_t *restrict F, size_t Flen, size_t Fstride,
 	 */
 	sch = sc / 31;
 	scl = sc % 31;
-	for (u = 0, x = F, y = fk; u < n; u ++, x += Fstride, y += tlen) {
+	for(u = 0, x = F, y = fk; u < n; u ++, x += Fstride, y += tlen) {
 		zint_sub_scaled(x, Flen, y, tlen, sch, scl);
 	}
 }
@@ -3660,20 +3660,20 @@ mkgauss(falcon_keygen *fk, unsigned logn)
 
 	g = 1U << (10 - logn);
 	val = 0;
-	for (u = 0; u < g; u ++) {
+	for(u = 0; u < g; u ++) {
 		uint64_t r;
 		int k, neg;
 
 		r = get_rng_u64(&fk->rng);
 		neg = (int)(r >> 63);
 		r &= ~((uint64_t)1 << 63);
-		if (r < gauss_1024_12289[0]) {
+		if(r < gauss_1024_12289[0]) {
 			continue;
 		}
 		r = get_rng_u64(&fk->rng);
 		r &= ~((uint64_t)1 << 63);
 		k = 1;
-		while (gauss_1024_12289[k] > r) {
+		while(gauss_1024_12289[k] > r) {
 			k ++;
 		}
 		k *= (int)(1 - (neg << 1));
@@ -3785,10 +3785,10 @@ temp_size(unsigned logn, int ternary)
 	/*
 	 * Compute memory requirements for make_fg() at each depth.
 	 */
-	for (depth = 0; depth < logn; depth ++) {
+	for(depth = 0; depth < logn; depth ++) {
 		size_t cur;
 
-		if (depth == 0 && ternary) {
+		if(depth == 0 && ternary) {
 			size_t n, dn, tn;
 
 			n = (size_t)3 << (logn - 1);
@@ -3818,11 +3818,11 @@ temp_size(unsigned logn, int ternary)
 	/*
 	 * Compute memory requirements for each depth.
 	 */
-	for (depth = 0; depth <= logn; depth ++) {
+	for(depth = 0; depth <= logn; depth ++) {
 		size_t cur, max;
 
 		max = 0;
-		if (depth == logn) {
+		if(depth == logn) {
 			size_t slen;
 
 			slen = ternary
@@ -3830,7 +3830,7 @@ temp_size(unsigned logn, int ternary)
 				: MAX_BL_SMALL2[depth];
 			cur = 8 * slen * sizeof(uint32_t);
 			max = cur > max ? cur : max;
-		} else if (ternary && depth == 0 && logn > 2) {
+		} else if(ternary && depth == 0 && logn > 2) {
 			size_t n, tn, hn;
 
 			n = (size_t)3 << (logn - 1);
@@ -3844,7 +3844,7 @@ temp_size(unsigned logn, int ternary)
 			cur = ALIGN_FP(2 * n * sizeof(uint32_t))
 				+ 2 * n * sizeof(fpr);
 			max = cur > max ? cur : max;
-		} else if (!ternary && depth == 0 && logn > 2) {
+		} else if(!ternary && depth == 0 && logn > 2) {
 			size_t n, hn;
 
 			n = (size_t)1 << logn;
@@ -3857,7 +3857,7 @@ temp_size(unsigned logn, int ternary)
 			cur = ALIGN_FP(3 * n * sizeof(uint32_t))
 				+ (n + hn) * sizeof(fpr);
 			max = cur > max ? cur : max;
-		} else if (!ternary && depth == 1 && logn > 2) {
+		} else if(!ternary && depth == 1 && logn > 2) {
 			size_t n, hn, slen, dlen, llen;
 
 			n = (size_t)1 << (logn - 1);
@@ -3888,14 +3888,14 @@ temp_size(unsigned logn, int ternary)
 		} else {
 			size_t n, hn, slen, llen, tmp1, tmp2;
 
-			if (ternary && depth == 0 && logn == 2) {
+			if(ternary && depth == 0 && logn == 2) {
 				n = 6;
 				hn = 2;
 			} else {
 				n = (size_t)1 << (logn - depth);
 				hn = n >> 1;
 			}
-			if (ternary) {
+			if(ternary) {
 				slen = MAX_BL_SMALL3[depth];
 				llen = MAX_BL_LARGE3[depth];
 			} else {
@@ -3946,17 +3946,17 @@ falcon_keygen_new(unsigned logn, int ternary)
 {
 	falcon_keygen *fk;
 
-	if (ternary) {
-		if (logn < 3 || logn > 9) {
+	if(ternary) {
+		if(logn < 3 || logn > 9) {
 			return NULL;
 		}
 	} else {
-		if (logn < 1 || logn > 10) {
+		if(logn < 1 || logn > 10) {
 			return NULL;
 		}
 	}
 	fk = malloc(sizeof *fk);
-	if (fk == NULL) {
+	if(fk == NULL) {
 		return NULL;
 	}
 	fk->logn = logn;
@@ -3971,7 +3971,7 @@ falcon_keygen_new(unsigned logn, int ternary)
 #else
 	fk->tmp = malloc(fk->tmp_len);
 #endif
-	if (fk->tmp == NULL) {
+	if(fk->tmp == NULL) {
 		free(fk);
 		return NULL;
 	}
@@ -3987,12 +3987,12 @@ falcon_keygen_new(unsigned logn, int ternary)
 void
 falcon_keygen_free(falcon_keygen *fk)
 {
-	if (fk != NULL) {
+	if(fk != NULL) {
 #if CLEANSE
 		cleanse(fk->tmp, fk->tmp_len);
 #endif
 #if MEMCHECK
-		if (memcmp((unsigned char *)fk->tmp + fk->tmp_len,
+		if(memcmp((unsigned char *)fk->tmp + fk->tmp_len,
 			MEMCHECK_MARK, sizeof MEMCHECK_MARK) != 0)
 		{
 			fprintf(stderr,
@@ -4043,14 +4043,14 @@ void
 falcon_keygen_set_seed(falcon_keygen *fk,
 	const void *seed, size_t len, int replace)
 {
-	if (replace) {
+	if(replace) {
 		shake_init(&fk->rng, 512);
 		shake_inject(&fk->rng, seed, len);
 		fk->seeded = 1;
 		fk->flipped = 0;
 		return;
 	}
-	if (fk->flipped) {
+	if(fk->flipped) {
 		unsigned char tmp[32];
 
 		shake_extract(&fk->rng, tmp, sizeof tmp);
@@ -4064,16 +4064,16 @@ falcon_keygen_set_seed(falcon_keygen *fk,
 static int
 rng_ready(falcon_keygen *fk)
 {
-	if (!fk->seeded) {
+	if(!fk->seeded) {
 		unsigned char tmp[32];
 
-		if (!falcon_get_seed(tmp, sizeof tmp)) {
+		if(!falcon_get_seed(tmp, sizeof tmp)) {
 			return 0;
 		}
 		falcon_keygen_set_seed(fk, tmp, sizeof tmp, 0);
 		fk->seeded = 1;
 	}
-	if (!fk->flipped) {
+	if(!fk->flipped) {
 		shake_flip(&fk->rng);
 		fk->flipped = 1;
 	}
@@ -4093,7 +4093,7 @@ poly_small_sqnorm(const int16_t *f, unsigned logn, unsigned ter)
 	n = MKN(logn, ter);
 	s = 0;
 	ng = 0;
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		int32_t z;
 
 		z = f[u];
@@ -4117,7 +4117,7 @@ align_fpr(void *base, void *data)
 	cd = data;
 	k = (size_t)(cd - cb);
 	km = k % sizeof(fpr);
-	if (km) {
+	if(km) {
 		k += (sizeof(fpr)) - km;
 	}
 	return (fpr *)(cb + k);
@@ -4137,7 +4137,7 @@ align_u32(void *base, void *data)
 	cd = data;
 	k = (size_t)(cd - cb);
 	km = k % sizeof(uint32_t);
-	if (km) {
+	if(km) {
 		k += (sizeof(uint32_t)) - km;
 	}
 	return (uint32_t *)(cb + k);
@@ -4152,7 +4152,7 @@ poly_small_to_fp(fpr *x, const int16_t *f, unsigned logn, unsigned ter)
 	size_t n, u;
 
 	n = MKN(logn, ter);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		x[u] = fpr_of(f[u]);
 	}
 }
@@ -4178,7 +4178,7 @@ make_fg_step(uint32_t *data, unsigned logn, unsigned depth, unsigned ter,
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	if (ter) {
+	if(ter) {
 		slen = MAX_BL_SMALL3[depth];
 		tlen = MAX_BL_SMALL3[depth + 1];
 		primes = PRIMES3;
@@ -4204,7 +4204,7 @@ make_fg_step(uint32_t *data, unsigned logn, unsigned depth, unsigned ter,
 	 * First slen words: we use the input values directly, and apply
 	 * inverse NTT as we go.
 	 */
-	for (u = 0; u < slen; u ++) {
+	for(u = 0; u < slen; u ++) {
 		uint32_t p, p0i, R2;
 		size_t v;
 		uint32_t *x;
@@ -4212,23 +4212,23 @@ make_fg_step(uint32_t *data, unsigned logn, unsigned depth, unsigned ter,
 		p = primes[u].p;
 		p0i = modp_ninv31(p);
 		R2 = modp_R2(p, p0i);
-		if (ter) {
+		if(ter) {
 			modp_mkgm3(gm, igm, logn, 0, primes[u].g, p, p0i);
 		} else {
 			modp_mkgm2(gm, igm, logn, primes[u].g, p, p0i);
 		}
 
-		for (v = 0, x = fs + u; v < n; v ++, x += slen) {
+		for(v = 0, x = fs + u; v < n; v ++, x += slen) {
 			t1[v] = *x;
 		}
-		if (!in_ntt) {
-			if (ter) {
+		if(!in_ntt) {
+			if(ter) {
 				modp_NTT3(t1, gm, logn, 0, p, p0i);
 			} else {
 				modp_NTT2(t1, gm, logn, p, p0i);
 			}
 		}
-		for (v = 0, x = fd + u; v < hn; v ++, x += tlen) {
+		for(v = 0, x = fd + u; v < hn; v ++, x += tlen) {
 			uint32_t w0, w1;
 
 			w0 = t1[(v << 1) + 0];
@@ -4236,8 +4236,8 @@ make_fg_step(uint32_t *data, unsigned logn, unsigned depth, unsigned ter,
 			*x = modp_montymul(
 				modp_montymul(w0, w1, p, p0i), R2, p, p0i);
 		}
-		if (in_ntt) {
-			if (ter) {
+		if(in_ntt) {
+			if(ter) {
 				modp_iNTT3_ext(fs + u, slen, igm,
 					logn, 0, p, p0i);
 			} else {
@@ -4246,17 +4246,17 @@ make_fg_step(uint32_t *data, unsigned logn, unsigned depth, unsigned ter,
 			}
 		}
 
-		for (v = 0, x = gs + u; v < n; v ++, x += slen) {
+		for(v = 0, x = gs + u; v < n; v ++, x += slen) {
 			t1[v] = *x;
 		}
-		if (!in_ntt) {
-			if (ter) {
+		if(!in_ntt) {
+			if(ter) {
 				modp_NTT3(t1, gm, logn, 0, p, p0i);
 			} else {
 				modp_NTT2(t1, gm, logn, p, p0i);
 			}
 		}
-		for (v = 0, x = gd + u; v < hn; v ++, x += tlen) {
+		for(v = 0, x = gd + u; v < hn; v ++, x += tlen) {
 			uint32_t w0, w1;
 
 			w0 = t1[(v << 1) + 0];
@@ -4264,8 +4264,8 @@ make_fg_step(uint32_t *data, unsigned logn, unsigned depth, unsigned ter,
 			*x = modp_montymul(
 				modp_montymul(w0, w1, p, p0i), R2, p, p0i);
 		}
-		if (in_ntt) {
-			if (ter) {
+		if(in_ntt) {
+			if(ter) {
 				modp_iNTT3_ext(gs + u, slen, igm,
 					logn, 0, p, p0i);
 			} else {
@@ -4274,8 +4274,8 @@ make_fg_step(uint32_t *data, unsigned logn, unsigned depth, unsigned ter,
 			}
 		}
 
-		if (!out_ntt) {
-			if (ter) {
+		if(!out_ntt) {
+			if(ter) {
 				modp_iNTT3_ext(fd + u, tlen, igm,
 					logn - 1, 0, p, p0i);
 				modp_iNTT3_ext(gd + u, tlen, igm,
@@ -4299,7 +4299,7 @@ make_fg_step(uint32_t *data, unsigned logn, unsigned depth, unsigned ter,
 	/*
 	 * Remaining words: use modular reductions to extract the values.
 	 */
-	for (u = slen; u < tlen; u ++) {
+	for(u = slen; u < tlen; u ++) {
 		uint32_t p, p0i, R2, Rx;
 		size_t v;
 		uint32_t *x;
@@ -4308,20 +4308,20 @@ make_fg_step(uint32_t *data, unsigned logn, unsigned depth, unsigned ter,
 		p0i = modp_ninv31(p);
 		R2 = modp_R2(p, p0i);
 		Rx = modp_Rx(slen, p, p0i, R2);
-		if (ter) {
+		if(ter) {
 			modp_mkgm3(gm, igm, logn, 0, primes[u].g, p, p0i);
 		} else {
 			modp_mkgm2(gm, igm, logn, primes[u].g, p, p0i);
 		}
-		for (v = 0, x = fs; v < n; v ++, x += slen) {
+		for(v = 0, x = fs; v < n; v ++, x += slen) {
 			t1[v] = zint_mod_small_signed(x, slen, p, p0i, R2, Rx);
 		}
-		if (ter) {
+		if(ter) {
 			modp_NTT3(t1, gm, logn, 0, p, p0i);
 		} else {
 			modp_NTT2(t1, gm, logn, p, p0i);
 		}
-		for (v = 0, x = fd + u; v < hn; v ++, x += tlen) {
+		for(v = 0, x = fd + u; v < hn; v ++, x += tlen) {
 			uint32_t w0, w1;
 
 			w0 = t1[(v << 1) + 0];
@@ -4329,15 +4329,15 @@ make_fg_step(uint32_t *data, unsigned logn, unsigned depth, unsigned ter,
 			*x = modp_montymul(
 				modp_montymul(w0, w1, p, p0i), R2, p, p0i);
 		}
-		for (v = 0, x = gs; v < n; v ++, x += slen) {
+		for(v = 0, x = gs; v < n; v ++, x += slen) {
 			t1[v] = zint_mod_small_signed(x, slen, p, p0i, R2, Rx);
 		}
-		if (ter) {
+		if(ter) {
 			modp_NTT3(t1, gm, logn, 0, p, p0i);
 		} else {
 			modp_NTT2(t1, gm, logn, p, p0i);
 		}
-		for (v = 0, x = gd + u; v < hn; v ++, x += tlen) {
+		for(v = 0, x = gd + u; v < hn; v ++, x += tlen) {
 			uint32_t w0, w1;
 
 			w0 = t1[(v << 1) + 0];
@@ -4346,8 +4346,8 @@ make_fg_step(uint32_t *data, unsigned logn, unsigned depth, unsigned ter,
 				modp_montymul(w0, w1, p, p0i), R2, p, p0i);
 		}
 
-		if (!out_ntt) {
-			if (ter) {
+		if(!out_ntt) {
+			if(ter) {
 				modp_iNTT3_ext(fd + u, tlen, igm,
 					logn - 1, 0, p, p0i);
 				modp_iNTT3_ext(gd + u, tlen, igm,
@@ -4447,7 +4447,7 @@ make_fg_ternary_top(uint32_t *data, unsigned logn, int out_ntt)
 
 	R3 = modp_montymul(R2, R2, p, p0i);
 
-	for (u = 0, v = 0; u < n; u += 3, v ++) {
+	for(u = 0, v = 0; u < n; u += 3, v ++) {
 		fd[v] = modp_montymul(R3, modp_montymul(fs[u],
 			modp_montymul(fs[u + 1], fs[u + 2], p, p0i),
 			p, p0i), p, p0i);
@@ -4455,7 +4455,7 @@ make_fg_ternary_top(uint32_t *data, unsigned logn, int out_ntt)
 			modp_montymul(gs[u + 1], gs[u + 2], p, p0i),
 			p, p0i), p, p0i);
 	}
-	if (!out_ntt) {
+	if(!out_ntt) {
 		modp_iNTT3(fd, igm, logn - 1, 0, p, p0i);
 		modp_iNTT3(gd, igm, logn - 1, 0, p, p0i);
 	}
@@ -4486,12 +4486,12 @@ make_fg(uint32_t *data, const int16_t *f, const int16_t *g,
 	gt = ft + n;
 	primes = ter ? PRIMES3 : PRIMES2;
 	p0 = primes[0].p;
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		ft[u] = modp_set(f[u], p0);
 		gt[u] = modp_set(g[u], p0);
 	}
 
-	if (depth == 0 && out_ntt) {
+	if(depth == 0 && out_ntt) {
 		uint32_t *gm, *igm;
 		uint32_t p, p0i;
 
@@ -4499,7 +4499,7 @@ make_fg(uint32_t *data, const int16_t *f, const int16_t *g,
 		p0i = modp_ninv31(p);
 		gm = gt + n;
 		igm = gm + MKN(logn, 0);
-		if (ter) {
+		if(ter) {
 			modp_mkgm3(gm, igm, logn, 1, primes[0].g, p, p0i);
 			modp_NTT3(ft, gm, logn, 1, p, p0i);
 			modp_NTT3(gt, gm, logn, 1, p, p0i);
@@ -4511,14 +4511,14 @@ make_fg(uint32_t *data, const int16_t *f, const int16_t *g,
 		return;
 	}
 
-	if (ter) {
+	if(ter) {
 		make_fg_ternary_top(data, logn, depth > 1 || out_ntt);
-		for (d = 1; d < depth; d ++) {
+		for(d = 1; d < depth; d ++) {
 			make_fg_step(data, logn - d, d, 1,
 				1, (d + 1) < depth || out_ntt);
 		}
 	} else {
-		for (d = 0; d < depth; d ++) {
+		for(d = 0; d < depth; d ++) {
 			make_fg_step(data, logn - d, d, 0,
 				d != 0, (d + 1) < depth || out_ntt);
 		}
@@ -4541,7 +4541,7 @@ solve_NTRU_deepest(falcon_keygen *fk, const int16_t *f, const int16_t *g)
 	const small_prime *primes;
 
 	logn = fk->logn;
-	if (fk->ternary) {
+	if(fk->ternary) {
 		len = MAX_BL_SMALL3[logn];
 		primes = PRIMES3;
 	} else {
@@ -4567,7 +4567,7 @@ solve_NTRU_deepest(falcon_keygen *fk, const int16_t *f, const int16_t *g)
 	 * Apply the binary GCD. The zint_bezout() function works only
 	 * if both inputs are odd.
 	 */
-	if (!zint_bezout(Gp, Fp, fp, gp, len, t1)) {
+	if(!zint_bezout(Gp, Fp, fp, gp, len, t1)) {
 		return 0;
 	}
 
@@ -4576,7 +4576,7 @@ solve_NTRU_deepest(falcon_keygen *fk, const int16_t *f, const int16_t *g)
 	 * fit in the destination arrays.
 	 */
 	q = fk->ternary ? 18433 : 12289;
-	if (zint_mul_small(Fp, len, q) != 0
+	if(zint_mul_small(Fp, len, q) != 0
 		|| zint_mul_small(Gp, len, q) != 0)
 	{
 		return 0;
@@ -4619,7 +4619,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 	 * In the ternary case _and_ top-level, n is a multiple of 3,
 	 * and hn = n/3. Otherwise, n is a power of 2, and hn = n/2.
 	 */
-	if (fk->ternary && depth == 0) {
+	if(fk->ternary && depth == 0) {
 		full = 1;
 		n = (size_t)3 << (logn - 1);
 		hn = (size_t)1 << (logn - 1);
@@ -4641,7 +4641,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 	 * We build our non-reduced F and G as two independent halves each,
 	 * of degree N/2 (F = F0 + X*F1, G = G0 + X*G1).
 	 */
-	if (fk->ternary) {
+	if(fk->ternary) {
 		slen = MAX_BL_SMALL3[depth];
 		dlen = MAX_BL_SMALL3[depth + 1];
 		llen = MAX_BL_LARGE3[depth];
@@ -4689,7 +4689,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 	 * We reduce Fd and Gd modulo all the small primes we will need,
 	 * and store the values in Ft and Gt (only n/2 values in each).
 	 */
-	for (u = 0; u < llen; u ++) {
+	for(u = 0; u < llen; u ++) {
 		uint32_t p, p0i, R2, Rx;
 		size_t v;
 		uint32_t *xs, *ys, *xd, *yd;
@@ -4698,7 +4698,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 		p0i = modp_ninv31(p);
 		R2 = modp_R2(p, p0i);
 		Rx = modp_Rx(dlen, p, p0i, R2);
-		for (v = 0, xs = Fd, ys = Gd, xd = Ft + u, yd = Gt + u;
+		for(v = 0, xs = Fd, ys = Gd, xd = Ft + u, yd = Gt + u;
 			v < hn;
 			v ++, xs += dlen, ys += dlen, xd += llen, yd += llen)
 		{
@@ -4714,7 +4714,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 	/*
 	 * Compute our F and G modulo sufficiently many small primes.
 	 */
-	for (u = 0; u < llen; u ++) {
+	for(u = 0; u < llen; u ++) {
 		uint32_t p, p0i, R2;
 		uint32_t *gm, *igm, *fx, *gx, *Fp, *Gp;
 		size_t v;
@@ -4730,13 +4730,13 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 		 * If we processed slen words, then f and g have been
 		 * de-NTTized, and are in RNS; we can rebuild them.
 		 */
-		if (u == slen) {
+		if(u == slen) {
 			zint_rebuild_CRT(ft, slen, slen, n, primes, 1, t1);
 			zint_rebuild_CRT(gt, slen, slen, n, primes, 1, t1);
 		}
 
 		gm = t1;
-		if (full) {
+		if(full) {
 			igm = gm + ((size_t)1 << logn);
 			fx = igm + ((size_t)1 << logn);
 		} else {
@@ -4746,22 +4746,22 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 		}
 		gx = fx + n;
 
-		if (fk->ternary) {
+		if(fk->ternary) {
 			modp_mkgm3(gm, igm, logn, full, primes[u].g, p, p0i);
 		} else {
 			modp_mkgm2(gm, igm, logn, primes[u].g, p, p0i);
 		}
 
-		if (u < slen) {
+		if(u < slen) {
 			size_t v;
 
-			for (v = 0, x = ft + u, y = gt + u;
+			for(v = 0, x = ft + u, y = gt + u;
 				v < n; v ++, x += slen, y += slen)
 			{
 				fx[v] = *x;
 				gx[v] = *y;
 			}
-			if (fk->ternary) {
+			if(fk->ternary) {
 				modp_iNTT3_ext(ft + u, slen, igm,
 					logn, full, p, p0i);
 				modp_iNTT3_ext(gt + u, slen, igm,
@@ -4777,7 +4777,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 			size_t v;
 
 			Rx = modp_Rx(slen, p, p0i, R2);
-			for (v = 0, x = ft, y = gt;
+			for(v = 0, x = ft, y = gt;
 				v < n; v ++, x += slen, y += slen)
 			{
 				fx[v] = zint_mod_small_signed(x, slen,
@@ -4785,7 +4785,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 				gx[v] = zint_mod_small_signed(y, slen,
 					p, p0i, R2, Rx);
 			}
-			if (fk->ternary) {
+			if(fk->ternary) {
 				modp_NTT3(fx, gm, logn, full, p, p0i);
 				modp_NTT3(gx, gm, logn, full, p, p0i);
 			} else {
@@ -4801,13 +4801,13 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 		 */
 		Fp = gx + n;
 		Gp = Fp + hn;
-		for (v = 0, x = Ft + u, y = Gt + u;
+		for(v = 0, x = Ft + u, y = Gt + u;
 			v < hn; v ++, x += llen, y += llen)
 		{
 			Fp[v] = *x;
 			Gp[v] = *y;
 		}
-		if (fk->ternary) {
+		if(fk->ternary) {
 			modp_NTT3(Fp, gm, logn - 1, 0, p, p0i);
 			modp_NTT3(Gp, gm, logn - 1, 0, p, p0i);
 		} else {
@@ -4845,12 +4845,12 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 		 * Moreover, in our chosen NTT representation, roots
 		 * from the same group are consecutive in RAM.
 		 */
-		if (full) {
+		if(full) {
 			uint32_t R3;
 			size_t v2;
 
 			R3 = modp_montymul(R2, R2, p, p0i);
-			for (v = 0, v2 = 0, x = Ft + u, y = Gt + u; v < n;
+			for(v = 0, v2 = 0, x = Ft + u, y = Gt + u; v < n;
 				v += 3, v2 ++, x += 3 * llen, y += 3 * llen)
 			{
 				uint32_t ftA, ftB, ftC, gtA, gtB, gtC;
@@ -4884,7 +4884,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 					p, p0i);
 			}
 		} else {
-			for (v = 0, x = Ft + u, y = Gt + u; v < hn;
+			for(v = 0, x = Ft + u, y = Gt + u; v < hn;
 				v ++, x += (llen << 1), y += (llen << 1))
 			{
 				uint32_t ftA, ftB, gtA, gtB;
@@ -4902,7 +4902,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 				y[llen] = modp_montymul(ftA, mGp, p, p0i);
 			}
 		}
-		if (fk->ternary) {
+		if(fk->ternary) {
 			modp_iNTT3_ext(Ft + u, llen, igm, logn, full, p, p0i);
 			modp_iNTT3_ext(Gt + u, llen, igm, logn, full, p, p0i);
 		} else {
@@ -4973,7 +4973,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 	rt1 = rt5 + (n >> 1);
 	k = (int32_t *)align_u32(fk->tmp, rt1);
 	rt2 = align_fpr(fk->tmp, k + n);
-	if (rt2 < (rt1 + n)) {
+	if(rt2 < (rt1 + n)) {
 		rt2 = rt1 + n;
 	}
 	t1 = (uint32_t *)k + n;
@@ -4993,7 +4993,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 	poly_big_to_fp(rt3, ft, slen, slen, logn, full, maxbl_fg, maxbl_fg);
 	poly_big_to_fp(rt4, gt, slen, slen, logn, full, maxbl_fg, maxbl_fg);
 
-	if (fk->ternary) {
+	if(fk->ternary) {
 		falcon_FFT3(rt3, logn, full);
 		falcon_FFT3(rt4, logn, full);
 		falcon_poly_invnorm2_fft3(rt5, rt3, rt4, logn, full);
@@ -5012,7 +5012,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 	 */
 	prev_maxbl_FG = (uint32_t)-1;
 	FGlen = llen;
-	for (;;) {
+	for(;;) {
 		uint32_t maxbl_F, maxbl_G, scale_FG, scale_k;
 		uint64_t max_kx;
 
@@ -5024,7 +5024,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 		maxbl_F = poly_max_bitlength(Ft, FGlen, llen, logn, full);
 		maxbl_G = poly_max_bitlength(Gt, FGlen, llen, logn, full);
 		maxbl_FG = maxbl_F < maxbl_G ? maxbl_G : maxbl_F;
-		while ((FGlen * 31) >= (maxbl_FG + 43)) {
+		while((FGlen * 31) >= (maxbl_FG + 43)) {
 			FGlen --;
 		}
 
@@ -5033,7 +5033,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 		 * f and g, or when the last reduction round did not
 		 * manage to reduce the maximum bit length.
 		 */
-		if (maxbl_FG <= maxbl_fg || maxbl_FG >= prev_maxbl_FG) {
+		if(maxbl_FG <= maxbl_fg || maxbl_FG >= prev_maxbl_FG) {
 			break;
 		}
 		prev_maxbl_FG = maxbl_FG;
@@ -5048,7 +5048,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 		poly_big_to_fp(rt2, Gt, FGlen, llen,
 			logn, full, maxbl_FG, scale_FG);
 
-		if (fk->ternary) {
+		if(fk->ternary) {
 			falcon_FFT3(rt1, logn, full);
 			falcon_FFT3(rt2, logn, full);
 			falcon_poly_mul_fft3(rt1, rt3, logn, full);
@@ -5071,18 +5071,18 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 		 * so that they all fit on 31 bits.
 		 */
 		max_kx = 0;
-		for (u = 0; u < n; u ++) {
+		for(u = 0; u < n; u ++) {
 			int64_t kx;
 
 			kx = fpr_rint(rt2[u]);
-			if (kx < 0) {
+			if(kx < 0) {
 				kx = -kx;
 			}
-			if ((uint64_t)kx > max_kx) {
+			if((uint64_t)kx > max_kx) {
 				max_kx = kx;
 			}
 		}
-		if (max_kx >= ((uint64_t)1 << 62)) {
+		if(max_kx >= ((uint64_t)1 << 62)) {
 			return 0;
 		}
 		scale_k = bitlength((uint32_t)(max_kx >> 31));
@@ -5092,9 +5092,9 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 		 * final scale will be: scale_FG + scale_k - maxbl_fg;
 		 * we also need this value to be nonnegative.
 		 */
-		if (scale_k + scale_FG < maxbl_fg) {
+		if(scale_k + scale_FG < maxbl_fg) {
 			scale_k = maxbl_fg - scale_FG;
-			if (scale_k > 62) {
+			if(scale_k > 62) {
 				break;
 			}
 		}
@@ -5104,11 +5104,11 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 		/*
 		 * Get the coefficients of k as int32_t.
 		 */
-		for (u = 0; u < n; u ++) {
+		for(u = 0; u < n; u ++) {
 			int64_t kx, ks;
 
 			kx = fpr_rint(rt2[u]);
-			if (kx < 0) {
+			if(kx < 0) {
 				ks = -(int32_t)((-kx) >> scale_k);
 			} else {
 				ks = (int32_t)(kx >> scale_k);
@@ -5120,7 +5120,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 		 * If we are at low depth, then we use the NTT to
 		 * compute k*f and k*g.
 		 */
-		if (depth <= DEPTH_INT_FG) {
+		if(depth <= DEPTH_INT_FG) {
 			poly_sub_scaled_ntt(Ft, FGlen, llen, ft, slen, slen,
 				k, scale_FG - maxbl_fg,
 				logn, full, fk->ternary, t1);
@@ -5141,7 +5141,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 	 * If we could not reduce F and G so that they fit in slen, then
 	 * this is a failure.
 	 */
-	if (maxbl_FG > (slen * 31)) {
+	if(maxbl_FG > (slen * 31)) {
 		return 0;
 	}
 
@@ -5149,7 +5149,7 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 	 * Compress encoding of all values to 'slen' words (this is the
 	 * expected output format).
 	 */
-	for (u = 0, x = fk->tmp, y = fk->tmp;
+	for(u = 0, x = fk->tmp, y = fk->tmp;
 		u < (n << 1); u ++, x += slen, y += llen)
 	{
 		memmove(x, y, slen * sizeof *y);
@@ -5159,13 +5159,13 @@ solve_NTRU_intermediate(falcon_keygen *fk,
 	 * Values might actually be shorter, in which case we must
 	 * sign-extend them (caller expects it).
 	 */
-	if (FGlen < slen) {
-		for (u = 0, x = fk->tmp; u < (n << 1); u ++, x += slen) {
+	if(FGlen < slen) {
+		for(u = 0, x = fk->tmp; u < (n << 1); u ++, x += slen) {
 			uint32_t sign;
 			size_t v;
 
 			sign = -(x[FGlen - 1] >> 30) >> 1;
-			for (v = FGlen; v < slen; v ++) {
+			for(v = FGlen; v < slen; v ++) {
 				x[v] = sign;
 			}
 		}
@@ -5248,7 +5248,7 @@ solve_NTRU_binary_depth1(falcon_keygen *fk,
 	 * We reduce Fd and Gd modulo all the small primes we will need,
 	 * and store the values in Ft and Gt.
 	 */
-	for (u = 0; u < llen; u ++) {
+	for(u = 0; u < llen; u ++) {
 		uint32_t p, p0i, R2, Rx;
 		size_t v;
 		uint32_t *xs, *ys, *xd, *yd;
@@ -5257,7 +5257,7 @@ solve_NTRU_binary_depth1(falcon_keygen *fk,
 		p0i = modp_ninv31(p);
 		R2 = modp_R2(p, p0i);
 		Rx = modp_Rx(dlen, p, p0i, R2);
-		for (v = 0, xs = Fd, ys = Gd, xd = Ft + u, yd = Gt + u;
+		for(v = 0, xs = Fd, ys = Gd, xd = Ft + u, yd = Gt + u;
 			v < hn;
 			v ++, xs += dlen, ys += dlen, xd += llen, yd += llen)
 		{
@@ -5281,7 +5281,7 @@ solve_NTRU_binary_depth1(falcon_keygen *fk,
 	/*
 	 * Compute our F and G modulo sufficiently many small primes.
 	 */
-	for (u = 0; u < llen; u ++) {
+	for(u = 0; u < llen; u ++) {
 		uint32_t p, p0i, R2;
 		uint32_t *gm, *igm, *fx, *gx, *Fp, *Gp;
 		unsigned e;
@@ -5311,7 +5311,7 @@ solve_NTRU_binary_depth1(falcon_keygen *fk,
 		/*
 		 * Set ft and gt to f and g modulo p, respectively.
 		 */
-		for (v = 0; v < n_top; v ++) {
+		for(v = 0; v < n_top; v ++) {
 			fx[v] = modp_set(f[v], p);
 			gx[v] = modp_set(g[v], p);
 		}
@@ -5321,7 +5321,7 @@ solve_NTRU_binary_depth1(falcon_keygen *fk,
 		 */
 		modp_NTT2(fx, gm, logn_top, p, p0i);
 		modp_NTT2(gx, gm, logn_top, p, p0i);
-		for (e = logn_top; e > logn; e --) {
+		for(e = logn_top; e > logn; e --) {
 			modp_poly_rec_res(fx, e, p, p0i, R2);
 			modp_poly_rec_res(gx, e, p, p0i, R2);
 		}
@@ -5330,7 +5330,7 @@ solve_NTRU_binary_depth1(falcon_keygen *fk,
 		 * From that point onward, we only need tables for
 		 * degree n, so we can save some space.
 		 */
-		if (depth > 0) {
+		if(depth > 0) {
 			memmove(gm + n, igm, n * sizeof *igm);
 			igm = gm + n;
 			memmove(igm + n, fx, n * sizeof *ft);
@@ -5346,7 +5346,7 @@ solve_NTRU_binary_depth1(falcon_keygen *fk,
 		 */
 		Fp = gx + n;
 		Gp = Fp + hn;
-		for (v = 0, x = Ft + u, y = Gt + u;
+		for(v = 0, x = Ft + u, y = Gt + u;
 			v < hn; v ++, x += llen, y += llen)
 		{
 			Fp[v] = *x;
@@ -5392,7 +5392,7 @@ solve_NTRU_binary_depth1(falcon_keygen *fk,
 		 * Moreover, the two roots for each pair are consecutive
 		 * in our bit-reversal encoding.
 		 */
-		for (v = 0, x = Ft + u, y = Gt + u;
+		for(v = 0, x = Ft + u, y = Gt + u;
 			v < hn; v ++, x += (llen << 1), y += (llen << 1))
 		{
 			uint32_t ftA, ftB, gtA, gtB;
@@ -5415,10 +5415,10 @@ solve_NTRU_binary_depth1(falcon_keygen *fk,
 		/*
 		 * Also save ft and gt (only up to size slen).
 		 */
-		if (u < slen) {
+		if(u < slen) {
 			modp_iNTT2(fx, igm, logn, p, p0i);
 			modp_iNTT2(gx, igm, logn, p, p0i);
-			for (v = 0, x = ft + u, y = gt + u;
+			for(v = 0, x = ft + u, y = gt + u;
 				v < n; v ++, x += slen, y += slen)
 			{
 				*x = fx[v];
@@ -5454,7 +5454,7 @@ solve_NTRU_binary_depth1(falcon_keygen *fk,
 	maxbl_G = poly_max_bitlength(Gt, llen, llen, logn, 0);
 	maxbl_FG = maxbl_F < maxbl_G ? maxbl_G : maxbl_F;
 
-	if (maxbl_fg > 53 || maxbl_FG > 53) {
+	if(maxbl_fg > 53 || maxbl_FG > 53) {
 		return 0;
 	}
 
@@ -5529,7 +5529,7 @@ solve_NTRU_binary_depth1(falcon_keygen *fk,
 	 * Compute k as the rounded version of rt5.
 	 */
 	falcon_iFFT(rt5, logn);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		rt5[u] = fpr_of(fpr_rint(rt5[u]));
 	}
 	falcon_FFT(rt5, logn);
@@ -5553,7 +5553,7 @@ solve_NTRU_binary_depth1(falcon_keygen *fk,
 	memmove(rt3, rt1, 2 * n * sizeof *rt1);
 	rt1 = rt3;
 	rt2 = rt1 + n;
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		Ft[u] = (uint32_t)fpr_rint(rt1[u]);
 		Gt[u] = (uint32_t)fpr_rint(rt2[u]);
 	}
@@ -5613,7 +5613,7 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	/*
 	 * Convert F' anf G' in NTT representation.
 	 */
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		Fp[u] = modp_set(zint_one_to_plain(Fp + u), p);
 		Gp[u] = modp_set(zint_one_to_plain(Gp + u), p);
 	}
@@ -5623,7 +5623,7 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	/*
 	 * Load f and g and convert them to NTT representation.
 	 */
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		ft[u] = modp_set(f[u], p);
 		gt[u] = modp_set(g[u], p);
 	}
@@ -5633,7 +5633,7 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	/*
 	 * Build the unreduced F,G in ft and gt.
 	 */
-	for (u = 0; u < n; u += 2) {
+	for(u = 0; u < n; u += 2) {
 		uint32_t ftA, ftB, gtA, gtB;
 		uint32_t mFp, mGp;
 
@@ -5685,7 +5685,7 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	 * representation.
 	 */
 	t4[0] = t5[0] = modp_set(f[0], p);
-	for (u = 1; u < n; u ++) {
+	for(u = 1; u < n; u ++) {
 		t4[u] = modp_set(f[u], p);
 		t5[n - u] = modp_set(-f[u], p);
 	}
@@ -5695,7 +5695,7 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	/*
 	 * Compute F*adj(f) in t2, and f*adj(f) in t3.
 	 */
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		uint32_t w;
 
 		w = modp_montymul(t5[u], R2, p, p0i);
@@ -5708,7 +5708,7 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	 * representation.
 	 */
 	t4[0] = t5[0] = modp_set(g[0], p);
-	for (u = 1; u < n; u ++) {
+	for(u = 1; u < n; u ++) {
 		t4[u] = modp_set(g[u], p);
 		t5[n - u] = modp_set(-g[u], p);
 	}
@@ -5718,7 +5718,7 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	/*
 	 * Add G*adj(g) to t2, and g*adj(g) to t3.
 	 */
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		uint32_t w;
 
 		w = modp_montymul(t5[u], R2, p, p0i);
@@ -5737,7 +5737,7 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	modp_mkgm2(t1, t4, logn, PRIMES2[0].g, p, p0i);
 	modp_iNTT2(t2, t4, logn, p, p0i);
 	modp_iNTT2(t3, t4, logn, p, p0i);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		t1[u] = (uint32_t)modp_norm(t2[u], p);
 		t2[u] = (uint32_t)modp_norm(t3[u], p);
 	}
@@ -5761,7 +5761,7 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	 * the imaginary parts.
 	 */
 	rt3 = align_fpr(fk->tmp, t3);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		rt3[u] = fpr_of(((int32_t *)t2)[u]);
 	}
 	falcon_FFT(rt3, logn);
@@ -5772,7 +5772,7 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	 * Convert F*adj(f)+G*adj(g) in FFT representation.
 	 */
 	rt3 = rt2 + hn;
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		rt3[u] = fpr_of(((int32_t *)t1)[u]);
 	}
 	falcon_FFT(rt3, logn);
@@ -5783,7 +5783,7 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	 */
 	falcon_poly_div_autoadj_fft(rt3, rt2, logn);
 	falcon_iFFT(rt3, logn);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		t1[u] = modp_set((int32_t)fpr_rint(rt3[u]), p);
 	}
 
@@ -5801,14 +5801,14 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	t4 = t3 + n;
 	t5 = t4 + n;
 	modp_mkgm2(t2, t3, logn, PRIMES2[0].g, p, p0i);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		t4[u] = modp_set(f[u], p);
 		t5[u] = modp_set(g[u], p);
 	}
 	modp_NTT2(t1, t2, logn, p, p0i);
 	modp_NTT2(t4, t2, logn, p, p0i);
 	modp_NTT2(t5, t2, logn, p, p0i);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		uint32_t kw;
 
 		kw = modp_montymul(t1[u], R2, p, p0i);
@@ -5819,7 +5819,7 @@ solve_NTRU_binary_depth0(falcon_keygen *fk,
 	}
 	modp_iNTT2(Fp, t3, logn, p, p0i);
 	modp_iNTT2(Gp, t3, logn, p, p0i);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		Fp[u] = (uint32_t)modp_norm(Fp[u], p);
 		Gp[u] = (uint32_t)modp_norm(Gp[u], p);
 	}
@@ -5881,7 +5881,7 @@ solve_NTRU_ternary_depth0(falcon_keygen *fk,
 	 */
 	rt1 = rt5 + hn;
 	rt2 = rt1 + tn;
-	for (u = 0; u < tn; u ++) {
+	for(u = 0; u < tn; u ++) {
 		rt1[u] = fpr_of(zint_one_to_plain(Fp + u));
 		rt2[u] = fpr_of(zint_one_to_plain(Gp + u));
 	}
@@ -5912,7 +5912,7 @@ solve_NTRU_ternary_depth0(falcon_keygen *fk,
 	/*
 	 * Build candidate F and G in rt3 and rt4.
 	 */
-	for (u = 0, v = 0; u < hn; u += 3, v ++) {
+	for(u = 0, v = 0; u < hn; u += 3, v ++) {
 
 #define FPC_MUL(d_re, d_im, a_re, a_im, b_re, b_im)   do { \
 		fpr fpct_a_re, fpct_a_im; \
@@ -5930,7 +5930,7 @@ solve_NTRU_ternary_depth0(falcon_keygen *fk,
 			fpr_mul(fpct_a_im, fpct_b_re)); \
 		(d_re) = fpct_d_re; \
 		(d_im) = fpct_d_im; \
-	} while (0)
+	} while(0)
 
 		fpr Fre, Fim, Gre, Gim;
 		fpr f1re, f1im, f2re, f2im, f3re, f3im;
@@ -6019,7 +6019,7 @@ solve_NTRU_ternary_depth0(falcon_keygen *fk,
 	 * Round the contents of rt3 to get k, converted back into FFT.
 	 */
 	falcon_iFFT3(rt3, logn, 1);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		rt3[u] = fpr_of(fpr_rint(rt3[u]));
 	}
 	falcon_FFT3(rt3, logn, 1);
@@ -6049,7 +6049,7 @@ solve_NTRU_ternary_depth0(falcon_keygen *fk,
 	memmove(rt5, rt1, 2 * n * sizeof *rt1);
 	rt1 = rt5;
 	rt2 = rt1 + n;
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		Fp[u] = (uint32_t)fpr_rint(rt1[u]);
 		Gp[u] = (uint32_t)fpr_rint(rt2[u]);
 	}
@@ -6073,7 +6073,7 @@ solve_NTRU(falcon_keygen *fk, int16_t *F, int16_t *G,
 	logn = fk->logn;
 	n = MKN(logn, fk->ternary);
 
-	if (!solve_NTRU_deepest(fk, f, g)) {
+	if(!solve_NTRU_deepest(fk, f, g)) {
 		return 0;
 	}
 
@@ -6083,12 +6083,12 @@ solve_NTRU(falcon_keygen *fk, int16_t *F, int16_t *G,
 	 * do not fit the hypotheses in solve_NTRU_binary_depth0()
 	 * or solve_NTRU_ternary_depth0().
 	 */
-	if (logn <= 2) {
+	if(logn <= 2) {
 		unsigned depth;
 
 		depth = logn;
-		while (depth -- > 0) {
-			if (!solve_NTRU_intermediate(fk, f, g, depth)) {
+		while(depth -- > 0) {
+			if(!solve_NTRU_intermediate(fk, f, g, depth)) {
 				return 0;
 			}
 		}
@@ -6096,25 +6096,25 @@ solve_NTRU(falcon_keygen *fk, int16_t *F, int16_t *G,
 		unsigned depth;
 
 		depth = logn;
-		if (fk->ternary) {
-			while (depth -- > 1) {
-				if (!solve_NTRU_intermediate(fk, f, g, depth)) {
+		if(fk->ternary) {
+			while(depth -- > 1) {
+				if(!solve_NTRU_intermediate(fk, f, g, depth)) {
 					return 0;
 				}
 			}
-			if (!solve_NTRU_ternary_depth0(fk, f, g)) {
+			if(!solve_NTRU_ternary_depth0(fk, f, g)) {
 				return 0;
 			}
 		} else {
-			while (depth -- > 2) {
-				if (!solve_NTRU_intermediate(fk, f, g, depth)) {
+			while(depth -- > 2) {
+				if(!solve_NTRU_intermediate(fk, f, g, depth)) {
 					return 0;
 				}
 			}
-			if (!solve_NTRU_binary_depth1(fk, f, g)) {
+			if(!solve_NTRU_binary_depth1(fk, f, g)) {
 				return 0;
 			}
-			if (!solve_NTRU_binary_depth0(fk, f, g)) {
+			if(!solve_NTRU_binary_depth0(fk, f, g)) {
 				return 0;
 			}
 		}
@@ -6124,7 +6124,7 @@ solve_NTRU(falcon_keygen *fk, int16_t *F, int16_t *G,
 	 * Final F and G are in fk->tmp, one word per coefficient
 	 * (signed value over 31 bits).
 	 */
-	if (!poly_big_to_small(F, fk->tmp, logn, fk->ternary)
+	if(!poly_big_to_small(F, fk->tmp, logn, fk->ternary)
 		|| !poly_big_to_small(G, fk->tmp + n, logn, fk->ternary))
 	{
 		return 0;
@@ -6144,18 +6144,18 @@ solve_NTRU(falcon_keygen *fk, int16_t *F, int16_t *G,
 	primes = fk->ternary ? PRIMES3 : PRIMES2;
 	p = primes[0].p;
 	p0i = modp_ninv31(p);
-	if (fk->ternary) {
+	if(fk->ternary) {
 		modp_mkgm3(gm, ft, logn, 1, primes[0].g, p, p0i);
 	} else {
 		modp_mkgm2(gm, ft, logn, primes[0].g, p, p0i);
 	}
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		ft[u] = modp_set(f[u], p);
 		gt[u] = modp_set(g[u], p);
 		Ft[u] = modp_set(F[u], p);
 		Gt[u] = modp_set(G[u], p);
 	}
-	if (fk->ternary) {
+	if(fk->ternary) {
 		modp_NTT3(ft, gm, logn, 1, p, p0i);
 		modp_NTT3(gt, gm, logn, 1, p, p0i);
 		modp_NTT3(Ft, gm, logn, 1, p, p0i);
@@ -6168,12 +6168,12 @@ solve_NTRU(falcon_keygen *fk, int16_t *F, int16_t *G,
 		modp_NTT2(Gt, gm, logn, p, p0i);
 		r = modp_montymul(12289, 1, p, p0i);
 	}
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		uint32_t z;
 
 		z = modp_sub(modp_montymul(ft[u], Gt[u], p, p0i),
 			modp_montymul(gt[u], Ft[u], p, p0i), p);
-		if (z != r) {
+		if(z != r) {
 			return 0;
 		}
 	}
@@ -6195,13 +6195,13 @@ poly_small_mkgauss(falcon_keygen *fk, int16_t *f, unsigned logn)
 
 	n = MKN(logn, 0);
 	mod2 = 0;
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		int s;
 
 	restart:
 		s = mkgauss(fk, logn);
-		if (u == n - 1) {
-			if ((mod2 ^ (unsigned)(s & 1)) == 0) {
+		if(u == n - 1) {
+			if((mod2 ^ (unsigned)(s & 1)) == 0) {
 				goto restart;
 			}
 		} else {
@@ -6252,7 +6252,7 @@ falcon_keygen_make(falcon_keygen *fk, int comp,
 	/*
 	 * Make sure the RNG is properly seeded and ready to output bits.
 	 */
-	if (!rng_ready(fk)) {
+	if(!rng_ready(fk)) {
 		return 0;
 	}
 
@@ -6281,8 +6281,8 @@ falcon_keygen_make(falcon_keygen *fk, int comp,
 	 * In both cases, we require that Res(f,phi) and Res(g,phi) are
 	 * both odd (the NTRU equation solver requires it).
 	 */
-	for (;;) {
-		if (ter) {
+	for(;;) {
+		if(ter) {
 			fpr *rt1, *rt2, *rt3;
 			size_t hn;
 			fpr sigma, norm, bound;
@@ -6299,7 +6299,7 @@ falcon_keygen_make(falcon_keygen *fk, int comp,
 			rt3 = rt2 + n;
 			sigma = fpr_sqrt(fpr_div(fpr_of(18433),
 				fpr_sqrt(fpr_of(8))));
-			for (u = 0; u < hn; u ++) {
+			for(u = 0; u < hn; u ++) {
 				uint32_t a, b;
 				uint64_t c;
 
@@ -6314,15 +6314,15 @@ falcon_keygen_make(falcon_keygen *fk, int comp,
 			}
 			falcon_iFFT3(rt1, logn, 1);
 			falcon_iFFT3(rt2, logn, 1);
-			for (u = 0; u < n; u ++) {
+			for(u = 0; u < n; u ++) {
 				f[u] = (int16_t)fpr_rint(rt1[u]);
 				g[u] = (int16_t)fpr_rint(rt2[u]);
 			}
 
-			if (mod2_res_ternary(f, logn) == 0) {
+			if(mod2_res_ternary(f, logn) == 0) {
 				continue;
 			}
-			if (mod2_res_ternary(g, logn) == 0) {
+			if(mod2_res_ternary(g, logn) == 0) {
 				continue;
 			}
 
@@ -6342,13 +6342,13 @@ falcon_keygen_make(falcon_keygen *fk, int comp,
 			falcon_FFT3(rt1, logn, 1);
 			falcon_FFT3(rt2, logn, 1);
 			norm = fpr_of(0);
-			for (u = 0; u < n; u ++) {
+			for(u = 0; u < n; u ++) {
 				norm = fpr_add(norm, fpr_sqr(rt1[u]));
 				norm = fpr_add(norm, fpr_sqr(rt2[u]));
 			}
 			norm = fpr_double(norm);
 
-			if (!fpr_lt(norm, bound)) {
+			if(!fpr_lt(norm, bound)) {
 				continue;
 			}
 
@@ -6363,13 +6363,13 @@ falcon_keygen_make(falcon_keygen *fk, int comp,
 			falcon_poly_mul_autoadj_fft3(rt1, rt3, logn, 1);
 			falcon_poly_mul_autoadj_fft3(rt2, rt3, logn, 1);
 			norm = fpr_of(0);
-			for (u = 0; u < n; u ++) {
+			for(u = 0; u < n; u ++) {
 				norm = fpr_add(norm, fpr_sqr(rt1[u]));
 				norm = fpr_add(norm, fpr_sqr(rt2[u]));
 			}
 			norm = fpr_double(norm);
 
-			if (!fpr_lt(norm, bound)) {
+			if(!fpr_lt(norm, bound)) {
 				continue;
 			}
 		} else {
@@ -6396,7 +6396,7 @@ falcon_keygen_make(falcon_keygen *fk, int comp,
 			normf = poly_small_sqnorm(f, logn, ter);
 			normg = poly_small_sqnorm(g, logn, ter);
 			norm = (normf + normg) | -((normf | normg) >> 31);
-			if (norm >= 16823) {
+			if(norm >= 16823) {
 				continue;
 			}
 
@@ -6420,11 +6420,11 @@ falcon_keygen_make(falcon_keygen *fk, int comp,
 			falcon_iFFT(rt1, logn);
 			falcon_iFFT(rt2, logn);
 			bnorm = fpr_of(0);
-			for (u = 0; u < n; u ++) {
+			for(u = 0; u < n; u ++) {
 				bnorm = fpr_add(bnorm, fpr_sqr(rt1[u]));
 				bnorm = fpr_add(bnorm, fpr_sqr(rt2[u]));
 			}
-			if (!fpr_lt(bnorm, fpr_div(
+			if(!fpr_lt(bnorm, fpr_div(
 				fpr_of(168224121), fpr_of(10000))))
 			{
 				continue;
@@ -6435,14 +6435,14 @@ falcon_keygen_make(falcon_keygen *fk, int comp,
 		 * Compute public key h = g/f mod X^N+1 mod q. If this
 		 * fails, we must restart.
 		 */
-		if (!falcon_compute_public(h, f, g, logn, ter)) {
+		if(!falcon_compute_public(h, f, g, logn, ter)) {
 			continue;
 		}
 
 		/*
 		 * Solve the NTRU equation to get F and G.
 		 */
-		if (!solve_NTRU(fk, F, G, f, g)) {
+		if(!solve_NTRU(fk, F, G, f, g)) {
 			continue;
 		}
 
@@ -6457,7 +6457,7 @@ falcon_keygen_make(falcon_keygen *fk, int comp,
 	 */
 	klen = *privkey_len;
 	skbuf = privkey;
-	if (klen < 1) {
+	if(klen < 1) {
 		return 0;
 	}
 	skbuf[0] = (ter << 7) + (comp << 5) + logn;
@@ -6466,12 +6466,12 @@ falcon_keygen_make(falcon_keygen *fk, int comp,
 	ske[1] = g;
 	ske[2] = F;
 	ske[3] = G;
-	for (i = 0; i < 4; i ++) {
+	for(i = 0; i < 4; i ++) {
 		size_t elen;
 
 		elen = falcon_encode_small(skbuf + skoff, klen - skoff,
 			comp, ter ? 18433 : 12289, ske[i], logn);
-		if (elen == 0) {
+		if(elen == 0) {
 			return 0;
 		}
 		skoff += elen;
@@ -6482,18 +6482,18 @@ falcon_keygen_make(falcon_keygen *fk, int comp,
 	 * Encode public key.
 	 */
 	klen = *pubkey_len;
-	if (klen < 1) {
+	if(klen < 1) {
 		return 0;
 	}
 	((unsigned char *)pubkey)[0] = (ter << 7) + logn;
-	if (ter) {
+	if(ter) {
 		klen = falcon_encode_18433(
 			(unsigned char *)pubkey + 1, klen - 1, h, logn);
 	} else {
 		klen = falcon_encode_12289(
 			(unsigned char *)pubkey + 1, klen - 1, h, logn);
 	}
-	if (klen == 0) {
+	if(klen == 0) {
 		return 0;
 	}
 	*pubkey_len = klen + 1;

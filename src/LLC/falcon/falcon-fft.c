@@ -58,7 +58,7 @@
 		fpct_im = fpr_add(a_im, b_im); \
 		(d_re) = fpct_re; \
 		(d_im) = fpct_im; \
-	} while (0)
+	} while(0)
 
 /*
  * Subtraction of two complex numbers (d = a - b).
@@ -69,7 +69,7 @@
 		fpct_im = fpr_sub(a_im, b_im); \
 		(d_re) = fpct_re; \
 		(d_im) = fpct_im; \
-	} while (0)
+	} while(0)
 
 /*
  * Multplication of two complex numbers (d = a * b).
@@ -90,7 +90,7 @@
 			fpr_mul(fpct_a_im, fpct_b_re)); \
 		(d_re) = fpct_d_re; \
 		(d_im) = fpct_d_im; \
-	} while (0)
+	} while(0)
 
 /*
  * Squaring of a complex number (d = a * a).
@@ -104,7 +104,7 @@
 		fpct_d_im = fpr_double(fpr_mul(fpct_a_re, fpct_a_im)); \
 		(d_re) = fpct_d_re; \
 		(d_im) = fpct_d_im; \
-	} while (0)
+	} while(0)
 
 /*
  * Inversion of a complex number (d = 1 / a).
@@ -120,7 +120,7 @@
 		fpct_d_im = fpr_div(fpr_neg(fpct_a_im), fpct_m); \
 		(d_re) = fpct_d_re; \
 		(d_im) = fpct_d_im; \
-	} while (0)
+	} while(0)
 
 /*
  * Division of complex numbers (d = a / b).
@@ -145,7 +145,7 @@
 			fpr_mul(fpct_a_im, fpct_b_re)); \
 		(d_re) = fpct_d_re; \
 		(d_im) = fpct_d_im; \
-	} while (0)
+	} while(0)
 
 /*
  * Let w = exp(i*pi/N); w is a primitive 2N-th root of 1. We define the
@@ -221,19 +221,19 @@ falcon_FFT(fpr *f, unsigned logn)
 	n = (size_t)1 << logn;
 	hn = n >> 1;
 	t = hn;
-	for (u = 1, m = 2; u < logn; u ++, m <<= 1) {
+	for(u = 1, m = 2; u < logn; u ++, m <<= 1) {
 		size_t ht, hm, i1, j1;
 
 		ht = t >> 1;
 		hm = m >> 1;
-		for (i1 = 0, j1 = 0; i1 < hm; i1 ++, j1 += t) {
+		for(i1 = 0, j1 = 0; i1 < hm; i1 ++, j1 += t) {
 			unsigned j, j2;
 			fpr s_re, s_im;
 
 			s_re = fpr_gm_tab[((m + i1) << 1) + 0];
 			s_im = fpr_gm_tab[((m + i1) << 1) + 1];
 			j2 = j1 + ht;
-			for (j = j1; j < j2; j ++) {
+			for(j = j1; j < j2; j ++) {
 				fpr x_re, x_im, y_re, y_im;
 
 				x_re = f[j];
@@ -303,19 +303,19 @@ falcon_iFFT(fpr *f, unsigned logn)
 	t = 1;
 	m = n;
 	hn = n >> 1;
-	for (u = logn; u > 1; u --) {
+	for(u = logn; u > 1; u --) {
 		size_t hm, dt, i1, j1;
 
 		hm = m >> 1;
 		dt = t << 1;
-		for (i1 = 0, j1 = 0; j1 < hn; i1 ++, j1 += dt) {
+		for(i1 = 0, j1 = 0; j1 < hn; i1 ++, j1 += dt) {
 			size_t j, j2;
 			fpr s_re, s_im;
 
 			j2 = j1 + t;
 			s_re = fpr_gm_tab[((hm + i1) << 1) + 0];
 			s_im = fpr_neg(fpr_gm_tab[((hm + i1) << 1) + 1]);
-			for (j = j1; j < j2; j ++) {
+			for(j = j1; j < j2; j ++) {
 				fpr x_re, x_im, y_re, y_im;
 
 				x_re = f[j];
@@ -337,11 +337,11 @@ falcon_iFFT(fpr *f, unsigned logn)
 	 * Last iteration is a no-op, provided that we divide by N/2
 	 * instead of N. We need to make a special case for logn = 0.
 	 */
-	if (logn > 0) {
+	if(logn > 0) {
 		fpr ni;
 
 		ni = fpr_scaled(2, -(int)logn);
-		for (u = 0; u < n; u ++) {
+		for(u = 0; u < n; u ++) {
 			f[u] = fpr_mul(f[u], ni);
 		}
 	}
@@ -354,7 +354,7 @@ falcon_poly_add(fpr *restrict a, const fpr *restrict b, unsigned logn)
 	size_t n, u;
 
 	n = (size_t)1 << logn;
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		a[u] = fpr_add(a[u], b[u]);
 	}
 }
@@ -374,7 +374,7 @@ falcon_poly_addconst_fft(fpr *a, fpr x, unsigned logn)
 	size_t hn, u;
 
 	hn = (size_t)1 << (logn - 1);
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		a[u] = fpr_add(a[u], x);
 	}
 }
@@ -386,7 +386,7 @@ falcon_poly_sub(fpr *restrict a, const fpr *restrict b, unsigned logn)
 	size_t n, u;
 
 	n = (size_t)1 << logn;
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		a[u] = fpr_sub(a[u], b[u]);
 	}
 }
@@ -398,7 +398,7 @@ falcon_poly_neg(fpr *a, unsigned logn)
 	size_t n, u;
 
 	n = (size_t)1 << logn;
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		a[u] = fpr_neg(a[u]);
 	}
 }
@@ -411,7 +411,7 @@ falcon_poly_adj(fpr *a, unsigned logn)
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	for (u = 1; u < hn; u ++) {
+	for(u = 1; u < hn; u ++) {
 		fpr t;
 
 		t = fpr_neg(a[u]);
@@ -428,7 +428,7 @@ falcon_poly_adj_fft(fpr *a, unsigned logn)
 	size_t n, u;
 
 	n = (size_t)1 << logn;
-	for (u = (n >> 1); u < n; u ++) {
+	for(u = (n >> 1); u < n; u ++) {
 		a[u] = fpr_neg(a[u]);
 	}
 }
@@ -441,7 +441,7 @@ falcon_poly_mul_fft(fpr *restrict a, const fpr *restrict b, unsigned logn)
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im, b_re, b_im;
 
 		a_re = a[u];
@@ -460,7 +460,7 @@ falcon_poly_sqr_fft(fpr *a, unsigned logn)
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im;
 
 		a_re = a[u];
@@ -477,7 +477,7 @@ falcon_poly_muladj_fft(fpr *restrict a, const fpr *restrict b, unsigned logn)
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im, b_re, b_im;
 
 		a_re = a[u];
@@ -500,7 +500,7 @@ falcon_poly_mulselfadj_fft(fpr *a, unsigned logn)
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im;
 
 		a_re = a[u];
@@ -517,7 +517,7 @@ falcon_poly_mulconst(fpr *a, fpr x, unsigned logn)
 	size_t n, u;
 
 	n = (size_t)1 << logn;
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		a[u] = fpr_mul(a[u], x);
 	}
 }
@@ -530,7 +530,7 @@ falcon_poly_inv_fft(fpr *a, unsigned logn)
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im;
 
 		a_re = a[u];
@@ -547,7 +547,7 @@ falcon_poly_div_fft(fpr *restrict a, const fpr *restrict b, unsigned logn)
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im, b_re, b_im;
 
 		a_re = a[u];
@@ -566,7 +566,7 @@ falcon_poly_divadj_fft(fpr *restrict a, const fpr *restrict b, unsigned logn)
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im, b_re, b_im;
 
 		a_re = a[u];
@@ -586,7 +586,7 @@ falcon_poly_invnorm2_fft(fpr *restrict d,
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im;
 		fpr b_re, b_im;
 
@@ -610,7 +610,7 @@ falcon_poly_add_muladj_fft(fpr *restrict d,
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr F_re, F_im, G_re, G_im;
 		fpr f_re, f_im, g_re, g_im;
 		fpr a_re, a_im, b_re, b_im;
@@ -640,7 +640,7 @@ falcon_poly_mul_autoadj_fft(fpr *restrict a,
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		a[u] = fpr_mul(a[u], b[u]);
 		a[u + hn] = fpr_mul(a[u + hn], b[u]);
 	}
@@ -655,7 +655,7 @@ falcon_poly_div_autoadj_fft(fpr *restrict a,
 
 	n = (size_t)1 << logn;
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		a[u] = fpr_div(a[u], b[u]);
 		a[u + hn] = fpr_div(a[u + hn], b[u]);
 	}
@@ -687,7 +687,7 @@ falcon_poly_split_fft(fpr *restrict f0, fpr *restrict f1,
 	f0[0] = f[0];
 	f1[0] = f[hn];
 
-	for (u = 0; u < qn; u ++) {
+	for(u = 0; u < qn; u ++) {
 		fpr a_re, a_im, b_re, b_im;
 		fpr t_re, t_im;
 
@@ -726,7 +726,7 @@ falcon_poly_merge_fft(fpr *restrict f,
 	f[0] = f0[0];
 	f[hn] = f1[0];
 
-	for (u = 0; u < qn; u ++) {
+	for(u = 0; u < qn; u ++) {
 		fpr a_re, a_im, b_re, b_im;
 		fpr t_re, t_im;
 
@@ -768,7 +768,7 @@ falcon_FFT3(fpr *a, unsigned logn, unsigned full)
 	 * X^2-X+1. If w = exp(i*pi/3), then the roots are w and w^5.
 	 * We keep only a(w) = a0 + a1*w.
 	 */
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a0, a1;
 
 		a0 = a[u];
@@ -782,19 +782,19 @@ falcon_FFT3(fpr *a, unsigned logn, unsigned full)
 	 */
 	t = hn;
 	tmin = 1 + (full << 1);
-	for (m = 2; t > tmin; m <<= 1) {
+	for(m = 2; t > tmin; m <<= 1) {
 		size_t ht, hm, u1, v1;
 
 		ht = t >> 1;
 		hm = m >> 1;
-		for (u1 = 0, v1 = 0; u1 < hm; u1 ++, v1 += t) {
+		for(u1 = 0, v1 = 0; u1 < hm; u1 ++, v1 += t) {
 			size_t v, v2;
 			fpr sr, si;
 
 			sr = fpr_gm3_square[((m + u1) << 1) + 0];
 			si = fpr_gm3_square[((m + u1) << 1) + 1];
 			v2 = v1 + ht;
-			for (v = v1; v < v2; v ++) {
+			for(v = v1; v < v2; v ++) {
 				fpr a0r, a0i, a1r, a1i;
 
 				a0r = a[v];
@@ -814,10 +814,10 @@ falcon_FFT3(fpr *a, unsigned logn, unsigned full)
 	/*
 	 * Last step: degree tripling (only if degree is multiple of 3).
 	 */
-	if (full) {
+	if(full) {
 		size_t v;
 
-		for (u = 0, v = (size_t)1 << logn; u < hn; u += 3, v += 2) {
+		for(u = 0, v = (size_t)1 << logn; u < hn; u += 3, v += 2) {
 			fpr fAr, fAi, fBr, fBi, fCr, fCi;
 			fpr xr, xi;
 			fpr fB0r, fB0i, fB1r, fB1i, fB2r, fB2i;
@@ -862,10 +862,10 @@ falcon_iFFT3(fpr *a, unsigned logn, unsigned full)
 	/*
 	 * First step: divide degree by 3.
 	 */
-	if (full) {
+	if(full) {
 		size_t v;
 
-		for (u = 0, v = (size_t)1 << logn; u < hn; u += 3, v += 2) {
+		for(u = 0, v = (size_t)1 << logn; u < hn; u += 3, v += 2) {
 			fpr f0r, f0i, f1r, f1i, f2r, f2i, xr, xi;
 			fpr f11r, f11i, f12r, f12i, f21r, f21i, f22r, f22i;
 
@@ -901,19 +901,19 @@ falcon_iFFT3(fpr *a, unsigned logn, unsigned full)
 	 * Intermediate steps for halving the degree.
 	 */
 	t = 2 + (full << 2);
-	for (m = (size_t)1 << (logn - 1 - full); t < n; m >>= 1) {
+	for(m = (size_t)1 << (logn - 1 - full); t < n; m >>= 1) {
 		size_t ht, hm, u1, v1;
 
 		ht = t >> 1;
 		hm = m >> 1;
-		for (u1 = 0, v1 = 0; u1 < hm; u1 ++, v1 += t) {
+		for(u1 = 0, v1 = 0; u1 < hm; u1 ++, v1 += t) {
 			size_t v, v2;
 			fpr sr, si;
 
 			sr = fpr_gm3_square[((m + u1) << 1) + 0];
 			si = fpr_neg(fpr_gm3_square[((m + u1) << 1) + 1]);
 			v2 = v1 + ht;
-			for (v = v1; v < v2; v ++) {
+			for(v = v1; v < v2; v ++) {
 				fpr a0r, a0i, a1r, a1i;
 
 				a0r = a[v];
@@ -944,7 +944,7 @@ falcon_iFFT3(fpr *a, unsigned logn, unsigned full)
 	 *
 	 * Note that Re(w) = 1/2.
 	 */
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr xr, xi, a0, a1;
 
 		xr = a[u];
@@ -959,7 +959,7 @@ falcon_iFFT3(fpr *a, unsigned logn, unsigned full)
 	 * We have an accumulated N/2 multiplier to remove.
 	 */
 	ni = fpr_inverse_of(n >> 1);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		a[u] = fpr_mul(ni, a[u]);
 	}
 }
@@ -972,7 +972,7 @@ falcon_poly_add3(fpr *restrict a, const fpr *restrict b,
 	size_t n, u;
 
 	n = MKN(logn, full);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		a[u] = fpr_add(a[u], b[u]);
 	}
 }
@@ -993,7 +993,7 @@ falcon_poly_addconst_fft3(fpr *restrict a, fpr x, unsigned logn, unsigned full)
 	size_t n, u;
 
 	n = MKN(logn, full);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		a[u] = fpr_add(a[u], x);
 	}
 }
@@ -1006,7 +1006,7 @@ falcon_poly_sub3(fpr *restrict a, const fpr *restrict b,
 	size_t n, u;
 
 	n = MKN(logn, full);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		a[u] = fpr_sub(a[u], b[u]);
 	}
 }
@@ -1018,7 +1018,7 @@ falcon_poly_neg3(fpr *restrict a, unsigned logn, unsigned full)
 	size_t n, u;
 
 	n = MKN(logn, full);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		a[u] = fpr_neg(a[u]);
 	}
 }
@@ -1031,7 +1031,7 @@ falcon_poly_adj_fft3(fpr *a, unsigned logn, unsigned full)
 
 	n = MKN(logn, full);
 	hn = n >> 1;
-	for (u = hn; u < n; u ++) {
+	for(u = hn; u < n; u ++) {
 		a[u] = fpr_neg(a[u]);
 	}
 }
@@ -1045,7 +1045,7 @@ falcon_poly_mul_fft3(fpr *restrict a, const fpr *restrict b,
 
 	n = MKN(logn, full);
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im, b_re, b_im;
 
 		a_re = a[u];
@@ -1064,7 +1064,7 @@ falcon_poly_sqr_fft3(fpr *a, unsigned logn, unsigned full)
 
 	n = MKN(logn, full);
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im;
 
 		a_re = a[u];
@@ -1082,7 +1082,7 @@ falcon_poly_muladj_fft3(fpr *restrict a, const fpr *restrict b,
 
 	n = MKN(logn, full);
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im, b_re, b_im;
 
 		a_re = a[u];
@@ -1105,7 +1105,7 @@ falcon_poly_mulselfadj_fft3(fpr *a, unsigned logn, unsigned full)
 
 	n = MKN(logn, full);
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im;
 
 		a_re = a[u];
@@ -1122,7 +1122,7 @@ falcon_poly_mulconst3(fpr *a, fpr x, unsigned logn, unsigned full)
 	size_t n, u;
 
 	n = MKN(logn, full);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		a[u] = fpr_mul(a[u], x);
 	}
 }
@@ -1135,7 +1135,7 @@ falcon_poly_inv_fft3(fpr *a, unsigned logn, unsigned full)
 
 	n = MKN(logn, full);
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im;
 
 		a_re = a[u];
@@ -1153,7 +1153,7 @@ falcon_poly_div_fft3(fpr *restrict a, const fpr *restrict b,
 
 	n = MKN(logn, full);
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im, b_re, b_im;
 
 		a_re = a[u];
@@ -1173,7 +1173,7 @@ falcon_poly_divadj_fft3(fpr *restrict a, const fpr *restrict b,
 
 	n = MKN(logn, full);
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im, b_re, b_im;
 
 		a_re = a[u];
@@ -1194,7 +1194,7 @@ falcon_poly_invnorm2_fft3(fpr *restrict d,
 
 	n = MKN(logn, full);
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr a_re, a_im;
 		fpr b_re, b_im;
 
@@ -1219,7 +1219,7 @@ falcon_poly_add_muladj_fft3(fpr *restrict d,
 
 	n = MKN(logn, full);
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		fpr F_re, F_im, G_re, G_im;
 		fpr f_re, f_im, g_re, g_im;
 		fpr a_re, a_im, b_re, b_im;
@@ -1249,7 +1249,7 @@ falcon_poly_mul_autoadj_fft3(fpr *restrict a,
 
 	n = MKN(logn, full);
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		a[u] = fpr_mul(a[u], b[u]);
 		a[u + hn] = fpr_mul(a[u + hn], b[u]);
 	}
@@ -1264,7 +1264,7 @@ falcon_poly_div_autoadj_fft3(fpr *restrict a,
 
 	n = MKN(logn, full);
 	hn = n >> 1;
-	for (u = 0; u < hn; u ++) {
+	for(u = 0; u < hn; u ++) {
 		a[u] = fpr_div(a[u], b[u]);
 		a[u + hn] = fpr_div(a[u + hn], b[u]);
 	}
@@ -1281,7 +1281,7 @@ falcon_poly_split_top_fft3(
 	n = (size_t)3 << (logn - 1);
 	hn = n >> 1;
 	qn = (size_t)1 << (logn - 2);
-	for (u = 0, v = 0; u < hn; u += 3, v ++) {
+	for(u = 0, v = 0; u < hn; u += 3, v ++) {
 		fpr fAr, fAi, fBr, fBi, fCr, fCi, xr, xi;
 		fpr fB1r, fB1i, fB2r, fB2i, fC1r, fC1i, fC2r, fC2i;
 		fpr t0r, t0i, t1r, t1i, t2r, t2i;
@@ -1331,7 +1331,7 @@ falcon_poly_split_deep_fft3(fpr *restrict f0, fpr *restrict f1,
 	/*
 	 * Special code for n = 2.
 	 */
-	if (logn == 1) {
+	if(logn == 1) {
 		fpr re, im, xx;
 
 		re = f[0];
@@ -1347,7 +1347,7 @@ falcon_poly_split_deep_fft3(fpr *restrict f0, fpr *restrict f1,
 	qn = hn >> 1;
 
 	m = (size_t)1 << (logn - 1);
-	for (u = 0; u < qn; u ++) {
+	for(u = 0; u < qn; u ++) {
 		fpr a_re, a_im, b_re, b_im;
 		fpr t_re, t_im;
 
@@ -1380,7 +1380,7 @@ falcon_poly_merge_top_fft3(fpr *restrict f,
 	n = (size_t)3 << (logn - 1);
 	hn = n >> 1;
 	qn = (size_t)1 << (logn - 2);
-	for (u = 0, v = 0; u < hn; u += 3, v ++) {
+	for(u = 0, v = 0; u < hn; u += 3, v ++) {
 		fpr fAr, fAi, fBr, fBi, fCr, fCi;
 		fpr xr, xi;
 		fpr fB0r, fB0i, fB1r, fB1i, fB2r, fB2i;
@@ -1421,7 +1421,7 @@ falcon_poly_merge_deep_fft3(fpr *restrict f,
 	/*
 	 * Special code for n = 2.
 	 */
-	if (logn == 1) {
+	if(logn == 1) {
 		fpr x, y;
 
 		x = *f0;
@@ -1436,7 +1436,7 @@ falcon_poly_merge_deep_fft3(fpr *restrict f,
 	qn = hn >> 1;
 
 	m = (size_t)1 << (logn - 1);
-	for (u = 0; u < qn; u ++) {
+	for(u = 0; u < qn; u ++) {
 		fpr a_re, a_im, b_re, b_im;
 		fpr t_re, t_im;
 

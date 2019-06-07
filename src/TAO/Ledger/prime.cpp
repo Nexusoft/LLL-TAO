@@ -52,7 +52,7 @@ namespace TAO
             uint32_t nClusterSize = 1;
 
             /* Largest prime gap is +12 for dense clusters. */
-            for( ; bnNext <= bnLast + 12; bnNext += 2)
+            for(; bnNext <= bnLast + 12; bnNext += 2)
             {
                 /* Check if this interval is prime. */
                 if(PrimeCheck(bnNext))

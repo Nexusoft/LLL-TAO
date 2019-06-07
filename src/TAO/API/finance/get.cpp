@@ -60,11 +60,11 @@ namespace TAO
             uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
-            if( nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+            if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                 throw APIException(-24, "Object is not an account");
 
             /* Check the account is a NXS account */
-            if( object.get<uint256_t>("token") != 0)
+            if(object.get<uint256_t>("token") != 0)
                 throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for accessing non-NXS token accounts.");
 
             /* Convert the account object to JSON */
@@ -77,9 +77,9 @@ namespace TAO
                 std::string strFieldname =  params["fieldname"].get<std::string>();
                 
                 /* Iterate through the response keys */
-                for (auto it = ret.begin(); it != ret.end(); ++it)
+                for(auto it = ret.begin(); it != ret.end(); ++it)
                     /* If this key is not the one that was requested then erase it */
-                    if( it.key() != strFieldname)
+                    if(it.key() != strFieldname)
                         ret.erase(it);
             }
 

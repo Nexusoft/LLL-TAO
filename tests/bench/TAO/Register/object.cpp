@@ -5,7 +5,7 @@
 #include <unit/catch2/catch.hpp>
 
 
-TEST_CASE( "Object Register Benchmarks", "[register]" )
+TEST_CASE( "Object Register Benchmarks", "[register]")
 {
     using namespace TAO::Register;
 

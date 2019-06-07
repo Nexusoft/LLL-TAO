@@ -85,7 +85,7 @@ namespace TAO
 
 
                 // if the paramter is a JSON list or array then we need to parse it
-                if( arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
+                if(arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
                     parameters[prev]=json::json::parse(arg.substr(pos + 1));
                 else
                     parameters[prev] = arg.substr(pos + 1);
@@ -186,7 +186,7 @@ namespace TAO
             }
 
             /* Check RPC user/pass are set */
-            if (config::mapArgs["-rpcuser"] == "" && config::mapArgs["-rpcpassword"] == "")
+            if(config::mapArgs["-rpcuser"] == "" && config::mapArgs["-rpcpassword"] == "")
                 throw std::runtime_error(debug::safe_printstr(
                     "You must set rpcpassword=<password> in the configuration file: ",
                     config::GetConfigFile(), "\n",
@@ -201,7 +201,7 @@ namespace TAO
             {
                 std::string strArg = argv[i];
                 // if the paramter is a JSON list or array then we need to parse it
-                if( strArg.compare(0,1,"{") == 0 || strArg.compare(0,1,"[") == 0)
+                if(strArg.compare(0,1,"{") == 0 || strArg.compare(0,1,"[") == 0)
                     parameters.push_back(json::json::parse(argv[i]));
                 else
                     parameters.push_back(argv[i]);

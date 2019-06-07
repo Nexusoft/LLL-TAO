@@ -98,7 +98,7 @@ xor_block(uint64_t *A, const void *data, size_t rate)
 {
 	size_t u;
 
-	for (u = 0; u < rate; u += 8) {
+	for(u = 0; u < rate; u += 8) {
 		A[u >> 3] ^= dec64le((const unsigned char *)data + u);
 	}
 }
@@ -120,7 +120,7 @@ process_block(uint64_t *A)
 	 * Compute the 24 rounds. This loop is partially unrolled (each
 	 * iteration computes two rounds).
 	 */
-	for (j = 0; j < 24; j += 2) {
+	for(j = 0; j < 24; j += 2) {
 
 		tt0 = A[ 1] ^ A[ 6];
 		tt1 = A[11] ^ A[16];
@@ -537,18 +537,18 @@ shake_inject(shake_context *sc, const void *data, size_t len)
 	buf = data;
 	rate = sc->rate;
 	dptr = sc->dptr;
-	while (len > 0) {
+	while(len > 0) {
 		size_t clen;
 
 		clen = rate - dptr;
-		if (clen > len) {
+		if(clen > len) {
 			clen = len;
 		}
 		memcpy(sc->dbuf + dptr, buf, clen);
 		dptr += clen;
 		buf += clen;
 		len -= clen;
-		if (dptr == rate) {
+		if(dptr == rate) {
 			xor_block(sc->A, sc->dbuf, rate);
 			process_block(sc->A);
 			dptr = 0;
@@ -566,7 +566,7 @@ shake_flip(shake_context *sc)
 	 * set dptr to the end of the buffer, so that first call to
 	 * shake_extract() will process the block.
 	 */
-	if ((sc->dptr + 1) == sc->rate) {
+	if((sc->dptr + 1) == sc->rate) {
 		sc->dbuf[sc->dptr ++] = 0x9F;
 	} else {
 		sc->dbuf[sc->dptr ++] = 0x1F;
@@ -587,10 +587,10 @@ shake_extract(shake_context *sc, void *out, size_t len)
 	buf = out;
 	dptr = sc->dptr;
 	rate = sc->rate;
-	while (len > 0) {
+	while(len > 0) {
 		size_t clen;
 
-		if (dptr == rate) {
+		if(dptr == rate) {
 			unsigned char *dbuf;
 			uint64_t *A;
 
@@ -625,7 +625,7 @@ shake_extract(shake_context *sc, void *out, size_t len)
 			dptr = 0;
 		}
 		clen = rate - dptr;
-		if (clen > len) {
+		if(clen > len) {
 			clen = len;
 		}
 		memcpy(buf, sc->dbuf + dptr, clen);

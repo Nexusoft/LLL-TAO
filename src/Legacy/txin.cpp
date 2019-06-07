@@ -33,10 +33,10 @@ namespace Legacy
 	/* Flag to tell if this input is the flag for proof of stake Transactions */
 	bool TxIn::IsStakeSig() const
 	{
-		if( scriptSig.size() < 8)
+		if(scriptSig.size() < 8)
 			return false;
 
-		if( scriptSig[0] != 1 || scriptSig[1] != 2 || scriptSig[2] != 3 || scriptSig[3] != 5 ||
+		if(scriptSig[0] != 1 || scriptSig[1] != 2 || scriptSig[2] != 3 || scriptSig[3] != 5 ||
 			scriptSig[4] != 8 || scriptSig[5] != 13 || scriptSig[6] != 21 || scriptSig[7] != 34)
 			return false;
 
@@ -57,7 +57,7 @@ namespace Legacy
         std::string str;
         str += "TxIn(";
         str += prevout.ToString();
-        if (prevout.IsNull())
+        if(prevout.IsNull())
         {
             if(IsStakeSig())
                 str += debug::safe_printstr(", genesis ", HexStr(scriptSig));
@@ -68,7 +68,7 @@ namespace Legacy
             str += debug::safe_printstr(", trust ", HexStr(scriptSig));
         else
             str += debug::safe_printstr(", scriptSig=", scriptSig.ToString().substr(0,24));
-        if (nSequence != std::numeric_limits<uint32_t>::max())
+        if(nSequence != std::numeric_limits<uint32_t>::max())
             str += debug::safe_printstr(", nSequence=", nSequence);
         str += ")";
         return str;

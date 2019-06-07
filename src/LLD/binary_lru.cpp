@@ -179,7 +179,7 @@ namespace LLD
         BinaryNode* pthis = hashmap[Bucket(vKey)];
 
         /* Check if the Record Exists. */
-        if (pthis == nullptr || pthis->vKey != vKey)
+        if(pthis == nullptr || pthis->vKey != vKey)
             return false;
 
         /* Get the data. */
@@ -301,7 +301,7 @@ namespace LLD
         //Then do a PUT if reserve is set to false
 
         /* Check if the Record Exists. */
-        if (pthis == nullptr || pthis->vKey != vKey)
+        if(pthis == nullptr || pthis->vKey != vKey)
             return;
 
         /* Set object to reserved. */
@@ -334,7 +334,7 @@ namespace LLD
         BinaryNode* pthis = hashmap[nBucket];
 
         /* Check if the Record Exists. */
-        if (pthis == nullptr || pthis->vKey != vKey)
+        if(pthis == nullptr || pthis->vKey != vKey)
             return false;
 
         /* Remove from the linked list. */

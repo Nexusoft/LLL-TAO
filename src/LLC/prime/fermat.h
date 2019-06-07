@@ -477,7 +477,7 @@ void pow2m(uint32_t *X, uint32_t *Exp, uint32_t *N, uint32_t *table)
         if(Exp[i>>5] & (1 << (i & 31)))
             wval |= 1;
 
-        if( ( (i % WINDOW_BITS) == 0) && wval)
+        if(( (i % WINDOW_BITS) == 0) && wval)
         {
             mulredc<WORD_MAX>(X, X, &table[wval * WORD_MAX], N, d, t);
             wval = 0;

@@ -24,7 +24,7 @@ ________________________________________________________________________________
 /*  Parses a string and tokenizes it into substrings based on the character delimiter. */
 void ParseString(const std::string& str, char c, std::vector<std::string>& v)
 {
-    if (str.empty())
+    if(str.empty())
         return;
 
     std::string::size_type i1 = 0;
@@ -32,7 +32,7 @@ void ParseString(const std::string& str, char c, std::vector<std::string>& v)
     while(true)
     {
         i2 = str.find(c, i1);
-        if (i2 == str.npos)
+        if(i2 == str.npos)
         {
             v.push_back(str.substr(i1));
 
@@ -78,15 +78,15 @@ std::string FormatMoney(int64_t n, bool fPlus, int64_t COIN_SIZE)
 
     // Right-trim excess 0's before the decimal point:
     uint64_t nTrim = 0;
-    for (uint64_t i = str.size()-1; (str[i] == '0' && isdigit(str[i-2])); --i)
+    for(uint64_t i = str.size()-1; (str[i] == '0' && isdigit(str[i-2])); --i)
         ++nTrim;
 
-    if (nTrim)
+    if(nTrim)
         str.erase(str.size()-nTrim, nTrim);
 
-    if (n < 0)
+    if(n < 0)
         str.insert((uint32_t)0, 1, '-');
-    else if (fPlus && n > 0)
+    else if(fPlus && n > 0)
         str.insert((uint32_t)0, 1, '+');
     return str;
 }
@@ -99,15 +99,15 @@ bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE, int64_t CEN
     std::string strWhole;
     int64_t nUnits = 0;
     const char* p = pszIn;
-    while (isspace(*p))
+    while(isspace(*p))
         p++;
-    for (; *p; p++)
+    for(; *p; p++)
     {
-        if (*p == '.')
+        if(*p == '.')
         {
             p++;
             int64_t nMult = CENT_SIZE * 10;
-            while (isdigit(*p) && (nMult > 0))
+            while(isdigit(*p) && (nMult > 0))
             {
                 nUnits += nMult * (*p++ - '0');
                 nMult /= 10;
@@ -116,21 +116,21 @@ bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE, int64_t CEN
             break;
         }
 
-        if (isspace(*p))
+        if(isspace(*p))
             break;
 
-        if (!isdigit(*p))
+        if(!isdigit(*p))
             return false;
 
         strWhole.insert(strWhole.end(), *p);
     }
 
-    for (; *p; p++)
-        if (!isspace(*p))
+    for(; *p; p++)
+        if(!isspace(*p))
             return false;
-    if (strWhole.size() > 10) // guard against 63 bit overflow
+    if(strWhole.size() > 10) // guard against 63 bit overflow
         return false;
-    if (nUnits < 0 || nUnits > COIN_SIZE)
+    if(nUnits < 0 || nUnits > COIN_SIZE)
         return false;
 
     int64_t nWhole = convert::atoi64(strWhole);
@@ -156,13 +156,13 @@ std::vector<std::string> Split(const std::string& strInput, char strDelimiter)
     std::string::size_type nFind  = strInput.find(strDelimiter);
 
     std::vector<std::string> vData;
-    while (nFind != std::string::npos)
+    while(nFind != std::string::npos)
     {
         vData.push_back(strInput.substr(nIndex, nFind - nIndex));
         nIndex = ++nFind;
         nFind  = strInput.find(strDelimiter, nFind);
 
-        if (nFind == std::string::npos)
+        if(nFind == std::string::npos)
             vData.push_back(strInput.substr(nIndex, strInput.length()));
     }
 
@@ -177,13 +177,13 @@ std::vector<std::string> Split(const std::string& strInput, const std::string& s
     std::string::size_type nFind  = strInput.find(strDelimiter);
 
     std::vector<std::string> vData;
-    while (nFind != std::string::npos)
+    while(nFind != std::string::npos)
     {
         vData.push_back(strInput.substr(nIndex, nFind - nIndex));
         nIndex = ++nFind;
         nFind  = strInput.find(strDelimiter, nFind);
 
-        if (nFind == std::string::npos)
+        if(nFind == std::string::npos)
             vData.push_back(strInput.substr(nIndex, strInput.length()));
     }
 

@@ -291,7 +291,7 @@ namespace LLD
         BinaryKey* pthis = hashmap[nBucket];
 
         /* Check if the Record Exists. */
-        if (pthis == nullptr || pthis->vKey != vKey)
+        if(pthis == nullptr || pthis->vKey != vKey)
             return;
 
         /* Set the binary key to have a large time penalty. */
@@ -311,7 +311,7 @@ namespace LLD
         BinaryKey* pthis = hashmap[nBucket];
 
         /* Check if the Record Exists. */
-        if (pthis == nullptr || pthis->vKey != vKey)
+        if(pthis == nullptr || pthis->vKey != vKey)
             return false;
 
         /* Remove from the linked list. */

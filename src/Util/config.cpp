@@ -65,7 +65,7 @@ namespace config
         /* This may be called before parsing command line arguments.
          * Check if -datadir option is present and record the setting if it is
          */
-        for (int i = 1; i < argc; ++i)
+        for(int i = 1; i < argc; ++i)
         {
             const std::string argValue(argv[i]);
             const std::string datadirSwitch("-datadir");
@@ -74,11 +74,11 @@ namespace config
             /* Form is -datadir=path so path setting starts at location 9.
              * Any length <9 on argv is either a different option or datadir with no value. Ignore these.
              */
-            if (argValue.length() > 9 && argValue.compare(0, 8, datadirSwitch) == 0)
+            if(argValue.length() > 9 && argValue.compare(0, 8, datadirSwitch) == 0)
                 mapArgs[datadirSwitch] = argValue.substr(9, std::string::npos);
 
             /* Also need to do the same for custom config file name */
-            if (argValue.length() > 6 && argValue.compare(0, 5, configFileSwitch) == 0)
+            if(argValue.length() > 6 && argValue.compare(0, 5, configFileSwitch) == 0)
                 mapArgs[configFileSwitch] = argValue.substr(6, std::string::npos);
         }
 
@@ -94,17 +94,17 @@ namespace config
         char pszPath[MAX_PATH] = "";
         std::string p;
 
-        if (SHGetSpecialFolderPathA(nullptr, pszPath, nFolder, fCreate))
+        if(SHGetSpecialFolderPathA(nullptr, pszPath, nFolder, fCreate))
             p = pszPath;
 
-        else if (nFolder == CSIDL_STARTUP)
+        else if(nFolder == CSIDL_STARTUP)
         {
             p = getenv("USERPROFILE");
             p.append("\\Start Menu");
             p.append("\\Programs");
             p.append("\\Startup");
         }
-        else if (nFolder == CSIDL_APPDATA)
+        else if(nFolder == CSIDL_APPDATA)
             p = getenv("APPDATA");
 
         return p;
@@ -125,7 +125,7 @@ namespace config
         pathRet.append("\\" + strName + "\\");
     #else
         std::string strHome = std::string(getenv("HOME"));
-        if (strHome == "" || strHome.size() == 0)
+        if(strHome == "" || strHome.size() == 0)
             pathRet = "/";
         else
             pathRet = strHome;
@@ -166,16 +166,16 @@ namespace config
 
         // This can be called during exceptions by debug log, so we cache the
         // value so we don't have to do memory allocations after that.
-        if (fCachedPath[fNetSpecific])
+        if(fCachedPath[fNetSpecific])
             return path;
 
         LOCK(csPathCached);
-        if (mapArgs.count("-datadir"))
+        if(mapArgs.count("-datadir"))
         {
             /* get the command line argument for the data directory */
             path = mapArgs["-datadir"];
 
-            if (path.length() == 0)
+            if(path.length() == 0)
             {
                 /* -datadir setting used, but no value provided */
                 debug::error(FUNCTION, "-datadir no path specified. Using default.");
@@ -198,7 +198,7 @@ namespace config
             path = GetDefaultDataDir();
 
         uint32_t nTestnet = GetArg("-testnet", 0);
-        if (fNetSpecific && nTestnet > 0)
+        if(fNetSpecific && nTestnet > 0)
             path.append(debug::safe_printstr("testnet", nTestnet, "/"));
 
         filesystem::create_directories(path);

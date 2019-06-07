@@ -11,7 +11,7 @@
 #include <unit/catch2/catch.hpp>
 
 
-TEST_CASE( "Binary Key LRU Benchmarks", "[LLD]" )
+TEST_CASE( "Binary Key LRU Benchmarks", "[LLD]")
 {
     debug::log(0, "===== Begin Binary Key LRU Benchmarks =====");
 

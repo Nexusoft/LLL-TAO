@@ -203,7 +203,7 @@ namespace convert
     template<typename T>
     void skipspaces(T& it)
     {
-        while (isspace(*it))
+        while(isspace(*it))
             ++it;
     }
 
@@ -395,7 +395,7 @@ namespace convert
             bool bValueOut = false;
             // if the caller has requested conversion to a bool then test for boolean true|false value first
             // as istringsteam won't convert this implicitly
-            if( std::is_same<T, bool>::value && (ss >> std::boolalpha >> bValueOut))
+            if(std::is_same<T, bool>::value && (ss >> std::boolalpha >> bValueOut))
                 tValueOut = bValueOut;
             else
                 ss >> tValueOut;

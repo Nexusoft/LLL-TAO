@@ -77,11 +77,11 @@ namespace Legacy
 
         IMPLEMENT_SERIALIZE
         (
-            if (!(nSerType & SER_GETHASH))
+            if(!(nSerType & SER_GETHASH))
                 READWRITE(nSerVersion);
             READWRITE(nTime);
             READWRITE(vchPubKey);
-        )
+      )
     };
 
 }

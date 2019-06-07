@@ -80,7 +80,7 @@ static BLAKE2_INLINE __m128i fBlaMka(__m128i x, __m128i y) {
                                                                                \
         B0 = _mm_roti_epi64(B0, -24);                                          \
         B1 = _mm_roti_epi64(B1, -24);                                          \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #define G2(A0, B0, C0, D0, A1, B1, C1, D1)                                     \
     do {                                                                       \
@@ -101,7 +101,7 @@ static BLAKE2_INLINE __m128i fBlaMka(__m128i x, __m128i y) {
                                                                                \
         B0 = _mm_roti_epi64(B0, -63);                                          \
         B1 = _mm_roti_epi64(B1, -63);                                          \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #if defined(__SSSE3__)
 #define DIAGONALIZE(A0, B0, C0, D0, A1, B1, C1, D1)                            \
@@ -119,7 +119,7 @@ static BLAKE2_INLINE __m128i fBlaMka(__m128i x, __m128i y) {
         t1 = _mm_alignr_epi8(D0, D1, 8);                                       \
         D0 = t1;                                                               \
         D1 = t0;                                                               \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #define UNDIAGONALIZE(A0, B0, C0, D0, A1, B1, C1, D1)                          \
     do {                                                                       \
@@ -136,7 +136,7 @@ static BLAKE2_INLINE __m128i fBlaMka(__m128i x, __m128i y) {
         t1 = _mm_alignr_epi8(D1, D0, 8);                                       \
         D0 = t1;                                                               \
         D1 = t0;                                                               \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 #else /* SSE2 */
 #define DIAGONALIZE(A0, B0, C0, D0, A1, B1, C1, D1)                            \
     do {                                                                       \
@@ -149,7 +149,7 @@ static BLAKE2_INLINE __m128i fBlaMka(__m128i x, __m128i y) {
         D1 = _mm_unpackhi_epi64(t0, _mm_unpacklo_epi64(D1, D1));               \
         B0 = _mm_unpackhi_epi64(B0, _mm_unpacklo_epi64(B1, B1));               \
         B1 = _mm_unpackhi_epi64(B1, _mm_unpacklo_epi64(t1, t1));               \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #define UNDIAGONALIZE(A0, B0, C0, D0, A1, B1, C1, D1)                          \
     do {                                                                       \
@@ -163,7 +163,7 @@ static BLAKE2_INLINE __m128i fBlaMka(__m128i x, __m128i y) {
         B1 = _mm_unpackhi_epi64(t0, _mm_unpacklo_epi64(B1, B1));               \
         D0 = _mm_unpackhi_epi64(D0, _mm_unpacklo_epi64(D1, D1));               \
         D1 = _mm_unpackhi_epi64(D1, _mm_unpacklo_epi64(t1, t1));               \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 #endif
 
 #define BLAKE2_ROUND(A0, A1, B0, B1, C0, C1, D0, D1)                           \
@@ -177,7 +177,7 @@ static BLAKE2_INLINE __m128i fBlaMka(__m128i x, __m128i y) {
         G2(A0, B0, C0, D0, A1, B1, C1, D1);                                    \
                                                                                \
         UNDIAGONALIZE(A0, B0, C0, D0, A1, B1, C1, D1);                         \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 #else /* __AVX2__ */
 
 #include <immintrin.h>
@@ -358,7 +358,7 @@ static __m512i muladd(__m512i x, __m512i y)
 \
         B0 = ror64(B0, 24); \
         B1 = ror64(B1, 24); \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #define G2(A0, B0, C0, D0, A1, B1, C1, D1) \
     do { \
@@ -379,7 +379,7 @@ static __m512i muladd(__m512i x, __m512i y)
 \
         B0 = ror64(B0, 63); \
         B1 = ror64(B1, 63); \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #define DIAGONALIZE(A0, B0, C0, D0, A1, B1, C1, D1) \
     do { \
@@ -391,7 +391,7 @@ static __m512i muladd(__m512i x, __m512i y)
 \
         D0 = _mm512_permutex_epi64(D0, _MM_SHUFFLE(2, 1, 0, 3)); \
         D1 = _mm512_permutex_epi64(D1, _MM_SHUFFLE(2, 1, 0, 3)); \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #define UNDIAGONALIZE(A0, B0, C0, D0, A1, B1, C1, D1) \
     do { \
@@ -403,7 +403,7 @@ static __m512i muladd(__m512i x, __m512i y)
 \
         D0 = _mm512_permutex_epi64(D0, _MM_SHUFFLE(0, 3, 2, 1)); \
         D1 = _mm512_permutex_epi64(D1, _MM_SHUFFLE(0, 3, 2, 1)); \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #define BLAKE2_ROUND(A0, B0, C0, D0, A1, B1, C1, D1) \
     do { \
@@ -416,7 +416,7 @@ static __m512i muladd(__m512i x, __m512i y)
         G2(A0, B0, C0, D0, A1, B1, C1, D1); \
 \
         UNDIAGONALIZE(A0, B0, C0, D0, A1, B1, C1, D1); \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #define SWAP_HALVES(A0, A1) \
     do { \
@@ -452,7 +452,7 @@ static __m512i muladd(__m512i x, __m512i y)
         SWAP_HALVES(C0, D0); \
         SWAP_HALVES(A1, B1); \
         SWAP_HALVES(C1, D1); \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #define BLAKE2_ROUND_2(A0, A1, B0, B1, C0, C1, D0, D1) \
     do { \
@@ -465,7 +465,7 @@ static __m512i muladd(__m512i x, __m512i y)
         UNSWAP_QUARTERS(B0, B1); \
         UNSWAP_QUARTERS(C0, C1); \
         UNSWAP_QUARTERS(D0, D1); \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #endif /* __AVX512F__ */
 #endif /* BLAKE_ROUND_MKA_OPT_H */

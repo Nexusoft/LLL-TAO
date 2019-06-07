@@ -148,11 +148,11 @@ namespace Legacy
     int64_t WalletTx::GetDebit() const
     {
         /* Return 0 if no wallet bound or inputs not loaded */
-        if (!IsBound() || vin.empty())
+        if(!IsBound() || vin.empty())
             return 0;
 
         /* When calculation previously cached, use cached value */
-        if (fDebitCached)
+        if(fDebitCached)
             return nDebitCached;
 
         {
@@ -173,15 +173,15 @@ namespace Legacy
     int64_t WalletTx::GetCredit() const
     {
         /* Return 0 if no wallet bound or outputs not loaded */
-        if (!IsBound() || vout.empty())
+        if(!IsBound() || vout.empty())
             return 0;
 
         /* Immature transactions give zero credit */
-        if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0)
+        if((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0)
             return 0;
 
         /* When calculation previously cached, use cached value */
-        if (fCreditCached)
+        if(fCreditCached)
             return nCreditCached;
 
         {
@@ -202,16 +202,16 @@ namespace Legacy
     int64_t WalletTx::GetAvailableCredit() const
     {
         /* Return 0 if no wallet bound or outputs not loaded */
-        if (!IsBound() || vout.empty())
+        if(!IsBound() || vout.empty())
             return 0;
 
         /* Immature transactions give zero credit */
-        if ((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0)
+        if((IsCoinBase() || IsCoinStake()) && GetBlocksToMaturity() > 0)
             return 0;
 
         /* When calculation previously cached, use cached value */
         /* Disable caching -- this was commented out in legacy system code, left here for reference
-        if (fUseCache && fAvailableCreditCached)
+        if(fUseCache && fAvailableCreditCached)
             return nAvailableCreditCached;
         */
 
@@ -220,17 +220,17 @@ namespace Legacy
         {
             LOCK(WalletTx::cs_wallettx);
 
-            for (uint32_t i = 0; i < vout.size(); i++)
+            for(uint32_t i = 0; i < vout.size(); i++)
             {
                 const TxOut &txout = vout[i];
 
                 /* Calculate credit value only including unspent outputs */
-                if (!IsSpent(i) && vout[i].nValue > 0)
+                if(!IsSpent(i) && vout[i].nValue > 0)
                 {
                     /* Call corresponding method in wallet that will check which txout entries belong to it */
                     nCredit += ptransactionWallet->GetCredit(txout);
 
-                    if (!Legacy::MoneyRange(nCredit))
+                    if(!Legacy::MoneyRange(nCredit))
                         throw std::runtime_error("WalletTx::GetAvailableCredit() : value out of range");
                 }
             }
@@ -250,11 +250,11 @@ namespace Legacy
     int64_t WalletTx::GetChange() const
     {
         /* Return 0 if no wallet bound or outputs not loaded */
-        if (!IsBound() || vout.empty())
+        if(!IsBound() || vout.empty())
             return 0;
 
         /* When calculation previously cached, use cached value */
-        if (fChangeCached)
+        if(fChangeCached)
             return nChangeCached;
 
         {
@@ -282,7 +282,7 @@ namespace Legacy
     int32_t WalletTx::GetRequestCount() const
     {
         /* Return 0 if no wallet bound */
-        if (!IsBound())
+        if(!IsBound())
             return 0;
 
         return ptransactionWallet->GetRequestCount(*this);
@@ -301,15 +301,15 @@ namespace Legacy
     bool WalletTx::IsConfirmed() const
     {
         /* Not final = not confirmed */
-        if (!IsFinal())
+        if(!IsFinal())
             return false;
 
         /* If has depth, it is confirmed */
-        if (GetDepthInMainChain() >= 1)
+        if(GetDepthInMainChain() >= 1)
             return true;
 
         /* If transaction not from bound wallet (not ours) and depth is zero, it is unconfirmed */
-        if (!IsFromMe())
+        if(!IsFromMe())
             return false;
 
         /* If no confirmations but it is a transaction we sent (vtxPrev populated by AddSupportingTransactions()),
@@ -320,13 +320,13 @@ namespace Legacy
          */
         for(const auto& prevTx : vtxPrev)
         {
-            if (!prevTx.IsFinal())
+            if(!prevTx.IsFinal())
                 return false;
 
-            if (prevTx.GetDepthInMainChain() == 0)
+            if(prevTx.GetDepthInMainChain() == 0)
                 return false;
 
-            if (!ptransactionWallet->IsFromMe(prevTx))
+            if(!ptransactionWallet->IsFromMe(prevTx))
                 return false;
         }
 
@@ -339,11 +339,11 @@ namespace Legacy
     {
         bool result = false;
 
-        if (nOut >= vout.size())
+        if(nOut >= vout.size())
             throw std::runtime_error("WalletTx::IsSpent() : nOut out of range");
 
         /* Any valid nOut value >= vfSpent.size() (not tracked) is considered unspent */
-        if (nOut < vfSpent.size())
+        if(nOut < vfSpent.size())
             result = vfSpent[nOut];
 
         return result;
@@ -363,16 +363,16 @@ namespace Legacy
     /* Flags a given output for this transaction as spent */
     void WalletTx::MarkSpent(const uint32_t nOut)
     {
-        if (nOut >= vout.size())
+        if(nOut >= vout.size())
             throw std::runtime_error("WalletTx::MarkSpent() : nOut out of range");
 
         {
             LOCK(WalletTx::cs_wallettx);
 
-            if (vfSpent.size() != vout.size())
+            if(vfSpent.size() != vout.size())
                 vfSpent.resize(vout.size());
 
-            if (!vfSpent[nOut])
+            if(!vfSpent[nOut])
             {
                 vfSpent[nOut] = true;
 
@@ -386,16 +386,16 @@ namespace Legacy
     /* Flags a given output for this transaction as unspent */
     void WalletTx::MarkUnspent(const uint32_t nOut)
     {
-        if (nOut >= vout.size())
+        if(nOut >= vout.size())
             throw std::runtime_error("WalletTx::MarkUnspent() : nOut out of range");
 
         {
             LOCK(WalletTx::cs_wallettx);
 
-            if (vfSpent.size() != vout.size())
+            if(vfSpent.size() != vout.size())
                 vfSpent.resize(vout.size());
 
-            if (vfSpent[nOut])
+            if(vfSpent[nOut])
             {
                 vfSpent[nOut] = false;
 
@@ -414,16 +414,16 @@ namespace Legacy
         {
             LOCK(WalletTx::cs_wallettx);
 
-            if (vfSpent.size() != vout.size())
+            if(vfSpent.size() != vout.size())
                 vfSpent.resize(vout.size());
 
-            for (uint32_t i = 0; i < vfNewSpent.size(); i++)
+            for(uint32_t i = 0; i < vfNewSpent.size(); i++)
             {
-                if (i == vfSpent.size())
+                if(i == vfSpent.size())
                     break;
 
                 /* Only update if new flag is spent and old is unspent */
-                if (vfNewSpent[i] && !vfSpent[i])
+                if(vfNewSpent[i] && !vfSpent[i])
                 {
                     vfSpent[i] = true;
                     fReturn = true;
@@ -443,7 +443,7 @@ namespace Legacy
     {
         LOCK(WalletTx::cs_wallettx);
 
-        if (IsBound() && ptransactionWallet->IsFileBacked())
+        if(IsBound() && ptransactionWallet->IsFileBacked())
         {
             WalletDB walletDB(ptransactionWallet->GetWalletFile());
             bool ret = walletDB.WriteTx(GetHash(), *this);
@@ -466,9 +466,9 @@ namespace Legacy
         if(strSentAccount == "")
             strSentAccount = "default";
 
-        if (IsCoinBase() || IsCoinStake())
+        if(IsCoinBase() || IsCoinStake())
         {
-            if (GetBlocksToMaturity() > 0)
+            if(GetBlocksToMaturity() > 0)
                 nGeneratedImmature = ptransactionWallet->GetCredit(*this); //WalletTx::GetCredit() returns zero for immature
             else
                 nGeneratedMature = GetCredit();
@@ -478,7 +478,7 @@ namespace Legacy
 
         /* Compute fee only if transaction is from us */
         int64_t nDebit = GetDebit();
-        if (nDebit > 0)
+        if(nDebit > 0)
         {
             int64_t nValueOut = GetValueOut();
 
@@ -493,7 +493,7 @@ namespace Legacy
             std::vector<uint8_t> vchPubKey;
 
             /* Get the Nexus address from the txout public key */
-            if (!ExtractAddress(txout.scriptPubKey, address))
+            if(!ExtractAddress(txout.scriptPubKey, address))
             {
                 debug::log(0, FUNCTION, "Unknown transaction type found, txid ", this->GetHash().ToString());
 
@@ -501,11 +501,11 @@ namespace Legacy
             }
 
             /* For tx from us, txouts represent the sent value, add to the sent list */
-            if (nDebit > 0)
+            if(nDebit > 0)
                 listSent.push_back(std::make_pair(address, txout.nValue));
 
             /* For txout received (sent to address in bound wallet), add to the received list */
-            if (ptransactionWallet->IsMine(txout))
+            if(ptransactionWallet->IsMine(txout))
                 listReceived.push_back(std::make_pair(address, txout.nValue));
         }
     }
@@ -528,11 +528,11 @@ namespace Legacy
         GetAmounts(allGeneratedImmature, allGeneratedMature, listReceived, listSent, allFee, strSentAccount);
 
         /* If no requested account, set nGenerated to mature Coinbase/Coinstake amount */
-        if (strAccount == "" || strAccount == "*")
+        if(strAccount == "" || strAccount == "*")
             nGenerated = allGeneratedMature;
 
         /* If requested account is the account for this transaction, calculate nSent and nFee for it */
-        if (strAccount == strSentAccount)
+        if(strAccount == strSentAccount)
         {
             for(const auto& s : listSent)
                 nSent += s.second;
@@ -540,19 +540,19 @@ namespace Legacy
             nFee = allFee;
         }
 
-        if (IsBound())
+        if(IsBound())
         {
             for(const auto& r : listReceived)
             {
-                if (ptransactionWallet->GetAddressBook().HasAddress(r.first))
+                if(ptransactionWallet->GetAddressBook().HasAddress(r.first))
                 {
                     /* When received Nexus Address (r.first) is in wallet address book,
                      * include it in nReceived amount if its label matches requested account label
                      */
-                    if (ptransactionWallet->GetAddressBook().GetAddressBookName(r.first) == strAccount)
+                    if(ptransactionWallet->GetAddressBook().GetAddressBookName(r.first) == strAccount)
                         nReceived += r.second;
                 }
-                else if (strAccount == "" || strAccount == "*")
+                else if(strAccount == "" || strAccount == "*")
                 {
                     /* Received address is not in wallet address book, included in nReceived when no account requested */
                     nReceived += r.second;
@@ -573,7 +573,7 @@ namespace Legacy
         const uint32_t COPY_DEPTH = 3;
 
         /* Calling this for new transaction will return main chain depth of 0 */
-        if (IsBound() && GetDepthInMainChain() < COPY_DEPTH)
+        if(IsBound() && GetDepthInMainChain() < COPY_DEPTH)
         {
             /* Create list of tx hashes for previous transactions referenced by this transaction's inputs */
             std::vector<uint512_t> vWorkQueue;
@@ -587,12 +587,12 @@ namespace Legacy
                 std::map<uint512_t, const WalletTx*> mapWalletPrev;
                 std::set<uint512_t> setAlreadyDone;
 
-                for (uint32_t i = 0; i < vWorkQueue.size(); i++) //Cannot use iterator because loop adds to vWorkQueue
+                for(uint32_t i = 0; i < vWorkQueue.size(); i++) //Cannot use iterator because loop adds to vWorkQueue
                 {
                     uint512_t prevoutTxHash = vWorkQueue[i];
 
                     /* Only need to process each hash once even if referenced multiple times */
-                    if (setAlreadyDone.count(prevoutTxHash))
+                    if(setAlreadyDone.count(prevoutTxHash))
                         continue;
 
                     setAlreadyDone.insert(prevoutTxHash);
@@ -603,7 +603,7 @@ namespace Legacy
                     /* Find returns iterator to equivalent of pair<uint512_t, WalletTx> */
                     auto mi = ptransactionWallet->mapWallet.find(prevoutTxHash);
 
-                    if (mi != ptransactionWallet->mapWallet.end())
+                    if(mi != ptransactionWallet->mapWallet.end())
                     {
                         /* Found previous transaction (input to this one) in wallet */
                         prevTx = (*mi).second;
@@ -616,13 +616,13 @@ namespace Legacy
                             mapWalletPrev[txWalletPrev.GetHash()] = &txWalletPrev;
 
                     }
-                    else if (mapWalletPrev.count(prevoutTxHash))
+                    else if(mapWalletPrev.count(prevoutTxHash))
                     {
                         /* Previous transaction not in wallet, but already in mapWalletPrev */
                         prevTx = *mapWalletPrev[prevoutTxHash];
 
                     }
-                    else if (!config::fClient && LLD::legacyDB->ReadTx(prevoutTxHash, parentTransaction))
+                    else if(!config::fClient && LLD::legacyDB->ReadTx(prevoutTxHash, parentTransaction))
                     {
                         /* Found transaction in database, but it isn't in wallet. Create a new WalletTx from it to use as prevTx */
                         prevTx = WalletTx(ptransactionWallet, parentTransaction);
@@ -637,7 +637,7 @@ namespace Legacy
                     uint32_t nDepth = prevTx.GetDepthInMainChain();
                     vtxPrev.push_back(prevTx);
 
-                    if (nDepth < COPY_DEPTH)
+                    if(nDepth < COPY_DEPTH)
                     {
                         /* vtxPrev gets loaded with inputs to this transaction, but when one of these inputs
                          * is recent (depth < copy depth) we go one deeper and also load its inputs (inputs of inputs).
@@ -663,16 +663,16 @@ namespace Legacy
         for(const WalletTx& tx : vtxPrev)
         {
             /* Also relay any tx in vtxPrev that we don't have in our database, yet */
-            if (!(tx.IsCoinBase() || tx.IsCoinStake()))
+            if(!(tx.IsCoinBase() || tx.IsCoinStake()))
             {
                 uint512_t hash = tx.GetHash();
-                if (!LLD::legacyDB->HasTx(hash))
+                if(!LLD::legacyDB->HasTx(hash))
                 {
                     std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_LEGACY) };
-                    if( LLP::LEGACY_SERVER)
+                    if(LLP::LEGACY_SERVER)
                         LLP::LEGACY_SERVER->Relay("inv", vInv);
                     
-                    if( LLP::TRITIUM_SERVER)
+                    if(LLP::TRITIUM_SERVER)
                         LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
 
                     //Add to the memory pool
@@ -681,21 +681,21 @@ namespace Legacy
             }
         }
 
-        if (!(IsCoinBase() || IsCoinStake()))
+        if(!(IsCoinBase() || IsCoinStake()))
         {
             uint512_t hash = GetHash();
 
             /* Relay this tx if we don't have it in our database, yet */
-            if (!LLD::legacyDB->HasTx(hash))
+            if(!LLD::legacyDB->HasTx(hash))
             {
                 debug::log(0, FUNCTION, "Relaying wtx ", hash.ToString().substr(0,10));
 
                 std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_LEGACY) };
                 
-                if( LLP::LEGACY_SERVER)
+                if(LLP::LEGACY_SERVER)
                     LLP::LEGACY_SERVER->Relay("inv", vInv);
                 
-                if( LLP::TRITIUM_SERVER)
+                if(LLP::TRITIUM_SERVER)
                     LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
 
                 //Add to the memory pool

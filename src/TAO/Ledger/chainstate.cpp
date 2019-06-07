@@ -105,7 +105,7 @@ namespace TAO
                 during a block commit.  In this case we can attempt to recover by iterating forward from the genesis
                 blockState until we reach the end of the chain, which is the last written block. */
                 BlockState stateBestKnown = stateGenesis;
-                while( !stateBestKnown.IsNull() && stateBestKnown.hashNextBlock != 0)
+                while(!stateBestKnown.IsNull() && stateBestKnown.hashNextBlock != 0)
                 {
                     stateBest = stateBestKnown;
                     stateBestKnown = stateBestKnown.Next();
@@ -115,7 +115,7 @@ namespace TAO
                 if(!LLD::legDB->WriteBestChain(hashBestChain.load()))
                     return debug::error(FUNCTION, "failed to write best chain");
 
-                debug::log(0, FUNCTION, "database successfully recovered" );
+                debug::log(0, FUNCTION, "database successfully recovered");
             }
 
             /* Rewind the chain a total number of blocks. */
@@ -152,10 +152,10 @@ namespace TAO
                     for(const auto& item : state.vtx)
                     {
                         vHashes.push_back(item.second);
-                        if (item.first == TAO::Ledger::LEGACY_TX)
+                        if(item.first == TAO::Ledger::LEGACY_TX)
                         {
                             /* Read transaction from database */
-                            if (!LLD::legacyDB->ReadTx(item.second, tx))
+                            if(!LLD::legacyDB->ReadTx(item.second, tx))
                             {
                                 debug::log(0, state.ToString(debug::flags::tx | debug::flags::header));
 

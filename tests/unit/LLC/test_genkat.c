@@ -25,7 +25,7 @@ void initial_kat(const uint8_t *blockhash, const argon2_context *context,
                  argon2_type type) {
     unsigned i;
 
-    if (blockhash != NULL && context != NULL) {
+    if(blockhash != NULL && context != NULL) {
         printf("=======================================\n");
 
         printf("%s version number %d\n", argon2_type2string(type, 1),
@@ -41,10 +41,10 @@ void initial_kat(const uint8_t *blockhash, const argon2_context *context,
 
         printf("Password[%u]: ", context->pwdlen);
 
-        if (context->flags & ARGON2_FLAG_CLEAR_PASSWORD) {
+        if(context->flags & ARGON2_FLAG_CLEAR_PASSWORD) {
             printf("CLEARED\n");
         } else {
-            for (i = 0; i < context->pwdlen; ++i) {
+            for(i = 0; i < context->pwdlen; ++i) {
                 printf("%2.2x ", ((unsigned char *)context->pwd)[i]);
             }
 
@@ -53,7 +53,7 @@ void initial_kat(const uint8_t *blockhash, const argon2_context *context,
 
         printf("Salt[%u]: ", context->saltlen);
 
-        for (i = 0; i < context->saltlen; ++i) {
+        for(i = 0; i < context->saltlen; ++i) {
             printf("%2.2x ", ((unsigned char *)context->salt)[i]);
         }
 
@@ -61,10 +61,10 @@ void initial_kat(const uint8_t *blockhash, const argon2_context *context,
 
         printf("Secret[%u]: ", context->secretlen);
 
-        if (context->flags & ARGON2_FLAG_CLEAR_SECRET) {
+        if(context->flags & ARGON2_FLAG_CLEAR_SECRET) {
             printf("CLEARED\n");
         } else {
-            for (i = 0; i < context->secretlen; ++i) {
+            for(i = 0; i < context->secretlen; ++i) {
                 printf("%2.2x ", ((unsigned char *)context->secret)[i]);
             }
 
@@ -73,7 +73,7 @@ void initial_kat(const uint8_t *blockhash, const argon2_context *context,
 
         printf("Associated data[%u]: ", context->adlen);
 
-        for (i = 0; i < context->adlen; ++i) {
+        for(i = 0; i < context->adlen; ++i) {
             printf("%2.2x ", ((unsigned char *)context->ad)[i]);
         }
 
@@ -81,7 +81,7 @@ void initial_kat(const uint8_t *blockhash, const argon2_context *context,
 
         printf("Pre-hashing digest: ");
 
-        for (i = 0; i < ARGON2_PREHASH_DIGEST_LENGTH; ++i) {
+        for(i = 0; i < ARGON2_PREHASH_DIGEST_LENGTH; ++i) {
             printf("%2.2x ", ((unsigned char *)blockhash)[i]);
         }
 
@@ -91,10 +91,10 @@ void initial_kat(const uint8_t *blockhash, const argon2_context *context,
 
 void print_tag(const void *out, uint32_t outlen) {
     unsigned i;
-    if (out != NULL) {
+    if(out != NULL) {
         printf("Tag: ");
 
-        for (i = 0; i < outlen; ++i) {
+        for(i = 0; i < outlen; ++i) {
             printf("%2.2x ", ((uint8_t *)out)[i]);
         }
 
@@ -104,17 +104,17 @@ void print_tag(const void *out, uint32_t outlen) {
 
 void internal_kat(const argon2_instance_t *instance, uint32_t pass) {
 
-    if (instance != NULL) {
+    if(instance != NULL) {
         uint32_t i, j;
         printf("\n After pass %u:\n", pass);
 
-        for (i = 0; i < instance->memory_blocks; ++i) {
+        for(i = 0; i < instance->memory_blocks; ++i) {
             uint32_t how_many_words =
                 (instance->memory_blocks > ARGON2_QWORDS_IN_BLOCK)
                     ? 1
                     : ARGON2_QWORDS_IN_BLOCK;
 
-            for (j = 0; j < how_many_words; ++j)
+            for(j = 0; j < how_many_words; ++j)
                 printf("Block %.4u [%3u]: %016llx\n", i, j,
                        (unsigned long long)instance->memory[i].v[j]);
         }
@@ -184,21 +184,21 @@ int main(int argc, char *argv[]) {
     const char *type_str = (argc > 1) ? argv[1] : "i";
     argon2_type type = Argon2_i;
     uint32_t version = ARGON2_VERSION_NUMBER;
-    if (!strcmp(type_str, "d")) {
+    if(!strcmp(type_str, "d")) {
         type = Argon2_d;
-    } else if (!strcmp(type_str, "i")) {
+    } else if(!strcmp(type_str, "i")) {
         type = Argon2_i;
-    } else if (!strcmp(type_str, "id")) {
+    } else if(!strcmp(type_str, "id")) {
         type = Argon2_id;
     } else {
         fatal("wrong Argon2 type");
     }
 
     /* Get and check Argon2 version number */
-    if (argc > 2) {
+    if(argc > 2) {
         version = strtoul(argv[2], NULL, 10);
     }
-    if (ARGON2_VERSION_10 != version && ARGON2_VERSION_NUMBER != version) {
+    if(ARGON2_VERSION_10 != version && ARGON2_VERSION_NUMBER != version) {
         fatal("wrong Argon2 version number");
     }
 

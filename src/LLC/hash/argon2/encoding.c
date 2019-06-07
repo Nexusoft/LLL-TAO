@@ -124,21 +124,21 @@ static size_t to_base64(char *dst, size_t dst_len, const void *src,
         olen += 2;
         break;
     }
-    if (dst_len <= olen) {
+    if(dst_len <= olen) {
         return (size_t)-1;
     }
     acc = 0;
     acc_len = 0;
     buf = (const unsigned char *)src;
-    while (src_len-- > 0) {
+    while(src_len-- > 0) {
         acc = (acc << 8) + (*buf++);
         acc_len += 8;
-        while (acc_len >= 6) {
+        while(acc_len >= 6) {
             acc_len -= 6;
             *dst++ = (char)b64_byte_to_char((acc >> acc_len) & 0x3F);
         }
     }
-    if (acc_len > 0) {
+    if(acc_len > 0) {
         *dst++ = (char)b64_byte_to_char((acc << (6 - acc_len)) & 0x3F);
     }
     *dst++ = 0;
@@ -167,19 +167,19 @@ static const char *from_base64(void *dst, size_t *dst_len, const char *src) {
     len = 0;
     acc = 0;
     acc_len = 0;
-    for (;;) {
+    for(;;) {
         unsigned d;
 
         d = b64_char_to_byte(*src);
-        if (d == 0xFF) {
+        if(d == 0xFF) {
             break;
         }
         src++;
         acc = (acc << 6) + d;
         acc_len += 6;
-        if (acc_len >= 8) {
+        if(acc_len >= 8) {
             acc_len -= 8;
-            if ((len++) >= *dst_len) {
+            if((len++) >= *dst_len) {
                 return NULL;
             }
             *buf++ = (acc >> acc_len) & 0xFF;
@@ -192,7 +192,7 @@ static const char *from_base64(void *dst, size_t *dst_len, const char *src) {
      * otherwise, only 0, 2 or 4 bits are buffered. The buffered
      * bits must also all be zero.
      */
-    if (acc_len > 4 || (acc & (((unsigned)1 << acc_len) - 1)) != 0) {
+    if(acc_len > 4 || (acc & (((unsigned)1 << acc_len) - 1)) != 0) {
         return NULL;
     }
     *dst_len = len;
@@ -211,24 +211,24 @@ static const char *decode_decimal(const char *str, unsigned long *v) {
     unsigned long acc;
 
     acc = 0;
-    for (orig = str;; str++) {
+    for(orig = str;; str++) {
         int c;
 
         c = *str;
-        if (c < '0' || c > '9') {
+        if(c < '0' || c > '9') {
             break;
         }
         c -= '0';
-        if (acc > (ULONG_MAX / 10)) {
+        if(acc > (ULONG_MAX / 10)) {
             return NULL;
         }
         acc *= 10;
-        if ((unsigned long)c > (ULONG_MAX - acc)) {
+        if((unsigned long)c > (ULONG_MAX - acc)) {
             return NULL;
         }
         acc += (unsigned long)c;
     }
-    if (str == orig || (*orig == '0' && str != (orig + 1))) {
+    if(str == orig || (*orig == '0' && str != (orig + 1))) {
         return NULL;
     }
     *v = acc;
@@ -261,32 +261,32 @@ int decode_string(argon2_context *ctx, const char *str, argon2_type type) {
 #define CC(prefix)                                                             \
     do {                                                                       \
         size_t cc_len = strlen(prefix);                                        \
-        if (strncmp(str, prefix, cc_len) != 0) {                               \
+        if(strncmp(str, prefix, cc_len) != 0) {                               \
             return ARGON2_DECODING_FAIL;                                       \
         }                                                                      \
         str += cc_len;                                                         \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 /* optional prefix checking with supplied code */
 #define CC_opt(prefix, code)                                                   \
     do {                                                                       \
         size_t cc_len = strlen(prefix);                                        \
-        if (strncmp(str, prefix, cc_len) == 0) {                               \
+        if(strncmp(str, prefix, cc_len) == 0) {                               \
             str += cc_len;                                                     \
             { code; }                                                          \
         }                                                                      \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 /* Decoding prefix into decimal */
 #define DECIMAL(x)                                                             \
     do {                                                                       \
         unsigned long dec_x;                                                   \
         str = decode_decimal(str, &dec_x);                                     \
-        if (str == NULL) {                                                     \
+        if(str == NULL) {                                                     \
             return ARGON2_DECODING_FAIL;                                       \
         }                                                                      \
         (x) = dec_x;                                                           \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 
 /* Decoding prefix into uint32_t decimal */
@@ -294,11 +294,11 @@ int decode_string(argon2_context *ctx, const char *str, argon2_type type) {
     do {                                                                       \
         unsigned long dec_x;                                                   \
         str = decode_decimal(str, &dec_x);                                     \
-        if (str == NULL || dec_x > UINT32_MAX) {                               \
+        if(str == NULL || dec_x > UINT32_MAX) {                               \
             return ARGON2_DECODING_FAIL;                                       \
         }                                                                      \
         (x) = (uint32_t)dec_x;                                                 \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 
 /* Decoding base64 into a binary buffer */
@@ -306,11 +306,11 @@ int decode_string(argon2_context *ctx, const char *str, argon2_type type) {
     do {                                                                       \
         size_t bin_len = (max_len);                                            \
         str = from_base64(buf, &bin_len, str);                                 \
-        if (str == NULL || bin_len > UINT32_MAX) {                             \
+        if(str == NULL || bin_len > UINT32_MAX) {                             \
             return ARGON2_DECODING_FAIL;                                       \
         }                                                                      \
         (len) = (uint32_t)bin_len;                                             \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
     size_t maxsaltlen = ctx->saltlen;
     size_t maxoutlen = ctx->outlen;
@@ -319,7 +319,7 @@ int decode_string(argon2_context *ctx, const char *str, argon2_type type) {
 
     /* We should start with the argon2_type we are using */
     type_string = argon2_type2string(type, 0);
-    if (!type_string) {
+    if(!type_string) {
         return ARGON2_INCORRECT_TYPE;
     }
 
@@ -354,12 +354,12 @@ int decode_string(argon2_context *ctx, const char *str, argon2_type type) {
 
     /* On return, must have valid context */
     validation_result = validate_inputs(ctx);
-    if (validation_result != ARGON2_OK) {
+    if(validation_result != ARGON2_OK) {
         return validation_result;
     }
 
     /* Can't have any additional characters */
-    if (*str == 0) {
+    if(*str == 0) {
         return ARGON2_OK;
     } else {
         return ARGON2_DECODING_FAIL;
@@ -375,39 +375,39 @@ int encode_string(char *dst, size_t dst_len, argon2_context *ctx,
 #define SS(str)                                                                \
     do {                                                                       \
         size_t pp_len = strlen(str);                                           \
-        if (pp_len >= dst_len) {                                               \
+        if(pp_len >= dst_len) {                                               \
             return ARGON2_ENCODING_FAIL;                                       \
         }                                                                      \
         memcpy(dst, str, pp_len + 1);                                          \
         dst += pp_len;                                                         \
         dst_len -= pp_len;                                                     \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #define SX(x)                                                                  \
     do {                                                                       \
         char tmp[30];                                                          \
         sprintf(tmp, "%lu", (unsigned long)(x));                               \
         SS(tmp);                                                               \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
 #define SB(buf, len)                                                           \
     do {                                                                       \
         size_t sb_len = to_base64(dst, dst_len, buf, len);                     \
-        if (sb_len == (size_t)-1) {                                            \
+        if(sb_len == (size_t)-1) {                                            \
             return ARGON2_ENCODING_FAIL;                                       \
         }                                                                      \
         dst += sb_len;                                                         \
         dst_len -= sb_len;                                                     \
-    } while ((void)0, 0)
+    } while((void)0, 0)
 
     const char* type_string = argon2_type2string(type, 0);
     int validation_result = validate_inputs(ctx);
 
-    if (!type_string) {
+    if(!type_string) {
       return ARGON2_ENCODING_FAIL;
     }
 
-    if (validation_result != ARGON2_OK) {
+    if(validation_result != ARGON2_OK) {
       return validation_result;
     }
 
@@ -454,7 +454,7 @@ size_t b64len(uint32_t len) {
 
 size_t numlen(uint32_t num) {
     size_t len = 1;
-    while (num >= 10) {
+    while(num >= 10) {
         ++len;
         num = num / 10;
     }

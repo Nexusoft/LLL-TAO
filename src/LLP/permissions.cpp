@@ -74,11 +74,11 @@ bool WildcardMatch(const char* psz, const char* mask)
         case '*':
             return WildcardMatch(psz, mask+1) || (*psz && WildcardMatch(psz+1, mask));
         case '?':
-            if (*psz == '\0')
+            if(*psz == '\0')
                 return false;
             break;
         default:
-            if (*psz != *mask)
+            if(*psz != *mask)
                 return false;
             break;
         }

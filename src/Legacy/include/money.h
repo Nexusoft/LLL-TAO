@@ -91,10 +91,10 @@ namespace Legacy
 
     inline int64_t AmountToSatoshis(double dAmount)
     {
-        if (dAmount <= 0.0 || dAmount > static_cast<double>(Legacy::MaxTxOut()))
+        if(dAmount <= 0.0 || dAmount > static_cast<double>(Legacy::MaxTxOut()))
             throw std::runtime_error( "Invalid amount");
         int64_t nAmount = convert::roundint64(dAmount * COIN);
-        if (!MoneyRange(nAmount))
+        if(!MoneyRange(nAmount))
             throw std::runtime_error("Invalid amount");
         return nAmount;
     }

@@ -136,9 +136,9 @@ then
         while true; do
             read -p "Do you want to kill ALL(!!!) running nexus (if there are any) and blow away the .lock file?" yn
             case $yn in
-                [Yy]* ) echo "OK!"; break;;
-                [Nn]* ) echo "Bye!"; exit;;
-                * ) echo "Please answer yes or no.";;
+                [Yy]*) echo "OK!"; break;;
+                [Nn]*) echo "Bye!"; exit;;
+                *) echo "Please answer yes or no.";;
             esac
         done
     fi

@@ -21,7 +21,7 @@ static int test_decrypt_ecb(void);
 
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "AES Encryption Tests", "[LLC]" )
+TEST_CASE( "AES Encryption Tests", "[LLC]")
 {
 
     REQUIRE(test_encrypt_cbc() == 0);
@@ -54,7 +54,7 @@ static int test_encrypt_ecb(void)
     AES_init_ctx(&ctx, key);
     AES_ECB_encrypt(&ctx, in);
 
-    if (0 == memcmp((char*) out, (char*) in, 16))
+    if(0 == memcmp((char*) out, (char*) in, 16))
         return 0;
 
     return 1;
@@ -94,7 +94,7 @@ static int test_decrypt_cbc(void)
     AES_init_ctx_iv(&ctx, key, iv);
     AES_CBC_decrypt_buffer(&ctx, in, 64);
 
-    if (0 == memcmp((char*) out, (char*) in, 64))
+    if(0 == memcmp((char*) out, (char*) in, 64))
         return 0;
 
     return 1;
@@ -132,7 +132,7 @@ static int test_encrypt_cbc(void)
     AES_init_ctx_iv(&ctx, key, iv);
     AES_CBC_encrypt_buffer(&ctx, in, 64);
 
-    if (0 == memcmp((char*) out, (char*) in, 64))
+    if(0 == memcmp((char*) out, (char*) in, 64))
         return 0;
 
     return 1;
@@ -182,7 +182,7 @@ static int test_xcrypt_ctr(const char* xcrypt)
     AES_init_ctx_iv(&ctx, key, iv);
     AES_CTR_xcrypt_buffer(&ctx, in, 64);
 
-    if (0 == memcmp((char *) out, (char *) in, 64))
+    if(0 == memcmp((char *) out, (char *) in, 64))
         return 0;
 
     return 1;
@@ -210,7 +210,7 @@ static int test_decrypt_ecb(void)
     AES_init_ctx(&ctx, key);
     AES_ECB_decrypt(&ctx, in);
 
-    if (0 == memcmp((char*) out, (char*) in, 16))
+    if(0 == memcmp((char*) out, (char*) in, 16))
         return 0;
 
     return 1;

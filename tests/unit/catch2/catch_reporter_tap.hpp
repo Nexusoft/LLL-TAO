@@ -33,110 +33,110 @@ namespace Catch {
             return m_reporterPrefs;
         }
 
-        void noMatchingTestCases( std::string const& spec ) override {
+        void noMatchingTestCases( std::string const& spec) override {
             stream << "# No test cases matched '" << spec << "'" << std::endl;
         }
 
-        void assertionStarting( AssertionInfo const& ) override {}
+        void assertionStarting( AssertionInfo const&) override {}
 
-        bool assertionEnded( AssertionStats const& _assertionStats ) override {
+        bool assertionEnded( AssertionStats const& _assertionStats) override {
             ++counter;
 
             stream << "# " << currentTestCaseInfo->name << std::endl;
-            AssertionPrinter printer( stream, _assertionStats, counter );
+            AssertionPrinter printer( stream, _assertionStats, counter);
             printer.print();
 
             stream << std::endl;
             return true;
         }
 
-        void testRunEnded( TestRunStats const& _testRunStats ) override {
-            printTotals( _testRunStats.totals );
+        void testRunEnded( TestRunStats const& _testRunStats) override {
+            printTotals( _testRunStats.totals);
             stream << "\n" << std::endl;
-            StreamingReporterBase::testRunEnded( _testRunStats );
+            StreamingReporterBase::testRunEnded( _testRunStats);
         }
 
     private:
         std::size_t counter = 0;
         class AssertionPrinter {
         public:
-            AssertionPrinter& operator= ( AssertionPrinter const& ) = delete;
-            AssertionPrinter( AssertionPrinter const& ) = delete;
-            AssertionPrinter( std::ostream& _stream, AssertionStats const& _stats, std::size_t _counter )
-            : stream( _stream )
-            , result( _stats.assertionResult )
-            , messages( _stats.infoMessages )
-            , itMessage( _stats.infoMessages.begin() )
-            , printInfoMessages( true )
+            AssertionPrinter& operator= ( AssertionPrinter const&) = delete;
+            AssertionPrinter( AssertionPrinter const&) = delete;
+            AssertionPrinter( std::ostream& _stream, AssertionStats const& _stats, std::size_t _counter)
+            : stream( _stream)
+            , result( _stats.assertionResult)
+            , messages( _stats.infoMessages)
+            , itMessage( _stats.infoMessages.begin())
+            , printInfoMessages( true)
             , counter(_counter)
             {}
 
             void print() {
                 itMessage = messages.begin();
 
-                switch( result.getResultType() ) {
+                switch( result.getResultType()) {
                     case ResultWas::Ok:
-                        printResultType( passedString() );
+                        printResultType( passedString());
                         printOriginalExpression();
                         printReconstructedExpression();
-                        if ( ! result.hasExpression() )
-                            printRemainingMessages( Colour::None );
+                        if(! result.hasExpression())
+                            printRemainingMessages( Colour::None);
                         else
                             printRemainingMessages();
                         break;
                     case ResultWas::ExpressionFailed:
-                        if (result.isOk()) {
+                        if(result.isOk()) {
                             printResultType(passedString());
                         } else {
                             printResultType(failedString());
                         }
                         printOriginalExpression();
                         printReconstructedExpression();
-                        if (result.isOk()) {
+                        if(result.isOk()) {
                             printIssue(" # TODO");
                         }
                         printRemainingMessages();
                         break;
                     case ResultWas::ThrewException:
-                        printResultType( failedString() );
-                        printIssue( "unexpected exception with message:" );
+                        printResultType( failedString());
+                        printIssue( "unexpected exception with message:");
                         printMessage();
                         printExpressionWas();
                         printRemainingMessages();
                         break;
                     case ResultWas::FatalErrorCondition:
-                        printResultType( failedString() );
-                        printIssue( "fatal error condition with message:" );
+                        printResultType( failedString());
+                        printIssue( "fatal error condition with message:");
                         printMessage();
                         printExpressionWas();
                         printRemainingMessages();
                         break;
                     case ResultWas::DidntThrowException:
-                        printResultType( failedString() );
-                        printIssue( "expected exception, got none" );
+                        printResultType( failedString());
+                        printIssue( "expected exception, got none");
                         printExpressionWas();
                         printRemainingMessages();
                         break;
                     case ResultWas::Info:
-                        printResultType( "info" );
+                        printResultType( "info");
                         printMessage();
                         printRemainingMessages();
                         break;
                     case ResultWas::Warning:
-                        printResultType( "warning" );
+                        printResultType( "warning");
                         printMessage();
                         printRemainingMessages();
                         break;
                     case ResultWas::ExplicitFailure:
-                        printResultType( failedString() );
-                        printIssue( "explicitly" );
-                        printRemainingMessages( Colour::None );
+                        printResultType( failedString());
+                        printIssue( "explicitly");
+                        printRemainingMessages( Colour::None);
                         break;
                     // These cases are here to prevent compiler warnings
                     case ResultWas::Unknown:
                     case ResultWas::FailureBit:
                     case ResultWas::Exception:
-                        printResultType( "** internal error **" );
+                        printResultType( "** internal error **");
                         break;
                 }
             }
@@ -148,25 +148,25 @@ namespace Catch {
             static const char* passedString() { return "ok"; }
 
             void printSourceInfo() const {
-                Colour colourGuard( dimColour() );
+                Colour colourGuard( dimColour());
                 stream << result.getSourceInfo() << ":";
             }
 
-            void printResultType( std::string const& passOrFail ) const {
-                if( !passOrFail.empty() ) {
+            void printResultType( std::string const& passOrFail) const {
+                if(!passOrFail.empty()) {
                     stream << passOrFail << ' ' << counter << " -";
                 }
             }
 
-            void printIssue( std::string const& issue ) const {
+            void printIssue( std::string const& issue) const {
                 stream << " " << issue;
             }
 
             void printExpressionWas() {
-                if( result.hasExpression() ) {
+                if(result.hasExpression()) {
                     stream << ";";
                     {
-                        Colour colour( dimColour() );
+                        Colour colour( dimColour());
                         stream << " expression was:";
                     }
                     printOriginalExpression();
@@ -174,15 +174,15 @@ namespace Catch {
             }
 
             void printOriginalExpression() const {
-                if( result.hasExpression() ) {
+                if(result.hasExpression()) {
                     stream << " " << result.getExpression();
                 }
             }
 
             void printReconstructedExpression() const {
-                if( result.hasExpandedExpression() ) {
+                if(result.hasExpandedExpression()) {
                     {
-                        Colour colour( dimColour() );
+                        Colour colour( dimColour());
                         stream << " for: ";
                     }
                     std::string expr = result.getExpandedExpression();
@@ -192,32 +192,32 @@ namespace Catch {
             }
 
             void printMessage() {
-                if ( itMessage != messages.end() ) {
+                if(itMessage != messages.end()) {
                     stream << " '" << itMessage->message << "'";
                     ++itMessage;
                 }
             }
 
-            void printRemainingMessages( Colour::Code colour = dimColour() ) {
-                if (itMessage == messages.end()) {
+            void printRemainingMessages( Colour::Code colour = dimColour()) {
+                if(itMessage == messages.end()) {
                     return;
                 }
 
                 // using messages.end() directly (or auto) yields compilation error:
                 std::vector<MessageInfo>::const_iterator itEnd = messages.end();
-                const std::size_t N = static_cast<std::size_t>( std::distance( itMessage, itEnd ) );
+                const std::size_t N = static_cast<std::size_t>( std::distance( itMessage, itEnd));
 
                 {
-                    Colour colourGuard( colour );
-                    stream << " with " << pluralise( N, "message" ) << ":";
+                    Colour colourGuard( colour);
+                    stream << " with " << pluralise( N, "message") << ":";
                 }
 
-                for(; itMessage != itEnd; ) {
+                for(; itMessage != itEnd;) {
                     // If this assertion is a warning ignore any INFO messages
-                    if( printInfoMessages || itMessage->type != ResultWas::Info ) {
+                    if(printInfoMessages || itMessage->type != ResultWas::Info) {
                         stream << " '" << itMessage->message << "'";
-                        if ( ++itMessage != itEnd ) {
-                            Colour colourGuard( dimColour() );
+                        if(++itMessage != itEnd) {
+                            Colour colourGuard( dimColour());
                             stream << " and";
                         }
                     }
@@ -233,8 +233,8 @@ namespace Catch {
             std::size_t counter;
         };
 
-        void printTotals( const Totals& totals ) const {
-            if( totals.testCases.total() == 0 ) {
+        void printTotals( const Totals& totals) const {
+            if(totals.testCases.total() == 0) {
                 stream << "1..0 # Skipped: No tests ran.";
             } else {
                 stream << "1.." << counter;
@@ -246,7 +246,7 @@ namespace Catch {
     TAPReporter::~TAPReporter() {}
 #endif
 
-    CATCH_REGISTER_REPORTER( "tap", TAPReporter )
+    CATCH_REGISTER_REPORTER( "tap", TAPReporter)
 
 } // end namespace Catch
 

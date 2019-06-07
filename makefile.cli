@@ -96,7 +96,7 @@ endif
 
 #Configure Build Environment
 ifneq ($(detected_OS),Windows)
-INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/tests )\
+INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/tests)\
 	-I$(BDB_INCLUDE_PATH) \
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
@@ -369,12 +369,12 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Register_basevm.o \
 		build/Register_build.o \
 		build/Register_create.o \
+		build/Register_names.o \
 		build/Register_object.o \
 		build/Register_rollback.o \
 		build/Register_state.o \
 		build/Register_system.o \
 		build/Register_unpack.o \
-		build/Register_utils.o \
 		build/Register_verify.o \
 		build/Ledger_base_minter.o \
 		build/Ledger_block.o \

@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <Util/include/debug.h>
 
-TEST_CASE( "Signature Chain Generation", "[ledger]" )
+TEST_CASE( "Signature Chain Generation", "[ledger]")
 {
 
     TAO::Ledger::SignatureChain user = TAO::Ledger::SignatureChain("user", "password");

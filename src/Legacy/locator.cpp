@@ -61,14 +61,14 @@ namespace Legacy
         TAO::Ledger::BlockState statePrev = state;
 
         /* Loop back valid blocks. */
-        while (!statePrev.IsNull())
+        while(!statePrev.IsNull())
         {
             /* Break when locator size is large enough. */
-            if (vHave.size() > 20)
+            if(vHave.size() > 20)
                 break;
 
             /* Loop back the total blocks of step iterator. */
-            for (int i = 0; !statePrev.IsNull() && i < nStep; ++i)
+            for(int i = 0; !statePrev.IsNull() && i < nStep; ++i)
                 statePrev = statePrev.Prev();
 
             /* After 10 blocks, start taking exponential steps back. */

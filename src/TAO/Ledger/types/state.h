@@ -113,7 +113,7 @@ namespace TAO
                 READWRITE(vchBlockSig);
                 READWRITE(ssSystem);
                 READWRITE(vtx);
-            )
+          )
 
 
             /** Default Constructor. **/

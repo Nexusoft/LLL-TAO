@@ -95,13 +95,13 @@ namespace TAO
 
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
-            if (!GetLastState(first, 0))
+            if(!GetLastState(first, 0))
                 return bnProofOfWorkStart[0].GetCompact();
 
 
             /* Get Last Block Index [2nd block back in Channel]. */
             BlockState last = first.Prev();
-            if (!GetLastState(last, 0))
+            if(!GetLastState(last, 0))
                 return bnProofOfWorkStart[0].GetCompact();
 
 
@@ -157,12 +157,12 @@ namespace TAO
 
 
             /* Check for maximum overflows. */
-            if (bnNew.GetCompact() == 0)
+            if(bnNew.GetCompact() == 0)
                 bnNew.SetCompact(first.nBits);
 
 
             /* Don't allow Difficulty to decrease below minimum. */
-            if (bnNew > bnProofOfWorkLimit[0])
+            if(bnNew > bnProofOfWorkLimit[0])
                 bnNew = bnProofOfWorkLimit[0];
 
 
@@ -198,13 +198,13 @@ namespace TAO
 
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
-            if (!GetLastState(first, 1))
+            if(!GetLastState(first, 1))
                 return bnProofOfWorkStart[1].getuint32();
 
 
             /* Get Last Block Index [2nd block back in Channel]. */
             BlockState last = first.Prev();
-            if (!GetLastState(last, 1))
+            if(!GetLastState(last, 1))
                 return bnProofOfWorkStart[1].getuint32();
 
 
@@ -304,12 +304,12 @@ namespace TAO
 
 
             /* Check for maximum value. */
-            if (nBits == 0)
+            if(nBits == 0)
                 nBits = first.nBits;
 
 
             /* Check for minimum value. */
-            if (nBits < bnProofOfWorkLimit[1].getuint32())
+            if(nBits < bnProofOfWorkLimit[1].getuint32())
                 nBits = bnProofOfWorkLimit[1].getuint32();
 
 
@@ -348,13 +348,13 @@ namespace TAO
 
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
-            if (!GetLastState(first, 2))
+            if(!GetLastState(first, 2))
                 return bnProofOfWorkStart[2].GetCompact();
 
 
             /* Get Last Block Index [2nd block back in Channel]. */
             BlockState last = first.Prev();
-            if (!GetLastState(last, 2))
+            if(!GetLastState(last, 2))
                 return bnProofOfWorkStart[2].GetCompact();
 
 
@@ -437,7 +437,7 @@ namespace TAO
 
                 /* Set Maximum [difficulty] up to 8%, and Minimum [difficulty] down to 50% */
                 nLowerBound = std::min(nLowerBound, (uint64_t)(nUpperBound + (nUpperBound / 8)));
-                nLowerBound = std::max(nLowerBound, (3 * nUpperBound ) / 4);
+                nLowerBound = std::max(nLowerBound, (3 * nUpperBound) / 4);
             }
 
 
@@ -451,11 +451,11 @@ namespace TAO
             bnNew /= nLowerBound;
 
             /* Check for maximum overflows. */
-            if (bnNew.GetCompact() == 0)
+            if(bnNew.GetCompact() == 0)
                 bnNew.SetCompact(first.nBits);
 
             /* Don't allow Difficulty to decrease below minimum. */
-            if (bnNew > bnProofOfWorkLimit[2])
+            if(bnNew > bnProofOfWorkLimit[2])
                 bnNew = bnProofOfWorkLimit[2];
 
             /* Handle for regression testing blocks. */
@@ -477,7 +477,7 @@ namespace TAO
                     "\tdifficulty: [", std::fixed, GetDifficulty(first.nBits, 2), " to ", std::fixed, GetDifficulty(bnNew.GetCompact(), 2), "]\n",
                     "\thash height: ", first.nChannelHeight,
                     " [AGE ", nDays, " days, ", nHours, " hours, ", nMinutes, " minutes]\n"
-                );
+              );
             }
 
             return bnNew.GetCompact();

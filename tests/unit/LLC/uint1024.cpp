@@ -33,7 +33,7 @@ TEST_CASE( "Base Uint Get Uint Tests", "[LLC]")
 
 }
 
-TEST_CASE( "Base Uint Compact Tests", "[LLC]" )
+TEST_CASE( "Base Uint Compact Tests", "[LLC]")
 {
     for(int i = 0; i < 10000; ++i)
     {

@@ -148,7 +148,7 @@ namespace TAO
                 if(debitToObject.hashOwner == user->Genesis())
                 {
                     /* Check the object base to see whether it is an account. */
-                    if(debitToObject.Base() == TAO::Register::OBJECTS::ACCOUNT )
+                    if(debitToObject.Base() == TAO::Register::OBJECTS::ACCOUNT)
                     {
                         /* If the user requested a particular object type then check it is that type */
                         std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
@@ -230,7 +230,7 @@ namespace TAO
                                 throw APIException(-24, "Failed to parse proof object.");
 
                             /* Check that the proof is an account for the same token as the asset owner */
-                            if( proofObject.get<uint256_t>("token") != assetOwner.get<uint256_t>("token"))
+                            if(proofObject.get<uint256_t>("token") != assetOwner.get<uint256_t>("token"))
                                 throw APIException(-24, "Failed to proof account is for a different token than the asset token.");
 
                             /* Calculate the partial amount we want to claim based on our share of the proof tokens */

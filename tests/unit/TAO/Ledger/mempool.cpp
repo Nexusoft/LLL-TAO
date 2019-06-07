@@ -31,7 +31,7 @@ ________________________________________________________________________________
 
 #include <algorithm>
 
-TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
+TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 {
     using namespace TAO::Register;
     using namespace TAO::Operation;

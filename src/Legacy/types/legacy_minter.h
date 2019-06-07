@@ -150,7 +150,7 @@ namespace Legacy
 
 
         /** The candidate block that the stake minter is attempting to mine */
-        LegacyBlock candidateBlock;
+        LegacyBlock block;
 
 
         /** Default constructor **/
@@ -159,7 +159,7 @@ namespace Legacy
         , pStakingWallet(nullptr)
         , trustKey(TrustKey())
         , pReservedTrustKey(nullptr)
-        , candidateBlock(LegacyBlock())
+        , block(LegacyBlock())
         {
         }
 
@@ -193,17 +193,17 @@ namespace Legacy
         bool CalculateWeights();
 
 
-        /** MineProofOfStake
+        /** MintBlock
          *
          *  Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block, while
          *  operating within the energy efficiency requirements. This process will continue to iterate until it either
          *  mines a new block or the hashBestChain changes and the minter must start over with a new candidate block.
          *
          **/
-        void MineProofOfStake();
+        void MintBlock();
 
 
-        /** ProcessMinedBlock
+        /** ProcessBlock
          *
          *  Processes a newly mined Proof of Stake block, adds transactions from the mempool, and submits it
          *  to the network
@@ -211,7 +211,7 @@ namespace Legacy
          *  @return true if the block passed all process checks and was successfully submitted
          *
          **/
-        bool ProcessMinedBlock();
+        bool ProcessBlock();
 
 
         /** LegacyMinterThread

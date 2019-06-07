@@ -93,10 +93,10 @@ namespace Legacy
      *  To use the wallet, first call InitializeWallet followed by LoadWallet. The following
      *  example will use the default wallet database file name:
      *
-     *  if (!Wallet::InitializeWallet())
+     *  if(!Wallet::InitializeWallet())
      *      //initialization not successful
      *
-     *  if (Wallet::GetInstance().LoadWallet() != Legacy::DB_LOAD_OK)
+     *  if(Wallet::GetInstance().LoadWallet() != Legacy::DB_LOAD_OK)
      *      //load not successful
      *
      *  Wallet& wallet = Wallet::GetInstance();

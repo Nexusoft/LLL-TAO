@@ -66,13 +66,13 @@ class fifo_map_compare
         const auto timestamp_lhs = m_keys->find(lhs);
         const auto timestamp_rhs = m_keys->find(rhs);
 
-        if (timestamp_lhs == m_keys->end())
+        if(timestamp_lhs == m_keys->end())
         {
             // timestamp for lhs not found - cannot be smaller than for rhs
             return false;
         }
 
-        if (timestamp_rhs == m_keys->end())
+        if(timestamp_rhs == m_keys->end())
         {
             // timestamp for rhs not found - timestamp for lhs is smaller
             return true;
@@ -150,7 +150,7 @@ template <
     fifo_map(InputIterator first, InputIterator last)
         : m_keys(), m_compare(&m_keys), m_map(m_compare)
     {
-        for (auto it = first; it != last; ++it)
+        for(auto it = first; it != last; ++it)
         {
             insert(*it);
         }
@@ -159,7 +159,7 @@ template <
     /// constructor for a list of elements
     fifo_map(std::initializer_list<value_type> init) : fifo_map()
     {
-        for (auto x : init)
+        for(auto x : init)
         {
             insert(x);
         }
@@ -317,7 +317,7 @@ template <
 
     /// insert value
     template<class P>
-    std::pair<iterator, bool> insert( P&& value )
+    std::pair<iterator, bool> insert( P&& value)
     {
         m_compare.add_key(value.first);
         return m_map.insert(value);
@@ -341,7 +341,7 @@ template <
     template<class InputIt>
     void insert(InputIt first, InputIt last)
     {
-        for (const_iterator it = first; it != last; ++it)
+        for(const_iterator it = first; it != last; ++it)
         {
             m_compare.add_key(it->first);
         }
@@ -352,7 +352,7 @@ template <
     /// insert value list
     void insert(std::initializer_list<value_type> ilist)
     {
-        for (auto value : ilist)
+        for(auto value : ilist)
         {
             m_compare.add_key(value.first);
         }
@@ -388,7 +388,7 @@ template <
     /// remove elements in range
     iterator erase(const_iterator first, const_iterator last)
     {
-        for (const_iterator it = first; it != last; ++it)
+        for(const_iterator it = first; it != last; ++it)
         {
             m_compare.remove_key(it->first);
         }
@@ -401,7 +401,7 @@ template <
     {
         size_type res = m_map.erase(key);
 
-        if (res > 0)
+        if(res > 0)
         {
             m_compare.remove_key(key);
         }

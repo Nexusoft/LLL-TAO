@@ -257,7 +257,7 @@ namespace LLP
          *  behavior is to ban indefinitely.
          *
          *  @param[in] addr The address to ban.
-         *  @param[in] banTime The time to ban for (or zero for indefinite ban)
+         *  @param[in] banTime The time to ban for(or zero for indefinite ban)
          *
          **/
          void Ban(const BaseAddress &addr, uint32_t banTime = 0);

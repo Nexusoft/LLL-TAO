@@ -107,9 +107,9 @@ namespace Legacy
     /* Check of version byte to see if address is P2SH */
     bool NexusAddress::IsScript() const
     {
-        if (!IsValid())
+        if(!IsValid())
             return false;
-        if (config::fTestNet.load())
+        if(config::fTestNet.load())
             return nVersion == SCRIPT_ADDRESS_TEST;
         return nVersion == SCRIPT_ADDRESS;
     }

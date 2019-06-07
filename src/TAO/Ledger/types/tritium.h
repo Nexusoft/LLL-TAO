@@ -95,7 +95,7 @@ namespace TAO
                 READWRITE(producer);
                 READWRITE(ssSystem);
                 READWRITE(vtx);
-            )
+          )
 
 
             /** The default constructor. **/

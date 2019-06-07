@@ -44,7 +44,7 @@ bool IsHex(const std::string& str)
     uint64_t s = str.size();
     for(uint64_t i = 0; i < s; ++i)
     {
-        if (phexdigit[ (uint8_t) str[i] ] < 0)
+        if(phexdigit[ (uint8_t) str[i] ] < 0)
             return false;
     }
     return (s > 0) && (s % 2 == 0);
@@ -55,11 +55,11 @@ bool IsHex(const std::string& str)
 char HexChar(const char* psz)
 {
     int8_t c = phexdigit[(uint8_t)*psz++];
-    if (c == -1)
+    if(c == -1)
         return 0;
     uint8_t n = static_cast<uint8_t>(c << 4);
     c = phexdigit[(uint8_t)*psz++];
-    if (c == -1)
+    if(c == -1)
         return 0;
     n |= static_cast<uint8_t>(c);
 
@@ -74,18 +74,18 @@ std::vector<uint8_t> ParseHex(const char* psz)
     std::vector<uint8_t> vch;
     for(;;)
     {
-        while (isspace(*psz))
+        while(isspace(*psz))
             ++psz;
 
         int8_t c = phexdigit[(uint8_t)*psz++];
 
-        if (c == -1)
+        if(c == -1)
             break;
 
         uint8_t n = static_cast<uint8_t>(c << 4);
         c = phexdigit[(uint8_t)*psz++];
 
-        if (c == -1)
+        if(c == -1)
             break;
 
         n |= static_cast<uint8_t>(c);

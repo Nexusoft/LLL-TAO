@@ -121,17 +121,17 @@ urandom_get_seed(void *seed, size_t len)
 {
 	int f;
 
-	if (len == 0) {
+	if(len == 0) {
 		return 1;
 	}
 	f = open("/dev/urandom", O_RDONLY);
-	if (f >= 0) {
-		while (len > 0) {
+	if(f >= 0) {
+		while(len > 0) {
 			ssize_t rlen;
 
 			rlen = read(f, seed, len);
-			if (rlen < 0) {
-				if (errno == EINTR) {
+			if(rlen < 0) {
+				if(errno == EINTR) {
 					continue;
 				}
 				break;
@@ -153,7 +153,7 @@ win32_get_seed(void *seed, size_t len)
 {
 	HCRYPTPROV hp;
 
-	if (CryptAcquireContext(&hp, 0, 0, PROV_RSA_FULL,
+	if(CryptAcquireContext(&hp, 0, 0, PROV_RSA_FULL,
 		CRYPT_VERIFYCONTEXT | CRYPT_SILENT))
 	{
 		BOOL r;
@@ -173,12 +173,12 @@ falcon_get_seed(void *seed, size_t len)
 {
 	/* (NIST_API_REMOVE_BEGIN) */
 #if USE_URANDOM
-	if (urandom_get_seed(seed, len)) {
+	if(urandom_get_seed(seed, len)) {
 		return 1;
 	}
 #endif
 #if USE_WIN32_RAND
-	if (win32_get_seed(seed, len)) {
+	if(win32_get_seed(seed, len)) {
 		return 1;
 	}
 #endif
@@ -212,7 +212,7 @@ refill_chacha20(prng *p)
 	 * converted to little endian (if used on a big-endian machine).
 	 */
 	cc = *(uint64_t *)(p->state.d + 48);
-	for (u = 0; u < sizeof p->buf.d; u += 64) {
+	for(u = 0; u < sizeof p->buf.d; u += 64) {
 		uint32_t state[16];
 		size_t v;
 		int i;
@@ -221,7 +221,7 @@ refill_chacha20(prng *p)
 		memcpy(&state[4], p->state.d, 48);
 		state[14] ^= (uint32_t)cc;
 		state[15] ^= (uint32_t)(cc >> 32);
-		for (i = 0; i < 10; i ++) {
+		for(i = 0; i < 10; i ++) {
 
 #define QROUND(a, b, c, d)   do { \
 		state[a] += state[b]; \
@@ -236,7 +236,7 @@ refill_chacha20(prng *p)
 		state[c] += state[d]; \
 		state[b] ^= state[c]; \
 		state[b] = (state[b] <<  7) | (state[b] >> 25); \
-	} while (0)
+	} while(0)
 
 			QROUND( 0,  4,  8, 12);
 			QROUND( 1,  5,  9, 13);
@@ -251,10 +251,10 @@ refill_chacha20(prng *p)
 
 		}
 
-		for (v = 0; v < 4; v ++) {
+		for(v = 0; v < 4; v ++) {
 			state[v] += CW[v];
 		}
-		for (v = 4; v < 14; v ++) {
+		for(v = 4; v < 14; v ++) {
 			state[v] += ((uint32_t *)p->state.d)[v - 4];
 		}
 		state[14] += ((uint32_t *)p->state.d)[10]
@@ -266,7 +266,7 @@ refill_chacha20(prng *p)
 #if FALCON_LE_U
 		memcpy(p->buf.d + u, state, sizeof state);
 #else
-		for (v = 0; v < 16; v ++) {
+		for(v = 0; v < 16; v ++) {
 			p->buf.d[u + (v << 2) + 0] = state[v];
 			p->buf.d[u + (v << 2) + 1] = (state[v] >> 8);
 			p->buf.d[u + (v << 2) + 2] = (state[v] >> 16);
@@ -281,7 +281,7 @@ refill_chacha20(prng *p)
 int
 falcon_prng_init(prng *p, shake_context *src, int type)
 {
-	if (type == 0) {
+	if(type == 0) {
 		type = PRNG_CHACHA20;
 	}
 	switch (type) {
@@ -300,7 +300,7 @@ falcon_prng_init(prng *p, shake_context *src, int type)
 			int i;
 
 			shake_extract(src, tmp, 56);
-			for (i = 0; i < 14; i ++) {
+			for(i = 0; i < 14; i ++) {
 				uint32_t w;
 
 				w = (uint32_t)tmp[(i << 2) + 0]
@@ -345,18 +345,18 @@ falcon_prng_get_bytes(prng *p, void *dst, size_t len)
 	unsigned char *buf;
 
 	buf = dst;
-	while (len > 0) {
+	while(len > 0) {
 		size_t clen;
 
 		clen = (sizeof p->buf.d) - p->ptr;
-		if (clen > len) {
+		if(clen > len) {
 			clen = len;
 		}
 		memcpy(buf, p->buf.d, clen);
 		buf += clen;
 		len -= clen;
 		p->ptr += clen;
-		if (p->ptr == sizeof p->buf.d) {
+		if(p->ptr == sizeof p->buf.d) {
 			falcon_prng_refill(p);
 		}
 	}

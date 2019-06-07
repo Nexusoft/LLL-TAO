@@ -209,11 +209,11 @@ static const uint32_t MAX_SIZE = 0x02000000;
  **/
 inline uint64_t GetSizeOfCompactSize(uint64_t nSize)
 {
-    if (nSize < 253)
+    if(nSize < 253)
         return sizeof(uint8_t);
-    else if (nSize <= std::numeric_limits<uint16_t>::max())
+    else if(nSize <= std::numeric_limits<uint16_t>::max())
         return sizeof(uint8_t) + sizeof(uint16_t);
-    else if (nSize <= std::numeric_limits<uint32_t>::max())
+    else if(nSize <= std::numeric_limits<uint32_t>::max())
         return sizeof(uint8_t) + sizeof(uint32_t);
     else
         return sizeof(uint8_t) + sizeof(uint64_t);
@@ -231,19 +231,19 @@ inline uint64_t GetSizeOfCompactSize(uint64_t nSize)
 template<typename Stream>
 void WriteCompactSize(Stream& os, uint64_t nSize)
 {
-    if (nSize < 253)
+    if(nSize < 253)
     {
         uint8_t chSize = static_cast<uint8_t>(nSize);
         WRITEDATA(os, chSize);
     }
-    else if (nSize <= std::numeric_limits<uint16_t>::max())
+    else if(nSize <= std::numeric_limits<uint16_t>::max())
     {
         uint8_t chSize = 253;
         uint16_t xSize = static_cast<uint16_t>(nSize);
         WRITEDATA(os, chSize);
         WRITEDATA(os, xSize);
     }
-    else if (nSize <= std::numeric_limits<uint32_t>::max())
+    else if(nSize <= std::numeric_limits<uint32_t>::max())
     {
         uint8_t chSize = 254;
         uint32_t xSize = static_cast<uint32_t>(nSize);
@@ -276,17 +276,17 @@ uint64_t ReadCompactSize(Stream& is)
     uint8_t chSize;
     READDATA(is, chSize);
     uint64_t nSizeRet = 0;
-    if (chSize < 253)
+    if(chSize < 253)
     {
         nSizeRet = chSize;
     }
-    else if (chSize == 253)
+    else if(chSize == 253)
     {
         uint16_t xSize;
         READDATA(is, xSize);
         nSizeRet = xSize;
     }
-    else if (chSize == 254)
+    else if(chSize == 254)
     {
         uint32_t xSize;
         READDATA(is, xSize);
@@ -298,7 +298,7 @@ uint64_t ReadCompactSize(Stream& is)
         READDATA(is, xSize);
         nSizeRet = xSize;
     }
-    if (nSizeRet > (uint64_t)MAX_SIZE)
+    if(nSizeRet > (uint64_t)MAX_SIZE)
         throw std::runtime_error("ReadCompactSize() : size too large");
 
     return nSizeRet;
@@ -392,7 +392,7 @@ template<typename Stream, typename C>
 void Serialize(Stream& os, const std::basic_string<C>& str, uint32_t, uint32_t)
 {
     WriteCompactSize(os, str.size());
-    if (!str.empty())
+    if(!str.empty())
         os.write((char*)&str[0], str.size() * sizeof(str[0]));
 }
 
@@ -401,7 +401,7 @@ void Unserialize(Stream& is, std::basic_string<C>& str, uint32_t, uint32_t)
 {
     uint64_t nSize = ReadCompactSize(is);
     str.resize(nSize);
-    if (nSize != 0)
+    if(nSize != 0)
         is.read((char*)&str[0], nSize * sizeof(str[0]));
 }
 
@@ -419,7 +419,7 @@ template<typename T, typename A>
 uint64_t GetSerializeSize_impl(const std::vector<T, A>& v, uint32_t nSerType, uint32_t nSerVersion, const std::false_type&)
 {
     uint64_t nSize = GetSizeOfCompactSize(v.size());
-    for (typename std::vector<T, A>::const_iterator vi = v.begin(); vi != v.end(); ++vi)
+    for(typename std::vector<T, A>::const_iterator vi = v.begin(); vi != v.end(); ++vi)
         nSize += GetSerializeSize((*vi), nSerType, nSerVersion);
     return nSize;
 }
@@ -435,7 +435,7 @@ template<typename Stream, typename T, typename A>
 void Serialize_impl(Stream& os, const std::vector<T, A>& v, uint32_t nSerType, uint32_t nSerVersion, const std::true_type&)
 {
     WriteCompactSize(os, v.size());
-    if (!v.empty())
+    if(!v.empty())
         os.write((char*)&v[0], v.size() * sizeof(T));
 }
 
@@ -443,7 +443,7 @@ template<typename Stream, typename T, typename A>
 void Serialize_impl(Stream& os, const std::vector<T, A>& v, uint32_t nSerType, uint32_t nSerVersion, const std::false_type&)
 {
     WriteCompactSize(os, v.size());
-    for (typename std::vector<T, A>::const_iterator vi = v.begin(); vi != v.end(); ++vi)
+    for(typename std::vector<T, A>::const_iterator vi = v.begin(); vi != v.end(); ++vi)
         ::Serialize(os, (*vi), nSerType, nSerVersion);
 }
 
@@ -461,7 +461,7 @@ void Unserialize_impl(Stream& is, std::vector<T, A>& v, uint32_t nSerType, uint3
     v.clear();
     uint64_t nSize = ReadCompactSize(is);
     uint64_t i = 0;
-    while (i < nSize)
+    while(i < nSize)
     {
         uint64_t blk = std::min(nSize - i, (1 + static_cast<uint64_t>(4999999) / sizeof(T)));
         v.resize(i + blk);
@@ -477,13 +477,13 @@ void Unserialize_impl(Stream& is, std::vector<T, A>& v, uint32_t nSerType, uint3
     uint64_t nSize = ReadCompactSize(is);
     uint64_t i = 0;
     uint64_t nMid = 0;
-    while (nMid < nSize)
+    while(nMid < nSize)
     {
         nMid += static_cast<uint64_t>(5000000) / sizeof(T);
-        if (nMid > nSize)
+        if(nMid > nSize)
             nMid = nSize;
         v.resize(nMid);
-        for (; i < nMid; ++i)
+        for(; i < nMid; ++i)
             Unserialize(is, v[i], nSerType, nSerVersion);
     }
 }
@@ -612,7 +612,7 @@ template<typename K, typename T, typename Pred, typename A>
 uint64_t GetSerializeSize(const std::map<K, T, Pred, A>& m, uint32_t nSerType, uint32_t nSerVersion)
 {
     uint64_t nSize = GetSizeOfCompactSize(m.size());
-    for (typename std::map<K, T, Pred, A>::const_iterator mi = m.begin(); mi != m.end(); ++mi)
+    for(typename std::map<K, T, Pred, A>::const_iterator mi = m.begin(); mi != m.end(); ++mi)
         nSize += GetSerializeSize((*mi), nSerType, nSerVersion);
     return nSize;
 }
@@ -621,7 +621,7 @@ template<typename Stream, typename K, typename T, typename Pred, typename A>
 void Serialize(Stream& os, const std::map<K, T, Pred, A>& m, uint32_t nSerType, uint32_t nSerVersion)
 {
     WriteCompactSize(os, m.size());
-    for (typename std::map<K, T, Pred, A>::const_iterator mi = m.begin(); mi != m.end(); ++mi)
+    for(typename std::map<K, T, Pred, A>::const_iterator mi = m.begin(); mi != m.end(); ++mi)
         Serialize(os, (*mi), nSerType, nSerVersion);
 }
 
@@ -632,7 +632,7 @@ void Unserialize(Stream& is, std::map<K, T, Pred, A>& m, uint32_t nSerType, uint
     uint64_t nSize = ReadCompactSize(is);
     uint64_t i = 0;
     typename std::map<K, T, Pred, A>::iterator mi = m.begin();
-    for (; i < nSize; ++i)
+    for(; i < nSize; ++i)
     {
         std::pair<K, T> item;
         Unserialize(is, item, nSerType, nSerVersion);
@@ -648,7 +648,7 @@ template<typename K, typename Pred, typename A>
 uint64_t GetSerializeSize(const std::set<K, Pred, A>& m, uint32_t nSerType, uint32_t nSerVersion)
 {
     uint32_t nSize = GetSizeOfCompactSize(m.size());
-    for (typename std::set<K, Pred, A>::const_iterator it = m.begin(); it != m.end(); ++it)
+    for(typename std::set<K, Pred, A>::const_iterator it = m.begin(); it != m.end(); ++it)
         nSize += GetSerializeSize((*it), nSerType, nSerVersion);
     return nSize;
 }
@@ -657,7 +657,7 @@ template<typename Stream, typename K, typename Pred, typename A>
 void Serialize(Stream& os, const std::set<K, Pred, A>& m, uint32_t nSerType, uint32_t nSerVersion)
 {
     WriteCompactSize(os, m.size());
-    for (typename std::set<K, Pred, A>::const_iterator it = m.begin(); it != m.end(); ++it)
+    for(typename std::set<K, Pred, A>::const_iterator it = m.begin(); it != m.end(); ++it)
         Serialize(os, (*it), nSerType, nSerVersion);
 }
 
@@ -668,7 +668,7 @@ void Unserialize(Stream& is, std::set<K, Pred, A>& m, uint32_t nSerType, uint32_
     uint64_t nSize = ReadCompactSize(is);
     uint64_t i = 0;
     typename std::set<K, Pred, A>::iterator it = m.begin();
-    for (; i < nSize; ++i)
+    for(; i < nSize; ++i)
     {
         K key;
         Unserialize(is, key, nSerType, nSerVersion);

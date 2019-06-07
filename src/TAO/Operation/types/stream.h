@@ -66,7 +66,7 @@ namespace TAO
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(vchData);
-            )
+          )
 
 
             /** Operator Overload <<

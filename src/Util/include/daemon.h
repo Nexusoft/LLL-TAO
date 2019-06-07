@@ -32,12 +32,12 @@ void Daemonize()
 
 
     pid_t pid = fork();
-    if (pid < 0)
+    if(pid < 0)
     {
         debug::error(FUNCTION, "fork() returned ", pid, " errno ", errno);
         exit(EXIT_FAILURE);
     }
-    if (pid > 0)
+    if(pid > 0)
     {
         /* generate a pid file so that we can keep track of the forked process */
         filesystem::CreatePidFile(filesystem::GetPidFile(), pid);
@@ -47,7 +47,7 @@ void Daemonize()
     }
 
     pid_t sid = setsid();
-    if (sid < 0)
+    if(sid < 0)
     {
         debug::error(FUNCTION, "setsid() returned ", sid, " errno %d", errno);
         exit(EXIT_FAILURE);
@@ -59,7 +59,7 @@ void Daemonize()
     umask(077);
 
     /* close stdin, stderr, stdout so that the tty no longer receives output */
-    if (int fdnull = open("/dev/null", O_RDWR))
+    if(int fdnull = open("/dev/null", O_RDWR))
     {
         dup2 (fdnull, STDIN_FILENO);
         dup2 (fdnull, STDOUT_FILENO);

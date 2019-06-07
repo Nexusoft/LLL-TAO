@@ -45,7 +45,7 @@ static void fill_block(const block *prev_block, const block *ref_block,
     xor_block(&blockR, prev_block);
     copy_block(&block_tmp, &blockR);
     /* Now blockR = ref_block + prev_block and block_tmp = ref_block + prev_block */
-    if (with_xor) {
+    if(with_xor) {
         /* Saving the next block contents for XOR over: */
         xor_block(&block_tmp, next_block);
         /* Now blockR = ref_block + prev_block and
@@ -54,7 +54,7 @@ static void fill_block(const block *prev_block, const block *ref_block,
 
     /* Apply Blake2 on columns of 64-bit words: (0,1,...,15) , then
        (16,17,..31)... finally (112,113,...127) */
-    for (i = 0; i < 8; ++i) {
+    for(i = 0; i < 8; ++i) {
         BLAKE2_ROUND_NOMSG(
             blockR.v[16 * i], blockR.v[16 * i + 1], blockR.v[16 * i + 2],
             blockR.v[16 * i + 3], blockR.v[16 * i + 4], blockR.v[16 * i + 5],
@@ -66,7 +66,7 @@ static void fill_block(const block *prev_block, const block *ref_block,
 
     /* Apply Blake2 on rows of 64-bit words: (0,1,16,17,...112,113), then
        (2,3,18,19,...,114,115).. finally (14,15,30,31,...,126,127) */
-    for (i = 0; i < 8; i++) {
+    for(i = 0; i < 8; i++) {
         BLAKE2_ROUND_NOMSG(
             blockR.v[2 * i], blockR.v[2 * i + 1], blockR.v[2 * i + 16],
             blockR.v[2 * i + 17], blockR.v[2 * i + 32], blockR.v[2 * i + 33],
@@ -97,7 +97,7 @@ void fill_segment(const argon2_instance_t *instance,
     uint32_t i;
     int data_independent_addressing;
 
-    if (instance == NULL) {
+    if(instance == NULL) {
         return;
     }
 
@@ -106,7 +106,7 @@ void fill_segment(const argon2_instance_t *instance,
         (instance->type == Argon2_id && (position.pass == 0) &&
          (position.slice < ARGON2_SYNC_POINTS / 2));
 
-    if (data_independent_addressing) {
+    if(data_independent_addressing) {
         init_block_value(&zero_block, 0);
         init_block_value(&input_block, 0);
 
@@ -120,11 +120,11 @@ void fill_segment(const argon2_instance_t *instance,
 
     starting_index = 0;
 
-    if ((0 == position.pass) && (0 == position.slice)) {
+    if((0 == position.pass) && (0 == position.slice)) {
         starting_index = 2; /* we have already generated the first two blocks */
 
         /* Don't forget to generate the first block of addresses: */
-        if (data_independent_addressing) {
+        if(data_independent_addressing) {
             next_addresses(&address_block, &input_block, &zero_block);
         }
     }
@@ -133,7 +133,7 @@ void fill_segment(const argon2_instance_t *instance,
     curr_offset = position.lane * instance->lane_length +
                   position.slice * instance->segment_length + starting_index;
 
-    if (0 == curr_offset % instance->lane_length) {
+    if(0 == curr_offset % instance->lane_length) {
         /* Last block in this lane */
         prev_offset = curr_offset + instance->lane_length - 1;
     } else {
@@ -141,17 +141,17 @@ void fill_segment(const argon2_instance_t *instance,
         prev_offset = curr_offset - 1;
     }
 
-    for (i = starting_index; i < instance->segment_length;
+    for(i = starting_index; i < instance->segment_length;
          ++i, ++curr_offset, ++prev_offset) {
         /*1.1 Rotating prev_offset if needed */
-        if (curr_offset % instance->lane_length == 1) {
+        if(curr_offset % instance->lane_length == 1) {
             prev_offset = curr_offset - 1;
         }
 
         /* 1.2 Computing the index of the reference block */
         /* 1.2.1 Taking pseudo-random value from the previous block */
-        if (data_independent_addressing) {
-            if (i % ARGON2_ADDRESSES_IN_BLOCK == 0) {
+        if(data_independent_addressing) {
+            if(i % ARGON2_ADDRESSES_IN_BLOCK == 0) {
                 next_addresses(&address_block, &input_block, &zero_block);
             }
             pseudo_rand = address_block.v[i % ARGON2_ADDRESSES_IN_BLOCK];
@@ -162,7 +162,7 @@ void fill_segment(const argon2_instance_t *instance,
         /* 1.2.2 Computing the lane of the reference block */
         ref_lane = ((pseudo_rand >> 32)) % instance->lanes;
 
-        if ((position.pass == 0) && (position.slice == 0)) {
+        if((position.pass == 0) && (position.slice == 0)) {
             /* Can not reference other lanes yet */
             ref_lane = position.lane;
         }
@@ -178,7 +178,7 @@ void fill_segment(const argon2_instance_t *instance,
         ref_block =
             instance->memory + instance->lane_length * ref_lane + ref_index;
         curr_block = instance->memory + curr_offset;
-        if (ARGON2_VERSION_10 == instance->version) {
+        if(ARGON2_VERSION_10 == instance->version) {
             /* version 1.2.1 and earlier: overwrite, not XOR */
             fill_block(instance->memory + prev_offset, ref_block, curr_block, 0);
         } else {

@@ -317,7 +317,7 @@ namespace TAO
             uint1024_t nHash = GetHash();
 
             /* Watch for genesis. */
-            if (!ChainState::stateGenesis)
+            if(!ChainState::stateGenesis)
             {
                 /* Write the best chain pointer. */
                 if(!LLD::legDB->WriteBestChain(nHash))
@@ -339,10 +339,10 @@ namespace TAO
                 /* Get the blocks to connect and disconnect. */
                 std::vector<BlockState> vDisconnect;
                 std::vector<BlockState> vConnect;
-                while (fork != longer)
+                while(fork != longer)
                 {
                     /* Find the root block in common. */
-                    while (longer.nHeight > fork.nHeight)
+                    while(longer.nHeight > fork.nHeight)
                     {
                         /* Add to connect queue. */
                         vConnect.push_back(longer);
@@ -359,7 +359,7 @@ namespace TAO
                     }
 
                     /* Break if found. */
-                    if (fork == longer)
+                    if(fork == longer)
                         break;
 
                     /* Iterate backwards to find fork. */
@@ -530,7 +530,7 @@ namespace TAO
                 {
                     /* Block notify. */
                     std::string strCmd = config::GetArg("-blocknotify", "");
-                    if (!strCmd.empty())
+                    if(!strCmd.empty())
                     {
                         ReplaceAll(strCmd, "%s", ChainState::hashBestChain.load().GetHex());
                         std::thread t(runtime::command, strCmd);
@@ -730,7 +730,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                     /* Wallets need to refund inputs when disonnecting coinstake */
-                    if (tx.IsCoinStake() && Legacy::Wallet::GetInstance().IsFromMe(tx))
+                    if(tx.IsCoinStake() && Legacy::Wallet::GetInstance().IsFromMe(tx))
                        Legacy::Wallet::GetInstance().DisableTransaction(tx);
                 }
 

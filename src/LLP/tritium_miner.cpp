@@ -103,7 +103,7 @@ namespace LLP
          }
 
         /* Check that the account is unlocked for minting */
-        if( !TAO::API::users->CanMint())
+        if(!TAO::API::users->CanMint())
         {
             debug::error(FUNCTION, "Account has not been unlocked for minting");
             return nullptr;
@@ -177,7 +177,7 @@ namespace LLP
             return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
         /* Check that the account is unlocked for minting */
-        if( !TAO::API::users->CanMint())
+        if(!TAO::API::users->CanMint())
             return debug::error(FUNCTION, "Account has not been unlocked for minting");
 
         /* Sign the submitted block */
@@ -244,27 +244,27 @@ namespace LLP
             return false;
 
         /* Log block found */
-        if (config::GetArg("-verbose", 0) > 0)
+        if(config::GetArg("-verbose", 0) > 0)
         {
-            std::string timestampString(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
+            std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
 
-            if (pBlock->nChannel == 1)
+            if(pBlock->nChannel == 1)
             {
-                debug::log(1, FUNCTION, "Nexus Tritium Miner: new Prime channel block found at unified time ", timestampString);
+                debug::log(1, FUNCTION, "Nexus Tritium Miner: new Prime channel block found at unified time ", strTimestamp);
                 debug::log(1, "  blockHash: ", pBlock->ProofHash().ToString().substr(0, 30), " block height: ", pBlock->nHeight);
                 debug::log(1, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(pBlock->nBits, 1));
             }
-            else if (pBlock->nChannel == 2)
+            else if(pBlock->nChannel == 2)
             {
                 uint1024_t hashTarget = LLC::CBigNum().SetCompact(pBlock->nBits).getuint1024();
 
-                debug::log(1, FUNCTION, "Nexus Tritium Miner: new Hash channel block found at unified time ", timestampString);
+                debug::log(1, FUNCTION, "Nexus Tritium Miner: new Hash channel block found at unified time ", strTimestamp);
                 debug::log(1, "  blockHash: ", pBlock->ProofHash().ToString().substr(0, 30), " block height: ", pBlock->nHeight);
                 debug::log(1, "  target: ", hashTarget.ToString().substr(0, 30));
             }
         }
 
-        if (pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
+        if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
         {
             debug::log(0, FUNCTION, "Generated block is stale");
             return false;

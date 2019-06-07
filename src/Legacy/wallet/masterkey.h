@@ -82,7 +82,7 @@ namespace Legacy
             READWRITE(nDerivationMethod);
             READWRITE(nDeriveIterations);
             READWRITE(vchOtherDerivationParameters);
-        )
+      )
 
 
         /** Default Constructor

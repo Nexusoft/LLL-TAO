@@ -22,9 +22,9 @@ http://creativecommons.org/publicdomain/zero/1.0/
 
 int Keccak_SpongeInitialize(Keccak_SpongeInstance *instance, uint32_t rate, uint32_t capacity)
 {
-    if (rate+capacity != 1600)
+    if(rate+capacity != 1600)
         return 1;
-    if ((rate <= 0) || (rate > 1600) || ((rate % 8) != 0))
+    if((rate <= 0) || (rate > 1600) || ((rate % 8) != 0))
         return 1;
     KeccakF1600_Initialize();
     KeccakF1600_StateInitialize(instance->state);
@@ -44,19 +44,19 @@ int Keccak_SpongeAbsorb(Keccak_SpongeInstance *instance, const uint8_t *data, un
     const uint8_t *curData;
     uint32_t rateInBytes = instance->rate/8;
 
-    if (instance->squeezing)
+    if(instance->squeezing)
         return 1; // Too late for additional input
 
     i = 0;
     curData = data;
     while(i < dataByteLen) {
-        if ((instance->byteIOIndex == 0) && (dataByteLen >= (i + rateInBytes))) {
+        if((instance->byteIOIndex == 0) && (dataByteLen >= (i + rateInBytes))) {
             // fast lane: processing whole blocks first
             for(j=dataByteLen-i; j>=rateInBytes; j-=rateInBytes) {
                 #ifdef KeccakReference
                 displayBytes(1, "Block to be absorbed", curData, rateInBytes);
                 #endif
-                if ((rateInBytes % KeccakF_laneInBytes) > 0)
+                if((rateInBytes % KeccakF_laneInBytes) > 0)
                     KeccakF1600_StateXORBytesInLane(instance->state, rateInBytes/KeccakF_laneInBytes,
                         curData+(rateInBytes/KeccakF_laneInBytes)*KeccakF_laneInBytes,
                         0, rateInBytes%KeccakF_laneInBytes);
@@ -68,13 +68,13 @@ int Keccak_SpongeAbsorb(Keccak_SpongeInstance *instance, const uint8_t *data, un
         else {
             // normal lane: using the message queue
             partialBlock = (uint32_t)(dataByteLen - i);
-            if (partialBlock+instance->byteIOIndex > rateInBytes)
+            if(partialBlock+instance->byteIOIndex > rateInBytes)
                 partialBlock = rateInBytes-instance->byteIOIndex;
             #ifdef KeccakReference
             displayBytes(1, "Block to be absorbed (part)", curData, partialBlock);
             #endif
             i += partialBlock;
-            if ((instance->byteIOIndex == 0) && (partialBlock >= KeccakF_laneInBytes)) {
+            if((instance->byteIOIndex == 0) && (partialBlock >= KeccakF_laneInBytes)) {
                 KeccakF1600_StateXORLanes(instance->state, curData, partialBlock/KeccakF_laneInBytes);
                 curData += (partialBlock/KeccakF_laneInBytes)*KeccakF_laneInBytes;
                 instance->byteIOIndex += (partialBlock/KeccakF_laneInBytes)*KeccakF_laneInBytes;
@@ -83,14 +83,14 @@ int Keccak_SpongeAbsorb(Keccak_SpongeInstance *instance, const uint8_t *data, un
             while(partialBlock > 0) {
                 uint32_t offsetInLane = instance->byteIOIndex % KeccakF_laneInBytes;
                 uint32_t bytesInLane = KeccakF_laneInBytes - offsetInLane;
-                if (bytesInLane > partialBlock)
+                if(bytesInLane > partialBlock)
                     bytesInLane = partialBlock;
                 KeccakF1600_StateXORBytesInLane(instance->state, instance->byteIOIndex/KeccakF_laneInBytes, curData, offsetInLane, bytesInLane);
                 curData += bytesInLane;
                 instance->byteIOIndex += bytesInLane;
                 partialBlock -= bytesInLane;
             }
-            if (instance->byteIOIndex == rateInBytes) {
+            if(instance->byteIOIndex == rateInBytes) {
                 KeccakF1600_StatePermute(instance->state);
                 instance->byteIOIndex = 0;
             }
@@ -106,9 +106,9 @@ int Keccak_SpongeAbsorbLastFewBits(Keccak_SpongeInstance *instance, uint8_t deli
     uint8_t delimitedData1[1];
     uint32_t rateInBytes = instance->rate/8;
 
-    if (delimitedData == 0)
+    if(delimitedData == 0)
         return 1;
-    if (instance->squeezing)
+    if(instance->squeezing)
         return 1; // Too late for additional input
 
     delimitedData1[0] = delimitedData;
@@ -119,7 +119,7 @@ int Keccak_SpongeAbsorbLastFewBits(Keccak_SpongeInstance *instance, uint8_t deli
     KeccakF1600_StateXORBytesInLane(instance->state, instance->byteIOIndex/KeccakF_laneInBytes,
         delimitedData1, instance->byteIOIndex%KeccakF_laneInBytes, 1);
     // If the first bit of padding is at position rate-1, we need a whole new block for the second bit of padding
-    if ((delimitedData >= 0x80) && (instance->byteIOIndex == (rateInBytes-1)))
+    if((delimitedData >= 0x80) && (instance->byteIOIndex == (rateInBytes-1)))
         KeccakF1600_StatePermute(instance->state);
     // Second bit of padding
     KeccakF1600_StateComplementBit(instance->state, rateInBytes*8-1);
@@ -149,17 +149,17 @@ int Keccak_SpongeSqueeze(Keccak_SpongeInstance *instance, uint8_t *data, unsigne
     uint32_t rateInBytes = instance->rate/8;
     uint8_t *curData;
 
-    if (!instance->squeezing)
+    if(!instance->squeezing)
         Keccak_SpongeAbsorbLastFewBits(instance, 0x01);
 
     i = 0;
     curData = data;
     while(i < dataByteLen) {
-        if ((instance->byteIOIndex == rateInBytes) && (dataByteLen >= (i + rateInBytes))) {
+        if((instance->byteIOIndex == rateInBytes) && (dataByteLen >= (i + rateInBytes))) {
             // fast lane: processing whole blocks first
             for(j=dataByteLen-i; j>=rateInBytes; j-=rateInBytes) {
                 KeccakF1600_StateXORPermuteExtract(instance->state, 0, 0, curData, rateInBytes/KeccakF_laneInBytes);
-                if ((rateInBytes % KeccakF_laneInBytes) > 0)
+                if((rateInBytes % KeccakF_laneInBytes) > 0)
                     KeccakF1600_StateExtractBytesInLane(instance->state, rateInBytes/KeccakF_laneInBytes,
                         curData+(rateInBytes/KeccakF_laneInBytes)*KeccakF_laneInBytes, 0,
                         rateInBytes%KeccakF_laneInBytes);
@@ -172,15 +172,15 @@ int Keccak_SpongeSqueeze(Keccak_SpongeInstance *instance, uint8_t *data, unsigne
         }
         else {
             // normal lane: using the message queue
-            if (instance->byteIOIndex == rateInBytes) {
+            if(instance->byteIOIndex == rateInBytes) {
                 KeccakF1600_StatePermute(instance->state);
                 instance->byteIOIndex = 0;
             }
             partialBlock = (uint32_t)(dataByteLen - i);
-            if (partialBlock+instance->byteIOIndex > rateInBytes)
+            if(partialBlock+instance->byteIOIndex > rateInBytes)
                 partialBlock = rateInBytes-instance->byteIOIndex;
             i += partialBlock;
-            if ((instance->byteIOIndex == 0) && (partialBlock >= KeccakF_laneInBytes)) {
+            if((instance->byteIOIndex == 0) && (partialBlock >= KeccakF_laneInBytes)) {
                 KeccakF1600_StateExtractLanes(instance->state, curData, partialBlock/KeccakF_laneInBytes);
                 #ifdef KeccakReference
                 displayBytes(1, "Squeezed block (part)", curData, (partialBlock/KeccakF_laneInBytes)*KeccakF_laneInBytes);
@@ -192,7 +192,7 @@ int Keccak_SpongeSqueeze(Keccak_SpongeInstance *instance, uint8_t *data, unsigne
             while(partialBlock > 0) {
                 uint32_t offsetInLane = instance->byteIOIndex % KeccakF_laneInBytes;
                 uint32_t bytesInLane = KeccakF_laneInBytes-offsetInLane;
-                if (bytesInLane > partialBlock)
+                if(bytesInLane > partialBlock)
                     bytesInLane = partialBlock;
                 KeccakF1600_StateExtractBytesInLane(instance->state, instance->byteIOIndex/KeccakF_laneInBytes, curData, offsetInLane, bytesInLane);
                 #ifdef KeccakReference

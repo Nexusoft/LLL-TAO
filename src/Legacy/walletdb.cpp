@@ -180,10 +180,10 @@ namespace Legacy
         ++WalletDB::nWalletDBUpdated;
         BerkeleyDB& db = BerkeleyDB::GetInstance();
 
-        if (!db.Write(std::make_pair(std::string("ckey"), vchPubKey), vchCryptedSecret, false))
+        if(!db.Write(std::make_pair(std::string("ckey"), vchPubKey), vchCryptedSecret, false))
             return false;
 
-        if (fEraseUnencryptedKey)
+        if(fEraseUnencryptedKey)
         {
             db.Erase(std::make_pair(std::string("key"), vchPubKey));
             db.Erase(std::make_pair(std::string("wkey"), vchPubKey));
@@ -284,7 +284,7 @@ namespace Legacy
         /* Don't flush during cursor operations. See LoadWallet() for discussion of this code. */
         bool expectedValue = false;
         bool desiredValue = true;
-        while (!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
+        while(!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
         {
             runtime::sleep(100);
             expectedValue = false;
@@ -294,7 +294,7 @@ namespace Legacy
 
         auto pcursor = db.GetCursor();
 
-        if (pcursor == nullptr)
+        if(pcursor == nullptr)
             throw std::runtime_error("WalletDB::ListAccountCreditDebit : Cannot create DB cursor");
 
         uint32_t fFlags = DB_SET_RANGE;
@@ -302,7 +302,7 @@ namespace Legacy
         while(true) {
             /* Read next record */
             DataStream ssKey(SER_DISK, LLD::DATABASE_VERSION);
-            if (fFlags == DB_SET_RANGE)
+            if(fFlags == DB_SET_RANGE)
             {
                 /* Set key input to acentry<account><0> when set range flag is set (first iteration)
                  * This will return all entries beginning with ID 0, with DB_NEXT reading the next entry each time
@@ -316,12 +316,12 @@ namespace Legacy
 
             /* After initial read, change flag setting to DB_NEXT so additional reads just get the next database entry */
             fFlags = DB_NEXT;
-            if (ret == DB_NOTFOUND)
+            if(ret == DB_NOTFOUND)
             {
                 /* End of database reached, no further entries to read */
                 break;
             }
-            else if (ret != 0)
+            else if(ret != 0)
             {
                 /* Error retrieving accounting entries */
                 db.CloseCursor(pcursor);
@@ -331,12 +331,12 @@ namespace Legacy
             /* Unserialize */
             std::string strType;
             ssKey >> strType;
-            if (strType != "acentry")
+            if(strType != "acentry")
                 break; // Read an entry with a different key type (finished with read)
 
             AccountingEntry acentry;
             ssKey >> acentry.strAccount;
-            if (!fAllAccounts && acentry.strAccount != strAccount)
+            if(!fAllAccounts && acentry.strAccount != strAccount)
                 break; // Read an entry for a different account (finished with read)
 
             /* Database entry read matches both acentry key type and requested account, add to list */
@@ -383,7 +383,7 @@ namespace Legacy
          */
         bool expectedValue = false;
         bool desiredValue = true;
-        while (!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
+        while(!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
         {
             runtime::sleep(100);
             expectedValue = false;
@@ -396,9 +396,9 @@ namespace Legacy
 
         /* Read and validate minversion required by database file */
         uint32_t nMinVersion = 0;
-        if (ReadMinVersion(nMinVersion))
+        if(ReadMinVersion(nMinVersion))
         {
-            if (nMinVersion > FEATURE_LATEST)
+            if(nMinVersion > FEATURE_LATEST)
             {
                 WalletDB::fDbInProgress.store(false); //reset before return
                 return DB_TOO_NEW;
@@ -409,7 +409,7 @@ namespace Legacy
 
         /* Get cursor */
         auto pcursor = db.GetCursor();
-        if (pcursor == nullptr)
+        if(pcursor == nullptr)
         {
             debug::error(FUNCTION, "Error opening wallet database cursor");
             WalletDB::fDbInProgress.store(false); //reset before return
@@ -425,12 +425,12 @@ namespace Legacy
 
             nRet = db.ReadAtCursor(pcursor, ssKey, ssValue);
 
-            if (nRet == DB_NOTFOUND)
+            if(nRet == DB_NOTFOUND)
             {
                 /* End of database, no more entries to read */
                 break;
             }
-            else if (nRet != 0)
+            else if(nRet != 0)
             {
                 debug::error(FUNCTION, "Error reading next record from wallet database");
                 nRet = DB_CORRUPT;
@@ -444,7 +444,7 @@ namespace Legacy
             std::string strType;
             ssKey >> strType;
 
-            if (strType == "name")
+            if(strType == "name")
             {
                 /* Address book entry */
                 std::string strNexusAddress;
@@ -461,7 +461,7 @@ namespace Legacy
 
             }
 
-            else if (strType == "tx")
+            else if(strType == "tx")
             {
                 /* Wallet transaction */
                 uint512_t hash;
@@ -475,7 +475,7 @@ namespace Legacy
                     vWalletRemove.push_back(hash);
 
                 }
-                else if (wtx.GetHash() != hash)
+                else if(wtx.GetHash() != hash)
                 {
                     debug::error(FUNCTION, "Error in ", strWalletFile, 
                                  ", hash mismatch. Removing Transaction from wallet map. Run the rescan command to restore.");
@@ -488,21 +488,21 @@ namespace Legacy
 
             }
 
-            else if (strType == "defaultkey")
+            else if(strType == "defaultkey")
             {
                 /* Wallet default key */
                 ssValue >> wallet.vchDefaultKey;
 
             }
 
-            else if (strType == "trustkey")
+            else if(strType == "trustkey")
             {
                 /* Wallet trust key public key */
                 ssValue >> wallet.vchTrustKey;
 
             }
 
-            else if (strType == "mkey")
+            else if(strType == "mkey")
             {
                 /* Wallet master key */
                 uint32_t nMasterKeyId;
@@ -511,7 +511,7 @@ namespace Legacy
                 ssValue >> kMasterKey;
 
                 /* Load the master key into the wallet */
-                if (!wallet.LoadMasterKey(nMasterKeyId, kMasterKey))
+                if(!wallet.LoadMasterKey(nMasterKeyId, kMasterKey))
                 {
                     debug::error(FUNCTION, "Error reading wallet database: duplicate MasterKey id ", nMasterKeyId);
                     nRet = DB_CORRUPT;
@@ -520,14 +520,14 @@ namespace Legacy
 
             }
 
-            else if (strType == "key" || strType == "wkey")
+            else if(strType == "key" || strType == "wkey")
             {
                 /* Unencrypted key */
                 std::vector<uint8_t> vchPubKey;
                 ssKey >> vchPubKey;
 
                 LLC::ECKey key;
-                if (strType == "key")
+                if(strType == "key")
                 {
                     /* key entry stores unencrypted private key */
                     LLC::CPrivKey privateKey;
@@ -536,14 +536,14 @@ namespace Legacy
                     key.SetPrivKey(privateKey);
 
                     /* Validate the key data */
-                    if (key.GetPubKey() != vchPubKey)
+                    if(key.GetPubKey() != vchPubKey)
                     {
                         debug::error(FUNCTION, "Error reading wallet database: CPrivKey pubkey inconsistency");
                         nRet = DB_CORRUPT;
                         break;
                     }
 
-                    if (!key.IsValid())
+                    if(!key.IsValid())
                     {
                         debug::error(FUNCTION, "Error reading wallet database: invalid CPrivKey");
                         nRet = DB_CORRUPT;
@@ -562,14 +562,14 @@ namespace Legacy
                     key.SetPrivKey(wkey.vchPrivKey);
 
                     /* Validate the key data  */
-                    if (key.GetPubKey() != vchPubKey)
+                    if(key.GetPubKey() != vchPubKey)
                     {
                         debug::error(FUNCTION, "Error reading wallet database: WalletKey pubkey inconsistency");
                         nRet = DB_CORRUPT;
                         break;
                     }
 
-                    if (!key.IsValid())
+                    if(!key.IsValid())
                     {
                         debug::error(FUNCTION, "Error reading wallet database: invalid WalletKey");
                         nRet = DB_CORRUPT;
@@ -578,7 +578,7 @@ namespace Legacy
                 }
 
                 /* Load the key into the wallet */
-                if (!wallet.LoadKey(key))
+                if(!wallet.LoadKey(key))
                 {
                     debug::error(FUNCTION, "Error reading wallet database: LoadKey failed");
                     nRet = DB_CORRUPT;
@@ -587,7 +587,7 @@ namespace Legacy
 
             }
 
-            else if (strType == "ckey")
+            else if(strType == "ckey")
             {
                 /* Encrypted key */
                 std::vector<uint8_t> vchPubKey;
@@ -595,7 +595,7 @@ namespace Legacy
                 std::vector<uint8_t> vchPrivKey;
                 ssValue >> vchPrivKey;
 
-                if (!wallet.LoadCryptedKey(vchPubKey, vchPrivKey))
+                if(!wallet.LoadCryptedKey(vchPubKey, vchPrivKey))
                 {
                     debug::error(FUNCTION, "Error reading wallet database: LoadCryptedKey failed");
                     nRet = DB_CORRUPT;
@@ -607,7 +607,7 @@ namespace Legacy
 
             }
 
-            else if (strType == "pool")
+            else if(strType == "pool")
             {
                 /* Key pool entry */
                 uint64_t nPoolIndex;
@@ -619,14 +619,14 @@ namespace Legacy
 
             }
 
-            else if (strType == "version")
+            else if(strType == "version")
             {
                 /* Wallet database file version */
                 ssValue >> nFileVersion;
 
             }
 
-            else if (strType == "cscript")
+            else if(strType == "cscript")
             {
                 /* Script */
                 uint256_t hash;
@@ -634,7 +634,7 @@ namespace Legacy
                 Script script;
                 ssValue >> script;
 
-                if (!wallet.LoadScript(script))
+                if(!wallet.LoadScript(script))
                 {
                     debug::error(FUNCTION, "Error reading wallet database: LoadScript failed");
                     nRet =  DB_CORRUPT;
@@ -643,7 +643,7 @@ namespace Legacy
 
             }
 
-            else if (strType == "acentry")
+            else if(strType == "acentry")
             {
                 /* Accounting entry */
                 std::string strAccount;
@@ -652,7 +652,7 @@ namespace Legacy
                 ssKey >> nNumber;
 
                 /* After load, nAccountingEntryNumber will contain the maximum accounting entry number currently stored in the database */
-                if (nNumber > WalletDB::nAccountingEntryNumber)
+                if(nNumber > WalletDB::nAccountingEntryNumber)
                     WalletDB::nAccountingEntryNumber = nNumber;
 
             }
@@ -668,7 +668,7 @@ namespace Legacy
         /* If load has completed normally, nRet will equal DB_NOT_FOUND because it read all records to the end.
          * Any other value is an error code. Skip remaining processing and return the error.
          */
-        if (nRet == DB_NOTFOUND)
+        if(nRet == DB_NOTFOUND)
         {
             /* Remove transactions flagged for removal */
             if(vWalletRemove.size() > 0)
@@ -683,7 +683,7 @@ namespace Legacy
             }
 
             /* Update file version to latest version */
-            if (nFileVersion < LLD::DATABASE_VERSION)
+            if(nFileVersion < LLD::DATABASE_VERSION)
                 db.WriteVersion(LLD::DATABASE_VERSION);
 
             uint64_t elapsedTime = runtime::timestamp(true) - startTimestamp;
@@ -708,7 +708,7 @@ namespace Legacy
         /* Don't flush during encryption transaction. See LoadWallet() for discussion of this code. */
         bool expectedValue = false;
         bool desiredValue = true;
-        while (!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
+        while(!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
         {
             runtime::sleep(100);
             expectedValue = false;
@@ -716,27 +716,27 @@ namespace Legacy
 
         BerkeleyDB& db = BerkeleyDB::GetInstance();
 
-        if (!db.TxnBegin())
+        if(!db.TxnBegin())
         {
             debug::error(FUNCTION, "Unable to begin database transaction for writing encrypted keys to ", strWalletFile);
             return false;
         }
 
             /* Start encryption transaction by writing the master key */
-        if (!WriteMasterKey(nNewMasterKeyId, kMasterKey))
+        if(!WriteMasterKey(nNewMasterKeyId, kMasterKey))
         {
             debug::error(FUNCTION, "Error writing master key to ", strWalletFile);
             fSuccessful = false;
         }
 
-        if (fSuccessful)
+        if(fSuccessful)
         {
-            for (const auto& mKey : mapNewEncryptedKeys)
+            for(const auto& mKey : mapNewEncryptedKeys)
             {
                 const std::vector<uint8_t>& vchPubKey = mKey.second.first;
                 const std::vector<uint8_t>& vchCryptedSecret = mKey.second.second;
 
-                if (!WriteCryptedKey(vchPubKey, vchCryptedSecret, true))
+                if(!WriteCryptedKey(vchPubKey, vchCryptedSecret, true))
                 {
                     debug::error(FUNCTION, "Error writing encrypted key to ", strWalletFile);
                     fSuccessful = false;
@@ -744,16 +744,16 @@ namespace Legacy
             }
         }
 
-        if (fSuccessful)
+        if(fSuccessful)
         {
-            if (!db.TxnCommit())
+            if(!db.TxnCommit())
             {
                 debug::error(FUNCTION, "Error committing encryption updates to ", strWalletFile);
                 fSuccessful = false;
             }
         }
 
-        if (fSuccessful)
+        if(fSuccessful)
             db.DBFlush();
         else
             db.TxnAbort();
@@ -775,13 +775,13 @@ namespace Legacy
     /* Start the wallet flush thread for a given wallet file. */
     bool WalletDB::StartFlushThread(const std::string& strFile)
     {
-        if (WalletDB::fFlushThreadStarted.load())
+        if(WalletDB::fFlushThreadStarted.load())
         {
             debug::error(FUNCTION, "Attempt to start a second wallet flush thread for file ", strFile);
             return false;
         }
 
-        if (config::GetBoolArg("-flushwallet", true))
+        if(config::GetBoolArg("-flushwallet", true))
         {
             WalletDB::flushThread = std::thread(WalletDB::ThreadFlushWalletDB);
             WalletDB::fFlushThreadStarted.store(true);
@@ -794,7 +794,7 @@ namespace Legacy
     /* Signals the wallet flush thread to shut down. */
     void WalletDB::ShutdownFlushThread()
     {
-        if (config::GetBoolArg("-flushwallet", true))
+        if(config::GetBoolArg("-flushwallet", true))
         {
             WalletDB::fShutdownFlushThread.store(true);
             WalletDB::flushThread.join();
@@ -805,7 +805,7 @@ namespace Legacy
     /* Function that loops until shutdown and periodically flushes a wallet db */
     void WalletDB::ThreadFlushWalletDB()
     {
-        if (!config::GetBoolArg("-flushwallet", true))
+        if(!config::GetBoolArg("-flushwallet", true))
             return;
 
         /* WalletDB::nWalletDBUpdated is incremented each time wallet database data is updated'
@@ -824,18 +824,18 @@ namespace Legacy
 
         debug::log(1, FUNCTION, "Wallet flush thread started");
 
-        while (!WalletDB::fShutdownFlushThread.load())
+        while(!WalletDB::fShutdownFlushThread.load())
         {
             runtime::sleep(1000);
 
             /* Skip flush if multi-step DB operation (cursor, transaction, etc.) in progress. Wait for it to complete */
-            if (WalletDB::fDbInProgress.load())
+            if(WalletDB::fDbInProgress.load())
                 continue;
 
             /* Copy the atomic value to a local variable so we can use it without any chance that it will change */
             const uint32_t nWalletUpdatedCount = WalletDB::nWalletDBUpdated.load();
 
-            if (nLastSeen != nWalletUpdatedCount)
+            if(nLastSeen != nWalletUpdatedCount)
             {
                 /* Database is updated since last checked. Record time update recognized */
                 nLastSeen = nWalletUpdatedCount;
@@ -843,7 +843,7 @@ namespace Legacy
             }
 
             /* Perform flush if database updated, and the minimum required time has passed since recognizing the update */
-            if (nLastFlushed != nLastSeen && (runtime::unifiedtimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
+            if(nLastFlushed != nLastSeen && (runtime::unifiedtimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
             {
 
                 /* If fDbInProgress currently false, atomically set it to true and performs flush. 
@@ -852,7 +852,7 @@ namespace Legacy
                  */
                 bool expectedValue = false;
                 bool desiredValue = true;
-                if (WalletDB::fDbInProgress.compare_exchange_strong(expectedValue, desiredValue))
+                if(WalletDB::fDbInProgress.compare_exchange_strong(expectedValue, desiredValue))
                 {
                     BerkeleyDB::GetInstance().DBFlush();
                     nLastFlushed = nLastSeen;
@@ -872,11 +872,11 @@ namespace Legacy
     /* Writes a backup copy of a given wallet to a designated backup file */
     bool WalletDB::BackupWallet(const Wallet& wallet, const std::string& strDest)
     {
-        if (!wallet.IsFileBacked())
+        if(!wallet.IsFileBacked())
             return false;
 
         /* Validate the length of strDest. This assures pathDest.size() cast to uint32_t is always valid (nobody can pass a ridiculously long string) */
-        if (strDest.size() > MAX_PATH)
+        if(strDest.size() > MAX_PATH)
         {
             debug::error(FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
             return false;
@@ -884,18 +884,18 @@ namespace Legacy
 
         bool fBackupSuccessful = false;
 
-        while (!config::fShutdown.load()) //Loop used so we can easily break to the end on error. Only iterates once.
+        while(!config::fShutdown.load()) //Loop used so we can easily break to the end on error. Only iterates once.
         {
             /* Tell flush thread not to flush during backup (backup will flush below). See LoadWallet() for discussion of this code. */
             bool expectedValue = false;
             bool desiredValue = true;
-            while (!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
+            while(!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
             {
                 runtime::sleep(100);
                 expectedValue = false;
             }
 
-            if (config::fShutdown.load()) //Just in case we had to wait and it changed
+            if(config::fShutdown.load()) //Just in case we had to wait and it changed
                 break;
 
             std::string strSource = wallet.GetWalletFile();
@@ -909,17 +909,17 @@ namespace Legacy
             filesystem::create_directories(pathDest);
 
                 /* If destination is a folder, append source file name to use as dest file name */
-            if (filesystem::is_directory(pathDest))
+            if(filesystem::is_directory(pathDest))
             {
                 uint32_t s = static_cast<uint32_t>(pathDest.size());
 
-                if (pathDest[s-1] != '/')
+                if(pathDest[s-1] != '/')
                     pathDest += '/';
 
                 pathDest = pathDest + strSource;
 
                 /* After appending to pathDest, need to validate again */
-                if (strDest.size() > MAX_PATH) {
+                if(strDest.size() > MAX_PATH) {
                     debug::error(FUNCTION, "Error: Invalid destination path. Path size exceeds maximum limit");
                     fBackupSuccessful =  false;
                     break;
@@ -930,7 +930,7 @@ namespace Legacy
             BerkeleyDB::GetInstance().DBFlush();
 
             /* Copy wallet file from source to dest */
-            if (filesystem::copy_file(pathSource, pathDest))
+            if(filesystem::copy_file(pathSource, pathDest))
             {
                 debug::log(0, FUNCTION, "Successfully backed up ", strSource, " to ", pathDest);
                 fBackupSuccessful = true;

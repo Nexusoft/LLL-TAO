@@ -76,20 +76,20 @@ namespace Legacy
 	bool Transaction::IsFinal(int32_t nBlockHeight, int64_t nBlockTime) const
 	{
 		// Time based nLockTime implemented in 0.1.6
-		if (nLockTime == 0)
+		if(nLockTime == 0)
 			return true;
 
-		if (nBlockHeight == 0)
+		if(nBlockHeight == 0)
 			nBlockHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
-		if (nBlockTime == 0)
+		if(nBlockTime == 0)
 			nBlockTime = runtime::unifiedtimestamp();
 
-		if ((int64_t)nLockTime < ((int64_t)nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
+		if((int64_t)nLockTime < ((int64_t)nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
 			return true;
 
 		for(const auto& txin : vin)
-			if (!txin.IsFinal())
+			if(!txin.IsFinal())
 				return false;
 
 		return true;
@@ -102,25 +102,25 @@ namespace Legacy
         /* Get the number of inputs to the transaction. */
         uint32_t nInSize = static_cast<uint32_t>(vin.size());
 
-		if (nInSize != old.vin.size())
+		if(nInSize != old.vin.size())
 			return false;
 
-		for (uint32_t i = 0; i < nInSize; ++i)
-			if (vin[i].prevout != old.vin[i].prevout)
+		for(uint32_t i = 0; i < nInSize; ++i)
+			if(vin[i].prevout != old.vin[i].prevout)
 				return false;
 
 		bool fNewer = false;
 		uint32_t nLowest = std::numeric_limits<uint32_t>::max();
-		for (uint32_t i = 0; i < nInSize; ++i)
+		for(uint32_t i = 0; i < nInSize; ++i)
 		{
-			if (vin[i].nSequence != old.vin[i].nSequence)
+			if(vin[i].nSequence != old.vin[i].nSequence)
 			{
-				if (vin[i].nSequence <= nLowest)
+				if(vin[i].nSequence <= nLowest)
 				{
 					fNewer = false;
 					nLowest = vin[i].nSequence;
 				}
-				if (old.vin[i].nSequence < nLowest)
+				if(old.vin[i].nSequence < nLowest)
 				{
 					fNewer = true;
 					nLowest = old.vin[i].nSequence;
@@ -224,15 +224,15 @@ namespace Legacy
             // Biggest 'standard' txin is a 3-signature 3-of-3 CHECKMULTISIG
             // pay-to-script-hash, which is 3 ~80-byte signatures, 3
             // ~65-byte public keys, plus a few script ops.
-            if (txin.scriptSig.size() > 500)
+            if(txin.scriptSig.size() > 500)
                 return false;
 
-            if (!txin.scriptSig.IsPushOnly())
+            if(!txin.scriptSig.IsPushOnly())
                 return false;
         }
 
         for(const auto& txout : vout)
-            if (!Legacy::IsStandard(txout.scriptPubKey))
+            if(!Legacy::IsStandard(txout.scriptPubKey))
                 return false;
 
         return true;
@@ -246,11 +246,11 @@ namespace Legacy
         TransactionType whichType;
 
         /* Extract the key from script sig. */
-        if (!Solver(vout[0].scriptPubKey, whichType, vSolutions))
+        if(!Solver(vout[0].scriptPubKey, whichType, vSolutions))
             return debug::error(FUNCTION, "couldn't find trust key in script");
 
         /* Enforce public key rules. */
-        if (whichType != TX_PUBKEY)
+        if(whichType != TX_PUBKEY)
             return debug::error(FUNCTION, "key not of public key type");
 
         /* Set the Public Key Integer Key from Bytes. */
@@ -427,13 +427,13 @@ namespace Legacy
 	/* Check for standard transaction types */
 	bool Transaction::AreInputsStandard(const std::map<uint512_t, Transaction>& mapInputs) const
     {
-        if (IsCoinBase())
+        if(IsCoinBase())
             return true; // Coinbases don't use vin normally
 
         /* Get the number of inputs to the transaction. */
         uint32_t nInSize = static_cast<uint32_t>(vin.size());
 
-        for (uint32_t i = (uint32_t) IsCoinStake(); i < nInSize; ++i)
+        for(uint32_t i = (uint32_t) IsCoinStake(); i < nInSize; ++i)
         {
             const TxOut& prev = GetOutputFor(vin[i], mapInputs);
 
@@ -441,11 +441,11 @@ namespace Legacy
             TransactionType whichType;
             // get the scriptPubKey corresponding to this input:
             const Script& prevScript = prev.scriptPubKey;
-            if (!Solver(prevScript, whichType, vSolutions))
+            if(!Solver(prevScript, whichType, vSolutions))
                 return false;
 
             int nArgsExpected = ScriptSigArgsExpected(whichType, vSolutions);
-            if (nArgsExpected < 0)
+            if(nArgsExpected < 0)
                 return false;
 
             // Transactions with extra stuff in their scriptSigs are
@@ -454,30 +454,30 @@ namespace Legacy
             // beside "push data" in the scriptSig the
             // IsStandard() call returns false
             std::vector< std::vector<uint8_t> > stack;
-            if (!EvalScript(stack, vin[i].scriptSig, *this, i, 0))
+            if(!EvalScript(stack, vin[i].scriptSig, *this, i, 0))
                 return false;
 
-            if (whichType == TX_SCRIPTHASH)
+            if(whichType == TX_SCRIPTHASH)
             {
-                if (stack.empty())
+                if(stack.empty())
                     return false;
 
                 Script subscript(stack.back().begin(), stack.back().end());
                 std::vector< std::vector<uint8_t> > vSolutions2;
                 TransactionType whichType2;
-                if (!Solver(subscript, whichType2, vSolutions2))
+                if(!Solver(subscript, whichType2, vSolutions2))
                     return false;
-                if (whichType2 == TX_SCRIPTHASH)
+                if(whichType2 == TX_SCRIPTHASH)
                     return false;
 
                 int tmpExpected;
                 tmpExpected = ScriptSigArgsExpected(whichType2, vSolutions2);
-                if (tmpExpected < 0)
+                if(tmpExpected < 0)
                     return false;
                 nArgsExpected += tmpExpected;
             }
 
-            if (stack.size() != (uint32_t)nArgsExpected)
+            if(stack.size() != (uint32_t)nArgsExpected)
                 return false;
         }
 
@@ -509,7 +509,7 @@ namespace Legacy
 	/* Count ECDSA signature operations in pay-to-script-hash inputs. */
 	uint32_t Transaction::TotalSigOps(const std::map<uint512_t, Transaction>& mapInputs) const
     {
-        if (IsCoinBase())
+        if(IsCoinBase())
             return 0;
 
         uint32_t nSigOps = 0;
@@ -517,7 +517,7 @@ namespace Legacy
         /* Get the number of inputs to the transaction. */
         uint32_t nInSize = static_cast<uint32_t>(vin.size());
 
-        for (uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
+        for(uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
         {
             const TxOut& prevout = GetOutputFor(vin[i], mapInputs);
             nSigOps += prevout.scriptPubKey.GetSigOpCount(vin[i].scriptSig);
@@ -534,7 +534,7 @@ namespace Legacy
 		for(const auto& txout : vout)
 		{
 			nValueOut += txout.nValue;
-			if (!MoneyRange(txout.nValue) || !MoneyRange(nValueOut))
+			if(!MoneyRange(txout.nValue) || !MoneyRange(nValueOut))
 				throw std::runtime_error("Transaction::GetValueOut() : value out of range");
 		}
 
@@ -545,7 +545,7 @@ namespace Legacy
 	/* Amount of Coins coming in to this transaction */
 	uint64_t Transaction::GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const
     {
-        if (IsCoinBase())
+        if(IsCoinBase())
             return 0;
 
         uint64_t nResult = 0;
@@ -553,7 +553,7 @@ namespace Legacy
         /* Get the number of inputs to the transaction. */
         uint32_t nInSize = static_cast<uint32_t>(vin.size());
 
-        for (uint32_t i = (uint32_t) IsCoinStake(); i < nInSize; ++i)
+        for(uint32_t i = (uint32_t) IsCoinStake(); i < nInSize; ++i)
         {
             nResult += GetOutputFor(vin[i], mapInputs).nValue;
         }
@@ -582,28 +582,28 @@ namespace Legacy
         int64_t  nMinFee = (1 + (int64_t)nBytes / 1000) * nBaseFee;
 
         /* Check if within bounds of free transactions. */
-        if (fAllowFree)
+        if(fAllowFree)
         {
-            if (nBlockSize == 1)
+            if(nBlockSize == 1)
             {
                 // Transactions under 10K are free
                 // (about 4500bc if made of 50bc inputs)
-                if (nBytes < 10000)
+                if(nBytes < 10000)
                     nMinFee = 0;
             }
             else
             {
                 // Free transaction area
-                if (nNewBlockSize < 27000)
+                if(nNewBlockSize < 27000)
                     nMinFee = 0;
             }
         }
 
         /* To limit dust spam, require MIN_TX_FEE/MIN_RELAY_TX_FEE if any output is less than 0.01 */
-        if (nMinFee < nBaseFee)
+        if(nMinFee < nBaseFee)
         {
             for(const auto& txout : vout)
-                if (txout.nValue < CENT)
+                if(txout.nValue < CENT)
                 {
                     nMinFee = nBaseFee;
                     break;
@@ -611,15 +611,15 @@ namespace Legacy
         }
 
         /* Raise the price as the block approaches full */
-        if (nBlockSize != 1 && nNewBlockSize >= TAO::Ledger::MAX_BLOCK_SIZE_GEN / 2)
+        if(nBlockSize != 1 && nNewBlockSize >= TAO::Ledger::MAX_BLOCK_SIZE_GEN / 2)
         {
-            if (nNewBlockSize >= TAO::Ledger::MAX_BLOCK_SIZE_GEN)
+            if(nNewBlockSize >= TAO::Ledger::MAX_BLOCK_SIZE_GEN)
                 return MaxTxOut();
 
             nMinFee *= TAO::Ledger::MAX_BLOCK_SIZE_GEN / (TAO::Ledger::MAX_BLOCK_SIZE_GEN - nNewBlockSize);
         }
 
-        if (!MoneyRange(nMinFee))
+        if(!MoneyRange(nMinFee))
             nMinFee = MaxTxOut();
 
         return nMinFee;
@@ -665,9 +665,9 @@ namespace Legacy
             ", vout.size=", vout.size(),
             ", nLockTime=", nLockTime, ")\n");
 
-        for (const auto& txin : vin)
+        for(const auto& txin : vin)
             str += "    " + txin.ToString() + "\n";
-        for (const auto& txout : vout)
+        for(const auto& txout : vout)
             str += "    " + txout.ToString() + "\n";
         return str;
     }
@@ -684,15 +684,15 @@ namespace Legacy
 	bool Transaction::CheckTransaction() const
     {
         /* Check for empty inputs. */
-        if (vin.empty())
+        if(vin.empty())
             return debug::error(FUNCTION, "vin empty");
 
         /* Check for empty outputs. */
-        if (vout.empty())
+        if(vout.empty())
             return debug::error(FUNCTION, "vout empty");
 
         /* Check for size limits. */
-        if (::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > TAO::Ledger::MAX_BLOCK_SIZE)
+        if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > TAO::Ledger::MAX_BLOCK_SIZE)
             return debug::error(FUNCTION, "size limits failed");
 
         /* Determine if Transaction is CoinStake or CoinBase. */
@@ -707,20 +707,20 @@ namespace Legacy
             bool fTxOutIsEmpty = txout.IsEmpty();
 
             /* Checkout for empty outputs. */
-            if (fTxOutIsEmpty && (!fIsCoinBase && !fIsCoinStake))
+            if(fTxOutIsEmpty && (!fIsCoinBase && !fIsCoinStake))
                 return debug::error(FUNCTION, "txout empty for user transaction");
 
             /* Enforce minimum output amount. */
-            if (!fTxOutIsEmpty && txout.nValue < MIN_TXOUT_AMOUNT)
+            if(!fTxOutIsEmpty && txout.nValue < MIN_TXOUT_AMOUNT)
                 return debug::error(FUNCTION, "txout.nValue below minimum");
 
             /* Enforce maximum output amount. */
-            if (txout.nValue > MaxTxOut())
+            if(txout.nValue > MaxTxOut())
                 return debug::error(FUNCTION, "txout.nValue too high");
 
             /* Enforce maximum total output value. */
             nValueOut += txout.nValue;
-            if (!MoneyRange(nValueOut))
+            if(!MoneyRange(nValueOut))
                 return debug::error(FUNCTION, "txout total out of range");
         }
 
@@ -728,17 +728,17 @@ namespace Legacy
         std::set<OutPoint> vInOutPoints;
         for(const auto& txin : vin)
         {
-            if (vInOutPoints.count(txin.prevout))
+            if(vInOutPoints.count(txin.prevout))
                 return false;
 
             vInOutPoints.insert(txin.prevout);
         }
 
         /* Check for null previous outputs. */
-        if (!fIsCoinBase && !fIsCoinStake)
+        if(!fIsCoinBase && !fIsCoinStake)
         {
             for(const auto& txin : vin)
-                if (txin.prevout.IsNull())
+                if(txin.prevout.IsNull())
                     return debug::error(FUNCTION, "prevout is null");
         }
 
@@ -750,18 +750,18 @@ namespace Legacy
     bool Transaction::FetchInputs(std::map<uint512_t, Transaction>& inputs) const
     {
         /* Coinbase has no inputs. */
-        if (IsCoinBase())
+        if(IsCoinBase())
             return true;
 
         /* Get the number of inputs to the transaction. */
         uint32_t nInSize = static_cast<uint32_t>(vin.size());
 
         /* Read all of the inputs. */
-        for (uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
+        for(uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
         {
             /* Skip inputs that are already found. */
             OutPoint prevout = vin[i].prevout;
-            if (inputs.count(prevout.hash))
+            if(inputs.count(prevout.hash))
                 continue;
 
             /* Check for existing indexes. */
@@ -796,14 +796,14 @@ namespace Legacy
         bool fIsCoinStake = IsCoinStake();
 
         /* Special checks for coinbase and coinstake. */
-        if (fIsCoinStake || fIsCoinBase)
+        if(fIsCoinStake || fIsCoinBase)
         {
             /* Check the input script size. */
             if(vin[0].scriptSig.size() < 2 || vin[0].scriptSig.size() > (state.nVersion < 5 ? 100 : 144))
                 return debug::error(FUNCTION, "coinbase/coinstake script invalid size ", vin[0].scriptSig.size());
 
             /* Coinbase has no inputs. */
-            if (fIsCoinBase)
+            if(fIsCoinBase)
             {
                 /* Calculate the mint when on a block. */
                 if(nFlags == FLAGS::BLOCK)
@@ -882,7 +882,7 @@ namespace Legacy
         /* Get the number of inputs to the transaction. */
         uint32_t nInSize = static_cast<uint32_t>(vin.size());
 
-        for (uint32_t i = (uint32_t)fIsCoinStake; i < nInSize; ++i)
+        for(uint32_t i = (uint32_t)fIsCoinStake; i < nInSize; ++i)
         {
             /* Check the inputs map to tx inputs. */
             OutPoint prevout = vin[i].prevout;
@@ -892,11 +892,11 @@ namespace Legacy
             Transaction txPrev = inputs.at(prevout.hash);
 
             /* Check the inputs range. */
-            if (prevout.n >= txPrev.vout.size())
+            if(prevout.n >= txPrev.vout.size())
                 return debug::error(FUNCTION, "prevout is out of range");
 
             /* Check maturity before spend. */
-            if (txPrev.IsCoinBase() || txPrev.IsCoinStake())
+            if(txPrev.IsCoinBase() || txPrev.IsCoinStake())
             {
                 TAO::Ledger::BlockState statePrev;
                 if(!LLD::legDB->ReadBlock(txPrev.GetHash(), statePrev))
@@ -909,12 +909,12 @@ namespace Legacy
             }
 
             /* Check the transaction timestamp. */
-            if (txPrev.nTime > nTime)
+            if(txPrev.nTime > nTime)
                 return debug::error(FUNCTION, "transaction timestamp earlier than input transaction");
 
             /* Check for overflow input values. */
             nValueIn += txPrev.vout[prevout.n].nValue;
-            if (!MoneyRange(txPrev.vout[prevout.n].nValue) || !MoneyRange(nValueIn))
+            if(!MoneyRange(txPrev.vout[prevout.n].nValue) || !MoneyRange(nValueIn))
                 return debug::error(FUNCTION, "txin values out of range");
 
             /* Check for double spends. */
@@ -932,7 +932,7 @@ namespace Legacy
         }
 
         /* Check the coinstake transaction. */
-        if (fIsCoinStake)
+        if(fIsCoinStake)
         {
             /* Get the coinstake interest. */
             uint64_t nStakeReward = 0;
@@ -941,10 +941,10 @@ namespace Legacy
 
             /* Check that the interest is within range. */
             //add tolerance to stake reward of + 1 (viz.) for stake rewards
-            if (vout[0].nValue > nStakeReward + nValueIn + 1)
+            if(vout[0].nValue > nStakeReward + nValueIn + 1)
                 return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward ", vout[0].nValue, " mismatch ", nStakeReward + nValueIn);
         }
-        else if (nValueIn < GetValueOut())
+        else if(nValueIn < GetValueOut())
             return debug::error(FUNCTION, GetHash().ToString().substr(0,10), "value in < value out");
 
         /* Calculate the mint if connected with a block. */
@@ -958,13 +958,13 @@ namespace Legacy
     bool Transaction::Disconnect() const
     {
         /* Coinbase has no inputs. */
-        if (!IsCoinBase())
+        if(!IsCoinBase())
         {
             /* Get the number of inputs to the transaction. */
             uint32_t nInSize = static_cast<uint32_t>(vin.size());
 
             /* Read all of the inputs. */
-            for (uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
+            for(uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
             {
                 /* Erase the spends. */
                 if(!LLD::legacyDB->EraseSpend(vin[i].prevout.hash, vin[i].prevout.n))
@@ -1122,7 +1122,7 @@ namespace Legacy
             "prev=", nScorePrev, ", ",
             "timespan=", nTimespan, ", ",
             "change=", (int32_t)(nScore - nScorePrev), ")"
-        );
+      );
 
         /* Check that published score in this block is equivilent to calculated score. */
         if(nTrustScore != nScore)
@@ -1137,12 +1137,12 @@ namespace Legacy
     {
         auto mi = inputs.find(input.prevout.hash);
 
-        if (mi == inputs.end())
+        if(mi == inputs.end())
             throw std::runtime_error("Legacy::Transaction::GetOutputFor() : prevout.hash not found");
 
         const Transaction& txPrev = (*mi).second;
 
-        if (input.prevout.n >= txPrev.vout.size())
+        if(input.prevout.n >= txPrev.vout.size())
             throw std::runtime_error("Legacy::Transaction::GetOutputFor() : prevout.n out of range");
 
         return txPrev.vout[input.prevout.n];

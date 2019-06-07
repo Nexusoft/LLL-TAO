@@ -122,11 +122,11 @@ namespace filesystem
         try
         {
             /* Make sure destination is a file, not a directory. */
-            if (exists(pathDest) && is_directory(pathDest))
+            if(exists(pathDest) && is_directory(pathDest))
                 return false;
 
             /* If destination file exists, remove it (ie, we overwrite the file) */
-            if (exists(pathDest))
+            if(exists(pathDest))
                 filesystem::remove(pathDest);
 
             LOCK(FILESYSTEM_MUTEX);
@@ -253,7 +253,7 @@ namespace filesystem
     #ifdef WIN32
 
         /* Use Windows API for path generation. */
-        if (!PathIsRelativeA(path.c_str()))
+        if(!PathIsRelativeA(path.c_str()))
         {
             /* Path is absolute */
             fullPath = path;
@@ -266,13 +266,13 @@ namespace filesystem
             fullPath = std::string(buffer);
         }
 
-        if (fullPath.at(fullPath.length()-1) != '\\')
+        if(fullPath.at(fullPath.length()-1) != '\\')
             fullPath += "\\";
 
     #else
 
         /* Non-Windows. If begins with / it is an absolute path, otherwise a relative path */
-        if (path.at(0) == '/')
+        if(path.at(0) == '/')
             fullPath = path;
         else
         {
@@ -280,7 +280,7 @@ namespace filesystem
             fullPath = currentDir + "/" + path;
         }
 
-        if (fullPath.at(fullPath.length()-1) != '/')
+        if(fullPath.at(fullPath.length()-1) != '/')
             fullPath += "/";
 
     #endif
@@ -305,7 +305,7 @@ namespace filesystem
         LOCK(FILESYSTEM_MUTEX);
 
         FILE* file = fopen(path.c_str(), "w");
-        if (file)
+        if(file)
         {
         #ifndef WIN32
             fprintf(file, "%d", pid);

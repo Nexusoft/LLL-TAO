@@ -78,7 +78,7 @@ base_uint<BITS>::base_uint(const std::string& str)
 template<uint32_t BITS>
 base_uint<BITS>::base_uint(const std::vector<uint8_t>& vch)
 {
-    if (vch.size() == sizeof(pn))
+    if(vch.size() == sizeof(pn))
         std::copy(&vch[0], &vch[0] + sizeof(pn), (uint8_t *)pn);
     else
         *this = 0u;
@@ -89,7 +89,7 @@ base_uint<BITS>::base_uint(const std::vector<uint8_t>& vch)
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator=(const base_uint<BITS>& b)
 {
-    for (uint8_t i = 0; i < WIDTH; ++i)
+    for(uint8_t i = 0; i < WIDTH; ++i)
         pn[i] = b.pn[i];
 
     return *this;
@@ -103,7 +103,7 @@ base_uint<BITS>& base_uint<BITS>::operator=(uint64_t b)
     pn[0] = (uint32_t)b;
     pn[1] = (uint32_t)(b >> 32);
 
-    for (uint8_t i = 2; i < WIDTH; ++i)
+    for(uint8_t i = 2; i < WIDTH; ++i)
         pn[i] = 0;
 
     return *this;
@@ -117,7 +117,7 @@ base_uint<BITS>::base_uint(uint64_t b)
     pn[0] = (uint32_t)b;
     pn[1] = (uint32_t)(b >> 32);
 
-    for (uint8_t i = 2; i < WIDTH; ++i)
+    for(uint8_t i = 2; i < WIDTH; ++i)
         pn[i] = 0;
 }
 
@@ -126,9 +126,9 @@ base_uint<BITS>::base_uint(uint64_t b)
 template<uint32_t BITS>
 bool base_uint<BITS>::operator!() const
 {
-    for (uint8_t i = 0; i < WIDTH; ++i)
+    for(uint8_t i = 0; i < WIDTH; ++i)
     {
-        if (pn[i] != 0)
+        if(pn[i] != 0)
             return false;
     }
 
@@ -142,7 +142,7 @@ const base_uint<BITS> base_uint<BITS>::operator~() const
 {
     base_uint<BITS> ret;
 
-    for (uint8_t i = 0; i < WIDTH; ++i)
+    for(uint8_t i = 0; i < WIDTH; ++i)
         ret.pn[i] = ~pn[i];
 
     return ret;
@@ -155,7 +155,7 @@ const base_uint<BITS> base_uint<BITS>::operator-() const
 {
     base_uint<BITS> ret;
 
-    for (uint8_t i = 0; i < WIDTH; ++i)
+    for(uint8_t i = 0; i < WIDTH; ++i)
         ret.pn[i] = ~pn[i];
 
     ++ret;
@@ -168,7 +168,7 @@ const base_uint<BITS> base_uint<BITS>::operator-() const
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator^=(const base_uint<BITS>& b)
 {
-    for (uint8_t i = 0; i < WIDTH; ++i)
+    for(uint8_t i = 0; i < WIDTH; ++i)
         pn[i] ^= b.pn[i];
 
     return *this;
@@ -190,7 +190,7 @@ base_uint<BITS>& base_uint<BITS>::operator^=(uint64_t b)
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator|=(const base_uint<BITS>& b)
 {
-    for (uint8_t i = 0; i < WIDTH; ++i)
+    for(uint8_t i = 0; i < WIDTH; ++i)
         pn[i] |= b.pn[i];
 
     return *this;
@@ -212,7 +212,7 @@ base_uint<BITS>& base_uint<BITS>::operator|=(uint64_t b)
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator&=(const base_uint<BITS>& b)
 {
-    for (uint8_t i = 0; i < WIDTH; ++i)
+    for(uint8_t i = 0; i < WIDTH; ++i)
         pn[i] &= b.pn[i];
 
     return *this;
@@ -224,16 +224,16 @@ template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator<<=(uint32_t shift)
 {
     base_uint<BITS> a(*this);
-    for (int32_t i = 0; i < WIDTH; ++i)
+    for(int32_t i = 0; i < WIDTH; ++i)
         pn[i] = 0;
 
     int32_t k = shift / 32;
     shift = shift % 32;
-    for (int32_t i = 0; i < WIDTH; ++i)
+    for(int32_t i = 0; i < WIDTH; ++i)
     {
-        if (i+k+1 < WIDTH && shift != 0)
+        if(i+k+1 < WIDTH && shift != 0)
             pn[i+k+1] |= (a.pn[i] >> (32-shift));
-        if (i+k < WIDTH)
+        if(i+k < WIDTH)
             pn[i+k] |= (a.pn[i] << shift);
     }
 
@@ -248,16 +248,16 @@ base_uint<BITS>& base_uint<BITS>::operator>>=(uint32_t shift)
 {
     base_uint<BITS> a(*this);
 
-    for (int32_t i = 0; i < WIDTH; ++i)
+    for(int32_t i = 0; i < WIDTH; ++i)
         pn[i] = 0;
 
     int32_t k = shift / 32;
     shift = shift % 32;
-    for (int32_t i = 0; i < WIDTH; ++i)
+    for(int32_t i = 0; i < WIDTH; ++i)
     {
-        if (i-k-1 >= 0 && shift != 0)
+        if(i-k-1 >= 0 && shift != 0)
             pn[i-k-1] |= (a.pn[i] << (32-shift));
-        if (i-k >= 0)
+        if(i-k >= 0)
             pn[i-k] |= (a.pn[i] >> shift);
     }
 
@@ -270,7 +270,7 @@ template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator+=(const base_uint<BITS>& b)
 {
     uint64_t carry = 0;
-    for (uint8_t i = 0; i < WIDTH; ++i)
+    for(uint8_t i = 0; i < WIDTH; ++i)
     {
         uint64_t n = carry + pn[i] + b.pn[i];
         pn[i] = n & 0xffffffff;
@@ -322,10 +322,10 @@ base_uint<BITS>& base_uint<BITS>::operator*=(const base_uint<BITS>& b)
     base_uint<BITS> a;
     a = 0u;
 
-    for (int j = 0; j < WIDTH; j++)
+    for(int j = 0; j < WIDTH; j++)
     {
         uint64_t carry = 0;
-        for (int i = 0; i + j < WIDTH; i++)
+        for(int i = 0; i + j < WIDTH; i++)
         {
             uint64_t n = carry + a.pn[i + j] + (uint64_t)pn[j] * b.pn[i];
             a.pn[i + j] = n & 0xffffffff;
@@ -348,10 +348,10 @@ base_uint<BITS>& base_uint<BITS>::operator*=(uint64_t rhs)
     base_uint<BITS> b;
     b = rhs;
 
-    for (int j = 0; j < WIDTH; j++)
+    for(int j = 0; j < WIDTH; j++)
     {
         uint64_t carry = 0;
-        for (int i = 0; i + j < WIDTH; i++)
+        for(int i = 0; i + j < WIDTH; i++)
         {
             uint64_t n = carry + a.pn[i + j] + (uint64_t)pn[j] * b.pn[i];
             a.pn[i + j] = n & 0xffffffff;
@@ -376,18 +376,18 @@ base_uint<BITS>& base_uint<BITS>::operator/=(const base_uint<BITS>& b)
     int num_bits = num.bits();
     int div_bits = div.bits();
 
-    if (div_bits == 0)
+    if(div_bits == 0)
         throw std::domain_error("Division by zero");
 
-    if (div_bits > num_bits) // the result is certainly 0.
+    if(div_bits > num_bits) // the result is certainly 0.
         return *this;
 
     int shift = num_bits - div_bits;
 
     div <<= shift; // shift so that div and num align.
-    while (shift >= 0)
+    while(shift >= 0)
     {
-        if (num >= div)
+        if(num >= div)
         {
             num -= div;
             pn[shift >> 5] |= (1 << (shift & 31)); // set a bit of the result.
@@ -420,7 +420,7 @@ base_uint<BITS>& base_uint<BITS>::operator++()
 {
     // prefix operator
     int i = 0;
-    while (++pn[i] == 0 && i < WIDTH-1)
+    while(++pn[i] == 0 && i < WIDTH-1)
         ++i;
 
     return *this;
@@ -445,7 +445,7 @@ base_uint<BITS>& base_uint<BITS>::operator--()
 {
     // prefix operator
     int i = 0;
-    while (--pn[i] == -1 && i < WIDTH-1)
+    while(--pn[i] == -1 && i < WIDTH-1)
         ++i;
 
     return *this;
@@ -468,11 +468,11 @@ const base_uint<BITS> base_uint<BITS>::operator--(int)
 template<uint32_t BITS>
 bool base_uint<BITS>::operator<(const base_uint<BITS>& rhs) const
 {
-    for (int8_t i = WIDTH-1; i >= 0; --i)
+    for(int8_t i = WIDTH-1; i >= 0; --i)
     {
-        if (this->pn[i] < rhs.pn[i])
+        if(this->pn[i] < rhs.pn[i])
             return true;
-        else if (this->pn[i] > rhs.pn[i])
+        else if(this->pn[i] > rhs.pn[i])
             return false;
     }
 
@@ -484,11 +484,11 @@ bool base_uint<BITS>::operator<(const base_uint<BITS>& rhs) const
 template<uint32_t BITS>
 bool base_uint<BITS>::operator<=(const base_uint<BITS>& rhs) const
 {
-    for (int8_t i = WIDTH-1; i >= 0; --i)
+    for(int8_t i = WIDTH-1; i >= 0; --i)
     {
-        if (this->pn[i] < rhs.pn[i])
+        if(this->pn[i] < rhs.pn[i])
             return true;
-        else if (this->pn[i] > rhs.pn[i])
+        else if(this->pn[i] > rhs.pn[i])
             return false;
     }
 
@@ -500,11 +500,11 @@ bool base_uint<BITS>::operator<=(const base_uint<BITS>& rhs) const
 template<uint32_t BITS>
 bool base_uint<BITS>::operator>(const base_uint<BITS>& rhs) const
 {
-    for (int8_t i = WIDTH-1; i >= 0; --i)
+    for(int8_t i = WIDTH-1; i >= 0; --i)
     {
-        if (this->pn[i] > rhs.pn[i])
+        if(this->pn[i] > rhs.pn[i])
             return true;
-        else if (this->pn[i] < rhs.pn[i])
+        else if(this->pn[i] < rhs.pn[i])
             return false;
     }
 
@@ -516,11 +516,11 @@ bool base_uint<BITS>::operator>(const base_uint<BITS>& rhs) const
 template<uint32_t BITS>
 bool base_uint<BITS>::operator>=(const base_uint<BITS>& rhs) const
 {
-    for (int8_t i = WIDTH-1; i >= 0; --i)
+    for(int8_t i = WIDTH-1; i >= 0; --i)
     {
-        if (this->pn[i] > rhs.pn[i])
+        if(this->pn[i] > rhs.pn[i])
             return true;
-        else if (this->pn[i] < rhs.pn[i])
+        else if(this->pn[i] < rhs.pn[i])
             return false;
     }
 
@@ -532,8 +532,8 @@ bool base_uint<BITS>::operator>=(const base_uint<BITS>& rhs) const
 template<uint32_t BITS>
 bool base_uint<BITS>::operator==(const base_uint<BITS>& rhs) const
 {
-    for (uint8_t i = 0; i < WIDTH; ++i)
-        if (this->pn[i] != rhs.pn[i])
+    for(uint8_t i = 0; i < WIDTH; ++i)
+        if(this->pn[i] != rhs.pn[i])
             return false;
 
     return true;
@@ -544,13 +544,13 @@ bool base_uint<BITS>::operator==(const base_uint<BITS>& rhs) const
 template<uint32_t BITS>
 bool base_uint<BITS>::operator==(uint64_t rhs) const
 {
-    if (this->pn[0] != (uint32_t)rhs)
+    if(this->pn[0] != (uint32_t)rhs)
         return false;
-    if (this->pn[1] != (uint32_t)(rhs >> 32))
+    if(this->pn[1] != (uint32_t)(rhs >> 32))
         return false;
 
-    for (uint8_t i = 2; i < WIDTH; ++i)
-        if (this->pn[i] != 0)
+    for(uint8_t i = 2; i < WIDTH; ++i)
+        if(this->pn[i] != 0)
             return false;
 
     return true;
@@ -578,7 +578,7 @@ template<uint32_t BITS>
 std::string base_uint<BITS>::GetHex() const
 {
     char psz[sizeof(pn)*2 + 1];
-    for (uint32_t i = 0; i < sizeof(pn); ++i)
+    for(uint32_t i = 0; i < sizeof(pn); ++i)
         sprintf(psz + i*2, "%02x", ((uint8_t*)pn)[sizeof(pn) - i - 1]);
 
     return std::string(psz, psz + sizeof(pn)*2);
@@ -589,25 +589,25 @@ std::string base_uint<BITS>::GetHex() const
 template<uint32_t BITS>
 void base_uint<BITS>::SetHex(const char* psz)
 {
-    for (int i = 0; i < WIDTH; ++i)
+    for(int i = 0; i < WIDTH; ++i)
         pn[i] = 0;
 
-    while (isspace(*psz))
+    while(isspace(*psz))
         ++psz;
 
-    if (psz[0] == '0' && tolower(psz[1]) == 'x')
+    if(psz[0] == '0' && tolower(psz[1]) == 'x')
         psz += 2;
 
     const char* pbegin = psz;
-    while (phexdigit[(uint8_t)*psz] || *psz == '0')
+    while(phexdigit[(uint8_t)*psz] || *psz == '0')
         ++psz;
     --psz;
     uint8_t* p1 = (uint8_t*)pn;
     uint8_t* pend = p1 + WIDTH * 4;
-    while (psz >= pbegin && p1 < pend)
+    while(psz >= pbegin && p1 < pend)
     {
         *p1 = phexdigit[(uint8_t)*psz--];
-        if (psz >= pbegin)
+        if(psz >= pbegin)
         {
             uint32_t tmp = (phexdigit[(uint8_t)*psz--] << 4);
             *p1 = *p1 | static_cast<uint8_t>(tmp);
@@ -654,7 +654,7 @@ void base_uint<BITS>::SetBytes(const std::vector<uint8_t> DATA)
     for(int index = 0; index < WIDTH; ++index)
     {
         std::vector<uint8_t> BYTES(DATA.begin() + (index * 4), DATA.begin() + (index * 4) + 4);
-        pn[index] = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3] );
+        pn[index] = (BYTES[0] << 24) + (BYTES[1] << 16) + (BYTES[2] << 8) + (BYTES[3]);
     }
 }
 
@@ -766,13 +766,13 @@ uint32_t base_uint<BITS>::high_bits(uint32_t mask)
 template <uint32_t BITS>
 uint32_t base_uint<BITS>::bits() const
 {
-    for (int32_t pos = WIDTH - 1; pos >= 0; --pos)
+    for(int32_t pos = WIDTH - 1; pos >= 0; --pos)
     {
-        if (pn[pos])
+        if(pn[pos])
         {
-            for (int32_t nbits = 31; nbits > 0; --nbits)
+            for(int32_t nbits = 31; nbits > 0; --nbits)
             {
-                if (pn[pos] & 1U << nbits)
+                if(pn[pos] & 1U << nbits)
                     return 32 * pos + nbits + 1;
             }
             return 32 * pos + 1;
@@ -790,7 +790,7 @@ base_uint<BITS>& base_uint<BITS>::SetCompact(uint32_t nCompact)
     int nSize = nCompact >> 24;
     uint32_t nWord = nCompact & 0x007fffff;
 
-    if (nSize <= 3)
+    if(nSize <= 3)
     {
         nWord >>= 8 * (3 - nSize);
         *this = nWord;
@@ -812,7 +812,7 @@ uint32_t base_uint<BITS>::GetCompact() const
     uint32_t nSize = ((nBits + 7) / 8) + ((nBits & 0x07) == 0);
 
     uint32_t nCompact = 0;
-    if (nSize <= 3)
+    if(nSize <= 3)
     {
         nCompact = Get64() << 8 * (3 - nSize);
     }

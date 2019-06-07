@@ -43,11 +43,11 @@ int argon2_ctx(argon2_context *context, argon2_type type) {
     uint32_t memory_blocks, segment_length;
     argon2_instance_t instance;
 
-    if (ARGON2_OK != result) {
+    if(ARGON2_OK != result) {
         return result;
     }
 
-    if (Argon2_d != type && Argon2_i != type && Argon2_id != type) {
+    if(Argon2_d != type && Argon2_i != type && Argon2_id != type) {
         return ARGON2_INCORRECT_TYPE;
     }
 
@@ -55,7 +55,7 @@ int argon2_ctx(argon2_context *context, argon2_type type) {
     /* Minimum memory_blocks = 8L blocks, where L is the number of lanes */
     memory_blocks = context->m_cost;
 
-    if (memory_blocks < 2 * ARGON2_SYNC_POINTS * context->lanes) {
+    if(memory_blocks < 2 * ARGON2_SYNC_POINTS * context->lanes) {
         memory_blocks = 2 * ARGON2_SYNC_POINTS * context->lanes;
     }
 
@@ -73,7 +73,7 @@ int argon2_ctx(argon2_context *context, argon2_type type) {
     instance.threads = context->threads;
     instance.type = type;
 
-    if (instance.threads > instance.lanes) {
+    if(instance.threads > instance.lanes) {
         instance.threads = instance.lanes;
     }
 
@@ -82,14 +82,14 @@ int argon2_ctx(argon2_context *context, argon2_type type) {
      */
     result = initialize(&instance, context);
 
-    if (ARGON2_OK != result) {
+    if(ARGON2_OK != result) {
         return result;
     }
 
     /* 4. Filling memory */
     result = fill_memory_blocks(&instance);
 
-    if (ARGON2_OK != result) {
+    if(ARGON2_OK != result) {
         return result;
     }
     /* 5. Finalization */
@@ -109,24 +109,24 @@ int argon2_hash(const uint32_t t_cost, const uint32_t m_cost,
     int result;
     uint8_t *out;
 
-    if (pwdlen > ARGON2_MAX_PWD_LENGTH) {
+    if(pwdlen > ARGON2_MAX_PWD_LENGTH) {
         return ARGON2_PWD_TOO_LONG;
     }
 
-    if (saltlen > ARGON2_MAX_SALT_LENGTH) {
+    if(saltlen > ARGON2_MAX_SALT_LENGTH) {
         return ARGON2_SALT_TOO_LONG;
     }
 
-    if (hashlen > ARGON2_MAX_OUTLEN) {
+    if(hashlen > ARGON2_MAX_OUTLEN) {
         return ARGON2_OUTPUT_TOO_LONG;
     }
 
-    if (hashlen < ARGON2_MIN_OUTLEN) {
+    if(hashlen < ARGON2_MIN_OUTLEN) {
         return ARGON2_OUTPUT_TOO_SHORT;
     }
 
     out = malloc(hashlen);
-    if (!out) {
+    if(!out) {
         return ARGON2_MEMORY_ALLOCATION_ERROR;
     }
 
@@ -151,20 +151,20 @@ int argon2_hash(const uint32_t t_cost, const uint32_t m_cost,
 
     result = argon2_ctx(&context, type);
 
-    if (result != ARGON2_OK) {
+    if(result != ARGON2_OK) {
         clear_internal_memory(out, hashlen);
         free(out);
         return result;
     }
 
     /* if raw hash requested, write it */
-    if (hash) {
+    if(hash) {
         memcpy(hash, out, hashlen);
     }
 
     /* if encoding requested, write it */
-    if (encoded && encodedlen) {
-        if (encode_string(encoded, encodedlen, &context, type) != ARGON2_OK) {
+    if(encoded && encodedlen) {
+        if(encode_string(encoded, encodedlen, &context, type) != ARGON2_OK) {
             clear_internal_memory(out, hashlen); /* wipe buffers if error */
             clear_internal_memory(encoded, encodedlen);
             free(out);
@@ -241,7 +241,7 @@ static int argon2_compare(const uint8_t *b1, const uint8_t *b2, size_t len) {
     size_t i;
     uint8_t d = 0U;
 
-    for (i = 0U; i < len; i++) {
+    for(i = 0U; i < len; i++) {
         d |= b1[i] ^ b2[i];
     }
     return (int)((1 & ((d - 1) >> 8)) - 1);
@@ -258,16 +258,16 @@ int argon2_verify(const char *encoded, const void *pwd, const size_t pwdlen,
     size_t encoded_len;
     uint32_t max_field_len;
 
-    if (pwdlen > ARGON2_MAX_PWD_LENGTH) {
+    if(pwdlen > ARGON2_MAX_PWD_LENGTH) {
         return ARGON2_PWD_TOO_LONG;
     }
 
-    if (encoded == NULL) {
+    if(encoded == NULL) {
         return ARGON2_DECODING_FAIL;
     }
 
     encoded_len = strlen(encoded);
-    if (encoded_len > UINT32_MAX) {
+    if(encoded_len > UINT32_MAX) {
         return ARGON2_DECODING_FAIL;
     }
 
@@ -279,7 +279,7 @@ int argon2_verify(const char *encoded, const void *pwd, const size_t pwdlen,
 
     ctx.salt = malloc(ctx.saltlen);
     ctx.out = malloc(ctx.outlen);
-    if (!ctx.salt || !ctx.out) {
+    if(!ctx.salt || !ctx.out) {
         ret = ARGON2_MEMORY_ALLOCATION_ERROR;
         goto fail;
     }
@@ -288,20 +288,20 @@ int argon2_verify(const char *encoded, const void *pwd, const size_t pwdlen,
     ctx.pwdlen = (uint32_t)pwdlen;
 
     ret = decode_string(&ctx, encoded, type);
-    if (ret != ARGON2_OK) {
+    if(ret != ARGON2_OK) {
         goto fail;
     }
 
     /* Set aside the desired result, and get a new buffer. */
     desired_result = ctx.out;
     ctx.out = malloc(ctx.outlen);
-    if (!ctx.out) {
+    if(!ctx.out) {
         ret = ARGON2_MEMORY_ALLOCATION_ERROR;
         goto fail;
     }
 
     ret = argon2_verify_ctx(&ctx, (char *)desired_result, type);
-    if (ret != ARGON2_OK) {
+    if(ret != ARGON2_OK) {
         goto fail;
     }
 
@@ -343,11 +343,11 @@ int argon2id_ctx(argon2_context *context) {
 int argon2_verify_ctx(argon2_context *context, const char *hash,
                       argon2_type type) {
     int ret = argon2_ctx(context, type);
-    if (ret != ARGON2_OK) {
+    if(ret != ARGON2_OK) {
         return ret;
     }
 
-    if (argon2_compare((uint8_t *)hash, context->out, context->outlen)) {
+    if(argon2_compare((uint8_t *)hash, context->out, context->outlen)) {
         return ARGON2_VERIFY_MISMATCH;
     }
 

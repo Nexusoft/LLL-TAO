@@ -124,16 +124,16 @@ namespace TAO
         bool TritiumBlock::Check() const
         {
             /* Check the Size limits of the Current Block. */
-            if (::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
+            if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
                 return debug::error(FUNCTION, "size ", ::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION), " limits failed ", MAX_BLOCK_SIZE);
 
 
             /* Make sure the Block was Created within Active Channel. */
-            if (GetChannel() > (config::GetBoolArg("-private") ? 3 : 2))
+            if(GetChannel() > (config::GetBoolArg("-private") ? 3 : 2))
                 return debug::error(FUNCTION, "channel out of Range.");
 
             /* Check that the time was within range. */
-            if (GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
+            if(GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
 
@@ -148,9 +148,9 @@ namespace TAO
 
 
             /* Check the Proof of Work Claims. */
-            if (!VerifyWork())
+            if(!VerifyWork())
             {
-                if (IsProofOfWork())
+                if(IsProofOfWork())
                     return debug::error(FUNCTION, "invalid proof of work");
                 else
                     return debug::error(FUNCTION, "invalid proof of stake");
@@ -158,22 +158,22 @@ namespace TAO
 
 
             /* Check the Network Launch Time-Lock. */
-            if (nHeight > 0 && GetBlockTime() <= (config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
+            if(nHeight > 0 && GetBlockTime() <= (config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
                 return debug::error(FUNCTION, "block created before network time-lock");
 
 
             /* Check the Current Channel Time-Lock. */
-            if (!IsPrivate() && nHeight > 0 && GetBlockTime() < (config::fTestNet.load() ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
+            if(!IsPrivate() && nHeight > 0 && GetBlockTime() < (config::fTestNet.load() ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
                 return debug::error(FUNCTION, "block created before channel time-lock, please wait ", (config::fTestNet.load() ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp(), " seconds");
 
 
             /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
-            if (nVersion > 1 && nVersion == (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
+            if(nVersion > 1 && nVersion == (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
                 return debug::error(FUNCTION, "version ", nVersion, " blocks have been obsolete for ", (runtime::unifiedtimestamp() - (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
 
             /* Check the Current Version Block Time-Lock. */
-            if (nVersion >= (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
+            if(nVersion >= (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
                 return debug::error(FUNCTION, "version ", nVersion, " blocks are not accepted for ", (runtime::unifiedtimestamp() - (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
 
@@ -191,7 +191,7 @@ namespace TAO
 
 
             /* Check coinbase/coinstake timestamp against block time */
-            if (GetBlockTime() > (uint64_t)producer.nTimestamp + ((nVersion < 4) ? 1200 : 3600))
+            if(GetBlockTime() > (uint64_t)producer.nTimestamp + ((nVersion < 4) ? 1200 : 3600))
                 return debug::error(FUNCTION, "producer transaction timestamp is too early");
 
 
@@ -211,7 +211,7 @@ namespace TAO
                     return debug::error(FUNCTION, "trust timestamp too far in the future");
 
                 /* Make Sure Trust Transaction Time is Before Block. */
-                if (producer.nTimestamp > GetBlockTime())
+                if(producer.nTimestamp > GetBlockTime())
                     return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
             }
 
@@ -329,17 +329,17 @@ namespace TAO
 
 
             /* Check for duplicate txid's. */
-            if (uniqueTx.size() != vHashes.size())
+            if(uniqueTx.size() != vHashes.size())
                 return debug::error(FUNCTION, "duplicate transaction");
 
 
             /* Check the signature operations for legacy. */
-            if (nSigOps > MAX_BLOCK_SIGOPS)
+            if(nSigOps > MAX_BLOCK_SIGOPS)
                 return debug::error(FUNCTION, "out-of-bounds SigOpCount");
 
 
             /* Check the merkle root. */
-            if (hashMerkleRoot != BuildMerkleTree(vHashes))
+            if(hashMerkleRoot != BuildMerkleTree(vHashes))
                 return debug::error(FUNCTION, "hashMerkleRoot mismatch");
 
             /* Get the key from the producer. */
@@ -358,7 +358,7 @@ namespace TAO
                         key.SetPubKey(producer.vchPubKey);
 
                         /* Check the Block Signature. */
-                        if (!VerifySignature(key))
+                        if(!VerifySignature(key))
                             return debug::error(FUNCTION, "bad block signature");
 
                         break;
@@ -374,7 +374,7 @@ namespace TAO
                         key.SetPubKey(producer.vchPubKey);
 
                         /* Check the Block Signature. */
-                        if (!VerifySignature(key))
+                        if(!VerifySignature(key))
                             return debug::error(FUNCTION, "bad block signature");
 
                         break;
@@ -428,12 +428,12 @@ namespace TAO
 
 
             /* Check that the nBits match the current Difficulty. **/
-            if (nBits != GetNextTargetRequired(statePrev, GetChannel()))
+            if(nBits != GetNextTargetRequired(statePrev, GetChannel()))
                 return debug::error(FUNCTION, "incorrect proof-of-work/proof-of-stake");
 
 
             /* Check That Block timestamp is not before previous block. */
-            if (GetBlockTime() <= statePrev.GetBlockTime())
+            if(GetBlockTime() <= statePrev.GetBlockTime())
                 return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
                 statePrev.GetBlockTime());
 
@@ -464,14 +464,14 @@ namespace TAO
                 producer[0] >> nReward;
 
                 /* Check that the Mining Reward Matches the Coinbase Calculations. */
-                if (nReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
+                if(nReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
                     return debug::error(FUNCTION, "miner reward mismatch ", nReward, " : ",
                          GetCoinbaseReward(statePrev, GetChannel(), 0));
             }
             else if(IsProofOfStake())
             {
                 /* Check that the Coinbase / CoinstakeTimstamp is after Previous Block. */
-                if (producer.nTimestamp < statePrev.GetBlockTime())
+                if(producer.nTimestamp < statePrev.GetBlockTime())
                     return debug::error(FUNCTION, "coinstake transaction too early");
 
                 /* Check the proof of stake. */
@@ -498,7 +498,7 @@ namespace TAO
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Check legacy transaction for finality. */
-                    if (!txCheck.IsFinal(nHeight, GetBlockTime()))
+                    if(!txCheck.IsFinal(nHeight, GetBlockTime()))
                         return debug::error(FUNCTION, "contains a non-final transaction");
                 }
             }
@@ -701,16 +701,16 @@ namespace TAO
         bool TritiumBlock::VerifyWork() const
         {
             /* This override adds support for verifying the stake hash on the staking channel */
-            if (nChannel == 0)
+            if(nChannel == 0)
             {
                 LLC::CBigNum bnTarget;
                 bnTarget.SetCompact(nBits);
 
                 /* Check that the hash is within range. */
-                if (bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[nChannel])
+                if(bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[nChannel])
                     return debug::error(FUNCTION, "Proof of stake hash not in range");
 
-                if (StakeHash() > bnTarget.getuint1024())
+                if(StakeHash() > bnTarget.getuint1024())
                     return debug::error(FUNCTION, "Proof of stake not meeting target");
 
                 return true;

@@ -51,7 +51,7 @@ uint1024_t FermatTest(const uint1024_t &p)
 }
 
 
-TEST_CASE("Fermat Tests", "[LLC]" )
+TEST_CASE("Fermat Tests", "[LLC]")
 {
 
     uint1024_t hashNumber = uint1024_t("0x010009f035e34e85a13fe2c51d56d96781ace0b2df31fecff9ff09094e7772db452d335fe59dfaab61a6bafcf399a5705e98a9b2e1b368e37d267f76693388ffe8255177a734eb77ceac385f0a994288f24bc2526d4c53499aaf270232eb9d31f6ee6c78627bbd490ac899c5a814d861acafd17f51882e68dc01f7330db013cc");

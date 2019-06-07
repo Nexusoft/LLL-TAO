@@ -59,22 +59,22 @@ namespace LLP
             LegacyAddress* pthis = const_cast<LegacyAddress*>(this);
             BaseAddress* pip = (BaseAddress*)pthis;
 
-            if (fRead)
+            if(fRead)
             {
                 pthis->nServices = NODE_NETWORK;
                 pthis->nTime = 100000000;
                 pthis->nLastTry = 0;
             }
 
-            if (nSerType & SER_DISK)
+            if(nSerType & SER_DISK)
                 READWRITE(nSerVersion);
 
-            if ((nSerType & SER_DISK) || (!(nSerType & SER_GETHASH)))
+            if((nSerType & SER_DISK) || (!(nSerType & SER_GETHASH)))
                 READWRITE(nTime);
 
             READWRITE(nServices);
             READWRITE(*pip);
-        )
+      )
 
 
         /** Print

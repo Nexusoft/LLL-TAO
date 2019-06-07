@@ -2,7 +2,7 @@
 
 # get the dir that the script is executing in so that we can work relative to that
 # to get to the default nexus app location
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
 [[ "${NEXUS:-}" == "" ]] && NEXUS="${DIR}/../../nexus"
 echo "NEXUS=${NEXUS}"
@@ -24,10 +24,10 @@ testcommand ()
     echo "#### $1 ####"
     
     #support up to 4 args
-    if (($# == 1 )); then echo "$1" ; eval $START_CMD $1;  fi
-    if (($# == 2 )); then echo "$1 '$2'" ; eval $START_CMD $1 \'$2\';  fi
-    if (($# == 3 )); then echo "$1 '$2' '$3'" ; eval $START_CMD $1 \'$2\' \'$3\'; fi
-    if (($# == 4 )); then echo "x'$2' '$3' '$4'" ; eval $START_CMD $1 \'$2\' \'$3\' \'$4\'; fi
+    if(($# == 1)); then echo "$1" ; eval $START_CMD $1;  fi
+    if(($# == 2)); then echo "$1 '$2'" ; eval $START_CMD $1 \'$2\';  fi
+    if(($# == 3)); then echo "$1 '$2' '$3'" ; eval $START_CMD $1 \'$2\' \'$3\'; fi
+    if(($# == 4)); then echo "x'$2' '$3' '$4'" ; eval $START_CMD $1 \'$2\' \'$3\' \'$4\'; fi
     
     local tt=$((($(date +%s%N) - $ts)/1000000))
     echo -e "#### $1 completed in $tt milliseconds ####\n"

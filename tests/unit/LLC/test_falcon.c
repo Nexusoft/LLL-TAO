@@ -41,11 +41,11 @@ xmalloc(size_t len)
 {
 	void *buf;
 
-	if (len == 0) {
+	if(len == 0) {
 		return NULL;
 	}
 	buf = malloc(len);
-	if (buf == NULL) {
+	if(buf == NULL) {
 		fprintf(stderr, "memory allocation error\n");
 		exit(EXIT_FAILURE);
 	}
@@ -55,7 +55,7 @@ xmalloc(size_t len)
 static void
 xfree(void *buf)
 {
-	if (buf != NULL) {
+	if(buf != NULL) {
 		free(buf);
 	}
 }
@@ -69,32 +69,32 @@ hextobin(unsigned char *buf, size_t max_len, const char *src)
 	u = 0;
 	acc = 0;
 	z = 0;
-	for (;;) {
+	for(;;) {
 		int c;
 
 		c = *src ++;
-		if (c == 0) {
-			if (z) {
+		if(c == 0) {
+			if(z) {
 				fprintf(stderr, "Lone hex nibble\n");
 				exit(EXIT_FAILURE);
 			}
 			return u;
 		}
-		if (c >= '0' && c <= '9') {
+		if(c >= '0' && c <= '9') {
 			c -= '0';
-		} else if (c >= 'A' && c <= 'F') {
+		} else if(c >= 'A' && c <= 'F') {
 			c -= 'A' - 10;
-		} else if (c >= 'a' && c <= 'f') {
+		} else if(c >= 'a' && c <= 'f') {
 			c -= 'a' - 10;
-		} else if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+		} else if(c == ' ' || c == '\t' || c == '\r' || c == '\n') {
 			continue;
 		} else {
 			fprintf(stderr, "Not an hex digit: U+%04X\n",
 				(unsigned)c);
 			exit(EXIT_FAILURE);
 		}
-		if (z) {
-			if (u >= max_len) {
+		if(z) {
+			if(u >= max_len) {
 				fprintf(stderr,
 					"Hex string too long for buffer\n");
 				exit(EXIT_FAILURE);
@@ -112,17 +112,17 @@ check_eq(const void *a, const void *b, size_t len, const char *banner)
 {
 	size_t u;
 
-	if (memcmp(a, b, len) == 0) {
+	if(memcmp(a, b, len) == 0) {
 		return;
 	}
 	fprintf(stderr, "%s: wrong value:\n", banner);
 	fprintf(stderr, "a: ");
-	for (u = 0; u < len; u ++) {
+	for(u = 0; u < len; u ++) {
 		fprintf(stderr, "%02x", ((const unsigned char *)a)[u]);
 	}
 	fprintf(stderr, "\n");
 	fprintf(stderr, "b: ");
-	for (u = 0; u < len; u ++) {
+	for(u = 0; u < len; u ++) {
 		fprintf(stderr, "%02x", ((const unsigned char *)b)[u]);
 	}
 	fprintf(stderr, "\n");
@@ -146,11 +146,11 @@ test_SHAKE_KAT(int capacity,
 
 	memset(tmp, 0, sizeof tmp);
 	shake_init(&sc, capacity);
-	for (u = 0; u < ilen; u ++) {
+	for(u = 0; u < ilen; u ++) {
 		shake_inject(&sc, src + u, 1);
 	}
 	shake_flip(&sc);
-	for (u = 0; u < olen; u ++) {
+	for(u = 0; u < olen; u ++) {
 		shake_extract(&sc, tmp + u, 1);
 	}
 	check_eq(ref, tmp, olen, "SHAKE KAT 2");
@@ -220,20 +220,20 @@ test_RNG(void)
 
 	shake_init(&sc, 512);
 	shake_flip(&sc);
-	if (!falcon_prng_init(&p, &sc, PRNG_CHACHA20)) {
+	if(!falcon_prng_init(&p, &sc, PRNG_CHACHA20)) {
 		fprintf(stderr, "failed PRNG/ChaCha20 initialization\n");
 		exit(EXIT_FAILURE);
 	}
 
-	for (u = 0; u < 100; u ++) {
+	for(u = 0; u < 100; u ++) {
 		size_t v;
 
 		shake_init(&sc, 512);
 		shake_inject(&sc, p.buf.d, sizeof p.buf.d);
 		shake_flip(&sc);
 		shake_extract(&sc, hv[u], 32);
-		for (v = 0; v < u; v ++) {
-			if (memcmp(hv[v], hv[u], 32) == 0) {
+		for(v = 0; v < u; v ++) {
+			if(memcmp(hv[v], hv[u], 32) == 0) {
 				fprintf(stderr, "ChaCha20 stutter\n");
 				exit(EXIT_FAILURE);
 			}
@@ -254,15 +254,15 @@ test_RNG(void)
 
 	shake_init(&sc, 512);
 	shake_flip(&sc);
-	if (falcon_prng_init(&p, &sc, PRNG_CHACHA20_SSE2)) {
-		for (u = 0; u < 100; u ++) {
+	if(falcon_prng_init(&p, &sc, PRNG_CHACHA20_SSE2)) {
+		for(u = 0; u < 100; u ++) {
 			unsigned char tmp[32];
 
 			shake_init(&sc, 512);
 			shake_inject(&sc, p.buf.d, sizeof p.buf.d);
 			shake_flip(&sc);
 			shake_extract(&sc, tmp, 32);
-			if (memcmp(hv[u], tmp, 32) != 0) {
+			if(memcmp(hv[u], tmp, 32) != 0) {
 				fprintf(stderr, "ChaCha20-SSE2 mismatch\n");
 				exit(EXIT_FAILURE);
 			}
@@ -285,16 +285,16 @@ test_RNG(void)
 
 	shake_init(&sc, 512);
 	shake_flip(&sc);
-	if (falcon_prng_init(&p, &sc, PRNG_AES_X86NI)) {
-		for (u = 0; u < 100; u ++) {
+	if(falcon_prng_init(&p, &sc, PRNG_AES_X86NI)) {
+		for(u = 0; u < 100; u ++) {
 			size_t v;
 
 			shake_init(&sc, 512);
 			shake_inject(&sc, p.buf.d, sizeof p.buf.d);
 			shake_flip(&sc);
 			shake_extract(&sc, hv[u], 32);
-			for (v = 0; v < u; v ++) {
-				if (memcmp(hv[v], hv[u], 32) == 0) {
+			for(v = 0; v < u; v ++) {
+				if(memcmp(hv[v], hv[u], 32) == 0) {
 					fprintf(stderr, "AES-NI stutter\n");
 					exit(EXIT_FAILURE);
 				}
@@ -1271,44 +1271,44 @@ encode_skey(int comp, unsigned q, const int16_t *f, const int16_t *g,
 
 	out = NULL;
 	out_len = (size_t)-1;
-	for (i = 0;; i ++) {
+	for(i = 0;; i ++) {
 		size_t off, len;
 
 		off = 1;
 		len = falcon_encode_small((out ? out + off : NULL),
 			out_len - off, comp, q, f, logn);
-		if (len == 0) {
+		if(len == 0) {
 			fprintf(stderr, "bad key element\n");
 			exit(EXIT_FAILURE);
 		}
 		off += len;
 		len = falcon_encode_small((out ? out + off : NULL),
 			out_len - off, comp, q, g, logn);
-		if (len == 0) {
+		if(len == 0) {
 			fprintf(stderr, "bad key element\n");
 			exit(EXIT_FAILURE);
 		}
 		off += len;
 		len = falcon_encode_small((out ? out + off : NULL),
 			out_len - off, comp, q, F, logn);
-		if (len == 0) {
+		if(len == 0) {
 			fprintf(stderr, "bad key element\n");
 			exit(EXIT_FAILURE);
 		}
 		off += len;
 		len = falcon_encode_small((out ? out + off : NULL),
 			out_len - off, comp, q, G, logn);
-		if (len == 0) {
+		if(len == 0) {
 			fprintf(stderr, "bad key element\n");
 			exit(EXIT_FAILURE);
 		}
 		off += len;
 
-		if (i == 0) {
+		if(i == 0) {
 			out_len = off;
 			out = xmalloc(out_len);
 		} else {
-			if (off != out_len) {
+			if(off != out_len) {
 				fprintf(stderr, "length error\n");
 				exit(EXIT_FAILURE);
 			}
@@ -1331,31 +1331,31 @@ decode_skey(const void *src, size_t len,
 	size_t zlen;
 
 	buf = src;
-	if (len == 0) {
+	if(len == 0) {
 		fprintf(stderr, "invalid key (empty)\n");
 		exit(EXIT_FAILURE);
 	}
 	fb = *buf ++;
 	len --;
 	logn = fb & 0x0F;
-	if (logn == 0 || logn > 10) {
+	if(logn == 0 || logn > 10) {
 		fprintf(stderr, "invalid key (logn)\n");
 		exit(EXIT_FAILURE);
 	}
 	*q = 12289;
 	comp = fb >> 5;
-	for (i = 0; i < 4; i ++) {
+	for(i = 0; i < 4; i ++) {
 		size_t elen;
 
 		elen = falcon_decode_small(ske[i], logn, comp, *q, buf, len);
-		if (elen == 0) {
+		if(elen == 0) {
 			fprintf(stderr, "invalid key element\n");
 			exit(EXIT_FAILURE);
 		}
 		buf += elen;
 		len -= elen;
 	}
-	if (len != 0) {
+	if(len != 0) {
 		fprintf(stderr, "trailing garbage after key\n");
 		exit(EXIT_FAILURE);
 	}
@@ -1385,11 +1385,11 @@ test_key_codec_comp_key(int comp, unsigned q,
 	printf("<q=%u,logn=%u->len=%lu>", q, logn, (unsigned long)len);
 	fflush(stdout);
 	logn2 = decode_skey(skey, len, &q2, &f, &g, &F, &G);
-	if (logn != logn2) {
+	if(logn != logn2) {
 		fprintf(stderr, "decode mismatch (logn)\n");
 		exit(EXIT_FAILURE);
 	}
-	if (q != q2) {
+	if(q != q2) {
 		fprintf(stderr, "decode mismatch (q)\n");
 		exit(EXIT_FAILURE);
 	}
@@ -1441,15 +1441,15 @@ test_falcon_vrfy_KAT(const char *hexpk, const char *const *kat)
 
 	pklen = hextobin(pk, sizeof pk, hexpk);
 	fv = falcon_vrfy_new();
-	if (fv == NULL) {
+	if(fv == NULL) {
 		fprintf(stderr, "context creation error\n");
 		exit(EXIT_FAILURE);
 	}
-	if (!falcon_vrfy_set_public_key(fv, pk, pklen)) {
+	if(!falcon_vrfy_set_public_key(fv, pk, pklen)) {
 		fprintf(stderr, "error loading public key\n");
 		exit(EXIT_FAILURE);
 	}
-	for (u = 0; kat[u]; u += 3) {
+	for(u = 0; kat[u]; u += 3) {
 		unsigned char r[32], sig[3000];
 		const char *msg;
 		size_t rlen, siglen, msglen, v;
@@ -1463,17 +1463,17 @@ test_falcon_vrfy_KAT(const char *hexpk, const char *const *kat)
 		falcon_vrfy_start(fv, r, rlen);
 		falcon_vrfy_update(fv, msg, msglen);
 		z = falcon_vrfy_verify(fv, sig, siglen);
-		if (z <= 0) {
+		if(z <= 0) {
 			fprintf(stderr, "KAT 1 vrfy failed: %d\n", z);
 			exit(EXIT_FAILURE);
 		}
 
 		falcon_vrfy_start(fv, r, rlen);
-		for (v = 0; v < msglen; v ++) {
+		for(v = 0; v < msglen; v ++) {
 			falcon_vrfy_update(fv, msg + v, 1);
 		}
 		z = falcon_vrfy_verify(fv, sig, siglen);
-		if (z <= 0) {
+		if(z <= 0) {
 			fprintf(stderr, "KAT 2 vrfy failed: %d\n", z);
 			exit(EXIT_FAILURE);
 		}
@@ -1482,7 +1482,7 @@ test_falcon_vrfy_KAT(const char *hexpk, const char *const *kat)
 		falcon_vrfy_start(fv, r, rlen);
 		falcon_vrfy_update(fv, msg, msglen);
 		z = falcon_vrfy_verify(fv, sig, siglen);
-		if (z != 0) {
+		if(z != 0) {
 			fprintf(stderr, "KAT 2 should have failed: %d\n", z);
 			exit(EXIT_FAILURE);
 		}
@@ -1519,7 +1519,7 @@ mk_rand_poly(prng *p, fpr *f, unsigned logn)
 	size_t u, n;
 
 	n = (size_t)1 << logn;
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		int32_t x;
 		
 		x = falcon_prng_get_u8(p);
@@ -1548,7 +1548,7 @@ test_poly_inner(unsigned logn)
 	shake_flip(&rng);
 	falcon_prng_init(&p, &rng, PRNG_CHACHA20);
 	num = 262144UL >> logn;
-	for (ctr = 0; ctr < num; ctr ++) {
+	for(ctr = 0; ctr < num; ctr ++) {
 		fpr f[1024], g[1024], h[1024];
 		fpr f0[512], f1[512], g0[512], g1[512];
 		size_t u;
@@ -1557,26 +1557,26 @@ test_poly_inner(unsigned logn)
 		memcpy(g, f, n * sizeof *f);
 		falcon_FFT(g, logn);
 		falcon_iFFT(g, logn);
-		for (u = 0; u < n; u ++) {
-			if (fpr_rint(f[u]) != fpr_rint(g[u])) {
+		for(u = 0; u < n; u ++) {
+			if(fpr_rint(f[u]) != fpr_rint(g[u])) {
 				fprintf(stderr, "FFT/iFFT error\n");
 
 				/* obsolete
 				size_t v;
 
 				fprintf(stderr, "f =");
-				for (v = 0; v < n; v ++) {
+				for(v = 0; v < n; v ++) {
 					fprintf(stderr, " %f", f[v]);
 				}
 				fprintf(stderr, "\n");
 				falcon_FFT(f, logn);
 				fprintf(stderr, "f' =");
-				for (v = 0; v < n; v ++) {
+				for(v = 0; v < n; v ++) {
 					fprintf(stderr, " %f", f[v]);
 				}
 				fprintf(stderr, "\n");
 				fprintf(stderr, "g =");
-				for (v = 0; v < n; v ++) {
+				for(v = 0; v < n; v ++) {
 					fprintf(stderr, " %f", g[v]);
 				}
 				fprintf(stderr, "\n");
@@ -1586,19 +1586,19 @@ test_poly_inner(unsigned logn)
 		}
 
 		mk_rand_poly(&p, g, logn);
-		for (u = 0; u < n; u ++) {
+		for(u = 0; u < n; u ++) {
 			h[u] = fpr_of(0);
 		}
-		for (u = 0; u < n; u ++) {
+		for(u = 0; u < n; u ++) {
 			size_t v;
 
-			for (v = 0; v < n; v ++) {
+			for(v = 0; v < n; v ++) {
 				fpr s;
 				size_t k;
 
 				s = fpr_mul(f[u], g[v]);
 				k = u + v;
-				if (k >= n) {
+				if(k >= n) {
 					k -= n;
 					s = fpr_neg(s);
 				}
@@ -1609,8 +1609,8 @@ test_poly_inner(unsigned logn)
 		falcon_FFT(g, logn);
 		falcon_poly_mul_fft(f, g, logn);
 		falcon_iFFT(f, logn);
-		for (u = 0; u < n; u ++) {
-			if (fpr_rint(f[u]) != fpr_rint(h[u])) {
+		for(u = 0; u < n; u ++) {
+			if(fpr_rint(f[u]) != fpr_rint(h[u])) {
 				fprintf(stderr, "FFT mul error\n");
 				exit(EXIT_FAILURE);
 			}
@@ -1625,8 +1625,8 @@ test_poly_inner(unsigned logn)
 		memcpy(g1, f1, (n >> 1) * sizeof *f1);
 		falcon_iFFT(g0, logn - 1);
 		falcon_iFFT(g1, logn - 1);
-		for (u = 0; u < (n >> 1); u ++) {
-			if (fpr_rint(g0[u]) != fpr_rint(h[(u << 1) + 0])
+		for(u = 0; u < (n >> 1); u ++) {
+			if(fpr_rint(g0[u]) != fpr_rint(h[(u << 1) + 0])
 				|| fpr_rint(g1[u]) != fpr_rint(h[(u << 1) + 1]))
 			{
 				fprintf(stderr, "split error\n");
@@ -1635,17 +1635,17 @@ test_poly_inner(unsigned logn)
 				size_t v;
 
 				fprintf(stderr, "h =");
-				for (v = 0; v < n; v ++) {
+				for(v = 0; v < n; v ++) {
 					fprintf(stderr, " %f", h[v]);
 				}
 				fprintf(stderr, "\n");
 				fprintf(stderr, "g0 =");
-				for (v = 0; v < n; v ++) {
+				for(v = 0; v < n; v ++) {
 					fprintf(stderr, " %f", g0[v]);
 				}
 				fprintf(stderr, "\n");
 				fprintf(stderr, "g1 =");
-				for (v = 0; v < n; v ++) {
+				for(v = 0; v < n; v ++) {
 					fprintf(stderr, " %f", g1[v]);
 				}
 				fprintf(stderr, "\n");
@@ -1657,14 +1657,14 @@ test_poly_inner(unsigned logn)
 
 		falcon_poly_merge_fft(g, f0, f1, logn);
 		falcon_iFFT(g, logn);
-		for (u = 0; u < n; u ++) {
-			if (fpr_rint(g[u]) != fpr_rint(h[u])) {
+		for(u = 0; u < n; u ++) {
+			if(fpr_rint(g[u]) != fpr_rint(h[u])) {
 				fprintf(stderr, "split/merge error\n");
 				exit(EXIT_FAILURE);
 			}
 		}
 
-		if (((ctr + 1) & 0xFF) == 0) {
+		if(((ctr + 1) & 0xFF) == 0) {
 			printf(".");
 			fflush(stdout);
 		}
@@ -1678,7 +1678,7 @@ test_poly(void)
 
 	printf("Test polynomials: ");
 	fflush(stdout);
-	for (logn = 1; logn <= 10; logn ++) {
+	for(logn = 1; logn <= 10; logn ++) {
 		test_poly_inner(logn);
 	}
 	printf(" done.\n");
@@ -1694,7 +1694,7 @@ mk_rand_poly3(prng *p, fpr *f, unsigned logn, unsigned full)
 	size_t u, n;
 
 	n = (size_t)(1 + (full << 1)) << (logn - full);
-	for (u = 0; u < n; u ++) {
+	for(u = 0; u < n; u ++) {
 		int32_t x;
 		
 		x = falcon_prng_get_u8(p);
@@ -1723,7 +1723,7 @@ test_poly3_inner(unsigned logn, unsigned full)
 	shake_flip(&rng);
 	falcon_prng_init(&p, &rng, PRNG_CHACHA20);
 	num = 262144UL >> logn;
-	for (ctr = 0; ctr < num; ctr ++) {
+	for(ctr = 0; ctr < num; ctr ++) {
 		fpr f[768], g[768], h[768];
 		fpr f0[384], f1[384], f2[384], g0[384], g1[384], g2[384];
 		size_t u;
@@ -1732,31 +1732,31 @@ test_poly3_inner(unsigned logn, unsigned full)
 		memcpy(g, f, n * sizeof *f);
 		falcon_FFT3(g, logn, full);
 		falcon_iFFT3(g, logn, full);
-		for (u = 0; u < n; u ++) {
-			if (fpr_rint(f[u]) != fpr_rint(g[u])) {
+		for(u = 0; u < n; u ++) {
+			if(fpr_rint(f[u]) != fpr_rint(g[u])) {
 				fprintf(stderr, "FFT3/iFFT3 error\n");
 				exit(EXIT_FAILURE);
 			}
 		}
 		mk_rand_poly3(&p, g, logn, full);
-		for (u = 0; u < n; u ++) {
+		for(u = 0; u < n; u ++) {
 			h[u] = fpr_of(0);
 		}
-		for (u = 0; u < n; u ++) {
+		for(u = 0; u < n; u ++) {
 			size_t v;
 
-			for (v = 0; v < n; v ++) {
+			for(v = 0; v < n; v ++) {
 				fpr s;
 				size_t k;
 
 				s = fpr_mul(f[u], g[v]);
 				k = u + v;
-				if (k >= n + (n >> 1)) {
+				if(k >= n + (n >> 1)) {
 					size_t k1;
 
 					k1 = k - n - (n >> 1);
 					h[k1] = fpr_sub(h[k1], s);
-				} else if (k >= n) {
+				} else if(k >= n) {
 					size_t k1, k2;
 
 					k1 = k - n;
@@ -1772,14 +1772,14 @@ test_poly3_inner(unsigned logn, unsigned full)
 		falcon_FFT3(g, logn, full);
 		falcon_poly_mul_fft3(f, g, logn, full);
 		falcon_iFFT3(f, logn, full);
-		for (u = 0; u < n; u ++) {
-			if (fpr_rint(f[u]) != fpr_rint(h[u])) {
+		for(u = 0; u < n; u ++) {
+			if(fpr_rint(f[u]) != fpr_rint(h[u])) {
 				fprintf(stderr, "FFT3 mul error\n");
 				exit(EXIT_FAILURE);
 			}
 		}
 
-		if (logn >= 2 && !full) {
+		if(logn >= 2 && !full) {
 			mk_rand_poly3(&p, f, logn, 0);
 			memcpy(h, f, n * sizeof *f);
 			falcon_FFT3(f, logn, 0);
@@ -1788,8 +1788,8 @@ test_poly3_inner(unsigned logn, unsigned full)
 			memcpy(g1, f1, (n >> 1) * sizeof *f1);
 			falcon_iFFT3(g0, logn - 1, 0);
 			falcon_iFFT3(g1, logn - 1, 0);
-			for (u = 0; u < (n >> 1); u ++) {
-				if (fpr_rint(g0[u])
+			for(u = 0; u < (n >> 1); u ++) {
+				if(fpr_rint(g0[u])
 						!= fpr_rint(h[(u << 1) + 0])
 					|| fpr_rint(g1[u])
 						!= fpr_rint(h[(u << 1) + 1]))
@@ -1801,15 +1801,15 @@ test_poly3_inner(unsigned logn, unsigned full)
 
 			falcon_poly_merge_deep_fft3(g, f0, f1, logn);
 			falcon_iFFT3(g, logn, 0);
-			for (u = 0; u < n; u ++) {
-				if (fpr_rint(g[u]) != fpr_rint(h[u])) {
+			for(u = 0; u < n; u ++) {
+				if(fpr_rint(g[u]) != fpr_rint(h[u])) {
 					fprintf(stderr, "merge error\n");
 					exit(EXIT_FAILURE);
 				}
 			}
 		}
 
-		if (logn >= 2 && full) {
+		if(logn >= 2 && full) {
 			size_t tn;
 
 			tn = (size_t)1 << (logn - 1);
@@ -1823,8 +1823,8 @@ test_poly3_inner(unsigned logn, unsigned full)
 			falcon_iFFT3(g0, logn - 1, 0);
 			falcon_iFFT3(g1, logn - 1, 0);
 			falcon_iFFT3(g2, logn - 1, 0);
-			for (u = 0; u < tn; u ++) {
-				if (fpr_rint(g0[u])
+			for(u = 0; u < tn; u ++) {
+				if(fpr_rint(g0[u])
 						!= fpr_rint(h[3 * u + 0])
 					|| fpr_rint(g1[u])
 						!= fpr_rint(h[3 * u + 1])
@@ -1838,15 +1838,15 @@ test_poly3_inner(unsigned logn, unsigned full)
 
 			falcon_poly_merge_top_fft3(g, f0, f1, f2, logn);
 			falcon_iFFT3(g, logn, 1);
-			for (u = 0; u < n; u ++) {
-				if (fpr_rint(g[u]) != fpr_rint(h[u])) {
+			for(u = 0; u < n; u ++) {
+				if(fpr_rint(g[u]) != fpr_rint(h[u])) {
 					fprintf(stderr, "merge error\n");
 					exit(EXIT_FAILURE);
 				}
 			}
 		}
 
-		if (((ctr + 1) & 0xFF) == 0) {
+		if(((ctr + 1) & 0xFF) == 0) {
 			printf(".");
 			fflush(stdout);
 		}
@@ -1860,7 +1860,7 @@ test_poly3(void)
 
 	printf("Test FFT3 (full): ");
 	fflush(stdout);
-	for (logn = 2; logn <= 9; logn ++) {
+	for(logn = 2; logn <= 9; logn ++) {
 		test_poly3_inner(logn, 1);
 	}
 	printf(" done.\n");
@@ -1868,7 +1868,7 @@ test_poly3(void)
 
 	printf("Test FFT3 (partial): ");
 	fflush(stdout);
-	for (logn = 1; logn <= 8; logn ++) {
+	for(logn = 1; logn <= 8; logn ++) {
 		test_poly3_inner(logn, 0);
 	}
 	printf(" done.\n");
@@ -1885,20 +1885,20 @@ test_falcon_sign_self(const void *skey, size_t skey_len,
 
 	fs = falcon_sign_new();
 	fv = falcon_vrfy_new();
-	if (fs == NULL || fv == NULL) {
+	if(fs == NULL || fv == NULL) {
 		fprintf(stderr, "context creation error\n");
 		exit(EXIT_FAILURE);
 	}
-	if (!falcon_sign_set_private_key(fs, skey, skey_len)) {
+	if(!falcon_sign_set_private_key(fs, skey, skey_len)) {
 		fprintf(stderr, "error loading private key\n");
 		exit(EXIT_FAILURE);
 	}
-	if (!falcon_vrfy_set_public_key(fv, pkey, pkey_len)) {
+	if(!falcon_vrfy_set_public_key(fv, pkey, pkey_len)) {
 		fprintf(stderr, "error loading private key\n");
 		exit(EXIT_FAILURE);
 	}
 
-	for (i = 0; i < 1000; i ++) {
+	for(i = 0; i < 1000; i ++) {
 		char msg[50];
 		unsigned char r[40];
 		unsigned char sig[2049];
@@ -1912,7 +1912,7 @@ test_falcon_sign_self(const void *skey, size_t skey_len,
 		falcon_sign_update(fs, msg, msg_len);
 		sig_len = falcon_sign_generate(fs,
 			sig, sizeof sig, FALCON_COMP_STATIC);
-		if (sig_len == 0) {
+		if(sig_len == 0) {
 			fprintf(stderr, "signing error\n");
 			exit(EXIT_FAILURE);
 		}
@@ -1920,12 +1920,12 @@ test_falcon_sign_self(const void *skey, size_t skey_len,
 		falcon_vrfy_start(fv, r, sizeof r);
 		falcon_vrfy_update(fv, msg, msg_len);
 		z = falcon_vrfy_verify(fv, sig, sig_len);
-		if (z != 1) {
+		if(z != 1) {
 			fprintf(stderr, "self signature not verified: %d\n", z);
 			exit(EXIT_FAILURE);
 		}
 
-		if (i % 10 == 0) {
+		if(i % 10 == 0) {
 			printf(".");
 			fflush(stdout);
 		}
@@ -1985,12 +1985,12 @@ test_falcon_keygen_binary(void)
 	printf("Test Falcon keygen (bin): ");
 	fflush(stdout);
 
-	for (logn = 1; logn <= 10; logn ++) {
+	for(logn = 1; logn <= 10; logn ++) {
 		int i;
 
 		printf("[%u]", logn);
 		fflush(stdout);
-		for (i = 0; i < 3; i ++) {
+		for(i = 0; i < 3; i ++) {
 			falcon_keygen *fk;
 			falcon_sign *fs;
 			falcon_vrfy *fv;
@@ -1998,13 +1998,13 @@ test_falcon_keygen_binary(void)
 			size_t sig_len;
 
 			fk = falcon_keygen_new(logn, 0);
-			if (fk == NULL) {
+			if(fk == NULL) {
 				fprintf(stderr, "keygen alloc failed\n");
 				exit(EXIT_FAILURE);
 			}
 			pkey_len = sizeof pkey;
 			skey_len = sizeof skey;
-			if (!falcon_keygen_make(fk, FALCON_COMP_STATIC,
+			if(!falcon_keygen_make(fk, FALCON_COMP_STATIC,
 				skey, &skey_len, pkey, &pkey_len))
 			{
 				fprintf(stderr, "keygen failed\n");
@@ -2013,39 +2013,39 @@ test_falcon_keygen_binary(void)
 			falcon_keygen_free(fk);
 
 			fs = falcon_sign_new();
-			if (fs == NULL) {
+			if(fs == NULL) {
 				fprintf(stderr, "sign context failure\n");
 				exit(EXIT_FAILURE);
 			}
-			if (!falcon_sign_set_private_key(fs, skey, skey_len)) {
+			if(!falcon_sign_set_private_key(fs, skey, skey_len)) {
 				fprintf(stderr, "error loading private key\n");
 				exit(EXIT_FAILURE);
 			}
-			if (!falcon_sign_start(fs, nonce)) {
+			if(!falcon_sign_start(fs, nonce)) {
 				fprintf(stderr, "RNG error\n");
 				exit(EXIT_FAILURE);
 			}
 			falcon_sign_update(fs, "test", 4);
 			sig_len = falcon_sign_generate(
 				fs, sig, sizeof sig, FALCON_COMP_STATIC);
-			if (sig_len == 0) {
+			if(sig_len == 0) {
 				fprintf(stderr, "signature error\n");
 				exit(EXIT_FAILURE);
 			}
 			falcon_sign_free(fs);
 
 			fv = falcon_vrfy_new();
-			if (fv == NULL) {
+			if(fv == NULL) {
 				fprintf(stderr, "vrfy context failure\n");
 				exit(EXIT_FAILURE);
 			}
-			if (!falcon_vrfy_set_public_key(fv, pkey, pkey_len)) {
+			if(!falcon_vrfy_set_public_key(fv, pkey, pkey_len)) {
 				fprintf(stderr, "error loading public key\n");
 				exit(EXIT_FAILURE);
 			}
 			falcon_vrfy_start(fv, nonce, sizeof nonce);
 			falcon_vrfy_update(fv, "test", 4);
-			if (falcon_vrfy_verify(fv, sig, sig_len) <= 0) {
+			if(falcon_vrfy_verify(fv, sig, sig_len) <= 0) {
 				fprintf(stderr, "signature is not verified\n");
 				exit(EXIT_FAILURE);
 			}
@@ -2071,12 +2071,12 @@ test_falcon_keygen_ternary(void)
 	printf("Test Falcon keygen (ter): ");
 	fflush(stdout);
 
-	for (logn = 3; logn <= 9; logn ++) {
+	for(logn = 3; logn <= 9; logn ++) {
 		int i;
 
 		printf("[%u]", logn);
 		fflush(stdout);
-		for (i = 0; i < 3; i ++) {
+		for(i = 0; i < 3; i ++) {
 			falcon_keygen *fk;
 			falcon_sign *fs;
 			falcon_vrfy *fv;
@@ -2084,13 +2084,13 @@ test_falcon_keygen_ternary(void)
 			size_t sig_len;
 
 			fk = falcon_keygen_new(logn, 1);
-			if (fk == NULL) {
+			if(fk == NULL) {
 				fprintf(stderr, "keygen alloc failed\n");
 				exit(EXIT_FAILURE);
 			}
 			pkey_len = sizeof pkey;
 			skey_len = sizeof skey;
-			if (!falcon_keygen_make(fk, FALCON_COMP_STATIC,
+			if(!falcon_keygen_make(fk, FALCON_COMP_STATIC,
 				skey, &skey_len, pkey, &pkey_len))
 			{
 				fprintf(stderr, "keygen failed\n");
@@ -2099,39 +2099,39 @@ test_falcon_keygen_ternary(void)
 			falcon_keygen_free(fk);
 
 			fs = falcon_sign_new();
-			if (fs == NULL) {
+			if(fs == NULL) {
 				fprintf(stderr, "sign context failure\n");
 				exit(EXIT_FAILURE);
 			}
-			if (!falcon_sign_set_private_key(fs, skey, skey_len)) {
+			if(!falcon_sign_set_private_key(fs, skey, skey_len)) {
 				fprintf(stderr, "error loading private key\n");
 				exit(EXIT_FAILURE);
 			}
-			if (!falcon_sign_start(fs, nonce)) {
+			if(!falcon_sign_start(fs, nonce)) {
 				fprintf(stderr, "RNG error\n");
 				exit(EXIT_FAILURE);
 			}
 			falcon_sign_update(fs, "test", 4);
 			sig_len = falcon_sign_generate(
 				fs, sig, sizeof sig, FALCON_COMP_STATIC);
-			if (sig_len == 0) {
+			if(sig_len == 0) {
 				fprintf(stderr, "signature error\n");
 				exit(EXIT_FAILURE);
 			}
 			falcon_sign_free(fs);
 
 			fv = falcon_vrfy_new();
-			if (fv == NULL) {
+			if(fv == NULL) {
 				fprintf(stderr, "vrfy context failure\n");
 				exit(EXIT_FAILURE);
 			}
-			if (!falcon_vrfy_set_public_key(fv, pkey, pkey_len)) {
+			if(!falcon_vrfy_set_public_key(fv, pkey, pkey_len)) {
 				fprintf(stderr, "error loading public key\n");
 				exit(EXIT_FAILURE);
 			}
 			falcon_vrfy_start(fv, nonce, sizeof nonce);
 			falcon_vrfy_update(fv, "test", 4);
-			if (falcon_vrfy_verify(fv, sig, sig_len) <= 0) {
+			if(falcon_vrfy_verify(fv, sig, sig_len) <= 0) {
 				fprintf(stderr, "signature is not verified\n");
 				exit(EXIT_FAILURE);
 			}
@@ -2160,19 +2160,19 @@ speed_falcon(unsigned logn, unsigned ter)
 	size_t sig_len, max_sig_len;
 
 	printf("N=%u: ", (1 + (ter << 1)) << (logn - ter));
-	if (logn < 10) {
+	if(logn < 10) {
 		printf(" ");
 	}
 	fflush(stdout);
 
 	fk = falcon_keygen_new(logn, ter);
-	if (fk == NULL) {
+	if(fk == NULL) {
 		fprintf(stderr, "keygen context creation error\n");
 		exit(EXIT_FAILURE);
 	}
 	skey_len = sizeof skey;
 	pkey_len = sizeof pkey;
-	if (!falcon_keygen_make(fk, FALCON_COMP_STATIC,
+	if(!falcon_keygen_make(fk, FALCON_COMP_STATIC,
 		skey, &skey_len, pkey, &pkey_len))
 	{
 		fprintf(stderr, "keygen error\n");
@@ -2181,11 +2181,11 @@ speed_falcon(unsigned logn, unsigned ter)
 	falcon_keygen_free(fk);
 
 	fs = falcon_sign_new();
-	if (fs == NULL) {
+	if(fs == NULL) {
 		fprintf(stderr, "sign context creation error\n");
 		exit(EXIT_FAILURE);
 	}
-	if (!falcon_sign_set_private_key(fs, skey, skey_len)) {
+	if(!falcon_sign_set_private_key(fs, skey, skey_len)) {
 		fprintf(stderr, "error loading private key\n");
 		exit(EXIT_FAILURE);
 	}
@@ -2193,30 +2193,30 @@ speed_falcon(unsigned logn, unsigned ter)
 	num_sig = 0;
 	max_sig_len = 0;
 	num = 1;
-	for (;;) {
+	for(;;) {
 		long j;
 		clock_t begin, end;
 		double tt;
 
 		begin = clock();
-		for (j = 0; j < num; j ++) {
+		for(j = 0; j < num; j ++) {
 			falcon_sign_start(fs, nonce);
 			falcon_sign_update(fs, "test", 4);
 			sig_len = falcon_sign_generate(fs, sig, sizeof sig,
 				FALCON_COMP_STATIC);
-			if (sig_len == 0) {
+			if(sig_len == 0) {
 				fprintf(stderr, "signature failure\n");
 				exit(EXIT_FAILURE);
 			}
 			total_sig_len += (uint64_t)sig_len;
 			num_sig ++;
-			if (sig_len > max_sig_len) {
+			if(sig_len > max_sig_len) {
 				max_sig_len = sig_len;
 			}
 		}
 		end = clock();
 		tt = (double)(end - begin) / CLOCKS_PER_SEC;
-		if (tt < 2.0) {
+		if(tt < 2.0) {
 			num <<= 1;
 			continue;
 		}
@@ -2230,16 +2230,16 @@ speed_falcon(unsigned logn, unsigned ter)
 	falcon_sign_free(fs);
 
 	fv = falcon_vrfy_new();
-	if (fv == NULL) {
+	if(fv == NULL) {
 		fprintf(stderr, "context creation error\n");
 		exit(EXIT_FAILURE);
 	}
-	if (!falcon_vrfy_set_public_key(fv, pkey, pkey_len)) {
+	if(!falcon_vrfy_set_public_key(fv, pkey, pkey_len)) {
 		fprintf(stderr, "error loading public key\n");
 		exit(EXIT_FAILURE);
 	}
 	num = 1;
-	for (;;) {
+	for(;;) {
 		long j;
 		clock_t begin, end;
 		double tt;
@@ -2247,18 +2247,18 @@ speed_falcon(unsigned logn, unsigned ter)
 
 		begin = clock();
 		z = 1;
-		for (j = 0; j < num; j ++) {
+		for(j = 0; j < num; j ++) {
 			falcon_vrfy_start(fv, nonce, sizeof nonce);
 			falcon_vrfy_update(fv, "test", 4);
 			z &= falcon_vrfy_verify(fv, sig, sig_len) > 0;
 		}
 		end = clock();
-		if (!z) {
+		if(!z) {
 			fprintf(stderr, "verify failure\n");
 			exit(EXIT_FAILURE);
 		}
 		tt = (double)(end - begin) / CLOCKS_PER_SEC;
-		if (tt < 2.0) {
+		if(tt < 2.0) {
 			num <<= 1;
 			continue;
 		}
@@ -2282,7 +2282,7 @@ speed_falcon_keygen(unsigned logn, unsigned ter)
 	long num;
 
 	printf("Keygen (N=%u): ", (1 + (ter << 1)) << (logn - ter));
-	if (logn < 10) {
+	if(logn < 10) {
 		printf(" ");
 	}
 	fflush(stdout);
@@ -2293,7 +2293,7 @@ speed_falcon_keygen(unsigned logn, unsigned ter)
 	falcon_keygen_make(fk, FALCON_COMP_STATIC,
 		skey, &skey_len, pkey, &pkey_len);
 	num = 1;
-	for (;;) {
+	for(;;) {
 		long j;
 		clock_t begin, end;
 		double tt;
@@ -2301,19 +2301,19 @@ speed_falcon_keygen(unsigned logn, unsigned ter)
 
 		begin = clock();
 		z = 1;
-		for (j = 0; j < num; j ++) {
+		for(j = 0; j < num; j ++) {
 			pkey_len = sizeof pkey;
 			skey_len = sizeof skey;
 			z &= falcon_keygen_make(fk, FALCON_COMP_STATIC,
 				skey, &skey_len, pkey, &pkey_len);
 		}
 		end = clock();
-		if (!z) {
+		if(!z) {
 			fprintf(stderr, "keygen failure\n");
 			exit(EXIT_FAILURE);
 		}
 		tt = (double)(end - begin) / CLOCKS_PER_SEC;
-		if (tt < 2.0) {
+		if(tt < 2.0) {
 			num <<= 1;
 			continue;
 		}

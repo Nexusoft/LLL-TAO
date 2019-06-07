@@ -26,7 +26,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "Trust Operation Tests", "[operation]" )
+TEST_CASE( "Trust Operation Tests", "[operation]")
 {
     using namespace TAO::Register;
     using namespace TAO::Operation;

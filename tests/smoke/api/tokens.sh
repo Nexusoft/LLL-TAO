@@ -9,7 +9,7 @@ echo "===Create/Token==="
 echo "===Create/Account==="
 ./nexus tokens/create/account/abc_main token_name=abc pin=1234
 
-#Create an account called abc_svings to use with the abc token (note this example assumes that user paul created the token but you are logged in as someone else )
+#Create an account called abc_svings to use with the abc token (note this example assumes that user paul created the token but you are logged in as someone else)
 echo "===Create/Account==="
 ./nexus tokens/create/account/abc_savings token_name=paul:abc pin=4567
 

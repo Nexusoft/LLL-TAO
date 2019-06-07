@@ -18,7 +18,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "Base VM allocation tests", "[register]" )
+TEST_CASE( "Base VM allocation tests", "[register]")
 {
     TAO::Register::BaseVM registers;
 

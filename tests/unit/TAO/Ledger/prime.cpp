@@ -93,7 +93,7 @@ double GetPrimeDifficulty2(const LLC::CBigNum& bnPrime, uint32_t nChecks)
     uint32_t nClusterSize = 1;
 
     /* Largest prime gap is +12 for dense clusters. */
-    for( ; bnNext <= bnLast + 12; bnNext += 2)
+    for(; bnNext <= bnLast + 12; bnNext += 2)
     {
         /* Check if this interval is prime. */
         if(PrimeCheck2(bnNext, nChecks))
@@ -122,7 +122,7 @@ uint32_t GetPrimeBits2(const LLC::CBigNum& bnPrime)
 using namespace LLC;
 
 
-TEST_CASE( "Prime Tests", "[Ledger]" )
+TEST_CASE( "Prime Tests", "[Ledger]")
 {
     for(uint32_t i = 0; i < 1000; ++i) 
     {

@@ -59,7 +59,7 @@
 #Create an account called abc_main to use with the abc token (note this example assumes that YOU created the token so it is in your namespace)
 ./nexus tokens/create/account/abc_main token_name=abc pin=1234
 
-#Create an account called abc_svings to use with the abc token (note this example assumes that user paul created the token but you are logged in as someone else )
+#Create an account called abc_svings to use with the abc token (note this example assumes that user paul created the token but you are logged in as someone else)
 ./nexus tokens/create/account/abc_savings token_name=paul:abc pin=4567
 
 #Send (debit) 100 abc tokens from the initial supply to your abc_main account

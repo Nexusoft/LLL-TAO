@@ -221,7 +221,7 @@ namespace TAO
             int64_t nBalanceInQuestion;
             Legacy::Wallet::GetInstance().FixSpentCoins(nMismatchSpent, nBalanceInQuestion, true);
             json::json result;
-            if (nMismatchSpent == 0)
+            if(nMismatchSpent == 0)
                 result["wallet check passed"] = true;
             else
             {
@@ -315,10 +315,10 @@ namespace TAO
             if(!fGood)
                 throw APIException(-5,"Invalid private key");
 
-            if (Legacy::Wallet::GetInstance().IsLocked())
+            if(Legacy::Wallet::GetInstance().IsLocked())
                 throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-            if (Legacy::fWalletUnlockMintOnly)
+            if(Legacy::fWalletUnlockMintOnly)
                 throw APIException(-102, "Wallet is unlocked for minting only.");
 
             LLC::ECKey key;
@@ -434,7 +434,7 @@ namespace TAO
         *  This will allow the importing and exporting of private keys much easier. */
         json::json RPC::ExportKeys(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 0)
+            if(fHelp || params.size() != 0)
                 return std::string(
                     "exportkeys"
                     " - Export the private keys of the current UTXO values. "

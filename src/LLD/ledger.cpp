@@ -365,10 +365,10 @@ namespace LLD
         bool fFound = false;
 
         /* If the caller has requested to include mempool transactions then check there first*/
-        if( nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             TAO::Ledger::Transaction mempoolTx;
-            if( TAO::Ledger::mempool.Get(hashGenesis, mempoolTx))
+            if(TAO::Ledger::mempool.Get(hashGenesis, mempoolTx))
             {
                 fFound = true;
                 hashLast = mempoolTx.GetHash();

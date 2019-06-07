@@ -46,14 +46,14 @@ namespace config
     void InterpretNegativeSetting(const std::string &name, std::map<std::string, std::string>& mapSettingsRet)
     {
         // interpret -nofoo as -foo=0 (and -nofoo=0 as -foo=1) as long as -foo not set
-        if (name.find("-no") == 0)
+        if(name.find("-no") == 0)
         {
             std::string positive("-");
             positive.append(name.begin()+3, name.end());
 
-            if (mapSettingsRet.count(positive) == 0)
+            if(mapSettingsRet.count(positive) == 0)
             {
-                if (mapSettingsRet[name].empty())
+                if(mapSettingsRet[name].empty())
                     mapSettingsRet[positive] = "0";
 
                 else
@@ -67,15 +67,15 @@ namespace config
     {
         LOCK(ARGS_MUTEX);
 
-        for (int i = 1; i < argc; ++i)
+        for(int i = 1; i < argc; ++i)
         {
             /* Check for arguments value. */
             std::string strArg = std::string(argv[i]);
-            if (strArg[0] != '-')
+            if(strArg[0] != '-')
                 break;
 
             /* Compress '--' value into '-' */
-            if (strArg[1] == '-')
+            if(strArg[1] == '-')
                 strArg.erase(0, 1);
 
             /* Find value split. */
@@ -104,7 +104,7 @@ namespace config
     {
         LOCK(ARGS_MUTEX);
 
-        if (mapArgs.count(strArg))
+        if(mapArgs.count(strArg))
             return mapArgs[strArg];
 
         return strDefault;
@@ -116,7 +116,7 @@ namespace config
     {
         LOCK(ARGS_MUTEX);
 
-        if (mapArgs.count(strArg))
+        if(mapArgs.count(strArg))
             return convert::atoi64(mapArgs[strArg]);
 
         return nDefault;
@@ -128,9 +128,9 @@ namespace config
     {
         LOCK(ARGS_MUTEX);
 
-        if (mapArgs.count(strArg))
+        if(mapArgs.count(strArg))
         {
-            if (mapArgs[strArg].empty())
+            if(mapArgs[strArg].empty())
                 return true;
             return (convert::atoi32(mapArgs[strArg]) != 0);
         }
@@ -143,7 +143,7 @@ namespace config
     {
         LOCK(ARGS_MUTEX);
 
-        if (mapArgs.count(strArg))
+        if(mapArgs.count(strArg))
             return false;
 
         mapArgs[strArg] = strValue;
@@ -154,7 +154,7 @@ namespace config
     /* Set a boolean argument if it doesn't already have a value */
     bool SoftSetBoolArg(const std::string& strArg, bool fValue)
     {
-        if (fValue)
+        if(fValue)
             return SoftSetArg(strArg, std::string("1"));
         else
             return SoftSetArg(strArg, std::string("0"));
@@ -182,7 +182,7 @@ namespace config
         {
             /* ensure it has a port*/
             std::size_t nPortPos = entry.find(":");
-            if( nPortPos == std::string::npos)
+            if(nPortPos == std::string::npos)
                 continue;
 
             std::string strIP = entry.substr(0, nPortPos);

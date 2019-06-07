@@ -162,7 +162,7 @@ namespace debug
 
         /* Log the configuration file parameters. */
         std::string pathConfigFile = config::GetConfigFile();
-        if (!filesystem::exists(pathConfigFile))
+        if(!filesystem::exists(pathConfigFile))
             log(0, "No configuration file");
 
         else
@@ -188,14 +188,14 @@ namespace debug
                     if(argItem.first.compare(0, 12, "-rpcpassword") == 0
                     || argItem.first.compare(0, 12, "-apipassword") == 0)
                         confFileParams += "=XXXXXXXX";
-                    else if (!argItem.second[i].empty())
+                    else if(!argItem.second[i].empty())
                         confFileParams += "=" + argItem.second[i];
 
                     confFileParams += " ";
                 }
             }
 
-            if (confFileParams == "")
+            if(confFileParams == "")
                 confFileParams = "(none)";
 
             log(0, "Configuration file parameters: ", confFileParams);

@@ -12,7 +12,7 @@
 
 
 
-TEST_CASE( "Write Primitive Tests", "[operation]" )
+TEST_CASE( "Write Primitive Tests", "[operation]")
 {
     using namespace TAO::Operation;
 

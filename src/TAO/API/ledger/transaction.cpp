@@ -55,11 +55,11 @@ namespace TAO
 
             /* Default to verbosity 1 which includes only the hash */
             uint32_t nVerbose = 1;
-            if( strVerbose == "default")
+            if(strVerbose == "default")
                 nVerbose = 2;
-            else if( strVerbose == "summary")
+            else if(strVerbose == "summary")
                 nVerbose = 2;
-            else if( strVerbose == "detail")
+            else if(strVerbose == "detail")
                 nVerbose = 3;
 
             /* Get the return format */
@@ -87,7 +87,7 @@ namespace TAO
                First try to see if it is a tritium tx in the leger db*/
             if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::legDB->ReadTx(hash, txTritium))
             {
-                if( strFormat == "JSON")
+                if(strFormat == "JSON")
                     ret = TAO::API::TransactionToJSON (txTritium, blockState, nVerbose);
                 else
                 {
@@ -101,7 +101,7 @@ namespace TAO
             /* If it is not a tritium transaction then see if it is a legacy tx in the legacy DB */
             else if(TAO::Ledger::mempool.Get(hash, txLegacy) || LLD::legacyDB->ReadTx(hash, txLegacy))
             {
-                if( strFormat == "JSON")
+                if(strFormat == "JSON")
                     ret = TAO::API::TransactionToJSON (txLegacy, blockState, nVerbose);
                  else
                 {
@@ -150,7 +150,7 @@ namespace TAO
                 if(!LLD::legDB->HasTx(tx.GetHash()))
                 {
                     /* Add the transaction to the memory pool. */
-                    if (TAO::Ledger::mempool.Accept(tx, nullptr))
+                    if(TAO::Ledger::mempool.Accept(tx, nullptr))
                     {
                         /* Relay the transaction to other nodes */
                         std::vector<LLP::CInv> vInv = { LLP::CInv(tx.GetHash(), LLP::MSG_TX_TRITIUM) };
@@ -179,7 +179,7 @@ namespace TAO
                         throw APIException(-25, "Transaction rejected.");
 
                     /* Add the transaction to the memory pool. */
-                    if (TAO::Ledger::mempool.Accept(tx))
+                    if(TAO::Ledger::mempool.Accept(tx))
                     {
                         /* Add tx to legacy wallet */
                         TAO::Ledger::BlockState notUsed;

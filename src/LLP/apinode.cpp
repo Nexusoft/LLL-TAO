@@ -71,7 +71,7 @@ namespace LLP
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really
              * shouldn't have their RPC port exposed. */
-            if (config::GetArg("-apipassword", "").size() < 20)
+            if(config::GetArg("-apipassword", "").size() < 20)
                 runtime::sleep(250);
 
             PushResponse(401, "");
@@ -233,7 +233,7 @@ namespace LLP
 
 
         std::string strAuth = mapHeaders["authorization"];
-        if (strAuth.substr(0,6) != "Basic ")
+        if(strAuth.substr(0,6) != "Basic ")
             return debug::error(FUNCTION, "incorrect authorization type");
 
         /* Get the encoded content */

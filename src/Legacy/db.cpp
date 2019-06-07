@@ -40,7 +40,7 @@ namespace Legacy
     , vTxn()
     {
         /* Passing an empty string is invalid */
-        if (strFileIn.empty())
+        if(strFileIn.empty())
         {
             debug::error(FUNCTION, "Invalid empty string for Berkeley database file name");
 
@@ -59,10 +59,10 @@ namespace Legacy
         /* Destructor of instance should only be called after pdb and dbenv already invalidated, but check it here as a precaution */
         LOCK(cs_db);
 
-        if (pdb != nullptr)
+        if(pdb != nullptr)
             CloseHandle();
 
-        if (dbenv != nullptr)
+        if(dbenv != nullptr)
         {
              /* Flush log data to the dat file and detach the file */
             dbenv->txn_checkpoint(0, 0, 0);
@@ -98,9 +98,9 @@ namespace Legacy
         {
             LOCK(cs_db); 
 
-            if (dbenv == nullptr)  //Should be true when this is called 
+            if(dbenv == nullptr)  //Should be true when this is called 
             {
-                if (config::fShutdown.load())
+                if(config::fShutdown.load())
                     return;
 
                 std::string pathDataDir(config::GetDataDir());
@@ -172,7 +172,7 @@ namespace Legacy
 
                 }
 
-                if (ret != 0)
+                if(ret != 0)
                 {
                     delete dbenv;
                     dbenv = nullptr;
@@ -198,7 +198,7 @@ namespace Legacy
          *
          * These methods lock, so call must be outside lock scope
          */
-        if (!Exists(std::string("version")))
+        if(!Exists(std::string("version")))
             WriteVersion(LLD::DATABASE_VERSION);
 
     }
@@ -207,7 +207,7 @@ namespace Legacy
     /* Initializes the handle for the current database instance, if not currently open. */
     void BerkeleyDB::OpenHandle()
     {
-        if (pdb != nullptr)
+        if(pdb != nullptr)
             return;
 
         int32_t ret = 0;
@@ -225,7 +225,7 @@ namespace Legacy
                         DB_CREATE,        // Flags
                         0);
 
-        if (ret != 0)
+        if(ret != 0)
         {
             /* Error opening db, reset db */
             delete pdb;
@@ -241,11 +241,11 @@ namespace Legacy
     /* Close this instance for database access. */
     void BerkeleyDB::CloseHandle()
     {
-        if (pdb == nullptr)
+        if(pdb == nullptr)
             return;
 
         /* Abort any in-progress transactions on this database */
-        if (!vTxn.empty())
+        if(!vTxn.empty())
             vTxn.front()->abort();
 
         vTxn.clear();
@@ -266,7 +266,7 @@ namespace Legacy
     /*  Retrieves the most recently started database transaction. */
     DbTxn* BerkeleyDB::GetTxn()
     {
-        if (!vTxn.empty())
+        if(!vTxn.empty())
             return vTxn.back();
         else
             return nullptr;
@@ -280,14 +280,14 @@ namespace Legacy
     {
         LOCK(cs_db);
         
-        if (pdb == nullptr)
+        if(pdb == nullptr)
             OpenHandle();
 
         Dbc* pcursor = nullptr;
 
         int32_t ret = pdb->cursor(nullptr, &pcursor, 0);
 
-        if (ret != 0)
+        if(ret != 0)
             return nullptr;
 
         return pcursor;
@@ -299,12 +299,12 @@ namespace Legacy
     {
         LOCK(cs_db);
         
-        if (pcursor == nullptr)
+        if(pcursor == nullptr)
             return 99998;
 
         /* Key - Initialize with argument data for flag settings that need it */
         Dbt datKey;
-        if (fFlags == DB_SET || fFlags == DB_SET_RANGE || fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
+        if(fFlags == DB_SET || fFlags == DB_SET_RANGE || fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
         {
             datKey.set_data((char*)ssKey.data());
             datKey.set_size(ssKey.size());
@@ -312,7 +312,7 @@ namespace Legacy
 
         /* Value - Initialize with argument data for flag settings that need it */
         Dbt datValue;
-        if (fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
+        if(fFlags == DB_GET_BOTH || fFlags == DB_GET_BOTH_RANGE)
         {
             datValue.set_data((char*)ssValue.data());
             datValue.set_size(ssValue.size());
@@ -325,10 +325,10 @@ namespace Legacy
         /* Execute cursor operation */
         int32_t ret = pcursor->get(&datKey, &datValue, fFlags);
 
-        if (ret != 0)
+        if(ret != 0)
             return ret;
 
-        else if (datKey.get_data() == nullptr || datValue.get_data() == nullptr)
+        else if(datKey.get_data() == nullptr || datValue.get_data() == nullptr)
             return 99999;
 
         /* Convert to streams */
@@ -356,7 +356,7 @@ namespace Legacy
     {
         LOCK(cs_db);
         
-        if (pcursor == nullptr)
+        if(pcursor == nullptr)
             return;
 
         pcursor->close();
@@ -370,7 +370,7 @@ namespace Legacy
     {
         LOCK(cs_db);
         
-        if (pdb == nullptr)
+        if(pdb == nullptr)
             OpenHandle();
 
         /* Start a new database transaction. Need to use raw pointer with Berkeley API */
@@ -379,7 +379,7 @@ namespace Legacy
         /* Begin new transaction */
         int32_t ret = dbenv->txn_begin(GetTxn(), &pTxn, DB_TXN_WRITE_NOSYNC);
 
-        if (pTxn == nullptr || ret != 0)
+        if(pTxn == nullptr || ret != 0)
             return false;
 
         /* Add new transaction to the end of vTxn */
@@ -396,7 +396,7 @@ namespace Legacy
         
         auto pTxn = GetTxn();
 
-        if (pTxn == nullptr)
+        if(pTxn == nullptr)
             return false;
 
         int32_t ret = pTxn->commit(0);
@@ -414,7 +414,7 @@ namespace Legacy
         
         auto pTxn = GetTxn();
 
-        if (pTxn == nullptr)
+        if(pTxn == nullptr)
             return false;
 
         int32_t ret = pTxn->abort();
@@ -445,7 +445,7 @@ namespace Legacy
     {
         LOCK(cs_db);
 
-        if (dbenv == nullptr)
+        if(dbenv == nullptr)
             return;
 
         /* Close any open database activity. Handle will need to be reopened after flush */
@@ -466,7 +466,7 @@ namespace Legacy
     /* Rewrites the database file by copying all contents to a new file. */
     bool BerkeleyDB::DBRewrite()
     {
-        if (config::fShutdown)
+        if(config::fShutdown)
             return false; // Don't start rewrite if shutdown in progress
 
         bool fProcessSuccess = true;
@@ -498,7 +498,7 @@ namespace Legacy
                                        DB_RDONLY,            // Flags
                                        0);
 
-            if (dbReturn != 0)
+            if(dbReturn != 0)
             {
                 debug::log(0, FUNCTION, "Cannot open source database file ", strDbFile.c_str());
 
@@ -515,7 +515,7 @@ namespace Legacy
                                      DB_CREATE,                // Flags
                                      0);
 
-            if (dbReturn != 0)
+            if(dbReturn != 0)
             {
                 debug::log(0, FUNCTION, "Cannot create target database file ", strDbFileRewrite.c_str());
 
@@ -529,7 +529,7 @@ namespace Legacy
             Dbc* pcursor = nullptr;
             dbReturn = pdbSource->cursor(nullptr, &pcursor, 0);
 
-            if (dbReturn != 0 || pcursor == nullptr)
+            if(dbReturn != 0 || pcursor == nullptr)
             {
                 debug::error(FUNCTION, "Failure opening cursor on source database file ", strDbFile.c_str());
 
@@ -540,7 +540,7 @@ namespace Legacy
                 return false;
             }
 
-            while (fProcessSuccess)
+            while(fProcessSuccess)
             {
                 /* This section directly codes all cursor, read, and write operations without using their corresponding
                  * methods, allowing it to keep hold of the cs_db mutex the entire time without lock conflicts.
@@ -557,20 +557,20 @@ namespace Legacy
                 /* Read next entry from source file */
                 dbReturn = pcursor->get(&datKey, &datValue, DB_NEXT);
 
-                if (dbReturn == DB_NOTFOUND)
+                if(dbReturn == DB_NOTFOUND)
                 {
                     /* No more data */
                     fProcessSuccess = true;
                     break;
                 }
-                else if (datKey.get_data() == nullptr || datValue.get_data() == nullptr)
+                else if(datKey.get_data() == nullptr || datValue.get_data() == nullptr)
                 {
                     /* No data reading cursor */
                     fProcessSuccess = false;
                     debug::error(FUNCTION, "No data reading cursor on database file ", strDbFile.c_str());
                     break;
                 }
-                else if (dbReturn == 0)
+                else if(dbReturn == 0)
                 {
                     /* Convert to streams */
                     ssKey.SetType(SER_DISK);
@@ -588,7 +588,7 @@ namespace Legacy
                     free(datKey.get_data());
                     free(datValue.get_data());
                 }
-                else if (dbReturn != 0)
+                else if(dbReturn != 0)
                 {
                     /* Error reading cursor */
                     fProcessSuccess = false;
@@ -597,7 +597,7 @@ namespace Legacy
                 }
 
                 /* Don't copy the version, instead use latest version */
-                if (strncmp((char*)ssKey.data(), "version", 7) == 0)
+                if(strncmp((char*)ssKey.data(), "version", 7) == 0)
                 {
                     /* Update version */
                     ssValue.clear();
@@ -610,7 +610,7 @@ namespace Legacy
                 /* Write the data to temp file */
                 dbReturn = pdbCopy->put(nullptr, &writeDatKey, &writeDatValue, DB_NOOVERWRITE);
 
-                if (dbReturn != 0)
+                if(dbReturn != 0)
                 {
                     fProcessSuccess = false;
                     debug::error(FUNCTION, "Failure writing target database file ", strDbFile);
@@ -632,29 +632,29 @@ namespace Legacy
             dbenv->lsn_reset(strDbFile.c_str(), 0);
             dbenv->lsn_reset(strDbFileRewrite.c_str(), 0);
 
-            if (fProcessSuccess)
+            if(fProcessSuccess)
             {
                 /* Remove original database file */
                 Db dbOld(dbenv, 0);
-                if (dbOld.remove(strDbFile.c_str(), nullptr, 0) != 0)
+                if(dbOld.remove(strDbFile.c_str(), nullptr, 0) != 0)
                 {
                     debug::error(FUNCTION, "Unable to remove old database file ", strDbFile);
                     fProcessSuccess = false;
                 }
             }
 
-            if (fProcessSuccess)
+            if(fProcessSuccess)
             {
                 /* Rename temp file to original file name */
                 Db dbNew(dbenv, 0);
-                if (dbNew.rename(strDbFileRewrite.c_str(), nullptr, strDbFile.c_str(), 0) != 0)
+                if(dbNew.rename(strDbFileRewrite.c_str(), nullptr, strDbFile.c_str(), 0) != 0)
                 {
                     debug::error(FUNCTION, "Unable to rename database file ", strDbFileRewrite.c_str(), " to ", strDbFile);
                     fProcessSuccess = false;
                 }
             }
 
-            if (!fProcessSuccess)
+            if(!fProcessSuccess)
                 debug::log(0, FUNCTION, "Rewriting of ", strDbFile, " failed");
 
         } //End lock scope
@@ -672,7 +672,7 @@ namespace Legacy
 
         CloseHandle();
 
-        if (dbenv != nullptr)
+        if(dbenv != nullptr)
         {
              /* Flush log data to the dat file and detach the file */
             debug::log(2, FUNCTION, strDbFile, " checkpoint");
@@ -708,7 +708,7 @@ namespace Legacy
     /* Retrieves the BerkeleyDB instance that corresponds to a given database file. */
     BerkeleyDB& BerkeleyDB::GetInstance(const std::string& strFileIn)
     {
-        if (!BerkeleyDB::fDbInitialized.load() && strFileIn.empty())
+        if(!BerkeleyDB::fDbInitialized.load() && strFileIn.empty())
         {
             debug::error(FUNCTION, "Berkeley database initialization missing file name");
             throw std::runtime_error(debug::safe_printstr(FUNCTION, "Berkeley database initialization missing file name"));
@@ -717,7 +717,7 @@ namespace Legacy
         /* This will create an initialized, database instance on first call to GetInstance() */
         static BerkeleyDB dbInstance(strFileIn);
 
-        if (BerkeleyDB::fDbInitialized.load() && !strFileIn.empty() && dbInstance.strDbFile.compare(strFileIn) != 0)
+        if(BerkeleyDB::fDbInitialized.load() && !strFileIn.empty() && dbInstance.strDbFile.compare(strFileIn) != 0)
         {
             debug::error(FUNCTION, "Invalid attempt to change Berkeley database file name");
             throw std::runtime_error(debug::safe_printstr(FUNCTION, "Invalid attempt to change Berkeley database file name"));

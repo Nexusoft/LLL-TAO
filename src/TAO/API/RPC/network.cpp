@@ -46,7 +46,7 @@ namespace TAO
         /* Get network hashrate for the hashing channel */
         json::json RPC::GetNetworkHashps(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 0)
+            if(fHelp || params.size() != 0)
                 return std::string(
                     "getnetworkhashps - Get network hashrate for the hashing channel.");
 
@@ -98,7 +98,7 @@ namespace TAO
         /* Get network prime searched per second */
         json::json RPC::GetNetworkPps(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 0)
+            if(fHelp || params.size() != 0)
                 return std::string(
                     "getnetworkpps"
                     " - Get network prime searched per second.");
@@ -148,7 +148,7 @@ namespace TAO
         /* List all the Trust Keys on the Network */
         json::json RPC::GetNetworkTrustKeys(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 0)
+            if(fHelp || params.size() != 0)
                 return std::string("getnetworktrustkeys - List all the Trust Keys on the Network");
 
             json::json response;
@@ -161,7 +161,7 @@ namespace TAO
             const std::vector<std::vector<uint8_t> >& vKeys = LLD::trustDB->GetKeys();
 
             /* Search through the trust keys. */
-            for (const auto& key : vKeys)
+            for(const auto& key : vKeys)
             {
                 /* Extract trust key hash from raw database keys. */
                 uint576_t trustKeyHash = 0;
@@ -170,11 +170,11 @@ namespace TAO
 
                 /* Use trust key hash to retrieve trust key */
                 Legacy::TrustKey trustKey;
-                if (!LLD::trustDB->ReadTrustKey(trustKeyHash, trustKey))
+                if(!LLD::trustDB->ReadTrustKey(trustKeyHash, trustKey))
                     continue;
 
                 /* Ignore trust keys that are inactive (no blocks within timespan) */
-                if (trustKey.nLastBlockTime + (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 3 : TAO::Ledger::TRUST_KEY_TIMESPAN * 3)
+                if(trustKey.nLastBlockTime + (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 3 : TAO::Ledger::TRUST_KEY_TIMESPAN * 3)
                     < TAO::Ledger::ChainState::stateBest.load().GetBlockTime())
                     continue;
 
@@ -219,7 +219,7 @@ namespace TAO
         /* Deprecated.  Use getblockcount */
         json::json RPC::GetBlockNumber(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 0)
+            if(fHelp || params.size() != 0)
                 return std::string(
                     "getblocknumber - Deprecated.  Use getblockcount.");
 
@@ -230,7 +230,7 @@ namespace TAO
         /* Returns difficulty as a multiple of the minimum difficulty */
         json::json RPC::GetDifficulty(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 0)
+            if(fHelp || params.size() != 0)
                 return std::string(
                     "getdifficulty - Returns difficulty as a multiple of the minimum difficulty.");
 
@@ -267,7 +267,7 @@ namespace TAO
         This is to prevent error from Gregorian Figures */
         json::json RPC::GetSupplyRates(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 0)
+            if(fHelp || params.size() != 0)
                 return std::string(
                     "getsupplyrates"
                     " - Returns an object containing current Nexus production rates in set time intervals."
@@ -326,7 +326,7 @@ namespace TAO
         json::json RPC::GetBlockHash(const json::json& params, bool fHelp)
         {
 
-            if (fHelp || params.size() != 1)
+            if(fHelp || params.size() != 1)
                 return std::string(
                     "getblockhash <index>"
                     " - Returns hash of block in best-block-chain at <index>.");
@@ -336,7 +336,7 @@ namespace TAO
                 return std::string("getblockhash requires the wallet to be started with the -indexheight flag.");
             }
             int nHeight = params[0];
-            if (nHeight < 0 || nHeight > TAO::Ledger::ChainState::nBestHeight.load())
+            if(nHeight < 0 || nHeight > TAO::Ledger::ChainState::nBestHeight.load())
                 return std::string("Block number out of range.");
 
             TAO::Ledger::BlockState blockState;
@@ -352,7 +352,7 @@ namespace TAO
         *  Returns whether a block is an orphan or not*/
         json::json RPC::IsOrphan(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 1 )
+            if(fHelp || params.size() != 1)
                 return std::string(
                     "isorphan <hash> "
                     " - Returns whether a block is an orphan or not");
@@ -362,7 +362,7 @@ namespace TAO
             uint1024_t blockId = 0;
             blockId.SetHex(params[0].get<std::string>());
 
-            if (!LLD::legDB->ReadBlock(blockId, block))
+            if(!LLD::legDB->ReadBlock(blockId, block))
             {
                 throw APIException(-5, "Block not found");
                 return "";
@@ -378,7 +378,7 @@ namespace TAO
         *  Returns details of a block with given block-hash */
         json::json RPC::GetBlock(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() < 1 || params.size() > 2)
+            if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(
                     "getblock <hash> [txinfo]"
                     " - txinfo optional to print more detailed tx info."
@@ -388,7 +388,7 @@ namespace TAO
             uint1024_t blockId = 0;
             blockId.SetHex(params[0].get<std::string>());
 
-            if (!LLD::legDB->ReadBlock(blockId, block))
+            if(!LLD::legDB->ReadBlock(blockId, block))
             {
                 throw APIException(-5, "Block not found");
                 return "";

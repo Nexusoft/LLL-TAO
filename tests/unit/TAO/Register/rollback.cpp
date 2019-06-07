@@ -29,7 +29,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "Register Rollback Tests", "[register]" )
+TEST_CASE( "Register Rollback Tests", "[register]")
 {
     using namespace TAO::Register;
     using namespace TAO::Operation;

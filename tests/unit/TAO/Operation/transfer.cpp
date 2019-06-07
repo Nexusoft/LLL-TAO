@@ -27,7 +27,7 @@ ________________________________________________________________________________
 
 
 
-TEST_CASE( "Transfer Primitive Tests", "[operation]" )
+TEST_CASE( "Transfer Primitive Tests", "[operation]")
 {
     using namespace TAO::Register;
     using namespace TAO::Operation;

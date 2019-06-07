@@ -155,7 +155,7 @@ namespace TAO
 
 
         /** The candidate block that the stake minter is attempting to mine **/
-        TritiumBlock candidateBlock;
+        TritiumBlock block;
 
 
         /** Flag to indicate whether staking for Genesis or Trust **/
@@ -178,7 +178,7 @@ namespace TAO
         TritiumMinter()
         : hashAddress(0)
         , trustAccount()
-        , candidateBlock()
+        , block()
         , isGenesis(false)
         , nTimeLastStake()
         , nTrust(0)
@@ -245,7 +245,7 @@ namespace TAO
         bool CalculateWeights();
 
 
-        /** MineProofOfStake
+        /** MintBlock
          *
          *  Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block, while
          *  operating within the energy efficiency requirements. This process will continue to iterate until it either
@@ -255,10 +255,10 @@ namespace TAO
          *  @param[in] strPIN - active pin corresponding to the sig chain
          *
          **/
-        void MineProofOfStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
+        void MintBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
 
 
-        /** ProcessMinedBlock
+        /** ProcessBlock
          *
          *  Processes a newly mined Proof of Stake block, adds transactions from the mempool, and submits it
          *  to the network
@@ -269,7 +269,7 @@ namespace TAO
          *  @return true if the block passed all process checks and was successfully submitted
          *
          **/
-        bool ProcessMinedBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
+        bool ProcessBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
 
 
         /** SignBlock

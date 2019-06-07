@@ -48,7 +48,7 @@ namespace TAO
             uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to ALL actions
 
             /* Check for minting flag. */
-            if (params.find("minting") != params.end()
+            if(params.find("minting") != params.end()
             && (params["minting"].get<std::string>() == "1" || params["minting"].get<std::string>() == "true"))
             {
                  /* Check if already unlocked. */
@@ -59,7 +59,7 @@ namespace TAO
             }
 
             /* Check unlocked actions. */
-            if (params.find("transactions") != params.end()
+            if(params.find("transactions") != params.end()
             && (params["transactions"].get<std::string>() == "1" || params["transactions"].get<std::string>() == "true"))
             {
                  /* Check if already unlocked. */
@@ -72,7 +72,7 @@ namespace TAO
             /* If no unlock actions have been specifically set then default it to all */
             if(nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::NONE)
             {
-                if( !Locked())
+                if(!Locked())
                     throw APIException(-26, "Account already unlocked");
                 else
                     nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::ALL;
@@ -123,11 +123,11 @@ namespace TAO
             pActivePIN = new TAO::Ledger::PinUnlock(params["pin"].get<std::string>().c_str(), nUnlockedActions);
 
             /* After unlock complete, attempt to start stake minter if unlocked for minting */
-            if (pActivePIN->CanMint())
+            if(pActivePIN->CanMint())
             {
                 TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
 
-                if (!config::fMultiuser.load() && !stakeMinter.IsStarted())
+                if(!config::fMultiuser.load() && !stakeMinter.IsStarted())
                     stakeMinter.StartStakeMinter();
             }
 

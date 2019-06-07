@@ -77,14 +77,14 @@ namespace LLP
     bool RPCNode::ProcessPacket()
     {
         /* Check HTTP authorization */
-        if (!Authorized(INCOMING.mapHeaders))
+        if(!Authorized(INCOMING.mapHeaders))
         {
             debug::error(FUNCTION, "RPC incorrect password attempt from ", this->addr.ToString());
 
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really
              * shouldn't have their RPC port exposed. */
-            if (config::GetArg("-rpcpassword", "").size() < 20)
+            if(config::GetArg("-rpcpassword", "").size() < 20)
                 runtime::sleep(250);
 
             PushResponse(401, "");
@@ -103,7 +103,7 @@ namespace LLP
                 throw APIException(-32600, "Missing method");
 
             /* Ensure the method is correct type. */
-            if (!jsonIncoming["method"].is_string())
+            if(!jsonIncoming["method"].is_string())
                 throw APIException(-32600, "Method must be a string");
 
             /* Get the method string. */
@@ -160,7 +160,7 @@ namespace LLP
     json::json RPCNode::JSONReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID)
     {
         json::json jsonReply;
-        if (!jsonError.is_null())
+        if(!jsonError.is_null())
         {
             jsonReply["result"] = nullptr;
             jsonReply["error"] = jsonError;
@@ -210,7 +210,7 @@ namespace LLP
             return debug::error(FUNCTION, "no authorization in header");
 
         std::string strAuth = mapHeaders["authorization"];
-        if (strAuth.substr(0,6) != "Basic ")
+        if(strAuth.substr(0,6) != "Basic ")
             return debug::error(FUNCTION, "incorrect authorization type");
 
         /* Get the encoded content */

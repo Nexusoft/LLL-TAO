@@ -30,7 +30,7 @@ The second of the three updates in the TAO Framework. Amine will include the fol
 * Domain Specific Languages
 * DAO Voting Groups
 * pBFT + PoS Trust Network (L2)
-* LISP Multicast Links for (L1) and (L2)
+* LISP Multicast Links for(L1) and (L2)
 * Application Store
 
 ### Obsidian

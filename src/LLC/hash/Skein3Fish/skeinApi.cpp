@@ -75,7 +75,7 @@ int skeinInit(SkeinCtx_t* ctx, size_t hashBitLen)
         break;
     }
 
-    if (ret == SKEIN_SUCCESS)
+    if(ret == SKEIN_SUCCESS)
     {
         /* Save chaining variables for this combination of size and hashBitLen */
         //memcpy(ctx->XSave, X, Xlen);
@@ -119,7 +119,7 @@ int skeinMacInit(SkeinCtx_t* ctx, const uint8_t *key, size_t keyLen,
 
         break;
     }
-    if (ret == SKEIN_SUCCESS)
+    if(ret == SKEIN_SUCCESS)
     {
         /* Save chaining variables for this combination of key, keyLen, hashBitLen */
         //memcpy(ctx->XSave, X, Xlen);
@@ -185,7 +185,7 @@ int skeinUpdateBits(SkeinCtx_t *ctx, const uint8_t *msg,
     Skein_Assert((ctx->m.h.T[1] & SKEIN_T1_FLAG_BIT_PAD) == 0 || msgBitCnt == 0, SKEIN_FAIL);
 
     /* if number of bits is a multiple of bytes - that's easy */
-    if ((msgBitCnt & 0x7) == 0)
+    if((msgBitCnt & 0x7) == 0)
     {
         return skeinUpdate(ctx, msg, msgBitCnt >> 3);
     }

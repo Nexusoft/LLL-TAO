@@ -49,7 +49,7 @@ import signal
 def cleanup(signum, frame):
     global reset
     
-    if (reset):
+    if(reset):
         print "Returning value to icmp_echo_ignore_broadcasts ...",
         os.system(disable_icmp)
         print "done"
@@ -69,7 +69,7 @@ def cleanup(signum, frame):
 #
 def get_local_ip(intf):
     out = commands.getoutput("ifconfig {} | egrep inet".format(intf))
-    if (out == ""):
+    if(out == ""):
         print "Cannot find interface address for {}".format(intf)
         return(None)
     #endif
@@ -85,7 +85,7 @@ def get_local_ip(intf):
 def join_socket(msocket, group, intf):
     msocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     intf_addr = get_local_ip(intf)
-    if (intf_addr == None): return(False)
+    if(intf_addr == None): return(False)
 
     i = socket.inet_aton(intf_addr)
     msocket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, i)
@@ -101,7 +101,7 @@ def join_socket(msocket, group, intf):
 #
 def leave_socket(msocket, group, intf):
     intf_addr = get_local_ip(intf)
-    if (intf_addr == None): return
+    if(intf_addr == None): return
 
     i = socket.inet_aton(intf_addr)
     g = socket.inet_aton(group)
@@ -113,7 +113,7 @@ def leave_socket(msocket, group, intf):
 #
 # Get group and interface parameters from command line.
 #
-if (len(sys.argv) < 2):
+if(len(sys.argv) < 2):
     print "Need to supply IPv4 group address"
     exit(1)
 #endif    
@@ -140,7 +140,7 @@ signal.signal(signal.SIGINT, cleanup)
 # to set it back to its original setting.
 #
 reset = False
-if (commands.getoutput(cat) == "1"):
+if(commands.getoutput(cat) == "1"):
     print "Enabling ICMP to respond to multicast pings ...",
     os.system(enable_icmp)
     print "done"
@@ -152,7 +152,7 @@ if (commands.getoutput(cat) == "1"):
 #
 msocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 print "Joining group {} on {}...".format(group, intf),
-if (join_socket(msocket, group, intf)):
+if(join_socket(msocket, group, intf)):
     print "done"
 else:
     print "failed"
@@ -164,7 +164,7 @@ else:
 # is a IGMP querier on the LAN. Assume there isn't one in a virtual/container
 # environment.
 #
-while (True):
+while(True):
     print "Rejoining group {} on {}, pid {} ...".format(group, intf, mypid),
     leave_socket(msocket, group, intf)
     join_socket(msocket, group, intf)

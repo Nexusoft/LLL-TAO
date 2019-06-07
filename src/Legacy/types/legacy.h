@@ -51,12 +51,12 @@ namespace Legacy
             READWRITE(nTime);
 
       			// ConnectBlock depends on vtx following header to generate CDiskTxPos
-      			if (!(nSerType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
+      			if(!(nSerType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
       			{
       				READWRITE(vtx);
       				READWRITE(vchBlockSig);
       			}
-        )
+      )
 
 
         /** The default constructor. **/

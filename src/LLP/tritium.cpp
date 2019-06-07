@@ -214,7 +214,7 @@ namespace LLP
                     {
 
                         debug::log(3, NODE "Dropped Packet (Complete: ", INCOMING.Complete() ? "Y" : "N",
-                            " - Valid: )",  INCOMING.IsValid() ? "Y" : "N");
+                            " - Valid:)",  INCOMING.IsValid() ? "Y" : "N");
 
                         if(DDOS)
                             DDOS->rSCORE += 15;
@@ -388,14 +388,14 @@ namespace LLP
                         return false;
                     }
                     /* Check for existing connection to same node*/
-                    else if( TritiumNode::mapConnectedSessions.count(nCurrentSession) > 0)
+                    else if(TritiumNode::mapConnectedSessions.count(nCurrentSession) > 0)
                     {
                         TritiumNode* pConnection = TritiumNode::mapConnectedSessions.at(nCurrentSession);
 
                         /* If the existing connection is via LISP then we make a preference for it and disallow the
                         incoming connection. Otherwise if the incoming is via LISP and the existing is not we
                         disconnect the the existing connection in favour of the LISP route */
-                        if( !GetAddress().IsEID() || pConnection->GetAddress().IsEID() )
+                        if(!GetAddress().IsEID() || pConnection->GetAddress().IsEID())
                         {
                             /* don't allow new connection */
                             debug::log(0, NODE "duplicate connection attempt to same server prevented (session ID ", nCurrentSession, ").  Existing: ", pConnection->GetAddress().ToStringIP(), " New: ", GetAddress().ToStringIP());
@@ -440,7 +440,7 @@ namespace LLP
                 /* Ask the new node for their inventory*/
                 PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
 
-                // if (fOUTGOING && nAsked == 0)
+                // if(fOUTGOING && nAsked == 0)
                 // {
                 //     ++nAsked;
                 //    PushGetInventory(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
@@ -562,12 +562,12 @@ namespace LLP
                     fIsLegacy = state.vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
 
                     /* Check for hash stop. */
-                    if (state.GetHash() == hashStop)
+                    if(state.GetHash() == hashStop)
                     {
                         debug::log(3, NODE "getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
 
                         /* Tell about latest block if hash stop is found. */
-                        if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
+                        if(hashStop != TAO::Ledger::ChainState::hashBestChain.load())
                         {
                             /* First add all of the transactions hashes from the block.
                                Start at index 1 so that we dont' include producer, as that is sent as part of the block */
@@ -592,7 +592,7 @@ namespace LLP
                     vInv.push_back(CInv(state.GetHash(), fIsLegacy ? MSG_BLOCK_LEGACY : MSG_BLOCK_TRITIUM));
 
                     /* Stop at limits. */
-                    if (--nLimit <= 0 || vInv.size() > 50000)
+                    if(--nLimit <= 0 || vInv.size() > 50000)
                     {
                         // When this block is requested, we'll send an inv that'll make them
                         // getblocks the next batch of inventory.
@@ -621,7 +621,7 @@ namespace LLP
                 debug::log(3, NODE "Inventory Message of ", vInv.size(), " elements");
 
                 /* Make sure the inventory size is not too large. */
-                if (vInv.size() > 100000)
+                if(vInv.size() > 100000)
                 {
                     if(DDOS)
                         DDOS->rSCORE += 20;
@@ -633,7 +633,7 @@ namespace LLP
                 if(config::GetBoolArg("-fastsync", true)
                 && addrFastSync == GetAddress()
                 && TAO::Ledger::ChainState::Synchronizing()
-                && (vInv.back().GetType() == MSG_BLOCK_LEGACY || vInv.back().GetType() == MSG_BLOCK_TRITIUM )
+                && (vInv.back().GetType() == MSG_BLOCK_LEGACY || vInv.back().GetType() == MSG_BLOCK_TRITIUM)
                 && vInv.size() > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
                 {
                     /* Normal case of asking for a getblocks inventory message. */
@@ -699,7 +699,7 @@ namespace LLP
                 std::vector<CInv> vInv;
                 ssPacket >> vInv;
 
-                if (vInv.size() > 100000)
+                if(vInv.size() > 100000)
                 {
                     if(DDOS)
                         DDOS->rSCORE += 20;
@@ -717,7 +717,7 @@ namespace LLP
                     debug::log(3, NODE "processing getdata ", inv.ToString());
 
                     /* Handle the block message. */
-                    if (inv.GetType() == MSG_BLOCK_LEGACY || inv.GetType() == MSG_BLOCK_TRITIUM)
+                    if(inv.GetType() == MSG_BLOCK_LEGACY || inv.GetType() == MSG_BLOCK_TRITIUM)
                     {
                         /* Don't send genesis if asked for. */
                         if(inv.GetHash() == TAO::Ledger::ChainState::Genesis())
@@ -732,7 +732,7 @@ namespace LLP
                         }
 
                         /* Push the response message. */
-                        if( inv.GetType() == MSG_BLOCK_TRITIUM)
+                        if(inv.GetType() == MSG_BLOCK_TRITIUM)
                         {
                             TAO::Ledger::TritiumBlock block(state);
                             PushMessage(DAT_BLOCK, (uint8_t)MSG_BLOCK_TRITIUM, block);
@@ -745,13 +745,13 @@ namespace LLP
 
 
                         /* Trigger a new getblocks if hash continue is set. */
-                        if (inv.GetHash() == hashContinue)
+                        if(inv.GetHash() == hashContinue)
                         {
                             PushMessage(GET_INVENTORY, TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()), uint1024_t(0));
                             hashContinue = 0;
                         }
                     }
-                    else if (inv.GetType() == LLP::MSG_TX_TRITIUM)
+                    else if(inv.GetType() == LLP::MSG_TX_TRITIUM)
                     {
                         TAO::Ledger::Transaction tx;
                         if(!TAO::Ledger::mempool.Get(uint512_t(inv.GetHash()), tx)
@@ -760,7 +760,7 @@ namespace LLP
 
                         PushMessage(DAT_TRANSACTION, (uint8_t)LLP::MSG_TX_TRITIUM, tx);
                     }
-                    else if (inv.GetType() == LLP::MSG_TX_LEGACY)
+                    else if(inv.GetType() == LLP::MSG_TX_LEGACY)
                     {
                         Legacy::Transaction tx;
                         if(!TAO::Ledger::mempool.Get((uint512_t)inv.GetHash(), tx)
@@ -856,7 +856,7 @@ namespace LLP
                         debug::log(3, NODE "Received tx ", tx.GetHash().ToString().substr(0, 20));
 
                         /* Add the transaction to the memory pool. */
-                        if (TAO::Ledger::mempool.Accept(tx, this))
+                        if(TAO::Ledger::mempool.Accept(tx, this))
                         {
                             std::vector<CInv> vInv = { CInv(tx.GetHash(), MSG_TX_TRITIUM) };
                             TRITIUM_SERVER->Relay(DAT_INVENTORY, vInv);
@@ -895,7 +895,7 @@ namespace LLP
                         }
 
                         /* Add the transaction to the memory pool. */
-                        if (TAO::Ledger::mempool.Accept(tx))
+                        if(TAO::Ledger::mempool.Accept(tx))
                         {
                             TAO::Ledger::BlockState notUsed;
                             Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
@@ -978,7 +978,7 @@ namespace LLP
                 ssPacket >> vLegacyAddr;
 
                 /* Don't want addr from older versions unless seeding */
-                if (vLegacyAddr.size() > 2000)
+                if(vLegacyAddr.size() > 2000)
                 {
                     if(DDOS)
                         DDOS->rSCORE += 20;
@@ -1012,7 +1012,7 @@ namespace LLP
                 uint64_t nNonce;
                 ssPacket >> nNonce;
 
-                debug::log(3, NODE "Ping (Nonce ", std::hex, nNonce, ")" );
+                debug::log(3, NODE "Ping (Nonce ", std::hex, nNonce, ")");
 
                 /* Push a pong as a response. */
                 PushMessage(DAT_PONG, nNonce);
@@ -1152,7 +1152,7 @@ namespace LLP
                     TAO::Ledger::ChainState::PercentSynchronized(), " %]",
                     " height=", TAO::Ledger::ChainState::nBestHeight.load(),
                     " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
-                    " [", 1000000 / nElapsed, " blocks/s]" );
+                    " [", 1000000 / nElapsed, " blocks/s]");
 
                 nTimer = runtime::timestamp(true);
             }

@@ -62,7 +62,7 @@ namespace TAO
                 std::string strMessage = std::string(what());
 
                 /* If a global error message has been logged via debug::error then include this in the JSON*/
-                if( !debug::strLastError.empty())
+                if(!debug::strLastError.empty())
                     strMessage += ". " + debug::GetLastError();
 
                 jsonError["message"] = strMessage;

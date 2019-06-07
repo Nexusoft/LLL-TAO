@@ -52,15 +52,15 @@ namespace LLP
 		: hash(hashIn)
 		{
 				uint32_t i = 1;
-				for (; i < len; ++i)
+				for(; i < len; ++i)
 				{
-					  if (strType == ppszTypeName[i])
+					  if(strType == ppszTypeName[i])
 					  {
 						    type = i;
 					    	break;
 					  }
 				}
-				if (i == len)
+				if(i == len)
 				{
 					  throw std::out_of_range(debug::safe_printstr(
 						    "CInv::CInv(string, uint1024_t) : unknown type '", strType, "'"));
@@ -85,7 +85,7 @@ namespace LLP
 		/* Returns a command from this inventory object. */
 		const char* CInv::GetCommand() const
 		{
-		  	if (!IsKnownType())
+		  	if(!IsKnownType())
 				  throw std::out_of_range(
 			    		debug::safe_printstr("CInv::GetCommand() : type=", type, " unknown type"));
 

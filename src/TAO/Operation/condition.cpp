@@ -184,7 +184,7 @@ namespace TAO
 
 
                     //OP::GROUP or the ( operator
-                    //OP::UNGROUP or the ) operator
+                    //OP::UNGROUP or the) operator
 
                     /** Handle for the || operator. */
                     case OP::OR:
@@ -367,7 +367,7 @@ namespace TAO
                             throw std::runtime_error(debug::safe_printstr("OP::MUL computation greater than 64-bits"));
 
                         /* Check for value overflows. */
-                        if (at(vRet) > std::numeric_limits<uint64_t>::max() / at(vMul))
+                        if(at(vRet) > std::numeric_limits<uint64_t>::max() / at(vMul))
                             throw std::runtime_error(debug::safe_printstr("OP::MUL 64-bit value overflow"));
 
                         /* Compute the return value. */
@@ -404,7 +404,7 @@ namespace TAO
                         for(uint64_t e = 1; e < at(vExp); ++e)
                         {
                             /* Check for value overflows. */
-                            if (at(vRet) > std::numeric_limits<uint64_t>::max() / nBase)
+                            if(at(vRet) > std::numeric_limits<uint64_t>::max() / nBase)
                                 throw std::runtime_error(debug::safe_printstr("OP::EXP 64-bit value overflow"));
 
                             /* Assign the return value. */

@@ -124,7 +124,7 @@ namespace Legacy
             READWRITE(hashLastBlock);
             READWRITE(nLastBlockTime);
             READWRITE(nStakeRate);
-        )
+      )
 
 
         /** SetNull

@@ -78,8 +78,8 @@ namespace Legacy
 	/* Full object debug output */
 	std::string TxOut::ToString() const
 	{
-		if (IsEmpty()) return "TxOut(empty)";
-		if (scriptPubKey.size() < 6)
+		if(IsEmpty()) return "TxOut(empty)";
+		if(scriptPubKey.size() < 6)
 			return "TxOut(error)";
 		return debug::safe_printstr("TxOut(nValue=", FormatMoney(nValue), ", scriptPubKey=", scriptPubKey.ToString(), ")");
 	}

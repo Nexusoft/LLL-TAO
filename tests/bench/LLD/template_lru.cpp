@@ -11,7 +11,7 @@
 #include <unit/catch2/catch.hpp>
 
 
-TEST_CASE( "Template LRU Benchmarks", "[LLD]" )
+TEST_CASE( "Template LRU Benchmarks", "[LLD]")
 {
     debug::log(0, "===== Begin Template LRU Benchmarks =====");
 

@@ -139,7 +139,7 @@ namespace LLP
                 fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 
             /* Catch failure if socket couldn't be initialized. */
-            if (fd == INVALID_SOCKET)
+            if(fd == INVALID_SOCKET)
                 return false;
 
             nFile = fd;
@@ -201,12 +201,12 @@ namespace LLP
         }
 
         /* Handle final socket checks if connection established with no errors. */
-        if (fConnected)
+        if(fConnected)
         {
             /* We would expect to get WSAEWOULDBLOCK/WSAEINPROGRESS here in the normal case of attempting a connection. */
             nError = WSAGetLastError();
 
-            if (nError == WSAEWOULDBLOCK || nError == WSAEALREADY || nError == WSAEINPROGRESS)
+            if(nError == WSAEWOULDBLOCK || nError == WSAEALREADY || nError == WSAEINPROGRESS)
             {
                 struct timeval timeout;
                 timeout.tv_sec  = nTimeout / 1000;
@@ -223,7 +223,7 @@ namespace LLP
                 int nRet = select(nFile + 1, nullptr, &fdset, nullptr, &timeout);
 
                 /* If the connection attempt timed out with select. */
-                if (nRet == 0)
+                if(nRet == 0)
                 {
                     debug::log(2, FUNCTION, "Connection timeout ", addrDest.ToString());
                     closesocket(nFile);
@@ -232,7 +232,7 @@ namespace LLP
                 }
 
                 /* If the select failed. */
-                else if (nRet == SOCKET_ERROR)
+                else if(nRet == SOCKET_ERROR)
                 {
                     debug::log(3, FUNCTION, "Select failed ", addrDest.ToString(), " (",  WSAGetLastError(), ")");
                     closesocket(nFile);
@@ -243,9 +243,9 @@ namespace LLP
                 /* Get socket options. TODO: Remove preprocessors for cross platform sockets. */
                 socklen_t nRetSize = sizeof(nRet);
     #ifdef WIN32
-                if (getsockopt(nFile, SOL_SOCKET, SO_ERROR, (char*)(&nRet), &nRetSize) == SOCKET_ERROR)
+                if(getsockopt(nFile, SOL_SOCKET, SO_ERROR, (char*)(&nRet), &nRetSize) == SOCKET_ERROR)
     #else
-                if (getsockopt(nFile, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
+                if(getsockopt(nFile, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
                     debug::log(3, FUNCTION, "Get options failed ", addrDest.ToString(), " (", WSAGetLastError(), ")");
@@ -255,7 +255,7 @@ namespace LLP
                 }
 
                 /* If there are no socket options set. */
-                if (nRet != 0)
+                if(nRet != 0)
                 {
                     debug::log(3, FUNCTION, "Failed after select ", addrDest.ToString(), " (", nRet, ")");
 
@@ -264,7 +264,7 @@ namespace LLP
                     return false;
                 }
             }
-            else if (nError != WSAEISCONN)
+            else if(nError != WSAEISCONN)
             {
                 debug::log(3, FUNCTION, "Connect failed ", addrDest.ToString(), " (", nError, ")");
 
@@ -321,7 +321,7 @@ namespace LLP
         nRead = static_cast<int32_t>(recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT));
     #endif
 
-        if (nRead < 0)
+        if(nRead < 0)
         {
             nError = WSAGetLastError();
             debug::log(2, FUNCTION, "read failed ", addr.ToString(), " (", nError, " ", strerror(nError), ")");
@@ -345,7 +345,7 @@ namespace LLP
         nRead = static_cast<int32_t>(recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT));
     #endif
 
-        if (nRead < 0)
+        if(nRead < 0)
         {
             nError = WSAGetLastError();
             debug::log(2, FUNCTION, "read failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
@@ -499,7 +499,7 @@ namespace LLP
     int Socket::error_code() const
     {
         /* Check for errors from reads or writes. */
-        if (nError == WSAEWOULDBLOCK ||
+        if(nError == WSAEWOULDBLOCK ||
             nError == WSAEMSGSIZE ||
             nError == WSAEINTR ||
             nError == WSAEINPROGRESS)

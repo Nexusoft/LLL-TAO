@@ -18,7 +18,7 @@ def call_api(label, function):
     print "{} ...".format(label).ljust(width),
     json_data = function()
 
-    if (json_data.has_key("error")):
+    if(json_data.has_key("error")):
         error = json_data["error"]
         api_or_sdk = "SDK" if error.has_key("sdk-error") else "API"
         msg = error["message"]
@@ -27,12 +27,12 @@ def call_api(label, function):
         error = None
         print "succeeded"
     #endif
-    if (detail): print "  {}".format(json_data)
+    if(detail): print "  {}".format(json_data)
     return(json_data["result"] if error == None else None)
 #enddef
 
 def print_transactions(j):
-    if (j == None): return
+    if(j == None): return
     for tx in j: print "  tx {}".format(tx["hash"])
 #enddef
 
@@ -55,9 +55,9 @@ j = call_api("Create user account sdk-test-user1", user1.nexus_accounts_create)
 j = call_api("Create user account sdk-test-user2", user2.nexus_accounts_create)
 
 j = call_api("Login user sdk-test-user1", user1.nexus_accounts_login)
-if (j): print "  genesis {}".format(j["genesis"])
+if(j): print "  genesis {}".format(j["genesis"])
 j = call_api("Login user sdk-test-user2", user2.nexus_accounts_login)
-if (j): print "  genesis {}".format(j["genesis"])
+if(j): print "  genesis {}".format(j["genesis"])
 
 j = call_api("Transactions for sdk-test-user1",
     user1.nexus_accounts_transactions)
@@ -73,7 +73,7 @@ print "Create 10 supply-chain items for sdk-test-user1 ...",
 address = []
 for i in range(10):
     j = user1.nexus_supply_createitem("data" + str(i))
-    if (j.has_key("error")):
+    if(j.has_key("error")):
         print "failed"
         exit(1)
     #endif
@@ -98,7 +98,7 @@ print "Move ownership for addresses with data6 - data9 stored ...",
 for a in address:
     j = user1.nexus_supply_getitem(a)
     value = user1.nexus_supply_getitem(a)["result"]["state"]
-    if (value in ["data6", "data7", "data8", "data9"]):
+    if(value in ["data6", "data7", "data8", "data9"]):
         user1.nexus_supply_transfer(a, user2.genesis_id)
     #endif        
 #endfor

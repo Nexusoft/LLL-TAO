@@ -154,7 +154,7 @@ namespace LLP
         debug::log(1, NODE, "Connecting to ", connectStr);
 
         // Connect
-        if (Attempt(addrConnect))
+        if(Attempt(addrConnect))
         {
             debug::log(1, NODE, "Connected to ", connectStr);
 

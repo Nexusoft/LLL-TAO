@@ -61,28 +61,28 @@ namespace TAO
                 return false;
 
             /* Check transaction for errors. */
-            if (!tx.CheckTransaction())
+            if(!tx.CheckTransaction())
                 return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " failed");
 
             /* Coinbase is only valid in a block, not as a loose transaction */
-            if (tx.IsCoinBase())
+            if(tx.IsCoinBase())
                 return debug::error(FUNCTION, "coinbase ", nTxHash.ToString().substr(0, 20), "as individual tx");
 
             /* Nexus: coinstake is also only valid in a block, not as a loose transaction */
-            if (tx.IsCoinStake())
+            if(tx.IsCoinStake())
                 return debug::error(FUNCTION, "coinstake ", nTxHash.ToString().substr(0, 20), " as individual tx");
 
             /* To help v0.1.5 clients who would see it as a negative number */
-            if ((uint64_t) tx.nLockTime > std::numeric_limits<int32_t>::max())
+            if((uint64_t) tx.nLockTime > std::numeric_limits<int32_t>::max())
                 return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " not accepting nLockTime beyond 2038 yet");
 
             /* Rather not work on nonstandard transactions (unless -testnet) */
-            if (!config::fTestNet.load() && !tx.IsStandard())
+            if(!config::fTestNet.load() && !tx.IsStandard())
                 return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " nonstandard transaction type");
 
             /* Check previous inputs. */
-            for (auto vin : tx.vin)
-                if (mapInputs.count(vin.prevout) && mapInputs[vin.prevout] != tx.GetHash())
+            for(auto vin : tx.vin)
+                if(mapInputs.count(vin.prevout) && mapInputs[vin.prevout] != tx.GetHash())
                     return debug::error(FUNCTION,
                         "inputs ", mapInputs[vin.prevout].ToString().substr(0, 10),
                         " already spent ", nTxHash.ToString().substr(0, 10));
@@ -103,11 +103,11 @@ namespace TAO
             uint32_t nSize = ::GetSerializeSize(tx, SER_NETWORK, LLP::PROTOCOL_VERSION);
 
             /* Don't accept if the fees are too low. */
-            if (nFees < tx.GetMinFee(1000, false))
+            if(nFees < tx.GetMinFee(1000, false))
                 return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " not enough fees");
 
             /* Rate limit free transactions to prevent penny flooding attacks. */
-            if (nFees < Legacy::MIN_RELAY_TX_FEE)
+            if(nFees < Legacy::MIN_RELAY_TX_FEE)
             {
                 /* Static values to keep track of last tx's. */
                 static double dFreeCount;
@@ -122,7 +122,7 @@ namespace TAO
 
                 // -limitfreerelay unit is thousand-bytes-per-minute
                 // At default rate it would take over a month to fill 1GB
-                if (dFreeCount > config::GetArg("-limitfreerelay", 15) * 10 * 1000)
+                if(dFreeCount > config::GetArg("-limitfreerelay", 15) * 10 * 1000)
                     return debug::error(FUNCTION, "free transaction rejected by rate limiter");
 
                 debug::log(2, FUNCTION, "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount + nSize);
@@ -136,7 +136,7 @@ namespace TAO
 
             /* Set the inputs to be claimed. */
             uint32_t s = tx.vin.size();
-            for (uint32_t i = 0; i < s; ++i)
+            for(uint32_t i = 0; i < s; ++i)
                 mapInputs[tx.vin[i].prevout] = nTxHash;
 
             /* Add to the legacy map. */
@@ -184,7 +184,7 @@ namespace TAO
 
                 /* Erase the claimed inputs */
                 uint32_t s = tx.vin.size();
-                for (uint32_t i = 0; i < s; ++i)
+                for(uint32_t i = 0; i < s; ++i)
                     mapInputs.erase(tx.vin[i].prevout);
 
                 mapLegacy.erase(hashTx);

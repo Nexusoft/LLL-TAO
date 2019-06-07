@@ -76,10 +76,10 @@ namespace TAO
             /* Get trust account. Any trust account that has completed Genesis will be indexed. */
             TAO::Register::Object trustAccount;
 
-            if (LLD::regDB->HasTrust(user->Genesis()))
+            if(LLD::regDB->HasTrust(user->Genesis()))
             {
                 /* Trust account is indexed */
-                if (!LLD::regDB->ReadTrust(user->Genesis(), trustAccount))
+                if(!LLD::regDB->ReadTrust(user->Genesis(), trustAccount))
                    throw APIException(-24, "Unable to retrieve trust account.");
 
                 if(!trustAccount.Parse())
@@ -97,7 +97,7 @@ namespace TAO
                     throw APIException(-24, "Unable to parse trust account.");
 
                 /* Check the object standard. */
-                if( trustAccount.Standard() != TAO::Register::OBJECTS::TRUST)
+                if(trustAccount.Standard() != TAO::Register::OBJECTS::TRUST)
                     throw APIException(-24, "Register is not a trust account");
 
                 /* Check the account is a NXS account */
@@ -121,7 +121,7 @@ namespace TAO
 
                 tx[0] << uint8_t(TAO::Operation::OP::STAKE) << nAddStake;
             }
-            else if (nAmount < nStakePrev)
+            else if(nAmount < nStakePrev)
             {
                 /* Removing from stake to balance */
                 uint64_t nRemoveStake = nStakePrev - nAmount;

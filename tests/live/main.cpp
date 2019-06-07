@@ -263,7 +263,7 @@ int main(int argc, char** argv)
 
 
     /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
-    if (!LLP::NetworkStartup())
+    if(!LLP::NetworkStartup())
     {
         printf("ERROR: Failed initializing network resources");
 

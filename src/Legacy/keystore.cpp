@@ -20,7 +20,7 @@ namespace Legacy
     bool KeyStore::GetPubKey(const NexusAddress& address, std::vector<uint8_t>& vchPubKeyOut) const
     {
         LLC::ECKey key;
-        if (!GetKey(address, key))
+        if(!GetKey(address, key))
             return false;
         vchPubKeyOut = key.GetPubKey();
         return true;
@@ -31,7 +31,7 @@ namespace Legacy
     bool KeyStore::GetSecret(const NexusAddress& address, LLC::CSecret& vchSecret, bool& fCompressed) const
     {
         LLC::ECKey key;
-        if (!GetKey(address, key))
+        if(!GetKey(address, key))
             return false;
 
         vchSecret = key.GetSecret(fCompressed);

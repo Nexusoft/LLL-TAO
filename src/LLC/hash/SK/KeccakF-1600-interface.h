@@ -22,7 +22,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 /** Function called at least once before any use of the other KeccakF1600_*
   * functions, possibly to initialize global variables.
   */
-void KeccakF1600_Initialize( void );
+void KeccakF1600_Initialize( void);
 
 /** Function to initialize the state to the logical value 0^1600.
   * @param  state   Pointer to the state to initialize.

@@ -31,7 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/create.h>
-#include <TAO/Register/include/utils.h>
+#include <TAO/Register/include/names.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -121,7 +121,7 @@ namespace TAO
             uint256_t hashNameAddress;
 
             /* Obtain the name register address for the genesis/name combination */
-            TAO::Register::GetNameRegisterAddress(hashGenesis, strName, hashNameAddress);
+            TAO::Register::GetNameAddress(hashGenesis, strName, hashNameAddress);
 
             /* Check to see whether the name already exists  */
             TAO::Register::Object object;
@@ -194,7 +194,7 @@ namespace TAO
             uint256_t hashNameAddress;
 
             /* Obtain a new name register address for the updated genesis/name combination */
-            TAO::Register::GetNameRegisterAddress(hashGenesis, strName, hashNameAddress);
+            TAO::Register::GetNameAddress(hashGenesis, strName, hashNameAddress);
 
             /* Check to see whether the name already. */
             TAO::Register::Object object;
@@ -264,7 +264,7 @@ namespace TAO
             /* Read the Name Object */
             TAO::Register::Object object;
 
-            if (!TAO::Register::GetNameRegister(nNamespaceHash, strName, object))
+            if(!TAO::Register::GetNameRegister(nNamespaceHash, strName, object))
             {
                 if(strNamespace.empty())
                     throw APIException(-24, debug::safe_printstr( "Unknown name: ", strName));
@@ -303,7 +303,7 @@ namespace TAO
             uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
-            if( nStandard == TAO::Register::OBJECTS::TOKEN)
+            if(nStandard == TAO::Register::OBJECTS::TOKEN)
             {
                 nDigits = object.get<uint64_t>("digits");
             }
@@ -320,7 +320,7 @@ namespace TAO
                 uint256_t nIdentifier = object.get<uint256_t>("token");
 
                 /* Edge case for NXS token which has identifier 0, so no look up needed */
-                if( nIdentifier == 0)
+                if(nIdentifier == 0)
                     nDigits = TAO::Ledger::NXS_DIGITS;
                 else
                 {
@@ -338,7 +338,7 @@ namespace TAO
             }
             else
             {
-                throw APIException(-27, "Unknown token / account." );
+                throw APIException(-27, "Unknown token / account.");
             }
 
             return nDigits;
@@ -365,7 +365,7 @@ namespace TAO
                 uint256_t nIdentifier = object.get<uint256_t>("token");
 
                 /* Edge case for NXS token which has identifier 0, so no look up needed */
-                if( nIdentifier == 0)
+                if(nIdentifier == 0)
                     strTokenName = "NXS";
                 else
                 {
@@ -384,7 +384,7 @@ namespace TAO
                 }
             }
             else
-                throw APIException(-27, "Object is not an account." );
+                throw APIException(-27, "Object is not an account.");
 
             return strTokenName;
         }
@@ -511,14 +511,14 @@ namespace TAO
                             bool fForceTransfer = false;
                             contract >> fForceTransfer;
 
-                            /* If we have transferred to a token that we own then we ignore the transfer as we still 
+                            /* If we have transferred to a token that we own then we ignore the transfer as we still
                                technically own the register */
-                            if( fForceTransfer )
+                            if(fForceTransfer)
                             {
                                 TAO::Register::Object newOwner;
                                 if(!LLD::regDB->ReadState(hashTransfer, newOwner))
                                     throw APIException(-24, "Transfer recipient object not found");
-                                
+
                                 if(newOwner.hashOwner == hashGenesis)
                                     break;
                             }
@@ -572,11 +572,11 @@ namespace TAO
             /* If the owner of the object is not the caller, then check to see whether the owner is another object owned by
                the caller.  This would be the case for a tokenized asset */
             uint256_t hashOwnerOwner = 0;
-            if( hashCaller != hashOwner )
+            if(hashCaller != hashOwner)
             {
                 TAO::Register::Object owner;
                 if(LLD::regDB->ReadState(hashOwner, owner, TAO::Ledger::FLAGS::MEMPOOL))
-                   hashOwnerOwner = owner.hashOwner; 
+                   hashOwnerOwner = owner.hashOwner;
             }
 
             /* If the caller is the object owner then attempt to find a Name record to look up the Name of this object */

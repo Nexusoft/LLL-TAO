@@ -45,7 +45,7 @@ namespace Legacy
     /* Copy constructor */
     Crypter::Crypter(const Crypter& c)
     {
-        if (c.IsKeySet())
+        if(c.IsKeySet())
         {
             mlock(&chKey[0], sizeof(chKey));
             mlock(&chIV[0], sizeof(chIV));
@@ -66,12 +66,12 @@ namespace Legacy
     /* Copy assignment operator */
     Crypter& Crypter::operator= (const Crypter& rhs)
     {
-        if (this != &rhs)
+        if(this != &rhs)
         {
-            if (IsKeySet())
+            if(IsKeySet())
                 CleanKey();
 
-            if (rhs.IsKeySet())
+            if(rhs.IsKeySet())
             {
                 mlock(&chKey[0], sizeof(chKey));
                 mlock(&chIV[0], sizeof(chIV));
@@ -100,7 +100,7 @@ namespace Legacy
     /* Assign new encryption key context (chKey and chIV). */
     bool Crypter::SetKey(const CKeyingMaterial& chNewKey, const std::vector<uint8_t>& chNewIV)
     {
-        if (chNewKey.size() != WALLET_CRYPTO_KEY_SIZE || chNewIV.size() != WALLET_CRYPTO_KEY_SIZE)
+        if(chNewKey.size() != WALLET_CRYPTO_KEY_SIZE || chNewIV.size() != WALLET_CRYPTO_KEY_SIZE)
             return false;
 
         /* Try to keep the keydata out of swap
@@ -125,7 +125,7 @@ namespace Legacy
     /* Generate new encryption key context (chKey and chIV) from a passphrase. */
     bool Crypter::SetKeyFromPassphrase(const SecureString& strKeyData, const std::vector<uint8_t>& chSalt, const uint32_t nRounds, const uint32_t nDerivationMethod)
     {
-        if (nRounds < 1 || chSalt.size() != WALLET_CRYPTO_SALT_SIZE)
+        if(nRounds < 1 || chSalt.size() != WALLET_CRYPTO_SALT_SIZE)
             return false;
 
         /* Try to keep the keydata out of swap
@@ -137,11 +137,11 @@ namespace Legacy
         mlock(&chIV[0], sizeof chIV);
 
         int i = 0;
-        if (nDerivationMethod == 0)
+        if(nDerivationMethod == 0)
             i = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), &chSalt[0],
                             (uint8_t *)&strKeyData[0], strKeyData.size(), nRounds, chKey, chIV);
 
-        if (i != (int) 32)
+        if(i != (int) 32)
         {
             memset(&chKey, 0, sizeof chKey);
             memset(&chIV, 0, sizeof chIV);
@@ -169,7 +169,7 @@ namespace Legacy
     /* Encrypt a plain text value using the current encryption key settings. */
     bool Crypter::Encrypt(const CKeyingMaterial& vchPlaintext, std::vector<uint8_t>& vchCiphertext)
     {
-        if (!IsKeySet())
+        if(!IsKeySet())
             return false;
 
         /* max ciphertext len for a n bytes of plaintext is (n + AES_BLOCK_SIZE - 1) bytes */
@@ -178,18 +178,18 @@ namespace Legacy
         vchCiphertext = std::vector<uint8_t> (nCLen);
 
         EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-        if (nullptr == ctx)
+        if(nullptr == ctx)
             return false;
 
         bool fOk = true;
 
         EVP_CIPHER_CTX_init(ctx);
-        if (fOk) fOk = EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, chKey, chIV);
-        if (fOk) fOk = EVP_EncryptUpdate(ctx, &vchCiphertext[0], &nCLen, &vchPlaintext[0], nLen);
-        if (fOk) fOk = EVP_EncryptFinal_ex(ctx, (&vchCiphertext[0])+nCLen, &nFLen);
+        if(fOk) fOk = EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, chKey, chIV);
+        if(fOk) fOk = EVP_EncryptUpdate(ctx, &vchCiphertext[0], &nCLen, &vchPlaintext[0], nLen);
+        if(fOk) fOk = EVP_EncryptFinal_ex(ctx, (&vchCiphertext[0])+nCLen, &nFLen);
         EVP_CIPHER_CTX_free(ctx);
 
-        if (!fOk) return false;
+        if(!fOk) return false;
 
         vchCiphertext.resize(nCLen + nFLen);
         return true;
@@ -199,7 +199,7 @@ namespace Legacy
     /* Decrypt an encrypted text value using the current encryption key settings. */
     bool Crypter::Decrypt(const std::vector<uint8_t>& vchCiphertext, CKeyingMaterial& vchPlaintext)
     {
-        if (!IsKeySet())
+        if(!IsKeySet())
             return false;
 
         /* Plain text will always be equal to or lesser than length of ciphertext */
@@ -209,18 +209,18 @@ namespace Legacy
         vchPlaintext = CKeyingMaterial(nPLen);
 
         EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-        if (nullptr == ctx)
+        if(nullptr == ctx)
             return false;
 
         bool fOk = true;
 
         EVP_CIPHER_CTX_init(ctx);
-        if (fOk) fOk = EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, chKey, chIV);
-        if (fOk) fOk = EVP_DecryptUpdate(ctx, &vchPlaintext[0], &nPLen, &vchCiphertext[0], nLen);
-        if (fOk) fOk = EVP_DecryptFinal_ex(ctx, (&vchPlaintext[0])+nPLen, &nFLen);
+        if(fOk) fOk = EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr, chKey, chIV);
+        if(fOk) fOk = EVP_DecryptUpdate(ctx, &vchPlaintext[0], &nPLen, &vchCiphertext[0], nLen);
+        if(fOk) fOk = EVP_DecryptFinal_ex(ctx, (&vchPlaintext[0])+nPLen, &nFLen);
         EVP_CIPHER_CTX_free(ctx);
 
-        if (!fOk) return false;
+        if(!fOk) return false;
 
         vchPlaintext.resize(nPLen + nFLen);
         return true;

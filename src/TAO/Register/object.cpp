@@ -64,7 +64,7 @@ namespace TAO
 
             /* Search object register for key types. */
             if(mapData.size() == 2
-            && Check("name", TYPES::STRING, false )
+            && Check("name", TYPES::STRING, false)
             && CheckName("address")) /* Name registers can store different types in the address so don't check the field type */
             {
                 /* If it only contains one field called address then it must be a name */

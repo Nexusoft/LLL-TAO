@@ -43,7 +43,7 @@ namespace TAO
             uint64_t nHashRate = 0;
 
             /* Check edge case where we are still at genesis */
-            if( TAO::Ledger::ChainState::nBestHeight.load() && TAO::Ledger::ChainState::stateBest.load() != TAO::Ledger::ChainState::stateGenesis)
+            if(TAO::Ledger::ChainState::nBestHeight.load() && TAO::Ledger::ChainState::stateBest.load() != TAO::Ledger::ChainState::stateGenesis)
             {
                 /* Declare variables for working out prime difficulty */
                 double nPrimeAverageDifficulty = 0.0;
@@ -71,7 +71,7 @@ namespace TAO
 
                 }
                 /* If we have at least 1 prime block, work out the averages*/
-                if( nTotal > 0)
+                if(nTotal > 0)
                 {
                     nPrimeAverageDifficulty /= nTotal;
                     nPrimeAverageTime /= nTotal;

@@ -56,14 +56,14 @@ namespace TAO
             /* Check that the height parameter is numeric*/
             std::string strHeight = params["height"].get<std::string>();
 
-            if( !IsAllDigit(strHeight))
+            if(!IsAllDigit(strHeight))
                 throw APIException(-25, "Invalid height parameter");
 
             /* Convert the incoming height string to an int*/
             uint32_t nHeight = std::stoul(strHeight);
 
             /* Check that the requested height is within our chain range*/
-            if (nHeight > TAO::Ledger::ChainState::nBestHeight.load())
+            if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
                 throw APIException(-25, "Block number out of range.");
 
             TAO::Ledger::BlockState blockState;
@@ -92,20 +92,20 @@ namespace TAO
             if(params.find("height") != params.end())
             {
                 /* Check that the node is configured to index blocks by height */
-                if( !config::GetBoolArg("-indexheight"))
+                if(!config::GetBoolArg("-indexheight"))
                     throw APIException(-25, "getblock by height requires the daemon to be started with the -indexheight flag.");
 
                 /* Check that the height parameter is numeric*/
                 std::string strHeight = params["height"].get<std::string>();
 
-                if( !IsAllDigit(strHeight))
+                if(!IsAllDigit(strHeight))
                     throw APIException(-25, "Invalid height parameter");
 
                 /* Convert the incoming height string to an int*/
                 uint32_t nHeight = std::stoul(strHeight);
 
                 /* Check that the requested height is within our chain range*/
-                if (nHeight > TAO::Ledger::ChainState::nBestHeight.load())
+                if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
                     throw APIException(-25, "Block number out of range.");
 
                 /* Read the block state from the the ledger DB using the height index */
@@ -129,13 +129,13 @@ namespace TAO
 
             /* Default to verbosity 1 which includes only the hash */
             uint32_t nVerbose = 1;
-            if( strVerbose == "none")
+            if(strVerbose == "none")
                 nVerbose = 0;
-            else if( strVerbose == "default")
+            else if(strVerbose == "default")
                 nVerbose = 1;
-            else if( strVerbose == "summary")
+            else if(strVerbose == "summary")
                 nVerbose = 2;
-            else if( strVerbose == "detail")
+            else if(strVerbose == "detail")
                 nVerbose = 3;
 
             json::json ret = TAO::API::BlockToJSON(blockState, nVerbose);
@@ -168,20 +168,20 @@ namespace TAO
             if(params.find("height") != params.end())
             {
                 /* Check that the node is configured to index blocks by height */
-                if( !config::GetBoolArg("-indexheight"))
+                if(!config::GetBoolArg("-indexheight"))
                     throw APIException(-25, "getblock by height requires the daemon to be started with the -indexheight flag.");
 
                 /* Check that the height parameter is numeric*/
                 std::string strHeight = params["height"].get<std::string>();
 
-                if( !IsAllDigit(strHeight))
+                if(!IsAllDigit(strHeight))
                     throw APIException(-25, "Invalid height parameter");
 
                 /* Convert the incoming height string to an int*/
                 uint32_t nHeight = std::stoul(strHeight);
 
                 /* Check that the requested height is within our chain range*/
-                if (nHeight > TAO::Ledger::ChainState::nBestHeight.load())
+                if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
                     throw APIException(-25, "Block number out of range.");
 
                 /* Read the block state from the the ledger DB using the height index */
@@ -206,13 +206,13 @@ namespace TAO
 
             /* Default to verbosity 1 which includes only the hash */
             uint32_t nVerbose = 1;
-            if( strVerbose == "none")
+            if(strVerbose == "none")
                 nVerbose = 0;
-            else if( strVerbose == "default")
+            else if(strVerbose == "default")
                 nVerbose = 1;
-            else if( strVerbose == "summary")
+            else if(strVerbose == "summary")
                 nVerbose = 2;
-            else if( strVerbose == "detail")
+            else if(strVerbose == "detail")
                 nVerbose = 3;
 
             /* Declare the JSON array to return */

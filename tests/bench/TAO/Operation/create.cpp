@@ -13,7 +13,7 @@
 
 
 
-TEST_CASE( "OP::CREATE  Benchmarks", "[operation]" )
+TEST_CASE( "OP::CREATE  Benchmarks", "[operation]")
 {
     using namespace TAO::Operation;
 

@@ -33,7 +33,7 @@ namespace Legacy
     /* Returns a string in integer value. */
     std::string ValueString(const std::vector<uint8_t>& vch)
     {
-        if (vch.size() <= 4)
+        if(vch.size() <= 4)
             return debug::safe_printstr(LLC::CBigNum(vch).getint32());
         else
             return HexStr(vch);
@@ -46,7 +46,7 @@ namespace Legacy
         std::string str;
         for(const auto& vch : vStack)
         {
-            if (!str.empty())
+            if(!str.empty())
                 str += " ";
             str += ValueString(vch);
         }
@@ -57,7 +57,7 @@ namespace Legacy
     /* Push a 64 bit signed int onto the stack. */
     Script& Script::push_int64(int64_t n)
     {
-        if (n == -1 || (n >= 1 && n <= 16))
+        if(n == -1 || (n >= 1 && n <= 16))
         {
             push_back(n + (OP_1 - 1));
         }
@@ -72,7 +72,7 @@ namespace Legacy
     /* Push a 64 bit unsigned int onto the stack. */
     Script& Script::push_uint64(uint64_t n)
     {
-        if (n >= 1 && n <= 16)
+        if(n >= 1 && n <= 16)
         {
             push_back(n + (OP_1 - 1));
         }
@@ -103,35 +103,35 @@ namespace Legacy
     bool Script::GetOp2(std::vector<uint8_t>::const_iterator& pc, opcodetype& opcodeRet, std::vector<uint8_t>* pvchRet) const
     {
         opcodeRet = OP_INVALIDOPCODE;
-        if (pvchRet)
+        if(pvchRet)
             pvchRet->clear();
-        if (pc >= end())
+        if(pc >= end())
             return false;
 
         // Read instruction
-        if (end() - pc < 1)
+        if(end() - pc < 1)
             return false;
 
         uint32_t opcode = *pc++;
 
         // Immediate operand
-        if (opcode <= OP_PUSHDATA4)
+        if(opcode <= OP_PUSHDATA4)
         {
             uint32_t nSize = 0;
-            if (opcode < OP_PUSHDATA1)
+            if(opcode < OP_PUSHDATA1)
             {
                 nSize = opcode;
             }
-            else if (opcode == OP_PUSHDATA1)
+            else if(opcode == OP_PUSHDATA1)
             {
-                if (end() - pc < 1)
+                if(end() - pc < 1)
                     return false;
 
                 nSize = *pc++;
             }
-            else if (opcode == OP_PUSHDATA2)
+            else if(opcode == OP_PUSHDATA2)
             {
-                if (end() - pc < 2)
+                if(end() - pc < 2)
                     return false;
 
                 nSize = 0;
@@ -139,18 +139,18 @@ namespace Legacy
                 std::copy((uint8_t *)&pc[0], (uint8_t *)&pc[0] + 2, (uint8_t *)&nSize);
                 pc += 2;
             }
-            else if (opcode == OP_PUSHDATA4)
+            else if(opcode == OP_PUSHDATA4)
             {
-                if (end() - pc < 4)
+                if(end() - pc < 4)
                     return false;
 
                 //memcpy(&nSize, &pc[0], 4);
                 std::copy((uint8_t *)&pc[0], (uint8_t *)&pc[0] + 4, (uint8_t *)&nSize);
                 pc += 4;
             }
-            if (end() - pc < 0 || end() - pc < nSize)
+            if(end() - pc < 0 || end() - pc < nSize)
                 return false;
-            if (pvchRet)
+            if(pvchRet)
                 pvchRet->assign(pc, pc + nSize);
             pc += nSize;
         }
@@ -163,7 +163,7 @@ namespace Legacy
     /* Decodes the operation code. */
     int32_t Script::DecodeOP_N(opcodetype opcode) const
     {
-        if (opcode == OP_0)
+        if(opcode == OP_0)
             return 0;
         assert(opcode >= OP_1 && opcode <= OP_16);
         return (int)opcode - (int)(OP_1 - 1);
@@ -174,7 +174,7 @@ namespace Legacy
     opcodetype Script::EncodeOP_N(int n)
     {
         assert(n >= 0 && n <= 16);
-        if (n == 0)
+        if(n == 0)
             return OP_0;
         return (opcodetype)(OP_1+n-1);
     }
@@ -184,20 +184,20 @@ namespace Legacy
     int Script::FindAndDelete(const Script& b)
     {
         int nFound = 0;
-        if (b.empty())
+        if(b.empty())
             return nFound;
         std::vector<uint8_t>::const_iterator pc = begin();
         opcodetype opcode;
         do
         {
-            //while (end() - pc >= (long)b.size() && memcmp(&pc[0], &b[0], b.size()) == 0)
-            while (end() - pc >= (long)b.size() && memory::compare((uint8_t *)&pc[0], (uint8_t *)&b[0], b.size()) == 0)
+            //while(end() - pc >= (long)b.size() && memcmp(&pc[0], &b[0], b.size()) == 0)
+            while(end() - pc >= (long)b.size() && memory::compare((uint8_t *)&pc[0], (uint8_t *)&b[0], b.size()) == 0)
             {
                 erase(pc, pc + b.size());
                 ++nFound;
             }
         }
-        while (GetOp(pc, opcode));
+        while(GetOp(pc, opcode));
         return nFound;
     }
 
@@ -207,8 +207,8 @@ namespace Legacy
     {
         int nFound = 0;
         opcodetype opcode;
-        for (std::vector<uint8_t>::const_iterator pc = begin(); pc != end() && GetOp(pc, opcode);)
-            if (opcode == op)
+        for(std::vector<uint8_t>::const_iterator pc = begin(); pc != end() && GetOp(pc, opcode);)
+            if(opcode == op)
                 ++nFound;
         return nFound;
     }
@@ -220,16 +220,16 @@ namespace Legacy
         uint32_t n = 0;
         std::vector<uint8_t>::const_iterator pc = begin();
         opcodetype lastOpcode = OP_INVALIDOPCODE;
-        while (pc < end())
+        while(pc < end())
         {
             opcodetype opcode;
-            if (!GetOp(pc, opcode))
+            if(!GetOp(pc, opcode))
                 break;
-            if (opcode == OP_CHECKSIG || opcode == OP_CHECKSIGVERIFY)
+            if(opcode == OP_CHECKSIG || opcode == OP_CHECKSIGVERIFY)
                 n++;
-            else if (opcode == OP_CHECKMULTISIG || opcode == OP_CHECKMULTISIGVERIFY)
+            else if(opcode == OP_CHECKMULTISIG || opcode == OP_CHECKMULTISIGVERIFY)
             {
-                if (fAccurate && lastOpcode >= OP_1 && lastOpcode <= OP_16)
+                if(fAccurate && lastOpcode >= OP_1 && lastOpcode <= OP_16)
                     n += DecodeOP_N(lastOpcode);
                 else
                     n += 20;
@@ -243,7 +243,7 @@ namespace Legacy
     /* Get the total number of signature operations */
     uint32_t Script::GetSigOpCount(const Script& scriptSig) const
     {
-        if (!IsPayToScriptHash())
+        if(!IsPayToScriptHash())
             return GetSigOpCount(true);
 
         // This is a pay-to-script-hash scriptPubKey;
@@ -251,12 +251,12 @@ namespace Legacy
         // pushes onto the stack:
         std::vector<uint8_t>::const_iterator pc = scriptSig.begin();
         vector<uint8_t> data;
-        while (pc < scriptSig.end())
+        while(pc < scriptSig.end())
         {
             opcodetype opcode;
-            if (!scriptSig.GetOp(pc, opcode, data))
+            if(!scriptSig.GetOp(pc, opcode, data))
                 return 0;
-            if (opcode > OP_16)
+            if(opcode > OP_16)
                 return 0;
         }
 
@@ -281,12 +281,12 @@ namespace Legacy
     bool Script::IsPushOnly() const
     {
         std::vector<uint8_t>::const_iterator pc = begin();
-        while (pc < end())
+        while(pc < end())
         {
             opcodetype opcode;
-            if (!GetOp(pc, opcode))
+            if(!GetOp(pc, opcode))
                 return false;
-            if (opcode > OP_16)
+            if(opcode > OP_16)
                 return false;
         }
         return true;
@@ -297,7 +297,7 @@ namespace Legacy
     void Script::SetNexusAddress(const NexusAddress& address)
     {
         this->clear();
-        if (address.IsScript())
+        if(address.IsScript())
             *this << OP_HASH256 << address.GetHash256() << OP_EQUAL;
         else
             *this << OP_DUP << OP_HASH256 << address.GetHash256() << OP_EQUALVERIFY << OP_CHECKSIG;
@@ -347,16 +347,16 @@ namespace Legacy
         opcodetype opcode;
         std::vector<uint8_t> vch;
         std::vector<uint8_t>::const_iterator pc = begin();
-        while (pc < end())
+        while(pc < end())
         {
-            if (!str.empty())
+            if(!str.empty())
                 str += " ";
-            if (!GetOp(pc, opcode, vch))
+            if(!GetOp(pc, opcode, vch))
             {
                 str += "[error]";
                 return str;
             }
-            if (0 <= opcode && opcode <= OP_PUSHDATA4)
+            if(0 <= opcode && opcode <= OP_PUSHDATA4)
                 str += fShort? ValueString(vch).substr(0, 10) : ValueString(vch);
             else
                 str += GetOpName(opcode);

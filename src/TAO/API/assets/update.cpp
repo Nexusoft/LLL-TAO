@@ -55,7 +55,7 @@ namespace TAO
                 throw APIException(-25, "Invalid session ID");
 
             /* Check that the account is unlocked for creating transactions */
-            if( !users->CanTransact())
+            if(!users->CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
 
 
@@ -109,7 +109,7 @@ namespace TAO
             if(strFormat == "JSON")
             {
                 /* Iterate through each field definition */
-                for (auto it = params.begin(); it != params.end(); ++it)
+                for(auto it = params.begin(); it != params.end(); ++it)
                 {
                     /* Skip any incoming parameters that are keywords used by this API method*/
                     if(it.key() == "pin"
@@ -136,7 +136,7 @@ namespace TAO
                             throw APIException(-25, debug::safe_printstr("Field not mutable in asset: ", strDataField));
 
                         /* Convert the incoming value to the correct type and write it into the asset object */
-                        if( nType == TAO::Register::TYPES::UINT8_T)
+                        if(nType == TAO::Register::TYPES::UINT8_T)
                             ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT8_T) << uint8_t(stol(strValue));
                         else if(nType == TAO::Register::TYPES::UINT16_T)
                             ssOperationStream << strDataField << uint8_t(TAO::Operation::OP::TYPES::UINT16_T) << uint16_t(stol(strValue));
@@ -154,7 +154,7 @@ namespace TAO
                         {
                             /* Check that the incoming value is not longer than the current value */
                             size_t nMaxLength = asset.Size(strDataField);
-                            if( strValue.length() > nMaxLength)
+                            if(strValue.length() > nMaxLength)
                                 throw APIException(-25, debug::safe_printstr("Value longer than maximum length: ", strDataField));
 
                             /* Ensure that the serialized value is padded out to the max length */
@@ -168,12 +168,12 @@ namespace TAO
                             std::vector<uint8_t> vchBytes = encoding::DecodeBase64(strValue.c_str(), &fInvalid);
 
 
-                            if (fInvalid)
+                            if(fInvalid)
                                 throw APIException(-5, "Malformed base64 encoding");
 
                             /* Check that the incoming value is not longer than the current value */
                             size_t nMaxLength = asset.Size(strDataField);
-                            if( vchBytes.size() > nMaxLength)
+                            if(vchBytes.size() > nMaxLength)
                                 throw APIException(-25, debug::safe_printstr("Value longer than maximum length: ", strDataField));
 
                             /* Ensure that the serialized value is padded out to the max length */

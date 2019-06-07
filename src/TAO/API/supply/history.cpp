@@ -110,7 +110,7 @@ namespace TAO
                             std::vector<uint8_t> vchData;
                             contract >> vchData;
 
-                            if( nType != TAO::Register::REGISTER::APPEND
+                            if(nType != TAO::Register::REGISTER::APPEND
                             && nType != TAO::Register::REGISTER::RAW
                             && nType != TAO::Register::REGISTER::OBJECT)
                             {
@@ -134,7 +134,7 @@ namespace TAO
                                     throw APIException(-24, "Failed to parse object register");
 
                                 /* Only include non standard object registers (assets) */
-                                if( state.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
+                                if(state.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
                                     throw APIException(-24, "Specified name/address is not an asset.");
                             }
 

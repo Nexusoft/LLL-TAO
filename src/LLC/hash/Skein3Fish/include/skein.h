@@ -90,7 +90,7 @@ typedef struct                               /* 1024-bit Skein hash context stru
     u08b_t  b[SKEIN1024_BLOCK_BYTES];        /* partial block buffer (8-byte aligned) */
     } Skein1024_Ctxt_t;
 
-/*   Skein APIs for (incremental) "straight hashing" */
+/*   Skein APIs for(incremental) "straight hashing" */
 int  Skein_256_Init  (Skein_256_Ctxt_t *ctx, size_t hashBitLen);
 int  Skein_512_Init  (Skein_512_Ctxt_t *ctx, size_t hashBitLen);
 int  Skein1024_Init  (Skein1024_Ctxt_t *ctx, size_t hashBitLen);
@@ -157,9 +157,9 @@ int  Skein1024_Output   (Skein1024_Ctxt_t *ctx, u08b_t * hashVal);
 #define SKEIN_T1_POS_FINAL      SKEIN_T1_BIT(127)       /* bit  127     : final block flag         */
 
 /* tweak word T[1]: flag bit definition(s) */
-#define SKEIN_T1_FLAG_FIRST     (((u64b_t)  1 ) << SKEIN_T1_POS_FIRST)
-#define SKEIN_T1_FLAG_FINAL     (((u64b_t)  1 ) << SKEIN_T1_POS_FINAL)
-#define SKEIN_T1_FLAG_BIT_PAD   (((u64b_t)  1 ) << SKEIN_T1_POS_BIT_PAD)
+#define SKEIN_T1_FLAG_FIRST     (((u64b_t)  1) << SKEIN_T1_POS_FIRST)
+#define SKEIN_T1_FLAG_FINAL     (((u64b_t)  1) << SKEIN_T1_POS_FINAL)
+#define SKEIN_T1_FLAG_BIT_PAD   (((u64b_t)  1) << SKEIN_T1_POS_BIT_PAD)
 
 /* tweak word T[1]: tree level bit field mask */
 #define SKEIN_T1_TREE_LVL_MASK  (((u64b_t)0x7F) << SKEIN_T1_POS_TREE_LVL)
@@ -212,9 +212,9 @@ int  Skein1024_Output   (Skein1024_Ctxt_t *ctx, u08b_t * hashVal);
 #define SKEIN_CFG_TREE_MAX_LEVEL_MSK  (((u64b_t) 0xFF) << SKEIN_CFG_TREE_MAX_LEVEL_POS)
 
 #define SKEIN_CFG_TREE_INFO(leaf,node,maxLvl)                   \
-    ( (((u64b_t)(leaf  )) << SKEIN_CFG_TREE_LEAF_SIZE_POS) |    \
-      (((u64b_t)(node  )) << SKEIN_CFG_TREE_NODE_SIZE_POS) |    \
-      (((u64b_t)(maxLvl)) << SKEIN_CFG_TREE_MAX_LEVEL_POS) )
+    ( (((u64b_t)(leaf)) << SKEIN_CFG_TREE_LEAF_SIZE_POS) |    \
+      (((u64b_t)(node)) << SKEIN_CFG_TREE_NODE_SIZE_POS) |    \
+      (((u64b_t)(maxLvl)) << SKEIN_CFG_TREE_MAX_LEVEL_POS))
 
 #define SKEIN_CFG_TREE_INFO_SEQUENTIAL SKEIN_CFG_TREE_INFO(0,0,0) /* use as treeInfo in InitExt() call for sequential processing */
 
@@ -271,7 +271,7 @@ int  Skein1024_Output   (Skein1024_Ctxt_t *ctx, u08b_t * hashVal);
 #define Skein_assert(x)         assert(x)
 #else
 #include <assert.h>
-#define Skein_Assert(x,retCode) { if (!(x)) return retCode; } /*  caller  error */
+#define Skein_Assert(x,retCode) { if(!(x)) return retCode; } /*  caller  error */
 #define Skein_assert(x)         assert(x)                     /* internal error */
 #endif
 
@@ -318,7 +318,7 @@ enum
 #else                                        /* allow command-line define in range 8*(5..14)   */
 #define SKEIN_256_ROUNDS_TOTAL (8*((((SKEIN_ROUNDS/100) + 5) % 10) + 5))
 #define SKEIN_512_ROUNDS_TOTAL (8*((((SKEIN_ROUNDS/ 10) + 5) % 10) + 5))
-#define SKEIN1024_ROUNDS_TOTAL (8*((((SKEIN_ROUNDS    ) + 5) % 10) + 5))
+#define SKEIN1024_ROUNDS_TOTAL (8*((((SKEIN_ROUNDS  ) + 5) % 10) + 5))
 #endif
 
 #ifdef __cplusplus

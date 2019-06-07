@@ -102,7 +102,7 @@ namespace LLP
             READWRITE(nLatency);
             READWRITE(nHeight);
             READWRITE(*pAddr);
-        )
+      )
 
 
         /** Score

@@ -65,7 +65,7 @@ int main(int argc, char** argv)
 
 
     /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
-    if (!LLP::NetworkStartup())
+    if(!LLP::NetworkStartup())
     {
         printf("ERROR: Failed initializing network resources");
 
@@ -74,9 +74,9 @@ int main(int argc, char** argv)
 
 
     /* Handle Commandline switch */
-    for (int i = 1; i < argc; ++i)
+    for(int i = 1; i < argc; ++i)
     {
-        if (!convert::IsSwitchChar(argv[i][0]))
+        if(!convert::IsSwitchChar(argv[i][0]))
         {
             int nRet = 0;
 
@@ -104,7 +104,7 @@ int main(int argc, char** argv)
 
 
     /** Run the process as Daemon RPC/LLP Server if Flagged. **/
-    if (config::fDaemon)
+    if(config::fDaemon)
     {
         debug::log(0, FUNCTION, "-daemon flag enabled. Running in background");
         Daemonize();
@@ -136,17 +136,17 @@ int main(int argc, char** argv)
 
     /** Load the Wallet Database. **/
     bool fFirstRun;
-    if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
+    if(!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
         return debug::error("Failed initializing wallet");
 
 
     /** Check the wallet loading for errors. **/
     uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
-    if (nLoadWalletRet != Legacy::DB_LOAD_OK)
+    if(nLoadWalletRet != Legacy::DB_LOAD_OK)
     {
-        if (nLoadWalletRet == Legacy::DB_CORRUPT)
+        if(nLoadWalletRet == Legacy::DB_CORRUPT)
             return debug::error("Failed loading wallet.dat: Wallet corrupted");
-        else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
+        else if(nLoadWalletRet == Legacy::DB_TOO_NEW)
             return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
         else
             return debug::error("Failed loading wallet.dat");
@@ -264,7 +264,7 @@ int main(int argc, char** argv)
 
 
     /* If wallet is not encrypted, it is unlocked by default. Start stake minter now. It will run until stopped by system shutdown. */
-    if (!Legacy::Wallet::GetInstance().IsCrypted() && config::GetBoolArg(std::string("-beta")))
+    if(!Legacy::Wallet::GetInstance().IsCrypted() && config::GetBoolArg(std::string("-beta")))
         Legacy::LegacyMinter::GetInstance().StartStakeMinter();
 
 
@@ -306,7 +306,7 @@ int main(int argc, char** argv)
     timer.Reset();
 
     /* Stop stake minter if it is running (before server shutdown). */
-    if (config::GetBoolArg(std::string("-beta")))
+    if(config::GetBoolArg(std::string("-beta")))
         Legacy::LegacyMinter::GetInstance().StopStakeMinter();
     else
         TAO::Ledger::TritiumMinter::GetInstance().StopStakeMinter();
@@ -384,7 +384,7 @@ int main(int argc, char** argv)
 
 
     /* Shutdown wallet database environment. */
-    if (config::GetBoolArg(std::string("-flushwallet"), true))
+    if(config::GetBoolArg(std::string("-flushwallet"), true))
         Legacy::WalletDB::ShutdownFlushThread();
 
 

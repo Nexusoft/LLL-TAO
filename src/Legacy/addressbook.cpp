@@ -34,11 +34,11 @@ namespace Legacy
     /* Adds an address book entry for a given Nexus address and address label. */
     bool AddressBook::SetAddressBookName(const NexusAddress& address, const std::string& strName)
     {
-        if (addressBookWallet.IsFileBacked())
+        if(addressBookWallet.IsFileBacked())
         {
             WalletDB walletdb(addressBookWallet.GetWalletFile());
 
-            if (!walletdb.WriteName(address.ToString(), strName))
+            if(!walletdb.WriteName(address.ToString(), strName))
                 return debug::error(FUNCTION, "Failed writing address book entry");
         }
 
@@ -63,11 +63,11 @@ namespace Legacy
             mapAddressBook.erase(address);
         }
 
-        if (addressBookWallet.IsFileBacked())
+        if(addressBookWallet.IsFileBacked())
         {
             WalletDB walletdb(addressBookWallet.GetWalletFile());
 
-            if (!walletdb.EraseName(address.ToString()))
+            if(!walletdb.EraseName(address.ToString()))
                 throw std::runtime_error("AddressBook::DelAddressBookName() : removing address book entry failed");
         }
 
@@ -82,34 +82,34 @@ namespace Legacy
         { //Begin lock scope
             LOCK(AddressBook::cs_addressBook);
 
-            for (const auto& item : addressBookWallet.mapWallet)
+            for(const auto& item : addressBookWallet.mapWallet)
             {
                 const WalletTx& walletTx = item.second;
 
                 /* Filter any transaction output with timestamp exceeding requested spend time */
-                if (walletTx.nTime > nSpendTime)
+                if(walletTx.nTime > nSpendTime)
                     continue;
 
                 /* Filter transaction from results if not final */
-                if (!walletTx.IsFinal())
+                if(!walletTx.IsFinal())
                     continue;
 
                 /* Filter unconfirmed/immature transaction from results when only want confirmed */
-                if (fOnlyConfirmed && !walletTx.IsConfirmed())
+                if(fOnlyConfirmed && !walletTx.IsConfirmed())
                     continue;
 
                 /* Filter any transaction that does not meet minimum depth requirement */
-                if (walletTx.GetDepthInMainChain() < nMinDepth)
+                if(walletTx.GetDepthInMainChain() < nMinDepth)
                     continue;
 
                 /* Filter immature coinbase/coinstake transaction */
-                if ((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
+                if((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
                     continue;
 
-                for (int i = 0; i < walletTx.vout.size(); i++)
+                for(int i = 0; i < walletTx.vout.size(); i++)
                 {
                     /* For all unfiltered transactions, add any unspent output belonging to this wallet to the available balance */
-                    if (!(walletTx.IsSpent(i)) && addressBookWallet.IsMine(walletTx.vout[i]) && walletTx.vout[i].nValue > 0)
+                    if(!(walletTx.IsSpent(i)) && addressBookWallet.IsMine(walletTx.vout[i]) && walletTx.vout[i].nValue > 0)
                     {
                         NexusAddress address;
 
@@ -139,23 +139,23 @@ namespace Legacy
 
             nBalance = 0;
 
-            for (const auto& item : addressBookWallet.mapWallet)
+            for(const auto& item : addressBookWallet.mapWallet)
             {
                 const WalletTx& walletTx = item.second;
 
-                if (!walletTx.IsFinal())
+                if(!walletTx.IsFinal())
                     continue;
 
-                if (walletTx.GetDepthInMainChain() < nMinDepth)
+                if(walletTx.GetDepthInMainChain() < nMinDepth)
                     continue;
 
-                if ((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
+                if((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
                     continue;
 
-                for (int i = 0; i < walletTx.vout.size(); i++)
+                for(int i = 0; i < walletTx.vout.size(); i++)
                 {
 
-                    if (!walletTx.IsSpent(i) && addressBookWallet.IsMine(walletTx.vout[i]) && walletTx.vout[i].nValue > 0)
+                    if(!walletTx.IsSpent(i) && addressBookWallet.IsMine(walletTx.vout[i]) && walletTx.vout[i].nValue > 0)
                     {
                         if(strAccount == "*")
                         {
@@ -190,34 +190,34 @@ namespace Legacy
     }
 
     /* returns the address for the given account, adding a new address if one has not already been assigned*/
-    Legacy::NexusAddress AddressBook::GetAccountAddress(const std::string& strAccount, bool fForceNew )
+    Legacy::NexusAddress AddressBook::GetAccountAddress(const std::string& strAccount, bool fForceNew)
     {
         Legacy::NexusAddress address;
         bool fKeyUsed = false;
 
-        if( !fForceNew )
+        if(!fForceNew)
         {
             // first look up the address currently assigned to the account
             AddressBookMap::iterator it = std::find_if(std::begin(mapAddressBook), std::end(mapAddressBook),
                             [=](AddressBookMap::value_type& entry) { return entry.second == strAccount; });
 
-            if (it != std::end(mapAddressBook))
+            if(it != std::end(mapAddressBook))
                 address = it->first;
 
 
 
             // Check if the current key has been used
-            if( address.IsValid() )
+            if(address.IsValid())
             {
                 Legacy::Script scriptPubKey;
                 scriptPubKey.SetNexusAddress(address);
-                for (std::map<uint512_t, Legacy::WalletTx>::iterator it = Legacy::Wallet::GetInstance().mapWallet.begin();
+                for(std::map<uint512_t, Legacy::WalletTx>::iterator it = Legacy::Wallet::GetInstance().mapWallet.begin();
                         it != Legacy::Wallet::GetInstance().mapWallet.end() && !fKeyUsed;
                         ++it)
                 {
                     const Legacy::WalletTx& wtx = (*it).second;
                     for(const Legacy::TxOut& txout : wtx.vout)
-                        if (txout.scriptPubKey == scriptPubKey)
+                        if(txout.scriptPubKey == scriptPubKey)
                         {
                             fKeyUsed = true;
                             break;
@@ -227,11 +227,11 @@ namespace Legacy
         }
 
         // Generate a new key
-        if (!address.IsValid() || fForceNew || fKeyUsed)
+        if(!address.IsValid() || fForceNew || fKeyUsed)
         {
             std::vector<uint8_t> vchPubKey;
 
-            if (!Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vchPubKey, false))
+            if(!Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vchPubKey, false))
                 throw std::runtime_error("Error: Keypool ran out, please call keypoolrefill first");
 
             address = Legacy::NexusAddress(vchPubKey);

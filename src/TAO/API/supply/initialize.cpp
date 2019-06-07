@@ -40,7 +40,7 @@ namespace TAO
                 std::string strNameOrAddress;
 
                 /* Edge case for /supply/list/item/history/itemname */
-                if( strMethod == "list/item/history" )
+                if(strMethod == "list/item/history")
                     return strMethod;
                 else if(strMethod.find("list/item/history/") != std::string::npos)
                 {
@@ -65,7 +65,7 @@ namespace TAO
                 {
                     /* Passing in the fieldname is only supported for the /get/  so if the user has 
                         requested a different method then just return the requested URL, which will in turn error */
-                    if( strMethodRewritten != "get/item")
+                    if(strMethodRewritten != "get/item")
                         return strMethod;
 
                     std::string strFieldName = strNameOrAddress.substr(nPos +1);
@@ -75,7 +75,7 @@ namespace TAO
 
                 
                 /* Edge case for claim/item/txid */
-                if( strMethodRewritten == "claim/item")
+                if(strMethodRewritten == "claim/item")
                     jsonParams["txid"] = strNameOrAddress;
                 /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
                 else if(IsRegisterAddress(strNameOrAddress))

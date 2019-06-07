@@ -60,7 +60,7 @@ namespace TAO
                 throw APIException(-24, "Unable to parse trust account.");
 
             /* Check the object standard. */
-            if( trustAccount.Standard() != TAO::Register::OBJECTS::TRUST)
+            if(trustAccount.Standard() != TAO::Register::OBJECTS::TRUST)
                 throw APIException(-24, "Register is not a trust account");
 
             /* Check the account is a NXS account */
@@ -86,7 +86,7 @@ namespace TAO
             /* Need the stake minter running for accessing current staking metrics.
              * Verifying current user ownership of trust account is a sanity check.
              */
-            if (stakeMinter.IsStarted() && trustAccount.hashOwner == user->Genesis())
+            if(stakeMinter.IsStarted() && trustAccount.hashOwner == user->Genesis())
             {
                 /* If stake minter is running, get current stake rate it is using. */
                 ret["stakerate"] = stakeMinter.GetStakeRatePercent();
@@ -116,9 +116,9 @@ namespace TAO
                 std::string strFieldname =  params["fieldname"].get<std::string>();
 
                 /* Iterate through the response keys */
-                for (auto it = ret.begin(); it != ret.end(); ++it)
+                for(auto it = ret.begin(); it != ret.end(); ++it)
                     /* If this key is not the one that was requested then erase it */
-                    if( it.key() != strFieldname)
+                    if(it.key() != strFieldname)
                         ret.erase(it);
             }
 

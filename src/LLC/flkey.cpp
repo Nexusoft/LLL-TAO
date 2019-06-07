@@ -312,7 +312,7 @@ namespace LLC
     /* Check if a Key is valid based on a few parameters. */
     bool FLKey::IsValid() const
     {
-        if (!fSet)
+        if(!fSet)
             return false;
 
         return (!vchPubKey.empty() || !vchPrivKey.empty());

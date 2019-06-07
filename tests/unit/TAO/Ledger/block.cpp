@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "Block primitive values", "[ledger]" )
+TEST_CASE( "Block primitive values", "[ledger]")
 {
     TAO::Ledger::Block block;
 

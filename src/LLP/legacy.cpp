@@ -211,7 +211,7 @@ namespace LLP
             {
 
                 /* Give higher DDOS score if the Node happens to try to send multiple version messages. */
-                if (message == "version" && nCurrentVersion != 0)
+                if(message == "version" && nCurrentVersion != 0)
                     if(DDOS)
                         DDOS->rSCORE += 25;
 
@@ -238,7 +238,7 @@ namespace LLP
                 {
 
                     debug::log(3, NODE, "Dropped Packet (Complete: ", INCOMING.Complete() ? "Y" : "N",
-                        " - Valid: )",  INCOMING.IsValid() ? "Y" : "N");
+                        " - Valid:)",  INCOMING.IsValid() ? "Y" : "N");
 
                     if(DDOS)
                         DDOS->rSCORE += 15;
@@ -385,7 +385,7 @@ namespace LLP
         * It gives you basic stats about the node to know how to
         * communicate with it.
         */
-        if (message == "version")
+        if(message == "version")
         {
 
             int64_t nTime;
@@ -441,7 +441,7 @@ namespace LLP
 
             /* Push our version back since we just completed getting the version from the other node. */
 
-            if (fOUTGOING && nAsked == 0)
+            if(fOUTGOING && nAsked == 0)
             {
                 ++nAsked;
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
@@ -541,7 +541,7 @@ namespace LLP
 
 
         /* Push a transaction into the Node's Received Transaction Queue. */
-        else if (message == "tx")
+        else if(message == "tx")
         {
             /* Deserialize the Transaction. */
             Legacy::Transaction tx;
@@ -553,7 +553,7 @@ namespace LLP
 
             /* Accept to memory pool. */
             TAO::Ledger::BlockState notUsed;
-            if (TAO::Ledger::mempool.Accept(tx))
+            if(TAO::Ledger::mempool.Accept(tx))
             {
                 Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
 
@@ -569,7 +569,7 @@ namespace LLP
 
 
         /* Push a block into the Node's Received Blocks Queue. */
-        else if (message == "block")
+        else if(message == "block")
         {
             /* Deserialize the block. */
             Legacy::LegacyBlock block;
@@ -583,7 +583,7 @@ namespace LLP
 
 
         /* Send a Ping with a nNonce to get Latency Calculations. */
-        else if (message == "ping")
+        else if(message == "ping")
         {
             uint64_t nonce = 0;
             ssMessage >> nonce;
@@ -622,7 +622,7 @@ namespace LLP
         /* Handle a new Address Message.
         * This allows the exchanging of addresses on the network.
         */
-        else if (message == "addr")
+        else if(message == "addr")
         {
             std::vector<LegacyAddress> vLegacyAddr;
             std::vector<BaseAddress> vAddr;
@@ -630,7 +630,7 @@ namespace LLP
             ssMessage >> vLegacyAddr;
 
             /* Don't want addr from older versions unless seeding */
-            if (vLegacyAddr.size() > 2000)
+            if(vLegacyAddr.size() > 2000)
             {
                 if(DDOS)
                     DDOS->rSCORE += 20;
@@ -661,7 +661,7 @@ namespace LLP
         /* Handle new Inventory Messages.
         * This is used to know what other nodes have in their inventory to compare to our own.
         */
-        else if (message == "inv")
+        else if(message == "inv")
         {
             std::vector<CInv> vInv;
             ssMessage >> vInv;
@@ -672,7 +672,7 @@ namespace LLP
             debug::log(3, NODE, "Inventory Message of ", nInvSize, " elements");
 
             /* Make sure the inventory size is not too large. */
-            if (nInvSize > 10000)
+            if(nInvSize > 10000)
             {
                 if(DDOS)
                     DDOS->rSCORE += 20;
@@ -759,19 +759,19 @@ namespace LLP
 
 
         //DEPRECATED
-        else if (message == "headers")
+        else if(message == "headers")
         {
             return true; //DEPRECATED
         }
 
 
         /* Get the Data for either a transaction or a block. */
-        else if (message == "getdata")
+        else if(message == "getdata")
         {
             std::vector<CInv> vInv;
             ssMessage >> vInv;
 
-            if (vInv.size() > 10000)
+            if(vInv.size() > 10000)
             {
                 if(DDOS)
                     DDOS->rSCORE += 20;
@@ -797,7 +797,7 @@ namespace LLP
                 debug::log(3, FUNCTION, "received getdata ", inv.ToString());
 
                 /* Handle the block message. */
-                if (nInvType == LLP::MSG_BLOCK_LEGACY)
+                if(nInvType == LLP::MSG_BLOCK_LEGACY)
                 {
                     /* Don't send genesis if asked for. */
                     if(hashBlock == TAO::Ledger::ChainState::Genesis())
@@ -825,14 +825,14 @@ namespace LLP
                     PushMessage("block", block);
 
                     /* Trigger a new getblocks if hash continue is set. */
-                    if (hashBlock == hashContinue)
+                    if(hashBlock == hashContinue)
                     {
                         std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK_LEGACY) };
                         PushMessage("inv", vInv);
                         hashContinue = 0;
                     }
                 }
-                else if (nInvType == LLP::MSG_TX_LEGACY)
+                else if(nInvType == LLP::MSG_TX_LEGACY)
                 {
                     hashTx = hashBlock;
 
@@ -847,7 +847,7 @@ namespace LLP
 
 
         /* Handle a Request to get a list of Blocks from a Node. */
-        else if (message == "getblocks")
+        else if(message == "getblocks")
         {
             TAO::Ledger::Locator locator;
             uint1024_t hashStop;
@@ -889,12 +889,12 @@ namespace LLP
                 nStateHash = state.GetHash();
 
                 /* Check for hash stop. */
-                if (nStateHash == hashStop)
+                if(nStateHash == hashStop)
                 {
                     debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", nStateHash.ToString().substr(0, 20));
 
                     /* Tell about latest block if hash stop is found. */
-                    if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
+                    if(hashStop != TAO::Ledger::ChainState::hashBestChain.load())
                         vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK_LEGACY));
 
                     break;
@@ -904,7 +904,7 @@ namespace LLP
                 vInv.push_back(CInv(nStateHash, MSG_BLOCK_LEGACY));
 
                 /* Stop at limits. */
-                if (--nLimit <= 0)
+                if(--nLimit <= 0)
                 {
                     // When this block is requested, we'll send an inv that'll make them
                     // getblocks the next batch of inventory.
@@ -922,14 +922,14 @@ namespace LLP
 
 
         //DEPRECATED
-        else if (message == "getheaders")
+        else if(message == "getheaders")
         {
             return true; //DEPRECATED
         }
 
 
         /* TODO: Change this Algorithm. */
-        else if (message == "getaddr")
+        else if(message == "getaddr")
         {
             /* Get addresses from manager. */
             std::vector<BaseAddress> vAddr;
@@ -1048,7 +1048,7 @@ namespace LLP
                     TAO::Ledger::ChainState::PercentSynchronized(), " %]",
                     " height=", TAO::Ledger::ChainState::nBestHeight.load(),
                     " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
-                    " [", 1000000 / nElapsed, " blocks/s]" );
+                    " [", 1000000 / nElapsed, " blocks/s]");
 
                 nTimer = runtime::timestamp(true);
             }

@@ -103,18 +103,18 @@ namespace TAO
         {
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
-            if (!GetLastState(first, nChannel))
+            if(!GetLastState(first, nChannel))
                 return Legacy::COIN;
 
 
             /* Get Last Block Index [2nd block back in Channel]. */
             BlockState last = first.Prev();
-            if (!GetLastState(last, nChannel))
+            if(!GetLastState(last, nChannel))
                 return GetSubsidy(1, nType);
 
 
             /* Calculate the times between blocks. */
-            uint64_t nBlockTime = std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1 );
+            uint64_t nBlockTime = std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1);
             uint64_t nMinutes   = ((state.nVersion >= 3) ?
                 GetChainAge(first.GetBlockTime()) : std::min(first.nChannelHeight,  GetChainAge(first.GetBlockTime())));
 
@@ -166,13 +166,13 @@ namespace TAO
         {
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
-            if (!GetLastState(first, nChannel))
+            if(!GetLastState(first, nChannel))
                 return Legacy::COIN;
 
             /* Get Last Block Index [2nd block back in Channel]. */
             int32_t nMinutes = GetChainAge(first.GetBlockTime());
             BlockState last = first.Prev();
-            if (!GetLastState(last, nChannel))
+            if(!GetLastState(last, nChannel))
                 return ReleaseRewards(nMinutes + 5, 1, nType);
 
             /* Only allow rewards to be released one time per minute */

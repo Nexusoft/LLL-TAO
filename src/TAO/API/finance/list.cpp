@@ -71,7 +71,7 @@ namespace TAO
                     throw APIException(-24, "Account not found");
 
                 /* Check that this is a non-standard object type so that we can parse it and check the type*/
-                if( object.nType != TAO::Register::REGISTER::OBJECT)
+                if(object.nType != TAO::Register::REGISTER::OBJECT)
                     continue;
 
                 /* parse object so that the data fields can be accessed */
@@ -80,11 +80,11 @@ namespace TAO
 
                 uint8_t nStandard = object.Standard();
                 /* Check that this is an account */
-                if( nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+                if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                     continue;
 
                 /* Check the account is a NXS account */
-                if( object.get<uint256_t>("token") != 0)
+                if(object.get<uint256_t>("token") != 0)
                     continue;
 
                 /* Get the current page. */

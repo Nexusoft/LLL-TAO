@@ -26,7 +26,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "Debit Primitive Tests", "[operation]" )
+TEST_CASE( "Debit Primitive Tests", "[operation]")
 {
     using namespace TAO::Register;
     using namespace TAO::Operation;

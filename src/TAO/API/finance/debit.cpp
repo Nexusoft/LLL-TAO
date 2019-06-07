@@ -105,11 +105,11 @@ namespace TAO
             uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
-            if( nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+            if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                 throw APIException(-24, "Object is not an account");
 
             /* Check the account is a NXS account */
-            if( object.get<uint256_t>("token") != 0)
+            if(object.get<uint256_t>("token") != 0)
                 throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
 
 

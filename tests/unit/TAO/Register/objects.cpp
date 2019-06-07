@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
-TEST_CASE( "Object Register Tests", "[register]" )
+TEST_CASE( "Object Register Tests", "[register]")
 {
     using namespace TAO::Register;
 

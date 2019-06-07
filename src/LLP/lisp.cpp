@@ -31,7 +31,7 @@ namespace LLP
     std::string LispersAPIRequest(std::string strEndPoint)
     {
             // HTTP basic authentication
-        std::string strUserPass64 = encoding::EncodeBase64("root:" );
+        std::string strUserPass64 = encoding::EncodeBase64("root:");
 
         /* Build the HTTP Header. */
         std::string strReply = debug::safe_printstr(
@@ -78,7 +78,7 @@ namespace LLP
 
         /* Dump the response to the console. */
         std::string strPrint = "";
-        if( coreNode.INCOMING.strContent.length() > 0)
+        if(coreNode.INCOMING.strContent.length() > 0)
         {
             return coreNode.INCOMING.strContent;
         }
@@ -152,7 +152,7 @@ namespace LLP
                             /* if nodes are behind NAT then their public IP will be supplied
                                 in a translated-rloc field, otherwise the public IP will be
                                 supplied in the rloc field */
-                            if( rloc.value().count("translated-rloc") > 0 )
+                            if(rloc.value().count("translated-rloc") > 0)
                                 RLOC.strTranslatedRLOC = rloc.value()["translated-rloc"];
                             else
                                 RLOC.strTranslatedRLOC = rloc.value()["rloc"];

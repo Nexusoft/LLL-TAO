@@ -61,7 +61,7 @@ namespace TAO
                 throw APIException(-24, "Asset not found");
 
             /* Only include raw and non-standard object types (assets)*/
-            if( object.nType != TAO::Register::REGISTER::APPEND
+            if(object.nType != TAO::Register::REGISTER::APPEND
             && object.nType != TAO::Register::REGISTER::RAW
             && object.nType != TAO::Register::REGISTER::OBJECT)
             {
@@ -75,7 +75,7 @@ namespace TAO
                     throw APIException(-24, "Failed to parse object register");
 
                 /* Only include non standard object registers (assets) */
-                if( object.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
+                if(object.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
                     throw APIException(-24, "Specified name/address is not an asset.");
             }
 
@@ -89,9 +89,9 @@ namespace TAO
                 std::string strFieldname =  params["fieldname"].get<std::string>();
 
                 /* Iterate through the response keys */
-                for (auto it = ret.begin(); it != ret.end(); ++it)
+                for(auto it = ret.begin(); it != ret.end(); ++it)
                     /* If this key is not the one that was requested then erase it */
-                    if( it.key() != strFieldname)
+                    if(it.key() != strFieldname)
                         ret.erase(it);
             }
 

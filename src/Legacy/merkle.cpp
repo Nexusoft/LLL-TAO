@@ -29,15 +29,15 @@ namespace Legacy
 
     uint32_t MerkleTx::GetDepthInMainChain() const
     {
-        if (hashBlock == 0)
+        if(hashBlock == 0)
             return 0;
 
         // Find the block it claims to be in
         TAO::Ledger::BlockState blockState;
-        if (!LLD::legDB->ReadBlock(hashBlock, blockState))
+        if(!LLD::legDB->ReadBlock(hashBlock, blockState))
             return 0;
 
-        if (!blockState.IsInMainChain())
+        if(!blockState.IsInMainChain())
             return 0;
 
         return TAO::Ledger::ChainState::nBestHeight.load() - blockState.nHeight + 1;
@@ -48,7 +48,7 @@ namespace Legacy
     /* Retrieve the number of blocks remaining until transaction outputs are spendable. */
     uint32_t MerkleTx::GetBlocksToMaturity() const
     {
-        if (!(IsCoinBase() || IsCoinStake()))
+        if(!(IsCoinBase() || IsCoinStake()))
             return 0;
 
         int32_t nCoinbaseMaturity = config::fTestNet.load() ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS;
