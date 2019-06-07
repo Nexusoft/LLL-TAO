@@ -425,7 +425,7 @@ class sdk_init():
             return(self.__error("verbosity value invalid"))
         #endif
 
-        parms = "?usernam={}&page={}&limit={}&verbose={}".format( \
+        parms = "?username={}&page={}&limit={}&verbose={}".format( \
             self.username, page, limit, verbosity)
 
         url = users_url.format(sdk_url, "list/transactions") + parms
@@ -593,15 +593,7 @@ class sdk_init():
 
         url = supply_url.format(sdk_url, "get/item") + parms
         json_data = self.__get(url)
-
-        #
-        # Unquote data if "state" key is present.
-        #
-        if (json_data.has_key("result")):
-            data = urllib.unquote_plus(json_data["result"]["data"])
-            json_data["result"]["state"] = data.replace("%26", "&")
-        #endif
-        return(json_data)
+        return (self.__unquote_data(json_data))
     #enddef
 
     def nexus_supply_get_item_by_address(self, address):
@@ -614,15 +606,7 @@ class sdk_init():
 
         url = supply_url.format(sdk_url, "get/item") + parms
         json_data = self.__get(url)
-
-        #
-        # Unquote data if "state" key is present.
-        #
-        if (json_data.has_key("result")):
-            data = urllib.unquote_plus(json_data["result"]["data"])
-            json_data["result"]["state"] = data.replace("%26", "&")
-        #endif
-        return(json_data)
+        return (self.__unquote_data(json_data))
     #enddef
 
     def nexus_supply_transfer_item_by_name(self, name, new_owner):
@@ -773,15 +757,7 @@ class sdk_init():
 
         url = assets_url.format(sdk_url, "get/asset") + parms
         json_data = self.__get(url)
-
-        #
-        # Unquote data if "data" key is present.
-        #
-        if (json_data.has_key("result")):
-            data = urllib.unquote_plus(json_data["result"]["data"])
-            json_data["result"]["data"] = data.replace("%26", "&")
-        #endif
-        return(json_data)
+        return (self.__unquote_data(json_data))
     #enddef
 
     def nexus_assets_get_asset_by_address(self, asset_address):
@@ -793,15 +769,7 @@ class sdk_init():
 
         url = assets_url.format(sdk_url, "get/asset") + parms
         json_data = self.__get(url)
-
-        #
-        # Unquote data if "data" key is present.
-        #
-        if (json_data.has_key("result")):
-            data = urllib.unquote_plus(json_data["result"]["data"])
-            json_data["result"]["data"] = data.replace("%26", "&")
-        #endif
-        return(json_data)
+        return (self.__unquote_data(json_data))
     #enddef
 
     def nexus_assets_update_asset_by_name(self, asset_name, data):
@@ -1359,6 +1327,17 @@ class sdk_init():
     def __test_tx_verbosity(self, verbosity):
         return(verbosity in ["default", "summary", "detail"])
     #enddef
+
+    def __unquote_data(self, json_data):
+        if (json_data.has_key("result") == False): return(json_data)
+        if (json_data["result"] == None): return(json_data)
+        if (json_data["result"].has_key("data") == False): return(json_data)
+
+        data = urllib.unquote_plus(json_data["result"]["data"])
+        json_data["result"]["data"] = data.replace("%26", "&")
+        return(json_data)
+    #endif
+
 #endclass
 
 #------------------------------------------------------------------------------
