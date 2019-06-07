@@ -22,6 +22,7 @@ import commands
 import bottle
 import sys
 import json
+import socket
 
 try:
     import nexus_sdk as nexus
@@ -159,7 +160,8 @@ def show(msg, sid="", genid=""):
     msg = red(msg) if (msg.find('"error":') != -1) else green(msg)
     output = show_html.format(bold(msg)) + build_body_page(sid, genid)
 
-    return(landing_page.format(output))
+    hostname = blue(socket.gethostname())
+    return(landing_page.format(hostname, output))
 #enddef
 
 #
@@ -173,7 +175,8 @@ landing_page = '''
          border-radius:20px;border:5px solid #666666;">
     <font face="verdana"><center>
     <br><head><a href="/" style="text-decoration:none;"><font color="black">
-    <b>Nexus Interactive SDK/API Cook Book</b></a></head><br><br><hr>
+    <b>Nexus Interactive SDK/API Cook Book</b></a></head><br>
+    <font size="2""><br>Running on {}</font><br><br><hr>
     {}
     <hr></center></font></body></html>
 '''
@@ -2508,7 +2511,8 @@ def build_body_page(sid="", genid=""):
 @bottle.route('/')
 def do_landing():
     output = build_body_page()
-    return(landing_page.format(output))
+    hostname = blue(socket.gethostname())
+    return(landing_page.format(hostname, output))
 #enddef
 
 @bottle.route('/url/<api_or_sdk>', method="post")
@@ -2525,7 +2529,8 @@ def do_url(api_or_sdk):
     #endif
 
     output = build_body_page()
-    return(landing_page.format(output))
+    hostname = blue(socket.gethostname())
+    return(landing_page.format(hostname, output))
 #enddef
 
 #------------------------------------------------------------------------------
