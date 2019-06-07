@@ -80,7 +80,7 @@ namespace TAO
             }
 
             /* Convert the object to JSON */
-            ret = TAO::API::ObjectRegisterToJSON(params, object, hashRegister);
+            ret = TAO::API::ObjectToJSON(params, object, hashRegister);
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             if(params.find("fieldname") != params.end())

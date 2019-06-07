@@ -78,7 +78,7 @@ namespace TAO
         json::json ContractToJSON(const TAO::Operation::Contract& contract);
 
 
-        /** ObjectRegisterToJSON
+        /** ObjectToJSON
         *
         *  Converts an Object Register to formattted JSON
         *
@@ -89,7 +89,7 @@ namespace TAO
         *  @return the formatted JSON object
         *
         **/
-        json::json ObjectRegisterToJSON(const json::json& params, const TAO::Register::Object& object, const uint256_t& hashRegister);
+        json::json ObjectToJSON(const json::json& params, const TAO::Register::Object& object, const uint256_t& hashRegister);
 
 
 

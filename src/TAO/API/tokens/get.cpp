@@ -67,7 +67,7 @@ namespace TAO
                     throw APIException(-24, "Requested object is not a token");
 
                 /* Convert the account object to JSON */
-                ret = ObjectRegisterToJSON(params, object, hashRegister);
+                ret = ObjectToJSON(params, object, hashRegister);
 
             }
             else if(nStandard == TAO::Register::OBJECTS::TOKEN)
@@ -77,7 +77,7 @@ namespace TAO
                     throw APIException(-24, "Requested object is not an account");
 
                 /* Convert the token object to JSON */
-                ret = ObjectRegisterToJSON(params, object, hashRegister);
+                ret = ObjectToJSON(params, object, hashRegister);
             }
             else
                 throw APIException(-27, "Unknown object register");

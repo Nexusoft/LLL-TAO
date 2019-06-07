@@ -127,7 +127,7 @@ namespace TAO
             /* Declare JSON object to return */
             json::json txdata;
 
-            /* Always add the hash if level 1 and up*/
+            /* Always add the hash if level 1 and up */
             if(nTransactionVerbosity >= 1)
                 txdata["hash"] = tx.GetHash().ToString();
 
@@ -519,7 +519,7 @@ namespace TAO
 
 
         /* Converts an Object Register to formattted JSON */
-        json::json ObjectRegisterToJSON(const json::json& params, const TAO::Register::Object& object, const uint256_t& hashRegister)
+        json::json ObjectToJSON(const json::json& params, const TAO::Register::Object& object, const uint256_t& hashRegister)
         {
             /* Declare the return JSON object */
             json::json ret;
@@ -535,8 +535,7 @@ namespace TAO
             if(object.nType == TAO::Register::REGISTER::APPEND
             || object.nType == TAO::Register::REGISTER::RAW)
             {
-
-                /* raw state assets only have one data member containing the raw hex-encoded data*/
+                /* Raw state assets only have one data member containing the raw hex-encoded data*/
                 std::string data;
                 object >> data;
 
@@ -544,11 +543,10 @@ namespace TAO
                 ret["created"]    = object.nCreated;
                 ret["modified"]   = object.nModified;
                 ret["owner"]      = object.hashOwner.ToString();
-                ret["data"] = data;
+                ret["data"]       = data;
             }
             else if(object.nType == TAO::Register::REGISTER::OBJECT)
             {
-
                 /* Get the object standard. */
                 uint8_t nStandard = object.Standard();
                 switch(nStandard)
@@ -559,15 +557,15 @@ namespace TAO
                     {
                         ret["address"]    = hashRegister.ToString();
 
+                        /* Get the token names. */
                         std::string strTokenName = GetTokenNameForAccount(users->GetCallersGenesis(params), object);
                         if(!strTokenName.empty())
                             ret["token_name"] = strTokenName;
 
+                        /* Set the value to the token contract address. */
                         ret["token"] = object.get<uint256_t>("token").GetHex();
 
-                        /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
-                        Therefore, to convert the internal value to a floating point value we need to reduce the internal value
-                        by 10^digits  */
+                        /* Handle digit conversion. */
                         uint64_t nDigits = GetTokenOrAccountDigits(object);
 
                         ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
@@ -583,9 +581,7 @@ namespace TAO
                         ret["token_name"] = "NXS";
                         ret["token"] = object.get<uint256_t>("token").GetHex();
 
-                        /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
-                        Therefore, to convert the internal value to a floating point value we need to reduce the internal value
-                        by 10^digits  */
+                        /* Handle digit conversion. */
                         uint64_t nDigits = GetTokenOrAccountDigits(object);
 
                         ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
@@ -733,6 +729,7 @@ namespace TAO
                     }
                 }
             }
+
             return ret;
         }
     }

@@ -68,7 +68,7 @@ namespace TAO
                 throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for accessing non-NXS token accounts.");
 
             /* Convert the account object to JSON */
-            ret = ObjectRegisterToJSON(params, object, hashRegister);
+            ret = ObjectToJSON(params, object, hashRegister);
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */            
             if(params.find("fieldname") != params.end())

@@ -143,7 +143,7 @@ namespace TAO
                             obj["type"] = "CREATE";
                             obj["checksum"] = state.hashChecksum;
 
-                            json::json data  =TAO::API::ObjectRegisterToJSON(params, state, hashRegister);
+                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister);
 
                             /* Copy the asset data in to the response after the type/checksum */
                             obj.insert(data.begin(), data.end());

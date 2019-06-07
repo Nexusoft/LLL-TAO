@@ -103,7 +103,7 @@ namespace TAO
                     break;
 
                 /* Convert the object to JSON */
-                ret.push_back(TAO::API::ObjectRegisterToJSON(params, object, hashRegister));
+                ret.push_back(TAO::API::ObjectToJSON(params, object, hashRegister));
             }
 
             return ret;
