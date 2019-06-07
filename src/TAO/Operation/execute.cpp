@@ -251,6 +251,13 @@ namespace TAO
                         uint256_t hashTransfer = 0;
                         contract >> hashTransfer;
 
+                        /* Read the force transfer flag */
+                        bool fForceTransfer = false;
+                        contract >> fForceTransfer;
+
+                        /* Register custody in SYSTEM ownership until claimed, unless the ForceTransfer flag has been set */
+                        uint256_t hashNewOwner = fForceTransfer ? hashTransfer : 0;
+
                         /* Deserialize the pre-state byte from the contract. */
                         uint8_t nState = 0;
                         contract >>= nState;
@@ -264,7 +271,7 @@ namespace TAO
                         contract >>= state;
 
                         /* Calculate the new operation. */
-                        if(!Transfer::Execute(state, hashTransfer, contract.Timestamp()))
+                        if(!Transfer::Execute(state, hashNewOwner, contract.Timestamp()))
                             return false;
 
                         /* Deserialize the pre-state byte from contract. */

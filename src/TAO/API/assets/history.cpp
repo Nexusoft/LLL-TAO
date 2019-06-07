@@ -252,10 +252,14 @@ namespace TAO
                             if(hashAddress != hashRegister)
                                 break;
 
+                            /* Read the register transfer recipient. */
+                            uint256_t hashTransfer = 0;
+                            contract >> hashTransfer;
+
                             /* Generate return object. */
                             json::json obj;
                             obj["type"]       = "TRANSFER";
-                            obj["owner"]      = contract.Caller().ToString();
+                            obj["owner"]      = hashTransfer.ToString();
 
                             /* Get the flag. */
                             uint8_t nState = 0;

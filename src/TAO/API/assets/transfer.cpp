@@ -85,8 +85,9 @@ namespace TAO
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction");
 
-            /* Submit the payload object. */
-            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo;
+            /* Submit the payload object.
+               NOTE we pass false for the fForceTransfer parameter so that the Transfer requires a corresponding Claim */
+            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo << false;
 
             /* Execute the operations layer. */
             if(!tx.Build())

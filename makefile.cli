@@ -202,6 +202,7 @@ ifdef UNIT_TESTS
 		   build/Tests_trust.o \
 		   build/Tests_write.o \
 		   build/Tests_conditions.o \
+		   build/Tests_transfer.o \
            build/Tests_hex.o
 
 	DEFS += -DUNIT_TESTS

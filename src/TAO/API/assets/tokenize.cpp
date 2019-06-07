@@ -58,8 +58,12 @@ namespace TAO
             }
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("token") != params.end())
+            else if(params.find("token") != params.end() && IsRegisterAddress(params["token"]))
                 hashToken.SetHex(params["token"]);
+
+            /* Fail if no required parameters supplied. */
+            else
+                throw APIException(-23, "Missing token name / address");
 
             /* Get the register address. */
             uint256_t hashRegister = 0;
@@ -77,7 +81,7 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-23, "Missing asset address");
+                throw APIException(-23, "Missing asset name / address");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
@@ -93,8 +97,10 @@ namespace TAO
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction");
 
-            /* Submit the payload object. */
-            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashToken;
+            /* Submit the payload object.
+               NOTE we pass true for the fForceTransfer parameter so that the transfer is made immediately to the 
+               token without requiring a Claim */
+            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashToken << true;  
 
             /* Execute the operations layer. */
             if(!tx.Build())

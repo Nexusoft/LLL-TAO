@@ -49,7 +49,7 @@ namespace TAO
         bool Transfer::Execute(TAO::Register::State &state, const uint256_t& hashTransfer, const uint64_t nTimestamp)
         {
             /* Set the new register's owner. */
-            state.hashOwner  = 0; //register custody is in SYSTEM ownership until claimed
+            state.hashOwner = hashTransfer; 
 
             /* Set the register checksum. */
             state.nModified = nTimestamp;

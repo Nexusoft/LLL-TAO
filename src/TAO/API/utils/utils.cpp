@@ -503,6 +503,26 @@ namespace TAO
                             uint256_t hashAddress = 0;
                             contract >> hashAddress;
 
+                            /* Read the register transfer recipient. */
+                            uint256_t hashTransfer = 0;
+                            contract >> hashTransfer;
+
+                            /* Read the force transfer flag */
+                            bool fForceTransfer = false;
+                            contract >> fForceTransfer;
+
+                            /* If we have transferred to a token that we own then we ignore the transfer as we still 
+                               technically own the register */
+                            if( fForceTransfer )
+                            {
+                                TAO::Register::Object newOwner;
+                                if(!LLD::regDB->ReadState(hashTransfer, newOwner))
+                                    throw APIException(-24, "Transfer recipient object not found");
+                                
+                                if(newOwner.hashOwner == hashGenesis)
+                                    break;
+                            }
+
                             /* If we find a TRANSFER then we can know for certain that we no longer own it */
                             if(vTransferred.find(hashAddress)    == vTransferred.end())
                                 vTransferred.insert(hashAddress);
@@ -549,8 +569,18 @@ namespace TAO
             /* Declare the return val */
             std::string strName = "";
 
+            /* If the owner of the object is not the caller, then check to see whether the owner is another object owned by
+               the caller.  This would be the case for a tokenized asset */
+            uint256_t hashOwnerOwner = 0;
+            if( hashCaller != hashOwner )
+            {
+                TAO::Register::Object owner;
+                if(LLD::regDB->ReadState(hashOwner, owner, TAO::Ledger::FLAGS::MEMPOOL))
+                   hashOwnerOwner = owner.hashOwner; 
+            }
+
             /* If the caller is the object owner then attempt to find a Name record to look up the Name of this object */
-            if(hashCaller == hashOwner)
+            if(hashCaller == hashOwner || hashCaller == hashOwnerOwner)
             {
                 /* Firstly get all object registers owned by this sig chain */
                 std::vector<uint256_t> vRegisters;

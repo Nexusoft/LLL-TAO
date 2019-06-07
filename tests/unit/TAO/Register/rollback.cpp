@@ -171,7 +171,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
 
 
-    //rollback a transfer
+    //rollback a transfer to a random genesis
     {
         //create object
         uint256_t hashRegister = LLC::GetRand256();
@@ -211,7 +211,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
         //payload
-        tx[0] << uint8_t(OP::TRANSFER) << hashRegister << uint256_t(0xffff);
+        tx[0] << uint8_t(OP::TRANSFER) << hashRegister << uint256_t(0xffff) << false;
 
         //generate the prestates and poststates
         REQUIRE(tx.Build());
@@ -236,6 +236,74 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         REQUIRE(LLD::regDB->ReadState(hashRegister, state));
 
         //check owner
+        REQUIRE(state.hashOwner == hashGenesis);
+    }
+
+    //rollback a forced transfer to a random genesis
+    {
+        //create object
+        uint256_t hashRegister = LLC::GetRand256();
+        uint256_t hashGenesis  = LLC::GetRand256();
+
+        {
+
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 0;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx[0] << uint8_t(OP::CREATE) << hashRegister << uint8_t(REGISTER::RAW) << std::vector<uint8_t>(10, 0xff);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //commit to disk
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+            //check that register exists
+            State state;
+            REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+
+            //check owner
+            REQUIRE(state.hashOwner == hashGenesis);
+
+        }
+
+        //create the transaction object
+        TAO::Ledger::Transaction tx;
+        tx.hashGenesis = hashGenesis;
+        tx.nSequence   = 1;
+        tx.nTimestamp  = runtime::timestamp();
+        tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
+
+        //payload
+        tx[0] << uint8_t(OP::TRANSFER) << hashRegister << uint256_t(0xffff) << true;
+
+        //generate the prestates and poststates
+        REQUIRE(tx.Build());
+
+        //write transaction
+        REQUIRE(LLD::legDB->WriteTx(tx.GetHash(), tx));
+
+        //commit to disk
+        REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+        //check that register exists
+        State state;
+        REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+
+        //check owner has changed to uint256_t(0xffff) since we forced it
+        REQUIRE(state.hashOwner == uint256_t(0xffff));
+
+        //rollback the transaction
+        REQUIRE(Rollback(tx[0]));
+
+        //grab the new state
+        REQUIRE(LLD::regDB->ReadState(hashRegister, state));
+
+        //check owner has reverted back to hashGenesis
         REQUIRE(state.hashOwner == hashGenesis);
     }
 
@@ -285,7 +353,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::TRANSFER) << hashRegister << hashGenesis2;
+            tx[0] << uint8_t(OP::TRANSFER) << hashRegister << hashGenesis2 << false;
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());

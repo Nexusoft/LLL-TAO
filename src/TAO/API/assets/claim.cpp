@@ -99,8 +99,16 @@ namespace TAO
                 uint256_t hashGenesis = 0;
                 contract >> hashGenesis;
 
+                /* Read the force transfer flag */
+                bool fForceTransfer = false;
+                contract >> fForceTransfer;
+
                 /* Ensure that this transfer was meant for this user or that we are claiming back our own transfer */
                 if(hashGenesis != tx.hashGenesis && tx.hashGenesis != txTranser.hashGenesis)
+                    continue;
+
+                /* Ensure this wasn't a forced transfer (which requires no Claim) */
+                if(fForceTransfer)
                     continue;
 
                 /* Submit the payload object. */
