@@ -236,7 +236,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
             REQUIRE_FALSE(tx.Build());
 
             //verify the prestates and poststates
-            REQUIRE(tx.Verify());
+            REQUIRE_FALSE(tx.Verify());
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));

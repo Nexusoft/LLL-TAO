@@ -14,10 +14,24 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
+#include <TAO/Operation/include/append.h>
+#include <TAO/Operation/include/claim.h>
+#include <TAO/Operation/include/create.h>
+#include <TAO/Operation/include/credit.h>
+#include <TAO/Operation/include/debit.h>
+#include <TAO/Operation/include/genesis.h>
+#include <TAO/Operation/include/legacy.h>
+#include <TAO/Operation/include/stake.h>
+#include <TAO/Operation/include/transfer.h>
+#include <TAO/Operation/include/trust.h>
+#include <TAO/Operation/include/unstake.h>
+#include <TAO/Operation/include/write.h>
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/verify.h>
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -80,10 +94,8 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Get the object data size. */
-                        uint32_t nSize = contract.ReadCompactSize(TAO::Operation::Contract::OPERATIONS);
-
-                        /* Seek past state data. */
-                        contract.Seek(nSize);
+                        std::vector<uint8_t> vchData;
+                        contract >> vchData;
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -114,6 +126,10 @@ namespace TAO
                         if(contract.Caller() != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::WRITE: not authorized ", contract.Caller().SubString());
 
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Write::Execute(state, vchData, contract.Timestamp()))
+                            return false;
+
                         /* Write the state to memory map. */
                         mapStates[hashAddress] = state;
 
@@ -129,10 +145,8 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Get the object data size. */
-                        uint32_t nSize = contract.ReadCompactSize(TAO::Operation::Contract::OPERATIONS);
-
-                        /* Seek past state data. */
-                        contract.Seek(nSize);
+                        std::vector<uint8_t> vchData;
+                        contract >> vchData;
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -163,6 +177,10 @@ namespace TAO
                         if(contract.Caller() != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::APPEND: not authorized ", contract.Caller().SubString());
 
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Append::Execute(state, vchData, contract.Timestamp()))
+                            return false;
+
                         /* Write the state to memory map. */
                         mapStates[hashAddress] = state;
 
@@ -173,14 +191,30 @@ namespace TAO
                     /* Create does not have a pre-state. */
                     case TAO::Operation::OP::CREATE:
                     {
-                        /* Seek to the end. */
-                        contract.Seek(33);
+                        /* Get the Address of the Register. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
 
-                        /* Get the object data size. */
-                        uint32_t nSize = contract.ReadCompactSize(TAO::Operation::Contract::OPERATIONS);
+                        /* Get the Register Type. */
+                        uint8_t nType = 0;
+                        contract >> nType;
 
-                        /* Seek past state data. */
-                        contract.Seek(nSize);
+                        /* Get the register data. */
+                        std::vector<uint8_t> vchData;
+                        contract >> vchData;
+
+                        /* Create the register object. */
+                        TAO::Register::State state;
+                        state.nVersion   = 1;
+                        state.nType      = nType;
+                        state.hashOwner  = contract.Caller();
+
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Create::Execute(state, vchData, contract.Timestamp()))
+                            return false;
+
+                        /* Write the state to memory map. */
+                        mapStates[hashAddress] = state;
 
                         break;
                     }
@@ -193,8 +227,16 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
-                        /* Seek to the end. */
-                        contract.Seek(33);
+                        /* Read the register transfer recipient. */
+                        uint256_t hashTransfer = 0;
+                        contract >> hashTransfer;
+
+                        /* Read the force transfer flag */
+                        uint8_t nType = 0;
+                        contract >> nType;
+
+                        /* Register custody in SYSTEM ownership until claimed, unless the ForceTransfer flag has been set */
+                        uint256_t hashNewOwner = (nType == TAO::Operation::TRANSFER::FORCE ? hashTransfer : 0);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -224,6 +266,10 @@ namespace TAO
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::TRANSFER: not authorized ", contract.Caller().SubString());
+
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Transfer::Execute(state, hashNewOwner, contract.Timestamp()))
+                            return false;
 
                         /* Write the state to memory map. */
                         mapStates[hashAddress] = state;
@@ -267,6 +313,10 @@ namespace TAO
                         if(prestate != state)
                             return debug::error(FUNCTION, "OP::CLAIM: pre-state verification failed");
 
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Claim::Execute(state, contract.Caller(), contract.Timestamp()))
+                            return false;
+
                         /* Write the state to memory map. */
                         mapStates[hashAddress] = state;
 
@@ -287,8 +337,16 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case TAO::Operation::OP::TRUST:
                     {
-                        /* Seek to the end. */
-                        contract.Seek(80);
+                        /* Seek to scores. */
+                        contract.Seek(64);
+
+                        /* Get the trust score. */
+                        uint64_t nScore = 0;
+                        contract >> nScore;
+
+                        /* Get the stake reward. */
+                        uint64_t nReward = 0;
+                        contract >> nReward;
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -303,24 +361,28 @@ namespace TAO
                         contract >>= prestate;
 
                         /* Check temporary memory states first. */
-                        State state;
-                        if(mapStates.count(contract.Caller())) //TODO: check here for duplicate register address (could have a collision between genesis and address)
-                            state = mapStates[contract.Caller()];
+                        Object object;
+                        if(mapStates.count(contract.Caller())) //TODO: could have a collision between genesis and address)
+                            object = TAO::Register::Object(mapStates[contract.Caller()]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadTrust(contract.Caller(), state))
+                        else if(!LLD::Register->ReadTrust(contract.Caller(), object))
                             return debug::error(FUNCTION, "OP::TRUST: failed to read pre-state");
 
                         /* Check that the checksums match. */
-                        if(prestate != state)
+                        if(prestate != object)
                             return debug::error(FUNCTION, "OP::TRUST: pre-state verification failed");
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::TRUST: not authorized ", contract.Caller().SubString());
 
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Trust::Execute(object, nReward, nScore, contract.Timestamp()))
+                            return false;
+
                         /* Write the state to memory map. */
-                        mapStates[contract.Caller()] = state;
+                        mapStates[contract.Caller()] = TAO::Register::State(object);
 
                         break;
                     }
@@ -333,8 +395,9 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
-                        /* Seek to the end. */
-                        contract.Seek(8);
+                        /* Get the stake reward. */
+                        uint64_t nReward = 0;
+                        contract >> nReward;
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -349,24 +412,28 @@ namespace TAO
                         contract >>= prestate;
 
                         /* Check temporary memory states first. */
-                        State state;
+                        Object object;
                         if(mapStates.count(contract.Caller()))
-                            state = mapStates[contract.Caller()];
+                            object = TAO::Register::Object(mapStates[contract.Caller()]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
                             return debug::error(FUNCTION, "OP::GENESIS: failed to read pre-state");
 
                         /* Check that the checksums match. */
-                        if(prestate != state)
+                        if(prestate != object)
                             return debug::error(FUNCTION, "OP::GENESIS: pre-state verification failed");
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::GENESIS: not authorized ", contract.Caller().SubString());
 
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Genesis::Execute(object, nReward, contract.Timestamp()))
+                            return false;
+
                         /* Write the state to memory map. */
-                        mapStates[contract.Caller()] = state;
+                        mapStates[contract.Caller()] = TAO::Register::State(object);
 
                         break;
                     }
@@ -375,8 +442,9 @@ namespace TAO
                     /* Move funds from trust account balance to stake. */
                     case TAO::Operation::OP::STAKE:
                     {
-                        /* Seek to the end. */
-                        contract.Seek(8);
+                        /* Amount to of funds to move. */
+                        uint64_t nAmount = 0;
+                        contract >> nAmount;
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -391,24 +459,28 @@ namespace TAO
                         contract >>= prestate;
 
                         /* Check temporary memory states first. */
-                        State state;
-                        if(mapStates.count(contract.Caller())) //TODO: check here for duplicate register address (could have a collision between genesis and address)
-                            state = mapStates[contract.Caller()];
+                        Object object;
+                        if(mapStates.count(contract.Caller())) //TODO: could have a collision between genesis and address)
+                            object = TAO::Register::Object(mapStates[contract.Caller()]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadTrust(contract.Caller(), state))
+                        else if(!LLD::Register->ReadTrust(contract.Caller(), object))
                             return debug::error(FUNCTION, "OP::STAKE: failed to read pre-state");
 
                         /* Check that the checksums match. */
-                        if(prestate != state)
+                        if(prestate != object)
                             return debug::error(FUNCTION, "OP::STAKE: pre-state verification failed");
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::STAKE: not authorized ", contract.Caller().SubString());
 
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Stake::Execute(object, nAmount, contract.Timestamp()))
+                            return false;
+
                         /* Write the state to memory map. */
-                        mapStates[contract.Caller()] = state;
+                        mapStates[contract.Caller()] = TAO::Register::State(object);
 
                         break;
                     }
@@ -417,8 +489,13 @@ namespace TAO
                     /* Move funds from trust account stake to balance. */
                     case TAO::Operation::OP::UNSTAKE:
                     {
-                        /* Seek to the end. */
-                        contract.Seek(16);
+                        /* Amount of funds to move. */
+                        uint64_t nAmount = 0;
+                        contract >> nAmount;
+
+                        /* Trust score penalty from unstake. */
+                        uint64_t nPenalty = 0;
+                        contract >> nPenalty;
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -433,24 +510,28 @@ namespace TAO
                         contract >>= prestate;
 
                         /* Check temporary memory states first. */
-                        State state;
-                        if(mapStates.count(contract.Caller())) //TODO: check here for duplicate register address (could have a collision between genesis and address)
-                            state = mapStates[contract.Caller()];
+                        Object object;
+                        if(mapStates.count(contract.Caller())) //TODO: could have a collision between genesis and address)
+                            object = TAO::Register::Object(mapStates[contract.Caller()]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadTrust(contract.Caller(), state))
+                        else if(!LLD::Register->ReadTrust(contract.Caller(), object))
                             return debug::error(FUNCTION, "OP::UNSTAKE: failed to read pre-state");
 
                         /* Check that the checksums match. */
-                        if(prestate != state)
+                        if(prestate != object)
                             return debug::error(FUNCTION, "OP::UNSTAKE: pre-state verification failed");
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::UNSTAKE: not authorized ", contract.Caller().SubString());
 
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Unstake::Execute(object, nAmount, nPenalty, contract.Timestamp()))
+                            return false;
+
                         /* Write the state to memory map. */
-                        mapStates[contract.Caller()] = state;
+                        mapStates[contract.Caller()] = TAO::Register::State(object);
 
                         break;
                     }
@@ -464,7 +545,11 @@ namespace TAO
                         contract >> hashAddress;
 
                         /* Seek to the end. */
-                        contract.Seek(40);
+                        contract.Seek(32);
+
+                        /* Get the transfer amount. */
+                        uint64_t nAmount = 0;
+                        contract >> nAmount;
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -479,24 +564,28 @@ namespace TAO
                         contract >>= prestate;
 
                         /* Check temporary memory states first. */
-                        State state;
+                        Object object;
                         if(mapStates.find(hashAddress) != mapStates.end())
-                            state = mapStates[hashAddress];
+                            object = TAO::Register::Object(mapStates[hashAddress]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to read pre-state");
 
                         /* Check that the checksums match. */
-                        if(prestate != state)
+                        if(prestate != object)
                             return debug::error(FUNCTION, "OP::DEBIT: pre-state verification failed");
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::DEBIT: not authorized ", contract.Caller().SubString());
 
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Debit::Execute(object, nAmount, contract.Timestamp()))
+                            return false;
+
                         /* Write the state to memory map. */
-                        mapStates[hashAddress] = state;
+                        mapStates[hashAddress] = TAO::Register::State(object);
 
                         break;
                     }
@@ -505,20 +594,19 @@ namespace TAO
                     /* Credit tokens to an account you own. */
                     case TAO::Operation::OP::CREDIT:
                     {
-                        /* Extract the transaction from contract. */
-                        uint512_t hashTx = 0;
-                        contract >> hashTx;
-
-                        /* Extract the contract-id. */
-                        uint32_t nContract = 0;
-                        contract >> nContract;
+                        /* Seek to address. */
+                        contract.Seek(68);
 
                         /* Get the transfer address. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
                         /* Seek to the end. */
-                        contract.Seek(40);
+                        contract.Seek(32);
+
+                        /* Get the transfer amount. */
+                        uint64_t  nAmount = 0;
+                        contract >> nAmount;
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;
@@ -533,24 +621,104 @@ namespace TAO
                         contract >>= prestate;
 
                         /* Check temporary memory states first. */
-                        State state;
+                        Object object;
                         if(mapStates.find(hashAddress) != mapStates.end())
-                            state = mapStates[hashAddress];
+                            object = TAO::Register::Object(mapStates[hashAddress]);
 
                         /* Read the register from database. */
-                        else if(!LLD::Register->ReadState(hashAddress, state, nFlags))
+                        else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
                             return debug::error(FUNCTION, "OP::CREDIT: failed to read pre-state");
 
                         /* Check that the checksums match. */
-                        if(prestate != state)
+                        if(prestate != object)
                             return debug::error(FUNCTION, "OP::CREDIT: pre-state verification failed");
 
                         /* Check contract account */
                         if(contract.Caller() != prestate.hashOwner)
                             return debug::error(FUNCTION, "OP::CREDIT: not authorized ", contract.Caller().SubString());
 
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Credit::Execute(object, nAmount, contract.Timestamp()))
+                            return false;
+
                         /* Write the state to memory map. */
-                        mapStates[hashAddress] = state;
+                        mapStates[hashAddress] = TAO::Register::State(object);
+
+                        break;
+                    }
+
+                    /* Authorize is enabled in private mode only. */
+                    case TAO::Operation::OP::AUTHORIZE:
+                    {
+                        /* Seek to address. */
+                        contract.Seek(96);
+
+                        break;
+                    }
+
+                    /* Validate a previous contract's conditions */
+                    case TAO::Operation::OP::VALIDATE:
+                    {
+                        /* Seek past validate parameters. */
+                        contract.Seek(68);
+
+                        break;
+                    }
+
+
+                    /* Create unspendable legacy script, that acts to debit from the account and make this unspendable. */
+                    case TAO::Operation::OP::LEGACY:
+                    {
+                        /* Get last trust block. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
+
+                        /* Seek to the end. */
+                        contract.Seek(32);
+
+                        /* Get the transfer amount. */
+                        uint64_t nAmount = 0;
+                        contract >> nAmount;
+
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::DEBIT: register state not in pre-state");
+
+                        /* Verify the register's prestate. */
+                        State prestate;
+                        contract >>= prestate;
+
+                        /* Check temporary memory states first. */
+                        Object object;
+                        if(mapStates.find(hashAddress) != mapStates.end())
+                            object = TAO::Register::Object(mapStates[hashAddress]);
+
+                        /* Read the register from database. */
+                        else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
+                            return debug::error(FUNCTION, "OP::DEBIT: failed to read pre-state");
+
+                        /* Check that the checksums match. */
+                        if(prestate != object)
+                            return debug::error(FUNCTION, "OP::DEBIT: pre-state verification failed");
+
+                        /* Check contract account */
+                        if(contract.Caller() != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::DEBIT: not authorized ", contract.Caller().SubString());
+
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Legacy::Execute(object, nAmount, contract.Timestamp()))
+                            return false;
+
+                        /* Write the state to memory map. */
+                        mapStates[hashAddress] = TAO::Register::State(object);
+
+                        /* Get the script data. */
+                        uint64_t nSize = contract.ReadCompactSize(TAO::Operation::Contract::OPERATIONS);
+                        contract.Seek(nSize);
 
                         break;
                     }

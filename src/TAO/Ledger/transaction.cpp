@@ -122,7 +122,7 @@ namespace TAO
 
                 /* Verify the register pre-states. */
                 if(!TAO::Register::Verify(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL))
-                    return debug::error(FUNCTION, "transaction register layer failed to verify");
+                    return false;
             }
 
             return true;

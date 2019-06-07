@@ -521,9 +521,8 @@ namespace TAO
                         uint256_t hashFrom = 0;
                         contract >> hashFrom;
 
-                        /* Get the transfer address. */
-                        uint256_t hashTo = 0;
-                        contract >> hashTo;
+                        /* Seek to the end. */
+                        contract.Seek(32);
 
                         /* Get the transfer amount. */
                         uint64_t nAmount = 0;
@@ -674,7 +673,7 @@ namespace TAO
                     }
 
                     default:
-                        return debug::error(FUNCTION, "invalid code for register verification");
+                        return debug::error(FUNCTION, "invalid code for register buildling");
                 }
 
                 /* Check for end of stream. */
