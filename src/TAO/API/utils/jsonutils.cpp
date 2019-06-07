@@ -122,7 +122,7 @@ namespace TAO
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
+        json::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
         {
             /* Declare JSON object to return */
             json::json txdata;
@@ -167,7 +167,7 @@ namespace TAO
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
+        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
         {
             /* Declare JSON object to return */
             json::json txdata;
@@ -548,140 +548,188 @@ namespace TAO
             }
             else if(object.nType == TAO::Register::REGISTER::OBJECT)
             {
+
                 /* Get the object standard. */
                 uint8_t nStandard = object.Standard();
-
-                if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
-                {
-                    ret["address"]    = hashRegister.ToString();
-
-                    std::string strTokenName = GetTokenNameForAccount(users->GetCallersGenesis(params), object);
-                    if(!strTokenName.empty())
-                        ret["token_name"] = strTokenName;
-
-                    ret["token"] = object.get<uint256_t>("token").GetHex();
-
-                    /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
-                    Therefore, to convert the internal value to a floating point value we need to reduce the internal value
-                    by 10^digits  */
-                    uint64_t nDigits = GetTokenOrAccountDigits(object);
-
-                    ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
-
-                }
-                else if(nStandard == TAO::Register::OBJECTS::TRUST)
-                {
-                    ret["address"]    = hashRegister.ToString();
-                    ret["token_name"] = "NXS";
-                    ret["token"] = object.get<uint256_t>("token").GetHex();
-
-                    /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
-                    Therefore, to convert the internal value to a floating point value we need to reduce the internal value
-                    by 10^digits  */
-                    uint64_t nDigits = GetTokenOrAccountDigits(object);
-
-                    ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
-
-                    /* General trust account output same as ACCOUNT. Leave off stake-related values */
-                    //ret["trust"]    = (double)object.get<uint64_t>("trust") / pow(10, nDigits);
-                    //ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDigits);
-
-                }
-                else if(nStandard == TAO::Register::OBJECTS::TOKEN)
+                switch(nStandard)
                 {
 
-                    /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
-                    Therefore, to convert the internal value to a floating point value we need to reduce the internal value
-                    by 10^digits  */
-                    uint64_t nDigits = GetTokenOrAccountDigits(object);
-
-                    ret["address"]          = hashRegister.ToString();
-                    ret["balance"]          = (double) object.get<uint64_t>("balance") / pow(10, nDigits);
-                    ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDigits);
-                    ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
-                                            - object.get<uint64_t>("balance")) / pow(10, nDigits);
-                    ret["digits"]           = nDigits;
-                }
-                /* Must be a user-definable object register (asset) */
-                else
-                {
-                    ret["address"]    = hashRegister.ToString();
-                    ret["created"]    = object.nCreated;
-                    ret["modified"]   = object.nModified;
-                    ret["owner"]      = object.hashOwner.ToString();
-
-                    /* Get List of field names in this asset object */
-                    std::vector<std::string> vFieldNames = object.GetFieldNames();
-
-                    /* Declare type and data variables for unpacking the Object fields */
-                    uint8_t nType;
-                    uint8_t nUint8;
-                    uint16_t nUint16;
-                    uint32_t nUint32;
-                    uint64_t nUint64;
-                    uint256_t nUint256;
-                    uint512_t nUint512;
-                    uint1024_t nUint1024;
-                    std::string strValue;
-                    std::vector<uint8_t> vchBytes;
-
-                    for(const auto& strFieldName : vFieldNames)
+                    /* Handle for a regular account. */
+                    case TAO::Register::OBJECTS::ACCOUNT:
                     {
-                        /* First get the type*/
-                        object.Type(strFieldName, nType);
+                        ret["address"]    = hashRegister.ToString();
 
-                        if(nType == TAO::Register::TYPES::UINT8_T)
-                        {
-                            object.Read<uint8_t>(strFieldName, nUint8);
-                            ret[strFieldName] = nUint8;
-                        }
-                        else if(nType == TAO::Register::TYPES::UINT16_T)
-                        {
-                            object.Read<uint16_t>(strFieldName, nUint16);
-                            ret[strFieldName] = nUint16;
-                        }
-                        else if(nType == TAO::Register::TYPES::UINT32_T)
-                        {
-                            object.Read<uint32_t>(strFieldName, nUint32);
-                            ret[strFieldName] = nUint32;
-                        }
-                        else if(nType == TAO::Register::TYPES::UINT64_T)
-                        {
-                            object.Read<uint64_t>(strFieldName, nUint64);
-                            ret[strFieldName] = nUint64;
-                        }
-                        else if(nType == TAO::Register::TYPES::UINT256_T)
-                        {
-                            object.Read<uint256_t>(strFieldName, nUint256);
-                            ret[strFieldName] = nUint256.GetHex();
-                        }
-                        else if(nType == TAO::Register::TYPES::UINT512_T)
-                        {
-                            object.Read<uint512_t>(strFieldName, nUint512);
-                            ret[strFieldName] = nUint512.GetHex();
-                        }
-                        else if(nType == TAO::Register::TYPES::UINT1024_T)
-                        {
-                            object.Read<uint1024_t>(strFieldName, nUint1024);
-                            ret[strFieldName] = nUint1024.GetHex();
-                        }
-                        else if(nType == TAO::Register::TYPES::STRING )
-                        {
-                            object.Read<std::string>(strFieldName, strValue);
+                        std::string strTokenName = GetTokenNameForAccount(users->GetCallersGenesis(params), object);
+                        if(!strTokenName.empty())
+                            ret["token_name"] = strTokenName;
 
-                            /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */
-                            ret[strFieldName] = strValue.substr(0, strValue.find_last_not_of('\0') + 1);
-                        }
-                        else if(nType == TAO::Register::TYPES::BYTES)
+                        ret["token"] = object.get<uint256_t>("token").GetHex();
+
+                        /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
+                        Therefore, to convert the internal value to a floating point value we need to reduce the internal value
+                        by 10^digits  */
+                        uint64_t nDigits = GetTokenOrAccountDigits(object);
+
+                        ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
+
+                        break;
+                    }
+
+
+                    /* Handle for a trust account. */
+                    case TAO::Register::OBJECTS::TRUST:
+                    {
+                        ret["address"]    = hashRegister.ToString();
+                        ret["token_name"] = "NXS";
+                        ret["token"] = object.get<uint256_t>("token").GetHex();
+
+                        /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
+                        Therefore, to convert the internal value to a floating point value we need to reduce the internal value
+                        by 10^digits  */
+                        uint64_t nDigits = GetTokenOrAccountDigits(object);
+
+                        ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
+
+                        /* General trust account output same as ACCOUNT. Leave off stake-related values */
+                        //ret["trust"]    = (double)object.get<uint64_t>("trust") / pow(10, nDigits);
+                        //ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDigits);
+
+                        break;
+                    }
+
+
+                    /* Handle for a token contract. */
+                    case TAO::Register::OBJECTS::TOKEN:
+                    {
+                        /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
+                        Therefore, to convert the internal value to a floating point value we need to reduce the internal value
+                        by 10^digits  */
+                        uint64_t nDigits = GetTokenOrAccountDigits(object);
+
+                        ret["address"]          = hashRegister.ToString();
+                        ret["balance"]          = (double) object.get<uint64_t>("balance") / pow(10, nDigits);
+                        ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDigits);
+                        ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
+                                                - object.get<uint64_t>("balance")) / pow(10, nDigits);
+                        ret["digits"]           = nDigits;
+
+                        break;
+                    }
+
+                    /* Handle for all nonstandard object registers. */
+                    default:
+                    {
+                        ret["address"]    = hashRegister.ToString();
+                        ret["created"]    = object.nCreated;
+                        ret["modified"]   = object.nModified;
+                        ret["owner"]      = object.hashOwner.ToString();
+
+                        /* Get List of field names in this asset object */
+                        std::vector<std::string> vFieldNames = object.GetFieldNames();
+
+                        /* Declare type and data variables for unpacking the Object fields */
+                        for(const auto& strName : vFieldNames)
                         {
-                            object.Read<std::vector<uint8_t>>(strFieldName, vchBytes);
+                            /* First get the type */
+                            uint8_t nType = 0;
+                            object.Type(strName, nType);
 
-                            /* Remove trailing nulls from the data, which are added for padding to maxlength on mutable fields */
-                            vchBytes.erase(std::find(vchBytes.begin(), vchBytes.end(), '\0'), vchBytes.end());
+                            /* Switch based on type. */
+                            switch(nType)
+                            {
+                                /* Check for uint8_t type. */
+                                case TAO::Register::TYPES::UINT8_T:
+                                {
+                                    /* Set the return value from object register data. */
+                                    ret[strName] = object.get<uint8_t>(strName);
 
-                            ret[strFieldName] = encoding::EncodeBase64(&vchBytes[0], vchBytes.size()) ;
+                                    break;
+                                }
+
+                                /* Check for uint16_t type. */
+                                case TAO::Register::TYPES::UINT16_T:
+                                {
+                                    /* Set the return value from object register data. */
+                                    ret[strName] = object.get<uint16_t>(strName);
+
+                                    break;
+                                }
+
+                                /* Check for uint32_t type. */
+                                case TAO::Register::TYPES::UINT32_T:
+                                {
+                                    /* Set the return value from object register data. */
+                                    ret[strName] = object.get<uint32_t>(strName);
+
+                                    break;
+                                }
+
+                                /* Check for uint64_t type. */
+                                case TAO::Register::TYPES::UINT64_T:
+                                {
+                                    /* Set the return value from object register data. */
+                                    ret[strName] = object.get<uint8_t>(strName);
+
+                                    break;
+                                }
+
+                                /* Check for uint256_t type. */
+                                case TAO::Register::TYPES::UINT256_T:
+                                {
+                                    /* Set the return value from object register data. */
+                                    ret[strName] = object.get<uint256_t>(strName).GetHex();
+
+                                    break;
+                                }
+
+                                /* Check for uint512_t type. */
+                                case TAO::Register::TYPES::UINT512_T:
+                                {
+                                    /* Set the return value from object register data. */
+                                    ret[strName] = object.get<uint512_t>(strName).GetHex();
+
+                                    break;
+                                }
+
+                                /* Check for uint1024_t type. */
+                                case TAO::Register::TYPES::UINT1024_T:
+                                {
+                                    /* Set the return value from object register data. */
+                                    ret[strName] = object.get<uint1024_t>(strName).GetHex();
+
+                                    break;
+                                }
+
+                                /* Check for string type. */
+                                case TAO::Register::TYPES::STRING:
+                                {
+                                    /* Set the return value from object register data. */
+                                    std::string strRet = object.get<std::string>(strName);
+
+                                    /* Remove trailing nulls from the data, which are padding to maxlength on mutable fields */
+                                    ret[strName] = strRet.substr(0, strRet.find_last_not_of('\0') + 1);
+
+                                    break;
+                                }
+
+                                /* Check for bytes type. */
+                                case TAO::Register::TYPES::BYTES:
+                                {
+                                    /* Set the return value from object register data. */
+                                    std::vector<uint8_t> vRet = object.get<std::vector<uint8_t>>(strName);
+
+                                    /* Remove trailing nulls from the data, which are padding to maxlength on mutable fields */
+                                    vRet.erase(std::find(vRet.begin(), vRet.end(), '\0'), vRet.end());
+
+                                    /* Add to return value in base64 encoding. */
+                                    ret[strName] = encoding::EncodeBase64(&vRet[0], vRet.size()) ;
+
+                                    break;
+                                }
+                            }
                         }
 
+                        break;
                     }
                 }
             }
