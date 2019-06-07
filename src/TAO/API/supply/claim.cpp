@@ -68,8 +68,8 @@ namespace TAO
             hashClaim.SetHex(params["txid"].get<std::string>());
 
             /* Read the Transfer transaction being claimed. */
-            TAO::Ledger::Transaction txTranser;
-            if(!LLD::Ledger->ReadTx(hashClaim, txTranser))
+            TAO::Ledger::Transaction txPrev;
+            if(!LLD::Ledger->ReadTx(hashClaim, txPrev))
                 throw APIException(-23, "Transfer transaction not found.");
 
             /* Check to see whether they have provided a new name */
@@ -79,10 +79,10 @@ namespace TAO
 
             /* Loop through all transactions. */
             int32_t nCurrent = -1;
-            for(uint32_t nContract = 0; nContract < txTranser.Size(); ++nContract)
+            for(uint32_t nContract = 0; nContract < txPrev.Size(); ++nContract)
             {
                 /* Get the contract. */
-                const TAO::Operation::Contract& contract = txTranser[nContract];
+                const TAO::Operation::Contract& contract = txPrev[nContract];
 
                 /* Get the operation byte. */
                 uint8_t nOP = 0;
@@ -105,7 +105,7 @@ namespace TAO
                 contract >> nType;
 
                 /* Ensure that this transfer was meant for this user or that we are claiming back our own transfer */
-                if(hashGenesis != tx.hashGenesis && tx.hashGenesis != txTranser.hashGenesis)
+                if(hashGenesis != tx.hashGenesis && tx.hashGenesis != txPrev.hashGenesis)
                     continue;
 
                 /* Ensure this wasn't a forced transfer (which requires no Claim) */

@@ -431,7 +431,7 @@ namespace TAO
                     const TAO::Operation::Contract& contract = tx[nContract];
 
                     /* Seek to start of the operation stream in case this a transaction from mempool that has already been read*/
-                    contract.Seek(0);
+                    contract.Reset(TAO::Operation::Contract::OPERATIONS);
 
                     /* Deserialize the OP. */
                     uint8_t OP = 0;
@@ -471,7 +471,7 @@ namespace TAO
                         case TAO::Operation::OP::CREDIT:
                         {
                             /* Seek past irrelevant data. */
-                            contract.Seek(69);
+                            contract.Seek(68);
 
                             /* The account that is being credited. */
                             uint256_t hashAddress = 0;
