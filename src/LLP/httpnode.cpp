@@ -48,14 +48,7 @@ namespace LLP
     }
 
 
-    /** DoS
-     *
-     *  Send the DoS Score to DDOS Filte
-     *
-     *  @param[in] nDoS The score to add for DoS banning
-     *  @param[in] fReturn The value to return (False disconnects this node)
-     *
-     **/
+    /* Send the DoS Score to DDOS Filter */
     bool HTTPNode::DoS(uint32_t nDoS, bool fReturn)
     {
         if(fDDOS)
@@ -65,12 +58,7 @@ namespace LLP
     }
 
 
-    /** ReadPacket
-     *
-     *  Non-Blocking Packet reader to build a packet from TCP Connection.
-     *  This keeps thread from spending too much time for each Connection.
-     *
-     **/
+    /*  Non-Blocking Packet reader to build a packet from TCP Connection. */
     void HTTPNode::ReadPacket()
     {
         if(!INCOMING.Complete())
@@ -169,15 +157,7 @@ namespace LLP
     }
 
 
-    /** PushResponse
-     *
-     *  Returns an HTTP packet with response code and content.
-     *
-     *  @param[in] nMsg The status code to respond with.
-     *
-     *  @param[in] strContent The content to post return with.
-     *
-     **/
+    /* Returns an HTTP packet with response code and content. */
     void HTTPNode::PushResponse(const uint16_t nMsg, const std::string& strContent)
     {
         try
