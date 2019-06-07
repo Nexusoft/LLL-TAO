@@ -171,7 +171,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
 
             //run tests
             REQUIRE(tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -192,7 +192,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
 
            //run tests
            REQUIRE(tx.Build());
-           REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+           REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -215,7 +215,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
 
            //run tests
            REQUIRE(tx.Build());
-           REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+           REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -238,7 +238,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
 
            //run tests
            REQUIRE(tx.Build());
-           REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+           REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -261,7 +261,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
 
            //run tests
            REQUIRE(tx.Build());
-           REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+           REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -284,7 +284,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
 
            //run tests
            REQUIRE(tx.Build());
-           REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+           REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -307,7 +307,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
 
            //run tests
            REQUIRE(tx.Build());
-           REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+           REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -330,7 +330,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
 
             //run tests
             REQUIRE(tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 
@@ -353,7 +353,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]" )
 
             //run tests
             REQUIRE(tx.Build());
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
         }
     }
 }

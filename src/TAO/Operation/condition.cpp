@@ -240,8 +240,8 @@ namespace TAO
             bool fRet = false;
 
             /* Grab the first value */
-            TAO::Register::Value vFirst;
-            if(!GetValue(vFirst))
+            TAO::Register::Value vLeft;
+            if(!GetValue(vLeft))
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get l-value"));
 
             /* Grab the next operation. */
@@ -255,16 +255,16 @@ namespace TAO
                 case OP::EQUALS:
                 {
                     /* Grab the second value. */
-                    TAO::Register::Value vSecond;
-                    if(!GetValue(vSecond))
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
                         throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
-                    fRet = (compare(vFirst, vSecond) == 0);
+                    fRet = (compare(vLeft, vRight) == 0);
 
                     /* Deallocate the values from the VM. */
-                    deallocate(vSecond);
-                    deallocate(vFirst);
+                    deallocate(vRight);
+                    deallocate(vLeft);
 
                     break;
                 }
@@ -274,16 +274,16 @@ namespace TAO
                 case OP::LESSTHAN:
                 {
                     /* Grab the second value. */
-                    TAO::Register::Value vSecond;
-                    if(!GetValue(vSecond))
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
                         throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
-                    fRet = (compare(vFirst, vSecond) < 0);
+                    fRet = (compare(vLeft, vRight) < 0);
 
                     /* Deallocate the values from the VM. */
-                    deallocate(vSecond);
-                    deallocate(vFirst);
+                    deallocate(vRight);
+                    deallocate(vLeft);
 
                     break;
                 }
@@ -293,16 +293,16 @@ namespace TAO
                 case OP::GREATERTHAN:
                 {
                     /* Grab the second value. */
-                    TAO::Register::Value vSecond;
-                    if(!GetValue(vSecond))
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
                         throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
-                    fRet = (compare(vFirst, vSecond) > 0);
+                    fRet = (compare(vLeft, vRight) > 0);
 
                     /* Deallocate the values from the VM. */
-                    deallocate(vSecond);
-                    deallocate(vFirst);
+                    deallocate(vRight);
+                    deallocate(vLeft);
 
                     break;
                 }
@@ -312,16 +312,16 @@ namespace TAO
                 case OP::LESSEQUALS:
                 {
                     /* Grab the second value. */
-                    TAO::Register::Value vSecond;
-                    if(!GetValue(vSecond))
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
                         throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
-                    fRet = (compare(vFirst, vSecond) <= 0);
+                    fRet = (compare(vLeft, vRight) <= 0);
 
                     /* Deallocate the values from the VM. */
-                    deallocate(vSecond);
-                    deallocate(vFirst);
+                    deallocate(vRight);
+                    deallocate(vLeft);
 
                     break;
                 }
@@ -331,16 +331,16 @@ namespace TAO
                 case OP::GREATEREQUALS:
                 {
                     /* Grab the second value. */
-                    TAO::Register::Value vSecond;
-                    if(!GetValue(vSecond))
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
                         throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
-                    fRet = (compare(vFirst, vSecond) >= 0);
+                    fRet = (compare(vLeft, vRight) >= 0);
 
                     /* Deallocate the values from the VM. */
-                    deallocate(vSecond);
-                    deallocate(vFirst);
+                    deallocate(vRight);
+                    deallocate(vLeft);
 
                     break;
                 }
@@ -350,16 +350,16 @@ namespace TAO
                 case OP::NOTEQUALS:
                 {
                     /* Grab the second value. */
-                    TAO::Register::Value vSecond;
-                    if(!GetValue(vSecond))
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
                         throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
-                    fRet = (compare(vFirst, vSecond) != 0);
+                    fRet = (compare(vLeft, vRight) != 0);
 
                     /* Deallocate the values from the VM. */
-                    deallocate(vSecond);
-                    deallocate(vFirst);
+                    deallocate(vRight);
+                    deallocate(vLeft);
 
                     break;
                 }
@@ -369,16 +369,16 @@ namespace TAO
                 case OP::CONTAINS:
                 {
                     /* Grab the second value. */
-                    TAO::Register::Value vSecond;
-                    if(!GetValue(vSecond))
+                    TAO::Register::Value vRight;
+                    if(!GetValue(vRight))
                         throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
 
                     /* Compare both values to one another. */
-                    fRet = contains(vFirst, vSecond);
+                    fRet = contains(vLeft, vRight);
 
                     /* Deallocate the values from the VM. */
-                    deallocate(vSecond);
-                    deallocate(vFirst);
+                    deallocate(vRight);
+                    deallocate(vLeft);
 
                     break;
                 }
@@ -548,7 +548,7 @@ namespace TAO
                             throw std::runtime_error(debug::safe_printstr("OP::MUL computation greater than 64-bits"));
 
                         /* Check for value overflows. */
-                        if (at(vRet) > std::numeric_limits<uint64_t>::max() / at(vMul))
+                        if (at(vMul) != 0 && at(vRet) > std::numeric_limits<uint64_t>::max() / at(vMul))
                             throw std::runtime_error(debug::safe_printstr("OP::MUL 64-bit value overflow"));
 
                         /* Compute the return value. */
@@ -585,7 +585,7 @@ namespace TAO
                         for(uint64_t e = 1; e < at(vExp); ++e)
                         {
                             /* Check for value overflows. */
-                            if (at(vRet) > std::numeric_limits<uint64_t>::max() / nBase)
+                            if (nBase != 0 && at(vRet) > std::numeric_limits<uint64_t>::max() / nBase)
                                 throw std::runtime_error(debug::safe_printstr("OP::EXP 64-bit value overflow"));
 
                             /* Assign the return value. */

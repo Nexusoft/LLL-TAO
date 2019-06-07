@@ -363,7 +363,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     contract <= (uint8_t)OP::TYPES::STRING <= std::string("is there an atomic bear out there?") <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::STRING <= std::string("atomic fox");
     {
         Condition script = Condition(contract, caller);
-        REQUIRE(!script.Execute());
+        REQUIRE_FALSE(script.Execute());
     }
 
 
@@ -404,7 +404,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     contract <= (uint8_t)OP::CALLER::OPERATIONS <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::BYTES <= ssCompare.Bytes();
     {
         Condition script = Condition(contract, caller);
-        REQUIRE(!script.Execute());
+        REQUIRE_FALSE(script.Execute());
     }
 
 
@@ -761,7 +761,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
 
     {
         Condition script = Condition(contract, caller);
-        REQUIRE(!script.Execute());
+        REQUIRE_FALSE(script.Execute());
     }
 
 
@@ -890,7 +890,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
 
     {
         Condition script = Condition(contract, caller);
-        REQUIRE(!script.Execute());
+        REQUIRE_FALSE(script.Execute());
 
         //check for error
         std::string error = debug::GetLastError();
@@ -957,7 +957,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
 
     {
         Condition script = Condition(contract, caller);
-        REQUIRE(!script.Execute());
+        REQUIRE_FALSE(script.Execute());
 
         //check for error
         std::string error = debug::GetLastError();

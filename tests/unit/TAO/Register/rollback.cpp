@@ -63,7 +63,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
         REQUIRE(Rollback(tx[0]));
 
         //make sure object is deleted
-        REQUIRE(!LLD::Register->HasState(hashRegister));
+        REQUIRE_FALSE(LLD::Register->HasState(hashRegister));
     }
 
 
@@ -350,7 +350,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(state.hashOwner == 0);
 
                 //check for the proof
-                REQUIRE(!LLD::Ledger->HasProof(hashRegister, hashTx, 0));
+                REQUIRE_FALSE(LLD::Ledger->HasProof(hashRegister, hashTx, 0));
             }
 
             {
@@ -406,7 +406,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
                 //check for tx
                 TAO::Ledger::Transaction txEvent;
-                REQUIRE(!LLD::Ledger->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
+                REQUIRE_FALSE(LLD::Ledger->ReadEvent(hashGenesis2, nSequence - 1, txEvent));
             }
             */
 
@@ -422,7 +422,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(state.hashOwner == 0);
 
                 //check for the proof
-                REQUIRE(!LLD::Ledger->HasProof(hashRegister, hashTx, 0));
+                REQUIRE_FALSE(LLD::Ledger->HasProof(hashRegister, hashTx, 0));
             }
 
             {
@@ -731,7 +731,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                     REQUIRE(account.get<uint64_t>("balance") == 0);
 
                     //check that proofs are removed
-                    REQUIRE(!LLD::Ledger->HasProof(hashRegister, hashTx, 0));
+                    REQUIRE_FALSE(LLD::Ledger->HasProof(hashRegister, hashTx, 0));
                 }
             }
 
@@ -783,7 +783,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                     REQUIRE(account.get<uint64_t>("balance") == 500);
 
                     //check that proofs are removed
-                    REQUIRE(!LLD::Ledger->HasProof(hashRegister, hashTx, 0));
+                    REQUIRE_FALSE(LLD::Ledger->HasProof(hashRegister, hashTx, 0));
 
                     {
                         //check event is discarded
@@ -849,7 +849,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(tx.Build());
 
                 //make sure it fails
-                REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+                REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
             }
 
 
@@ -868,7 +868,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
                 REQUIRE(tx.Build());
 
                 //make sure it fails
-                REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
+                REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::MEMPOOL));
             }
         }
     }
@@ -1015,7 +1015,7 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
             //check register values
             {
                 //check removed from trust index
-                REQUIRE(!LLD::Register->HasTrust(hashGenesis));
+                REQUIRE_FALSE(LLD::Register->HasTrust(hashGenesis));
 
                 Object trustAccount;
                 REQUIRE(LLD::Register->ReadState(hashTrust, trustAccount));

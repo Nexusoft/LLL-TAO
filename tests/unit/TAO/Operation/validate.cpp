@@ -145,7 +145,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -198,7 +198,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -240,7 +240,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(tx.Build());
 
             //commit to disk
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -327,7 +327,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -392,7 +392,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -419,7 +419,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -625,7 +625,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -690,7 +690,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();
@@ -717,7 +717,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
             //check for error
             std::string error = debug::GetLastError();

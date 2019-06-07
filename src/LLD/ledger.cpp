@@ -71,11 +71,11 @@ namespace LLD
 
 
     /* Reads a contract from the ledger DB. */
-    TAO::Operation::Contract LedgerDB::ReadContract(const uint512_t& hashTransaction, const uint32_t nContract, const uint8_t nFlags)
+    TAO::Operation::Contract LedgerDB::ReadContract(const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
     {
         /* Get the transaction. */
         TAO::Ledger::Transaction tx;
-        if(!ReadTx(hashTransaction, tx, nFlags))
+        if(!ReadTx(hashTx, tx, nFlags))
             throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read contract"));
 
         /* Get const reference for read-only access. */
@@ -97,7 +97,7 @@ namespace LLD
             {
                 /* Check for block. */
                 TAO::Ledger::BlockState state;
-                if(!ReadBlock(hashTransaction, state))
+                if(!ReadBlock(hashTx, state))
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, "coinbase isn't included in block"));
 
                 /* Check for overflows. */
@@ -120,36 +120,36 @@ namespace LLD
 
 
     /* Writes a transaction to the ledger DB. */
-    bool LedgerDB::WriteTx(const uint512_t& hashTransaction, const TAO::Ledger::Transaction& tx)
+    bool LedgerDB::WriteTx(const uint512_t& hashTx, const TAO::Ledger::Transaction& tx)
     {
-        return Write(hashTransaction, tx);
+        return Write(hashTx, tx);
     }
 
 
     /* Reads a transaction from the ledger DB. */
-    bool LedgerDB::ReadTx(const uint512_t& hashTransaction, TAO::Ledger::Transaction& tx, const uint8_t nFlags)
+    bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction& tx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             /* Get the transaction. */
-            if(TAO::Ledger::mempool.Get(hashTransaction, tx))
+            if(TAO::Ledger::mempool.Get(hashTx, tx))
                 return true;
         }
 
-        return Read(hashTransaction, tx);
+        return Read(hashTx, tx);
     }
 
 
     /* Erases a transaction from the ledger DB. */
-    bool LedgerDB::EraseTx(const uint512_t& hashTransaction)
+    bool LedgerDB::EraseTx(const uint512_t& hashTx)
     {
-        return Erase(hashTransaction);
+        return Erase(hashTx);
     }
 
 
     /* Writes a partial to the ledger DB. */
-    bool LedgerDB::WriteClaimed(const uint512_t& hashTransaction,
+    bool LedgerDB::WriteClaimed(const uint512_t& hashTx,
                                 const uint32_t nContract, const uint64_t nClaimed, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
@@ -158,7 +158,7 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Write the new proof state. */
-            mapClaims[std::make_pair(hashTransaction, nContract)] = nClaimed;
+            mapClaims[std::make_pair(hashTx, nContract)] = nClaimed;
 
             return true;
         }
@@ -167,16 +167,16 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
-            if(mapClaims.count(std::make_pair(hashTransaction, nContract)))
-               mapClaims.erase(std::make_pair(hashTransaction, nContract));
+            if(mapClaims.count(std::make_pair(hashTx, nContract)))
+               mapClaims.erase(std::make_pair(hashTx, nContract));
         }
 
-        return Write(std::make_pair(hashTransaction, nContract), nClaimed);
+        return Write(std::make_pair(hashTx, nContract), nClaimed);
     }
 
 
     /* Read a partial to the ledger DB. */
-    bool LedgerDB::ReadClaimed(const uint512_t& hashTransaction,
+    bool LedgerDB::ReadClaimed(const uint512_t& hashTx,
                                const uint32_t nContract, uint64_t& nClaimed, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
@@ -185,27 +185,27 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Read the new proof state. */
-            if(mapClaims.count(std::make_pair(hashTransaction, nContract)))
-                nClaimed = mapClaims[std::make_pair(hashTransaction, nContract)];
+            if(mapClaims.count(std::make_pair(hashTx, nContract)))
+                nClaimed = mapClaims[std::make_pair(hashTx, nContract)];
 
             return true;
         }
 
-        return Read(std::make_pair(hashTransaction, nContract), nClaimed);
+        return Read(std::make_pair(hashTx, nContract), nClaimed);
     }
 
 
     /* Determine if a transaction has already been indexed. */
-    bool LedgerDB::HasIndex(const uint512_t& hashTransaction)
+    bool LedgerDB::HasIndex(const uint512_t& hashTx)
     {
-        return Exists(std::make_pair(std::string("index"), hashTransaction));
+        return Exists(std::make_pair(std::string("index"), hashTx));
     }
 
 
     /* Index a transaction hash to a block in keychain. */
-    bool LedgerDB::IndexBlock(const uint512_t& hashTransaction, const uint1024_t& hashBlock)
+    bool LedgerDB::IndexBlock(const uint512_t& hashTx, const uint1024_t& hashBlock)
     {
-        return Index(std::make_pair(std::string("index"), hashTransaction), hashBlock);
+        return Index(std::make_pair(std::string("index"), hashTx), hashBlock);
     }
 
 
@@ -217,9 +217,9 @@ namespace LLD
 
 
     /* Erase a foreign index form the keychain */
-    bool LedgerDB::EraseIndex(const uint512_t& hashTransaction)
+    bool LedgerDB::EraseIndex(const uint512_t& hashTx)
     {
-        return Erase(std::make_pair(std::string("index"), hashTransaction));
+        return Erase(std::make_pair(std::string("index"), hashTx));
     }
 
     /* Erase a foreign index form the keychain */
@@ -232,9 +232,9 @@ namespace LLD
     /*  Recover if an index is not found.
      *  Fixes a corrupted database with a linear search for the hash tx up
      *  to the chain height. */
-    bool LedgerDB::RepairIndex(const uint512_t& hashTransaction, const TAO::Ledger::BlockState &state)
+    bool LedgerDB::RepairIndex(const uint512_t& hashTx, const TAO::Ledger::BlockState &state)
     {
-        debug::log(0, FUNCTION, "repairing index for ", hashTransaction.ToString().substr(0, 20));
+        debug::log(0, FUNCTION, "repairing index for ", hashTx.ToString().substr(0, 20));
 
         TAO::Ledger::BlockState currState = state;
         uint1024_t hashBlock;
@@ -257,10 +257,10 @@ namespace LLD
             for(const auto& tx : currState.vtx)
             {
                 /* If the transaction is found, write the index. */
-                if(tx.second == hashTransaction)
+                if(tx.second == hashTx)
                 {
                     /* Repair the index once it is found. */
-                    if(!IndexBlock(hashTransaction, hashBlock))
+                    if(!IndexBlock(hashTx, hashBlock))
                         return false;
 
                     return true;
@@ -307,9 +307,9 @@ namespace LLD
 
 
     /* Reads a block state from disk from a tx index. */
-    bool LedgerDB::ReadBlock(const uint512_t& hashTransaction, TAO::Ledger::BlockState& state)
+    bool LedgerDB::ReadBlock(const uint512_t& hashTx, TAO::Ledger::BlockState& state)
     {
-        return Read(std::make_pair(std::string("index"), hashTransaction), state);
+        return Read(std::make_pair(std::string("index"), hashTx), state);
     }
 
 
@@ -321,9 +321,9 @@ namespace LLD
 
 
     /* Checks LedgerDB if a transaction exists. */
-    bool LedgerDB::HasTx(const uint512_t& hashTransaction)
+    bool LedgerDB::HasTx(const uint512_t& hashTx)
     {
-        return Exists(hashTransaction);
+        return Exists(hashTx);
     }
 
 
@@ -416,7 +416,7 @@ namespace LLD
 
 
     /* Writes a proof to disk. Proofs are used to keep track of spent temporal proofs. */
-    bool LedgerDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTransaction,
+    bool LedgerDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTx,
                               const uint32_t nContract, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
@@ -425,7 +425,7 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Write the new proof state. */
-            mapProofs[std::make_tuple(hashProof, hashTransaction, nContract)] = 0;
+            mapProofs[std::make_tuple(hashProof, hashTx, nContract)] = 0;
             return true;
         }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
@@ -433,16 +433,16 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
-            if(mapProofs.count(std::make_tuple(hashProof, hashTransaction, nContract)))
-               mapProofs.erase(std::make_tuple(hashProof, hashTransaction, nContract));
+            if(mapProofs.count(std::make_tuple(hashProof, hashTx, nContract)))
+               mapProofs.erase(std::make_tuple(hashProof, hashTx, nContract));
         }
 
-        return Write(std::make_tuple(hashProof, hashTransaction, nContract));
+        return Write(std::make_tuple(hashProof, hashTx, nContract));
     }
 
 
     /* Checks if a proof exists. Proofs are used to keep track of spent temporal proofs. */
-    bool LedgerDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTransaction,
+    bool LedgerDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTx,
                             const uint32_t nContract, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
@@ -451,16 +451,16 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* If exists in memory, return true. */
-            if(mapProofs.count(std::make_tuple(hashProof, hashTransaction, nContract)))
+            if(mapProofs.count(std::make_tuple(hashProof, hashTx, nContract)))
                 return true;
         }
 
-        return Exists(std::make_tuple(hashProof, hashTransaction, nContract));
+        return Exists(std::make_tuple(hashProof, hashTx, nContract));
     }
 
 
     /* Remove a temporal proof from the database. */
-    bool LedgerDB::EraseProof(const uint256_t& hashProof, const uint512_t& hashTransaction,
+    bool LedgerDB::EraseProof(const uint256_t& hashProof, const uint512_t& hashTx,
                               const uint32_t nContract, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
@@ -469,15 +469,15 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Erase memory proof if they exist. */
-            if(mapProofs.count(std::make_tuple(hashProof, hashTransaction, nContract)))
+            if(mapProofs.count(std::make_tuple(hashProof, hashTx, nContract)))
             {
-                mapProofs.erase(std::make_tuple(hashProof, hashTransaction, nContract));
+                mapProofs.erase(std::make_tuple(hashProof, hashTx, nContract));
 
                 return true;
             }
         }
 
-        return Erase(std::make_tuple(hashProof, hashTransaction, nContract));
+        return Erase(std::make_tuple(hashProof, hashTx, nContract));
     }
 
 
@@ -529,16 +529,16 @@ namespace LLD
 
 
     /* Writes a genesis transaction-id to disk. */
-    bool LedgerDB::WriteGenesis(const uint256_t& hashGenesis, const uint512_t& hashTransaction)
+    bool LedgerDB::WriteGenesis(const uint256_t& hashGenesis, const uint512_t& hashTx)
     {
-        return Write(std::make_pair(std::string("genesis"), hashGenesis), hashTransaction);
+        return Write(std::make_pair(std::string("genesis"), hashGenesis), hashTx);
     }
 
 
     /* Reads a genesis transaction-id from disk. */
-    bool LedgerDB::ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTransaction)
+    bool LedgerDB::ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTx)
     {
-        return Read(std::make_pair(std::string("genesis"), hashGenesis), hashTransaction);
+        return Read(std::make_pair(std::string("genesis"), hashGenesis), hashTx);
     }
 
 }
