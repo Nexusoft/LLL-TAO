@@ -16,6 +16,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/include/chainstate.h>
+
 #include <Util/include/filesystem.h>
 #include <Util/include/args.h>
 
@@ -47,4 +50,14 @@ TEST_CASE("Arguments Tests", "[args]")
     /* Initialize the Legacy Database. */
     LLD::Trust    = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
     LLD::Legacy   = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+
+    //initialize chain state
+    REQUIRE(TAO::Ledger::ChainState::Initialize());
+
+    //create best chain.
+    TAO::Ledger::BlockState state;
+    state.nHeight = 200;
+
+    //set best block
+    TAO::Ledger::ChainState::stateBest.store(state);
 }

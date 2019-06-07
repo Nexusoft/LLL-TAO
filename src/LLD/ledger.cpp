@@ -81,13 +81,13 @@ namespace LLD
         /* Get const reference for read-only access. */
         const TAO::Ledger::Transaction& ref = tx;
 
+        /* Check that the previous transaction is indexed. */
+        if(!tx.IsConfirmed())
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, "previous transaction not confirmed"));
+
         /* Check flags. */
         if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
-            /* Check that the previous transaction is indexed. */
-            if(!tx.IsConfirmed())
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "previous transaction not confirmed"));
-
             /* Check for coinbase transactions. */
             uint8_t nOP = 0;
             ref[nContract] >> nOP;
@@ -99,6 +99,10 @@ namespace LLD
                 TAO::Ledger::BlockState state;
                 if(!ReadBlock(hashTransaction, state))
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, "coinbase isn't included in block"));
+
+                /* Check for overflows. */
+                if(TAO::Ledger::ChainState::stateBest.load().nHeight < state.nHeight)
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "maturity overflow"));
 
                 /* Check the intervals. */
                 if((TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight) <

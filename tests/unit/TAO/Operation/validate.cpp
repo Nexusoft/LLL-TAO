@@ -163,6 +163,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::DEBIT) << hashToken << ~uint256_t(0) << uint64_t(500);
@@ -270,6 +271,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::DEBIT) << hashToken << ~uint256_t(0) << uint64_t(500);
@@ -313,6 +315,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis2;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::CREDIT) << hashTx << uint32_t(0) << hashAccount2 << hashToken << uint64_t(500);
@@ -341,6 +344,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis2;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200);
@@ -376,6 +380,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::CREDIT) << hashTx << uint32_t(0) << hashToken << hashToken << uint64_t(500);
@@ -402,6 +407,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis2;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200);
@@ -429,6 +435,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::CREDIT) << hashValidate << uint32_t(0) << hashAccount << hashToken2 << uint64_t(200);
@@ -452,6 +459,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis2;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::CREDIT) << hashTx << uint32_t(0) << hashAccount2 << hashToken << uint64_t(500);
@@ -561,6 +569,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::TRANSFER) << hashAsset << ~uint256_t(0);
@@ -604,6 +613,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis2;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::CLAIM) << hashTx << uint32_t(0) << hashAsset;
@@ -640,6 +650,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(tx.Build());
 
             //write transaction to disk
+            tx.hashNextTx = LLC::GetRand512(); //set confirmed
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //set hash
@@ -667,6 +678,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::CLAIM) << hashTx << uint32_t(0) << hashAsset;
@@ -694,6 +706,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis2;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200);
@@ -729,6 +742,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             REQUIRE(tx.Build());
 
             //write transaction to disk
+            tx.hashNextTx = LLC::GetRand512(); //set confirmed
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //commit to disk
@@ -744,6 +758,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashGenesis = hashGenesis2;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
+            tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
             tx[0] << uint8_t(OP::CLAIM) << hashTx << uint32_t(0) << hashAsset;

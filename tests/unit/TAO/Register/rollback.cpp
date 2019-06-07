@@ -874,6 +874,11 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
     }
 
 
+    TAO::Ledger::BlockState state;
+    state.nHeight = 150;
+
+    REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
+
     //create a trust register from inputs spent on coinbase
     {
         uint256_t hashTrust    = LLC::GetRand256();
@@ -894,6 +899,9 @@ TEST_CASE( "Register Rollback Tests", "[register]" )
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
+
+            //write index
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), state.GetHash()));
 
             //set the hash
             hashCoinbaseTx = tx.GetHash();
