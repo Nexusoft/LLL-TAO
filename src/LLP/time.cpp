@@ -21,6 +21,38 @@ namespace LLP
 
     std::map<std::string, int32_t> MAP_TIME_DATA;
 
+
+    /** Constructor **/
+    TimeNode::TimeNode()
+    : Connection()
+    , nSamples()
+    {
+    }
+
+
+    /** Constructor **/
+    TimeNode::TimeNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
+    : Connection( SOCKET_IN, DDOS_IN, isDDOS)
+    , nSamples()
+    {
+    }
+
+
+    /** Constructor **/
+    TimeNode::TimeNode(DDOS_Filter* DDOS_IN, bool isDDOS)
+    : Connection(DDOS_IN, isDDOS)
+    , nSamples()
+    {
+    }
+
+
+    /* Virtual destructor. */
+    TimeNode::~TimeNode()
+    {
+        nSamples.clear();
+    }
+
+
     /* Virtual Functions to Determine Behavior of Message LLP. */
     void TimeNode::Event(uint8_t EVENT, uint32_t LENGTH)
     {

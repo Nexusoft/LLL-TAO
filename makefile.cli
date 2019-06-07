@@ -272,6 +272,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_base_connection.o \
 		build/LLP_base_miner.o \
 		build/LLP_connection.o \
+        build/LLP_httpnode.o \
 		build/LLP_apinode.o \
 		build/LLP_data.o \
 		build/LLP_ddos.o \

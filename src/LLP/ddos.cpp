@@ -36,7 +36,7 @@ namespace LLP
     /*  Reset the Timer and the Score Flags to be Overwritten. */
     void DDOS_Score::Reset()
     {
-        for(int i = 0; i < SCORE.size(); i++)
+        for(uint32_t i = 0; i < SCORE.size(); ++i)
             SCORE[i].first = false;
 
         TIMER.Reset();
@@ -50,7 +50,7 @@ namespace LLP
         LOCK(MUTEX);
 
         Reset();
-        for(int i = 0; i < SCORE.size(); i++)
+        for(uint32_t i = 0; i < SCORE.size(); ++i)
             SCORE[i].second = 0;
     }
 
@@ -71,11 +71,11 @@ namespace LLP
 
      /* Increase the Score by nScore. Operates on the Moving Average to
       *  Increment Score per Second. */
-    DDOS_Score &DDOS_Score::operator+=(const int& nScore)
+    DDOS_Score &DDOS_Score::operator+=(const uint32_t& nScore)
     {
         LOCK(MUTEX);
 
-        if(nScore > 1)
+        if(nScore)
             debug::log(3, FUNCTION, "DDOS Penalty of +", nScore);
 
         uint32_t nTime = TIMER.Elapsed();
@@ -112,7 +112,9 @@ namespace LLP
     , BANTIME(0)
     , TOTALBANS(0)
     , rSCORE(nTimespan)
-    , cSCORE(nTimespan) { }
+    , cSCORE(nTimespan)
+    {
+    }
 
 
     /* Ban a Connection, and Flush its Scores. */
