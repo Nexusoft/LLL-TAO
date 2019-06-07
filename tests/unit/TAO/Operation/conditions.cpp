@@ -275,6 +275,18 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     }
 
 
+    contract.Clear();
+    contract <= uint8_t(OP::CALLER::OPERATIONS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT8_T) <= uint8_t(OP::DEBIT);
+    {
+        //temp to test exceptions with no operations
+        Contract temp;
+        temp << uint8_t(OP::CONDITION) << uint8_t(OP::DEBIT);
+
+        Condition script = Condition(contract, temp);
+        REQUIRE(script.Execute());
+    }
+
+
     //////////////COMPARISONS
     contract.Clear();
     contract <= (uint8_t)OP::TYPES::UINT256_T <= hash <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::UINT256_T <= hash;
