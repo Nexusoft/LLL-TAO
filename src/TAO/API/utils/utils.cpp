@@ -506,12 +506,12 @@ namespace TAO
                             contract >> hashTransfer;
 
                             /* Read the force transfer flag */
-                            bool fForceTransfer = false;
-                            contract >> fForceTransfer;
+                            uint8_t nType = 0;
+                            contract >> nType;
 
                             /* If we have transferred to a token that we own then we ignore the transfer as we still
                                technically own the register */
-                            if(fForceTransfer)
+                            if(nType == TAO::Operation::TRANSFER::FORCE)
                             {
                                 TAO::Register::Object newOwner;
                                 if(!LLD::Register->ReadState(hashTransfer, newOwner))

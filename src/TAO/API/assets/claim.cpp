@@ -84,11 +84,11 @@ namespace TAO
                 const TAO::Operation::Contract& contract = txTranser[nContract];
 
                 /* Get the operation byte. */
-                uint8_t nType = 0;
-                contract >> nType;
+                uint8_t nOP = 0;
+                contract >> nOP;
 
                 /* Check type. */
-                if(nType != TAO::Operation::OP::TRANSFER)
+                if(nOP != TAO::Operation::OP::TRANSFER)
                     continue;
 
                 /* Get the address of the asset being transferred from the transaction. */
@@ -100,15 +100,15 @@ namespace TAO
                 contract >> hashGenesis;
 
                 /* Read the force transfer flag */
-                bool fForceTransfer = false;
-                contract >> fForceTransfer;
+                uint8_t nType = 0;
+                contract >> nType;
 
                 /* Ensure that this transfer was meant for this user or that we are claiming back our own transfer */
                 if(hashGenesis != tx.hashGenesis && tx.hashGenesis != txTranser.hashGenesis)
                     continue;
 
                 /* Ensure this wasn't a forced transfer (which requires no Claim) */
-                if(fForceTransfer)
+                if(nType == TAO::Operation::TRANSFER::FORCE)
                     continue;
 
                 /* Submit the payload object. */
@@ -116,9 +116,7 @@ namespace TAO
 
                 /* If the caller has passed in a name then create a name record using the new name */
                 if(!strName.empty())
-                {
                     CreateName(user->Genesis(), strName, hashAddress, tx[++nCurrent]);
-                }
                 else
                 {
                     /* Determine the name from the previous owner's sig chain and create a new
