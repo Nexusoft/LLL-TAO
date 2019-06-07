@@ -13,10 +13,13 @@ ________________________________________________________________________________
 
 #include <LLD/include/ledger.h>
 
+#include <TAO/Operation/include/enum.h>
+
 #include <TAO/Register/include/enum.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -73,10 +76,39 @@ namespace LLD
         /* Get the transaction. */
         TAO::Ledger::Transaction tx;
         if(!ReadTx(hashTransaction, tx, nFlags))
-            throw std::runtime_error("failed to read contract");
+            throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read contract"));
 
         /* Get const reference for read-only access. */
         const TAO::Ledger::Transaction& ref = tx;
+
+        /* Check flags. */
+        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        {
+            /* Check that the previous transaction is indexed. */
+            if(!tx.IsConfirmed())
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "previous transaction not confirmed"));
+
+            /* Check for coinbase transactions. */
+            uint8_t nOP = 0;
+            ref[nContract] >> nOP;
+
+            /* Check for COINBASE. */
+            if(nOP == TAO::Operation::OP::COINBASE)
+            {
+                /* Check for block. */
+                TAO::Ledger::BlockState state;
+                if(!ReadBlock(hashTransaction, state))
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "coinbase isn't included in block"));
+
+                /* Check the intervals. */
+                if((TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight) <
+                    (config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "coinbase is immature"));
+            }
+
+            /* Reset the contract. */
+            ref[nContract].Reset();
+        }
 
         /* Get the contract. */
         return ref[nContract];

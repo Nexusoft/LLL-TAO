@@ -50,6 +50,7 @@ namespace TAO
             contract.Reset();
 
             /* Make sure no exceptions are thrown. */
+            bool fValidate = false;
             try
             {
                 /* Get the contract OP. */
@@ -106,6 +107,9 @@ namespace TAO
 
                         /* Get next OP. */
                         contract >> nOP;
+
+                        /* Set validate flag. */
+                        fValidate = true;
 
                         break;
                     }
@@ -443,6 +447,10 @@ namespace TAO
                     /* Coinbase operation. Creates an account if none exists. */
                     case OP::COINBASE:
                     {
+                        /* Check for validate. */
+                        if(fValidate)
+                            return debug::error(FUNCTION, "OP::COINBASE: cannot use OP::VALIDATE with coinbase");
+
                         /* Seek to end. */
                         contract.Seek(48);
 
@@ -453,6 +461,10 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case OP::TRUST:
                     {
+                        /* Check for validate. */
+                        if(fValidate)
+                            return debug::error(FUNCTION, "OP::TRUST: cannot use OP::VALIDATE with trust");
+
                         /* Make sure there are no conditions. */
                         if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::TRUST: conditions not allowed on trust");
@@ -515,6 +527,10 @@ namespace TAO
                     /* Coinstake operation. Requires an account. */
                     case OP::GENESIS:
                     {
+                        /* Check for validate. */
+                        if(fValidate)
+                            return debug::error(FUNCTION, "OP::GENESIS: cannot use OP::VALIDATE with genesis");
+
                         /* Make sure there are no conditions. */
                         if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::GENESIS: conditions not allowed on genesis");
@@ -574,6 +590,10 @@ namespace TAO
                     /* Move funds from trust account balance to stake. */
                     case OP::STAKE:
                     {
+                        /* Check for validate. */
+                        if(fValidate)
+                            return debug::error(FUNCTION, "OP::STAKE: cannot use OP::VALIDATE with stake");
+
                         /* Make sure there are no conditions. */
                         if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::STAKE: conditions not allowed on stake");
@@ -629,6 +649,10 @@ namespace TAO
                     /* Move funds from trust account stake to balance. */
                     case OP::UNSTAKE:
                     {
+                        /* Check for validate. */
+                        if(fValidate)
+                            return debug::error(FUNCTION, "OP::UNSTAKE: cannot use OP::VALIDATE with unstake");
+
                         /* Make sure there are no conditions. */
                         if(!contract.Empty(Contract::CONDITIONS))
                             return debug::error(FUNCTION, "OP::UNSTAKE: conditions not allowed on unstake");
@@ -847,6 +871,8 @@ namespace TAO
                     /* Authorize is enabled in private mode only. */
                     case OP::AUTHORIZE:
                     {
+                        //TODO: decide more details on the use of authorize.
+
                         /* Seek to address. */
                         contract.Seek(96);
 
