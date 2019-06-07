@@ -34,7 +34,7 @@ TEST_CASE("Arguments Tests", "[args]")
     if(filesystem::exists(strPath))
     {
         REQUIRE(filesystem::remove_directories(strPath));
-        REQUIRE(!filesystem::exists(strPath));
+        REQUIRE_FALSE(filesystem::exists(strPath));
     }
 
     /* Create the database instances. */

@@ -120,12 +120,12 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
         tx[0] << uint8_t(OP::TRUST) << hashLastTrust << uint64_t(555) << uint64_t(6);
 
         //generate the prestates and poststates (trust w/o genesis should fail)
-        REQUIRE(!tx.Build());
+        REQUIRE_FALSE(tx.Build());
 
         //check register values
         {
             //check trust not indexed
-            REQUIRE(!LLD::Register->HasTrust(hashGenesis));
+            REQUIRE_FALSE(LLD::Register->HasTrust(hashGenesis));
 
             TAO::Register::Object trustAccount;
             REQUIRE(LLD::Register->ReadState(hashTrust, trustAccount));
@@ -156,12 +156,12 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
         tx[0] << uint8_t(OP::STAKE) << uint64_t(1000);
 
         //generate the prestates and poststates (trust w/o genesis should fail)
-        REQUIRE(!tx.Build());
+        REQUIRE_FALSE(tx.Build());
 
         //check register values
         {
             //check trust not indexed
-            REQUIRE(!LLD::Register->HasTrust(hashGenesis));
+            REQUIRE_FALSE(LLD::Register->HasTrust(hashGenesis));
 
             TAO::Register::Object trustAccount;
             REQUIRE(LLD::Register->ReadState(hashTrust, trustAccount));
@@ -192,12 +192,12 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
         tx[0] << uint8_t(OP::UNSTAKE) << uint64_t(1000) << uint64_t(50);
 
         //generate the prestates and poststates (trust w/o genesis should fail)
-        REQUIRE(!tx.Build());
+        REQUIRE_FALSE(tx.Build());
 
         //check register values
         {
             //check trust not indexed
-            REQUIRE(!LLD::Register->HasTrust(hashGenesis));
+            REQUIRE_FALSE(LLD::Register->HasTrust(hashGenesis));
 
             TAO::Register::Object trustAccount;
             REQUIRE(LLD::Register->ReadState(hashTrust, trustAccount));
@@ -266,7 +266,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
         tx[0] << uint8_t(OP::GENESIS) << hashTrust << uint64_t(10);
 
         //generate the prestates and poststates
-        REQUIRE(!tx.Build());
+        REQUIRE_FALSE(tx.Build());
 
         //check register values
         {
@@ -374,7 +374,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
         tx[0] << uint8_t(OP::STAKE) << uint64_t(1000);
 
         //generate the prestates and poststates
-        REQUIRE(!tx.Build());
+        REQUIRE_FALSE(tx.Build());
 
         //check register values
         {
@@ -439,7 +439,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]" )
         tx[0] << uint8_t(OP::UNSTAKE) << uint64_t(15000) << uint64_t(2320);
 
         //generate the prestates and poststates
-        REQUIRE(!tx.Build());
+        REQUIRE_FALSE(tx.Build());
 
         //check register values
         {

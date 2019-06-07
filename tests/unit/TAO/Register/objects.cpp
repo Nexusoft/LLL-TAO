@@ -59,10 +59,10 @@ TEST_CASE( "Object Register Tests", "[register]" )
         REQUIRE(strTest == std::string("this string"));
 
         //test fail
-        REQUIRE(!object.Write("test", std::string("fail")));
+        REQUIRE_FALSE(object.Write("test", std::string("fail")));
 
         //test type fail
-        REQUIRE(!object.Write("test", "fail"));
+        REQUIRE_FALSE(object.Write("test", "fail"));
 
         //test write
         REQUIRE(object.Write("test", std::string("THIS string")));

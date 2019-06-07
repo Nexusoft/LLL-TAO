@@ -160,7 +160,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(LLD::Register->ReadState(hashAddress, object2, TAO::Ledger::FLAGS::MEMPOOL));
 
             //make sure not on disk
-            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
+            REQUIRE_FALSE(LLD::Register->ReadState(hashAddress, object2));
 
             //parse
             REQUIRE(object2.Parse());
@@ -218,7 +218,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(object2.get<std::string>("test") == std::string("stRInGISNew"));
 
             //make sure not on disk
-            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
+            REQUIRE_FALSE(LLD::Register->ReadState(hashAddress, object2));
 
             //set previous
             hashPrevTx = tx.GetHash();
@@ -269,7 +269,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(object2.get<std::string>("test") == std::string("stRInGISNew"));
 
             //make sure not on disk
-            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
+            REQUIRE_FALSE(LLD::Register->ReadState(hashAddress, object2));
 
             //set previous
             hashPrevTx = tx.GetHash();
@@ -315,7 +315,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(object2.get<uint64_t>("balance") == 900);
 
             //make sure not on disk
-            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
+            REQUIRE_FALSE(LLD::Register->ReadState(hashAddress, object2));
 
             //set previous
             hashPrevTx = tx.GetHash();
@@ -361,7 +361,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(object2.get<uint64_t>("balance") == 400);
 
             //make sure not on disk
-            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
+            REQUIRE_FALSE(LLD::Register->ReadState(hashAddress, object2));
 
             //set previous
             hashPrevTx = tx.GetHash();
@@ -407,7 +407,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(object2.get<uint64_t>("balance") == 100);
 
             //make sure not on disk
-            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
+            REQUIRE_FALSE(LLD::Register->ReadState(hashAddress, object2));
 
             //set previous
             hashPrevTx = tx.GetHash();
@@ -428,7 +428,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300);
 
             //generate the prestates and poststates
-            REQUIRE(!tx.Build());
+            REQUIRE_FALSE(tx.Build());
         }
 
 
@@ -472,7 +472,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]" )
             REQUIRE(object2.get<uint64_t>("balance") == 0);
 
             //make sure not on disk
-            REQUIRE(!LLD::Register->ReadState(hashAddress, object2));
+            REQUIRE_FALSE(LLD::Register->ReadState(hashAddress, object2));
 
             //set previous
             hashPrevTx = tx.GetHash();

@@ -204,7 +204,7 @@ TEST_CASE( "Base VM allocation tests", "[register]" )
         registers.allocate(data2, value2);
 
         REQUIRE(registers.contains(value, value2));
-        REQUIRE(!registers.contains(value2, value));
+        REQUIRE_FALSE(registers.contains(value2, value));
         REQUIRE(registers.compare(value, value2) != 0);
     }
 

@@ -418,7 +418,7 @@ namespace TAO
                         /* Get the add from r-value. */
                         TAO::Register::Value vAdd;
                         if(!GetValue(vAdd))
-                            return false;
+                            throw std::runtime_error(debug::safe_printstr("OP::ADD failed to get r-value"));
 
                         /* Check computational bounds. */
                         if(vAdd.size() > 1 || vRet.size() > 1)
@@ -447,7 +447,7 @@ namespace TAO
                         /* Get the sub from r-value. */
                         TAO::Register::Value vSub;
                         if(!GetValue(vSub))
-                            return false;
+                            throw std::runtime_error(debug::safe_printstr("OP::SUB failed to get r-value"));
 
                         /* Check computational bounds. */
                         if(vSub.size() > 1 || vRet.size() > 1)
@@ -512,7 +512,7 @@ namespace TAO
                         /* Get the divisor from r-value. */
                         TAO::Register::Value vDiv;
                         if(!GetValue(vDiv))
-                            return false;
+                            throw std::runtime_error(debug::safe_printstr("OP::DIV failed to get r-value"));
 
                         /* Check computational bounds. */
                         if(vDiv.size() > 1 || vRet.size() > 1)
@@ -541,7 +541,7 @@ namespace TAO
                         /* Get the multiplier from r-value. */
                         TAO::Register::Value vMul;
                         if(!GetValue(vMul))
-                            return false;
+                            throw std::runtime_error(debug::safe_printstr("OP::MUL failed to get r-value"));
 
                         /* Check computational bounds. */
                         if(vMul.size() > 1 || vRet.size() > 1)
@@ -570,7 +570,7 @@ namespace TAO
                         /* Get the exponent from r-value. */
                         TAO::Register::Value vExp;
                         if(!GetValue(vExp))
-                            return false;
+                            throw std::runtime_error(debug::safe_printstr("OP::EXP failed to get r-value"));
 
                         /* Check computational bounds. */
                         if(vExp.size() > 1 || vRet.size() > 1)
@@ -608,7 +608,7 @@ namespace TAO
                         /* Get the modulus from r-value. */
                         TAO::Register::Value vMod;
                         if(!GetValue(vMod))
-                            return false;
+                            throw std::runtime_error(debug::safe_printstr("OP::MOD failed to get r-value"));
 
                         /* Check computational bounds. */
                         if(vMod.size() > 1 || vRet.size() > 1)
@@ -785,6 +785,10 @@ namespace TAO
                         std::string str;
                         contract >= str;
 
+                        /* Check for empty string. */
+                        if(str.empty())
+                            throw std::runtime_error(debug::safe_printstr("OP::TYPES::STRING string is empty"));
+
                         /* Set the register value. */
                         allocate(str, vRet);
 
@@ -801,6 +805,10 @@ namespace TAO
                         /* Extract the string. */
                         std::vector<uint8_t> vData;
                         contract >= vData;
+
+                        /* Check for empty string. */
+                        if(vData.empty())
+                            throw std::runtime_error(debug::safe_printstr("OP::TYPES::BYTES vector is empty"));
 
                         /* Set the register value. */
                         allocate(vData, vRet);
@@ -1327,8 +1335,39 @@ namespace TAO
                         /* Get the bytes from caller. */
                         const std::vector<uint8_t>& vBytes = caller.Operations();
 
+                        /* Check for empty operations. */
+                        if(vBytes.empty())
+                            throw std::runtime_error(debug::safe_printstr("OP::CALLER::OPERATIONS caller has empty operations"));
+
+                        /* Check for condition or validate. */
+                        uint8_t nOffset = 0;
+                        switch(vBytes.at(0))
+                        {
+                            /* Check for condition at start. */
+                            case OP::CONDITION:
+                            {
+                                /* Condition has offset of one. */
+                                nOffset = 1;
+
+                                break;
+                            }
+
+                            /* Check for validate at start. */
+                            case OP::VALIDATE:
+                            {
+                                /* Validate has offset of 69. */
+                                nOffset = 69;
+
+                                break;
+                            }
+                        }
+
+                        /* Check that offset is within memory range. */
+                        if(vBytes.size() <= nOffset)
+                            throw std::runtime_error(debug::safe_printstr("OP::CALLER::OPERATIONS offset is not within size"));
+
                         /* Allocate to the registers. */
-                        allocate(vBytes, vRet);
+                        allocate(vBytes, vRet, nOffset);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= vBytes.size();

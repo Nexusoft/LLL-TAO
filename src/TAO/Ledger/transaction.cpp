@@ -57,6 +57,10 @@ namespace TAO
             if(hashNext == 0)
                 return debug::error(FUNCTION, "nextHash cannot be zero");
 
+            /* Check that hashNextTx is valid */
+            if(hashNextTx != 0) //extra sanity check, just in case
+                return debug::error(FUNCTION, "hash next transaction must be zero");
+
             /* Check the timestamp. */
             if(nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
                 return debug::error(FUNCTION, "transaction timestamp too far in the future ", nTimestamp);

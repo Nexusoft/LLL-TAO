@@ -29,7 +29,7 @@ TEST_CASE( "System Register Tests", "[register]" )
 
         //check that state is erased
         Object object;
-        REQUIRE(!LLD::Register->ReadState(uint256_t(SYSTEM::TRUST), object));
+        REQUIRE_FALSE(LLD::Register->ReadState(uint256_t(SYSTEM::TRUST), object));
 
         //check the intialize function
         REQUIRE(TAO::Register::Initialize());
@@ -57,11 +57,11 @@ TEST_CASE( "System Register Tests", "[register]" )
         //check critical validation code
         object.hashOwner = 493494;
 
-        REQUIRE(!object.IsValid());
+        REQUIRE_FALSE(object.IsValid());
 
         object.hashOwner = 0;
         object.nVersion  = 2;
 
-        REQUIRE(!object.IsValid());
+        REQUIRE_FALSE(object.IsValid());
     }
 }

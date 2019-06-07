@@ -694,7 +694,6 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
             //check for error
             std::string error = debug::GetLastError();
-            printf("%s\n", error.c_str());
             REQUIRE(error.find("OP::CLAIM: caller is not authorized to claim validation") != std::string::npos);
         }
 
