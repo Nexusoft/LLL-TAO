@@ -48,7 +48,7 @@ namespace TAO
     {
 
         /* Converts the block to formatted JSON */
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
+        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
         {
             /* Decalre the response object*/
             json::json result;
@@ -82,7 +82,7 @@ namespace TAO
                 result["nextblockhash"] = block.hashNextBlock.GetHex();
 
             /* Add the transaction data if the caller has requested it*/
-            if(nTransactionVerbosity > 0)
+            if(nVerbosity > 0)
             {
                 json::json txinfo = json::json::array();
 
@@ -96,7 +96,7 @@ namespace TAO
                         if(LLD::Ledger->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json txdata = TransactionToJSON(tx, block, nTransactionVerbosity);
+                            json::json txdata = TransactionToJSON(tx, block, nVerbosity);
 
                             txinfo.push_back(txdata);
                         }
@@ -108,7 +108,7 @@ namespace TAO
                         if(LLD::Legacy->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json txdata = TransactionToJSON(tx, block, nTransactionVerbosity);
+                            json::json txdata = TransactionToJSON(tx, block, nVerbosity);
 
                             txinfo.push_back(txdata);
                         }
@@ -122,17 +122,17 @@ namespace TAO
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
+        json::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
         {
             /* Declare JSON object to return */
             json::json txdata;
 
             /* Always add the hash if level 1 and up */
-            if(nTransactionVerbosity >= 1)
+            if(nVerbosity >= 1)
                 txdata["hash"] = tx.GetHash().ToString();
 
             /* Basic TX info for level 2 and up */
-            if(nTransactionVerbosity >= 2)
+            if(nVerbosity >= 2)
             {
                 /* Build base transaction data. */
                 txdata["type"]      = tx.GetTxTypeString();
@@ -150,7 +150,7 @@ namespace TAO
                 txdata["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
                 /* Genesis and hashes are verbose 3 and up. */
-                if(nTransactionVerbosity >= 3)
+                if(nVerbosity >= 3)
                 {
                     /* More sigchain level details. */
                     txdata["genesis"]   = tx.hashGenesis.ToString();
@@ -167,7 +167,7 @@ namespace TAO
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
+        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
         {
             /* Declare JSON object to return */
             json::json txdata;
@@ -176,7 +176,7 @@ namespace TAO
             txdata["hash"] = tx.GetHash().GetHex();
 
             /* Basic TX info for level 1 and up */
-            if(nTransactionVerbosity > 0)
+            if(nVerbosity > 0)
             {
                 txdata["type"] = tx.GetTxTypeString();
                 txdata["timestamp"] = tx.nTime;

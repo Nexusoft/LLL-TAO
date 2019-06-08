@@ -394,11 +394,11 @@ namespace TAO
                 return "";
             }
 
-            int nTransactionVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
+            int nVerbosity = 1; /* Default to verbosity 1 which includes only the hash */
             if(params.size() > 1 && params[1].get<bool>())
-                nTransactionVerbosity = 2;
+                nVerbosity = 2;
 
-            return TAO::API::BlockToJSON(block, nTransactionVerbosity);
+            return TAO::API::BlockToJSON(block, nVerbosity);
         }
     }
 }

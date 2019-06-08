@@ -30,12 +30,12 @@ namespace TAO
         *  Converts the block to formatted JSON
         *
         *  @param[in] block The block to convert
-        *  @param[in] nTransactionVerbosity determines the amount of transaction data to include in the response
+        *  @param[in] nVerbosity determines the amount of transaction data to include in the response
         *
         *  @return the formatted JSON object
         *
         **/
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
+        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity);
 
 
         /** TransactionToJSON
@@ -44,12 +44,12 @@ namespace TAO
         *
         *  @param[in] tx The transaction to convert to JSON
         *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
-        *  @param[in] nTransactionVerbosity determines the amount of transaction data to include in the response
+        *  @param[in] nVerbosity determines the amount of transaction data to include in the response
         *
         *  @return the formatted JSON object
         *
         **/
-        json::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
+        json::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity);
 
 
         /** TransactionToJSON
@@ -58,12 +58,12 @@ namespace TAO
         *
         *  @param[in] tx The transaction to convert to JSON
         *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
-        *  @param[in] nTransactionVerbosity determines the amount of transaction data to include in the response
+        *  @param[in] nVerbosity determines the amount of transaction data to include in the response
         *
         *  @return the formatted JSON object
         *
         **/
-        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
+        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity);
 
 
         /** OperationToJSON
