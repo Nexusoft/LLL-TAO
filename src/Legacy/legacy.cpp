@@ -91,7 +91,7 @@ namespace Legacy
             {
                 /* Read transaction from database */
                 Transaction tx;
-                if (!LLD::Legacy->ReadTx(item.second, tx))
+                if(!LLD::Legacy->ReadTx(item.second, tx))
                     continue;
 
                 vtx.push_back(tx);

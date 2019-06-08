@@ -2346,13 +2346,13 @@ namespace Catch {
 #define INTERNAL_CATCH_IF( macroName, resultDisposition, ... ) \
     debug::strLastError = ""; \
     INTERNAL_CATCH_TEST( macroName, resultDisposition, __VA_ARGS__ ); \
-    if( Catch::getResultCapture().lastAssertionPassed() )
+    if(Catch::getResultCapture().lastAssertionPassed() )
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_ELSE( macroName, resultDisposition, ... ) \
     debug::strLastError = ""; \
     INTERNAL_CATCH_TEST( macroName, resultDisposition, __VA_ARGS__ ); \
-    if( !Catch::getResultCapture().lastAssertionPassed() )
+    if(!Catch::getResultCapture().lastAssertionPassed() )
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_NO_THROW( macroName, resultDisposition, ... ) \
@@ -5248,7 +5248,7 @@ namespace Catch {
             else {
                 SectionNode& parentNode = *m_sectionStack.back();
                 auto it =
-                    std::find_if(  parentNode.childSections.begin(),
+                    std::find_if(parentNode.childSections.begin(),
                                     parentNode.childSections.end(),
                                     BySectionInfo( sectionInfo));
                 if(it == parentNode.childSections.end()) {
@@ -11842,7 +11842,7 @@ namespace Catch {
         if(m_sortedFunctions.empty())
             enforceNoDuplicateTestCases( m_functions);
 
-        if( m_currentSortOrder != config.runOrder() || m_sortedFunctions.empty()) {
+        if(m_currentSortOrder != config.runOrder() || m_sortedFunctions.empty()) {
             m_sortedFunctions = sortTests( config, m_functions);
             m_currentSortOrder = config.runOrder();
         }

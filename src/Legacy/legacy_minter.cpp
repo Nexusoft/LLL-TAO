@@ -175,7 +175,7 @@ namespace Legacy
             cKey.SetBytes(vchTrustKey);
 
             /* Read the key cached in wallet from the trustDB */
-            if (!LLD::Trust->ReadTrustKey(cKey, trustKey))
+            if(!LLD::Trust->ReadTrustKey(cKey, trustKey))
             {
                 /* Cached wallet trust key not found in trust db, reset it */
                 trustKey.SetNull();
@@ -207,7 +207,7 @@ namespace Legacy
                 cKey.SetBytes(vchHashKey);
                 TrustKey trustKeyCheck;
 
-                if (!LLD::Trust->ReadTrustKey(cKey, trustKeyCheck))
+                if(!LLD::Trust->ReadTrustKey(cKey, trustKeyCheck))
                     continue;
 
                 /* Check whether trust key is part of current wallet */
@@ -353,7 +353,7 @@ namespace Legacy
             /* Retrieve the previous coinstake transaction */
             uint512_t prevCoinstakeTxHash = prevTrustBlockState.vtx[0].second;
             Transaction prevCoinstakeTx;
-            if (!LLD::Legacy->ReadTx(prevCoinstakeTxHash, prevCoinstakeTx))
+            if(!LLD::Legacy->ReadTx(prevCoinstakeTxHash, prevCoinstakeTx))
                 return debug::error(FUNCTION, "Failed to read previous coinstake for trust key");
 
             /* Handle if previous trust was Genesis */

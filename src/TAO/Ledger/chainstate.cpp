@@ -155,7 +155,7 @@ namespace TAO
                         if(item.first == TAO::Ledger::LEGACY_TX)
                         {
                             /* Read transaction from database */
-                            if (!LLD::Legacy->ReadTx(item.second, tx))
+                            if(!LLD::Legacy->ReadTx(item.second, tx))
                             {
                                 debug::log(0, state.ToString(debug::flags::tx | debug::flags::header));
 

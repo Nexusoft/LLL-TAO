@@ -1212,7 +1212,7 @@ namespace Legacy
                 if(item.first == TAO::Ledger::LEGACY_TX)
                 {
                     /* Read transaction from database */
-                    if (!LLD::Legacy->ReadTx(item.second, tx))
+                    if(!LLD::Legacy->ReadTx(item.second, tx))
                         continue;
 
                     /* Add to the wallet */

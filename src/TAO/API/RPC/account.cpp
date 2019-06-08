@@ -1192,7 +1192,7 @@ namespace TAO
 
                 blockId.SetHex(params[0].get<std::string>());
 
-                if (!LLD::Ledger->ReadBlock(blockId, block))
+                if(!LLD::Ledger->ReadBlock(blockId, block))
                 {
                     throw APIException(-1, "Unknown blockhash parameter");
                     return "";

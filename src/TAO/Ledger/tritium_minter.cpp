@@ -178,14 +178,14 @@ namespace TAO
              * This is logged as an error and the stake minter should be suspended pending stop/shutdown.
              */
 
-            if (LLD::Register->HasTrust(user->Genesis()))
+            if(LLD::Register->HasTrust(user->Genesis()))
             {
                 isGenesis = false;
 
                 /* Staking Trust transaction */
 
                 /* Retrieve the trust account register */
-                if (!LLD::Register->ReadTrust(user->Genesis(), trustAccount))
+                if(!LLD::Register->ReadTrust(user->Genesis(), trustAccount))
                    return debug::error(FUNCTION, "Stake Minter unable to retrieve trust account.");
 
                 if(!trustAccount.Parse())
@@ -245,7 +245,7 @@ namespace TAO
             uint512_t hashLast = 0;
 
             /* Get the most recent tx hash for the user account. */
-            if (!LLD::Ledger->ReadLast(user->Genesis(), hashLast))
+            if(!LLD::Ledger->ReadLast(user->Genesis(), hashLast))
                 return false;
 
             /* Loop until find stake transaction or reach first transaction on user acount (hashLast == 0). */

@@ -170,7 +170,7 @@ namespace TAO
 
                 /* Use trust key hash to retrieve trust key */
                 Legacy::TrustKey trustKey;
-                if (!LLD::Trust->ReadTrustKey(trustKeyHash, trustKey))
+                if(!LLD::Trust->ReadTrustKey(trustKeyHash, trustKey))
                     continue;
 
                 /* Ignore trust keys that are inactive (no blocks within timespan) */
@@ -362,7 +362,7 @@ namespace TAO
             uint1024_t blockId = 0;
             blockId.SetHex(params[0].get<std::string>());
 
-            if (!LLD::Ledger->ReadBlock(blockId, block))
+            if(!LLD::Ledger->ReadBlock(blockId, block))
             {
                 throw APIException(-5, "Block not found");
                 return "";
@@ -388,7 +388,7 @@ namespace TAO
             uint1024_t blockId = 0;
             blockId.SetHex(params[0].get<std::string>());
 
-            if (!LLD::Ledger->ReadBlock(blockId, block))
+            if(!LLD::Ledger->ReadBlock(blockId, block))
             {
                 throw APIException(-5, "Block not found");
                 return "";

@@ -47,14 +47,19 @@ namespace TAO
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
 
-            /* Watch for destination genesis. If no specific genesis or username
-             * have been provided then fall back to the active sigchain. */
+            /* Get genesis by raw hex. */
             if(params.find("genesis") != params.end())
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
+
+            /* Get genesis by username. */
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
+
+            /* Get genesis by session. */
             else if(!config::fMultiuser.load() && mapSessions.count(0))
                 hashGenesis = mapSessions[0]->Genesis();
+
+            /* Handle for no genesis. */
             else
                 throw APIException(-25, "Missing Genesis or Username");
 

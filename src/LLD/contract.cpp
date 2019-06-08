@@ -53,7 +53,7 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Remove the memory state if writing the disk state. */
-            if (mapContracts.count(pairContract))
+            if(mapContracts.count(pairContract))
                 mapContracts.erase(pairContract);
         }
 
@@ -67,7 +67,7 @@ namespace LLD
         LOCK(MEMORY_MUTEX);
 
         /* Remove the memory state if writing the disk state. */
-        if (mapContracts.count(pairContract))
+        if(mapContracts.count(pairContract))
             mapContracts.erase(pairContract);
 
         return Erase(pairContract);

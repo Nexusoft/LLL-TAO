@@ -281,7 +281,7 @@ namespace Legacy
             {
                 /* Check if we have previous transaction */
                 Transaction txPrev;
-                if (!LLD::Legacy->ReadTx(txin.prevout.hash, txPrev))
+                if(!LLD::Legacy->ReadTx(txin.prevout.hash, txPrev))
                 {
                     /* Skip any orphan transactions in the mempool until the prevout tx is confirmed */
                     debug::log(2, FUNCTION, "Found orphan transaction in mempool ", txHash.ToString().substr(0, 10));

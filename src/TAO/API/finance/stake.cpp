@@ -76,10 +76,10 @@ namespace TAO
             /* Get trust account. Any trust account that has completed Genesis will be indexed. */
             TAO::Register::Object trustAccount;
 
-            if (LLD::Register->HasTrust(user->Genesis()))
+            if(LLD::Register->HasTrust(user->Genesis()))
             {
                 /* Trust account is indexed */
-                if (!LLD::Register->ReadTrust(user->Genesis(), trustAccount))
+                if(!LLD::Register->ReadTrust(user->Genesis(), trustAccount))
                    throw APIException(-24, "Unable to retrieve trust account.");
 
                 if(!trustAccount.Parse())
