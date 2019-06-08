@@ -1329,6 +1329,32 @@ namespace TAO
                     }
 
 
+                    /* Get the genesis id of the transaction creator. */
+                    case OP::THIS::GENESIS:
+                    {
+                        /* Allocate to the registers. */
+                        allocate(contract.Caller(), vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= 128;
+
+                        break;
+                    }
+
+
+                    /* Get the timestamp of the transaction caller. */
+                    case OP::THIS::TIMESTAMP:
+                    {
+                        /* Allocate to the registers. */
+                        allocate(contract.Timestamp(), vRet);
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= 1;
+
+                        break;
+                    }
+
+
                     /* Get the operations of the transaction caller. */
                     case OP::CALLER::OPERATIONS:
                     {

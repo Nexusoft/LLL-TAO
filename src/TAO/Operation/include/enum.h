@@ -173,6 +173,17 @@ namespace TAO
             }
 
 
+            /** This Values (The condition creator). **/
+            namespace THIS
+            {
+                enum
+                {
+                    GENESIS      = 0xca,
+                    TIMESTAMP    = 0xcb,
+                };
+            }
+
+
             /* Ledger Layer State Values. */
             namespace LEDGER
             {
