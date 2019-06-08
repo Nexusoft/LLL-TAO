@@ -77,18 +77,23 @@ namespace TAO
             {
                 /* Get the called-supplied name */
                 strName = params["name"].get<std::string>();
+
                 /* If name is provided then use this to deduce the register address */
                 hashRegister = AddressFromName(params, params["name"].get<std::string>());
+
             }
+
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"]);
+
             /* Fail if no required parameters supplied. */
             else
                 throw APIException(-23, "Missing memory address");
 
             /* Test the payload feature. */
             DataStream ssData(SER_REGISTER, 1);
+
             /* Add the name first */
             ssData << strName;
 

@@ -65,7 +65,6 @@ namespace TAO
             if(object.get<uint256_t>("token") != 0)
                 throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for accessing non-NXS token accounts.");
 
-
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             if(params.find("fieldname") != params.end())
             {

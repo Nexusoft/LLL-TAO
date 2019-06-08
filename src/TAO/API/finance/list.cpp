@@ -60,8 +60,8 @@ namespace TAO
             if(!ListRegisters(user->Genesis(), vRegisters))
                 throw APIException(-24, "No registers found");
 
-            uint32_t nTotal = 0;
             /* Add the register data to the response */
+            uint32_t nTotal = 0;
             for(const auto& hashRegister : vRegisters)
             {
                 /* Get the account from the register DB.  We can read it as an Object and then check its nType to determine
@@ -78,8 +78,8 @@ namespace TAO
                 if(!object.Parse())
                     throw APIException(-24, "Failed to parse object register");
 
-                uint8_t nStandard = object.Standard();
                 /* Check that this is an account */
+                uint8_t nStandard = object.Standard();
                 if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                     continue;
 

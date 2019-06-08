@@ -79,21 +79,23 @@ namespace TAO
                     throw APIException(-24, "Specified name/address is not an asset.");
             }
 
-            /* Convert the object to JSON */
-            ret = TAO::API::ObjectToJSON(params, object, hashRegister);
-
-            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
+            /* Check for specific field names. */
             if(params.find("fieldname") != params.end())
             {
                 /* First get the fieldname from the response */
                 std::string strFieldname =  params["fieldname"].get<std::string>();
 
-                /* Iterate through the response keys */
-                for(auto it = ret.begin(); it != ret.end(); ++it)
+                /* Get temp JSON. */
+                json::json temp = ObjectToJSON(params, object, hashRegister);
+                for(auto it = temp.begin(); it != temp.end(); ++it)
+                {
                     /* If this key is not the one that was requested then erase it */
-                    if(it.key() != strFieldname)
-                        ret.erase(it);
+                    if(it.key() == strFieldname)
+                        ret[it.key()] = it.value();
+                }
             }
+            else
+                ret = ObjectToJSON(params, object, hashRegister);
 
             return ret;
         }
