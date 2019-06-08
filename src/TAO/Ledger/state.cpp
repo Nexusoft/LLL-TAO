@@ -80,7 +80,7 @@ namespace TAO
         BlockState::BlockState(const TritiumBlock& block)
         : Block(block)
         , ssSystem()
-        , vtx()
+        , vtx(block.vtx.begin(), block.vtx.end())
         , nChainTrust(0)
         , nMoneySupply(0)
         , nMint(0)
@@ -89,9 +89,10 @@ namespace TAO
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
+            /* Set producer to be last transaction. */
             vtx.push_back(std::make_pair(TYPE::TRITIUM_TX, block.producer.GetHash()));
-            vtx.insert(vtx.end(), block.vtx.begin(), block.vtx.end());
 
+            /* Check that sizes are expected. */
             if(vtx.size() != block.vtx.size() + 1)
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "tritium block to state incorrect sizes"));
         }
@@ -146,6 +147,7 @@ namespace TAO
 
             return state;
         }
+
 
         /* Accept a block state into chain. */
         bool BlockState::Index()
@@ -228,15 +230,12 @@ namespace TAO
                 debug::log(1, "===== Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
             }
 
-
             /* Start the database transaction. */
             LLD::TxnBegin();
-
 
             /* Write the block to disk. */
             if(!LLD::Ledger->WriteBlock(GetHash(), *this))
                 return debug::error(FUNCTION, "block state failed to write");
-
 
             /* Write the transactions. */
             for(const auto& proof : vtx)
@@ -289,16 +288,13 @@ namespace TAO
                     return debug::error(FUNCTION, "using an unknown transaction type");
             }
 
-
             /* Signal to set the best chain. */
             if(nChainTrust > ChainState::nBestChainTrust.load())
                 if(!SetBest())
                     return debug::error(FUNCTION, "failed to set best chain");
 
-
             /* Commit the transaction to database. */
             LLD::TxnCommit();
-
 
             /* Debug output. */
             debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "ACCEPTED");
@@ -572,7 +568,6 @@ namespace TAO
         /** Connect a block state into chain. **/
         bool BlockState::Connect()
         {
-
             /* Check through all the transactions. */
             for(const auto& proof : vtx)
             {

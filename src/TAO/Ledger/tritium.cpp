@@ -78,11 +78,12 @@ namespace TAO
         , ssSystem(state.ssSystem)
         , vtx(state.vtx)
         {
-            vtx.erase(vtx.begin());
-
             /* Read the producer transaction from disk. */
-            if(!LLD::Ledger->ReadTx(state.vtx[0].second, producer))
-                debug::error(FUNCTION, "failed to read producer");
+            if(!LLD::Ledger->ReadTx(state.vtx.back().second, producer))
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read producer"));
+
+            /* Erase the producer. */
+            vtx.erase(vtx.end());
         }
 
 
@@ -127,7 +128,6 @@ namespace TAO
             if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
                 return debug::error(FUNCTION, "size ", ::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION), " limits failed ", MAX_BLOCK_SIZE);
 
-
             /* Make sure the Block was Created within Active Channel. */
             if(GetChannel() > (config::GetBoolArg("-private") ? 3 : 2))
                 return debug::error(FUNCTION, "channel out of Range.");
@@ -136,16 +136,13 @@ namespace TAO
             if(GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
-
             /* Do not allow blocks to be accepted above the current block version. */
             if(nVersion == 0 || nVersion > (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION))
                 return debug::error(FUNCTION, "invalid block version");
 
-
             /* Only allow POS blocks in Version 4. */
             if(IsProofOfStake() && nVersion < 4)
                 return debug::error(FUNCTION, "proof-of-stake rejected until version 4");
-
 
             /* Check the Proof of Work Claims. */
             if(!VerifyWork())
@@ -156,26 +153,21 @@ namespace TAO
                     return debug::error(FUNCTION, "invalid proof of stake");
             }
 
-
             /* Check the Network Launch Time-Lock. */
             if(nHeight > 0 && GetBlockTime() <= (config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
                 return debug::error(FUNCTION, "block created before network time-lock");
-
 
             /* Check the Current Channel Time-Lock. */
             if(!IsPrivate() && nHeight > 0 && GetBlockTime() < (config::fTestNet.load() ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
                 return debug::error(FUNCTION, "block created before channel time-lock, please wait ", (config::fTestNet.load() ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp(), " seconds");
 
-
             /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
             if(nVersion > 1 && nVersion == (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
                 return debug::error(FUNCTION, "version ", nVersion, " blocks have been obsolete for ", (runtime::unifiedtimestamp() - (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])), " seconds");
 
-
             /* Check the Current Version Block Time-Lock. */
             if(nVersion >= (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
                 return debug::error(FUNCTION, "version ", nVersion, " blocks are not accepted for ", (runtime::unifiedtimestamp() - (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])), " seconds");
-
 
             /* Check the producer transaction. */
             if(nHeight > 0 && IsProofOfWork() && !producer.IsCoinbase())
@@ -189,11 +181,9 @@ namespace TAO
             if(nHeight > 0 && IsPrivate() && !producer.IsPrivate())
                 return debug::error(FUNCTION, "producer transaction has to be authorize for proof of work");
 
-
             /* Check coinbase/coinstake timestamp against block time */
             if(GetBlockTime() > (uint64_t)producer.nTimestamp + ((nVersion < 4) ? 1200 : 3600))
                 return debug::error(FUNCTION, "producer transaction timestamp is too early");
-
 
             /* Check that the producer is a valid transaction. */
             if(!producer.Check())
@@ -215,57 +205,20 @@ namespace TAO
                     return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
             }
 
+            /* Make sure there is no system memory. */
+            if(ssSystem.size() != 0)
+                return debug::error(FUNCTION, "cannot allocate system memory");
 
             /* Check for duplicate txid's */
             std::set<uint512_t> uniqueTx;
-
-
-            /* Missing transactions. */
-            std::vector< std::pair<uint8_t, uint512_t> > vMissingTx;
-
-
-            /* Get the hashes for the merkle root. */
             std::vector<uint512_t> vHashes;
-
-
-            /* Only do producer transaction on non genesis. */
-            if(nHeight > 0)
-            {
-                /* Get producer hash. */
-                uint512_t hashProducer = producer.GetHash();
-
-                /* Add producer to merkle tree list. */
-                vHashes.push_back(hashProducer);
-
-                /* Add producer to unique transactions. */
-                uniqueTx.insert(hashProducer);
-
-                /* Calculate merkle root with system memory. */
-                if(ssSystem.size() != 0)
-                {
-                    /* Get the hash of the system register. */
-                    uint512_t hashSystem = LLC::SK512(ssSystem.Bytes());
-
-                    /* Add system hash to merkle tree list. */
-                    vHashes.push_back(hashSystem);
-
-                    /* Add system hash to unique hashes. */
-                    uniqueTx.insert(hashSystem);
-                }
-            }
-
 
             /* Get the signature operations for legacy tx's. */
             uint32_t nSigOps = 0;
-
-
-            /* Check all the transactions. */
             for(const auto& proof : vtx)
             {
                 /* Insert txid into set to check for duplicates. */
                 uniqueTx.insert(proof.second);
-
-                /* Push back this hash for merkle root. */
                 vHashes.push_back(proof.second);
 
                 /* Basic checks for legacy transactions. */
@@ -274,10 +227,7 @@ namespace TAO
                     /* Check the memory pool. */
                     Legacy::Transaction tx;
                     if(!mempool.Get(proof.second, tx) && !LLD::Legacy->ReadTx(proof.second, tx))
-                    {
-                        vMissingTx.push_back(proof);
-                        continue;
-                    }
+                        return debug::error(FUNCTION, "missing tx ", proof.second.SubString());
 
                     /* Check the transaction timestamp. */
                     if(GetBlockTime() < (uint64_t) tx.nTime)
@@ -293,11 +243,8 @@ namespace TAO
                 {
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
-                    if(!mempool.Get(proof.second, tx) && !LLD::Ledger->ReadTx(proof.second, tx))
-                    {
-                        vMissingTx.push_back(proof);
-                        continue;
-                    }
+                    if(!LLD::Ledger->ReadTx(proof.second, tx, FLAGS::MEMPOOL))
+                        return debug::error(FUNCTION, "missing tx ", proof.second.SubString());
 
                     /* Check the transaction for validity. */
                     if(!tx.Check())
@@ -307,36 +254,25 @@ namespace TAO
                     return debug::error(FUNCTION, "unknown transaction type");
             }
 
-            /* Fail and ask for response of missing transctions. */
-            if(vMissingTx.size() > 0 && nHeight > 0)
-            {
-                std::vector<LLP::CInv> vInv;
-                for(const auto& tx : vMissingTx)
-                    vInv.push_back(LLP::CInv(tx.second, tx.first == TYPE::TRITIUM_TX ? LLP::MSG_TX_TRITIUM : LLP::MSG_TX_LEGACY));
+            /* Check that the producer isn't going to orphan any transactions. */
+            TAO::Ledger::Transaction tx;
+            if(mempool.Get(producer.hashGenesis, tx) && producer.hashPrevTx != tx.GetHash())
+                return debug::error(FUNCTION, "producer is STALE");
 
-                vInv.push_back(LLP::CInv(GetHash(), LLP::MSG_BLOCK_TRITIUM));
-                if(LLP::TRITIUM_SERVER)
-                    LLP::TRITIUM_SERVER->Relay(LLP::GET_DATA, vInv);
+            /* Get producer hash. */
+            uint512_t hashProducer = producer.GetHash();
 
-                //NodeType* pnode;
-                //pnode->PushMessage("GetInv("....")");
-                //send pnode as a template for this method.
-
-                //TODO: ask the sending node for the missing transactions
-                //Keep a list of missing transactions and then send a work queue once done
-                return debug::error(FUNCTION, "block contains missing transactions");
-            }
-
+            /* Add producer to merkle tree list. */
+            vHashes.push_back(hashProducer);
+            uniqueTx.insert(hashProducer);
 
             /* Check for duplicate txid's. */
             if(uniqueTx.size() != vHashes.size())
                 return debug::error(FUNCTION, "duplicate transaction");
 
-
             /* Check the signature operations for legacy. */
             if(nSigOps > MAX_BLOCK_SIGOPS)
                 return debug::error(FUNCTION, "out-of-bounds SigOpCount");
-
 
             /* Check the merkle root. */
             if(hashMerkleRoot != BuildMerkleTree(vHashes))
@@ -396,29 +332,23 @@ namespace TAO
             if(LLD::Ledger->HasBlock(GetHash()))
                 return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20));
 
-
             /* Read ledger DB for previous block. */
             TAO::Ledger::BlockState statePrev;
             if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
                 return debug::error(FUNCTION, "previous block state not found");
 
-
             /* Check the Height of Block to Previous Block. */
             if(statePrev.nHeight + 1 != nHeight)
                 return debug::error(FUNCTION, "incorrect block height.");
 
-
             /* Get the proof hash for this block. */
             uint1024_t hash = (nVersion < 5 ? GetHash() : GetChannel() == 0 ? StakeHash() : ProofHash());
-
 
             /* Get the target hash for this block. */
             uint1024_t hashTarget = LLC::CBigNum().SetCompact(nBits).getuint1024();
 
-
             /* Verbose logging of proof and target. */
             debug::log(2, "  proof:  ", hash.ToString().substr(0, 30));
-
 
             /* Channel switched output. */
             if(GetChannel() == 1)
@@ -426,27 +356,18 @@ namespace TAO
             else
                 debug::log(2, "  target: ", hashTarget.ToString().substr(0, 30));
 
-
             /* Check that the nBits match the current Difficulty. **/
             if(nBits != GetNextTargetRequired(statePrev, GetChannel()))
                 return debug::error(FUNCTION, "incorrect proof-of-work/proof-of-stake");
-
 
             /* Check That Block timestamp is not before previous block. */
             if(GetBlockTime() <= statePrev.GetBlockTime())
                 return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
                 statePrev.GetBlockTime());
 
-
             /* Check that Block is Descendant of Hardened Checkpoints. */
             if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
                 return debug::error(FUNCTION, "not descendant of last checkpoint");
-
-
-            /* Check that the producer is a valid transaction. */
-            if(!producer.Check())
-                return debug::error(FUNCTION, "producer transaction failed checks");
-
 
             /* Check the block proof of work rewards. */
             if(IsProofOfWork())
@@ -458,6 +379,9 @@ namespace TAO
                 /* Check the operations. */
                 if(OP != TAO::Operation::OP::COINBASE)
                     return debug::error(FUNCTION, "coinbase not set for proof-of-work");
+
+                /* Seek to rewards. */
+                producer[0].Seek(32);
 
                 /* Read the mining reward. */
                 uint64_t nReward = 0;
@@ -484,7 +408,6 @@ namespace TAO
                 if(producer.hashGenesis != uint256_t("0xb5a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41"))
                     return debug::error(FUNCTION, "invalid genesis generated");
             }
-
 
             /* Check legacy transactions for finality. */
             for(const auto & tx : vtx)

@@ -107,10 +107,6 @@ namespace TAO
         /* Gets a list of transactions from memory pool for current block. */
         void AddTransactions(TAO::Ledger::TritiumBlock& block)
         {
-            /* Add the transactions. */
-            std::vector<uint512_t> vHashes;
-            vHashes.push_back(block.producer.GetHash()); //TODO: producer should be created and processed very LAST and sequenced off of transactions listed.
-
             /* Check the memory pool. */
             std::vector<uint512_t> vMempool;
             mempool.List(vMempool);
@@ -119,7 +115,7 @@ namespace TAO
             for(const auto& hash : vMempool)
             {
                 /* Check the Size limits of the Current Block. */
-                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 193 >= MAX_BLOCK_SIZE)
+                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 200 >= MAX_BLOCK_SIZE)
                     break;
 
                 /* Get the transaction from the memory pool. */
@@ -137,28 +133,44 @@ namespace TAO
 
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
-
-                /* Add to the hashes for merkle root. */
-                vHashes.push_back(hash);
             }
-
-            /* Build the block's merkle root. */
-            block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
         }
 
 
         /* Create a new block object from the chain.*/
         static memory::atomic<TAO::Ledger::TritiumBlock> blockCache[4];
-        bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce)
+        bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+            const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce)
         {
             /* Set the block to null. */
             block.SetNull();
 
-            /* Handle if the block is cached. Staking channel (channel 0) should never be cached, as it should only call CreateBlock when stateBest changes*/
+            /* Handle if the block is cached. Staking channel (channel 0) should never be cached, */
             if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].load().hashPrevBlock && nChannel != 0)
             {
                 /* Set the block to cached block. */
                 block = blockCache[nChannel].load();
+
+                /* Clear the block transactions. */
+                block.vtx.clear();
+
+                /* Add new transactions. */
+                AddTransactions(block);
+
+                /* Check that the producer isn't going to orphan any transactions. */
+                TAO::Ledger::Transaction tx;
+                if(mempool.Get(block.producer.hashGenesis, tx) && block.producer.hashPrevTx != tx.GetHash())
+                {
+                    /* Handle for STALE producer. */
+                    debug::log(0, FUNCTION, "producer is stale, rebuilding...");
+
+                    /* Setup the producer transaction. */
+                    if(!CreateTransaction(user, pin, block.producer))
+                        return debug::error(FUNCTION, "failed to create producer transactions");
+
+                    /* Store new block cache. */
+                    blockCache[nChannel].store(block);
+                }
 
                 /* Use the extra nonce if block is coinbase. */
                 if(nChannel == 1 || nChannel == 2)
@@ -166,6 +178,9 @@ namespace TAO
                     /* Create coinbase transaction. */
                     block.producer[0].Clear();
                     block.producer[0] << uint8_t(TAO::Operation::OP::COINBASE);
+
+                    /* Add the spendable genesis. */
+                    block.producer[0] << user->Genesis();
 
                     /* The total to be credited. */
                     uint64_t  nCredit = GetCoinbaseReward(ChainState::stateBest.load(), nChannel, 0);
@@ -177,6 +192,7 @@ namespace TAO
                 else if(nChannel == 3)
                 {
                     /* Create an authorize producer. */
+                    block.producer[0].Clear();
                     block.producer[0] << uint8_t(TAO::Operation::OP::AUTHORIZE);
 
                     /* Get the sigchain txid. */
@@ -189,11 +205,16 @@ namespace TAO
                 /* Sign the producer transaction. */
                 block.producer.Sign(user->Generate(block.producer.nSequence, pin));
 
-                /* Clear the transactions. */
-                block.vtx.clear();
+                /* Add the transactions. */
+                std::vector<uint512_t> vHashes;
+                for(const auto& tx : block.vtx)
+                    vHashes.push_back(tx.second);
 
-                /* Add the transactions to the block. */
-                AddTransactions(block);
+                /* Producer transaction is last. */
+                vHashes.push_back(block.producer.GetHash());
+
+                /* Build the block's merkle root. */
+                block.hashMerkleRoot  = block.BuildMerkleTree(vHashes);
             }
             else
             {
@@ -212,11 +233,16 @@ namespace TAO
                     TESTNET_BLOCK_CURRENT_VERSION - 1 :
                     NETWORK_BLOCK_CURRENT_VERSION - 1;
 
+                /* Add the transactions to the block. */
+                if(nChannel != 0)
+                    AddTransactions(block);
+
+                //TODO: we need to build the producer based on what is in the actual block
+                //this will make sure it is in sequenced properly.
 
                 /* Setup the producer transaction. */
                 if(!CreateTransaction(user, pin, block.producer))
                     return debug::error(FUNCTION, "failed to create producer transactions");
-
 
                 /* Create the Coinbase Transaction if the Channel specifies. */
                 if(nChannel == 0)
@@ -233,8 +259,11 @@ namespace TAO
                     /* Create coinbase transaction. */
                     block.producer[0] << uint8_t(TAO::Operation::OP::COINBASE);
 
+                    /* Add the spendable genesis. */
+                    block.producer[0] << user->Genesis();
+
                     /* The total to be credited. */
-                    uint64_t  nCredit = GetCoinbaseReward(stateBest, nChannel, 0);
+                    uint64_t nCredit = GetCoinbaseReward(stateBest, nChannel, 0);
                     block.producer[0] << nCredit;
 
                     /* The extra nonce to coinbase. */
@@ -257,24 +286,28 @@ namespace TAO
                 {
                     /* Sign the producer transaction. */
                     block.producer.Sign(user->Generate(block.producer.nSequence, pin));
-
-                    /* Add the transactions to the block. */
-                    AddTransactions(block);
                 }
 
-                /** Populate the Block Data. **/
+                /* Add the transactions. */
+                std::vector<uint512_t> vHashes;
+                for(const auto& tx : block.vtx)
+                    vHashes.push_back(tx.second);
+
+                /* Producer transaction is last. */
+                vHashes.push_back(block.producer.GetHash());
+
+                /* Build the block's merkle root. */
                 block.hashPrevBlock   = stateBest.GetHash();
+                block.hashMerkleRoot  = block.BuildMerkleTree(vHashes);
                 block.nChannel        = nChannel;
                 block.nHeight         = stateBest.nHeight + 1;
                 block.nBits           = GetNextTargetRequired(stateBest, nChannel, false);
                 block.nNonce          = 1;
                 block.nTime           = static_cast<uint32_t>(std::max(stateBest.GetBlockTime() + 1, runtime::unifiedtimestamp()));
 
+                /* Store the cached block. */
                 if(nChannel != 0)
-                {
-                    /* Store the cached block. */
                     blockCache[nChannel].store(block);
-                }
             }
 
             return true;

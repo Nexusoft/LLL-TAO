@@ -225,7 +225,7 @@ namespace TAO
                 {
                     /* Check previous transaction next pointer. */
                     if(!txPrev.IsHead())
-                        return debug::error(FUNCTION, "prev transaction not head of sigchain");
+                        return debug::error(FUNCTION, "prev tx not head ", txPrev.hashNextTx.SubString());
 
                     /* Set the previous transactions next hash. */
                     txPrev.hashNextTx = hash;
