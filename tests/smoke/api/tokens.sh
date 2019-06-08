@@ -11,7 +11,7 @@ echo "===Create/Account==="
 
 #Create an account called abc_svings to use with the abc token (note this example assumes that user paul created the token but you are logged in as someone else)
 echo "===Create/Account==="
-./nexus tokens/create/account/abc_savings token_name=paul:abc pin=4567
+./nexus tokens/create/account/abc_savings token_name=paul:abc pin=1234
 
 #Send (debit) 100 abc tokens from the initial supply to your abc_main account
 echo "===Debit/Token==="
