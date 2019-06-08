@@ -98,7 +98,7 @@ namespace TAO
                             // if they have configured an account name then we need to generate the register address from that name
                             //  - register address is namespacehash:token:name
                             //  - namespacehash is argon2 hash of username
-                            //  - Look at RegisterAddressFromName() method as you can probably use that
+                            //  - Look at AddressFromName() method as you can probably use that
 
 
                             /* Submit the payload object. */

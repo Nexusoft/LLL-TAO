@@ -54,7 +54,7 @@ namespace TAO
             if(params.find("token_name") != params.end())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashToken = RegisterAddressFromName( params, params["token_name"].get<std::string>());
+                hashToken = AddressFromName( params, params["token_name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
@@ -72,7 +72,7 @@ namespace TAO
             if(params.find("name") != params.end())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = RegisterAddressFromName( params, params["name"].get<std::string>());
+                hashRegister = AddressFromName( params, params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
@@ -100,7 +100,7 @@ namespace TAO
             /* Submit the payload object.
                NOTE we pass true for the fForceTransfer parameter so that the transfer is made immediately to the
                token without requiring a Claim */
-            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashToken << uint8_t(TAO::Operation::TRANSFER::FORCE);  
+            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashToken << uint8_t(TAO::Operation::TRANSFER::FORCE);
 
             /* Execute the operations layer. */
             if(!tx.Build())

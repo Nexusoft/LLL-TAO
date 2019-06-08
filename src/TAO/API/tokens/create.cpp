@@ -93,7 +93,7 @@ namespace TAO
                 else if(IsRegisterAddress(strTokenIdentifier))
                     hashIdentifier = uint256_t(strTokenIdentifier);
                 else
-                    hashIdentifier = RegisterAddressFromName(params, strTokenIdentifier);
+                    hashIdentifier = AddressFromName(params, strTokenIdentifier);
 
                 /* Create an account object register. */
                 TAO::Register::Object account = TAO::Register::CreateAccount(hashIdentifier);

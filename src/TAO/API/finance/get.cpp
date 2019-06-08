@@ -37,11 +37,11 @@ namespace TAO
             /* Get the Register ID. */
             uint256_t hashRegister = 0;
 
-            /* If name is provided then use this to deduce the register address,
-             * otherwise try to find the raw hex encoded address.
-             * Fail if no required parameters supplied. */
+            /* Attempt to deduce the register address from name. */
             if(params.find("name") != params.end())
-                hashRegister = RegisterAddressFromName(params, params["name"].get<std::string>());
+                hashRegister = AddressFromName(params, params["name"].get<std::string>());
+
+            /* Get the RAW address from hex. */
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"].get<std::string>());
             else
@@ -56,10 +56,8 @@ namespace TAO
             if(!object.Parse())
                 throw APIException(-24, "Object failed to parse");
 
-            /* Get the object standard. */
-            uint8_t nStandard = object.Standard();
-
             /* Check the object standard. */
+            uint8_t nStandard = object.Standard();
             if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                 throw APIException(-24, "Object is not an account");
 
@@ -67,21 +65,24 @@ namespace TAO
             if(object.get<uint256_t>("token") != 0)
                 throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for accessing non-NXS token accounts.");
 
-            /* Convert the account object to JSON */
-            ret = ObjectToJSON(params, object, hashRegister);
 
-            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */            
+            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             if(params.find("fieldname") != params.end())
             {
                 /* First get the fieldname from the response */
                 std::string strFieldname =  params["fieldname"].get<std::string>();
-                
-                /* Iterate through the response keys */
-                for(auto it = ret.begin(); it != ret.end(); ++it)
+
+                /* Get temp JSON. */
+                json::json temp = ObjectToJSON(params, object, hashRegister);
+                for(auto it = temp.begin(); it != temp.end(); ++it)
+                {
                     /* If this key is not the one that was requested then erase it */
-                    if(it.key() != strFieldname)
-                        ret.erase(it);
+                    if(it.key() == strFieldname)
+                        ret[it.key()] = it.value();
+                }
             }
+            else
+                ret = ObjectToJSON(params, object, hashRegister);
 
             return ret;
         }

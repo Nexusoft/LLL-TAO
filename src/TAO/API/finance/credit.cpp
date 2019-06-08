@@ -71,7 +71,7 @@ namespace TAO
 
             /* If name_to is provided then use this to deduce the register address */
             if(params.find("name") != params.end())
-                hashAccountTo = RegisterAddressFromName( params, params["name"].get<std::string>());
+                hashAccountTo = AddressFromName( params, params["name"].get<std::string>());
 
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
@@ -86,7 +86,7 @@ namespace TAO
             if(params.find("name_proof") != params.end())
             {
                 /* If name_proof is provided then use this to deduce the register address */
-                hashProof = RegisterAddressFromName( params, params["name_proof"].get<std::string>());
+                hashProof = AddressFromName( params, params["name_proof"].get<std::string>());
             }
             else if(params.find("address_proof") != params.end())
                 hashProof.SetHex(params["address_proof"].get<std::string>());
@@ -156,7 +156,7 @@ namespace TAO
                             continue;
 
                         if(debit.get<uint256_t>("token") != 0)
-                                throw APIException(-24, "Debit transacton is not for a NXS account.  Please use the tokens API for crediting token accounts.");
+                            throw APIException(-24, "Debit transacton is not for a NXS account.  Please use the tokens API for crediting token accounts.");
 
                         /* if we passed these checks then insert the credit contract into the tx */
                         tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashTo <<  hashFrom << nAmount;

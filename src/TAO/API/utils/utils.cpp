@@ -209,7 +209,7 @@ namespace TAO
 
 
         /* Resolves a register address from a name by looking up the Name object. */
-        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectName)
+        uint256_t AddressFromName(const json::json& params, const std::string& strObjectName)
         {
             uint256_t hashRegister = 0;
 
@@ -434,11 +434,37 @@ namespace TAO
                     contract.Reset(TAO::Operation::Contract::OPERATIONS);
 
                     /* Deserialize the OP. */
-                    uint8_t OP = 0;
-                    contract >> OP;
+                    uint8_t nOP = 0;
+                    contract >> nOP;
 
                     /* Check the current opcode. */
-                    switch(OP)
+                    switch(nOP)
+                    {
+                        /* Condition that allows a validation to occur. */
+                        case TAO::Operation::OP::CONDITION:
+                        {
+                            /* Condition has no parameters. */
+                            contract >> nOP;
+
+                            break;
+                        }
+
+
+                        /* Validate a previous contract's conditions */
+                        case TAO::Operation::OP::VALIDATE:
+                        {
+                            /* Skip over validate. */
+                            contract.Seek(68);
+
+                            /* Get next OP. */
+                            contract >> nOP;
+
+                            break;
+                        }
+                    }
+
+                    /* Check the current opcode. */
+                    switch(nOP)
                     {
 
                         /* These are the register-based operations that prove ownership if encountered before a transfer*/
@@ -533,7 +559,7 @@ namespace TAO
                         case TAO::Operation::OP::CLAIM:
                         {
                             /* Seek past irrelevant data. */
-                            contract.Seek(69);
+                            contract.Seek(68);
 
                             /* Extract the address from the contract. */
                             uint256_t hashAddress = 0;
@@ -553,6 +579,8 @@ namespace TAO
                             break;
                         }
 
+                        default:
+                            continue;
                     }
                 }
             }

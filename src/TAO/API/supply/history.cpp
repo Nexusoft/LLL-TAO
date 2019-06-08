@@ -47,7 +47,7 @@ namespace TAO
 
             /* If name is provided then use this to deduce the register address */
             if(params.find("name") != params.end())
-                hashRegister = RegisterAddressFromName(params, params["name"].get<std::string>());
+                hashRegister = AddressFromName(params, params["name"].get<std::string>());
 
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())

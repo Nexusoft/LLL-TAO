@@ -63,7 +63,7 @@ namespace TAO
                                     const uint256_t& hashGenesis);
 
 
-        /** RegisterAddressFromName
+        /** AddressFromName
          *
          *  Resolves a register address from a name by looking up a Name object.
          *
@@ -72,7 +72,7 @@ namespace TAO
          *
          *  @return The 256 bit hash of the object name.
          **/
-        uint256_t RegisterAddressFromName(const json::json& params, const std::string& strObjectName);
+        uint256_t AddressFromName(const json::json& params, const std::string& strObjectName);
 
 
         /** IsRegisterAddress
