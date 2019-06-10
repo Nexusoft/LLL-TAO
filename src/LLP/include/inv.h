@@ -59,7 +59,7 @@ namespace LLP
         (
             READWRITE(type);
             READWRITE(hash);
-      )
+        )
 
 
         /** Relational operator less than **/

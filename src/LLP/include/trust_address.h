@@ -50,7 +50,7 @@ namespace LLP
     {
         /* Tell compiler we are overloading Print. */
         using BaseAddress::Print;
-        
+
     public:
 
 
@@ -102,7 +102,7 @@ namespace LLP
             READWRITE(nLatency);
             READWRITE(nHeight);
             READWRITE(*pAddr);
-      )
+        )
 
 
         /** Score
