@@ -61,6 +61,17 @@ namespace TAO
         }
 
 
+        /** Copy constructor from base block. **/
+        TritiumBlock::TritiumBlock(const Block& block)
+        : Block(block)
+        , producer()
+        , ssSystem()
+        , vtx(0)
+        {
+
+        }
+
+
         /** Copy Constructor. **/
         TritiumBlock::TritiumBlock(const TritiumBlock& block)
         : Block(block)
@@ -90,6 +101,14 @@ namespace TAO
         /** Default Destructor **/
         TritiumBlock::~TritiumBlock()
         {
+        }
+
+
+        /*  Allows polymorphic copying of blocks
+         *  Overridden to return an instance of the TritiumBlock class. */
+        TritiumBlock* TritiumBlock::Clone() const
+        {
+            return new TritiumBlock(*this);
         }
 
 
