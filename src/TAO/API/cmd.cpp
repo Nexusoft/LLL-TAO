@@ -168,7 +168,7 @@ namespace TAO
                 strPrint = ret["result"].dump(4);
 
             /* Dump response to console. */
-            printf("%s\n", strPrint.c_str());
+            debug::log(0, strPrint);
 
             return 0;
         }
