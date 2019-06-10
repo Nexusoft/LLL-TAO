@@ -37,6 +37,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/debug.h>
+#include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -45,6 +46,80 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+
+        /** Default Constructor. **/
+        Transaction::Transaction()
+        : vContracts()
+        , nVersion(1)
+        , nSequence(0)
+        , nTimestamp(runtime::unifiedtimestamp())
+        , hashNext(0)
+        , hashRecovery(0)
+        , hashGenesis(0)
+        , hashPrevTx(0)
+        , hashNextTx(0)
+        , nKeyType(0)
+        , nNextType(0)
+        , vchPubKey()
+        , vchSig()
+        {
+        }
+
+
+        /** Default Destructor. **/
+        Transaction::~Transaction()
+        {
+        }
+
+
+        /*  Used for sorting transactions by sequence. */
+        bool Transaction::operator>(const Transaction& tx) const
+        {
+            return nSequence > tx.nSequence;
+        }
+
+
+        /*  Used for sorting transactions by sequence. */
+        bool  Transaction::operator<(const Transaction& tx) const
+        {
+            return nSequence < tx.nSequence;
+        }
+
+
+        /*  Access for the contract operator overload. This is for read-only objects. */
+        const TAO::Operation::Contract& Transaction::operator[](const uint32_t n) const
+        {
+            /* Check contract bounds. */
+            if(n >= vContracts.size())
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
+
+            /* Bind this transaction. */
+            vContracts[n].Bind(*this);
+
+            return vContracts[n];
+        }
+
+
+        /*  Write access fot the contract operator overload. This handles writes to create new contracts. */
+        TAO::Operation::Contract& Transaction::operator[](const uint32_t n)
+        {
+            /* Allocate a new contract if on write. */
+            if(n >= vContracts.size())
+                vContracts.resize(n + 1);
+
+            /* Bind this transaction. */
+            vContracts[n].Bind(*this);
+
+            return vContracts[n];
+        }
+
+
+        /*  Get the total contracts in transaction. */
+        uint32_t Transaction::Size() const
+        {
+            return vContracts.size();
+        }
+
 
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
         bool Transaction::Check() const
