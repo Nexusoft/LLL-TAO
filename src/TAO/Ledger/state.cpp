@@ -84,8 +84,11 @@ namespace TAO
         , nChainTrust(0)
         , nMoneySupply(0)
         , nMint(0)
+        , nFees(0)
         , nChannelHeight(0)
+        , nChannelWeight{0, 0, 0}
         , nReleasedReserve{0, 0, 0}
+        , nFeeReserve(0)
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
@@ -106,8 +109,11 @@ namespace TAO
         , nChainTrust(0)
         , nMoneySupply(0)
         , nMint(0)
+        , nFees(0)
         , nChannelHeight(0)
+        , nChannelWeight{0, 0, 0}
         , nReleasedReserve{0, 0, 0}
+        , nFeeReserve(0)
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
@@ -161,7 +167,7 @@ namespace TAO
             }
 
             /* Compute the Chain Trust */
-            nChainTrust = statePrev.nChainTrust + GetBlockTrust();
+            nChainTrust = statePrev.nChainTrust + Trust();
 
             /* Compute the Channel Height. */
             BlockState stateLast = statePrev;
@@ -462,8 +468,6 @@ namespace TAO
 
 
                 /* Reverse the blocks to connect to connect in ascending height. */
-                //std::reverse(vConnect.begin(), vConnect.end());
-                //for(auto& state : vConnect)
                 for(auto state = vConnect.rbegin(); state != vConnect.rend(); ++state)
                 {
                     /* Output the block state if flagged. */
@@ -750,7 +754,7 @@ namespace TAO
 
 
         /* USed to determine the trust of a block in the chain. */
-        uint64_t BlockState::GetBlockTrust() const
+        uint64_t BlockState::Trust() const
         {
             /** Give higher block trust if last block was of different channel **/
             BlockState prev = Prev();
@@ -758,6 +762,13 @@ namespace TAO
                 return 3;
 
             return 1;
+        }
+
+
+        /* Get the weight of this block. */
+        uint64_t BlockState::Weight() const
+        {
+            return 0;
         }
 
 

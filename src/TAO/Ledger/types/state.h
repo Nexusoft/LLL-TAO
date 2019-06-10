@@ -72,12 +72,24 @@ namespace TAO
             int32_t nMint;
 
 
+            /** The Total Fees in block. **/
+            uint64_t nFees;
+
+
             /** The height of this channel. */
             uint32_t nChannelHeight;
 
 
+            /** The height of this channel. */
+            uint32_t nChannelWeight[3];
+
+
             /** The reserves that are released. */
             int64_t nReleasedReserve[3];
+
+
+            /** The reserves that are released. */
+            uint64_t nFeeReserve;
 
 
             /** Used to Iterate forward in the chain */
@@ -105,6 +117,17 @@ namespace TAO
                 READWRITE(nMoneySupply);
                 READWRITE(nMint);
                 READWRITE(nChannelHeight);
+
+                /* Tritium Block States. */
+                if(nVersion >= 7)
+                {
+                    READWRITE(nFees);
+                    READWRITE(nChannelWeight[0]);
+                    READWRITE(nChannelWeight[1]);
+                    READWRITE(nChannelWeight[2]);
+                    READWRITE(nFeeReserve);
+                }
+
                 READWRITE(nReleasedReserve[0]);
                 READWRITE(nReleasedReserve[1]);
                 READWRITE(nReleasedReserve[2]);
@@ -124,8 +147,11 @@ namespace TAO
             , nChainTrust(0)
             , nMoneySupply(0)
             , nMint(0)
+            , nFees(0)
             , nChannelHeight(0)
+            , nChannelWeight{0, 0, 0}
             , nReleasedReserve{0, 0, 0}
+            , nFeeReserve(0)
             , hashNextBlock(0)
             , hashCheckpoint(0)
             {
@@ -154,11 +180,18 @@ namespace TAO
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
                 nMint               = state.nMint;
+                nFees               = state.nFees;
                 nChannelHeight      = state.nChannelHeight;
+
+                nChannelWeight[0]   = state.nChannelWeight[0];
+                nChannelWeight[1]   = state.nChannelWeight[1];
+                nChannelWeight[2]   = state.nChannelWeight[2];
 
                 nReleasedReserve[0] = state.nReleasedReserve[0];
                 nReleasedReserve[1] = state.nReleasedReserve[1];
                 nReleasedReserve[2] = state.nReleasedReserve[2];
+
+                nFeeReserve         = state.nFeeReserve;
 
                 hashNextBlock       = state.hashNextBlock;
                 hashCheckpoint      = state.hashCheckpoint;
@@ -183,11 +216,18 @@ namespace TAO
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
                 nMint               = state.nMint;
+                nFees               = state.nFees;
                 nChannelHeight      = state.nChannelHeight;
+
+                nChannelWeight[0]   = state.nChannelWeight[0];
+                nChannelWeight[1]   = state.nChannelWeight[1];
+                nChannelWeight[2]   = state.nChannelWeight[2];
 
                 nReleasedReserve[0] = state.nReleasedReserve[0];
                 nReleasedReserve[1] = state.nReleasedReserve[1];
                 nReleasedReserve[2] = state.nReleasedReserve[2];
+
+                nFeeReserve         = state.nFeeReserve;
 
                 hashNextBlock       = state.hashNextBlock;
                 hashCheckpoint      = state.hashCheckpoint;
@@ -277,14 +317,24 @@ namespace TAO
             bool Disconnect();
 
 
-            /** GetBlockTrust
+            /** Trust
              *
              *  Get the trust of this block.
              *
              *  @return the current trust in the chain.
              *
              **/
-            uint64_t GetBlockTrust() const;
+            uint64_t Trust() const;
+
+
+            /** Weight
+             *
+             *  Get the weight of this block.
+             *
+             *  @return the current trust in the chain.
+             *
+             **/
+            uint64_t Weight() const;
 
 
             /** IsInMainChain
