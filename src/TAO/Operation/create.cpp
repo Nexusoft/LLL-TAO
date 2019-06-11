@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/system.h>
 #include <TAO/Register/include/reserved.h>
+#include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
@@ -86,8 +87,20 @@ namespace TAO
                     /* Enforce hash on Name objects to ensure that a Name cannot be created for someone elses genesis ID . */
                     case TAO::Register::OBJECTS::NAME:
                     {
+                        /* Declare the namespace hash */
+                        uint256_t nNamespaceHash = 0;
+
+                        /* If the Name contains a namespace then use a hash of this to verify the register address hash */
+                        std::string strNamespace = object.get<std::string>("namespace");
+                        if(!strNamespace.empty())
+                            nNamespaceHash = TAO::Register::NamespaceHash(strNamespace);
+                        else
+                            /* Otherwise we use the owner genesis Hash */
+                            nNamespaceHash = state.hashOwner;
+                        
+
                         /* Build vector to hold the genesis + name data for hashing */
-                        std::vector<uint8_t> vData((uint8_t*)&state.hashOwner, (uint8_t*)&state.hashOwner + 32);
+                        std::vector<uint8_t> vData((uint8_t*)&nNamespaceHash, (uint8_t*)&nNamespaceHash + 32);
 
                         /* Insert the name of from the Name object */
                         std::string strName = object.get<std::string>("name");

@@ -63,11 +63,19 @@ namespace TAO
             uint8_t nType = OBJECTS::NONSTANDARD;
 
             /* Search object register for key types. */
-            if(mapData.size() == 2
+            if(mapData.size() == 1
+            && Check("namespace", TYPES::STRING, false )) 
+            {
+                /* If it only contains one field called namespace then it must be a namespace */
+                /* Set the return value. */
+                nType = OBJECTS::NAMESPACE;
+
+            }
+            else if(mapData.size() == 3
+            && Check("namespace", TYPES::STRING, false)
             && Check("name", TYPES::STRING, false)
             && CheckName("address")) /* Name registers can store different types in the address so don't check the field type */
             {
-                /* If it only contains one field called address then it must be a name */
                 /* Set the return value. */
                 nType = OBJECTS::NAME;
 
@@ -109,6 +117,11 @@ namespace TAO
             {
                 /* Set the return value. */
                 nType = OBJECTS::ACCOUNT;
+            }
+            else if(Check("namespace", TYPES::STRING, false))
+            {
+                /* Set the return value. */
+                nType = OBJECTS::NAMESPACE;
             }
 
             return nType;

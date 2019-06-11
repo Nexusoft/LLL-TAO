@@ -55,6 +55,15 @@ namespace TAO
          **/
         bool GetNameRegister(const uint256_t& hashNamespace, const std::string& strName, Object& nameRegister);
 
+
+        /** NamespaceHash
+         *
+         *  Generates a lightweight argon2 hash of the namespace string.
+         *
+         *  @return The 256 bit hash of this key in the series.
+         **/
+        uint256_t NamespaceHash(const std::string& strNamespace);
+
     }
 }
 
