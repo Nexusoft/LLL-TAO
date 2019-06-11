@@ -38,32 +38,52 @@ namespace TAO
 
 
         /* Determines the difficulty of the Given Prime Number. */
-        double GetPrimeDifficulty(const uint1024_t& bnPrime)
+        double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets)
         {
             /* Return 0 if base is not prime. */
-            if(!PrimeCheck(bnPrime))
+            if(!PrimeCheck(hashPrime))
                 return 0.0;
 
-            /* Set temporary variables for the checks. */
-            uint1024_t bnLast = bnPrime;
-            uint1024_t bnNext = bnPrime + 2;
-
-            /* Keep track of the cluster size. */
-            uint32_t nClusterSize = 1;
-
-            /* Largest prime gap is +12 for dense clusters. */
-            for(; bnNext <= bnLast + 12; bnNext += 2)
+            /* Check for optimized tritium version. */
+            uint1024_t hashNext = hashPrime;
+            if(!vOffsets.empty())
             {
-                /* Check if this interval is prime. */
-                if(PrimeCheck(bnNext))
+                /* Loop through offsets pattern. */
+                for(const auto& nOffset : vOffsets)
                 {
-                    bnLast = bnNext;
-                    ++nClusterSize;
+                    /* Set the next offset position. */
+                    hashNext += nOffset;
+
+                    /* Check prime at offset. */
+                    if(PrimeCheck(hashNext))
+                        ++nClusterSize;
+                }
+
+                /* If offsets all passed, get composite offset. */
+                hashNext += 14;
+            }
+            else
+            {
+                /* Set temporary variables for the checks. */
+                uint1024_t hashLast = hashPrime;
+
+                /* Keep track of the cluster size. */
+                uint32_t nClusterSize = 1;
+
+                /* Largest prime gap is +12 for dense clusters. */
+                for(hashNext = hashPrime + 2; hashNext <= hashLast + 12; hashNext += 2)
+                {
+                    /* Check if this interval is prime. */
+                    if(PrimeCheck(hashNext))
+                    {
+                        hashLast = hashNext;
+                        ++nClusterSize;
+                    }
                 }
             }
 
             /* Calculate the rarity of cluster from proportion of fermat remainder of last prime + 2. */
-            double nRemainder = 1000000.0 / GetFractionalDifficulty(bnNext);
+            double nRemainder = 1000000.0 / GetFractionalDifficulty(hashNext);
             if(nRemainder > 1.0 || nRemainder < 0.0)
                 nRemainder = 0.0;
 
@@ -72,39 +92,34 @@ namespace TAO
 
 
         /* Gets the unsigned int representative of a decimal prime difficulty. */
-        uint32_t GetPrimeBits(const uint1024_t& bnPrime)
+        uint32_t GetPrimeBits(const uint1024_t& hashPrime)
         {
-            return SetBits(GetPrimeDifficulty(bnPrime));
+            return SetBits(GetPrimeDifficulty(hashPrime));
         }
 
 
         /* Breaks the remainder of last composite in Prime Cluster into an integer. */
-        uint32_t GetFractionalDifficulty(const uint1024_t& nComposite)
+        uint32_t GetFractionalDifficulty(const uint1024_t& hashComposite)
     	{
             //LLC::CBigNum a(nComposite);
             //LLC::CBigNum b(FermatTest(nComposite));
 
-            uint1056_t a(nComposite);
-            uint1056_t b(FermatTest(nComposite));
+            uint1056_t a(hashComposite);
+            uint1056_t b(FermatTest(hashComposite));
 
-            return ( (a - b << 24) / a).getuint32();
+            return ((a - b << 24) / a).getuint32();
     	}
 
 
         /* Determines if given number is Prime. */
-        bool PrimeCheck(const uint1024_t& nTest)
+        bool PrimeCheck(const uint1024_t& hashTest)
         {
-
-            /* Check A: Small Prime Divisor Tests */
-            if(!SmallDivisors(nTest))
+            /* Small Prime Divisor Tests */
+            if(!SmallDivisors(hashTest))
                 return false;
 
-            /* Check B: Miller-Rabin Tests */
-            //if(!Miller_Rabin(nTest))
-            //    return false;
-
-            /* Check C: Fermat Tests */
-            if(FermatTest(nTest) != 1)
+            /* Fermat Test */
+            if(FermatTest(hashTest) != 1)
                 return false;
 
             return true;
@@ -112,33 +127,33 @@ namespace TAO
 
 
         /* Used after Miller-Rabin and Divisor tests to verify primality. */
-        uint1024_t FermatTest(const uint1024_t& nPrime)
+        uint1024_t FermatTest(const uint1024_t& hashTest)
         {
             LLC::CAutoBN_CTX pctx;
 
-            LLC::CBigNum bnPrime(nPrime);
+            LLC::CBigNum hashPrime(nPrime);
             LLC::CBigNum bnBase(2);
-            LLC::CBigNum bnExp = bnPrime - 1;
+            LLC::CBigNum bnExp = hashPrime - 1;
 
             LLC::CBigNum bnResult;
-            BN_mod_exp(bnResult.getBN(), bnBase.getBN(), bnExp.getBN(), bnPrime.getBN(), pctx);
+            BN_mod_exp(bnResult.getBN(), bnBase.getBN(), bnExp.getBN(), hashPrime.getBN(), pctx);
 
             return bnResult.getuint1024();
         }
 
 
         /* Wrapper for is_prime from OpenSSL */
-        bool Miller_Rabin(const uint1024_t& nPrime)
+        bool Miller_Rabin(const uint1024_t& hashTest)
         {
-            LLC::CBigNum bnPrime(nPrime);
+            LLC::CBigNum hashPrime(hashTest);
 
-            return (BN_is_prime_ex(bnPrime.getBN(), 1, nullptr, nullptr) == 1);
+            return (BN_is_prime_ex(hashPrime.getBN(), 1, nullptr, nullptr) == 1);
         }
 
 
         /*  Determine if the number passes small divisor test up to the first
          *  eleven primes. */
-        bool SmallDivisors(const uint1024_t& nTest)
+        bool SmallDivisors(const uint1024_t& hashTest)
         {
             if(nTest % nSmallPrimes[0] == 0)
                 return false;

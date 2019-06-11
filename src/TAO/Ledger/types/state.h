@@ -60,6 +60,10 @@ namespace TAO
             std::vector< std::pair<uint8_t, uint512_t> > vtx;
 
 
+            /** Prime Offsets from start for verifiction. **/
+            std::vector<uint8_t> vOffsets;
+
+
             /** The Trust of the Chain to this Block. */
             uint64_t nChainTrust;
 
@@ -81,7 +85,7 @@ namespace TAO
 
 
             /** The height of this channel. */
-            uint32_t nChannelWeight[3];
+            uint64_t nChannelWeight[3];
 
 
             /** The reserves that are released. */
@@ -135,6 +139,7 @@ namespace TAO
 
                 READWRITE(vchBlockSig);
                 READWRITE(ssSystem);
+                READWRITE(vOffsets);
                 READWRITE(vtx);
           )
 
@@ -144,6 +149,7 @@ namespace TAO
             : Block()
             , ssSystem()
             , vtx()
+            , vOffsets()
             , nChainTrust(0)
             , nMoneySupply(0)
             , nMint(0)
@@ -176,6 +182,7 @@ namespace TAO
             : Block(state)
             {
                 vtx                 = state.vtx;
+                vOffsets            = state.vOffsets;
 
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
@@ -212,6 +219,7 @@ namespace TAO
                 vchBlockSig         = state.vchBlockSig;
 
                 vtx                 = state.vtx;
+                vOffsets            = state.vOffsets;
 
                 nChainTrust         = state.nChainTrust;
                 nMoneySupply        = state.nMoneySupply;
@@ -312,7 +320,7 @@ namespace TAO
              *  Remove a block state from the chain.
              *
              *  @return true if disconnected.
-             *
+             *Block
              **/
             bool Disconnect();
 
@@ -331,7 +339,7 @@ namespace TAO
              *
              *  Get the weight of this block.
              *
-             *  @return the current trust in the chain.
+             *  @return the current weight for this block.
              *
              **/
             uint64_t Weight() const;

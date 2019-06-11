@@ -66,6 +66,26 @@ namespace TAO
         }
 
 
+        /** State values for a transaction. **/
+        namespace CHANNEL
+        {
+            enum
+            {
+                /** Proof of stake channel. **/
+                STAKE   = 0x00,
+
+                /** Prime channel. **/
+                PRIME   = 0x01,
+
+                /** Hash channel. **/
+                HASH    = 0x02,
+
+                /** Private channel. **/
+                PRIVATE = 0x03,
+            };
+        }
+
+
         /** FLAGS
          *
          *  The flags on what to do to registers when executing operations.

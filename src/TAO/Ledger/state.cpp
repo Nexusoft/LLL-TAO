@@ -81,6 +81,7 @@ namespace TAO
         : Block(block)
         , ssSystem()
         , vtx(block.vtx.begin(), block.vtx.end())
+        , vOffsets(block.vOffsets)
         , nChainTrust(0)
         , nMoneySupply(0)
         , nMint(0)
@@ -106,6 +107,7 @@ namespace TAO
         : Block(block)
         , ssSystem()
         , vtx()
+        , vOffsets()
         , nChainTrust(0)
         , nMoneySupply(0)
         , nMint(0)
@@ -768,6 +770,68 @@ namespace TAO
         /* Get the weight of this block. */
         uint64_t BlockState::Weight() const
         {
+            /* Switch between the weights of the channels. */
+            switch(nChannel)
+            {
+                /* Hash is the weight of the found hash. */
+                case CHANNEL::HASH:
+                {
+                    /* Get the proof hash. */
+                    uint1024_t hashProof = ProofHash();
+
+                    /* Get the total weighting. */
+                    uint64_t nWeight = ((~hashProof / (hashProof + 1)) + 1).Get64();
+
+                    return nWeight;
+                }
+
+                /* Proof of stake channel. */
+                case CHANNEL::STAKE:
+                {
+                    /* Get the proof hash. */
+                    uint1024_t hashProof = ProofHash();
+
+                    /* Get the total weighting. */
+                    uint64_t nWeight = ((~hashProof / (hashProof + 1)) + 1).Get64();
+
+                    /* Get the producer. */
+                    Transaction tx;
+                    if(!LLD::Ledger->ReadTx(vtx.back(), tx))
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "could not read producer"));
+
+                    /* Get trust information. */
+                    uint64_t nTrust = 0;
+                    uint64_t nStake = 0;
+                    if(!tx.GetTrustInfo(nTrust, nStake))
+                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get trust info"));
+
+                    /* Genesis has no trust. */
+                    if(tx.IsGenesis())
+                        return nWeight * (nStake / NXS_DIGITS);
+
+                    /* Include trust info in weighting. */
+                    return nWeight * ((nTrust / 86400) * (nStake / NXS_DIGITS));
+
+                     //TODO: this section has a few problems:
+                     //1. We need to accurately weight coins and trust time, say 1 NXS = how many seconds of trust
+                     //2. We need to check this for overflow values
+                     //NOTE: this section is not production ready, more thought needs to go into this above equation
+                }
+
+                /* Prime (for now) is the weight of the prime difficulty. */
+                case CHANNEL::PRIME:
+                {
+                    /* Check for offet patterns. */
+                    if(vOffsets.empty())
+                        return nBits;
+
+                    /* Get the prime difficulty. */
+                    uint64_t nWeight = SetBits(GetPrimeDifficulty(GetPrime(), vOffsets));
+
+                    return nWeight;
+                }
+            }
+
             return 0;
         }
 
