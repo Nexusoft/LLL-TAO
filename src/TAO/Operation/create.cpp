@@ -88,19 +88,32 @@ namespace TAO
                     case TAO::Register::OBJECTS::NAME:
                     {
                         /* Declare the namespace hash */
-                        uint256_t nNamespaceHash = 0;
+                        uint256_t hashNamespace = 0;
 
                         /* If the Name contains a namespace then use a hash of this to verify the register address hash */
                         std::string strNamespace = object.get<std::string>("namespace");
                         if(!strNamespace.empty())
-                            nNamespaceHash = TAO::Register::NamespaceHash(strNamespace);
+                        {
+                            /* Generate the namespace hash from the namespace name */
+                            hashNamespace = TAO::Register::NamespaceHash(strNamespace);
+
+                            /* Retrieve the namespace object and check that the hashGenesis is the owner */
+                            TAO::Register::Object namespaceObject;
+                            if(!TAO::Register::GetNamespaceRegister(hashNamespace, strNamespace, namespaceObject))
+                                return debug::error(FUNCTION, "Namespace does not exist: ", strNamespace);
+
+                            /* Check the owner is the hashGenesis */
+                            if(namespaceObject.hashOwner != state.hashOwner)
+                                return debug::error(FUNCTION, "Namespace not owned by caller: ", strNamespace );
+
+                        }
                         else
                             /* Otherwise we use the owner genesis Hash */
-                            nNamespaceHash = state.hashOwner;
+                            hashNamespace = state.hashOwner;
                         
 
                         /* Build vector to hold the genesis + name data for hashing */
-                        std::vector<uint8_t> vData((uint8_t*)&nNamespaceHash, (uint8_t*)&nNamespaceHash + 32);
+                        std::vector<uint8_t> vData((uint8_t*)&hashNamespace, (uint8_t*)&hashNamespace + 32);
 
                         /* Insert the name of from the Name object */
                         std::string strName = object.get<std::string>("name");

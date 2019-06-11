@@ -54,7 +54,7 @@ namespace TAO
         void CreateName(const uint256_t& hashGenesis, const std::string strFullName,
                         const uint256_t& hashRegister, TAO::Operation::Contract& contract)
         {
-            uint256_t nNamespaceHash = 0;
+            uint256_t hashNamespace = 0;
             uint256_t hashNameAddress = 0;
             std::string strNamespace = "";
             std::string strName = strFullName;
@@ -66,20 +66,26 @@ namespace TAO
                 /* If so then strip off the namespace so that we can check that this user has permission to use it */
                 strName = strName.substr(0, nPos);
                 strNamespace = strFullName.substr(nPos+1);
-                
-                nNamespaceHash = TAO::Register::NamespaceHash(strNamespace);
+            
+                hashNamespace = TAO::Register::NamespaceHash(strNamespace);
 
-                /* TODO */
                 /* Retrieve the namespace object and check that the hashGenesis is the owner */
+                TAO::Register::Object namespaceObject;
+                if(!TAO::Register::GetNamespaceRegister(hashNamespace, strNamespace, namespaceObject))
+                    throw APIException(-23, "Namespace does not exist: " + strNamespace);
+
+                /* Check the owner is the hashGenesis */
+                if(namespaceObject.hashOwner != hashGenesis)
+                    throw APIException(-23, "Cannot create a name in namespace " + strNamespace + " as you are not the owner.");
             }
             else
             {
-                nNamespaceHash = hashGenesis;
+                hashNamespace = hashGenesis;
             }
             
 
             /* Obtain the name register address for the genesis/name combination */
-            TAO::Register::GetNameAddress(nNamespaceHash, strName, hashNameAddress);
+            TAO::Register::GetNameAddress(hashNamespace, strName, hashNameAddress);
 
             /* Check to see whether the name already exists  */
             TAO::Register::Object object;
