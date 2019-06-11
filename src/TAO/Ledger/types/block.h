@@ -102,6 +102,7 @@ namespace TAO
             /** Default Destructor **/
             virtual ~Block();
 
+
             /** Clone
              *
              *  Allows polymorphic copying of blocks
@@ -110,7 +111,7 @@ namespace TAO
              *  @return A pointer to a copy of this Block.
              *
              **/
-            virtual Block* Clone() const {return new Block(*this);};
+            virtual Block* Clone() const;
 
 
             /** SetNull
@@ -126,7 +127,7 @@ namespace TAO
              *  Check a block for consistency.
              *
              **/
-            virtual bool Check() const { /* no implementation in base class*/ return true;}
+            virtual bool Check() const;
 
 
             /** Accept
@@ -134,7 +135,7 @@ namespace TAO
              *  Accept a block with chain state parameters.
              *
              **/
-            virtual bool Accept() const { /* no implementation in base class*/ return true;}
+            virtual bool Accept() const;
 
 
             /** SetChannel

@@ -71,6 +71,19 @@ namespace TAO
 
         /** Unpack
          *
+         *  Unpack the amount of NXS minted by a contract.
+         *
+         *  @param[in] contract The contract to unpack from.
+         *  @param[out] nMint NXS minted by contract operation
+         *
+         *  @return true if the minted amount was unpacked successfully
+         *
+         **/
+        bool Unpack(const TAO::Operation::Contract& contract, uint64_t& nMint);
+
+
+        /** Unpack
+         *
          *  Unpack a contract to find it's primitive operation.
          *
          *  @param[in] tx the transaction to unpack

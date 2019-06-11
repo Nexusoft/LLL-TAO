@@ -15,13 +15,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_TYPES_TRANSACTION_H
 #define NEXUS_TAO_LEDGER_TYPES_TRANSACTION_H
 
-#include <vector>
-
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Ledger/include/enum.h>
 
-#include <Util/include/runtime.h>
+#include <vector>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -122,25 +120,15 @@ namespace TAO
                 {
                     READWRITE(vchSig);
                 }
-          )
+            )
 
 
             /** Default Constructor. **/
-            Transaction()
-            : vContracts()
-            , nVersion(1)
-            , nSequence(0)
-            , nTimestamp(runtime::unifiedtimestamp())
-            , hashNext(0)
-            , hashRecovery(0)
-            , hashGenesis(0)
-            , hashPrevTx(0)
-            , hashNextTx(0)
-            , nKeyType(0)
-            , nNextType(0)
-            , vchPubKey()
-            , vchSig()
-            {}
+            Transaction();
+
+
+            /** Default Destructor. **/
+            ~Transaction();
 
 
             /** Operator Overload >
@@ -148,10 +136,7 @@ namespace TAO
              *  Used for sorting transactions by sequence.
              *
              **/
-            bool operator>(const Transaction& tx) const
-            {
-                return nSequence > tx.nSequence;
-            }
+            bool operator>(const Transaction& tx) const;
 
 
              /** Operator Overload <
@@ -159,59 +144,31 @@ namespace TAO
               *  Used for sorting transactions by sequence.
               *
               **/
-            bool operator<(const Transaction& tx) const
-            {
-                return nSequence < tx.nSequence;
-            }
+            bool operator<(const Transaction& tx) const;
 
 
             /** Operator Overload []
              *
-             *  Access for the contract operator overload.
-             *  This is for read-only objects.
+             *  Access for the contract operator overload. This is for read-only objects.
              *
              **/
-            const TAO::Operation::Contract& operator[](const uint32_t n) const
-            {
-                /* Check contract bounds. */
-                if(n >= vContracts.size())
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
-
-                /* Bind this transaction. */
-                vContracts[n].Bind(*this);
-
-                return vContracts[n];
-            }
+            const TAO::Operation::Contract& operator[](const uint32_t n) const;
 
 
             /** Operator Overload []
              *
-             *  Write access fot the contract operator overload.
-             *  This handles writes to create new contracts.
+             *  Write access fot the contract operator overload. This handles writes to create new contracts.
              *
              **/
-            TAO::Operation::Contract& operator[](const uint32_t n)
-            {
-                /* Allocate a new contract if on write. */
-                if(n >= vContracts.size())
-                    vContracts.resize(n + 1);
-
-                /* Bind this transaction. */
-                vContracts[n].Bind(*this);
-
-                return vContracts[n];
-            }
+            TAO::Operation::Contract& operator[](const uint32_t n);
 
 
-            /** size
+            /** Size
              *
              *  Get the total contracts in transaction.
              *
              **/
-            uint32_t Size() const
-            {
-                return vContracts.size();
-            }
+            uint32_t Size() const;
 
 
             /** Check

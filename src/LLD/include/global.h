@@ -35,6 +35,22 @@ namespace LLD
     extern LegacyDB*     Legacy;
 
 
+    /** Initialize
+     *
+     *  Initialize the global LLD instances.
+     *
+     **/
+    void Initialize();
+
+
+    /** Shutdown
+     *
+     *  Shutdown and cleanup the global LLD instances.
+     *
+     **/
+    void Shutdown();
+
+
     /** TxnRecover
      *
      *  Check the transactions for recovery.

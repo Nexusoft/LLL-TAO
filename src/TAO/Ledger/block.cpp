@@ -79,6 +79,15 @@ namespace TAO
         {
         }
 
+
+        /*  Allows polymorphic copying of blocks
+         *  Derived classes should override this and return an instance of the derived type. */
+        Block* Block::Clone() const
+        {
+            return new Block(*this);
+        }
+
+
         /* Set the block state to null. */
         void Block::SetNull()
         {
@@ -91,6 +100,20 @@ namespace TAO
             nNonce = 0;
             nTime = 0;
             vchBlockSig.clear();
+        }
+
+
+        /*  Check a block for consistency. */
+        bool Block::Check() const
+        {
+            return true; /* No implementation in base class. */
+        }
+
+
+        /*  Accept a block with chain state parameters. */
+        bool Block::Accept() const
+        {
+            return true; /* No implementation in base class. */
         }
 
 

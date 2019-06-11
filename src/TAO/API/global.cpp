@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <Util/include/debug.h>
 
-namespace TAO 
+namespace TAO
 {
     namespace API
     {
@@ -30,11 +30,11 @@ namespace TAO
         Users* users;
         Finance* finance;
 
-        
+
         /*  Instantiate global instances of the API. */
         void Initialize()
         {
-            debug::log(0, "Initializing API");
+            debug::log(0, FUNCTION, "Initializing API");
 
             /* Create the API instances. */
             assets      = new Assets();
@@ -52,7 +52,7 @@ namespace TAO
         /*  Delete global instances of the API. */
         void Shutdown()
         {
-            debug::log(0, "Shutting down API");
+            debug::log(0, FUNCTION, "Shutting down API");
 
             if(assets)
                 delete assets;
@@ -81,6 +81,6 @@ namespace TAO
             if(finance)
                 delete finance;
 
-        }    
+        }
     }
 }

@@ -154,9 +154,9 @@ Increment an amount received from another NXS account to an account owned by you
 
 `txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.
 
-`name` : The name identifying the account to credit. This is only required for split payments (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
-`address` : The register address of the account to credit. This is only required for split payments (where the receiving account is not included in the credit transaction) and is optional if the name is provided.
+`address` : The register address of the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the name is provided.
 
 `name_proof` : The name identifying the account that proves your ownership of the share of the debit. This is only required for split payments and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 

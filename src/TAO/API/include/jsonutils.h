@@ -66,6 +66,16 @@ namespace TAO
         json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity);
 
 
+        /** ContractsToJSON
+         *
+         *  Converts a transaction object into a formatted JSON list of contracts bound to the transaction.
+         *
+         *  @param[in] tx The transaction with contracts to convert to JSON
+         *
+         **/
+        json::json ContractsToJSON(const TAO::Ledger::Transaction& tx);
+
+
         /** OperationToJSON
         *
         *  Converts a serialized operation stream to formattted JSON

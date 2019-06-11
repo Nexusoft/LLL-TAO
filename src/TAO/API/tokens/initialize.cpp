@@ -25,11 +25,10 @@ namespace TAO
         /* Standard initialization function. */
         void Tokens::Initialize()
         {
-            mapFunctions["create"]        = Function(std::bind(&Tokens::Create,         this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["credit"]        = Function(std::bind(&Tokens::Credit,         this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["debit"]         = Function(std::bind(&Tokens::Debit,          this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get"]           = Function(std::bind(&Tokens::Get,            this, std::placeholders::_1, std::placeholders::_2));
-            
+            mapFunctions["create"] = Function(std::bind(&Tokens::Create, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["credit"] = Function(std::bind(&Tokens::Credit, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["debit"]  = Function(std::bind(&Tokens::Debit,  this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get"]    = Function(std::bind(&Tokens::Get,    this, std::placeholders::_1, std::placeholders::_2));
         }
 
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
@@ -64,7 +63,7 @@ namespace TAO
 
                     if(nPos != std::string::npos)
                     {
-                        /* Passing in the fieldname is only supported for the /get/ method so if the user has 
+                        /* Passing in the fieldname is only supported for the /get/ method so if the user has
                            requested a different method then just return the requested URL, which will in turn error */
                         if(strMethodRewritten != "get")
                             return strMethod;
@@ -79,7 +78,7 @@ namespace TAO
                         jsonParams["address"] = strNameOrAddress;
                     else
                         jsonParams["name"] = strNameOrAddress;
-                    
+
                 }
 
                 /* Set the type parameter to token */
@@ -107,7 +106,7 @@ namespace TAO
 
                     if(nPos != std::string::npos)
                     {
-                        /* Passing in the fieldname is only supported for the /get/ method so if the user has 
+                        /* Passing in the fieldname is only supported for the /get/ method so if the user has
                            requested a different method then just return the requested URL, which will in turn error */
                         if(strMethodRewritten != "get")
                             return strMethod;
@@ -122,7 +121,7 @@ namespace TAO
                         jsonParams["address"] = strNameOrAddress;
                     else
                         jsonParams["name"] = strNameOrAddress;
-                    
+
                 }
 
                 /* Set the type parameter to account */
