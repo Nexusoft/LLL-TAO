@@ -36,6 +36,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/stake.h>
+#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
@@ -275,8 +277,6 @@ namespace TAO
         /* Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process. */
         bool TritiumMinter::CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
         {
-            static const uint32_t stakingChannel = (uint32_t)0;
-
             static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
             /* Reset any prior value of trust score, block age, and stake update amount */
@@ -288,7 +288,7 @@ namespace TAO
             block = TritiumBlock();
 
             /* Create the base Tritium block. */
-            if(!TAO::Ledger::CreateBlock(user, strPIN, stakingChannel, block))
+            if(!TAO::Ledger::CreateStakeBlock(user, strPIN, block, isGenesis))
                 return debug::error(FUNCTION, "Unable to create candidate block");
 
             if(!isGenesis)
@@ -351,9 +351,6 @@ namespace TAO
                  * The coinstake reward will be added based on time when block is found.
                  */
                 block.producer[0] << uint8_t(TAO::Operation::OP::TRUST) << txLast.GetHash() << nTrust;
-
-                /* Add transactions into the block from memory pool, but only for Trust (Genesis for trust account has no transactions except coinstake producer). */
-                AddTransactions(block);
             }
             else
             {
@@ -381,7 +378,7 @@ namespace TAO
 
             }
 
-            /* Do not sign producer transaction, yet. Coinstake reward must be added when block found, and it should be signed then */
+            /* Do not sign producer transaction, yet. Coinstake reward must be added, and it should be signed then */
 
             /* Reset sleep time on successful completion */
             if(nSleepTime == 5000)
@@ -481,9 +478,15 @@ namespace TAO
              * Minter can only mine Proof of Stake when current threshold exceeds this value.
              *
              * Staking weights (trust and block) reduce the required threshold by reducing the numerator of this calculation.
-             * Weight from staking balance (based on nValue out of coinstake) reduces the required threshold by increasing the denominator.
+             * Weight from staking balance reduces required threshold by increasing the denominator.
+             *
+             * For Genesis, staking balance is the trust account balance. Otherwise (Trust) it is stake balance.
              */
-            uint64_t nStake = trustAccount.get<uint64_t>("stake");
+            uint64_t nStake = 0;
+            if (!isGenesis)
+                nStake = trustAccount.get<uint64_t>("stake");
+            else
+                nStake = trustAccount.get<uint64_t>("balance");
 
             double nRequired = GetRequiredThreshold(nTrustWeight.load(), nBlockWeight.load(), nStake);
 
@@ -501,7 +504,15 @@ namespace TAO
              */
             while(!TritiumMinter::fstopMinter.load() && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
             {
-                /* Update the block time for difficulty accuracy. */
+                /* Check that the producer isn't going to orphan any transactions from the same hashGenesis. */
+                Transaction tx;
+                if(mempool.Get(block.producer.hashGenesis, tx) && block.producer.hashPrevTx != tx.GetHash())
+                {
+                    debug::log(0, FUNCTION, "Stake block producer is stale, rebuilding...");
+                    break; //Start over with a new block
+                }
+
+                /* Update the block time for threshold accuracy. */
                 block.UpdateTime();
                 uint32_t nBlockTime = block.GetBlockTime() - block.producer.nTimestamp; // How long have we been working on this block
 
@@ -512,9 +523,10 @@ namespace TAO
                     continue;
                 }
 
-                /* Calculate the new Efficiency Threshold for the next nonce.
+                /* Calculate the new Efficiency Threshold for the current nonce.
                  * To stake, this value must be larger than required threshhold.
                  * Block time increases the value while nonce decreases it.
+                 * nNonce = 1 at start of new block.
                  */
                 double nThreshold = GetCurrentThreshold(nBlockTime, block.nNonce);
 
@@ -550,9 +562,13 @@ namespace TAO
         bool TritiumMinter::ProcessBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
         {
             /* Used to calculate coinstake reward */
-            uint64_t nStake = trustAccount.get<uint64_t>("stake");
             uint64_t nStakeTime = 0;
             uint64_t nCoinstakeReward = 0;
+            uint64_t nStake = 0;
+            if (!isGenesis)
+                nStake = trustAccount.get<uint64_t>("stake");
+            else
+                nStake = trustAccount.get<uint64_t>("balance");
 
             /* Calculate the coinstake reward */
             if(!isGenesis)
@@ -574,8 +590,6 @@ namespace TAO
             /* Execute operation pre- and post-state.
              *   - for OP::TRUST, the operation can obtain the trust account from block.producer.hashGenesis
              *   - for OP::GENESIS, the hashAddress of the trust account register is encoded into the block producer
-             *
-             * This process also calculates the appropriate stake reward and encodes it into the post-state.
              */
             if(!block.producer.Build())
                 return debug::error(FUNCTION, "Coinstake transaction failed to build");
@@ -585,19 +599,21 @@ namespace TAO
 
             /* Build the Merkle Root. */
             std::vector<uint512_t> vHashes;
-            vHashes.push_back(block.producer.GetHash()); //producer is not part of vtx
 
             for(const auto& tx : block.vtx)
                 vHashes.push_back(tx.second);
 
-            block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
+            /* producer is not part of vtx, add to vHashes last */
+            vHashes.push_back(block.producer.GetHash());
 
-            /* Print the newly found block. */
-            block.print();
+            block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
 
             /* Sign the block. */
             if(!SignBlock(user, strPIN))
                 return false;
+
+            /* Print the newly found block. */
+            block.print();
 
             /* Check the block. */
             if(!block.Check())
@@ -617,7 +633,7 @@ namespace TAO
                 std::string strTimestamp = std::string(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
 
                 debug::log(1, FUNCTION, "Nexus Stake Minter: New nPoS channel block found at unified time ", strTimestamp);
-                debug::log(1, " blockHash: ", block.StakeHash().ToString().substr(0, 30), " block height: ", block.nHeight);
+                debug::log(1, " blockHash: ", block.GetHash().ToString().substr(0, 30), " block height: ", block.nHeight);
             }
 
             if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
@@ -652,25 +668,60 @@ namespace TAO
             std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, strPIN).GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
-            /* Generate the EC Key and new block signature. */
-            #if defined USE_FALCON
-            LLC::FLKey key;
-            #else
-            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-            #endif
+            /* Switch based on signature type. */
+            switch(block.producer.nKeyType)
+            {
+                /* Support for the FALCON signature scheeme. */
+                case TAO::Ledger::SIGNATURE::FALCON:
+                {
+                    /* Create the FL Key object. */
+                    LLC::FLKey key;
 
-            if(!key.SetSecret(vchSecret, true))
-                return debug::error(FUNCTION, "TritiumMinter: Unable to set key for signing Tritium Block ",
-                                    block.hashMerkleRoot.ToString().substr(0, 20));
+                    /* Set the secret parameter. */
+                    if(!key.SetSecret(vchSecret, true))
+                        return debug::error(FUNCTION, "TritiumMinter: Unable to set key for signing Tritium Block ",
+                                            block.GetHash().ToString().substr(0, 20));
 
-            if(!block.GenerateSignature(key))
-                return debug::error(FUNCTION, "TritiumMinter: Unable to sign Tritium Block ",
-                                    block.hashMerkleRoot.ToString().substr(0, 20));
+                    /* Generate the signature. */
+                    if(!block.GenerateSignature(key))
+                        return debug::error(FUNCTION, "TritiumMinter: Unable to sign Tritium Block ",
+                                            block.GetHash().ToString().substr(0, 20));
 
-            /* Ensure the signed block is a valid signature */
-            if(!block.VerifySignature(key))
-                return debug::error(FUNCTION, "TritiumMinter: Failed verifying Tritium Block signature ",
-                                    block.hashMerkleRoot.ToString().substr(0, 20));
+                    /* Ensure the signed block is a valid signature */
+                    if(!block.VerifySignature(key))
+                        return debug::error(FUNCTION, "TritiumMinter: Failed verifying Tritium Block signature ",
+                                            block.GetHash().ToString().substr(0, 20));
+
+                    break;
+                }
+
+                /* Support for the BRAINPOOL signature scheme. */
+                case TAO::Ledger::SIGNATURE::BRAINPOOL:
+                {
+                    /* Create EC Key object. */
+                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the secret parameter. */
+                    if(!key.SetSecret(vchSecret, true))
+                        return debug::error(FUNCTION, "TritiumMinter: Unable to set key for signing Tritium Block ",
+                                            block.GetHash().ToString().substr(0, 20));
+
+                    /* Generate the signature. */
+                    if(!block.GenerateSignature(key))
+                        return debug::error(FUNCTION, "TritiumMinter: Unable to sign Tritium Block ",
+                                            block.GetHash().ToString().substr(0, 20));
+
+                    /* Ensure the signed block is a valid signature */
+                    if(!block.VerifySignature(key))
+                        return debug::error(FUNCTION, "TritiumMinter: Failed verifying Tritium Block signature ",
+                                            block.GetHash().ToString().substr(0, 20));
+
+                    break;
+                }
+
+                default:
+                    return debug::error(FUNCTION, "TritiumMinter: Unknown signature type");
+            }
 
             return true;
          }

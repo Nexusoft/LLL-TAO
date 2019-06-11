@@ -159,7 +159,6 @@ namespace LLP
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
         pBlock->nNonce = nNonce;
         pBlock->UpdateTime();
-        pBlock->print();
 
         /* Get the sigchain and the PIN. */
         SecureString PIN;
@@ -195,11 +194,13 @@ namespace LLP
 
                 /* Set the secret parameter. */
                 if(!key.SetSecret(vchSecret, true))
-                    return debug::error(FUNCTION, "TritiumMiner: Unable to set key for signing Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+                    return debug::error(FUNCTION, "TritiumMiner: Unable to set key for signing Tritium Block ",
+                                        hashMerkleRoot.ToString().substr(0, 20));
 
                 /* Generate the signature. */
                 if(!pBlock->GenerateSignature(key))
-                    return debug::error(FUNCTION, "TritiumMiner: Unable to sign Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+                    return debug::error(FUNCTION, "TritiumMiner: Unable to sign Tritium Block ",
+                                        hashMerkleRoot.ToString().substr(0, 20));
 
                 break;
             }
@@ -212,11 +213,13 @@ namespace LLP
 
                 /* Set the secret parameter. */
                 if(!key.SetSecret(vchSecret, true))
-                    return debug::error(FUNCTION, "TritiumMiner: Unable to set key for signing Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+                    return debug::error(FUNCTION, "TritiumMiner: Unable to set key for signing Tritium Block ",
+                                        hashMerkleRoot.ToString().substr(0, 20));
 
                 /* Generate the signature. */
                 if(!pBlock->GenerateSignature(key))
-                    return debug::error(FUNCTION, "TritiumMiner: Unable to sign Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+                    return debug::error(FUNCTION, "TritiumMiner: Unable to sign Tritium Block ",
+                                        hashMerkleRoot.ToString().substr(0, 20));
 
                 break;
             }
@@ -224,6 +227,8 @@ namespace LLP
             default:
                 return debug::error(FUNCTION, "unknown signature type");
         }
+
+        pBlock->print();
 
         return true;
      }

@@ -467,6 +467,9 @@ namespace TAO
         /* Check the proof of stake calculations. */
         bool TritiumBlock::CheckStake() const
         {
+            /* Reset the coinstake contract streams. */
+            producer[0].Reset(TAO::Operation::Contract::ALL);
+
             /* Get the trust object register. */
             TAO::Register::Object trustAccount;
 
@@ -508,7 +511,7 @@ namespace TAO
 
                 /* Get last trust hash. */
                 uint512_t hashLastTrust = 0;
-                producer[0]>> hashLastTrust;
+                producer[0] >> hashLastTrust;
 
                 uint64_t nClaimedTrust = 0;
                 producer[0] >> nClaimedTrust;
@@ -576,7 +579,7 @@ namespace TAO
                 nStake = trustAccount.get<uint64_t>("balance");
 
                 /* Genesis transaction can't have any transactions. */
-                if(vtx.size() != 1)
+                if(vtx.size() != 0)
                     return debug::error(FUNCTION, "genesis cannot include transactions");
 
                 /* Calculate the Coinstake Age. */
