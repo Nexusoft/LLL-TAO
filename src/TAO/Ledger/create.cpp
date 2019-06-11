@@ -52,7 +52,8 @@ namespace TAO
 
 
         /* Create a new transaction object from signature chain. */
-        bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin, TAO::Ledger::Transaction& tx)
+        bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+                               TAO::Ledger::Transaction& tx)
         {
             /* Get the genesis id of the sigchain. */
             uint256_t hashGenesis = user->Genesis();
@@ -137,16 +138,67 @@ namespace TAO
         }
 
 
+        /* Populate block header data for a new block. */
+        void AddBlockData(const TAO::Ledger::BlockState& stateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block)
+        {
+
+            /* Modulate the Block Versions if they correspond to their proper time stamp */
+            /* Normally, if condition is true and block version is NETWORK_BLOCK_CURRENT_VERSION unless an activation is pending */
+            if(runtime::unifiedtimestamp() >= (config::fTestNet.load() ?
+                TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] :
+                NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
+            {
+                block.nVersion = config::fTestNet.load() ?
+                    TESTNET_BLOCK_CURRENT_VERSION :
+                    NETWORK_BLOCK_CURRENT_VERSION; // --> New Block Version Activation Switch
+            }
+            else
+            {
+                block.nVersion = config::fTestNet.load() ?
+                    TESTNET_BLOCK_CURRENT_VERSION - 1 :
+                    NETWORK_BLOCK_CURRENT_VERSION - 1;
+            }
+
+            /* Calculate the merkle root (stake minter must handle channel 0 after completing coinstake producer setup) */
+            if(nChannel != 0)
+            {
+                /* Add the transaction hashest. */
+                std::vector<uint512_t> vHashes;
+                for(const auto& tx : block.vtx)
+                    vHashes.push_back(tx.second);
+
+                /* Producer transaction is last. */
+                vHashes.push_back(block.producer.GetHash());
+
+                /* Build the block's merkle root. */
+                block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
+            }
+
+            /* Add remaining block data */
+            block.hashPrevBlock = stateBest.GetHash();
+            block.nChannel      = nChannel;
+            block.nHeight       = stateBest.nHeight + 1;
+            block.nBits         = GetNextTargetRequired(stateBest, nChannel, false);
+            block.nNonce        = 1;
+            block.nTime         = static_cast<uint32_t>(std::max(stateBest.GetBlockTime() + 1, runtime::unifiedtimestamp()));
+        }
+
+
         /* Create a new block object from the chain.*/
         static memory::atomic<TAO::Ledger::TritiumBlock> blockCache[4];
+
         bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
             const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce)
         {
+
+            if (nChannel < 1 || nChannel > 3)
+                return debug::error(FUNCTION, "invalid channel");
+
             /* Set the block to null. */
             block.SetNull();
 
-            /* Handle if the block is cached. Staking channel (channel 0) should never be cached, */
-            if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].load().hashPrevBlock && nChannel != 0)
+            /* Handle if the block is cached. */
+            if(ChainState::stateBest.load().GetHash() == blockCache[nChannel].load().hashPrevBlock)
             {
                 /* Set the block to cached block. */
                 block = blockCache[nChannel].load();
@@ -205,7 +257,7 @@ namespace TAO
                 /* Sign the producer transaction. */
                 block.producer.Sign(user->Generate(block.producer.nSequence, pin));
 
-                /* Add the transactions. */
+                /* Rebuild the merkle tree for updated block. */
                 std::vector<uint512_t> vHashes;
                 for(const auto& tx : block.vtx)
                     vHashes.push_back(tx.second);
@@ -216,45 +268,20 @@ namespace TAO
                 /* Build the block's merkle root. */
                 block.hashMerkleRoot  = block.BuildMerkleTree(vHashes);
             }
-            else
+            else //block not cached, set up new block
             {
                 /* Cache the best chain before processing. */
                 const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
 
-                /* Modulate the Block Versions if they correspond to their proper time stamp */
-                if(runtime::unifiedtimestamp() >= (config::fTestNet.load() ?
-                    TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] :
-                    NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-                    block.nVersion = config::fTestNet.load() ?
-                    TESTNET_BLOCK_CURRENT_VERSION :
-                    NETWORK_BLOCK_CURRENT_VERSION; // --> New Block Versin Activation Switch
-                else
-                    block.nVersion = config::fTestNet.load() ?
-                    TESTNET_BLOCK_CURRENT_VERSION - 1 :
-                    NETWORK_BLOCK_CURRENT_VERSION - 1;
-
-                /* Add the transactions to the block. */
-                if(nChannel != 0)
-                    AddTransactions(block);
-
-                //TODO: we need to build the producer based on what is in the actual block
-                //this will make sure it is in sequenced properly.
+                /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
+                AddTransactions(block);
 
                 /* Setup the producer transaction. */
                 if(!CreateTransaction(user, pin, block.producer))
                     return debug::error(FUNCTION, "failed to create producer transactions");
 
                 /* Create the Coinbase Transaction if the Channel specifies. */
-                if(nChannel == 0)
-                {
-                    /* Set the Coinstake timestamp. */
-                     block.producer.nTimestamp = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() + 1;
-
-                     /* The remainder of Coinstake producer not configured here. Stake minter must handle it depending on whether Genesis or Trust. */
-                }
-
-                /* Create the Coinbase Transaction if the Channel specifies. */
-                else if(nChannel == 1 || nChannel == 2)
+                if(nChannel == 1 || nChannel == 2)
                 {
                     /* Create coinbase transaction. */
                     block.producer[0] << uint8_t(TAO::Operation::OP::COINBASE);
@@ -281,34 +308,48 @@ namespace TAO
                     block.producer[0] << block.producer.hashGenesis;
                 }
 
-                /* Stake minter must perform Sign after producer completed and also do AddTransactions based on Genesis or Trust. */
-                if(nChannel != 0)
-                {
-                    /* Sign the producer transaction. */
-                    block.producer.Sign(user->Generate(block.producer.nSequence, pin));
-                }
+                /* Sign the producer transaction. */
+                block.producer.Sign(user->Generate(block.producer.nSequence, pin));
 
-                /* Add the transactions. */
-                std::vector<uint512_t> vHashes;
-                for(const auto& tx : block.vtx)
-                    vHashes.push_back(tx.second);
-
-                /* Producer transaction is last. */
-                vHashes.push_back(block.producer.GetHash());
-
-                /* Build the block's merkle root. */
-                block.hashPrevBlock   = stateBest.GetHash();
-                block.hashMerkleRoot  = block.BuildMerkleTree(vHashes);
-                block.nChannel        = nChannel;
-                block.nHeight         = stateBest.nHeight + 1;
-                block.nBits           = GetNextTargetRequired(stateBest, nChannel, false);
-                block.nNonce          = 1;
-                block.nTime           = static_cast<uint32_t>(std::max(stateBest.GetBlockTime() + 1, runtime::unifiedtimestamp()));
+                /* Populate the block metadata */
+                AddBlockData(stateBest, nChannel, block);
 
                 /* Store the cached block. */
-                if(nChannel != 0)
-                    blockCache[nChannel].store(block);
+                blockCache[nChannel].store(block);
             }
+
+            return true;
+        }
+
+
+        bool CreateStakeBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+                              TAO::Ledger::TritiumBlock& block, const uint64_t isGenesis)
+        {
+
+            const uint32_t nChannel = 0;
+
+            /* Set the block to null. */
+            block.SetNull();
+
+            /* Cache the best chain before processing. */
+            const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
+
+            /* Add the transactions to the block (no transactions for PoS Genesis block). */
+            /* Must add transactions first, before creating producer, so producer is sequenced last if user has tx in block */
+            if (!isGenesis)
+                AddTransactions(block);
+
+            /* Create the producer transaction. */
+            if(!CreateTransaction(user, pin, block.producer))
+                return debug::error(FUNCTION, "failed to create producer transactions");
+
+            /* Set the Coinstake timestamp. */
+            block.producer.nTimestamp = stateBest.GetBlockTime() + 1;
+
+            /* The remainder of Coinstake producer not configured here. Stake minter must handle it. */
+
+            /* Populate the block metadata */
+            AddBlockData(stateBest, nChannel, block);
 
             return true;
         }
