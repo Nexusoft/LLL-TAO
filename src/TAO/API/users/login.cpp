@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/enum.h>
 
+#include <Util/include/allocators.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -42,16 +44,37 @@ namespace TAO
             if(params.find("username") == params.end())
                 throw APIException(-23, "Missing Username");
 
+            /* Parse out username. */
+            SecureString strUser = SecureString(params["username"].get<std::string>().c_str());
+
+            /* Check for username size. */
+            if(strUser.size() == 0)
+                throw APIException(-23, "Zero-Length Username");
+
             /* Check for password parameter. */
             if(params.find("password") == params.end())
                 throw APIException(-24, "Missing Password");
+
+            /* Parse out password. */
+            SecureString strPass = SecureString(params["password"].get<std::string>().c_str());
+
+            /* Check for password size. */
+            if(strPass.size() == 0)
+                throw APIException(-24, "Zero-Length Password");
 
             /* Check for pin parameter. */
             if(params.find("pin") == params.end())
                 throw APIException(-24, "Missing PIN");
 
+            /* Parse out pin. */
+            SecureString strPin  = SecureString(params["pin"].get<std::string>().c_str());
+
+            /* Check for pin size. */
+            if(strPin.size() == 0)
+                throw APIException(-24, "Zero-Length PIN");
+
             /* Create the sigchain. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUser, strPass);
 
             /* Get the genesis ID. */
             uint256_t hashGenesis = user->Genesis();
@@ -85,7 +108,7 @@ namespace TAO
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
-            tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str(), false), txPrev.nNextType);
+            tx.NextHash(user->Generate(txPrev.nSequence + 1, strPin, false), txPrev.nNextType);
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)

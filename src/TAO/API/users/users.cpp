@@ -92,45 +92,32 @@ namespace TAO
             std::string strMethodRewritten = strMethod;
             std::string strNameOrAddress;
 
-            /* support passing the username after a list method e.g. list/assets/myusername */
-            std::size_t nPos = strMethod.find("list/");
-            std::size_t nPos2 = strMethod.find("/user/");
-            if(nPos != std::string::npos && nPos2 == std::string::npos)
+
+            if(strMethod.find("user/")          != std::string::npos
+            || strMethod.find("transactions/")  != std::string::npos
+            || strMethod.find("notifications/") != std::string::npos
+            || strMethod.find("assets/")        != std::string::npos
+            || strMethod.find("accounts/")      != std::string::npos
+            || strMethod.find("tokens/")        != std::string::npos)
             {
-                nPos = strMethod.find("/", nPos+5);
+                /* support passing the username after a list method e.g. list/assets/myusername */
+                size_t nPos = strMethod.find_last_of("/");
 
-                /* get the method name from the incoming string */
-                strMethodRewritten = strMethod.substr(0, nPos);
+                if(nPos != std::string::npos)
+                {
+                    /* get the method name from the incoming string */
+                    strMethodRewritten = strMethod.substr(0, nPos);
 
-                /* Get the name or address that comes after the /item/ part */
-                strNameOrAddress = strMethod.substr(nPos + 1);
+                    /* Get the name or address that comes after the /item/ part */
+                    strNameOrAddress = strMethod.substr(nPos + 1);
 
-                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                if(IsRegisterAddress(strNameOrAddress))
-                    jsonParams["genesis"] = strNameOrAddress;
-                else
-                    jsonParams["username"] = strNameOrAddress;
-
-                return strMethodRewritten;
+                    /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
+                    if(IsRegisterAddress(strNameOrAddress))
+                        jsonParams["genesis"] = strNameOrAddress;
+                    else
+                        jsonParams["username"] = strNameOrAddress;
+                }
             }
-            /* support passing the username after the method e.g. login/user/myusername */
-            else if(nPos2 != std::string::npos)
-            {
-                /* get the method name from the incoming string */
-                strMethodRewritten = strMethod.substr(0, nPos2 + 5);
-
-                /* Get the name or address that comes after the /item/ part */
-                strNameOrAddress = strMethod.substr(nPos2 + 6);
-
-                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                if(IsRegisterAddress(strNameOrAddress))
-                    jsonParams["genesis"] = strNameOrAddress;
-                else
-                    jsonParams["username"] = strNameOrAddress;
-
-                return strMethodRewritten;
-            }
-
 
             return strMethodRewritten;
         }

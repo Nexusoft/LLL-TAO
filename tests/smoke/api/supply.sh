@@ -1,3 +1,6 @@
+#Login
+./api_call.sh users/login/user/jack password=jack pin=1234
+
 #Create a supply item with simple data
 ./api_call.sh supply/create/item name=item1 data=123456789 pin=1234
 
@@ -18,3 +21,6 @@
 
 #Claim an item transferred to you
 ./api_call.sh supply/claim/item txid=430a91929c003f577f8d3a8f6388287d5353df2c3aef4149d33b9de0564808abd12d2a14c4c056968e73bc1276f93bfbfff7d6e4eabbae801b9d76c5a1f65015 pin=1234
+
+#Logout
+./api_call.sh users/logout/user/jack password=jack pin=1234

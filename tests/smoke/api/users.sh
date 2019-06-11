@@ -18,6 +18,7 @@
 #Logout
 ./api_call.sh users/logout/user/paul password=paul pin=1234
 
+#Login
 ./api_call.sh users/login/user/jack password=jack pin=1234
 
 #List your accounts (note that account names are only returned for the logged in user)
@@ -38,4 +39,5 @@
 #List your notifications (transactions you need to credit/claim)
 ./api_call.sh users/list/notifications/jack
 
+#Logout
 ./api_call.sh users/logout/user/jack password=jack pin=1234
