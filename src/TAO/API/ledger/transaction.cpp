@@ -38,14 +38,14 @@ namespace TAO
         /* Retrieves the transaction for the given hash. */
         json::json Ledger::Transaction(const json::json& params, bool fHelp)
         {
-            /* Check for the transaction hash parameter. */
-            if(params.find("hash") == params.end())
-                throw APIException(-25, "Missing hash");
-
-
             /* Extract the hash out of the JSON params*/
             uint512_t hash;
-            hash.SetHex(params["hash"].get<std::string>());
+            if(params.find("hash") != params.end())
+                hash.SetHex(params["hash"].get<std::string>());
+            else if(params.find("txid") != params.end())
+                hash.SetHex(params["txid"].get<std::string>());
+            else
+                throw APIException(-25, "Missing hash or txid");
 
 
             /* Get the transaction verbosity level from the request*/
