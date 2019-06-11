@@ -22,7 +22,7 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        
+
         /* Standard initialization function. */
         void Ledger::Initialize()
         {
@@ -33,7 +33,35 @@ namespace TAO
             mapFunctions["get/transaction"] = Function(std::bind(&Ledger::Transaction, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["submit/transaction"] = Function(std::bind(&Ledger::Submit, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get/mininginfo"] = Function(std::bind(&Ledger::MiningInfo, this, std::placeholders::_1, std::placeholders::_2));
-        
+
+        }
+
+
+        /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
+        *  map directly to a function in the target API.  Insted this method can be overriden to
+        *  parse the incoming URL and route to a different/generic method handler, adding parameter
+        *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
+        *  added to the jsonParams
+        *  The return json contains the modifed method URL to be called.
+        */
+        std::string Ledger::RewriteURL(const std::string& strMethod, json::json& jsonParams)
+        {
+            std::string strMethodRewritten = strMethod;
+            std::size_t nPos = strMethodRewritten.find("transaction/");
+
+            if(nPos != std::string::npos)
+            {
+                /* get the method name from before the transaction/ */
+                strMethodRewritten = strMethod.substr(0, nPos+11);
+
+                /* Get the transaction id that comes after the transaction/ part. */
+                std::string strTxid = strMethod.substr(nPos + 12);
+
+                /* Set the transaction id parameter for ledger API. */
+                jsonParams["hash"] = strTxid;
+            }
+
+            return strMethodRewritten;
         }
     }
 }

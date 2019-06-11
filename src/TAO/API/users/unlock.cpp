@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/tritium_minter.h>
 
+#include <Util/include/allocators.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -42,32 +44,47 @@ namespace TAO
 
             /* Check for pin parameter. */
             if(params.find("pin") == params.end())
-                throw APIException(-24, "Missing Pin");
+                throw APIException(-24, "Missing PIN");
+
+            /* Parse the pin parameter. */
+            SecureString strPin = SecureString(params["pin"].get<std::string>().c_str());
+
+            if(strPin.size() == 0)
+                throw APIException(-24, "Zero-Length PIN");
 
             /* Check for unlock actions */
             uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to ALL actions
 
             /* Check for minting flag. */
-            if(params.find("minting") != params.end()
-            && (params["minting"].get<std::string>() == "1" || params["minting"].get<std::string>() == "true"))
+            if(params.find("minting") != params.end())
             {
-                 /* Check if already unlocked. */
-                if(!pActivePIN.IsNull() && pActivePIN->CanMint())
-                    throw APIException(-26, "Account already unlocked for minting");
-                else
-                    nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::MINTING;
+                std::string strMint = params["minting"].get<std::string>();
+
+                if(strMint == "1" || strMint == "true")
+                {
+                     /* Check if already unlocked. */
+                    if(!pActivePIN.IsNull() && pActivePIN->CanMint())
+                        throw APIException(-26, "Account already unlocked for minting");
+                    else
+                        nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::MINTING;
+                }
             }
 
             /* Check unlocked actions. */
-            if(params.find("transactions") != params.end()
-            && (params["transactions"].get<std::string>() == "1" || params["transactions"].get<std::string>() == "true"))
+            if(params.find("transactions") != params.end())
             {
-                 /* Check if already unlocked. */
-                if(!pActivePIN.IsNull() && pActivePIN->CanTransact())
-                    throw APIException(-26, "Account already unlocked for minting");
-                else
-                    nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
+                std::string strTransactions = params["transactions"].get<std::string>();
+
+                if(strTransactions == "1" || strTransactions == "true")
+                {
+                     /* Check if already unlocked. */
+                    if(!pActivePIN.IsNull() && pActivePIN->CanTransact())
+                        throw APIException(-26, "Account already unlocked for minting");
+                    else
+                        nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
+                }
             }
+
 
             /* If no unlock actions have been specifically set then default it to all */
             if(nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::NONE)
@@ -110,7 +127,7 @@ namespace TAO
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
-            tx.NextHash(user->Generate(txPrev.nSequence + 1, params["pin"].get<std::string>().c_str(), false), txPrev.nNextType);
+            tx.NextHash(user->Generate(txPrev.nSequence + 1, strPin, false), txPrev.nNextType);
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
@@ -120,7 +137,7 @@ namespace TAO
             if(!pActivePIN.IsNull())
                 pActivePIN.free();
 
-            pActivePIN = new TAO::Ledger::PinUnlock(params["pin"].get<std::string>().c_str(), nUnlockedActions);
+            pActivePIN = new TAO::Ledger::PinUnlock(strPin, nUnlockedActions);
 
             /* After unlock complete, attempt to start stake minter if unlocked for minting */
             if(pActivePIN->CanMint())

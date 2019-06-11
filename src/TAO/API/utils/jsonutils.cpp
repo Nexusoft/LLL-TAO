@@ -127,9 +127,12 @@ namespace TAO
             /* Declare JSON object to return */
             json::json txdata;
 
-            /* Always add the hash if level 1 and up */
+            /* Always add the transaction hash */
+            txdata["txid"] = tx.GetHash().GetHex();
+
+            /* Always add the contracts if level 1 and up */
             if(nTransactionVerbosity >= 1)
-                txdata["hash"] = tx.GetHash().GetHex();
+                txdata["contracts"] = ContractsToJSON(tx);
 
             /* Basic TX info for level 2 and up */
             if(nTransactionVerbosity >= 2)
@@ -139,11 +142,6 @@ namespace TAO
                 txdata["version"]   = tx.nVersion;
                 txdata["sequence"]  = tx.nSequence;
                 txdata["timestamp"] = tx.nTimestamp;
-
-
-                /* Add contracts to return json. */
-                txdata["contracts"] = ContractsToJSON(tx);
-
                 txdata["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
                 /* Genesis and hashes are verbose 3 and up. */
@@ -170,7 +168,7 @@ namespace TAO
             json::json txdata;
 
             /* Always add the hash */
-            txdata["hash"] = tx.GetHash().GetHex();
+            txdata["txid"] = tx.GetHash().GetHex();
 
             /* Basic TX info for level 1 and up */
             if(nTransactionVerbosity > 0)

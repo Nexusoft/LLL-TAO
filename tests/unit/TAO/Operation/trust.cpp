@@ -84,7 +84,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
             REQUIRE(trust.get<uint256_t>("token")  == 0);
 
             //add balance to seed remaining tests
-            trust.Write("balance", (uint64_t)5000);
+            trust.Write("balance", uint64_t(5000));
             REQUIRE(trust.get<uint64_t>("balance") == 5000);
             trust.SetChecksum();
 
@@ -247,6 +247,25 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
 
             TAO::Register::Object trust;
             REQUIRE(LLD::Register->ReadTrust(hashGenesis, trust));
+
+            //parse register
+            REQUIRE(trust.Parse());
+
+            //check values
+            REQUIRE(trust.get<uint64_t>("balance") == 5);
+            REQUIRE(trust.get<uint64_t>("trust")   == 0);
+            REQUIRE(trust.get<uint64_t>("stake")   == 5000);
+            REQUIRE(trust.get<uint256_t>("token")  == 0);
+        }
+
+
+        //check register values
+        {
+            //check trust indexed
+            REQUIRE(LLD::Register->HasState(hashTrust));
+
+            TAO::Register::Object trust;
+            REQUIRE(LLD::Register->ReadState(hashTrust, trust));
 
             //parse register
             REQUIRE(trust.Parse());
