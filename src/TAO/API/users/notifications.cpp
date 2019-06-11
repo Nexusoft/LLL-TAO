@@ -72,11 +72,7 @@ namespace TAO
             uint32_t nLimit = 100;
             if(params.find("limit") != params.end())
                 nLimit = std::stoul(params["limit"].get<std::string>());
-
-            /* Get verbose levels. */
-            uint32_t nVerbose = 3;
-            if(params.find("verbose") != params.end())
-                nVerbose = std::stoul(params["verbose"].get<std::string>());
+                
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;
@@ -98,18 +94,17 @@ namespace TAO
                 hashLast = tx.hashPrevTx;
 
                 /* Loop through all contracts. */
-                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                uint32_t nContracts = tx.Size();
+
+                json::json contracts = json::json::array();
+
+                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
                     /* Attempt to unpack a coinbase transaction. */
                     if(TAO::Register::Unpack(tx[nContract], TAO::Operation::OP::COINBASE))
                     {
-                        /* Create JSON return object. */
-                        json::json obj;
-                        obj["contract"] = ContractToJSON(tx[nContract]);
-
                         /* Push back in vector. */
-                        ret.push_back(obj);
-
+                        contracts.push_back(ContractToJSON(tx[nContract]));
                         continue;
                     }
 
@@ -142,6 +137,16 @@ namespace TAO
                     vRegisters.push_back(std::make_tuple(hashAddress, hashToken, object.get<uint64_t>("balance")));
 
                 }
+
+                /* Add in coinbase contracts, if any. */
+                if(contracts.size())
+                {
+                    json::json obj;
+                    obj["txid"] = tx.GetHash().ToString();
+                    obj["contracts"] = contracts;
+                    ret.push_back(obj);
+                }
+
             }
 
             /* Start with sequence 0 (chronological order). */
@@ -156,16 +161,19 @@ namespace TAO
                 /* Loop through all events for given token (split payments). */
                 while(!config::fShutdown)
                 {
+                    uint256_t hashAddress = std::get<0>(hash);
+                    uint256_t hashToken = std::get<1>(hash);
+
                     /* Get the current page. */
                     uint32_t nCurrentPage = nTotal / nLimit;
 
                     /* Get the transaction from disk. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::Ledger->ReadEvent(std::get<1>(hash), nSequence, tx))
+                    if(!LLD::Ledger->ReadEvent(hashToken, nSequence, tx))
                         break;
 
                     /* Check claims against notifications. */
-                    if(LLD::Ledger->HasProof(std::get<0>(hash), tx.GetHash(), TAO::Ledger::FLAGS::MEMPOOL))
+                    if(LLD::Ledger->HasProof(hashAddress, tx.GetHash(), TAO::Ledger::FLAGS::MEMPOOL))
                         continue;
 
                     ++nTotal;
@@ -182,51 +190,47 @@ namespace TAO
 
                     /* Read the object register. */
                     TAO::Register::Object object;
-                    if(!LLD::Register->ReadState(std::get<1>(hash), object))
+                    if(!LLD::Register->ReadState(hashToken, object))
+                        continue;
+
+                    /* Parse the object register. */
+                    if(!object.Parse())
                         continue;
 
                     json::json obj;
-                    obj["version"]   = tx.nVersion;
-                    obj["sequence"]  = tx.nSequence;
-                    obj["timestamp"] = tx.nTimestamp;
+                    obj["txid"] = tx.GetHash().ToString();
 
-                    /* Genesis and hashes are verbose 1 and up. */
-                    if(nVerbose >= 1)
+                    json::json contracts = json::json::array();
+                    uint32_t nContracts = tx.Size();
+                    for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                     {
-                        obj["genesis"]   = tx.hashGenesis.ToString();
-                        obj["nexthash"]  = tx.hashNext.ToString();
-                        obj["prevhash"]  = tx.hashPrevTx.ToString();
-                    }
+                        /* Get the json object for the current contract in the transaction. */
+                        json::json contract = ContractToJSON(tx[nContract]);
 
-                    /* Signatures and public keys are verbose level 2 and up. */
-                    if(nVerbose >= 2)
-                    {
-                        obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
-                        obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
-                    }
 
-                    obj["hash"]          = tx.GetHash().ToString();
-                    obj["operation"]     = ContractToJSON(tx[0]);
-
-                    if(obj["operation"][0]["OP"] == "DEBIT")
-                    {
-                        uint256_t hashTo = uint256_t(obj["operation"][0]["address_to"].get<std::string>());
-
-                        TAO::Register::State stateTo;
-                        if(!LLD::Register->ReadState(hashTo, stateTo))
-                            continue;
-
-                        if(stateTo.nType == TAO::Register::REGISTER::RAW
-                        || stateTo.nType == TAO::Register::REGISTER::READONLY)
+                        if(contract["OP"] == "DEBIT")
                         {
-                            /* Parse the object register. */
-                            if(!object.Parse())
+                            uint256_t hashTo = uint256_t(contract["to"].get<std::string>());
+
+                            TAO::Register::State stateTo;
+                            if(!LLD::Register->ReadState(hashTo, stateTo))
                                 continue;
 
-                            /* Calculate the partial debit amount (amount = amount * balance / supply). */
-                            obj["operation"][0]["amount"] = (obj["operation"][0]["amount"].get<uint64_t>() * std::get<2>(hash)) / object.get<uint64_t>("supply");
+                            if(stateTo.nType == TAO::Register::REGISTER::RAW
+                            || stateTo.nType == TAO::Register::REGISTER::READONLY)
+                            {
+                                /* Calculate the partial debit amount (amount = amount * balance / supply). */
+                                contract["amount"] = (contract["amount"].get<uint64_t>() * object.get<uint64_t>("balance")) / object.get<uint64_t>("supply");
+                            }
                         }
+
+                        /* Add the current contract to the json contracts array. */
+                        contracts.push_back(contract);
                     }
+
+                    /* Set the contract info on the json object. */
+                    obj["contracts"] = contracts;
+
 
                     ret.push_back(obj);
 
@@ -269,27 +273,9 @@ namespace TAO
                     break;
 
                 json::json obj;
-                obj["version"]   = tx.nVersion;
-                obj["sequence"]  = tx.nSequence;
-                obj["timestamp"] = tx.nTimestamp;
-
-                /* Genesis and hashes are verbose 1 and up. */
-                if(nVerbose >= 1)
-                {
-                    obj["genesis"]   = tx.hashGenesis.ToString();
-                    obj["nexthash"]  = tx.hashNext.ToString();
-                    obj["prevhash"]  = tx.hashPrevTx.ToString();
-                }
-
                 /* Signatures and public keys are verbose level 2 and up. */
-                if(nVerbose >= 2)
-                {
-                    obj["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
-                    obj["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
-                }
-
-                obj["hash"]       = tx.GetHash().ToString();
-                obj["contract"]   = ContractToJSON(tx[0]);
+                obj["txid"]       = tx.GetHash().ToString();
+                obj["contracts"]   = ContractsToJSON(tx);
 
                 ret.push_back(obj);
 

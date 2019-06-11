@@ -75,7 +75,7 @@ namespace TAO
 
             /** Standard
              *
-             *  Get's the standard object type.
+             *  Gets the standard object type.
              *
              **/
             uint8_t Standard() const;
@@ -83,7 +83,7 @@ namespace TAO
 
             /** Base
              *
-             *  Get's the standard object base object.
+             *  Gets the standard object base object.
              *
              **/
             uint8_t Base() const;

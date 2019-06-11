@@ -62,7 +62,7 @@ namespace TAO
             uint64_t nModified;
 
 
-            /** The chechsum of the state register for use in pruning. */
+            /** The checksum of the state register for use in pruning. */
             uint64_t hashChecksum;
 
 
