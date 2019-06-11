@@ -44,6 +44,9 @@ namespace TAO
             if(!PrimeCheck(hashPrime))
                 return 0.0;
 
+            /* Keep track of the cluster size. */
+            uint32_t nClusterSize = 1;
+
             /* Check for optimized tritium version. */
             uint1024_t hashNext = hashPrime;
             if(!vOffsets.empty())
@@ -66,9 +69,6 @@ namespace TAO
             {
                 /* Set temporary variables for the checks. */
                 uint1024_t hashLast = hashPrime;
-
-                /* Keep track of the cluster size. */
-                uint32_t nClusterSize = 1;
 
                 /* Largest prime gap is +12 for dense clusters. */
                 for(hashNext = hashPrime + 2; hashNext <= hashLast + 12; hashNext += 2)
@@ -94,7 +94,8 @@ namespace TAO
         /* Gets the unsigned int representative of a decimal prime difficulty. */
         uint32_t GetPrimeBits(const uint1024_t& hashPrime)
         {
-            return SetBits(GetPrimeDifficulty(hashPrime));
+            std::vector<uint8_t> vOffsets;
+            return SetBits(GetPrimeDifficulty(hashPrime, vOffsets));
         }
 
 
@@ -131,12 +132,12 @@ namespace TAO
         {
             LLC::CAutoBN_CTX pctx;
 
-            LLC::CBigNum hashPrime(nPrime);
+            LLC::CBigNum bnPrime(hashTest);
             LLC::CBigNum bnBase(2);
-            LLC::CBigNum bnExp = hashPrime - 1;
+            LLC::CBigNum bnExp = bnPrime - 1;
 
             LLC::CBigNum bnResult;
-            BN_mod_exp(bnResult.getBN(), bnBase.getBN(), bnExp.getBN(), hashPrime.getBN(), pctx);
+            BN_mod_exp(bnResult.getBN(), bnBase.getBN(), bnExp.getBN(), bnPrime.getBN(), pctx);
 
             return bnResult.getuint1024();
         }
@@ -145,9 +146,9 @@ namespace TAO
         /* Wrapper for is_prime from OpenSSL */
         bool Miller_Rabin(const uint1024_t& hashTest)
         {
-            LLC::CBigNum hashPrime(hashTest);
+            LLC::CBigNum bnPrime(hashTest);
 
-            return (BN_is_prime_ex(hashPrime.getBN(), 1, nullptr, nullptr) == 1);
+            return (BN_is_prime_ex(bnPrime.getBN(), 1, nullptr, nullptr) == 1);
         }
 
 
@@ -155,37 +156,37 @@ namespace TAO
          *  eleven primes. */
         bool SmallDivisors(const uint1024_t& hashTest)
         {
-            if(nTest % nSmallPrimes[0] == 0)
+            if(hashTest % nSmallPrimes[0] == 0)
                 return false;
 
-            if(nTest % nSmallPrimes[1] == 0)
+            if(hashTest % nSmallPrimes[1] == 0)
                 return false;
 
-            if(nTest % nSmallPrimes[2] == 0)
+            if(hashTest % nSmallPrimes[2] == 0)
                 return false;
 
-            if(nTest % nSmallPrimes[3] == 0)
+            if(hashTest % nSmallPrimes[3] == 0)
                 return false;
 
-            if(nTest % nSmallPrimes[4] == 0)
+            if(hashTest % nSmallPrimes[4] == 0)
                 return false;
 
-            if(nTest % nSmallPrimes[5] == 0)
+            if(hashTest % nSmallPrimes[5] == 0)
                 return false;
 
-            if(nTest % nSmallPrimes[6] == 0)
+            if(hashTest % nSmallPrimes[6] == 0)
                 return false;
 
-            if(nTest % nSmallPrimes[7] == 0)
+            if(hashTest % nSmallPrimes[7] == 0)
                 return false;
 
-            if(nTest % nSmallPrimes[8] == 0)
+            if(hashTest % nSmallPrimes[8] == 0)
                 return false;
 
-            if(nTest % nSmallPrimes[9] == 0)
+            if(hashTest % nSmallPrimes[9] == 0)
                 return false;
 
-            if(nTest % nSmallPrimes[10] == 0)
+            if(hashTest % nSmallPrimes[10] == 0)
                 return false;
 
             return true;

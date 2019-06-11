@@ -28,7 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/verify.h>
 #include <TAO/Register/include/build.h>
-#include <TAO/Register/types/state.h>
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/enum.h>
@@ -403,17 +403,17 @@ namespace TAO
         {
             /* Check values. */
             if(!IsCoinstake())
-                return debug::error(FUNCTION, "transaction is not trust"));
+                return debug::error(FUNCTION, "transaction is not trust");
 
             /* Get internal contract. */
-            const TAO::Operation:;Contract& contract = vContracts[0];
+            const TAO::Operation::Contract& contract = vContracts[0];
 
             /* Seek to pre-state. */
             contract.Reset();
             contract.Seek(1, TAO::Operation::Contract::REGISTERS);
 
             /* Get pre-state. */
-            Object object;
+            TAO::Register::Object object;
             contract >>= object;
 
             /* Reset contract. */
@@ -421,7 +421,7 @@ namespace TAO
 
             /* Parse object. */
             if(!object.Parse())
-                return debug::error(FUNCTION, "failed to parse trust object"));
+                return debug::error(FUNCTION, "failed to parse trust object");
 
             /* Set Values. */
             nTrust = object.get<uint64_t>("trust");

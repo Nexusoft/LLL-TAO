@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/prime.h>
 
 #include <Util/include/string.h>
 
@@ -796,7 +797,7 @@ namespace TAO
 
                     /* Get the producer. */
                     Transaction tx;
-                    if(!LLD::Ledger->ReadTx(vtx.back(), tx))
+                    if(!LLD::Ledger->ReadTx(vtx.back().second, tx))
                         throw std::runtime_error(debug::safe_printstr(FUNCTION, "could not read producer"));
 
                     /* Get trust information. */
@@ -807,10 +808,10 @@ namespace TAO
 
                     /* Genesis has no trust. */
                     if(tx.IsGenesis())
-                        return nWeight * (nStake / NXS_DIGITS);
+                        return nWeight * (nStake / NXS_COIN);
 
                     /* Include trust info in weighting. */
-                    return nWeight * ((nTrust / 86400) * (nStake / NXS_DIGITS));
+                    return nWeight * ((nTrust / 86400) * (nStake / NXS_COIN));
 
                      //TODO: this section has a few problems:
                      //1. We need to accurately weight coins and trust time, say 1 NXS = how many seconds of trust
