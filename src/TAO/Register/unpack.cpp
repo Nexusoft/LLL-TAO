@@ -169,6 +169,62 @@ namespace TAO
         }
 
 
+        /* Unpack the amount of NXS minted by a contract. */
+        bool Unpack(const TAO::Operation::Contract& contract, uint64_t& nMint)
+        {
+            /* Reset the contract. */
+            contract.Reset();
+            nMint = 0;
+
+            /* Make sure no exceptions are thrown. */
+            try
+            {
+                /* Deserialize the operation. */
+                uint8_t OPERATION = 0;
+                contract >> OPERATION;
+
+                /* Check the current opcode. */
+                switch(OPERATION)
+                {
+                    /* Extract mint from op codes that can mint NXS. */
+                    case TAO::Operation::OP::COINBASE:
+                    case TAO::Operation::OP::GENESIS:
+                    case TAO::Operation::OP::AMBASSADOR:
+                    case TAO::Operation::OP::DEVELOPER:
+                    {
+                        /* Seek to coinbase/coinstake. */
+                        contract.Seek(32);
+
+                        contract >> nMint;
+
+                        return true;
+                    }
+
+                    case TAO::Operation::OP::TRUST:
+                    {
+                        /* Seek to coinstake. */
+                        contract.Seek(72);
+
+                        contract >> nMint;
+
+                        return true;
+                    }
+
+                    default:
+                    {
+                        return false;
+                    }
+                }
+            }
+            catch(const std::exception& e)
+            {
+            }
+
+            return false;
+
+        }
+
+
         /* Unpack a transaction and test for the operation it contains. */
         bool Unpack(const TAO::Operation::Contract& contract, const uint8_t nCode)
         {
