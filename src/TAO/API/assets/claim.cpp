@@ -76,6 +76,9 @@ namespace TAO
             if(params.find("name") != params.end())
                 strName = params["name"].get<std::string>();
 
+            /* Declare json object to store the objects that were claimed */
+            json::json jsonClaimed = json::json::array();
+
             /* Loop through all transactions. */
             int32_t nCurrent = -1;
             for(uint32_t nContract = 0; nContract < txPrev.Size(); ++nContract)
@@ -114,6 +117,9 @@ namespace TAO
                 /* Submit the payload object. */
                 tx[++nCurrent] << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << uint32_t(nContract) << hashAddress;
 
+                /* Add the address to the return JSON */
+                jsonClaimed.push_back( hashAddress.GetHex() );
+                
                 /* If the caller has passed in a name then create a name record using the new name */
                 if(!strName.empty())
                     CreateName(user->Genesis(), strName, hashAddress, tx[++nCurrent]);
@@ -143,6 +149,7 @@ namespace TAO
                 throw APIException(-26, "Failed to accept");
 
             /* Build a JSON response object. */
+            ret["claimed"]  = jsonClaimed;
             ret["txid"]  = tx.GetHash().ToString();
 
             return ret;

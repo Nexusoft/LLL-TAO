@@ -180,16 +180,19 @@ Items that have been transferred need to be claimed by the recipient before the 
 ### Return value JSON object:
 ```
 {
+    "claimed" : 
+    [
+        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    ],
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
 }
 ```
 
 ### Return values:
 
-`txid` : The ID (hash) of the transaction that includes the item transfer.
+`claimed` : Array of addresses for each item that was claimed by this transaction
 
-`address` : The new register address for this item.   
+`txid` : The ID (hash) of the transaction that includes the item transfer.
 
 ****
 
