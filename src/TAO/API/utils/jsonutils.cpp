@@ -129,7 +129,7 @@ namespace TAO
 
             /* Always add the hash if level 1 and up */
             if(nTransactionVerbosity >= 1)
-                txdata["hash"] = tx.GetHash().ToString();
+                txdata["hash"] = tx.GetHash().GetHex();
 
             /* Basic TX info for level 2 and up */
             if(nTransactionVerbosity >= 2)
@@ -140,13 +140,10 @@ namespace TAO
                 txdata["sequence"]  = tx.nSequence;
                 txdata["timestamp"] = tx.nTimestamp;
 
-                /* Build the list of contracts. */
-                json::json contracts = json::json::array();
-                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
-                    contracts.push_back(ContractToJSON(tx[nContract]));
 
                 /* Add contracts to return json. */
-                txdata["contracts"]     = contracts;
+                txdata["contracts"] = ContractsToJSON(tx);
+
                 txdata["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
                 /* Genesis and hashes are verbose 3 and up. */
@@ -227,6 +224,21 @@ namespace TAO
             }
 
             return txdata;
+        }
+
+
+        /* Converts a transaction object into a formatted JSON list of contracts bound to the transaction. */
+        json::json ContractsToJSON(const TAO::Ledger::Transaction &tx)
+        {
+            json::json ret = json::json::array();
+
+            /* Add a contract to the list of contracts. */
+            uint32_t nContracts = tx.Size();
+            for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                ret.push_back(ContractToJSON(tx[nContract]));
+
+            /* Return the list of contracts. */
+            return ret;
         }
 
 

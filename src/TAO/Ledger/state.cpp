@@ -77,6 +77,23 @@ namespace TAO
 
 
         /** Default Constructor. **/
+        BlockState::BlockState()
+        : Block()
+        , ssSystem()
+        , vtx()
+        , nChainTrust(0)
+        , nMoneySupply(0)
+        , nMint(0)
+        , nChannelHeight(0)
+        , nReleasedReserve{0, 0, 0}
+        , hashNextBlock(0)
+        , hashCheckpoint(0)
+        {
+            SetNull();
+        }
+
+
+        /** Default Constructor. **/
         BlockState::BlockState(const TritiumBlock& block)
         : Block(block)
         , ssSystem()
@@ -116,6 +133,84 @@ namespace TAO
 
             if(vtx.size() != block.vtx.size())
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "legacy block to state incorrect sizes"));
+        }
+
+
+        /** Default Destructor. **/
+        BlockState::~BlockState()
+        {
+        }
+
+
+        /** Copy Constructor. **/
+        BlockState::BlockState(const BlockState& state)
+        : Block(state)
+        {
+            vtx                 = state.vtx;
+
+            nChainTrust         = state.nChainTrust;
+            nMoneySupply        = state.nMoneySupply;
+            nMint               = state.nMint;
+            nChannelHeight      = state.nChannelHeight;
+
+            nReleasedReserve[0] = state.nReleasedReserve[0];
+            nReleasedReserve[1] = state.nReleasedReserve[1];
+            nReleasedReserve[2] = state.nReleasedReserve[2];
+
+            hashNextBlock       = state.hashNextBlock;
+            hashCheckpoint      = state.hashCheckpoint;
+        }
+
+
+        /** Copy Assignment Operator. **/
+        BlockState& BlockState::operator=(const BlockState& state)
+        {
+            nVersion            = state.nVersion;
+            hashPrevBlock       = state.hashPrevBlock;
+            hashMerkleRoot      = state.hashMerkleRoot;
+            nChannel            = state.nChannel;
+            nHeight             = state.nHeight;
+            nBits               = state.nBits;
+            nNonce              = state.nNonce;
+            nTime               = state.nTime;
+            vchBlockSig         = state.vchBlockSig;
+
+            vtx                 = state.vtx;
+
+            nChainTrust         = state.nChainTrust;
+            nMoneySupply        = state.nMoneySupply;
+            nMint               = state.nMint;
+            nChannelHeight      = state.nChannelHeight;
+
+            nReleasedReserve[0] = state.nReleasedReserve[0];
+            nReleasedReserve[1] = state.nReleasedReserve[1];
+            nReleasedReserve[2] = state.nReleasedReserve[2];
+
+            hashNextBlock       = state.hashNextBlock;
+            hashCheckpoint      = state.hashCheckpoint;
+
+            return *this;
+        }
+
+
+        /** Equivilence checking **/
+        bool BlockState::operator==(const BlockState& state) const
+        {
+            return GetHash() == state.GetHash();
+        }
+
+
+        /** Equivilence checking **/
+        bool BlockState::operator!=(const BlockState& state) const
+        {
+            return GetHash() != state.GetHash();
+        }
+
+
+        /** Not operator overloading. **/
+        bool BlockState::operator!(void)
+        {
+            return IsNull();
         }
 
 

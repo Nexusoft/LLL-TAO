@@ -75,7 +75,7 @@ namespace TAO
              *  uint8_t = TransactionType (per enum)
              *  uint512_t = Tx hash
              **/
-            std::vector< std::pair<uint8_t, uint512_t> > vtx;
+            std::vector<std::pair<uint8_t, uint512_t> > vtx;
 
 
             /** Serialization **/
@@ -103,14 +103,8 @@ namespace TAO
 
 
             /** Copy constructor from base block. **/
-            TritiumBlock(const Block& block)
-            : Block(block)
-            , producer()
-            , ssSystem()
-            , vtx(0)
-            {
+            TritiumBlock(const Block& block);
 
-            }
 
             /** Copy Constructor. **/
             TritiumBlock(const TritiumBlock& block);
@@ -134,10 +128,7 @@ namespace TAO
             *  @return A pointer to a copy of this TritiumBlock.
             *
             **/
-            virtual TritiumBlock* Clone() const override
-            {
-                return new TritiumBlock(*this);
-            };
+            virtual TritiumBlock* Clone() const override;
 
 
             /** SetNull

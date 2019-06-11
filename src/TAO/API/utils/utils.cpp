@@ -301,42 +301,49 @@ namespace TAO
             uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
-            if(nStandard == TAO::Register::OBJECTS::TOKEN)
+            switch(nStandard)
             {
-                nDigits = object.get<uint64_t>("digits");
-            }
-            else if(nStandard == TAO::Register::OBJECTS::TRUST)
-            {
-                    nDigits = TAO::Ledger::NXS_DIGITS; // NXS token default digits
-            }
-            else if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
-            {
-
-                /* If debiting an account we need to look at the token definition in order to get the digits.
-                   The token is obtained by looking at the token_address field, which contains the register address of
-                   the issuing token */
-                uint256_t nIdentifier = object.get<uint256_t>("token");
-
-                /* Edge case for NXS token which has identifier 0, so no look up needed */
-                if(nIdentifier == 0)
-                    nDigits = TAO::Ledger::NXS_DIGITS;
-                else
+                case TAO::Register::OBJECTS::TOKEN:
                 {
-
-                    TAO::Register::Object token;
-                    if(!LLD::Register->ReadState(nIdentifier, token))
-                        throw APIException(-24, "Token not found");
-
-                    /* Parse the object register. */
-                    if(!token.Parse())
-                        throw APIException(-24, "Object failed to parse");
-
-                    nDigits = token.get<uint64_t>("digits");
+                    nDigits = object.get<uint64_t>("digits");
+                    break;
                 }
-            }
-            else
-            {
-                throw APIException(-27, "Unknown token / account.");
+
+                case TAO::Register::OBJECTS::TRUST:
+                {
+                    nDigits = TAO::Ledger::NXS_DIGITS; // NXS token default digits
+                    break;
+                }
+
+                case TAO::Register::OBJECTS::ACCOUNT:
+                {
+                    /* If debiting an account we need to look at the token definition in order to get the digits. */
+                    uint256_t nIdentifier = object.get<uint256_t>("token");
+
+                    /* Edge case for NXS token which has identifier 0, so no look up needed */
+                    if(nIdentifier == 0)
+                        nDigits = TAO::Ledger::NXS_DIGITS;
+                    else
+                    {
+
+                        TAO::Register::Object token;
+                        if(!LLD::Register->ReadState(nIdentifier, token))
+                            throw APIException(-24, "Token not found");
+
+                        /* Parse the object register. */
+                        if(!token.Parse())
+                            throw APIException(-24, "Object failed to parse");
+
+                        nDigits = token.get<uint64_t>("digits");
+                    }
+                    break;
+                }
+
+                default:
+                {
+                    throw APIException(-27, "Unknown token / account.");
+                }
+
             }
 
             return nDigits;

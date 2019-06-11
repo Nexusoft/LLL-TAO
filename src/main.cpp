@@ -119,16 +119,8 @@ int main(int argc, char** argv)
     }
 
 
-    /* Create the database instances. */
-    LLD::Contract = new LLD::ContractDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
-    LLD::Register = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
-    LLD::Local    = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
-    LLD::Ledger   = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
-
-
-    /* Initialize the Legacy Database. */
-    LLD::Trust  = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
-    LLD::Legacy = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    /* Create the LLD database instances. */
+    LLD::Initialize();
 
 
     /* Handle database recovery mode. */
@@ -350,57 +342,8 @@ int main(int argc, char** argv)
     TAO::API::Shutdown();
 
 
-    /* Cleanup the ledger database. */
-    if(LLD::Contract)
-    {
-        debug::log(0, FUNCTION, "Shutting down ContractDB");
-
-        delete LLD::Contract;
-    }
-
-    /* Cleanup the ledger database. */
-    if(LLD::Ledger)
-    {
-        debug::log(0, FUNCTION, "Shutting down LedgerDB");
-
-        delete LLD::Ledger;
-    }
-
-
-    /* Cleanup the register database. */
-    if(LLD::Register)
-    {
-        debug::log(0, FUNCTION, "Shutting down RegisterDB");
-
-        delete LLD::Register;
-    }
-
-
-    /* Cleanup the local database. */
-    if(LLD::Local)
-    {
-        debug::log(0, FUNCTION, "Shutting down LocalDB");
-
-        delete LLD::Local;
-    }
-
-
-    /* Cleanup the legacy database. */
-    if(LLD::Legacy)
-    {
-        debug::log(0, FUNCTION, "Shutting down LegacyDB");
-
-        delete LLD::Legacy;
-    }
-
-
-    /* Cleanup the trust database. */
-    if(LLD::Trust)
-    {
-        debug::log(0, FUNCTION, "Shutting down TrustDB");
-
-        delete LLD::Trust;
-    }
+    /* Cleanup the LLD databases. */
+    LLD::Shutdown();
 
 
     /* Shutdown wallet database environment. */

@@ -91,7 +91,7 @@ namespace TAO
             else
                 throw APIException(-22, "Missing name or address)");
 
-            
+
             /* Get the token / account object. */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashFrom, object))
@@ -108,7 +108,9 @@ namespace TAO
             uint64_t nCurrentBalance = 0;
 
             /* Check the object standard. */
-            if(nStandard == TAO::Register::OBJECTS::TOKEN || nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST)
+            if(nStandard == TAO::Register::OBJECTS::TOKEN
+            || nStandard == TAO::Register::OBJECTS::ACCOUNT
+            || nStandard == TAO::Register::OBJECTS::TRUST)
             {
                 /* If the user requested a particular object type then check it is that type */
                 std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
@@ -124,7 +126,7 @@ namespace TAO
             {
                 throw APIException(-27, "Unknown token / account.");
             }
-            
+
 
             /* Get the amount to debit. */
             uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDigits);

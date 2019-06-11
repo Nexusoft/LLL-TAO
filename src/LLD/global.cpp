@@ -21,9 +21,79 @@ namespace LLD
     LedgerDB*     Ledger;
     LocalDB*      Local;
 
-    //for legacy objects
+    /* For Legacy LLD objects. */
     TrustDB*      Trust;
     LegacyDB*     Legacy;
+
+
+    /*  Initialize the global LLD instances. */
+    void Initialize()
+    {
+        uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE;
+
+        debug::log(0, FUNCTION, "Initializing LLD");
+
+        /* Create the database instances. */
+        Contract = new ContractDB(nFlags);
+        Register = new RegisterDB(nFlags);
+        Local    = new LocalDB(nFlags);
+        Ledger   = new LedgerDB(nFlags);
+        Trust    = new TrustDB(nFlags);
+        Legacy   = new LegacyDB(nFlags);
+    }
+
+
+    /*  Shutdown and cleanup the global LLD instances. */
+    void Shutdown()
+    {
+        debug::log(0, FUNCTION, "Shutting down LLD");
+
+        /* Cleanup the contract database. */
+        if(Contract)
+        {
+            debug::log(2, FUNCTION, "Shutting down ContractDB");
+            delete Contract;
+        }
+
+        /* Cleanup the ledger database. */
+        if(Ledger)
+        {
+            debug::log(2, FUNCTION, "Shutting down LedgerDB");
+            delete Ledger;
+        }
+
+
+        /* Cleanup the register database. */
+        if(Register)
+        {
+            debug::log(2, FUNCTION, "Shutting down RegisterDB");
+            delete Register;
+        }
+
+
+        /* Cleanup the local database. */
+        if(Local)
+        {
+            debug::log(2, FUNCTION, "Shutting down LocalDB");
+            delete Local;
+        }
+
+
+        /* Cleanup the legacy database. */
+        if(Legacy)
+        {
+            debug::log(2, FUNCTION, "Shutting down LegacyDB");
+            delete Legacy;
+        }
+
+
+        /* Cleanup the trust database. */
+        if(Trust)
+        {
+            debug::log(2, FUNCTION, "Shutting down TrustDB");
+            delete Trust;
+        }
+    }
 
 
     /* Check the transactions for recovery. */
