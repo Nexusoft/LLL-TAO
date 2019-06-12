@@ -278,7 +278,9 @@ The following example creates a name for "asset1" in the namespace "ourcompany",
 
 # `get/name`
 
-Retrieves a name object.  The API supports an alternative endpoint that can include the name in the URL.  For example `/names/get/name/myname` will resolve to `names/get/name?name=myname`.   
+Retrieves a name object.  There are two ways that this method can be used to retrieve a name object.  1) by using the `name` parameter the Name object can be retrieved in order to determine the register address that the Name "points" to. 2) by using the `register_address` parameter (in conjunction with `session` for multiuser mode) the Names owned by the caller will be searched to find the corresponding name.  NOTE: It is not possible (for privacy reasons) to look up a Name from a register address in signature chains other than the callers. 
+
+The API supports an alternative endpoint that can include the name in the URL.  For example `/names/get/name/myname` will resolve to `names/get/name?name=myname`.   
 
 
 ### Endpoint:
@@ -288,10 +290,11 @@ Retrieves a name object.  The API supports an alternative endpoint that can incl
 
 ### Parameters:
 
-`name` : The name identifying the name object. The name should be in the format usermame:name (for local names) or name.namespace (for names in a global namespace).
+`name` : The name identifying the name object. The name should be in the format username:name (for local names) or name.namespace (for names in a global namespace).  If the `name` parameter is provided then all other parameters are ignored.
 
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which signature chain should be searched. For single-user API mode the session should not be supplied, and the logged in signature chain will be used.  This parameter is ignored if `name` is provided.
 
-
+`register_address` : The register address to search for.  If provided then the Names owned by the callers signature chain are searched to find a match.  This parameter is ignored if `name` is provided.
 
 ### Return value JSON object:
 ```
