@@ -90,7 +90,7 @@ namespace TAO
                 case GENESIS::MAINNET:
                 {
                     /* Check for testnet. */
-                    if(config::fTestNet)
+                    if(config::fTestNet.load())
                         return debug::error(FUNCTION, "using mainnet genesis type on testnet");
 
                     break;
@@ -100,7 +100,7 @@ namespace TAO
                 case GENESIS::TESTNET:
                 {
                     /* Check for testnet. */
-                    if(!config::fTestNet)
+                    if(!config::fTestNet.load())
                         return debug::error(FUNCTION, "using testnet genesis type on mainnet");
 
                     break;

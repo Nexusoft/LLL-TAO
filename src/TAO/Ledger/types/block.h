@@ -17,6 +17,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <set>
+
 //forward declerations for BigNum
 namespace LLC
 {
@@ -257,6 +259,8 @@ namespace TAO
             /** BuildMerkleTree
              *
              *  Build the merkle tree from the transaction list.
+             *
+             *  @param[in] vMerkleTree The list of hashes to build merkle tree with.
              *
              *  @return The 512-bit merkle root
              *

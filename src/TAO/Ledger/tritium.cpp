@@ -146,39 +146,26 @@ namespace TAO
 
             /* Check the Proof of Work Claims. */
             if(!VerifyWork())
-            {
-                if(IsProofOfWork())
-                    return debug::error(FUNCTION, "invalid proof of work");
-                else
-                    return debug::error(FUNCTION, "invalid proof of stake");
-            }
+                return debug::error(FUNCTION, "invalid proof of stake");
 
             /* Check the Network Launch Time-Lock. */
-            if(nHeight > 0 && GetBlockTime() <= (config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
+            if(GetBlockTime() <= (config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
                 return debug::error(FUNCTION, "block created before network time-lock");
 
-            /* Check the Current Channel Time-Lock. */
-            if(!IsPrivate() && nHeight > 0 && GetBlockTime() < (config::fTestNet.load() ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]))
-                return debug::error(FUNCTION, "block created before channel time-lock, please wait ", (config::fTestNet.load() ? CHANNEL_TESTNET_TIMELOCK[GetChannel()] : CHANNEL_NETWORK_TIMELOCK[GetChannel()]) - runtime::unifiedtimestamp(), " seconds");
-
-            /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
-            if(nVersion > 1 && nVersion == (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION - 1 : NETWORK_BLOCK_CURRENT_VERSION - 1) && (GetBlockTime() - 3600) > (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-                return debug::error(FUNCTION, "version ", nVersion, " blocks have been obsolete for ", (runtime::unifiedtimestamp() - (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2])), " seconds");
-
-            /* Check the Current Version Block Time-Lock. */
-            if(nVersion >= (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION) && GetBlockTime() <= (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-                return debug::error(FUNCTION, "version ", nVersion, " blocks are not accepted for ", (runtime::unifiedtimestamp() - (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2])), " seconds");
+            /* Check the channel time-locks. */
+            if(!ChannelActive(GetBlockTime(), GetChannel()))
+                return debug::error(FUNCTION, "block created before channel time-lock");
 
             /* Check the producer transaction. */
-            if(nHeight > 0 && IsProofOfWork() && !producer.IsCoinbase())
+            if(IsProofOfWork() && !producer.IsCoinbase())
                 return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
 
             /* Check the producer transaction. */
-            if(nHeight > 0 && IsProofOfStake() && !(producer.IsCoinstake()))
+            if(IsProofOfStake() && !(producer.IsCoinstake()))
                 return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
 
             /* Check the producer transaction. */
-            if(nHeight > 0 && IsPrivate() && !producer.IsPrivate())
+            if(IsPrivate() && !producer.IsPrivate())
                 return debug::error(FUNCTION, "producer transaction has to be authorize for proof of work");
 
             /* Check coinbase/coinstake timestamp against block time */
@@ -373,7 +360,7 @@ namespace TAO
             if(IsProofOfWork())
             {
                 /* Get the stream from coinbase. */
-                uint8_t OP = 0;
+                uint8_t OP;
                 producer[0] >> OP;
 
                 /* Check the operations. */

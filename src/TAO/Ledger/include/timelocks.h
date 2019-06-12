@@ -106,10 +106,41 @@ namespace TAO
         };
 
 
-        bool ChannelActive(const uint64_t nTimestamp);
+        /** Network Active
+         *
+         *  Helper function to determine if the network timelock has been met.
+         *
+         *  @param[in] nTimestamp The timestamp to check against
+         *
+         *  @return true if the network is currently active.
+         *
+         **/
+        bool NetworkActive(const uint64_t nTimestamp);
 
 
-        bool VersionActive(const uint64_t nTimestamp);
+        /** Channel Active
+         *
+         *  Helper function to determine if a timelock has been met for a channel.
+         *
+         *  @param[in] nTimestamp The timestamp to check against
+         *  @param[in] nChannel The channel to check for
+         *
+         *  @return true if the channel is currently active.
+         *
+         **/
+        bool ChannelActive(const uint64_t nTimestamp, const uint32_t nChannel);
+
+
+        /** Version Active
+         *
+         *  Helper function to determine if a give block version is active.
+         *
+         *  @param[in] nTimestamp The timestamp to check against.
+         *  @param[in] nVersion The version to check against.
+         *
+         **/
+        bool VersionActive(const uint64_t nTimestamp, const uint32_t nVersion);
+
     }
 }
 

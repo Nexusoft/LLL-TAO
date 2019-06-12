@@ -317,12 +317,16 @@ namespace TAO
         /*  Creates the genesis block. */
         bool CreateGenesis()
         {
-            uint1024_t genesisHash = TAO::Ledger::ChainState::Genesis();
+            /* Get the genesis hash. */
+            uint1024_t hashGenesis = TAO::Ledger::ChainState::Genesis();
 
-            if(!LLD::Ledger->ReadBlock(genesisHash, ChainState::stateGenesis))
+            /* Check for genesis from disk. */
+            if(!LLD::Ledger->ReadBlock(hashGenesis, ChainState::stateGenesis))
             {
                 /* Build the first transaction for genesis. */
                 const char* pszTimestamp = "Silver Doctors [2-19-2014] BANKER CLEAN-UP: WE ARE AT THE PRECIPICE OF SOMETHING BIG";
+
+                /* Main coinbase genesis. */
                 Legacy::Transaction genesis;
                 genesis.nTime = 1409456199;
                 genesis.vin.resize(1);
@@ -356,28 +360,24 @@ namespace TAO
                 /* Check that the genesis hash is correct. */
                 LLC::CBigNum target;
                 target.SetCompact(block.nBits);
-                if(block.GetHash() != genesisHash)
+                if(block.GetHash() != hashGenesis)
                     return debug::error(FUNCTION, "genesis hash does not match");
-
-                /* Check that the block passes basic validation. */
-                if(!block.Check())
-                    return debug::error(FUNCTION, "genesis block check failed");
 
                 /* Set the proper chain state variables. */
                 ChainState::stateGenesis = BlockState(block);
                 ChainState::stateGenesis.nChannelHeight = 1;
-                ChainState::stateGenesis.hashCheckpoint = genesisHash;
+                ChainState::stateGenesis.hashCheckpoint = hashGenesis;
 
                 /* Set the best block. */
                 ChainState::stateBest = ChainState::stateGenesis;
 
                 /* Write the block to disk. */
-                if(!LLD::Ledger->WriteBlock(genesisHash, ChainState::stateGenesis))
+                if(!LLD::Ledger->WriteBlock(hashGenesis, ChainState::stateGenesis))
                     return debug::error(FUNCTION, "genesis didn't commit to disk");
 
                 /* Write the best chain to the database. */
-                ChainState::hashBestChain = genesisHash;
-                if(!LLD::Ledger->WriteBestChain(genesisHash))
+                ChainState::hashBestChain = hashGenesis;
+                if(!LLD::Ledger->WriteBestChain(hashGenesis))
                     return debug::error(FUNCTION, "couldn't write best chain.");
             }
 

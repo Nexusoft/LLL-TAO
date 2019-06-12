@@ -212,7 +212,7 @@ namespace TAO
                 for(i = 0; i < nSize; i += 2)
                 {
                     /* get the references to the left and right leaves in the merkle tree */
-                    uint512_t &left_tx = vMerkleTree[j+i];
+                    uint512_t &left_tx  = vMerkleTree[j+i];
                     uint512_t &right_tx = vMerkleTree[j + std::min(i+1, nSize-1)];
 
                     vMerkleTree.push_back(LLC::SK512(BEGIN(left_tx),  END(left_tx),
