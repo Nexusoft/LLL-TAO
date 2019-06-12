@@ -72,7 +72,7 @@ namespace TAO
             uint32_t nLimit = 100;
             if(params.find("limit") != params.end())
                 nLimit = std::stoul(params["limit"].get<std::string>());
-                
+
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;
@@ -103,8 +103,12 @@ namespace TAO
                     /* Attempt to unpack a coinbase transaction. */
                     if(TAO::Register::Unpack(tx[nContract], TAO::Operation::OP::COINBASE))
                     {
+                        /* Create a json contract object, manually add in contract ID. */
+                        json::json contract = ContractToJSON(tx[nContract]);
+                        contract["output"] = nContract;
+
                         /* Push back in vector. */
-                        contracts.push_back(ContractToJSON(tx[nContract]));
+                        contracts.push_back(contract);
                         continue;
                     }
 
@@ -172,10 +176,6 @@ namespace TAO
                     if(!LLD::Ledger->ReadEvent(hashToken, nSequence, tx))
                         break;
 
-                    /* Check claims against notifications. */
-                    if(LLD::Ledger->HasProof(hashAddress, tx.GetHash(), TAO::Ledger::FLAGS::MEMPOOL))
-                        continue;
-
                     ++nTotal;
 
                     /* Check the paged data. */
@@ -204,9 +204,15 @@ namespace TAO
                     uint32_t nContracts = tx.Size();
                     for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                     {
+                        /* Check claims against notifications. */
+                        if(LLD::Ledger->HasProof(hashAddress, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                            continue;
+
                         /* Get the json object for the current contract in the transaction. */
                         json::json contract = ContractToJSON(tx[nContract]);
 
+                        /* Add the contract id to the contract object. */
+                        contract["output"] = nContract;
 
                         if(contract["OP"] == "DEBIT")
                         {
@@ -239,6 +245,12 @@ namespace TAO
                 }
             }
 
+            /*
+            GetPartials()
+            GetDebits()
+            GetTransfers()
+            GetCoinbases()
+            */
 
             /* Get notifications for personal genesis indexes. */
             for(uint32_t nSequence = 0; ; ++nSequence)
@@ -253,12 +265,28 @@ namespace TAO
 
                 /* Attempt to unpack a register script. */
                 uint256_t hashAddress;
-                if(!TAO::Register::Unpack(tx[0], hashAddress))
+                uint32_t nContracts = tx.Size();
+                bool fContinue = false;
+                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                {
+                    if(!TAO::Register::Unpack(tx[nContract], hashAddress))
+                    {
+                        fContinue = true;
+                        break;
+                    }
+
+                    /* Check claims against notifications. */
+                    if(LLD::Ledger->HasProof(hashAddress, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                    {
+                        fContinue = true;
+                        break;
+                    }
+                }
+
+                /* If any of the contracts failed, continue. */
+                if(fContinue)
                     continue;
 
-                /* Check claims against notifications. */
-                if(LLD::Ledger->HasProof(hashAddress, tx.GetHash(), TAO::Ledger::FLAGS::MEMPOOL))
-                    continue;
 
                 ++nTotal;
 
