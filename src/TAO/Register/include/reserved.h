@@ -15,6 +15,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_RESERVED_H
 #define NEXUS_TAO_REGISTER_INCLUDE_RESERVED_H
 
+#include <TAO/Register/include/enum.h>
+
+#include <TAO/Ledger/include/enum.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -67,6 +71,31 @@ namespace TAO
         inline bool Reserved(const std::string& strValue)
         {
             return std::find(RESERVED.begin(), RESERVED.end(), strValue) != RESERVED.end();
+        }
+
+
+        /** Reserved
+         *
+         *  System reserved values for system registers.
+         *
+         *  @param[in] hashAddress The register address to check.
+         *
+         *  @return True if value is system reserved value.
+         *
+         **/
+        inline bool Reserved(const uint256_t& hashAddress)
+        {
+            /* Get a type byte. */
+            uint8_t nType = 0;
+
+            /* Copy from genesis (using little-endian byte ordering). */
+            std::copy((uint8_t*)&hashAddress + 31, (uint8_t*)&hashAddress + 32, (uint8_t*)&nType);
+
+            /* Check reserved byte. */
+            if(nType == TAO::Ledger::GENESIS::MAINNET || nType == TAO::Ledger::GENESIS::TESTNET)
+                return true;
+
+            return hashAddress >= uint8_t(SYSTEM::RESERVED) && hashAddress <= uint8_t(SYSTEM::LIMIT);
         }
 
 

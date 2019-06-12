@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
 #include <TAO/Register/types/object.h>
 
 #include <unit/catch2/catch.hpp>

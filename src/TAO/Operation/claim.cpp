@@ -18,7 +18,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/state.h>
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
 
 /* Global TAO namespace. */
 namespace TAO

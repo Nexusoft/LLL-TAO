@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/create.h>
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/include/enum.h>

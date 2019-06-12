@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
 #include <TAO/Register/include/reserved.h>
 #include <TAO/Register/types/object.h>
 
