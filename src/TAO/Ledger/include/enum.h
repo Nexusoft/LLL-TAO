@@ -46,6 +46,20 @@ namespace TAO
         }
 
 
+        /** Type values for a genesis. These are very important for security to tell the difference from register hashes. **/
+        namespace GENESIS
+        {
+            enum
+            {
+                /** A mainnet genesis has to be pre-pended with byte 0xa1 **/
+                MAINNET     = 0xa1,
+
+                /** a testnet genesis has to be pre-pended with byte 0xa2. **/
+                TESTNET     = 0xa2,
+            };
+        }
+
+
         /** Signature types for sigchain. **/
         namespace SIGNATURE
         {

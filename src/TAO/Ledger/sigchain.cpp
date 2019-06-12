@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLC/hash/argon2.h>
 
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/include/enum.h>
 
 #include <Util/include/debug.h>
 
@@ -143,6 +144,12 @@ namespace TAO
             /* Set the bytes for the key. */
             uint256_t hashKey;
             hashKey.SetBytes(vHash);
+
+            /* Set the genesis type. */
+            uint8_t nType = (config::fTestNet ? GENESIS::TESTNET : GENESIS::MAINNET);
+
+            /* Copy into genesis (using little-endian byte ordering). */
+            std::copy((uint8_t*)&nType, (uint8_t*)&nType + 1, (uint8_t*)&hashKey + 31);
 
             return hashKey;
         }

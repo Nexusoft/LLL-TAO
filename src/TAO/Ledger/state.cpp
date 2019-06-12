@@ -51,13 +51,14 @@ namespace TAO
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
         {
-            uint1024_t genesisHash =  ChainState::Genesis();
+            /* Get the genesis block hash. */
+            uint1024_t hashGenesis =  ChainState::Genesis();
 
-            /* Loop back 10k blocks. */
+            /* Loop back 1440 blocks. */
             for(uint_t i = 0; i < 1440; ++i)
             {
                 /* Return false on genesis. */
-                if(state.GetHash() == genesisHash)
+                if(state.GetHash() == hashGenesis)
                     return false;
 
                 /* Return true on channel found. */
@@ -129,14 +130,14 @@ namespace TAO
         /* Get the previous block state in chain. */
         BlockState BlockState::Prev() const
         {
-            BlockState state;
+            /* Check for genesis. */
             if(hashPrevBlock == 0)
-                return state;
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "called on genesis"));
 
-            if(LLD::Ledger->ReadBlock(hashPrevBlock, state))
-                return state;
-            else
-                debug::error("failed to read previous block state ", hashPrevBlock.ToString());
+            /* Read the previous block from ledger. */
+            BlockState state;
+            if(!LLD::Ledger->ReadBlock(hashPrevBlock, state))
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read previous block state ", hashPrevBlock.SubString()));
 
             return state;
         }
@@ -145,12 +146,14 @@ namespace TAO
         /* Get the next block state in chain. */
         BlockState BlockState::Next() const
         {
-            BlockState state;
+            /* Check for genesis. */
             if(hashNextBlock == 0)
-                return state;
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "called on best block"));
 
-            if(LLD::Ledger->ReadBlock(hashNextBlock, state))
-                return state;
+            /* Read next block from the ledger. */
+            BlockState state;
+            if(!LLD::Ledger->ReadBlock(hashNextBlock, state))
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read next block state ", hashNextBlock.SubString()));
 
             return state;
         }
@@ -165,11 +168,11 @@ namespace TAO
                 return debug::error(FUNCTION, hashPrevBlock.SubString(), " block state not found");
 
             /* Compute the Chain Weight. */
-            debug::log(0, "Weight Limit: ", std::numeric_limits<uint64_t>::max());
+            //debug::log(0, "Weight Limit: ", std::numeric_limits<uint64_t>::max());
             for(uint32_t n = 0; n < 3; ++n)
             {
                 nChannelWeight[n] = statePrev.nChannelWeight[n];
-                debug::log(0, "Weight ", n == 0 ? "Stake" : (n == 1 ? "Prime" : "Hash "), ": ", nChannelWeight[n]);
+                //debug::log(0, "Weight ", n == 0 ? "Stake" : (n == 1 ? "Prime" : "Hash "), ": ", nChannelWeight[n]);
             }
 
             /* Find the last block of this channel. */
@@ -238,6 +241,7 @@ namespace TAO
                     }
                 }
 
+                /* Calculate the new reserve amounts. */
                 for(int nType = 0; nType < 3; ++nType)
                 {
                     /* Calculate the Reserves from the Previous Block in Channel's reserve and new Release. */
@@ -251,6 +255,7 @@ namespace TAO
                     /* Check coinbase rewards. */
                     nReleasedReserve[nType] =  (nReserve - nCoinbaseRewards[nType]);
 
+                    /* Verbose output. */
                     debug::log(2, "Reserve Balance ", nType, " | ",
                         std::fixed, nReleasedReserve[nType] / (double)TAO::Ledger::NXS_COIN,
                         " Nexus | Released ",
@@ -261,14 +266,18 @@ namespace TAO
             /* Add the Pending Checkpoint into the Blockchain. */
             if(IsNewTimespan(statePrev))
             {
+                /* Set new checkpoint hash. */
                 hashCheckpoint = GetHash();
 
+                /* Verbose output. */
                 debug::log(1, "===== New Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
             }
             else
             {
+                /* Continue the old checkpoint through chain. */
                 hashCheckpoint = statePrev.hashCheckpoint;
 
+                /* Verbose output. */
                 debug::log(1, "===== Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
             }
 
@@ -319,36 +328,35 @@ namespace TAO
             }
 
             /* Add new weights for this channel. */
-            uint64_t nWeight = Weight();
-
-            debug::log(0, "Weight Total: ", nWeight, "::", nChannel);
             nChannelWeight[nChannel] += Weight();
 
-            /* Compute the Chain Trust */
-            if(nVersion >= 7)
-            {
-                /* Set the chain trust. */
-                nChainTrust = statePrev.nChainTrust;
-
-                /* Check to best state. */
-                for(uint32_t n = 0; n < 3; ++n)
-                {
-                    /* Check each weight. */
-                    if(nChannelWeight[nChannel] >= ChainState::stateBest.load().nChannelWeight[n])
-                        ++nChainTrust;
-                }
-            }
-            else
-                nChainTrust = statePrev.nChainTrust + Trust();
+            /* Compute the chain trust. */
+            nChainTrust = statePrev.nChainTrust + Trust();
 
             /* Write the block to disk. */
             if(!LLD::Ledger->WriteBlock(GetHash(), *this))
                 return debug::error(FUNCTION, "block state failed to write");
 
             /* Signal to set the best chain. */
-            if(nChainTrust > ChainState::nBestChainTrust.load())
-                if(!SetBest())
+            if(nVersion >= 7)
+            {
+                /* Set the chain trust. */
+                uint8_t nTotal = 0;
+
+                /* Check to best state. */
+                for(uint32_t n = 0; n < 3; ++n)
+                {
+                    /* Check each weight. */
+                    if(nChannelWeight[nChannel] >= ChainState::stateBest.load().nChannelWeight[n])
+                        ++nTotal;
+                }
+
+                /* Check for best chain. */
+                if(nTotal == 3 && !SetBest())
                     return debug::error(FUNCTION, "failed to set best chain");
+            }
+            else if(nChainTrust > ChainState::nBestChainTrust.load() && !SetBest())
+                return debug::error(FUNCTION, "failed to set best chain");
 
             /* Commit the transaction to database. */
             LLD::TxnCommit();

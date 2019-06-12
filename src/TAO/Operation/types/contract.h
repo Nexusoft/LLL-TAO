@@ -98,7 +98,7 @@ namespace TAO
                 READWRITE(ssOperation);
                 READWRITE(ssCondition);
                 READWRITE(ssRegister);
-          )
+            )
 
 
             /** Bind

@@ -46,6 +46,19 @@ namespace TAO
     namespace Ledger
     {
 
+        /* This extracts the leading script byte from genesis-id. */
+        uint8_t Transaction::Type() const
+        {
+            /* Get a type byte. */
+            uint8_t nType = 0;
+
+            /* Copy from genesis (using little-endian byte ordering). */
+            std::copy((uint8_t*)&hashGenesis + 31, (uint8_t*)&hashGenesis + 32, (uint8_t*)&nType);
+
+            return nType;
+        }
+
+
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
         bool Transaction::Check() const
         {
@@ -68,6 +81,43 @@ namespace TAO
             /* Check for empty signatures. */
             if(vchSig.size() == 0)
                 return debug::error(FUNCTION, "transaction with empty signature");
+
+            /* Check the genesis first byte. */
+            uint8_t nType = Type();
+            switch(nType)
+            {
+                /* Check for mainnet. */
+                case GENESIS::MAINNET:
+                {
+                    /* Check for testnet. */
+                    if(config::fTestNet)
+                        return debug::error(FUNCTION, "using mainnet genesis type on testnet");
+
+                    break;
+                }
+
+                /* Check for testnet. */
+                case GENESIS::TESTNET:
+                {
+                    /* Check for testnet. */
+                    if(!config::fTestNet)
+                        return debug::error(FUNCTION, "using testnet genesis type on mainnet");
+
+                    break;
+                }
+
+                /* Default always fails. */
+                default:
+                    return debug::error(FUNCTION, "unknown identifier type for genesis");
+            }
+
+            /* Run through all the contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Check for empty contracts. */
+                if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
+                    return debug::error(FUNCTION, "contract is empty");
+            }
 
             /* Switch based on signature type. */
             switch(nKeyType)
