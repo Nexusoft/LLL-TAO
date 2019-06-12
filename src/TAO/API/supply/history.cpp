@@ -72,7 +72,7 @@ namespace TAO
             {
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashLast, tx))
+                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-28, "Failed to read transaction");
 
                 /* Set the next last. */

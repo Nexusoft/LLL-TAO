@@ -84,7 +84,7 @@ namespace TAO
 
             /* Submit the payload object.
                NOTE we pass false for the fForceTransfer parameter so that the Transfer requires a corresponding Claim */
-            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo << uint8_t(TAO::Operation::TRANSFER::FORCE);
+            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo << uint8_t(TAO::Operation::TRANSFER::CLAIM);
 
             /* Execute the operations layer. */
             if(!tx.Build())
