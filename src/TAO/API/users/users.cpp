@@ -46,8 +46,8 @@ namespace TAO
             Initialize();
 
             /* Events processor only enabled if multi-user session is disabled. */
-            if(config::fMultiuser.load() == false)
-                EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
+            //if(config::fMultiuser.load() == false)
+            //    EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
         }
 
 
