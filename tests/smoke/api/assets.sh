@@ -1,3 +1,6 @@
+#Login
+./api_call.sh users/login/user/jack password=jack pin=1234
+
 #Create a simple raw asset
 ./api_call.sh assets/create/asset name=myasset format=raw data=somepieceofmeaningfuldata pin=1234
 
@@ -48,3 +51,6 @@
 
 #Tokenize an asset
 ./api_call.sh assets/tokenize/asset name=myasset token_name=abc pin=1234
+
+#Logout
+./api_call.sh users/logout/user/jack password=jack pin=1234

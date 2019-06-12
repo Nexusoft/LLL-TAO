@@ -47,7 +47,7 @@ namespace TAO
 
             /* Events processor only enabled if multi-user session is disabled. */
             //if(config::fMultiuser.load() == false)
-                //EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
+            //    EVENTS_THREAD = std::thread(std::bind(&Users::EventsThread, this));
         }
 
 
@@ -77,78 +77,6 @@ namespace TAO
                 NotifyEvent();
                 EVENTS_THREAD.join();
             }
-        }
-
-
-        /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
-        *  map directly to a function in the target API.  Insted this method can be overriden to
-        *  parse the incoming URL and route to a different/generic method handler, adding parameter
-        *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-        *  added to the jsonParams
-        *  The return json contains the modifed method URL to be called.
-        */
-        std::string Users::RewriteURL(const std::string& strMethod, json::json& jsonParams)
-        {
-            std::string strMethodRewritten = strMethod;
-            std::string strNameOrAddress;
-
-            /* support passing the username after a list method e.g. list/assets/myusername */
-            std::size_t nPos = strMethod.find("list/");
-            std::size_t nPos2 = strMethod.find("/user/");
-            if(nPos != std::string::npos && nPos2 == std::string::npos)
-            {
-                nPos = strMethod.find("/", nPos+5);
-
-                /* get the method name from the incoming string */
-                strMethodRewritten = strMethod.substr(0, nPos);
-
-                /* Get the name or address that comes after the /item/ part */
-                strNameOrAddress = strMethod.substr(nPos + 1);
-
-                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                if(IsRegisterAddress(strNameOrAddress))
-                    jsonParams["genesis"] = strNameOrAddress;
-                else
-                    jsonParams["username"] = strNameOrAddress;
-
-                return strMethodRewritten;
-            }
-            /* support passing the username after the method e.g. login/user/myusername */
-            else if(nPos2 != std::string::npos)
-            {
-                /* get the method name from the incoming string */
-                strMethodRewritten = strMethod.substr(0, nPos2 + 5);
-
-                /* Get the name or address that comes after the /item/ part */
-                strNameOrAddress = strMethod.substr(nPos2 + 6);
-
-                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                if(IsRegisterAddress(strNameOrAddress))
-                    jsonParams["genesis"] = strNameOrAddress;
-                else
-                    jsonParams["username"] = strNameOrAddress;
-
-                return strMethodRewritten;
-            }
-
-
-            return strMethodRewritten;
-        }
-
-
-        /* Standard initialization function. */
-        void Users::Initialize()
-        {
-            mapFunctions["create/user"]              = Function(std::bind(&Users::Create,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["login/user"]               = Function(std::bind(&Users::Login,         this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["logout/user"]              = Function(std::bind(&Users::Logout,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["lock/user"]                = Function(std::bind(&Users::Lock,          this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["unlock/user"]              = Function(std::bind(&Users::Unlock,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/transactions"]        = Function(std::bind(&Users::Transactions,  this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/notifications"]       = Function(std::bind(&Users::Notifications, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/assets"]              = Function(std::bind(&Users::Assets,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/tokens"]              = Function(std::bind(&Users::Tokens,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/accounts"]            = Function(std::bind(&Users::Accounts,      this, std::placeholders::_1, std::placeholders::_2));
         }
 
 

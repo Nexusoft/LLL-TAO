@@ -96,9 +96,9 @@ namespace TAO
                         if(LLD::Ledger->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json txdata = TransactionToJSON(tx, block, nTransactionVerbosity);
+                            json::json ret = TransactionToJSON(tx, block, nTransactionVerbosity);
 
-                            txinfo.push_back(txdata);
+                            txinfo.push_back(ret);
                         }
                     }
                     else if(vtx.first == TAO::Ledger::TYPE::LEGACY_TX)
@@ -108,9 +108,9 @@ namespace TAO
                         if(LLD::Legacy->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json txdata = TransactionToJSON(tx, block, nTransactionVerbosity);
+                            json::json ret = TransactionToJSON(tx, block, nTransactionVerbosity);
 
-                            txinfo.push_back(txdata);
+                            txinfo.push_back(ret);
                         }
                     }
                 }
@@ -125,60 +125,58 @@ namespace TAO
         json::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
         {
             /* Declare JSON object to return */
-            json::json txdata;
+            json::json ret;
 
-            /* Always add the hash if level 1 and up */
+            /* Always add the transaction hash */
+            ret["txid"] = tx.GetHash().GetHex();
+
+            /* Always add the contracts if level 1 and up */
             if(nTransactionVerbosity >= 1)
-                txdata["hash"] = tx.GetHash().GetHex();
+                ret["contracts"] = ContractsToJSON(tx);
 
             /* Basic TX info for level 2 and up */
             if(nTransactionVerbosity >= 2)
             {
                 /* Build base transaction data. */
-                txdata["type"]      = tx.GetTxTypeString();
-                txdata["version"]   = tx.nVersion;
-                txdata["sequence"]  = tx.nSequence;
-                txdata["timestamp"] = tx.nTimestamp;
-
-
-                /* Add contracts to return json. */
-                txdata["contracts"] = ContractsToJSON(tx);
-
-                txdata["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
+                ret["type"]      = tx.GetTxTypeString();
+                ret["version"]   = tx.nVersion;
+                ret["sequence"]  = tx.nSequence;
+                ret["timestamp"] = tx.nTimestamp;
+                ret["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
                 /* Genesis and hashes are verbose 3 and up. */
                 if(nTransactionVerbosity >= 3)
                 {
                     /* More sigchain level details. */
-                    txdata["genesis"]   = tx.hashGenesis.ToString();
-                    txdata["nexthash"]  = tx.hashNext.ToString();
-                    txdata["prevhash"]  = tx.hashPrevTx.ToString();
+                    ret["genesis"]   = tx.hashGenesis.ToString();
+                    ret["nexthash"]  = tx.hashNext.ToString();
+                    ret["prevhash"]  = tx.hashPrevTx.ToString();
 
                     /* The cryptographic data. */
-                    txdata["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
-                    txdata["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
+                    ret["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
+                    ret["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                 }
             }
 
-            return txdata;
+            return ret;
         }
 
         /* Converts the transaction to formatted JSON */
         json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
         {
             /* Declare JSON object to return */
-            json::json txdata;
+            json::json ret;
 
             /* Always add the hash */
-            txdata["hash"] = tx.GetHash().GetHex();
+            ret["txid"] = tx.GetHash().GetHex();
 
             /* Basic TX info for level 1 and up */
             if(nTransactionVerbosity > 0)
             {
-                txdata["type"] = tx.GetTxTypeString();
-                txdata["timestamp"] = tx.nTime;
-                txdata["amount"] = Legacy::SatoshisToAmount(tx.GetValueOut());
-                txdata["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
+                ret["type"] = tx.GetTxTypeString();
+                ret["timestamp"] = tx.nTime;
+                ret["amount"] = Legacy::SatoshisToAmount(tx.GetValueOut());
+                ret["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
                 /* Don't add inputs for coinbase or coinstake transactions */
                 if(!tx.IsCoinBase() && !tx.IsCoinStake())
@@ -203,7 +201,7 @@ namespace TAO
                         inputs.push_back(debug::safe_printstr("%s:%f",
                                 address.ToString().c_str(), (double) tx.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN));
                     }
-                    txdata["inputs"] = inputs;
+                    ret["inputs"] = inputs;
                 }
 
                 /* Declare the output JSON array */
@@ -220,10 +218,10 @@ namespace TAO
                     /* Add to the outputs. */
                     outputs.push_back(debug::safe_printstr("%s:%f", address.ToString().c_str(), (double) txout.nValue / Legacy::COIN));
                 }
-                txdata["outputs"] = outputs;
+                ret["outputs"] = outputs;
             }
 
-            return txdata;
+            return ret;
         }
 
 
@@ -235,7 +233,14 @@ namespace TAO
             /* Add a contract to the list of contracts. */
             uint32_t nContracts = tx.Size();
             for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
-                ret.push_back(ContractToJSON(tx[nContract]));
+            {
+                json::json contract = ContractToJSON(tx[nContract]);
+
+                /* Add the contract id. */
+                contract["output"] = nContract;
+
+                ret.push_back(contract);
+            }
 
             /* Return the list of contracts. */
             return ret;

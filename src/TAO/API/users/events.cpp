@@ -11,10 +11,15 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/jsonutils.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
+
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -27,13 +32,27 @@ namespace TAO
     namespace API
     {
 
+        // TODO:
+        // get identifer from notification (you need to add identifier to notification JSON)
+        // check event processor config to see if we have an account or register address configured for identifier X
+        // if so then use that to process this debit...
+        //2 = jack:savings OR 2=asdfasdfsdfsdf
+        // if they have configured a register address then set hashTo from that address
+        // if they have configured an account name then we need to generate the register address from that name
+        //  - register address is namespacehash:token:name
+        //  - namespacehash is argon2 hash of username
+        //  - Look at AddressFromName() method as you can probably use that
+
         /*  Background thread to handle/suppress sigchain notifications. */
         void Users::EventsThread()
         {
             uint512_t hashTx;
             uint256_t hashFrom;
             uint256_t hashTo;
+            uint256_t hashGenesis;
             uint64_t nSession = 0;
+            uint64_t nAmount = 0;
+            uint32_t nContract = 0;
 
             /* Loop the events processing thread until shutdown. */
             while(!fShutdown.load())
@@ -60,9 +79,11 @@ namespace TAO
                 if(!user)
                     throw APIException(-25, "Invalid session ID");
 
+                /* Set the hash genesis for this user. */
+                hashGenesis = user->Genesis();
 
                 /* Set the genesis id for the user. */
-                params["genesis"] = user->Genesis().ToString();
+                params["genesis"] = hashGenesis.ToString();
 
                 /* Get the PIN to be used for this API call */
                 SecureString strPIN = users->GetPin(params);
@@ -74,36 +95,110 @@ namespace TAO
                     /* Print the JSON value for the notifications processed. */
                     debug::log(0, FUNCTION, "\n", ret.dump(4));
 
-                    for(const auto& notification : ret)
+                    /* Loop through each transaction in the notification queue. */
+                    for(const auto& transaction : ret)
                     {
-                        if(notification["operation"][0]["OP"] == "DEBIT")
+                        /* Look for the txid string. */
+                        if(transaction.find("txid") == transaction.end())
+                            throw APIException(-25, "Notification missing txid");
+
+                        /* Set the transaction hash for this transaction. */
+                        hashTx.SetHex(transaction["txid"]);
+
+                        /* Create the transaction. */
+                        TAO::Ledger::Transaction tx;
+                        if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
+                            throw APIException(-25, "Failed to create transaction");
+
+                        /* Track the number of contracts built for this transaction object. */
+                        uint64_t nID = 0;
+
+                        /* Loop through each contract in the transaction. */
+                        for(const auto& contract : transaction["contracts"])
                         {
-                            /* Create the transaction. */
-                            TAO::Ledger::Transaction tx;
-                            if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                                throw APIException(-25, "Failed to create transaction");
+                            /* Look for the OP string. */
+                            if(contract.find("OP") == contract.end())
+                                throw APIException(-25, "Contract missing opcode.");
 
-                            /* Set the transaction, to and from hashes. */
-                            hashTx.SetHex(notification["hash"]);
-                            hashFrom.SetHex(notification["operation"][0]["address_from"]);
-                            hashTo.SetHex(notification["operation"][0]["address_to"]);
+                            /* Get the opcode. */
+                            std::string strOP = contract["OP"];
 
+                            /* Check for output field. */
+                            if(contract.find("output") == contract.end())
+                                throw APIException(-25, "Contract missing output (contract id)");
 
-                            // TODO:
-                            // get identifer from notification (you need to add identifier to notification JSON)
-                            // check event processor config to see if we have an account or register address configured for identifier X
-                            // if so then use that to process this debit...
-                            //2 = jack:savings OR 2=asdfasdfsdfsdf
-                            // if they have configured a register address then set hashTo from that address
-                            // if they have configured an account name then we need to generate the register address from that name
-                            //  - register address is namespacehash:token:name
-                            //  - namespacehash is argon2 hash of username
-                            //  - Look at AddressFromName() method as you can probably use that
+                            /* Set the contract ID. */
+                            nContract = contract["output"];
 
+                            /* Check for Debits. */
+                            if(strOP == "DEBIT")
+                            {
+                                /* Check for from field. */
+                                if(contract.find("from") == contract.end())
+                                    throw APIException(-25, "Debit contract missing from");
 
-                            /* Submit the payload object. */
-                            //tx[0] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << hashFrom << hashTo << nAmount;
+                                /* Check for to field. */
+                                if(contract.find("to") == contract.end())
+                                    throw APIException(-25, "Debit contract missing to");
 
+                                /* Check for amount field. */
+                                if(contract.find("amount") == contract.end())
+                                    throw APIException(-25, "Debit contract missing amount");
+
+                                /* Set to and from hashes and amount. */
+                                hashFrom.SetHex(contract["from"]);
+                                hashTo.SetHex(contract["to"]);
+                                nAmount = contract["amount"];
+
+                                /* Submit the payload object. */
+                                tx[nID] << uint8_t(TAO::Operation::OP::CREDIT);
+                                tx[nID] << hashTx << nContract;
+                                tx[nID] << hashTo << hashFrom;
+                                tx[nID] << nAmount;
+
+                                TAO::Register::Object object;
+                                if(!LLD::Register->ReadState(hashTo, object))
+                                    throw APIException(-25, "Couldn't read the state object");
+
+                                object.Parse();
+                                object.print();
+
+                                /* Increment the contract ID. */
+                                ++nID;
+                            }
+
+                            /* Check for Coinbases. */
+                            else if(strOP == "COINBASE")
+                            {
+                                /* Set the genesis hash and the amount. */
+                                hashTo.SetHex(contract["genesis"]);
+                                nAmount = contract["amount"];
+
+                                /* Submit the payload object. */
+                                tx[nID] << uint8_t(TAO::Operation::OP::CREDIT);
+                                tx[nID] << hashTx << nContract;
+                                tx[nID] << hashTo << hashGenesis;
+                                tx[nID] << nAmount;
+
+                                /* Increment the contract ID. */
+                                ++nID;
+                            }
+
+                            /* Check for Transfers. */
+                            else if(strOP == "TRANSFER")
+                            {
+                                /* Submit the payload object. */
+                                tx[nID] << uint8_t(TAO::Operation::OP::CLAIM);
+                                tx[nID] << hashTx;
+
+                                /* Increment the contract ID. */
+                                ++nID;
+                            }
+                        }
+
+                        /* If any of the notifications have been matched, execute the operations layer and sign the transaction. */
+                        if(nID)
+                        {
                             /* Execute the operations layer. */
                             if(!tx.Build())
                                 throw APIException(-26, "Operations failed to execute");
@@ -116,40 +211,12 @@ namespace TAO
                             if(!TAO::Ledger::mempool.Accept(tx))
                                 throw APIException(-26, "Failed to accept");
                         }
-                        else if(notification["operation"][0]["OP"] == "COINBASE")
-                        {
 
-                        }
-                        else if(notification["operation"][0]["OP"] == "TRANSFER")
-                        {
-                            /* Create the transaction. */
-                            TAO::Ledger::Transaction tx;
-                            if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                                throw APIException(-25, "Failed to create transaction");
-
-                            /* Set the transaction hash for the claim. */
-                            hashTx.SetHex(notification["hash"]);
-
-                            /* Submit the payload object. */
-                            tx[0] << uint8_t(TAO::Operation::OP::CLAIM) << hashTx;
-
-                            /* Execute the operations layer. */
-                            if(!tx.Build())
-                                throw APIException(-26, "Operations failed to execute");
-
-                            /* Sign the transaction. */
-                            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, users->GetSession(params))))
-                                throw APIException(-26, "Ledger failed to sign transaction");
-
-                            /* Execute the operations layer. */
-                            if(!TAO::Ledger::mempool.Accept(tx))
-                                throw APIException(-26, "Failed to accept");
-                        }
                     }
-
                 }
                 catch(const APIException& e)
                 {
+                    debug::error(FUNCTION, e.what());
                 }
 
                 /* Reset the events flag. */

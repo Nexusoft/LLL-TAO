@@ -1,4 +1,4 @@
-# Ledger API 
+# Ledger API
 -----------------------------------
 
 The Ledger API provides users with access to data held by the ledger such as blocks and transactions.
@@ -13,7 +13,7 @@ The following methods are currently supported by this API
 [`get/transaction`](#gettransaction)   
 [`submit/transaction`](#submittransaction)   
 [`get/mininginfo`](#getmininginfo)  
- 
+
 
 -----------------------------------
 ****
@@ -317,6 +317,7 @@ Retrieves transaction data for a given transaction hash.
 `format` : Determines the format of the return value.  Parameter value can be `JSON` (the default) or `raw`.  If `raw` is specified then the method returns a serialized, hex-encoded transaction that can subsequently be broadcast to the network via `/ledger/submit/transaction`.
 
 `hash` : The block hash to retrieve the block data for. This is ignored if `raw` format is requested.
+`txid` : The block hash to retrieve the block data for. This is an alias for `hash`.
 
 `verbose` : Optional, determines how much transaction data to include in the response. This is ignored if `raw` format is requested.  Supported values are :
  - `summary` : hash, type, version, sequence, timestamp, and operation.
@@ -326,18 +327,31 @@ Retrieves transaction data for a given transaction hash.
 ### Return value JSON object:
 ```    
 {
-    "hash": "47959e245f45aab773c0ce5320a5454f49ac15f63e15acb36855ac654d54d6314fe36b61dd64ec7a9a546bcc439a628e9badcdccb6e5f8072d04a0a3b67f8679",
-    "type": "tritium base",
+    "txid": "51fd1f61de02f0788cac3c2fcde94012ef12ed34227717f9f5fe2c019ac1aa0a3d3ad9580721eeced8f036c771eb2a8cc6d67a6409c721b68bbe66d1387b97f3",
+    "contracts": [
+        {
+            "OP": "REGISTER",
+            "address": "5211647134daf849e94720e65fc5e685361d9329c8709e159c784fbd9dd840ae",
+            "type": 4,
+            "data": "046e616d65080574727573740761646472657373ff055714f14df2588a47c1a13db683e585bd16de1460a70f89d98769ed3c3701534f"
+        },
+        {
+            "OP": "REGISTER",
+            "address": "4f5301373ced6987d9890fa76014de16bd85e583b63da1c1478a58f24df11457",
+            "type": 4,
+            "data": "0762616c616e6365ff040000000000000000057472757374ff040000000000000000057374616b65ff04000000000000000005746f6b656e050000000000000000000000000000000000000000000000000000000000000000"
+        },
+    ],
+    "type": "tritium first",
     "version": 1,
-    "sequence": 2,
-    "timestamp": 1553656640,
-    "confirmations": 0,
-    "genesis": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
-    "nexthash": "da052996cfbb854c9748c7290fcd84bd72316faa75421a647aa8444ca7242eb3",
-    "prevhash": "798b258df4d435a16321f83129a449b87774a393f85daef9fbae890de94e11865b7133b3c16f9799b8a5468b3af1ca29fabfa145585870ab9e4e4f8351d40167",
-    "pubkey": "034ecb0320d445b3d51a1e62e465476a9cfde8589117cfaa65240bd44520e0049fcf059843a93b276b088e0de1da33be0c04aaa9a972988c2e57d8eb5a55d3ef72",
-    "signature": "308184024052ae4d673e18c0603ef9db388d3b86735c63d48f76bc04be36a99c53417ff908cecbbab33c8c8ed27c01d5b1301d0ab9edc3f9a1b00c31e6b2a8ddb3b1b18d61024004781116f62a59d4fa73f88cae03f1de9f6116a07e0898ff36f2c3fcde390d324d32a5fa3e3f2a4c40c8613657ce99574fbe7bbf79b5b43e1a22167f48c3a878",
-    "operation": "Coinbase(nonce=2, amount=76499587)"
+    "sequence": 0,
+    "timestamp": 1560189145,
+    "confirmations": 19,
+    "genesis": "1ff463e036cbde3595fbe2de9dff15721a89e99ef3e2e9bfa7ce48ed825e9ec2",
+    "nexthash": "8e5d67616022c84625326280ebaaa1f0be9e49bf26a1a8f85f62c476bd31e6b0",
+    "prevhash": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "pubkey": "091ccca8e8e4082585c84345bfa298427ef887f66ab73ac298eb8be5b3678c0f32688a757380ab72e2a7fc055916d99ca38a2635fe82fe26b138bea72a84466a3d948f5993840d85c57a3025097d05ddf302a3d60a412af91075ec144412daa5ba4cefa40a51c5c616c4034236305eef9d8580ead40654752f261d03b5904f2dcd6cb0649455302c93f734a75681309072d7d0b129f20947aae5050079887aca2e69a2b11b8782a57d1f90e380dd6f5290940e44620e0f7c7d676718057aa0a845b35dec649ca42636d503f036651aabe41bee16f9fa15f65add93885791c2c9a607e86b16470d9b3a3891a5c9eb204796ef57cf9a1a50b40b31180035be308fa7be1aa6b3b02836db6001638cbab7c5ed49172aa7c257ae107b2608e24a510c8aa205d3c2031a39fccebbf4992b93e97d3693809178ba7352159b199a125bb8804c086964a470f0cccd6e0e937311ebd1873d6421c6e61a8408624b776636a25aae239988f42de112f23ace8f38de251bcc269c532914d4d895814f942233cce76d1854e8d84aea1691f2964ba066cab0b827eb11045043edecb3ad52e566d5b70236c750387558144443a20a3d13eaf716a418b4de9843295283d49f45cdc8ddb699808708a85521e924d24b41ef1cfc54984fc449252904a176595e9ebe0301e150f88fc16b87e644850e849c21bf64f57575ef99d308f341de9ea3f4a6509b5a44fa2755b45df6f8e83184ac2c90eb783d90bb919ab4fa3b0d31ad41ea6aa584320cbc6ec9dfdff5249cada2ce20d0b1d8da865161c077c08ad943d260426ee02a549be1320ab7c9419bff5b39c005641f3123f9d3079b15d15dfd5de96768e8b8ba91f26d6a192d41859996952039a81484835d49839108f6465ed246182f1a18cca7af46cefb9927a48a04c4db34509a267973f1a4afb137f9c29860ed3a886492a69acae09c4efbe09c4f7170ac6b1b4a8bf81b452b07c00b72a87492f11bc9d7bf3ef5c7f4635a209145891691b79575aea6c344f993fc2eb95b2ba7a2e947a9ed0c560882901a2c2a40a8158a9448039d71207347eb636408f8bb105baa685dc452fa7f5dbba98676aba9c414360876c606db032205eb574c2f579f092809e65f9c5dd6e1cad30b49a63653552fd00ea9e28e46c1ddf6b69d97446751401f7dcfb27f082d09e1720bfb0c1984f27e2472a4107b6108047e8dec47e084b18d5bc890b4e7c3a9818a3d0c718838a66fa2285799c92819ad64d645ba00de",
+    "signature": "297cd35d0f87e78d6a8b7979709bcf932363c4b141ee4893e7aa8f15633b12896c9ee8696aa66f9ee41106cec4bcaf8616bf656498bddd112abb431084309e314dfdb500d320750849abfc76d5bb4761ecdcebf065e5f29cf4b4c4bfa930deba881655d0667bb36cc2db2d35711291040ce983eecbf10a04167871f967f25a4587d309da7f48e3e83118be7ce8c673f696116073c47ffeb229d1844bfd6cde266464c972f8b8dd5c4b68cb645143959c3e77bc8548cbff605c1c0f4d8e6a2fffec396ecad7fd48e8f09ce2147518353caf3ff5c3bb2c5f2d0b5c321dd2c762d365c380c64ccf51369ce9b30c7e2bdb8f157d42f3bb68b70461b66327db6f2b6f9247d3fc0ec9cfa0649006ad4eecb067798a3c6ba33fe473602840ea4d6a44daaf94efdf7047b5ab2d9608509a6dea77bfbe207a58dde3577535b319b78796a59b098ddfba44dd3b27d17f3646ffddce63a16dc69694a2107639d760892952f5ee7ea6c0d469947614c1163974b60ec22146bae72b5622f918ff6aeb3d67f39b18a414cc7c6330632128bfeab3b1c75b05f3e1e81a1e6766a12550cda5960ebed2fa5252cc80115811826a985ab228535f16a5807c7508ea42808f6c24ceeeab193f268f0ca9ca50341fa4fdd38d646e6cc26a94de3dc1b14a7fd934bb4cb8e1b919deb668d94610dcee424885ea12b7e5969e47eff743dcf4ab93422ddaca9544e53e382ad74ec361c8332dcd99388f1b3769c4760a7c6571dca14cea8a8f303e54382449e860ba71212c85e9968815de04f14810ad77236fc2644a3edb0f354c552f410f28ac92610462aa32b3872a2b4df5d67534377fd8948d708962dfa8d54e8923bf61f85c69fd660fd90f7f8bdb7ebafef9112b1b57e10a6a6cb29506250099451f87994dc226bfff7c45ca888a4aed"
 }
 
 ```
@@ -346,7 +360,9 @@ Retrieves transaction data for a given transaction hash.
 
 `data` : If `format` was specified as `raw` then the response will contain only the data field containing the raw, hex encoded, transaction data.
 
-`hash` : The transaction hash.
+`txid` : The transaction hash.
+
+`contracts` : The list of contracts bound to this transaction and their details with opcodes.
 
 `type` : The description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`).
 
@@ -356,19 +372,17 @@ Retrieves transaction data for a given transaction hash.
 
 `timestamp` : The Unix timestamp of when the transaction was created.
 
-`confirmations` : The number of confirmations that this transaction has obtained by the network.
+`confirmations` : The number of confirmations that this transaction obtained by the network.
 
 `genesis` : The signature chain genesis hash.
 
 `nexthash` : The hash of the next transaction in the sequence.
 
-`prevhash` : The hash of the previous transaction in the sequence.
+`prevhash` : the hash of the previous transaction in the sequence.
 
 `pubkey` : The public key.
 
 `signature` : The signature hash.
-
-`operation` : The description of the opcodes included in the transaction.
 
 ****
 

@@ -247,7 +247,7 @@ namespace TAO
                 std::dec, std::setfill(' '), std::setw(0), ", nChannel = ", nChannel,
                 ", nHeight= ", nHeight,
                 ", nNonce=",  nNonce,
-                ", vchBlockSig=", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ")");
+                ", vchBlockSig=", HexStr(vchBlockSig.begin(), vchBlockSig.end()).substr(0,20), ")");
         }
 
         /* Dump the Block data to Console / Debug.log. */
