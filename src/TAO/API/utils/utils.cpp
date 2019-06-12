@@ -595,7 +595,7 @@ namespace TAO
                 /* Firstly get all object registers owned by this sig chain */
                 std::vector<uint256_t> vRegisters;
                 if(!ListRegisters(hashCaller, vRegisters))
-                    throw APIException(-24, "No registers found");
+                    return "";
 
                 /* Iterate through these to find all Name registers */
                 for(const auto& hashRegister : vRegisters)
