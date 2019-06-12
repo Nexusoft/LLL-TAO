@@ -304,7 +304,7 @@ namespace TAO
                     {
 
                         TAO::Register::Object token;
-                        if(!LLD::Register->ReadState(nIdentifier, token))
+                        if(!LLD::Register->ReadState(nIdentifier, token, TAO::Ledger::FLAGS::MEMPOOL))
                             throw APIException(-24, "Token not found");
 
                         /* Parse the object register. */
@@ -353,7 +353,7 @@ namespace TAO
                 {
 
                     TAO::Register::Object token;
-                    if(!LLD::Register->ReadState(nIdentifier, token))
+                    if(!LLD::Register->ReadState(nIdentifier, token, TAO::Ledger::FLAGS::MEMPOOL))
                         throw APIException(-24, "Token not found");
 
                     /* Parse the object register. */
