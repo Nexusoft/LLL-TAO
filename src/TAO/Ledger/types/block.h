@@ -75,6 +75,10 @@ namespace TAO
             uint32_t nTime; //TODO: make this 64 bit
 
 
+            /** The prime origin offsets. **/
+            std::vector<uint8_t> vOffsets;
+
+
             /** The bytes holding the blocks signature. Signed by the block creator before broadcast. **/
             std::vector<uint8_t> vchBlockSig;
 
@@ -102,6 +106,7 @@ namespace TAO
             /** Default Destructor **/
             virtual ~Block();
 
+
             /** Clone
              *
              *  Allows polymorphic copying of blocks
@@ -110,7 +115,7 @@ namespace TAO
              *  @return A pointer to a copy of this Block.
              *
              **/
-            virtual Block* Clone() const {return new Block(*this);};
+            virtual Block* Clone() const { return new Block(*this); };
 
 
             /** SetNull

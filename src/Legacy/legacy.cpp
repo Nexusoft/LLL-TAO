@@ -156,7 +156,7 @@ namespace Legacy
         bool fIsProofOfStake = IsProofOfStake();
 
         /* Determine if block belongs to proof-of-work channels. */
-        bool fIsProofOfWork = IsProofOfWork();
+        bool fIsProofOfWork  = IsProofOfWork();
 
 
         /* Check that the time was within range. */

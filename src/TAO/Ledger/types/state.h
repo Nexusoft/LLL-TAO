@@ -60,10 +60,6 @@ namespace TAO
             std::vector< std::pair<uint8_t, uint512_t> > vtx;
 
 
-            /** Prime Offsets from start for verifiction. **/
-            std::vector<uint8_t> vOffsets;
-
-
             /** The Trust of the Chain to this Block. */
             uint64_t nChainTrust;
 
@@ -123,15 +119,13 @@ namespace TAO
                 READWRITE(nChannelHeight);
 
                 /* Tritium Block States. */
-                if(nVersion >= 7)
-                {
-                    READWRITE(nFees);
-                    READWRITE(nChannelWeight[0]);
-                    READWRITE(nChannelWeight[1]);
-                    READWRITE(nChannelWeight[2]);
-                    READWRITE(nFeeReserve);
-                }
+                READWRITE(nFees);
+                READWRITE(nChannelWeight[0]);
+                READWRITE(nChannelWeight[1]);
+                READWRITE(nChannelWeight[2]);
+                READWRITE(nFeeReserve);
 
+                /* Reserves. */
                 READWRITE(nReleasedReserve[0]);
                 READWRITE(nReleasedReserve[1]);
                 READWRITE(nReleasedReserve[2]);
@@ -149,7 +143,6 @@ namespace TAO
             : Block()
             , ssSystem()
             , vtx()
-            , vOffsets()
             , nChainTrust(0)
             , nMoneySupply(0)
             , nMint(0)

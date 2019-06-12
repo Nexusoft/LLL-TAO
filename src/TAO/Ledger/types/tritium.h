@@ -78,10 +78,6 @@ namespace TAO
             std::vector< std::pair<uint8_t, uint512_t> > vtx;
 
 
-            /** Prime Offsets from start for verifiction. **/
-            std::vector<uint8_t> vOffsets;
-
-
             /** Serialization **/
             IMPLEMENT_SERIALIZE
             (
@@ -98,6 +94,7 @@ namespace TAO
 
                 READWRITE(producer);
                 READWRITE(ssSystem);
+                READWRITE(vOffsets);
                 READWRITE(vtx);
           )
 
