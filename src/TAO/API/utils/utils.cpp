@@ -50,86 +50,56 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
-        /* Generates a lightweight argon2 hash of the namespace string.*/
-        uint256_t NamespaceHash(const SecureString& strNamespace)
-        {
-            /* Generate the Secret Phrase */
-            std::vector<uint8_t> vNamespace(strNamespace.begin(), strNamespace.end());
-
-            // low-level API
-            std::vector<uint8_t> vHash(32);
-            std::vector<uint8_t> vSalt(16);
-
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &vHash[0],
-                32,
-
-                /* Password input data. */
-                &vNamespace[0],
-                static_cast<uint32_t>(vNamespace.size()),
-
-                /* The salt for usernames */
-                &vSalt[0],
-                static_cast<uint32_t>(vSalt.size()),
-
-                /* Optional secret data */
-                NULL, 0,
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                10,
-
-                /* Memory Cost (4 MB). */
-                (1 << 12),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int32_t nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-
-            /* Set the bytes for the key. */
-            uint256_t hashKey;
-            hashKey.SetBytes(vHash);
-
-            return hashKey;
-        }
-
-
         /* Creates a new Name Object register for the given name and register address */
-        void CreateName(const uint256_t& hashGenesis, const std::string strName,
+        void CreateName(const uint256_t& hashGenesis, const std::string strFullName,
                         const uint256_t& hashRegister, TAO::Operation::Contract& contract)
         {
-            uint256_t hashNameAddress;
+            uint256_t hashNamespace = 0;
+            uint256_t hashNameAddress = 0;
+            std::string strNamespace = "";
+            std::string strName = strFullName;
+
+            /* Check to see whether the name has a namesace suffix */
+            size_t nPos = strName.find(".");
+            if(nPos != strName.npos)
+            {
+                /* If so then strip off the namespace so that we can check that this user has permission to use it */
+                strName = strName.substr(0, nPos);
+                strNamespace = strFullName.substr(nPos+1);
+            
+                hashNamespace = TAO::Register::NamespaceHash(strNamespace);
+
+                /* Retrieve the namespace object and check that the hashGenesis is the owner */
+                TAO::Register::Object namespaceObject;
+                if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
+                    throw APIException(-23, "Namespace does not exist: " + strNamespace);
+
+                /* Check the owner is the hashGenesis */
+                if(namespaceObject.hashOwner != hashGenesis)
+                    throw APIException(-23, "Cannot create a name in namespace " + strNamespace + " as you are not the owner.");
+            }
+            else
+            {
+                hashNamespace = hashGenesis;
+            }
+            
 
             /* Obtain the name register address for the genesis/name combination */
-            TAO::Register::GetNameAddress(hashGenesis, strName, hashNameAddress);
+            TAO::Register::GetNameAddress(hashNamespace, strName, hashNameAddress);
 
             /* Check to see whether the name already exists  */
             TAO::Register::Object object;
             if(LLD::Register->ReadState(hashNameAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-23, "An object with this name already exists for this user.");
+            {
+                if(!strNamespace.empty())
+                    throw APIException(-23, "An object with this name already exists in this namespace.");
+                else
+                    throw APIException(-23, "An object with this name already exists for this user.");
+            }
+                
 
             /* Create the Name register object pointing to hashRegister */
-            TAO::Register::Object name = TAO::Register::CreateName(strName, hashRegister);
+            TAO::Register::Object name = TAO::Register::CreateName(strNamespace, strName, hashRegister);
 
             /* Add the Name object register operation to the transaction */
             contract << uint8_t(TAO::Operation::OP::CREATE) << hashNameAddress << uint8_t(TAO::Register::REGISTER::OBJECT) << name.GetState();
@@ -200,11 +170,7 @@ namespace TAO
             if(LLD::Register->ReadState(hashNameAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-23, "An object with this name already exists for this user.");
 
-            /* Create a new Name register object pointing to hashRegister */
-            TAO::Register::Object name = TAO::Register::CreateName(strName, hashRegister);
-
-            /* Add the Name object register operation to the transaction */
-            contract << uint8_t(TAO::Operation::OP::CREATE) << hashNameAddress << uint8_t(TAO::Register::REGISTER::OBJECT) << name.GetState();
+           /* TODO */
         }
 
 
@@ -224,12 +190,23 @@ namespace TAO
             /* Declare the namespace hash to use for this object. */
             uint256_t nNamespaceHash = 0;
 
-            /* First check to see if the name parameter has been provided in the namespace:name format*/
-            size_t nPos = strName.find(":");
-            if(nPos != std::string::npos)
+            /* First check to see if the name parameter has been provided in either the userspace:name  or name.namespace format*/
+            size_t nNamespacePos = strName.find(".");
+            size_t nUserspacePos = strName.find(":");
+            
+            if(nNamespacePos != std::string::npos)
             {
-                strNamespace = strName.substr(0, nPos);
-                strName = strName.substr(nPos+1);
+                strNamespace = strName.substr(nNamespacePos+1);
+                strName = strName.substr(0, nNamespacePos);
+
+                /* get the namespace hash from the namespace name */
+                nNamespaceHash = TAO::Register::NamespaceHash(strNamespace);
+            }
+            
+            else if(nUserspacePos != std::string::npos)
+            {
+                strNamespace = strName.substr(0, nUserspacePos);
+                strName = strName.substr(nUserspacePos+1);
 
                 /* get the namespace hash from the namespace name */
                 nNamespaceHash = TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
