@@ -300,63 +300,63 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_tritium.o \
 		build/LLP_tritium_miner.o \
 		build/LLP_trust_address.o \
-		build/API_global.o \
-		build/API_cmd.o \
-		build/API_assets_claim.o \
-		build/API_assets_create.o \
-		build/API_assets_get.o \
-		build/API_assets_history.o \
-		build/API_assets_initialize.o \
-		build/API_assets_tokenize.o \
-		build/API_assets_transfer.o \
-		build/API_assets_update.o \
-		build/API_finance_create.o \
-		build/API_finance_credit.o \
-		build/API_finance_debit.o \
-		build/API_finance_get.o \
-		build/API_finance_info.o \
-		build/API_finance_initialize.o \
-		build/API_finance_list.o \
-		build/API_finance_stake.o \
-		build/API_ledger_block.o \
-		build/API_ledger_initialize.o \
-		build/API_ledger_state.o \
-		build/API_ledger_transaction.o \
-		build/API_system_lisp.o \
-		build/API_system_system.o \
-		build/API_RPC_account.o \
-		build/API_RPC_daemon.o \
-		build/API_RPC_info.o \
-		build/API_RPC_network.o \
-		build/API_RPC_rpc.o \
-		build/API_RPC_wallet.o \
-		build/API_supply_claim.o \
-		build/API_supply_createitem.o \
-		build/API_supply_getitem.o \
-		build/API_supply_history.o \
-		build/API_supply_initialize.o \
-		build/API_supply_transfer.o \
-		build/API_supply_updateitem.o \
-		build/API_tokens_create.o \
-		build/API_tokens_credit.o \
-		build/API_tokens_debit.o \
-		build/API_tokens_get.o \
-		build/API_tokens_initialize.o \
-		build/API_users_accounts.o \
-		build/API_users_assets.o \
-		build/API_users_create.o \
-		build/API_users_events.o \
-        build/API_users_initialize.o \
-		build/API_users_lock.o \
-		build/API_users_login.o \
-		build/API_users_logout.o \
-		build/API_users_notifications.o \
-		build/API_users_tokens.o \
-		build/API_users_transactions.o \
-		build/API_users_unlock.o \
-		build/API_users_users.o \
-		build/API_utils_utils.o \
-		build/API_utils_jsonutils.o \
+		build/API_types_assets_claim.o \
+		build/API_types_assets_create.o \
+		build/API_types_assets_get.o \
+		build/API_types_assets_history.o \
+		build/API_types_assets_initialize.o \
+		build/API_types_assets_tokenize.o \
+		build/API_types_assets_transfer.o \
+		build/API_types_assets_update.o \
+		build/API_types_finance_create.o \
+		build/API_types_finance_credit.o \
+		build/API_types_finance_debit.o \
+		build/API_types_finance_get.o \
+		build/API_types_finance_info.o \
+		build/API_types_finance_initialize.o \
+		build/API_types_finance_list.o \
+		build/API_types_finance_stake.o \
+		build/API_types_ledger_block.o \
+		build/API_types_ledger_initialize.o \
+		build/API_types_ledger_state.o \
+		build/API_types_ledger_transaction.o \
+		build/API_types_system_lisp.o \
+		build/API_types_system_system.o \
+		build/API_types_RPC_account.o \
+		build/API_types_RPC_daemon.o \
+		build/API_types_RPC_info.o \
+		build/API_types_RPC_network.o \
+		build/API_types_RPC_rpc.o \
+		build/API_types_RPC_wallet.o \
+		build/API_types_supply_claim.o \
+		build/API_types_supply_createitem.o \
+		build/API_types_supply_getitem.o \
+		build/API_types_supply_history.o \
+		build/API_types_supply_initialize.o \
+		build/API_types_supply_transfer.o \
+		build/API_types_supply_updateitem.o \
+		build/API_types_tokens_create.o \
+		build/API_types_tokens_credit.o \
+		build/API_types_tokens_debit.o \
+		build/API_types_tokens_get.o \
+		build/API_types_tokens_initialize.o \
+		build/API_types_users_accounts.o \
+		build/API_types_users_assets.o \
+		build/API_types_users_create.o \
+		build/API_types_users_events.o \
+        build/API_types_users_initialize.o \
+		build/API_types_users_lock.o \
+		build/API_types_users_login.o \
+		build/API_types_users_logout.o \
+		build/API_types_users_notifications.o \
+		build/API_types_users_tokens.o \
+		build/API_types_users_transactions.o \
+		build/API_types_users_unlock.o \
+		build/API_types_users_users.o \
+		build/API_utils.o \
+		build/API_json.o \
+        build/API_global.o \
+        build/API_cmd.o \
 		build/Operation_append.o \
 		build/Operation_claim.o \
 		build/Operation_condition.o \
@@ -1135,63 +1135,56 @@ build/API_%.o: src/TAO/API/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_assets_%.o: src/TAO/API/assets/%.cpp
+build/API_types_assets_%.o: src/TAO/API/types/assets/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_finance_%.o: src/TAO/API/finance/%.cpp
+build/API_types_finance_%.o: src/TAO/API/types/finance/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_ledger_%.o: src/TAO/API/ledger/%.cpp
+build/API_types_ledger_%.o: src/TAO/API/types/ledger/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_RPC_%.o: src/TAO/API/RPC/%.cpp
+build/API_types_RPC_%.o: src/TAO/API/types/RPC/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_supply_%.o: src/TAO/API/supply/%.cpp
+build/API_types_supply_%.o: src/TAO/API/types/supply/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_tokens_%.o: src/TAO/API/tokens/%.cpp
+build/API_types_tokens_%.o: src/TAO/API/types/tokens/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_users_%.o: src/TAO/API/users/%.cpp
+build/API_types_users_%.o: src/TAO/API/types/users/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_system_%.o: src/TAO/API/system/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_utils_%.o: src/TAO/API/utils/%.cpp
+build/API_types_system_%.o: src/TAO/API/types/system/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

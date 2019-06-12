@@ -15,15 +15,15 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_API_INCLUDE_GLOBAL_H
 #define NEXUS_TAO_API_INCLUDE_GLOBAL_H
 
-#include <TAO/API/include/assets.h>
-#include <TAO/API/include/ledger.h>
-#include <TAO/API/include/register.h>
-#include <TAO/API/include/rpc.h>
-#include <TAO/API/include/supply.h>
-#include <TAO/API/include/system.h>
-#include <TAO/API/include/tokens.h>
-#include <TAO/API/include/users.h>
-#include <TAO/API/include/finance.h>
+#include <TAO/API/types/assets.h>
+#include <TAO/API/types/ledger.h>
+#include <TAO/API/types/register.h>
+#include <TAO/API/types/rpc.h>
+#include <TAO/API/types/supply.h>
+#include <TAO/API/types/system.h>
+#include <TAO/API/types/tokens.h>
+#include <TAO/API/types/users.h>
+#include <TAO/API/types/finance.h>
 
 namespace TAO
 {
