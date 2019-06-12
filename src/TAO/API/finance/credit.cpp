@@ -72,7 +72,7 @@ namespace TAO
 
             /* If name_to is provided then use this to deduce the register address */
             if(params.find("name") != params.end())
-                hashAccountTo = AddressFromName( params, params["name"].get<std::string>());
+                hashAccountTo = AddressFromName(params, params["name"].get<std::string>());
 
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
@@ -219,7 +219,7 @@ namespace TAO
                                 credited to*/
                                 if(debitFromObject.get<uint256_t>("token") != 0)
                                     throw APIException(-24, "Debit transaction is not from a NXS account");
-                                
+
                                 if(accountToCredit.get<uint256_t>("token") != 0)
                                     throw APIException(-24, "Account to credit is not a NXS account");
 
@@ -275,13 +275,13 @@ namespace TAO
                         TAO::Register::Object defaultNameRegister;
 
                         if(!TAO::Register::GetNameRegister(user->Genesis(), std::string("default"), defaultNameRegister))
-                            throw APIException(-25, "Could not retrieve default NXS account to credit. ");
+                            throw APIException(-25, "Could not retrieve default NXS account to credit.");
 
                         /* Get the address that this name register is pointing to */
                         hashAccountTo = defaultNameRegister.get<uint256_t>("address");
                     }
-                        
-                    
+
+
                     /* Retrieve the account that the user has specified to credit and ensure that it is a NXS account*/
                     TAO::Register::Object accountToCredit;
                     if(!LLD::Register->ReadState(hashAccountTo, accountToCredit))

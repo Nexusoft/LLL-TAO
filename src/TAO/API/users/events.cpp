@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/include/global.h>
+#include <LLD/include/ledger.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/jsonutils.h>
@@ -19,8 +20,11 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
+#include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
+#include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -92,9 +96,6 @@ namespace TAO
                 {
                     json::json ret = Notifications(params, false);
 
-                    /* Print the JSON value for the notifications processed. */
-                    debug::log(0, FUNCTION, "\n", ret.dump(4));
-
                     /* Loop through each transaction in the notification queue. */
                     for(const auto& transaction : ret)
                     {
@@ -105,13 +106,19 @@ namespace TAO
                         /* Set the transaction hash for this transaction. */
                         hashTx.SetHex(transaction["txid"]);
 
+                        /* Get the number of confirmations for this transaction. */
+                        uint32_t nConfirms = 0;
+                        TAO::Ledger::BlockState state;
+                        if(LLD::Ledger->ReadBlock(hashTx, state))
+                            nConfirms = TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight;
+
                         /* Create the transaction. */
                         TAO::Ledger::Transaction tx;
                         if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                             throw APIException(-25, "Failed to create transaction");
 
                         /* Track the number of contracts built for this transaction object. */
-                        uint64_t nID = 0;
+                        uint32_t nID = 0;
 
                         /* Loop through each contract in the transaction. */
                         for(const auto& contract : transaction["contracts"])
@@ -160,9 +167,6 @@ namespace TAO
                                 if(!LLD::Register->ReadState(hashTo, object))
                                     throw APIException(-25, "Couldn't read the state object");
 
-                                object.Parse();
-                                object.print();
-
                                 /* Increment the contract ID. */
                                 ++nID;
                             }
@@ -171,13 +175,35 @@ namespace TAO
                             else if(strOP == "COINBASE")
                             {
                                 /* Set the genesis hash and the amount. */
-                                hashTo.SetHex(contract["genesis"]);
+                                hashFrom.SetHex(contract["genesis"]);
+
+                                /* Check that the coinbase was mined by the current active user. */
+                                if(hashFrom != hashGenesis)
+                                    throw APIException(-25, "Coinbase transaction mined by different user.");
+
+
+                                /* Check that the coinbase transaction is ready to be credited. */
+                                if(nConfirms < (config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS
+                                                                 : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
+                                {
+                                    //debug::log(0, "Coinbase is immature ", nConfirms, " confirmations.");
+                                    continue;
+                                }
+
+                                /* Get the amount from the coinbase transaction. */
                                 nAmount = contract["amount"];
+
+                                TAO::Register::Object account;
+                                if(!TAO::Register::GetNameRegister(hashGenesis, std::string("default"), account))
+                                    throw APIException(-25, "Could not retrieve default NXS account.");
+
+                                /* Get the address that this name register is pointing to. */
+                                hashTo = account.get<uint256_t>("address");
 
                                 /* Submit the payload object. */
                                 tx[nID] << uint8_t(TAO::Operation::OP::CREDIT);
                                 tx[nID] << hashTx << nContract;
-                                tx[nID] << hashTo << hashGenesis;
+                                tx[nID] << hashTo << hashFrom;
                                 tx[nID] << nAmount;
 
                                 /* Increment the contract ID. */
@@ -210,6 +236,9 @@ namespace TAO
                             /* Execute the operations layer. */
                             if(!TAO::Ledger::mempool.Accept(tx))
                                 throw APIException(-26, "Failed to accept");
+
+                            /* Print the JSON value for the notifications processed. */
+                            debug::log(0, FUNCTION, "\n", transaction.dump(4));
                         }
 
                     }

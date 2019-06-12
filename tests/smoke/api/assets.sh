@@ -25,7 +25,7 @@
 #        "mutable" : "true"
 #    }
 #]
-./api_call.sh assets/create/asset name=myasset3 format=JSON json='[{"name": "serial_number","type": "uint64","value": "1234","mutable" : "false"},{"name": "description","type": "string","value": "This is the description of my asset","mutable" : "true"}]' pin=1234
+./api_call.sh assets/create/asset name=myasset3 format=JSON json=this is some json pin=1234
 
 #Retrieve an asset by name that you own
 ./api_call.sh assets/get/asset/myasset
