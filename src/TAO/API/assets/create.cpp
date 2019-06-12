@@ -60,7 +60,6 @@ namespace TAO
             if(!users->CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
 
-
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
@@ -122,13 +121,11 @@ namespace TAO
                         asset << it.key() << uint8_t(TAO::Register::TYPES::STRING) << strValue;
                     }
                     else
-                    {
                         throw APIException(-25, "Non-string types not supported in basic format.");
-                    }
                 }
 
                 if(nFieldCount == 0)
-                    throw APIException(-25, "Missing asset value fields");
+                    throw APIException(-25, "Missing asset value fields.");
 
                 /* Submit the payload object. */
                 tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
@@ -137,10 +134,10 @@ namespace TAO
             {
                 /* If format = JSON then grab the asset definition from the json field */
                 if(params.find("json") == params.end())
-                    throw APIException(-25, "Missing json parameter");
+                    throw APIException(-25, "Missing json parameter.");
 
                 if(!params["json"].is_array())
-                    throw APIException(-25, "json field must be an array");
+                    throw APIException(-25, "json field must be an array.");
 
                 /* declare the object register to hold the asset data*/
                 TAO::Register::Object asset = TAO::Register::CreateAsset();
@@ -155,16 +152,16 @@ namespace TAO
                 {
                     /* Check that the required fields have been provided*/
                     if(it->find("name") == it->end())
-                        throw APIException(-25, "Missing name field in json defintion");
+                        throw APIException(-25, "Missing name field in json definition.");
 
                     if(it->find("type") == it->end())
-                        throw APIException(-25, "Missing type field in json defintion");
+                        throw APIException(-25, "Missing type field in json definition.");
 
                     if(it->find("value") == it->end())
-                        throw APIException(-25, "Missing value field in json defintion");
+                        throw APIException(-25, "Missing value field in json definition.");
 
                     if(it->find("mutable") == it->end())
-                        throw APIException(-25, "Missing mutable field in json defintion");
+                        throw APIException(-25, "Missing mutable field in json definition.");
 
                     /* Parse the values out of the definition json*/
                     std::string strName =  (*it)["name"].get<std::string>();
@@ -176,7 +173,7 @@ namespace TAO
 
                     /* Convert the value to bytes if the type is bytes */
                     if(strType == "bytes")
-                        vchBytes = encoding::DecodeBase64(strValue.c_str(), &fBytesInvalid) ;
+                        vchBytes = encoding::DecodeBase64(strValue.c_str(), &fBytesInvalid);
 
                     /* Declare the max length variable */
                     size_t nMaxLength = 0;
@@ -197,7 +194,7 @@ namespace TAO
                             /* If the caller specifies a maxlength then use this to set the size of the string or bytes array */
                             if(it->find("maxlength") != it->end())
                             {
-                                nMaxLength = stoul((*it)["maxlength"].get<std::string>());
+                                nMaxLength = std::stoul((*it)["maxlength"].get<std::string>());
 
                                 /* If they specify a value less than the data length then error */
                                 if(nMaxLength < nDataLength)
