@@ -75,13 +75,28 @@ namespace TAO
          *
          *  Generate a new name object register.
          *
+         *  @param[in] strNamespace The namespace that the object should be crated in
          *  @param[in] strName The name of the Object that this Name record represents
          *  @param[in] hashRegister The register address that this name is aliasing
          *
          *  @return The object register just created.
          *
          **/
-        Object CreateName(const std::string& strName, const uint256_t& hashRegister);
+        Object CreateName(const std::string& strNamespace, const std::string& strName, const uint256_t& hashRegister);
+
+
+
+        /** CreateNamespace
+         *
+         *  Generate a new namespace object register.
+         *
+         *  @param[in] strName The name of the namespace Object
+         *  @param[in] hashRegister The register address that this name is aliasing
+         *
+         *  @return The object register just created.
+         *
+         **/
+        Object CreateNamespace(const std::string& strName);
 
 
     }

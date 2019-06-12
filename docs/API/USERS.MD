@@ -25,7 +25,9 @@ The following methods are currently supported by this API
 [`list/notifications`](#listnotifications)    
 [`list/assets`](#listassets)    
 [`list/accounts`](#listaccounts)    
-[`list/tokens`](#listtokens)    
+[`list/tokens`](#listtokens)
+[`list/namespaces`](#listnamespaces)
+[`list/names`](#listnames)    
 
 
 -----------------------------------
@@ -538,5 +540,121 @@ This will list off all of the tokens that were created by a particular signature
 `currentsupply` : The current number of tokens that have been distributed from this token register.
 
 `digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
+
+
+****
+
+
+# `list/namespaces`
+
+This will list off all of the namespaces owned by the signature chain.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/namespaces`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
+
+### Return value JSON object:
+```
+[
+    {
+        "name": "mynamespace1",
+        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+    },
+    {
+        "name": "mynamespace2",
+        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+    }
+
+
+]
+```
+### Return values:
+
+`name` : The name identifying the namespace. 
+
+`address` : The register address of the namespace.  
+
+`owner` : The genesis hash of the signature chain that owns this namespace.
+
+
+****
+
+
+# `list/names`
+
+This will list off all of the names owned by the signature chain.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/names`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
+
+### Return value JSON object:
+```
+[
+    {
+        "name": "asset1.ourcompany",
+        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+        "register_address": "597164ddc65ed8e4e481958d578daf0890a625a4957a987c5e966fcfff7084f3",
+        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+    }
+    {
+        "name": "asset2.ourcompany",
+        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "register_address": "55c559eabe469eb566f302712edf089b165001da8dfda7acdcf9347896e1fff4",
+        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+    },
+    {
+        "name": "default",
+        "address": "97c2e9fe863e51adeee82b28bf43747291ca801e258a98453d79edb261a02e7a",
+        "register_address": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+    }
+
+
+]
+```
+### Return values:
+
+`name` : The name identifying the object register. 
+
+`address` : The register address of the Name.  
+
+`register_address` : The register address of the the object that this Name points to.
+
+`owner` : The genesis hash of the signature chain that owns this Name.
 
 ****

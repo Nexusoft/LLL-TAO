@@ -79,14 +79,28 @@ namespace TAO
         }
 
 
-        /* Generate a new name object register. */
-        Object CreateName(const std::string& strName, const uint256_t& hashRegister)
+        /* Generate a new namespace object register. */
+        Object CreateNamespace(const std::string& strName)
         {
             /* Create a name object register. */
             TAO::Register::Object name;
 
             /* Generate the new name register with the address value. */
-            name    << std::string("name")          << uint8_t(TYPES::STRING)  << strName
+            name    << std::string("namespace")          << uint8_t(TYPES::STRING)  << strName;
+
+            return name;
+        }
+
+
+        /* Generate a new name object register. */
+        Object CreateName(const std::string& strNamespace, const std::string& strName, const uint256_t& hashRegister)
+        {
+            /* Create a name object register. */
+            TAO::Register::Object name;
+
+            /* Generate the new name register with the address value. */
+            name    << std::string("namespace")     << uint8_t(TYPES::STRING)  << strNamespace
+                    << std::string("name")          << uint8_t(TYPES::STRING)  << strName
                     << std::string("address")       << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT256_T) << hashRegister;
 
             return name;

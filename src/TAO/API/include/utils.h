@@ -26,26 +26,18 @@ namespace TAO
     namespace API
     {
 
-        /** NamespaceHash
-         *
-         *  Generates a lightweight argon2 hash of the namespace string.
-         *
-         *  @return The 256 bit hash of this key in the series.
-         **/
-        uint256_t NamespaceHash(const SecureString& strNamespace);
-
 
         /** CreateName
         *
         *  Creates a new Name Object register for the given name and register address adds the register operation to the transaction
         *
         *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
-        *  @param[in] strName The Name of the object
+        *  @param[in] strFullName The Name of the object.  May include the namespace suffix
         *  @param[in] hashRegister The register address that the Name object should resolve to
         *  @param[out] contract The contract to create a name for.
         *
         **/
-        void CreateName(const uint256_t& hashGenesis, const std::string strName,
+        void CreateName(const uint256_t& hashGenesis, const std::string strFullName,
                         const uint256_t& hashRegister, TAO::Operation::Contract& contract);
 
 

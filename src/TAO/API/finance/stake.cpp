@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
@@ -68,7 +69,7 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction.");
 
             /* Register address is a hash of a name in the format of namespacehash:objecttype:name */
-            std::string strRegisterName = NamespaceHash(user->UserName()).ToString() + ":token:trust";
+            std::string strRegisterName = TAO::Register::NamespaceHash(user->UserName().c_str()).ToString() + ":token:trust";
 
             /* Build the address from an SK256 hash of register name. Need for indexed trust accounts, also, as return value */
             uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strRegisterName.begin(), strRegisterName.end()));
