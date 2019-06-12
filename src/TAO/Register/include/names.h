@@ -58,16 +58,15 @@ namespace TAO
 
         /** GetNamespaceRegister
          *
-         *  Retrieve the namespace register for a namespace/name combination.
+         *  Retrieve the namespace register by namespace name .
          *
-         *  @param[in] hashNamespace
          *  @param[in] strName
          *  @param[out] nameRegister
          *
          *  @return true if register retrieved successfully
          *
          **/
-        bool GetNamespaceRegister(const uint256_t& hashNamespace, const std::string& strName, Object& namespaceRegister);
+        bool GetNamespaceRegister(const std::string& strNamespace, Object& namespaceRegister);
 
 
         /** NamespaceHash

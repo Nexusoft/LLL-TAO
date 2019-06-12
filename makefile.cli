@@ -199,6 +199,7 @@ ifdef UNIT_TESTS
 		   build/Tests_mempool.o \
 		   build/Tests_register.o \
 		   build/Tests_debit.o \
+		   build/Tests_names.o \
 		   build/Tests_trust.o \
 		   build/Tests_validate.o \
 		   build/Tests_write.o \

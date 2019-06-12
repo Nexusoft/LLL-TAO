@@ -82,30 +82,28 @@ namespace TAO
 
 
         /* Retrieve the namespace register for a namespace/name combination. */
-        bool GetNamespaceRegister(const uint256_t& hashNamespace, const std::string& strName, Object& namespaceRegister)
+        bool GetNamespaceRegister(const std::string& strNamespace, Object& namespaceRegister)
         {
-            uint256_t hashAddress;
-
-            GetNameAddress(hashNamespace, strName, hashAddress);
+            uint256_t hashAddress = TAO::Register::NamespaceHash(strNamespace);
 
             /* Read the Name Object */
             if(!LLD::Register->ReadState(hashAddress, namespaceRegister, TAO::Ledger::FLAGS::MEMPOOL))
             {
-                debug::log(2, FUNCTION, "Name register not found: ", strName);
+                debug::log(2, FUNCTION, "Name register not found: ", strNamespace);
                 return false;
             }
 
             /* Check that the name object is proper type. */
             if(namespaceRegister.nType != TAO::Register::REGISTER::OBJECT)
-                return debug::error( FUNCTION, "Name register not an object: ", strName);
+                return debug::error( FUNCTION, "Name register not an object: ", strNamespace);
 
             /* Parse the object. */
             if(!namespaceRegister.Parse())
-                return debug::error(FUNCTION, "Unable to parse namespace register: ", strName);
+                return debug::error(FUNCTION, "Unable to parse namespace register: ", strNamespace);
 
             /* Check that this is a Name register */
             if(namespaceRegister.Standard() != TAO::Register::OBJECTS::NAMESPACE)
-                return debug::error(FUNCTION, "Register is not a namespace register: ", strName);
+                return debug::error(FUNCTION, "Register is not a namespace register: ", strNamespace);
 
             return true;
         }

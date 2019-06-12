@@ -99,7 +99,7 @@ namespace TAO
 
                             /* Retrieve the namespace object and check that the hashGenesis is the owner */
                             TAO::Register::Object namespaceObject;
-                            if(!TAO::Register::GetNamespaceRegister(hashNamespace, strNamespace, namespaceObject))
+                            if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
                                 return debug::error(FUNCTION, "Namespace does not exist: ", strNamespace);
 
                             /* Check the owner is the hashGenesis */
