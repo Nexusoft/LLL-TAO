@@ -120,19 +120,21 @@ namespace TAO
                 /* Add the address to the return JSON */
                 jsonClaimed.push_back( hashAddress.GetHex() );
                 
+                /* Declare to contract to create new name */
+                TAO::Operation::Contract nameContract;
                 /* If the caller has passed in a name then create a name record using the new name */
                 if(!strName.empty())
-                    CreateName(user->Genesis(), strName, hashAddress, tx[++nCurrent]);
+                    nameContract = CreateNameContract(user->Genesis(), strName, hashAddress);
                 else
                 {
                     /* Determine the name from the previous owner's sig chain and create a new
                        Name record under our sig chain for the same name */
-                    TAO::Operation::Contract nameContract = CreateNameFromTransfer(hashTx, user->Genesis());
-
-                    /* If the Name contract operation was created then add it to the transaction */
-                    if(!nameContract.Empty())
-                        tx[++nCurrent] = nameContract;
+                    nameContract = CreateNameContractFromTransfer(hashTx, user->Genesis());
                 }
+
+                /* If the Name contract operation was created then add it to the transaction */
+                if(!nameContract.Empty())
+                    tx[++nCurrent] = nameContract;
             }
 
 

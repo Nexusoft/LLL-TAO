@@ -68,12 +68,6 @@ namespace TAO
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction.");
 
-            /* Register address is a hash of a name in the format of namespacehash:objecttype:name */
-            std::string strRegisterName = TAO::Register::NamespaceHash(user->UserName().c_str()).ToString() + ":token:trust";
-
-            /* Build the address from an SK256 hash of register name. Need for indexed trust accounts, also, as return value */
-            uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strRegisterName.begin(), strRegisterName.end()));
-
             /* Get trust account. Any trust account that has completed Genesis will be indexed. */
             TAO::Register::Object trustAccount;
 
@@ -90,6 +84,17 @@ namespace TAO
             {
                 /* TODO - Add "pending stake" to trust account and allow set/stake for pre-Genesis */
                 throw APIException(-25, "Cannot set stake for trust account until after Genesis transaction");
+
+                /* The register address of the trust account */
+                uint256_t hashRegister = 0;
+
+                /* To retrieve the trust account by name we must first retrieve the Name Object */
+                TAO::Register::Object trustNameObject;
+                if(!TAO::Register::GetNameRegister(user->Genesis(), "trust", trustNameObject))
+                    throw APIException(-24, "Trust account not found.");
+        
+                /* Get the address of the trust account register from the name register */
+                hashRegister = trustNameObject.get<uint256_t>("address");
 
                 if(!LLD::Register->ReadState(hashRegister, trustAccount, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-24, "Trust account not found");

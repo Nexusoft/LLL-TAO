@@ -83,7 +83,7 @@ namespace TAO
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
             if(params.find("name") != params.end())
-                CreateName( user->Genesis(), params["name"].get<std::string>(), hashRegister, tx[1]); 
+                tx[1] = CreateNameContract(user->Genesis(), params["name"].get<std::string>(), hashRegister); 
 
             /* Execute the operations layer. */
             if(!tx.Build())

@@ -82,7 +82,7 @@ namespace TAO
             uint256_t hashRegister = LLC::GetRand256();
 
             /* Add a Name record for the trust account */
-            CreateName(user->Genesis(), "trust", hashRegister, tx[0]);
+            tx[0] = CreateNameContract(user->Genesis(), "trust", hashRegister);
 
             /* Set up tx operation to create the trust account register at the same time as sig chain genesis. */
             tx[1] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister
@@ -92,7 +92,7 @@ namespace TAO
             hashRegister = LLC::GetRand256();
 
             /* Add a Name record for the trust account */
-            CreateName(user->Genesis(), "default", hashRegister, tx[2]);
+            tx[2] = CreateNameContract(user->Genesis(), "default", hashRegister);
 
             /* Add the default account register operation to the transaction */
             tx[3] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister

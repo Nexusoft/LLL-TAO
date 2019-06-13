@@ -72,6 +72,20 @@ namespace LLC
 		return keccak;
 	}
 
+	/** SK32
+	*
+	*  32-bit hashing template for strings.
+	*
+	*  @param[in] str The string to hash
+	*
+	*  @return uint32_t skein/keccak hash of the string 
+	*
+	**/
+	inline uint32_t SK32(const std::string& str)
+	{
+		return SK32(str.begin(), str.end());
+	}
+
 
 	/** SK64
      *
@@ -119,6 +133,20 @@ namespace LLC
 		return keccak;
 	}
 
+	/** SK64
+	*
+	*  64-bit hashing template for strings.
+	*
+	*  @param[in] str The string to hash
+	*
+	*  @return uint64_t skein/keccak hash of the string 
+	*
+	**/
+	inline uint64_t SK64(const std::string& str)
+	{
+		return SK64(str.begin(), str.end());
+	}
+
 
 	/** SK256
      *
@@ -164,6 +192,21 @@ namespace LLC
 		Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
 
 		return keccak;
+	}
+
+
+	/** SK256
+	*
+	*  256-bit hashing template for strings.
+	*
+	*  @param[in] str The string to hash
+	*
+	*  @return uint256_t skein/keccak hash of the string 
+	*
+	**/
+	inline uint256_t SK256(const std::string& str)
+	{
+		return SK256(str.begin(), str.end());
 	}
 
 
@@ -292,6 +335,20 @@ namespace LLC
 		return keccak;
 	}
 
+	/** SK512
+	*
+	*  512-bit hashing template for strings.
+	*
+	*  @param[in] str The string to hash
+	*
+	*  @return uint512_t skein/keccak hash of the string 
+	*
+	**/
+	inline uint512_t SK512(const std::string& str)
+	{
+		return SK512(str.begin(), str.end());
+	}
+
 
 	/** SK576
      *
@@ -361,6 +418,20 @@ namespace LLC
 		Keccak_HashFinal(&ctx_keccak, (uint8_t *)&keccak);
 
 		return keccak;
+	}
+
+	/** SK1024
+	*
+	*  1024-bit hashing template for strings.
+	*
+	*  @param[in] str The string to hash
+	*
+	*  @return uint1024_t skein/keccak hash of the string 
+	*
+	**/
+	inline uint1024_t SK1024(const std::string& str)
+	{
+		return SK1024(str.begin(), str.end());
 	}
 }
 

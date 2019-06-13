@@ -27,31 +27,33 @@ namespace TAO
     {
 
 
-        /** CreateName
+        /** CreateNameContract
         *
-        *  Creates a new Name Object register for the given name and register address adds the register operation to the transaction
+        *  Creates a new Name Object register for the given name and register address adds the register 
+        *  operation to the contract
         *
         *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
         *  @param[in] strFullName The Name of the object.  May include the namespace suffix
         *  @param[in] hashRegister The register address that the Name object should resolve to
-        *  @param[out] contract The contract to create a name for.
+        *  
+        *  @return The contract to containing the Name object creation .
         *
         **/
-        void CreateName(const uint256_t& hashGenesis, const std::string strFullName,
-                        const uint256_t& hashRegister, TAO::Operation::Contract& contract);
+        TAO::Operation::Contract CreateNameContract(const uint256_t& hashGenesis, const std::string& strFullName,
+                        const uint256_t& hashRegister);
 
 
-        /** CreateNameFromTransfer
+        /** CreateNameContractFromTransfer
         *
-        *  Creates a new Name Object register for an object being transferred
+        *  Creates a new Name Object register for an object being transferred and adds it to a contract
         *
         *  @param[in] hashTransfer The transaction ID of the transfer transaction being claimed
         *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
         *
-        *  @return contract The contract to create a name for.
+        *  @return The contract to containing the Name object creation .
         *
         **/
-        TAO::Operation::Contract CreateNameFromTransfer(const uint512_t& hashTransfer,
+        TAO::Operation::Contract CreateNameContractFromTransfer(const uint512_t& hashTransfer,
                                     const uint256_t& hashGenesis);
 
 
