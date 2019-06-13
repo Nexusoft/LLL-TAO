@@ -525,10 +525,10 @@ namespace TAO
                     return debug::error(FUNCTION, "last block not in database");
 
                 /* Enforce the minimum interval between stake blocks. */
-                const uint32_t nCurrentInterval = nHeight - stateLast.nHeight;
+                const uint32_t nInterval = nHeight - stateLast.nHeight;
 
-                if(nCurrentInterval <= MinStakeInterval())
-                    return debug::error(FUNCTION, "stake block interval ", nCurrentInterval, " below minimum interval");
+                if(nInterval <= MinStakeInterval())
+                    return debug::error(FUNCTION, "stake block interval ", nInterval, " below minimum interval");
 
                 /* Get pre-state trust account values */
                 nTrustPrev = account.get<uint64_t>("trust");
@@ -545,8 +545,8 @@ namespace TAO
                     return debug::error(FUNCTION, "claimed trust score ", nClaimedTrust, " does not match calculated trust score ", nTrust);
 
                 /* Calculate the coinstake reward */
-                const uint64_t nStakeTime = GetBlockTime() - stateLast.GetBlockTime();
-                nReward = GetCoinstakeReward(nStake, nStakeTime, nTrust, false);
+                const uint64_t nTime = GetBlockTime() - stateLast.GetBlockTime();
+                nReward = GetCoinstakeReward(nStake, nTime, nTrust, false);
 
                 /* Validate the coinstake reward calculation */
                 if(nClaimedReward != nReward)
@@ -627,7 +627,7 @@ namespace TAO
                 "type=", (producer.IsTrust()?"Trust":"Genesis"), ", ",
                 "trust score=", nTrust, ", ",
                 "prev trust score=", nTrustPrev, ", ",
-                "trust change=", (nTrust - nTrustPrev), ", ",
+                "trust change=", int64_t(nTrust - nTrustPrev), ", ",
                 "block age=", nBlockAge, ", ",
                 "stake=", nStake, ", ",
                 "reward=", nReward, ", ",

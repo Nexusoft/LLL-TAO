@@ -460,7 +460,7 @@ namespace Legacy
         LLC::RandAddSeedPerfmon();
 
         /* If it is running, stop stake minter before encrypting wallet */
-        LegacyMinter::GetInstance().StopStakeMinter();
+        LegacyMinter::GetInstance().Stop();
 
         /* Fill keying material (unencrypted key value) and new master key salt with random data using OpenSSL RAND_bytes */
         vMasterKey.resize(WALLET_CRYPTO_KEY_SIZE);
@@ -571,7 +571,7 @@ namespace Legacy
         if(IsCrypted() && CryptoKeyStore::Lock())
         {
             /* Upon successful lock, stop the stake minter if it is running */
-            LegacyMinter::GetInstance().StopStakeMinter();
+            LegacyMinter::GetInstance().Stop();
 
             return true;
         }
@@ -630,7 +630,7 @@ namespace Legacy
                     }
 
                     /* Whether unlocked fully or for minting only, start the stake minter if configured */
-                    LegacyMinter::GetInstance().StartStakeMinter();
+                    LegacyMinter::GetInstance().Start();
 
                     return true;
                 }
