@@ -182,22 +182,26 @@ namespace TAO
 
             if(LLD::Register->HasTrust(user->Genesis()))
             {
-                isGenesis = false;
+                fGenesis = false;
 
                 /* Staking Trust transaction */
 
                 /* Retrieve the trust account register */
-                if(!LLD::Register->ReadTrust(user->Genesis(), trustAccount))
+                TAO::Register::Object reg;
+                if(!LLD::Register->ReadTrust(user->Genesis(), reg))
                    return debug::error(FUNCTION, "Stake Minter unable to retrieve trust account.");
 
-                if(!trustAccount.Parse())
+                if(!reg.Parse())
                     return debug::error(FUNCTION, "Stake Minter unable to parse trust account register.");
+
+                /* Found valid trust account register. Save for minter use. */
+                account = reg;
 
                 return true;
             }
             else
             {
-                isGenesis = true;
+                fGenesis = true;
 
                 /* Staking Genesis for trust account. Trust account is not indexed, look up by register address. */
 
@@ -208,11 +212,11 @@ namespace TAO
                     return debug::error(FUNCTION, "Stake Minter unknown trust account name.");
 
                 /* Retrieve the trust account address from the name register mapping. */
-                uint256_t hashAddressTemp = nameRegister.get<uint256_t>("address");
+                uint256_t hashRegister = nameRegister.get<uint256_t>("address");
 
                 /* Retrieve the trust account */
                 TAO::Register::Object reg;
-                if(!LLD::Register->ReadState(hashAddressTemp, reg))
+                if(!LLD::Register->ReadState(hashRegister, reg))
                     return debug::error(FUNCTION, "Stake Minter unable to retrieve trust account for Genesis.");
 
                 /* Verify we have trust account register for the user account */
@@ -222,18 +226,18 @@ namespace TAO
                 if(reg.Standard() != TAO::Register::OBJECTS::TRUST)
                     return debug::error(FUNCTION, "Invalid trust account register.");
 
-                /* Found the trust account register */
-                hashAddress = hashAddressTemp;
-                trustAccount = reg;
+                /* Found valid trust account register. Save for minter use. For Genesis, need hashAddress also. */
+                hashAddress = hashRegister;
+                account = reg;
 
                 /* Validate that this is a new trust account staking Genesis */
 
                 /* Check that there is no stake. */
-                if(trustAccount.get<uint64_t>("stake") != 0)
+                if(account.get<uint64_t>("stake") != 0)
                     return debug::error(FUNCTION, "Cannot create Genesis with already existing stake");
 
                 /* Check that there is no trust. */
-                if(trustAccount.get<uint64_t>("trust") != 0)
+                if(account.get<uint64_t>("trust") != 0)
                     return debug::error(FUNCTION, "Cannot create Genesis with already existing trust");
             }
 
@@ -242,7 +246,8 @@ namespace TAO
 
 
         /** Retrieves the most recent stake transaction for a user account. */
-        bool TritiumMinter::FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, TAO::Ledger::Transaction& tx)
+        bool TritiumMinter::FindLastStake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user,
+                                          TAO::Ledger::Transaction& tx)
         {
             uint512_t hashLast = 0;
 
@@ -259,7 +264,8 @@ namespace TAO
                     return false;
 
                 /* Test whether the transaction contains a staking operation */
-                if(TAO::Register::Unpack(txCheck[0], TAO::Operation::OP::TRUST) || TAO::Register::Unpack(txCheck[0], TAO::Operation::OP::GENESIS))
+                if(TAO::Register::Unpack(txCheck[0], TAO::Operation::OP::TRUST)
+                    || TAO::Register::Unpack(txCheck[0], TAO::Operation::OP::GENESIS))
                 {
                     /* Found last stake transaction. */
                     tx = txCheck;
@@ -275,7 +281,8 @@ namespace TAO
 
 
         /* Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process. */
-        bool TritiumMinter::CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
+        bool TritiumMinter::CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user,
+                                                 const SecureString& strPIN)
         {
             static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
@@ -288,14 +295,14 @@ namespace TAO
             block = TritiumBlock();
 
             /* Create the base Tritium block. */
-            if(!TAO::Ledger::CreateStakeBlock(user, strPIN, block, isGenesis))
+            if(!TAO::Ledger::CreateStakeBlock(user, strPIN, block, fGenesis))
                 return debug::error(FUNCTION, "Unable to create candidate block");
 
-            if(!isGenesis)
+            if(!fGenesis)
             {
                 /* Staking Trust for existing trust account */
-                uint64_t nTrustPrev = trustAccount.get<uint64_t>("trust");
-                uint64_t nStake = trustAccount.get<uint64_t>("stake");
+                uint64_t nTrustPrev = account.get<uint64_t>("trust");
+                uint64_t nStake = account.get<uint64_t>("stake");
 
                 if(nStake == 0)
                 {
@@ -357,7 +364,7 @@ namespace TAO
                 /* Looking to stake Genesis for new trust account */
 
                 /* Validate that have assigned balance for Genesis */
-                if(trustAccount.get<uint64_t>("balance") == 0)
+                if(account.get<uint64_t>("balance") == 0)
                 {
                     /* Wallet has no balance, or balance unavailable for staking. Increase sleep time to wait for balance. */
                     nSleepTime = 5000;
@@ -392,7 +399,7 @@ namespace TAO
             }
 
             /* Update display stake rate */
-            nStakeRate.store(StakeRate(nTrust, isGenesis));
+            nStakeRate.store(StakeRate(nTrust, fGenesis));
 
             return true;
         }
@@ -409,7 +416,7 @@ namespace TAO
 
             nTrust = 0;
 
-            if(!isGenesis)
+            if(!fGenesis)
             {
                 /* Weight for Trust transactions combines trust weight and block weight. */
                 nTrustWeightCurrent = TrustWeight(nTrust);
@@ -421,10 +428,10 @@ namespace TAO
                 /* Weights for Genesis transactions only use trust weight with its value based on average coin age. */
 
                 /* For Genesis, coin age is current block time less last time trust account register was updated.
-                 * This means that, if someone adds more balance to trust account while staking Genesis, coin age is reset and they must wait
-                 * the full time before staking Genesis again.
+                 * This means that, if someone adds more balance to trust account while staking Genesis, coin age is reset and they
+                 * must wait the full time before staking Genesis again.
                  */
-                uint64_t nCoinAge = block.GetBlockTime() - trustAccount.nModified;
+                uint64_t nCoinAge = block.GetBlockTime() - account.nModified;
 
                 /* Genesis has to wait for coin age to reach minimum. */
                 if(nCoinAge < MinCoinAge())
@@ -432,7 +439,7 @@ namespace TAO
                     /* Record that stake minter is in wait period */
                     fIsWaitPeriod.store(true);
 
-                    /* Increase sleep time to wait for coin age to meet requirement (can't sleep too long or will hang until wakes up on shutdown) */
+                    /* Increase sleep time to wait for coin age (can't sleep too long or will hang until wakes up on shutdown) */
                     nSleepTime = 5000;
 
                     /* Update log every 60 iterations (5 minutes) */
@@ -440,7 +447,8 @@ namespace TAO
                     {
                         uint64_t nRemainingWaitTime = (MinCoinAge() - nCoinAge) / 60; //minutes
 
-                        debug::log(0, FUNCTION, "Stake Minter: Stake balance is immature. ", nRemainingWaitTime, " minutes remaining until staking available.");
+                        debug::log(0, FUNCTION, "Stake Minter: Stake balance is immature. ",
+                            nRemainingWaitTime, " minutes remaining until staking available.");
                     }
 
                     ++nWaitCounter;
@@ -483,10 +491,10 @@ namespace TAO
              * For Genesis, staking balance is the trust account balance. Otherwise (Trust) it is stake balance.
              */
             uint64_t nStake = 0;
-            if (!isGenesis)
-                nStake = trustAccount.get<uint64_t>("stake");
+            if (!fGenesis)
+                nStake = account.get<uint64_t>("stake");
             else
-                nStake = trustAccount.get<uint64_t>("balance");
+                nStake = account.get<uint64_t>("balance");
 
             double nRequired = GetRequiredThreshold(nTrustWeight.load(), nBlockWeight.load(), nStake);
 
@@ -502,7 +510,8 @@ namespace TAO
             /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
              * or network generates a new block (minter must start over with new candidate)
              */
-            while(!TritiumMinter::fstopMinter.load() && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
+            while(!TritiumMinter::fstopMinter.load() && !config::fShutdown.load()
+                && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
             {
                 /* Check that the producer isn't going to orphan any transactions from the same hashGenesis. */
                 Transaction tx;
@@ -514,7 +523,7 @@ namespace TAO
 
                 /* Update the block time for threshold accuracy. */
                 block.UpdateTime();
-                uint32_t nBlockTime = block.GetBlockTime() - block.producer.nTimestamp; // How long have we been working on this block
+                uint32_t nBlockTime = block.GetBlockTime() - block.producer.nTimestamp; // How long working on this block
 
                 /* If just starting on block, wait */
                 if(nBlockTime == 0)
@@ -530,7 +539,7 @@ namespace TAO
                  */
                 double nThreshold = GetCurrentThreshold(nBlockTime, block.nNonce);
 
-                /* If threshhold is not larger than required, wait and keep trying with the same nonce value until threshold increases */
+                /* If threshhold not larger than required, wait and keep trying the same nonce value until threshold increases */
                 if(nThreshold < nRequired)
                 {
                     runtime::sleep(10);
@@ -539,7 +548,8 @@ namespace TAO
 
                 /* Log every 1000 attempts */
                 if(block.nNonce % 1000 == 0)
-                    debug::log(3, FUNCTION, "Threshold ", nThreshold, " exceeds required ", nRequired,", mining Proof of Stake with nonce ", block.nNonce);
+                    debug::log(3, FUNCTION, "Threshold ", nThreshold, " exceeds required ",
+                        nRequired,", mining Proof of Stake with nonce ", block.nNonce);
 
                 /* Handle if block is found. */
                 uint1024_t hashProof = block.StakeHash();
@@ -565,23 +575,23 @@ namespace TAO
             uint64_t nStakeTime = 0;
             uint64_t nCoinstakeReward = 0;
             uint64_t nStake = 0;
-            if (!isGenesis)
-                nStake = trustAccount.get<uint64_t>("stake");
+            if (!fGenesis)
+                nStake = account.get<uint64_t>("stake");
             else
-                nStake = trustAccount.get<uint64_t>("balance");
+                nStake = account.get<uint64_t>("balance");
 
             /* Calculate the coinstake reward */
-            if(!isGenesis)
+            if(!fGenesis)
             {
                 /* Trust reward based on time since last stake block. */
                 nStakeTime = block.GetBlockTime() - nTimeLastStake;
-                nCoinstakeReward = GetCoinstakeReward(nStake, nStakeTime, nTrust, isGenesis);
+                nCoinstakeReward = GetCoinstakeReward(nStake, nStakeTime, nTrust, fGenesis);
             }
             else
             {
                 /* Genesis reward based on coin age as defined by register timestamp. */
-                nStakeTime = block.GetBlockTime() - trustAccount.nModified;
-                nCoinstakeReward = GetCoinstakeReward(nStake, nStakeTime, 0, isGenesis);
+                nStakeTime = block.GetBlockTime() - account.nModified;
+                nCoinstakeReward = GetCoinstakeReward(nStake, nStakeTime, 0, fGenesis);
             }
 
             /* Add coinstake reward to producer */
@@ -594,7 +604,7 @@ namespace TAO
             if(!block.producer.Build())
                 return debug::error(FUNCTION, "Coinstake transaction failed to build");
 
-            /* With coinstake producer completed, can now sign the block producer */
+            /* Coinstake producer now complete. Sign the block producer. */
             block.producer.Sign(user->Generate(block.producer.nSequence, strPIN));
 
             /* Build the Merkle Root. */
@@ -615,18 +625,6 @@ namespace TAO
             /* Print the newly found block. */
             block.print();
 
-            /* Check the block. */
-            if(!block.Check())
-                return debug::error(FUNCTION, "Check block failed");
-
-            /* Check the stake. */
-            if(!block.CheckStake())
-                return debug::error(FUNCTION, "Check stake failed");
-
-            /* Check block for difficulty requirement. */
-            if(!block.VerifyWork())
-                return debug::error(FUNCTION, "Verify work failed");
-
             /* Log block found */
             if(config::GetArg("-verbose", 0) > 0)
             {
@@ -643,7 +641,7 @@ namespace TAO
             }
 
             /* Process the block and relay to network if it gets accepted into main chain.
-             * This method will call TritiumBlock::Accept() and BlockState::Index()
+             * This method will call TritiumBlock::Check() TritiumBlock::Accept() and BlockState::Index()
              * After all is approved, BlockState::Index() will call BlockState::SetBest()
              * to set the new best chain. This method relays the new block to the network.
              */
@@ -653,8 +651,8 @@ namespace TAO
                 return false;
             }
 
-            if(isGenesis)
-                isGenesis = false;
+            if(fGenesis)
+                fGenesis = false;
 
             return true;
         }
@@ -687,11 +685,6 @@ namespace TAO
                         return debug::error(FUNCTION, "TritiumMinter: Unable to sign Tritium Block ",
                                             block.GetHash().ToString().substr(0, 20));
 
-                    /* Ensure the signed block is a valid signature */
-                    if(!block.VerifySignature(key))
-                        return debug::error(FUNCTION, "TritiumMinter: Failed verifying Tritium Block signature ",
-                                            block.GetHash().ToString().substr(0, 20));
-
                     break;
                 }
 
@@ -709,11 +702,6 @@ namespace TAO
                     /* Generate the signature. */
                     if(!block.GenerateSignature(key))
                         return debug::error(FUNCTION, "TritiumMinter: Unable to sign Tritium Block ",
-                                            block.GetHash().ToString().substr(0, 20));
-
-                    /* Ensure the signed block is a valid signature */
-                    if(!block.VerifySignature(key))
-                        return debug::error(FUNCTION, "TritiumMinter: Failed verifying Tritium Block signature ",
                                             block.GetHash().ToString().substr(0, 20));
 
                     break;
@@ -793,11 +781,13 @@ namespace TAO
 
             }
 
-            /* If break because cannot continue (error retrieving user account or FindTrust failed) must wait for stop or shutdown */
+            /* If break because cannot continue (error retrieving user account or FindTrust failed), wait for stop or shutdown */
             while(!TritiumMinter::fstopMinter.load() && !config::fShutdown.load())
                 runtime::sleep(pTritiumMinter->nSleepTime);
 
-            /* If get here because fShutdown set, have to wait for join. Join is issued in StopStakeMinter, which needs to be called by shutdown process, too. */
+            /* If get here because fShutdown set, have to wait for join.
+             * Join is issued in StopStakeMinter, which needs to be called by shutdown process, too.
+             */
             while(!TritiumMinter::fstopMinter.load())
                 runtime::sleep(100);
 

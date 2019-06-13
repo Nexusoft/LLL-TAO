@@ -16,8 +16,8 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_TYPES_TRITIUM_MINTER_H
 
 #include <TAO/Ledger/types/base_minter.h>
-#include <TAO/Ledger/types/sigchain.h> 
-#include <TAO/Ledger/types/tritium.h> 
+#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/tritium.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -39,7 +39,7 @@ namespace TAO
     /** @class TritiumMinter
      *
      * This class performs all operations for mining blocks on the Proof of Stake channel.
-     * It is implemented as a Singleton instance retrieved by calling GetInstance(). 
+     * It is implemented as a Singleton instance retrieved by calling GetInstance().
      *
      * Staking does not start, though, until StartStakeMinter() is called for the first time.
      * It requires single user mode, with a user account unlocked for minting before it
@@ -47,7 +47,7 @@ namespace TAO
      *
      * The stake balance and trust score from the trust account will be used for Proof of Stake.
      * A new trust account register must be created for the active user account signature chain
-     * before it can successfully stake. 
+     * before it can successfully stake.
      *
      * The initial stake transaction for a new trust account is the Genesis transaction using OP::GENESIS
      * in the block producer. All subsequent stake transactions are Trust transactions and use OP::TRUST.
@@ -151,7 +151,7 @@ namespace TAO
 
 
         /** Trust account to use for staking. **/
-        TAO::Register::Object trustAccount;
+        TAO::Register::Object account;
 
 
         /** The candidate block that the stake minter is attempting to mine **/
@@ -159,27 +159,27 @@ namespace TAO
 
 
         /** Flag to indicate whether staking for Genesis or Trust **/
-        bool isGenesis;
+        bool fGenesis;
 
 
         /** Block time of last stake block found by current trust account. */
         uint64_t nTimeLastStake;
 
 
-        /** Trust score applied for the candidate block that the stake minter is attempting to mine **/
+        /** Trust score applied for the candidate block the stake minter is attempting to mine **/
         uint64_t nTrust;
 
 
-        /** Block age (time since last stake for trust account) applied for the candidate block that the stake minter is attempting to mine **/
+        /** Block age (time since last stake for trust account) for the candidate block the stake minter is attempting to mine **/
         uint64_t nBlockAge;
 
 
         /** Default constructor **/
         TritiumMinter()
         : hashAddress(0)
-        , trustAccount()
+        , account()
         , block()
-        , isGenesis(false)
+        , fGenesis(false)
         , nTimeLastStake()
         , nTrust(0)
         , nBlockAge(0)
@@ -199,7 +199,7 @@ namespace TAO
 
         /** FindTrust
          *
-         *  Gets the trust account for the current active signature chain and stores it into trustAccount.
+         *  Gets the trust account for the current active signature chain and stores it into account.
          *
          *  @param[in] user - the currently active signature chain
          *

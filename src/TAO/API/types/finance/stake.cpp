@@ -63,17 +63,6 @@ namespace TAO
             if(!users->CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions.");
 
-            /* Create the transaction. */
-            TAO::Ledger::Transaction tx;
-            if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-25, "Failed to create transaction.");
-
-            /* Register address is a hash of a name in the format of namespacehash:objecttype:name */
-            std::string strRegisterName = TAO::Register::NamespaceHash(user->UserName().c_str()).ToString() + ":token:trust";
-
-            /* Build the address from an SK256 hash of register name. Need for indexed trust accounts, also, as return value */
-            uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strRegisterName.begin(), strRegisterName.end()));
-
             /* Get trust account. Any trust account that has completed Genesis will be indexed. */
             TAO::Register::Object trustAccount;
 
@@ -88,23 +77,13 @@ namespace TAO
             }
             else
             {
-                /* TODO - Add "pending stake" to trust account and allow set/stake for pre-Genesis */
                 throw APIException(-25, "Cannot set stake for trust account until after Genesis transaction");
-
-                if(!LLD::Register->ReadState(hashRegister, trustAccount, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-24, "Trust account not found");
-
-                if(!trustAccount.Parse())
-                    throw APIException(-24, "Unable to parse trust account.");
-
-                /* Check the object standard. */
-                if(trustAccount.Standard() != TAO::Register::OBJECTS::TRUST)
-                    throw APIException(-24, "Register is not a trust account");
-
-                /* Check the account is a NXS account */
-                if(trustAccount.get<uint256_t>("token") != 0)
-                    throw APIException(-24, "Trust account is not a NXS account.");
             }
+
+            /* Create the transaction. */
+            TAO::Ledger::Transaction tx;
+            if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
+                throw APIException(-25, "Failed to create transaction.");
 
             uint64_t nBalancePrev = trustAccount.get<uint64_t>("balance");
             uint64_t nStakePrev = trustAccount.get<uint64_t>("stake");
@@ -132,6 +111,8 @@ namespace TAO
 
                 tx[0] << uint8_t(TAO::Operation::OP::UNSTAKE) << nRemoveStake << nTrustPenalty;
             }
+            else
+                throw APIException(-26, "Stake not changed");
 
             /* Execute the operations layer. */
             if(!tx.Build())
