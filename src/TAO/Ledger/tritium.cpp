@@ -471,17 +471,17 @@ namespace TAO
             producer[0].Reset(TAO::Operation::Contract::ALL);
 
             /* Get the trust object register. */
-            TAO::Register::Object trustAccount;
+            TAO::Register::Object account;
 
             /* Deserialize from the stream. */
             uint8_t nState = 0;
             producer[0] >>= nState;
 
             /* Get the pre-state. */
-            producer[0] >>= trustAccount;
+            producer[0] >>= account;
 
             /* Parse the object. */
-            if(!trustAccount.Parse())
+            if(!account.Parse())
                 return debug::error(FUNCTION, "failed to parse object register from pre-state");
 
             /* Get previous block. Block time used for block age/coin age calculation */
@@ -495,7 +495,7 @@ namespace TAO
 
             uint64_t nTrust = 0;
             uint64_t nTrustPrev = 0;
-            uint64_t nCoinstakeReward = 0;
+            uint64_t nReward = 0;
             uint64_t nBlockAge = 0;
             uint64_t nStake = 0;
 
@@ -531,8 +531,8 @@ namespace TAO
                     return debug::error(FUNCTION, "stake block interval ", nCurrentInterval, " below minimum interval");
 
                 /* Get pre-state trust account values */
-                nTrustPrev = trustAccount.get<uint64_t>("trust");
-                nStake     = trustAccount.get<uint64_t>("stake");
+                nTrustPrev = account.get<uint64_t>("trust");
+                nStake     = account.get<uint64_t>("stake");
 
                 /* Calculate Block Age (time from last stake block until previous block) */
                 nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
@@ -546,11 +546,11 @@ namespace TAO
 
                 /* Calculate the coinstake reward */
                 const uint64_t nStakeTime = GetBlockTime() - stateLast.GetBlockTime();
-                nCoinstakeReward = GetCoinstakeReward(nStake, nStakeTime, nTrust, false);
+                nReward = GetCoinstakeReward(nStake, nStakeTime, nTrust, false);
 
                 /* Validate the coinstake reward calculation */
-                if(nClaimedReward != nCoinstakeReward)
-                    return debug::error(FUNCTION, "claimed stake reward ", nClaimedReward, " does not match calculated reward ", nCoinstakeReward);
+                if(nClaimedReward != nReward)
+                    return debug::error(FUNCTION, "claimed stake reward ", nClaimedReward, " does not match calculated reward ", nReward);
 
                 /* Calculate Trust Weight corresponding to new trust score. */
                 nTrustWeight = TrustWeight(nTrust);
@@ -576,28 +576,28 @@ namespace TAO
                 producer[0] >> nClaimedReward;
 
                 /* Get Genesis stake from the trust account pre-state balance. Genesis reward based on balance (that will move to stake) */
-                nStake = trustAccount.get<uint64_t>("balance");
+                nStake = account.get<uint64_t>("balance");
 
                 /* Genesis transaction can't have any transactions. */
                 if(vtx.size() != 0)
                     return debug::error(FUNCTION, "genesis cannot include transactions");
 
-                /* Calculate the Coinstake Age. */
-                const uint64_t nCoinAge = GetBlockTime() - trustAccount.nModified;
+                /* Calculate the Coin Age. */
+                const uint64_t nAge = GetBlockTime() - account.nModified;
 
                 /* Validate that Genesis coin age exceeds required minimum. */
-                if(nCoinAge < MinCoinAge())
+                if(nAge < MinCoinAge())
                     return debug::error(FUNCTION, "genesis age is immature");
 
                 /* Calculate the coinstake reward */
-                nCoinstakeReward = GetCoinstakeReward(nStake, nCoinAge, 0, true);
+                nReward = GetCoinstakeReward(nStake, nAge, 0, true);
 
                 /* Validate the coinstake reward calculation */
-                if(nClaimedReward != nCoinstakeReward)
-                    return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nCoinstakeReward);
+                if(nClaimedReward != nReward)
+                    return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nReward);
 
                 /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
-                nTrustWeight = GenesisWeight(nCoinAge);
+                nTrustWeight = GenesisWeight(nAge);
             }
 
             else
@@ -622,7 +622,7 @@ namespace TAO
 
             /* Verbose logging. */
             debug::log(2, FUNCTION,
-                "hash=", StakeHash().ToString().substr(0, 20), ", ",
+                "stake hash=", StakeHash().ToString().substr(0, 20), ", ",
                 "target=", bnTarget.getuint1024().ToString().substr(0, 20), ", ",
                 "type=", (producer.IsTrust()?"Trust":"Genesis"), ", ",
                 "trust score=", nTrust, ", ",
@@ -630,7 +630,7 @@ namespace TAO
                 "trust change=", (nTrust - nTrustPrev), ", ",
                 "block age=", nBlockAge, ", ",
                 "stake=", nStake, ", ",
-                "reward=", nCoinstakeReward, ", ",
+                "reward=", nReward, ", ",
                 "trust weight=", nTrustWeight, ", ",
                 "block weight=", nBlockWeight, ", ",
                 "block time=", nBlockTime, ", ",
