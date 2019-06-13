@@ -31,6 +31,9 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
+        /* Returns the sigchain the account logged in. */
+        static memory::encrypted_ptr<TAO::Ledger::SignatureChain> null_ptr;
+
 
         /** Default Constructor. **/
         Users::Users()
@@ -181,20 +184,19 @@ namespace TAO
         }
 
 
-        /* Returns the sigchain the account logged in. */
-        static memory::encrypted_ptr<TAO::Ledger::SignatureChain> null_ptr;
+        /*  Returns the sigchain the account logged in. */
         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Users::GetAccount(uint64_t nSession) const
         {
             LOCK(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint64_t nSessionToUse = config::fMultiuser.load() ? nSession : 0;
+            uint64_t nUse = config::fMultiuser.load() ? nSession : 0;
 
             /* Check if you are logged in. */
-            if(!mapSessions.count(nSessionToUse))
+            if(!mapSessions.count(nUse))
                 return null_ptr;
 
-            return mapSessions[nSessionToUse];
+            return mapSessions[nUse];
         }
 
 

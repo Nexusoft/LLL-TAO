@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 
+#include <TAO/Operation/types/contract.h>
+
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/pinunlock.h>
 
@@ -23,6 +25,7 @@ ________________________________________________________________________________
 #include <condition_variable>
 #include <thread>
 #include <atomic>
+#include <vector>
 
 
 
@@ -165,7 +168,7 @@ namespace TAO
              *  @return The genesis ID if logged in.
              *
              **/
-            uint256_t GetCallersGenesis(const json::json & params) const;
+            uint256_t GetCallersGenesis(const json::json& params) const;
 
 
             /** GetAccount
@@ -396,6 +399,58 @@ namespace TAO
               *
               **/
               void NotifyEvent();
+
+
+
+              /** GetOutstanding
+               *
+               *  Gets the currently outstanding contracts that have not been matched with a credit or claim.
+               *
+               *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+               *  @param[out] vContracts The array of outstanding contracts.
+               *
+               **/
+              void GetOutstanding(const uint256_t& hashGenesis, std::vector<TAO::Operation::Contract> &vContracts);
+
+
+          private:
+
+
+              /** get_debits
+               *
+               *  Get the outstanding debits.
+               *
+               *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+               *  @param[out] vContracts The array of outstanding debit contracts.
+               *
+               **/
+              void get_debits(const uint256_t& hashGenesis, std::vector<TAO::Operation::Contract> &vContracts);
+
+
+              /** get_coinbases
+               *
+               *  Get the outstanding coinbases.
+               *
+               *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+               *  @param[out] vContracts The array of outstanding coinbase contracts.
+               *
+               **/
+              void get_coinbases(const uint256_t& hashGenesis, std::vector<TAO::Operation::Contract> &vContracts);
+
+
+              /** get_transfers
+               *
+               *  Get the outstanding asset transfers.
+               *
+               *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+               *  @param[out] vContracts The array of outstanding transfer contracts.
+               *
+               **/
+              void get_transfers(const uint256_t& hashGenesis, std::vector<TAO::Operation::Contract> &vContracts);
+
+
+
+
 
         };
     }

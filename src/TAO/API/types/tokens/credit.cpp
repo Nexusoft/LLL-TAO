@@ -136,7 +136,7 @@ namespace TAO
                     throw APIException(-24, "Failed to parse object from debit transaction");
 
                 /* Get the object standard. */
-                uint8_t nStandard = debitToObject.Base() ;
+                uint8_t nStandard = debitToObject.Base();
 
                 /* In order to know how to process the credit we need to know whether it is a split payment or not.
                    for split payments the hashTo object will be an Asset, and the owner of that asset must be a token.

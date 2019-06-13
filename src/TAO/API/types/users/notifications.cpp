@@ -38,6 +38,159 @@ namespace TAO
     namespace API
     {
 
+        /*  Gets the currently outstanding contracts that have not been matched with a credit or claim. */
+        bool Users::GetOutstanding(const uint256_t& hashGenesis, std::vector<TAO::Operation::Contract> &vContracts)
+        {
+            /* Get the last transaction. */
+            uint512_t hashLast = 0;
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
+                return debug::error(FUNCTION, "No transactions found");
+
+            /* Loop until genesis. */
+            while(hashLast != 0)
+            {
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashLast, tx))
+                    return debug::error(FUNCTION, "Failed to read transaction");
+
+                /* Loop through all contracts and add coinbase contracts to vector. */
+                uint32_t nContracts = tx.Size();
+                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                {
+                    /* Get the operation primitive type. */
+                    uint8_t OPERATION = tx[nContract].Primitive();
+
+                    switch(OPERATION)
+                    {
+                        case TAO::Operation::OP::DEBIT:
+                        {
+                            break;
+                        }
+                        case TAO::Operation::OP::COINBASE:
+                        {
+                            vContracts.push_back(tx[nContract]);
+                            break;
+                        }
+                        case TAO::Operation::OP::TRANSFER:
+                        {
+                            break;
+                        }
+                        default:
+                        {
+                            break;
+                        }
+                    }
+
+                }
+
+                /* Set the next last. */
+                hashLast = tx.hashPrevTx;
+            }
+
+            return true;
+        }
+
+
+        /* Get the outstanding debits. */
+        bool Users::get_debits(const uint256_t& hashGenesis, std::vector<TAO::Operation::Contract> &vContracts)
+        {
+            /* Get the last transaction. */
+            uint512_t hashLast = 0;
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
+                return debug::error(FUNCTION, "No transactions found");
+
+
+            /* Loop until genesis. */
+            while(hashLast != 0)
+            {
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashLast, tx))
+                    return debug::error(FUNCTION, "Failed to read transaction");
+
+                /* Set the next last. */
+                hashLast = tx.hashPrevTx;
+
+                /* Loop through all contracts. */
+                uint32_t nContracts = tx.Size();
+                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                {
+                    /* Attempt to unpack a register script. */
+                    //uint256_t hashAddress;
+                    //TAO::Register::Object object;
+                    if(!TAO::Register::Unpack(tx[nContract], TAO::Operation::OP::DEBIT))
+                        continue;
+
+                    /* Parse out the object register. */
+                    if(!object.Parse())
+                        continue;
+
+                    /* Check that it is an object. */
+                    if(object.nType != TAO::Register::REGISTER::OBJECT)
+                        continue;
+
+                    /* Check that it is an account. */
+                    if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                        continue;
+
+                    /* Get the token address. */
+                    uint256_t hashToken;
+                    if(!LLD::Register->ReadIdentifier(object.get<uint256_t>("token"), hashToken))
+                        continue;
+
+
+                    //vRegisters.push_back(std::make_tuple(hashAddress, hashToken, object.get<uint64_t>("balance")));
+
+                    vContracts.push_back(tx[nContract]);
+                }
+            }
+
+            return true;
+        }
+
+
+        /*  Get the outstanding coinbases. */
+        bool Users::get_coinbases(const uint256_t& hashGenesis, std::vector<TAO::Operation::Contract> &vContracts)
+        {
+            /* Get the last transaction. */
+            uint512_t hashLast = 0;
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
+                return debug::error(FUNCTION, "No transactions found");
+
+
+            /* Loop until genesis. */
+            while(hashLast != 0)
+            {
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashLast, tx))
+                    return debug::error(FUNCTION, "Failed to read transaction");
+
+                /* Loop through all contracts and add coinbase contracts to vector. */
+                uint32_t nContracts = tx.Size();
+                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                {
+                    if(TAO::Register::Unpack(tx[nContract], TAO::Operation::OP::COINBASE))
+                        vContracts.push_back(tx[nContract]);
+                }
+
+                /* Set the next last. */
+                hashLast = tx.hashPrevTx;
+            }
+
+            return true;
+        }
+
+
+        /*  Get the outstanding asset transfers. */
+        bool Users::get_transfers(const uint256_t& hashGenesis, std::vector<TAO::Operation::Contract> &vContracts)
+        {
+
+            return true;
+        }
+
+
         /* Get a user's account. */
         json::json Users::Notifications(const json::json& params, bool fHelp)
         {
@@ -74,83 +227,7 @@ namespace TAO
                 nLimit = std::stoul(params["limit"].get<std::string>());
 
 
-            /* Get the last transaction. */
-            uint512_t hashLast = 0;
-            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
-                throw APIException(-28, "No transactions found");
 
-            /* Keep a running list of owned registers. */
-            std::vector<std::tuple<uint256_t, uint256_t, uint64_t> > vRegisters;
-
-            /* Loop until genesis. */
-            while(hashLast != 0)
-            {
-                /* Get the transaction from disk. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashLast, tx))
-                    throw APIException(-28, "Failed to read transaction");
-
-                /* Set the next last. */
-                hashLast = tx.hashPrevTx;
-
-                /* Loop through all contracts. */
-                uint32_t nContracts = tx.Size();
-
-                json::json contracts = json::json::array();
-
-                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
-                {
-                    /* Attempt to unpack a coinbase transaction. */
-                    if(TAO::Register::Unpack(tx[nContract], TAO::Operation::OP::COINBASE))
-                    {
-                        /* Create a json contract object, manually add in contract ID. */
-                        json::json contract = ContractToJSON(tx[nContract], nContract);
-
-                        /* Push back in vector. */
-                        contracts.push_back(contract);
-                        continue;
-                    }
-
-                    /* Register address. */
-                    uint256_t hashAddress;
-
-                    /* Attempt to unpack a register script. */
-                    TAO::Register::Object object;
-                    if(!TAO::Register::Unpack(tx[nContract], object, hashAddress))
-                        continue;
-
-                    /* Check that it is an object. */
-                    if(object.nType != TAO::Register::REGISTER::OBJECT)
-                        continue;
-
-                    /* Parse out the object register. */
-                    if(!object.Parse())
-                        continue;
-
-                    /* Check that it is an account. */
-                    if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
-                        continue;
-
-                    /* Get the token address. */
-                    uint256_t hashToken;
-                    if(!LLD::Register->ReadIdentifier(object.get<uint256_t>("token"), hashToken))
-                        continue;
-
-                    /* Push the token identifier to list to check. */
-                    vRegisters.push_back(std::make_tuple(hashAddress, hashToken, object.get<uint64_t>("balance")));
-
-                }
-
-                /* Add in coinbase contracts, if any. */
-                if(contracts.size())
-                {
-                    json::json obj;
-                    obj["txid"] = tx.GetHash().ToString();
-                    obj["contracts"] = contracts;
-                    ret.push_back(obj);
-                }
-
-            }
 
             /* Start with sequence 0 (chronological order). */
             uint32_t nSequence = 0;
@@ -240,13 +317,6 @@ namespace TAO
                     ++nSequence;
                 }
             }
-
-            /*
-            GetPartials()
-            GetDebits()
-            GetTransfers()
-            GetCoinbases()
-            */
 
             /* Get notifications for personal genesis indexes. */
             for(uint32_t nSequence = 0; ; ++nSequence)

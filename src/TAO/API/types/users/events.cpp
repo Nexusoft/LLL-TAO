@@ -130,12 +130,6 @@ namespace TAO
                             /* Get the opcode. */
                             std::string strOP = contract["OP"];
 
-                            /* Check for output field. */
-                            if(contract.find("output") == contract.end())
-                                throw APIException(-25, "Contract missing output (contract id)");
-
-                            /* Set the contract ID. */
-                            nContract = contract["output"];
 
                             /* Check for Debits. */
                             if(strOP == "DEBIT")
@@ -151,6 +145,13 @@ namespace TAO
                                 /* Check for amount field. */
                                 if(contract.find("amount") == contract.end())
                                     throw APIException(-25, "Debit contract missing amount");
+
+                                /* Check for output field. */
+                                if(contract.find("output") == contract.end())
+                                    throw APIException(-25, "Contract missing output (contract id)");
+
+                                /* Set the contract ID. */
+                                nContract = contract["output"];
 
                                 /* Set to and from hashes and amount. */
                                 hashFrom.SetHex(contract["from"]);

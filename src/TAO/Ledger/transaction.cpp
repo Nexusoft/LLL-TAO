@@ -94,7 +94,7 @@ namespace TAO
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
 
             /* Bind this transaction. */
-            vContracts[n].Bind(*this);
+            vContracts[n].Bind(*this, n);
 
             return vContracts[n];
         }
@@ -108,7 +108,7 @@ namespace TAO
                 vContracts.resize(n + 1);
 
             /* Bind this transaction. */
-            vContracts[n].Bind(*this);
+            vContracts[n].Bind(*this, n);
 
             return vContracts[n];
         }
@@ -190,14 +190,18 @@ namespace TAO
             std::map<uint256_t, TAO::Register::State> mapStates;
 
             /* Run through all the contracts. */
+            uint32_t nContract = 0;
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(*this);
+                contract.Bind(*this, nContract);
 
                 /* Verify the register pre-states. */
                 if(!TAO::Register::Verify(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
+
+                /* Increment the contract id. */
+                ++nContract;
             }
 
             return true;
@@ -211,14 +215,18 @@ namespace TAO
             std::map<uint256_t, TAO::Register::State> mapStates;
 
             /* Run through all the contracts. */
+            uint32_t nContract = 0;
             for(auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(*this);
+                contract.Bind(*this, nContract);
 
                 /* Calculate the pre-states and post-states. */
                 if(!TAO::Register::Build(contract, mapStates))
                     return false;
+
+                /* Increment the contract id. */
+                ++nContract;
             }
 
             return true;
@@ -317,14 +325,18 @@ namespace TAO
             }
 
             /* Run through all the contracts. */
+            uint32_t nContract = 0;
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(*this);
+                contract.Bind(*this, nContract);
 
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags))
                     return false;
+
+                /* Increment the contract id. */
+                ++nContract;
             }
 
             return true;

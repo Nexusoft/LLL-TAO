@@ -81,12 +81,11 @@ namespace TAO
         *  Converts a serialized contract stream to formattted JSON
         *
         *  @param[in] contract The contract to de-serialize
-        *  @param[in] nContract the contract ID.
         *
         *  @return the formatted JSON object
         *
         **/
-        json::json ContractToJSON(const TAO::Operation::Contract& contract, uint32_t nContract);
+        json::json ContractToJSON(const TAO::Operation::Contract& contract);
 
 
         /** ObjectToJSON
