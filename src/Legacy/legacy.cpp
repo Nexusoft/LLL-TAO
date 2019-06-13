@@ -141,23 +141,23 @@ namespace Legacy
             return debug::error(FUNCTION, "size limits failed");
 
         /* Make sure the Block was Created within Active Channel. */
-        if(nChannel > 2)
-            return debug::error(FUNCTION, "channel out of Range.");
+        if(GetChannel() > 2)
+            return debug::error(FUNCTION, "channel out of range");
 
         /* Check that the time was within range. */
-        if(nTime > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+        if(GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
             return debug::error(FUNCTION, "block timestamp too far in the future");
 
         /* Check the Current Version Block Time-Lock. */
-        if(!TAO::Ledger::VersionActive(nTime, nVersion))
+        if(!TAO::Ledger::VersionActive(GetBlockTime(), nVersion))
             return debug::error(FUNCTION, "block created with invalid version");
 
         /* Check the Network Launch Time-Lock. */
-        if(!TAO::Ledger::NetworkActive(nTime))
+        if(!TAO::Ledger::NetworkActive(GetBlockTime()))
             return debug::error(FUNCTION, "block created before network time-lock");
 
         /* Check the Current Channel Time-Lock. */
-        if(!TAO::Ledger::ChannelActive(nTime, nChannel))
+        if(!TAO::Ledger::ChannelActive(GetBlockTime(), GetChannel()))
             return debug::error(FUNCTION, "block created with invalid version");
 
         /* Check the Required Mining Outputs. */
@@ -171,7 +171,7 @@ namespace Legacy
                 return debug::error(FUNCTION, "coinbase too small");
 
             /* Check the ambassador and developer addresses. */
-            if(!config::fTestNet.load())
+            if(!config::fTestNet.load() && nHeight != 112283) //112283 is an exception before clean rules implemented for sigs
             {
                 /* Check the ambassador signatures. */
                 if(!VerifyAddressList(vtx[0].vout[nSize - 2].scriptPubKey,
@@ -221,12 +221,6 @@ namespace Legacy
         else
             return debug::error(FUNCTION, "unknown block type");
 
-        /* Check for duplicate Coinbase / Coinstake Transactions. */
-        uint32_t nSize = (uint32_t)vtx.size();
-        for(uint32_t i = 1; i < nSize; ++i)
-            if(vtx[i].IsCoinBase() || vtx[i].IsCoinStake())
-                return debug::error(FUNCTION, "more than one coinbase / coinstake");
-
         /* Check coinbase/coinstake timestamp is at least 20 minutes before block time */
         if(nTime > (uint64_t)vtx[0].nTime + ((nVersion < 4) ? 1200 : 3600))
             return debug::error(FUNCTION, "coinbase/coinstake timestamp is too early");
@@ -239,26 +233,30 @@ namespace Legacy
         uint32_t nSigOps = 0;
 
         /* Check all the transactions. */
-        uint512_t hashTx = 0;
-        for(const auto& tx : vtx)
+        uint32_t nSize = (uint32_t)vtx.size();
+        for(uint32_t i = 0; i < nSize; ++i)
         {
+            /* Check for coinbase / coinstake. */
+            if(i != 0 && (vtx[i].IsCoinBase() || vtx[i].IsCoinStake()))
+                return debug::error(FUNCTION, "more than one coinbase / coinstake");
+
             /* Get the tx hash. */
-            hashTx = tx.GetHash();
+            uint512_t hashTx  = vtx[i].GetHash();
 
             /* Insert txid into set to check for duplicates. */
             setUniqueTx.insert(hashTx);
             vHashes.push_back(hashTx);
 
             /* Check the transaction timestamp. */
-            if(nTime < (uint64_t)tx.nTime)
+            if(nTime < (uint64_t)vtx[i].nTime)
                 return debug::error(FUNCTION, "block timestamp earlier than transaction timestamp");
 
             /* Check the transaction for validitity. */
-            if(!tx.CheckTransaction())
+            if(!vtx[i].CheckTransaction())
                 return debug::error(FUNCTION, "check transaction failed.");
 
             /* Calculate the signature operations. */
-            nSigOps += tx.GetLegacySigOpCount();
+            nSigOps += vtx[i].GetLegacySigOpCount();
         }
 
         /* Check for duplicate txid's. */
@@ -326,20 +324,14 @@ namespace Legacy
         if(statePrev.nHeight + 1 != nHeight)
             return debug::error(FUNCTION, "incorrect block height.");
 
-        /* Get the proof hash for this block. */
-        uint1024_t hash = (nVersion < 5 ? GetHash() : nChannel == 0 ? StakeHash() : ProofHash());
-
-        /* Get the target hash for this block. */
-        uint1024_t hashTarget = LLC::CBigNum().SetCompact(nBits).getuint1024();
-
         /* Verbose logging of proof and target. */
-        debug::log(2, "  proof:  ", hash.ToString().substr(0, 30));
+        debug::log(2, "  proof:  ", (nVersion < 5 ? GetHash() : nChannel == 0 ? StakeHash() : ProofHash()).ToString().substr(0, 30));
 
         /* Channel switched output. */
         if(nChannel == 1)
             debug::log(2, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(nBits, 1));
         else
-            debug::log(2, "  target: ", hashTarget.ToString().substr(0, 30));
+            debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().ToString().substr(0, 30));
 
         /* Check that the nBits match the current Difficulty. **/
         if(nBits != TAO::Ledger::GetNextTargetRequired(statePrev, nChannel))

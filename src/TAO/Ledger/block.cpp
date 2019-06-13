@@ -270,7 +270,6 @@ namespace TAO
             }
             if(nChannel == 2)
             {
-
                 /* Get the hash target. */
                 LLC::CBigNum bnTarget;
                 bnTarget.SetCompact(nBits);

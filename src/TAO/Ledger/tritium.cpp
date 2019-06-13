@@ -126,47 +126,27 @@ namespace TAO
         {
             /* Check the Size limits of the Current Block. */
             if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
-                return debug::error(FUNCTION, "size ", ::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION), " limits failed ", MAX_BLOCK_SIZE);
+                return debug::error(FUNCTION, "size limits failed ", MAX_BLOCK_SIZE);
 
             /* Make sure the Block was Created within Active Channel. */
             if(GetChannel() > (config::GetBoolArg("-private") ? 3 : 2))
-                return debug::error(FUNCTION, "channel out of Range.");
+                return debug::error(FUNCTION, "channel out of range");
 
             /* Check that the time was within range. */
             if(GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT * 60)
                 return debug::error(FUNCTION, "block timestamp too far in the future");
 
-            /* Do not allow blocks to be accepted above the current block version. */
-            if(nVersion == 0 || nVersion > (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION))
-                return debug::error(FUNCTION, "invalid block version");
-
-            /* Only allow POS blocks in Version 4. */
-            if(IsProofOfStake() && nVersion < 4)
-                return debug::error(FUNCTION, "proof-of-stake rejected until version 4");
-
-            /* Check the Proof of Work Claims. */
-            if(!VerifyWork())
-                return debug::error(FUNCTION, "invalid proof of stake");
+            /* Check the Current Version Block Time-Lock. */
+            if(!VersionActive(GetBlockTime(), nVersion))
+                return debug::error(FUNCTION, "block created with invalid version");
 
             /* Check the Network Launch Time-Lock. */
-            if(GetBlockTime() <= (config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK))
+            if(!NetworkActive(GetBlockTime()))
                 return debug::error(FUNCTION, "block created before network time-lock");
 
             /* Check the channel time-locks. */
             if(!ChannelActive(GetBlockTime(), GetChannel()))
                 return debug::error(FUNCTION, "block created before channel time-lock");
-
-            /* Check the producer transaction. */
-            if(IsProofOfWork() && !producer.IsCoinbase())
-                return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
-
-            /* Check the producer transaction. */
-            if(IsProofOfStake() && !(producer.IsCoinstake()))
-                return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
-
-            /* Check the producer transaction. */
-            if(IsPrivate() && !producer.IsPrivate())
-                return debug::error(FUNCTION, "producer transaction has to be authorize for proof of work");
 
             /* Check coinbase/coinstake timestamp against block time */
             if(GetBlockTime() > (uint64_t)producer.nTimestamp + ((nVersion < 4) ? 1200 : 3600))
@@ -179,6 +159,10 @@ namespace TAO
             /* Proof of stake specific checks. */
             if(IsProofOfStake())
             {
+                /* Check the producer transaction. */
+                if(!(producer.IsCoinstake()))
+                    return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
+
                 /* Check for nonce of zero values. */
                 if(nNonce == 0)
                     return debug::error(FUNCTION, "proof of stake can't have Nonce value of zero");
@@ -192,29 +176,60 @@ namespace TAO
                     return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
             }
 
+            /* Proof of work specific checks. */
+            else if(IsProofOfWork())
+            {
+                /* Check the producer transaction. */
+                if(!producer.IsCoinbase())
+                    return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
+
+                /* Check the Proof of Work Claims. */
+                if(!VerifyWork())
+                    return debug::error(FUNCTION, "invalid proof of stake");
+            }
+
+            /* Private specific checks. */
+            else if(IsPrivate())
+            {
+                /* Check the producer transaction. */
+                if(!producer.IsPrivate())
+                    return debug::error(FUNCTION, "producer transaction has to be authorize for private mode");
+            }
+
+            /* Default catch. */
+            else
+                return debug::error(FUNCTION, "unknown block type");
+
             /* Make sure there is no system memory. */
             if(ssSystem.size() != 0)
                 return debug::error(FUNCTION, "cannot allocate system memory");
 
             /* Check for duplicate txid's */
-            std::set<uint512_t> uniqueTx;
+            std::set<uint512_t> setUniqueTx;
             std::vector<uint512_t> vHashes;
 
             /* Get the signature operations for legacy tx's. */
             uint32_t nSigOps = 0;
-            for(const auto& proof : vtx)
+
+            /* Get the signature operations for legacy tx's. */
+            uint32_t nSize = (uint32_t)vtx.size();
+            for(uint32_t i = 0; i < nSize; ++i)
             {
                 /* Insert txid into set to check for duplicates. */
-                uniqueTx.insert(proof.second);
-                vHashes.push_back(proof.second);
+                setUniqueTx.insert(vtx[i].second);
+                vHashes.push_back(vtx[i].second);
 
                 /* Basic checks for legacy transactions. */
-                if(proof.first == TYPE::LEGACY_TX)
+                if(vtx[i].first == TYPE::LEGACY_TX)
                 {
                     /* Check the memory pool. */
                     Legacy::Transaction tx;
-                    if(!mempool.Get(proof.second, tx) && !LLD::Legacy->ReadTx(proof.second, tx))
-                        return debug::error(FUNCTION, "missing tx ", proof.second.SubString());
+                    if(!LLD::Legacy->ReadTx(vtx[i].second, tx, FLAGS::MEMPOOL))
+                        return debug::error(FUNCTION, "missing tx ", vtx[i].second.SubString());
+
+                    /* Check for coinbase / coinstake. */
+                    if(tx.IsCoinBase() || tx.IsCoinStake())
+                        return debug::error(FUNCTION, "more than one coinbase / coinstake");
 
                     /* Check the transaction timestamp. */
                     if(GetBlockTime() < (uint64_t) tx.nTime)
@@ -226,12 +241,16 @@ namespace TAO
                 }
 
                 /* Basic checks for tritium transactions. */
-                else if(proof.first == TYPE::TRITIUM_TX)
+                else if(vtx[i].first == TYPE::TRITIUM_TX)
                 {
                     /* Check the memory pool. */
                     TAO::Ledger::Transaction tx;
-                    if(!LLD::Ledger->ReadTx(proof.second, tx, FLAGS::MEMPOOL))
-                        return debug::error(FUNCTION, "missing tx ", proof.second.SubString());
+                    if(!LLD::Ledger->ReadTx(vtx[i].second, tx, FLAGS::MEMPOOL))
+                        return debug::error(FUNCTION, "missing tx ", vtx[i].second.SubString());
+
+                    /* Check for coinbase / coinstake. */
+                    if(tx.IsCoinbase() || tx.IsCoinstake())
+                        return debug::error(FUNCTION, "more than one coinbase / coinstake");
 
                     /* Check the transaction for validity. */
                     if(!tx.Check())
@@ -251,10 +270,10 @@ namespace TAO
 
             /* Add producer to merkle tree list. */
             vHashes.push_back(hashProducer);
-            uniqueTx.insert(hashProducer);
+            setUniqueTx.insert(hashProducer);
 
             /* Check for duplicate txid's. */
-            if(uniqueTx.size() != vHashes.size())
+            if(setUniqueTx.size() != vHashes.size())
                 return debug::error(FUNCTION, "duplicate transaction");
 
             /* Check the signature operations for legacy. */
@@ -265,47 +284,43 @@ namespace TAO
             if(hashMerkleRoot != BuildMerkleTree(vHashes))
                 return debug::error(FUNCTION, "hashMerkleRoot mismatch");
 
-            /* Get the key from the producer. */
-            if(nHeight > 0)
+            /* Switch based on signature type. */
+            switch(producer.nKeyType)
             {
-                /* Switch based on signature type. */
-                switch(producer.nKeyType)
+                /* Support for the FALCON signature scheeme. */
+                case SIGNATURE::FALCON:
                 {
-                    /* Support for the FALCON signature scheeme. */
-                    case SIGNATURE::FALCON:
-                    {
-                        /* Create the FL Key object. */
-                        LLC::FLKey key;
+                    /* Create the FL Key object. */
+                    LLC::FLKey key;
 
-                        /* Set the public key and verify. */
-                        key.SetPubKey(producer.vchPubKey);
+                    /* Set the public key and verify. */
+                    key.SetPubKey(producer.vchPubKey);
 
-                        /* Check the Block Signature. */
-                        if(!VerifySignature(key))
-                            return debug::error(FUNCTION, "bad block signature");
+                    /* Check the Block Signature. */
+                    if(!VerifySignature(key))
+                        return debug::error(FUNCTION, "bad block signature");
 
-                        break;
-                    }
-
-                    /* Support for the BRAINPOOL signature scheme. */
-                    case SIGNATURE::BRAINPOOL:
-                    {
-                        /* Create EC Key object. */
-                        LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                        /* Set the public key and verify. */
-                        key.SetPubKey(producer.vchPubKey);
-
-                        /* Check the Block Signature. */
-                        if(!VerifySignature(key))
-                            return debug::error(FUNCTION, "bad block signature");
-
-                        break;
-                    }
-
-                    default:
-                        return debug::error(FUNCTION, "unknown signature type");
+                    break;
                 }
+
+                /* Support for the BRAINPOOL signature scheme. */
+                case SIGNATURE::BRAINPOOL:
+                {
+                    /* Create EC Key object. */
+                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the public key and verify. */
+                    key.SetPubKey(producer.vchPubKey);
+
+                    /* Check the Block Signature. */
+                    if(!VerifySignature(key))
+                        return debug::error(FUNCTION, "bad block signature");
+
+                    break;
+                }
+
+                default:
+                    return debug::error(FUNCTION, "unknown signature type");
             }
 
             return true;
