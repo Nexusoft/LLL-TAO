@@ -193,7 +193,6 @@ ifdef UNIT_TESTS
 		   build/Tests_aes.o \
 		   build/Tests_testvm.o \
 		   build/Tests_objects.o \
-		   build/Tests_system.o \
 		   build/Tests_rollback.o \
 		   build/Tests_block.o \
 		   build/Tests_mempool.o \
@@ -371,6 +370,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Operation_validate.o \
 		build/Operation_unstake.o \
 		build/Operation_write.o \
+		build/Register_address.o \
 		build/Register_basevm.o \
 		build/Register_build.o \
 		build/Register_create.o \

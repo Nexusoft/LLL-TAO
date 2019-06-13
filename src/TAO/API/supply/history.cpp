@@ -26,7 +26,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
-#include <LLC/include/random.h>
 #include <LLD/include/global.h>
 
 /* Global TAO namespace. */

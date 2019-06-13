@@ -23,9 +23,11 @@ ________________________________________________________________________________
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/reserved.h>
 #include <TAO/Register/include/verify.h>
+#include <TAO/Register/include/address.h>
 
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -41,13 +43,13 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
     {
 
         //create object
-        uint256_t hashGenesis  = LLC::GetRand256();
+        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis("testuser");
         uint512_t hashPrivKey1  = LLC::GetRand512();
         uint512_t hashPrivKey2  = LLC::GetRand512();
 
         uint512_t hashPrevTx;
 
-        uint256_t hashToken     = LLC::GetRand256();
+        uint256_t hashToken     = TAO::Register::GetAddress();
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -78,7 +80,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
         }
 
         //set address
-        uint256_t hashAccount = LLC::GetRand256();
+        uint256_t hashAccount = TAO::Register::GetAddress();
         {
 
 
@@ -116,7 +118,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
         }
 
         //set address
-        uint256_t hashAddress = LLC::GetRand256();
+        uint256_t hashAddress = TAO::Register::GetAddress();
         {
 
 
@@ -533,20 +535,17 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
     //handle out of order transactions
     {
 
-        //cleanup
-        LLD::Register->EraseIdentifier(22);
-
         //vector to shuffle
         std::vector<TAO::Ledger::Transaction> vTX;
 
         //create object
-        uint256_t hashGenesis  = LLC::GetRand256();
+        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis("testuser");
         uint512_t hashPrivKey1  = LLC::GetRand512();
         uint512_t hashPrivKey2  = LLC::GetRand512();
 
         uint512_t hashPrevTx;
 
-        uint256_t hashToken     = LLC::GetRand256();
+        uint256_t hashToken     = TAO::Register::GetAddress();
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -577,7 +576,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
         }
 
         //set address
-        uint256_t hashAccount = LLC::GetRand256();
+        uint256_t hashAccount = TAO::Register::GetAddress();
         {
 
 
@@ -615,7 +614,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
         }
 
         //set address
-        uint256_t hashAddress = LLC::GetRand256();
+        uint256_t hashAddress = TAO::Register::GetAddress();
         {
 
 
@@ -657,7 +656,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = LLC::GetRand256();
+        hashAddress = TAO::Register::GetAddress();
         {
 
             //set private keys
@@ -698,7 +697,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = LLC::GetRand256();
+        hashAddress = TAO::Register::GetAddress();
         {
 
             //set private keys
@@ -739,7 +738,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = LLC::GetRand256();
+        hashAddress = TAO::Register::GetAddress();
         {
 
             //set private keys
@@ -780,7 +779,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = LLC::GetRand256();
+        hashAddress = TAO::Register::GetAddress();
         {
 
             //set private keys
@@ -821,7 +820,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = LLC::GetRand256();
+        hashAddress = TAO::Register::GetAddress();
         {
 
             //set private keys
@@ -863,7 +862,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = LLC::GetRand256();
+        hashAddress = TAO::Register::GetAddress();
         {
 
             //set private keys
@@ -904,7 +903,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = LLC::GetRand256();
+        hashAddress = TAO::Register::GetAddress();
         {
 
             //set private keys

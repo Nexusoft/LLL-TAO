@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
+#include <TAO/Register/include/address.h>
 
 #include <LLD/include/global.h>
 
@@ -67,7 +67,7 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
-            uint256_t hashRegister = LLC::GetRand256();
+            uint256_t hashRegister = TAO::Register::GetAddress();
 
             /* name of the object, default to blank */
             std::string strName = "";

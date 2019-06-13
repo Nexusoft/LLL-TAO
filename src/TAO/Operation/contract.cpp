@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Ledger/types/transaction.h>
@@ -116,6 +117,91 @@ namespace TAO
         const uint512_t& Contract::Hash() const
         {
             return hashTx;
+        }
+
+
+        /* Get the value of the contract if valid */
+        bool Contract::Value(uint64_t &nValue) const
+        {
+            /* Reset the contract. */
+            ssOperation.seek(0, STREAM::BEGIN);
+
+            /* Set value. */
+            nValue = 0;
+
+            /* Get the operation code.*/
+            uint8_t nOP = 0;
+            ssOperation >> nOP;
+
+            /* Switch for validate or condition. */
+            switch(nOP)
+            {
+                /* Check for condition. */
+                case OP::CONDITION:
+                {
+                    /* Get next op. */
+                    ssOperation >> nOP;
+
+                    break;
+                }
+
+                /* Check for validate. */
+                case OP::VALIDATE:
+                {
+                    /* Skip over on validate. */
+                    ssOperation.seek(68);
+
+                    /* Get next op. */
+                    ssOperation >> nOP;
+
+                    break;
+                }
+            }
+
+            /* Switch for validate or condition. */
+            switch(nOP)
+            {
+                /* Check for condition. */
+                case OP::DEBIT:
+                {
+                    /* Skip over from and to. */
+                    ssOperation.seek(64);
+
+                    /* Get value. */
+                    ssOperation >> nValue;
+
+                    break;
+                }
+
+                /* Check for condition. */
+                case OP::CREDIT:
+                {
+                    /* Skip over unrelated data. */
+                    ssOperation.seek(132);
+
+                    /* Get value. */
+                    ssOperation >> nValue;
+
+                    break;
+                }
+
+                /* Check for validate. */
+                case OP::COINBASE:
+                {
+                    /* Skip over genesis. */
+                    ssOperation.seek(32);
+
+                    /* Get value. */
+                    ssOperation >> nValue;
+
+                    break;
+                }
+            }
+
+            /* Reset before return. */
+            ssOperation.seek(0, STREAM::BEGIN);
+
+            return (nValue > 0);
         }
 
 

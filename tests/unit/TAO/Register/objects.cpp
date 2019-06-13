@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <openssl/rand.h>
 
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/include/address.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -176,7 +177,7 @@ TEST_CASE( "Object Register Tests", "[register]")
 
 
     {
-        uint256_t hash256   = LLC::GetRand256();
+        uint256_t hash256   = TAO::Register::GetAddress();
         uint512_t hash512   = LLC::GetRand512();
         uint1024_t hash1024 = LLC::GetRand1024();
 

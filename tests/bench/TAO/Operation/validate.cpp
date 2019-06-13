@@ -38,8 +38,8 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
     debug::log(0, "===== Begin Validation Script Benchmarks =====");
 
     //random data for tx script
-    uint256_t hashFrom = LLC::GetRand256();
-    uint256_t hashTo   = LLC::GetRand256();
+    uint256_t hashFrom = TAO::Register::GetAddress();
+    uint256_t hashTo   = TAO::Register::GetAddress();
     uint64_t  nAmount  = 500;
 
     //tx object for validation script

@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
+#include <TAO/Register/include/address.h>
 #include <LLC/hash/SK.h>
 
 #include <LLD/include/global.h>
@@ -79,7 +79,7 @@ namespace TAO
 
             /* Create trust account register  within the user sig chain namespace */
             /* Generate a random hash for this objects register address */
-            uint256_t hashRegister = LLC::GetRand256();
+            uint256_t hashRegister = TAO::Register::GetAddress();
 
             /* Add a Name record for the trust account */
             CreateName(user->Genesis(), "trust", hashRegister, tx[0]);
@@ -89,7 +89,7 @@ namespace TAO
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
 
             /* Generate a random hash for this objects register address */
-            hashRegister = LLC::GetRand256();
+            hashRegister = TAO::Register::GetAddress();
 
             /* Add a Name record for the trust account */
             CreateName(user->Genesis(), "default", hashRegister, tx[2]);

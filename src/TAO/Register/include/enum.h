@@ -47,7 +47,7 @@ namespace TAO
                 /* This type of register has its data fields enforced by operations layer. */
                 OBJECT     = 0x04,
 
-                /* This type of register handles general accounts and DEBITS / CREDITS */
+                /* This type of register is special and for system update only. */
                 SYSTEM     = 0x05,
             };
         }
@@ -84,22 +84,22 @@ namespace TAO
             enum
             {
                 /* Non-Standard Object (User Defined Type). */
-                NONSTANDARD  = 0x00,
+                NONSTANDARD  = 0xb0,
 
                 /* Account Object Register. */
-                ACCOUNT      = 0x01,
+                ACCOUNT      = 0xb1,
 
                 /* Token Object Register. */
-                TOKEN        = 0x02,
+                TOKEN        = 0xb2,
 
                 /* Trust Object Register. */
-                TRUST        = 0x03,
+                TRUST        = 0xb3,
 
                 /* Name Object Register. */
-                NAME         = 0x04,
+                NAME         = 0xb4,
 
                 /* Namespace Object Register. */
-                NAMESPACE    = 0x05
+                NAMESPACE    = 0xb5
             };
         }
 

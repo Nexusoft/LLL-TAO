@@ -238,6 +238,10 @@ namespace TAO
                     /* Check the transaction for validity. */
                     if(!tx.CheckTransaction())
                         return debug::error(FUNCTION, "check transaction failed.");
+
+                    /* Check legacy transaction for finality. */
+                    if(!tx.IsFinal(nHeight, GetBlockTime()))
+                        return debug::error(FUNCTION, "contains a non-final transaction");
                 }
 
                 /* Basic checks for tritium transactions. */
@@ -332,7 +336,7 @@ namespace TAO
         {
             /* Read ledger DB for duplicate block. */
             if(LLD::Ledger->HasBlock(GetHash()))
-                return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20));
+                return debug::error(FUNCTION, "already have block ", GetHash().SubString());
 
             /* Read ledger DB for previous block. */
             TAO::Ledger::BlockState statePrev;
@@ -343,20 +347,14 @@ namespace TAO
             if(statePrev.nHeight + 1 != nHeight)
                 return debug::error(FUNCTION, "incorrect block height.");
 
-            /* Get the proof hash for this block. */
-            uint1024_t hash = (nVersion < 5 ? GetHash() : GetChannel() == 0 ? StakeHash() : ProofHash());
-
-            /* Get the target hash for this block. */
-            uint1024_t hashTarget = LLC::CBigNum().SetCompact(nBits).getuint1024();
-
             /* Verbose logging of proof and target. */
-            debug::log(2, "  proof:  ", hash.ToString().substr(0, 30));
+            debug::log(2, "  proof:  ", (GetChannel() == 0 ? StakeHash() : ProofHash()).SubString());
 
             /* Channel switched output. */
             if(GetChannel() == 1)
                 debug::log(2, "  prime cluster verified of size ", GetDifficulty(nBits, 1));
             else
-                debug::log(2, "  target: ", hashTarget.ToString().substr(0, 30));
+                debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().SubString());
 
             /* Check that the nBits match the current Difficulty. **/
             if(nBits != GetNextTargetRequired(statePrev, GetChannel()))
@@ -364,8 +362,7 @@ namespace TAO
 
             /* Check That Block timestamp is not before previous block. */
             if(GetBlockTime() <= statePrev.GetBlockTime())
-                return debug::error(FUNCTION, "block's timestamp too early Block: ", GetBlockTime(), " Prev: ",
-                statePrev.GetBlockTime());
+                return debug::error(FUNCTION, "block's timestamp too early");
 
             /* Check that Block is Descendant of Hardened Checkpoints. */
             if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
@@ -374,20 +371,20 @@ namespace TAO
             /* Check the block proof of work rewards. */
             if(IsProofOfWork())
             {
-                /* Get the stream from coinbase. */
-                uint8_t OP;
-                producer[0] >> OP;
-
-                /* Check the operations. */
-                if(OP != TAO::Operation::OP::COINBASE)
-                    return debug::error(FUNCTION, "coinbase not set for proof-of-work");
-
-                /* Seek to rewards. */
-                producer[0].Seek(32);
-
-                /* Read the mining reward. */
+                /* Tally up rewards. */
                 uint64_t nReward = 0;
-                producer[0] >> nReward;
+
+                /* Loop through the contracts. */
+                uint32_t nSize = producer.Size();
+                for(uint32_t n = 0; n < nSize; ++n)
+                {
+                    /* Get the reward. */
+                    uint64_t nValue = 0;
+                    if(!producer[n].Value(nValue))
+                        return debug::error(FUNCTION, "no value in contract");
+
+                    nReward += nValue;
+                }
 
                 /* Check that the Mining Reward Matches the Coinbase Calculations. */
                 if(nReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
@@ -413,22 +410,9 @@ namespace TAO
                     return debug::error(FUNCTION, "invalid genesis generated");
             }
 
-            /* Check legacy transactions for finality. */
-            for(const auto & tx : vtx)
-            {
-                /* Only work on tritium transactions for now. */
-                if(tx.first == TYPE::LEGACY_TX)
-                {
-                    /* Check if in memory pool. */
-                    Legacy::Transaction txCheck;
-                    if(!mempool.Get(tx.second, txCheck))
-                        return debug::error(FUNCTION, "transaction is not in memory pool");
-
-                    /* Check legacy transaction for finality. */
-                    if(!txCheck.IsFinal(nHeight, GetBlockTime()))
-                        return debug::error(FUNCTION, "contains a non-final transaction");
-                }
-            }
+            /* Default catch. */
+            else
+                return debug::error(FUNCTION, "unknown block type");
 
             /* Process the block state. */
             TAO::Ledger::BlockState state(*this);

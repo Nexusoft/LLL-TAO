@@ -214,30 +214,14 @@ namespace TAO
 
                     /* Loop through the contracts. */
                     uint32_t nSize = tx.Size();
-
-                    /* Add up the Miner Rewards from coinbase outputs. */
                     for(uint32_t n = 0; n < nSize; ++n)
                     {
-                        /* Get the contract object.*/
-                        const TAO::Operation::Contract& contract = tx[n];
-
-                        /* Get the operation code.*/
-                        uint8_t nType = 0;
-                        contract >> nType;
-
-                        /* Check for contract. */
-                        if(nType != TAO::Operation::OP::COINBASE)
-                            return debug::error(FUNCTION, "producer contract is not COINBASE");
-
-                        /* Seek over the genesis. */
-                        contract.Seek(32);
-
                         /* Get the reward. */
-                        uint64_t nCoinbase = 0;
-                        contract >> nCoinbase;
+                        uint64_t nValue = 0;
+                        if(!tx[n].Value(nValue))
+                            return debug::error(FUNCTION, "no value in contract");
 
-                        /* Get the reward. */
-                        nCoinbaseRewards[0] += nCoinbase;
+                        nCoinbaseRewards[0] += nValue;
                     }
                 }
 

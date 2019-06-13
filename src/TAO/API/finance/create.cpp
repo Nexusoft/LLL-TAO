@@ -11,7 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
 #include <TAO/API/include/global.h>
@@ -23,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/include/address.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -64,7 +64,7 @@ namespace TAO
 
             /* Submit the transaction payload. */
             /* Generate a random hash for this objects register address */
-            uint256_t hashRegister = LLC::GetRand256();
+            uint256_t hashRegister = TAO::Register::GetAddress();
 
             /* name of the object, default to blank */
             std::string strName = "";

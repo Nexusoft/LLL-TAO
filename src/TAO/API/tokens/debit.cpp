@@ -11,7 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
 #include <LLD/include/global.h>
@@ -91,7 +90,7 @@ namespace TAO
             else
                 throw APIException(-22, "Missing name or address)");
 
-            
+
             /* Get the token / account object. */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashFrom, object))
@@ -124,7 +123,7 @@ namespace TAO
             {
                 throw APIException(-27, "Unknown token / account.");
             }
-            
+
 
             /* Get the amount to debit. */
             uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDigits);
