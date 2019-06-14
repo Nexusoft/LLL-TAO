@@ -43,7 +43,7 @@ namespace TAO
             TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
 
             if(stakeMinter.IsStarted())
-                stakeMinter.StopStakeMinter();
+                stakeMinter.Stop();
 
             return true;
         }

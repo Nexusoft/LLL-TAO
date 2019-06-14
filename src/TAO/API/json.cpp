@@ -407,7 +407,7 @@ namespace TAO
                     case TAO::Operation::OP::TRUST:
                     {
                         /* Get the genesis. */
-                        uint256_t hashLastTrust = 0;
+                        uint512_t hashLastTrust = 0;
                         contract >> hashLastTrust;
 
                         /* The total trust score. */

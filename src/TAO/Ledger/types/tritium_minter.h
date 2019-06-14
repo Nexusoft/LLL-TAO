@@ -16,8 +16,10 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_TYPES_TRITIUM_MINTER_H
 
 #include <TAO/Ledger/types/base_minter.h>
-#include <TAO/Ledger/types/sigchain.h> 
-#include <TAO/Ledger/types/tritium.h> 
+#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/tritium.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -39,21 +41,21 @@ namespace TAO
     /** @class TritiumMinter
      *
      * This class performs all operations for mining blocks on the Proof of Stake channel.
-     * It is implemented as a Singleton instance retrieved by calling GetInstance(). 
+     * It is implemented as a Singleton instance retrieved by calling GetInstance().
      *
-     * Staking does not start, though, until StartStakeMinter() is called for the first time.
+     * Staking does not start, though, until Start() is called for the first time.
      * It requires single user mode, with a user account unlocked for minting before it
      * will start successfully.
      *
      * The stake balance and trust score from the trust account will be used for Proof of Stake.
      * A new trust account register must be created for the active user account signature chain
-     * before it can successfully stake. 
+     * before it can successfully stake.
      *
      * The initial stake transaction for a new trust account is the Genesis transaction using OP::GENESIS
      * in the block producer. All subsequent stake transactions are Trust transactions and use OP::TRUST.
      *
-     * Staking operations can be suspended by calling StopStakeMinter (for example, when the account is locked)
-     * and restarted by calling StartStakeMinter() again.
+     * Staking operations can be suspended by calling Stop() (for example, when the account is locked)
+     * and restarted by calling Start() again.
      *
      **/
     class TritiumMinter final : public TAO::Ledger::StakeMinter
@@ -90,7 +92,7 @@ namespace TAO
         bool IsStarted() const override;
 
 
-        /** StartStakeMinter
+        /** Start
          *
          * Start the stake minter.
          *
@@ -115,72 +117,77 @@ namespace TAO
          * @return true if the stake minter was started, false if it was already running or not started
          *
          */
-        bool StartStakeMinter() override;
+        bool Start() override;
 
 
-        /** StopStakeMinter
+        /** Stop
          *
          * Stops the stake minter.
          *
          * Call this method to signal the stake minter thread stop Proof of Stake mining and end.
-         * It can be restarted via a subsequent call to StartStakeMinter().
+         * It can be restarted via a subsequent call to Start().
          *
          * Should be called whenever the wallet is locked, and on system shutdown.
          *
          * @return true if the stake minter was stopped, false if it was already stopped
          *
          */
-        bool StopStakeMinter() override;
+        bool Stop() override;
 
 
     private:
         /** Set true when stake miner thread starts and remains true while it is running **/
-        static std::atomic<bool> fisStarted;
+        static std::atomic<bool> fStarted;
 
 
         /** Flag to tell the stake minter thread to stop processing and exit. **/
-        static std::atomic<bool> fstopMinter;
+        static std::atomic<bool> fStop;
 
 
         /** Thread for operating the stake minter **/
         static std::thread tritiumMinterThread;
 
 
-        /** Register address for the trust account. Used for staking Genesis. **/
+        /** Register address for the trust account. Only used for staking Genesis. **/
         uint256_t hashAddress;
 
 
         /** Trust account to use for staking. **/
-        TAO::Register::Object trustAccount;
+        TAO::Register::Object account;
 
 
-        /** The candidate block that the stake minter is attempting to mine **/
+        /** Last stake transaction for the current trust account. */
+        TAO::Ledger::Transaction txLast;
+
+
+        /** Last stake block found by current trust account. */
+        TAO::Ledger::BlockState stateLast;
+
+
+        /** The candidate block that the stake minter is currently attempting to mine **/
         TritiumBlock block;
 
 
         /** Flag to indicate whether staking for Genesis or Trust **/
-        bool isGenesis;
+        bool fGenesis;
 
 
-        /** Block time of last stake block found by current trust account. */
-        uint64_t nTimeLastStake;
-
-
-        /** Trust score applied for the candidate block that the stake minter is attempting to mine **/
+        /** Trust score applied for the candidate block the stake minter is attempting to mine **/
         uint64_t nTrust;
 
 
-        /** Block age (time since last stake for trust account) applied for the candidate block that the stake minter is attempting to mine **/
+        /** Block age (time since last stake for trust account) for the candidate block the stake minter is attempting to mine **/
         uint64_t nBlockAge;
 
 
         /** Default constructor **/
         TritiumMinter()
         : hashAddress(0)
-        , trustAccount()
+        , account()
+        , txLast()
+        , stateLast()
         , block()
-        , isGenesis(false)
-        , nTimeLastStake()
+        , fGenesis(false)
         , nTrust(0)
         , nBlockAge(0)
         {
@@ -199,7 +206,7 @@ namespace TAO
 
         /** FindTrust
          *
-         *  Gets the trust account for the current active signature chain and stores it into trustAccount.
+         *  Gets the trust account for the current active signature chain and stores it into account.
          *
          *  @param[in] user - the currently active signature chain
          *

@@ -228,8 +228,6 @@ namespace LLP
                 return debug::error(FUNCTION, "unknown signature type");
         }
 
-        pBlock->print();
-
         return true;
      }
 
@@ -240,13 +238,7 @@ namespace LLP
         /* Create the pointer to the heap. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
 
-        /* Check block for inconsistencies. */
-        if(!pBlock->Check())
-            return false;
-
-        /* Check block for proof of work requirements. */
-        if(!pBlock->VerifyWork())
-            return false;
+        pBlock->print();
 
         /* Log block found */
         if(config::GetArg("-verbose", 0) > 0)
@@ -276,7 +268,11 @@ namespace LLP
         }
 
         /* Process the block and relay to network if it gets accepted into main chain. */
-        TritiumNode::Process(*pBlock, nullptr);
+        if(!TritiumNode::Process(*pBlock, nullptr))
+        {
+            debug::log(0, FUNCTION, "Generated block not accepted");
+            return false;
+        }
 
         return true;
     }

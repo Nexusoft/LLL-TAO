@@ -81,7 +81,7 @@ namespace Legacy
 
 
     /* Start the stake minter. */
-    bool LegacyMinter::StartStakeMinter()
+    bool LegacyMinter::Start()
     {
         if(LegacyMinter::fisStarted.load())
         {
@@ -130,7 +130,7 @@ namespace Legacy
 
 
     /* Stop the stake minter. */
-    bool LegacyMinter::StopStakeMinter()
+    bool LegacyMinter::Stop()
     {
         if(LegacyMinter::fisStarted.load())
         {
@@ -516,7 +516,7 @@ namespace Legacy
             if(nCoinAge < nMinimumCoinAge)
             {
                 /* Record that stake minter is in wait period */
-                fIsWaitPeriod.store(true);
+                fWait.store(true);
 
                 /* Increase sleep time to wait for coin age to meet requirement (can't sleep too long or will hang until wakes up on shutdown) */
                 nSleepTime = 5000;
@@ -537,7 +537,7 @@ namespace Legacy
             else if(nSleepTime == 5000)
             {
                 /* Reset wait period setting */
-                fIsWaitPeriod.store(false);
+                fWait.store(false);
 
                 /* Reset sleep time after coin age meets requirement. */
                 nSleepTime = 1000;
@@ -710,7 +710,7 @@ namespace Legacy
 
         debug::log(0, FUNCTION, "Stake Minter Started");
         pLegacyMinter->nSleepTime = 5000;
-        bool fLocalTestnet = config::fTestNet.load() && config::GetBoolArg("-nodns", false);
+        bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
 
         /* If the system is still syncing/connecting on startup, wait to run minter */
         while((TAO::Ledger::ChainState::Synchronizing() || (LLP::LEGACY_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
@@ -753,7 +753,7 @@ namespace Legacy
 
         }
 
-        /* If get here because fShutdown set, have to wait for join. Join is issued in StopStakeMinter, which needs to be called by shutdown process, too. */
+        /* If get here because fShutdown set, have to wait for join. Join is issued in Stop, which needs to be called by shutdown process, too. */
         while(!LegacyMinter::fstopMinter.load())
             runtime::sleep(100);
 

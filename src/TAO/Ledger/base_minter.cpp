@@ -69,7 +69,7 @@ namespace TAO
      */
     bool StakeMinter::IsWaitPeriod() const
     {
-        return fIsWaitPeriod.load();
+        return fWait.load();
     }
 
     } // End Ledger namespace

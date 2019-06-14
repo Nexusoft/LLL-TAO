@@ -145,7 +145,7 @@ namespace TAO
                 TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
 
                 if(!config::fMultiuser.load() && !stakeMinter.IsStarted())
-                    stakeMinter.StartStakeMinter();
+                    stakeMinter.Start();
             }
 
             return true;
