@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/assets.h>
 #include <TAO/API/types/names.h>
+#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -24,42 +24,53 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO
 {
-
     /* API Layer namespace. */
     namespace API
     {
-
         /* History of an asset and its ownership */
-        json::json Assets::History(const json::json& params, bool fHelp)
+        json::json Names::NameHistory(const json::json& params, bool fHelp)
         {
+            /* Return JSON object */
             json::json ret;
 
-            /* Get the Register ID. */
+            /* The register address of the Name object */
             uint256_t hashRegister = 0;
 
-            /* Check whether the caller has provided the asset name parameter. */
-            if(params.find("name") != params.end())
-            {
-                /* If name is provided then use this to deduce the register address */
-                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
-            }
+            /* Declare the Name object to look for*/
+            TAO::Register::Object name;
 
-            /* Otherwise try to find the raw hex encoded address. */
+            /* If the caller has provided a name parameter then retrieve it by name */
+            if(params.find("name") != params.end())
+                name = Names::GetName(params, params["name"].get<std::string>(), hashRegister);
+
+            /* Otherwise try to find the name record based on the register address. */
             else if(params.find("address") != params.end())
-                hashRegister.SetHex(params["address"]);
+            {
+                /* Check that the caller has passed a valid register address */
+                if(!IsRegisterAddress(params["address"].get<std::string>()))
+                    throw APIException(-25, "Invalid address");
+
+                hashRegister.SetHex(params["address"].get<std::string>());
+
+                /* Read the Name object from the DB */
+                if(!LLD::Register->ReadState(hashRegister, name, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-23, "Invalid address");
+
+                /* Check that the name object is proper type. */
+                if(name.nType != TAO::Register::REGISTER::OBJECT
+                || !name.Parse()
+                || name.Standard() != TAO::Register::OBJECTS::NAME )
+                    throw APIException(-23, "Address is not a name register");
+            }
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-23, "Missing memory address");
+                throw APIException(-23, "Missing name / address");
 
-            /* Get the register. */
-            TAO::Register::State state;
-            if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-24, "Invalid name / address");
 
             /* Read the last hash of owner. */
             uint512_t hashLast = 0;
-            if(!LLD::Ledger->ReadLast(state.hashOwner, hashLast))
+            if(!LLD::Ledger->ReadLast(name.hashOwner, hashLast))
                 throw APIException(-24, "No history found");
 
             /* Iterate through sigchain for register updates. */
@@ -105,11 +116,9 @@ namespace TAO
                             std::vector<uint8_t> vchData;
                             contract >> vchData;
 
-                            if(nType != TAO::Register::REGISTER::APPEND
-                            && nType != TAO::Register::REGISTER::RAW
-                            && nType != TAO::Register::REGISTER::OBJECT)
+                            if(nType != TAO::Register::REGISTER::OBJECT)
                             {
-                                throw APIException(-24, "Specified name/address is not an asset.");
+                                throw APIException(-24, "Specified name/address is not a Name object.");
                             }
 
                             /* Create the register object. */
@@ -122,27 +131,25 @@ namespace TAO
                             if(!TAO::Operation::Create::Execute(state, vchData, contract.Timestamp()))
                                 return false;
 
-                            if(state.nType == TAO::Register::REGISTER::OBJECT)
-                            {
-                                /* parse object so that the data fields can be accessed */
-                                if(!state.Parse())
-                                    throw APIException(-24, "Failed to parse object register");
+                            /* parse object so that the data fields can be accessed */
+                            if(!state.Parse())
+                                throw APIException(-24, "Failed to parse object register");
 
-                                /* Only include non standard object registers (assets) */
-                                if(state.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
-                                    throw APIException(-24, "Specified name/address is not an asset.");
-                            }
+                            /* Only include non standard object registers (assets) */
+                            if(state.Standard() != TAO::Register::OBJECTS::NAME)
+                                throw APIException(-24, "Specified name/address is not a Name object.");
 
                             /* Generate return object. */
                             json::json obj;
-                            obj["type"] = "CREATE";
+                            obj["type"]     = "CREATE";
+                            obj["owner"]    = contract.Caller().ToString();
+                            obj["modified"] = state.nModified;
                             obj["checksum"] = state.hashChecksum;
 
-                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister);
+                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, false);
 
-                            /* Copy the asset data in to the response after the type/checksum */
+                            /* Copy the name data in to the response after the type */
                             obj.insert(data.begin(), data.end());
-
 
                             /* Push to return array. */
                             ret.push_back(obj);
@@ -170,24 +177,33 @@ namespace TAO
 
                             /* Generate return object. */
                             json::json obj;
-                            obj["type"]       = "MODIFY";
-                            obj["owner"]      = contract.Caller().ToString();
+                            obj["type"] = "MODIFY";
 
                             /* Get the flag. */
                             uint8_t nState = 0;
                             contract >>= nState;
 
                             /* Get the pre-state. */
-                            TAO::Register::State state;
+                            TAO::Register::Object state;
                             contract >>= state;
 
                             /* Calculate the new operation. */
                             if(!TAO::Operation::Write::Execute(state, vchData, contract.Timestamp()))
                                 return false;
+                            
+                            /* parse object so that the data fields can be accessed */
+                            if(!state.Parse())
+                                throw APIException(-24, "Failed to parse object register");
 
                             /* Complete object parameters. */
-                            obj["modified"]   = state.nModified;
+                            obj["owner"]    = contract.Caller().ToString();
+                            obj["modified"] = state.nModified;
                             obj["checksum"] = state.hashChecksum;
+
+                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, false);
+
+                            /* Copy the name data in to the response after the type */
+                            obj.insert(data.begin(), data.end());
 
 
                             /* Push to return array. */
@@ -217,20 +233,29 @@ namespace TAO
 
                             /* Generate return object. */
                             json::json obj;
-                            obj["type"]       = "CLAIM";
-                            obj["owner"]      = contract.Caller().ToString();
+                            obj["type"] = "CLAIM";
 
                             /* Get the flag. */
                             uint8_t nState = 0;
                             contract >>= nState;
 
                             /* Get the pre-state. */
-                            TAO::Register::State state;
+                            TAO::Register::Object state;
                             contract >>= state;
 
+                            /* parse object so that the data fields can be accessed */
+                            if(!state.Parse())
+                                throw APIException(-24, "Failed to parse object register");
+
                             /* Complete object parameters. */
-                            obj["modified"]   = state.nModified;
-                            obj["created"]    = state.nCreated;
+                            obj["owner"]    = contract.Caller().ToString();
+                            obj["modified"] = state.nModified;
+                            obj["checksum"] = state.hashChecksum;
+
+                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, false);
+
+                            /* Copy the name data in to the response after the type */
+                            obj.insert(data.begin(), data.end());
 
                             /* Push to return array. */
                             ret.push_back(obj);
@@ -258,20 +283,28 @@ namespace TAO
 
                             /* Generate return object. */
                             json::json obj;
-                            obj["type"]       = "TRANSFER";
-                            obj["owner"]      = hashTransfer.ToString();
+                            obj["type"] = "TRANSFER";
 
                             /* Get the flag. */
                             uint8_t nState = 0;
                             contract >>= nState;
 
                             /* Get the pre-state. */
-                            TAO::Register::State state;
+                            TAO::Register::Object state;
                             contract >>= state;
 
+                            /* parse object so that the data fields can be accessed */
+                            if(!state.Parse())
+                                throw APIException(-24, "Failed to parse object register");
+
                             /* Complete object parameters. */
-                            obj["modified"]   = state.nModified;
-                            obj["created"]    = state.nCreated;
+                            obj["owner"]    = hashTransfer.ToString();
+                            obj["modified"] = state.nModified;
+                            obj["checksum"] = state.hashChecksum;
+
+                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, false);
+                            /* Copy the name data in to the response after the type */
+                            obj.insert(data.begin(), data.end());
 
                             /* Push to return array. */
                             ret.push_back(obj);

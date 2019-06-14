@@ -29,14 +29,13 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO
 {
-
     /* API Layer namespace. */
     namespace API
     {
-
-        /* Transfers an item. */
-        json::json Supply::Claim(const json::json& params, bool fHelp)
+        /* Claim a transferred name. */
+        json::json Names::ClaimName(const json::json& params, bool fHelp)
         {
+            /* Return JSON object */
             json::json ret;
 
             /* Get the PIN to be used for this API call */
@@ -45,47 +44,44 @@ namespace TAO
             /* Get the session to be used for this API call */
             uint64_t nSession = users->GetSession(params);
 
-            /* Check for id parameter. */
-            if(params.find("txid") == params.end())
-                throw APIException(-25, "Missing txid");
-
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
-                throw APIException(-25, "Invalid session ID");
+                throw APIException(-25, "Invalid session ID.");
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions");
+                throw APIException(-25, "Account has not been unlocked for transactions.");
+
+            /* Check for txid parameter. */
+            if(params.find("txid") == params.end())
+                throw APIException(-25, "Missing txid.");
+
+            /* Transaction ID to claim */
+            uint512_t hashTx;
+            
+            /* Get the transaction id. */
+            hashTx.SetHex(params["txid"].get<std::string>());
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-25, "Failed to create transaction");
-
-            /* Submit the transaction payload. */
-            uint512_t hashClaim;
-            hashClaim.SetHex(params["txid"].get<std::string>());
+                throw APIException(-25, "Failed to create transaction.");
 
             /* Read the Transfer transaction being claimed. */
-            TAO::Ledger::Transaction txPrev;
-            if(!LLD::Ledger->ReadTx(hashClaim, txPrev))
+            TAO::Ledger::Transaction txTransfer;
+            if(!LLD::Ledger->ReadTx(hashTx, txTransfer))
                 throw APIException(-23, "Transfer transaction not found.");
-
-            /* Check to see whether they have provided a new name */
-            std::string strName;
-            if(params.find("name") != params.end())
-                strName = params["name"].get<std::string>();
 
             /* Declare json object to store the objects that were claimed */
             json::json jsonClaimed = json::json::array();
 
             /* Loop through all transactions. */
             int32_t nCurrent = -1;
-            for(uint32_t nContract = 0; nContract < txPrev.Size(); ++nContract)
+            for(uint32_t nContract = 0; nContract < txTransfer.Size(); ++nContract)
             {
                 /* Get the contract. */
-                const TAO::Operation::Contract& contract = txPrev[nContract];
+                const TAO::Operation::Contract& contract = txTransfer[nContract];
 
                 /* Get the operation byte. */
                 uint8_t nOP = 0;
@@ -108,45 +104,40 @@ namespace TAO
                 contract >> nType;
 
                 /* Ensure that this transfer was meant for this user or that we are claiming back our own transfer */
-                if(hashGenesis != tx.hashGenesis && tx.hashGenesis != txPrev.hashGenesis)
+                if(hashGenesis != tx.hashGenesis && tx.hashGenesis != txTransfer.hashGenesis)
                     continue;
 
                 /* Ensure this wasn't a forced transfer (which requires no Claim) */
                 if(nType == TAO::Operation::TRANSFER::FORCE)
                     continue;
 
-                /* Ensure that the object being transferred is an asset */
-                /* Get the object from the register DB.   */
+                /* Get the name object from the register DB.   */
                 TAO::Register::Object object;
                 if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-24, "Object not found");
 
-                /* Only include raw append (items*/
-                if(object.nType != TAO::Register::REGISTER::APPEND)
+                /* Register must be an object */
+                if(object.nType != TAO::Register::REGISTER::OBJECT)
                     continue;
 
+                /* Parse object so that the data fields can be accessed */
+                if(!object.Parse())
+                    throw APIException(-24, "Failed to parse object register");
+
+                /* Only include name registers */
+                if(object.Standard() != TAO::Register::OBJECTS::NAME)
+                    continue;
+                
                 /* Submit the payload object. */
-                tx[++nCurrent] << (uint8_t)TAO::Operation::OP::CLAIM << hashClaim << uint32_t(nContract) << hashAddress;
+                tx[++nCurrent] << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << uint32_t(nContract) << hashAddress;
 
                 /* Add the address to the return JSON */
                 jsonClaimed.push_back( hashAddress.GetHex() );
-
-                /* Declare to contract to create new name */
-                TAO::Operation::Contract nameContract;
-                
-                /* If the caller has passed in a name then create a name record using the new name */
-                if(!strName.empty())
-                    nameContract = Names::CreateName(user->Genesis(), strName, hashAddress);
-                    
-                /* Otherwise create a new name from the previous owners name */
-                else
-                    nameContract = Names::CreateName(user->Genesis(), params, hashClaim);
-
-                /* If the Name contract operation was created then add it to the transaction */
-                if(!nameContract.Empty())
-                    tx[++nCurrent] = nameContract;
-
             }
+
+            /* Error if no valid contracts found */
+            if(nCurrent == -1)
+                throw APIException(-26, "Transaction contains no name transfers.");
 
             /* Execute the operations layer. */
             if(!tx.Build())

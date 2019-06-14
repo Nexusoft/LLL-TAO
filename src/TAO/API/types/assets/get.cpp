@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/assets.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/types/names.h>
 #include <TAO/API/include/json.h>
 
 /* Global TAO namespace. */
@@ -37,7 +37,7 @@ namespace TAO
             if(params.find("name") != params.end())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = AddressFromName( params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress( params, params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */

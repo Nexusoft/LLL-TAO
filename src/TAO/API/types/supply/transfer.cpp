@@ -60,13 +60,23 @@ namespace TAO
             /* Check whether the caller has provided the asset name parameter. */
             if(params.find("name") != params.end())
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = AddressFromName(params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"]);
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-23, "Missing memory address");
+                throw APIException(-23, "Missing name / address");
+
+            /* Ensure that the object being transferred is an item */
+            /* Get the name from the register DB.   */
+            TAO::Register::Object object;
+            if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-24, "Item not found.");
+
+            /* Only include raw and non-standard object types (items)*/
+            if(object.nType != TAO::Register::REGISTER:: APPEND)
+                throw APIException(-24, "Name / address is not an item");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);

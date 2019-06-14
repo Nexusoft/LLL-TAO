@@ -14,12 +14,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/tokens.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/types/names.h>
 #include <TAO/API/include/json.h>
 
-#include <TAO/Operation/include/enum.h>
-
-#include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -41,7 +38,7 @@ namespace TAO
              * otherwise try to find the raw hex encoded address.
              * Fail if no required parameters supplied. */
             if(params.find("name") != params.end())
-                hashRegister = AddressFromName(params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"].get<std::string>());
             else

@@ -114,6 +114,23 @@ namespace TAO
                 if(nType == TAO::Operation::TRANSFER::FORCE)
                     continue;
 
+                /* Ensure that the object being transferred is an asset */
+                /* Get the object from the register DB.   */
+                TAO::Register::Object object;
+                if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-24, "Object not found");
+
+                /* Only include raw and non-standard object types (assets)*/
+                if(object.nType != TAO::Register::REGISTER::OBJECT)
+                    continue;
+                /* parse object so that the data fields can be accessed */
+                if(!object.Parse())
+                    throw APIException(-24, "Failed to parse object register");
+
+                /* Only include asset registers */
+                if(object.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
+                    continue;
+
                 /* Submit the payload object. */
                 tx[++nCurrent] << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << uint32_t(nContract) << hashAddress;
 
@@ -122,15 +139,14 @@ namespace TAO
                 
                 /* Declare to contract to create new name */
                 TAO::Operation::Contract nameContract;
+                
                 /* If the caller has passed in a name then create a name record using the new name */
                 if(!strName.empty())
-                    nameContract = CreateNameContract(user->Genesis(), strName, hashAddress);
+                    nameContract = Names::CreateName(user->Genesis(), strName, hashAddress);
+                    
+                /* Otherwise create a new name from the previous owners name */
                 else
-                {
-                    /* Determine the name from the previous owner's sig chain and create a new
-                       Name record under our sig chain for the same name */
-                    nameContract = CreateNameContractFromTransfer(hashTx, user->Genesis());
-                }
+                    nameContract = Names::CreateName(user->Genesis(), params, hashTx);
 
                 /* If the Name contract operation was created then add it to the transaction */
                 if(!nameContract.Empty())

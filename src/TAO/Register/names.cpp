@@ -20,7 +20,6 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 
 #include <vector>
-#include <LLC/hash/argon2.h>
 
 
 /* Global TAO namespace. */

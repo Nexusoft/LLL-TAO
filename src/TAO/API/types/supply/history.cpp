@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/users.h>
 #include <TAO/API/types/supply.h>
+#include <TAO/API/types/names.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
@@ -26,7 +26,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
-#include <LLC/include/random.h>
 #include <LLD/include/global.h>
 
 /* Global TAO namespace. */
@@ -47,7 +46,7 @@ namespace TAO
 
             /* If name is provided then use this to deduce the register address */
             if(params.find("name") != params.end())
-                hashRegister = AddressFromName(params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
 
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("address") != params.end())

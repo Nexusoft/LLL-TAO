@@ -54,7 +54,7 @@ namespace TAO
             if(params.find("token_name") != params.end())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashToken = AddressFromName( params, params["token_name"].get<std::string>());
+                hashToken = Names::ResolveAddress( params, params["token_name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
@@ -72,7 +72,7 @@ namespace TAO
             if(params.find("name") != params.end())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = AddressFromName( params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress( params, params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */

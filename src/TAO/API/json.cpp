@@ -576,17 +576,24 @@ namespace TAO
 
 
         /* Converts an Object Register to formattted JSON */
-        json::json ObjectToJSON(const json::json& params, const TAO::Register::Object& object, const uint256_t& hashRegister)
+        json::json ObjectToJSON(const json::json& params, 
+                                const TAO::Register::Object& object, 
+                                const uint256_t& hashRegister, 
+                                bool fLookupName /*= true*/)
         {
             /* Declare the return JSON object */
             json::json ret;
 
-            /* Look up the object name based on the Name records in thecaller's sig chain */
-            std::string strName = GetRegisterName(hashRegister, users->GetCallersGenesis(params), object.hashOwner);
+            /* If the caller has specified to look up the name */
+            if(fLookupName)
+            {
+                /* Look up the object name based on the Name records in thecaller's sig chain */
+                std::string strName = Names::ResolveName(params, hashRegister);
 
-            /* Add the name to the response if one is found. */
-            if(!strName.empty())
-                ret["name"] = strName;
+                /* Add the name to the response if one is found. */
+                if(!strName.empty())
+                    ret["name"] = strName;
+            }
 
             /* Now build the response based on the register type */
             if(object.nType == TAO::Register::REGISTER::APPEND
@@ -615,7 +622,7 @@ namespace TAO
                         ret["address"]    = hashRegister.ToString();
 
                         /* Get the token names. */
-                        std::string strTokenName = GetTokenNameForAccount(users->GetCallersGenesis(params), object);
+                        std::string strTokenName = Names::ResolveAccountTokenName(params, object);
                         if(!strTokenName.empty())
                             ret["token_name"] = strTokenName;
 
@@ -665,6 +672,26 @@ namespace TAO
                         ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
                                                 - object.get<uint64_t>("balance")) / pow(10, nDigits);
                         ret["digits"]           = nDigits;
+
+                        break;
+                    }
+
+                    /* Handle for a Name Object. */
+                    case TAO::Register::OBJECTS::NAME:
+                    {
+                        ret["address"]          = hashRegister.ToString();
+                        ret["name"]             = object.get<std::string>("name");
+                        ret["namespace"]        = object.get<std::string>("namespace");
+                        ret["register_address"] = object.get<uint256_t>("address").GetHex();
+
+                        break;
+                    }
+
+                    /* Handle for a Name Object. */
+                    case TAO::Register::OBJECTS::NAMESPACE:
+                    {
+                        ret["address"]          = hashRegister.ToString();
+                        ret["namespace"]        = object.get<std::string>("namespace");
 
                         break;
                     }

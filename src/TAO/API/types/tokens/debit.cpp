@@ -73,7 +73,7 @@ namespace TAO
             /* If name_to is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
             if(params.find("name_to") != params.end())
-                hashTo = AddressFromName(params, params["name_to"].get<std::string>());
+                hashTo = Names::ResolveAddress(params, params["name_to"].get<std::string>());
             else if(params.find("address_to") != params.end())
                 hashTo.SetHex(params["address_to"].get<std::string>());
             else
@@ -85,7 +85,7 @@ namespace TAO
             /* If name is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
             if(params.find("name") != params.end())
-                hashFrom = AddressFromName(params, params["name"].get<std::string>());
+                hashFrom = Names::ResolveAddress(params, params["name"].get<std::string>());
             else if(params.find("address") != params.end())
                 hashFrom.SetHex(params["address"].get<std::string>());
             else

@@ -45,7 +45,7 @@ namespace TAO
         // if they have configured an account name then we need to generate the register address from that name
         //  - register address is namespacehash:token:name
         //  - namespacehash is argon2 hash of username
-        //  - Look at AddressFromName() method as you can probably use that
+        //  - Look at Names::ResolveAddress() method as you can probably use that
 
         /*  Background thread to handle/suppress sigchain notifications. */
         void Users::EventsThread()

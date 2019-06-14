@@ -96,11 +96,15 @@ namespace TAO
         *  @param[in] params The paramets passed in the request
         *  @param[in] object The Object Register to convert
         *  @param[in] hashRegister The register address of the object
+        *  @param[in] fLookupName True if the Name object record should be looked up
         *
         *  @return the formatted JSON object
         *
         **/
-        json::json ObjectToJSON(const json::json& params, const TAO::Register::Object& object, const uint256_t& hashRegister);
+        json::json ObjectToJSON(const json::json& params, 
+                                const TAO::Register::Object& object, 
+                                const uint256_t& hashRegister,
+                                bool fLookupName = true);
 
 
 

@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/json.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -29,13 +30,13 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO
 {
-
     /* API Layer namespace. */
     namespace API
     {
         /* Transfer an asset or digital item. */
-        json::json Assets::Transfer(const json::json& params, bool fHelp)
+        json::json Names::TransferName(const json::json& params, bool fHelp)
         {
+            /* Return JSON object */
             json::json ret;
 
             /* Get the PIN to be used for this API call */
@@ -44,47 +45,48 @@ namespace TAO
             /* Get the session to be used for this API call */
             uint64_t nSession = users->GetSession(params);
 
-            /* Watch for destination genesis. */
+            /* Check for destination genesis or username. */
             uint256_t hashTo = 0;
             if(params.find("destination") != params.end())
                 hashTo.SetHex(params["destination"].get<std::string>());
             else if(params.find("username") != params.end())
                 hashTo = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else
-                throw APIException(-25, "Missing Destination");
+                throw APIException(-25, "Missing username or destination address.");
 
-            /* Check that the destination exists. */
+            /* Check that the destination genesis exists. */
             if(!LLD::Ledger->HasGenesis(hashTo))
                 throw APIException(-25, "Destination doesn't exist");
 
             /* Get the register address. */
             uint256_t hashRegister = 0;
 
-            /* Check whether the caller has provided the asset name parameter. */
+            /* name object to transfer */
+            TAO::Register::Object name;
+
+            /* Check whether the caller has provided the name parameter. */
             if(params.find("name") != params.end())
-                /* If name is provided then use this to deduce the register address */
-                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
-            /* Otherwise try to find the raw hex encoded address. */
+                /* If name is provided then use this to retrieve the name object */
+                name = Names::GetName(params,params["name"].get<std::string>(), hashRegister);
+            
+            /* Otherwise try to find the name object by register address. */
             else if(params.find("address") != params.end())
-                hashRegister.SetHex(params["address"]);
+            {
+                hashRegister.SetHex(params["address"].get<std::string>());
+
+                /* Retrieve the name by register address */
+                if(!LLD::Register->ReadState(hashRegister, name, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-24, "Invalid address.");
+
+                /* Check that the name object is proper type. */
+                if(name.nType != TAO::Register::REGISTER::OBJECT
+                || !name.Parse()
+                || name.Standard() != TAO::Register::OBJECTS::NAME )
+                    throw APIException(-23, "Address is not a name register");
+            }
             /* Fail if no required parameters supplied. */
             else
                 throw APIException(-23, "Missing name / address");
-
-
-            /* Ensure that the object being transferred is an asset */
-            /* Get the name from the register DB.   */
-            TAO::Register::Object object;
-            if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-24, "Asset not found.");
-
-            /* Only include raw and non-standard object types (assets)*/
-            if(object.nType != TAO::Register::REGISTER::OBJECT)
-                throw APIException(-24, "Asset not found.");
-                
-            /* parse object so that the data fields can be accessed and check that it is an asset*/
-            if(!object.Parse() || object.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
-                throw APIException(-24, "Name / address is not an asset");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);

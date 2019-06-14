@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/finance.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/types/names.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -39,7 +39,7 @@ namespace TAO
 
             /* Attempt to deduce the register address from name. */
             if(params.find("name") != params.end())
-                hashRegister = AddressFromName(params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
 
             /* Get the RAW address from hex. */
             else if(params.find("address") != params.end())

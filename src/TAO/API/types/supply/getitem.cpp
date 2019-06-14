@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/supply.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/types/names.h>
 
 #include <LLD/include/global.h>
 
@@ -36,7 +36,7 @@ namespace TAO
             if(params.find("name") != params.end())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = AddressFromName( params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress( params, params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
@@ -50,7 +50,10 @@ namespace TAO
             /* Get the history. */
             TAO::Register::State state;
             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-24, "No state found");
+                throw APIException(-24, "Item not found");
+
+            if(state.nType != TAO::Register::REGISTER::APPEND)
+                throw APIException(-24, "Item not found");
 
             /* Build the response JSON. */
             //ret["version"]  = state.nVersion;
