@@ -88,7 +88,7 @@ namespace TAO
             json::json Create(const json::json& params, bool fHelp);
 
 
-            /** NamesGetName
+            /** Get
              *
              *  Get the data from a name.  NOTE the intentional naming of this method that does not fit with the convention of 
              *  the rest of the class - this is intentional as GetName is already a base class method that has been marked as final.
@@ -152,6 +152,71 @@ namespace TAO
              *
              **/
             json::json NameHistory(const json::json& params, bool fHelp);
+
+
+            /** CreateNamespace
+             *
+             *  Create a namespace
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json CreateNamespace(const json::json& params, bool fHelp);
+
+
+            /** GetNamespace
+             *
+             *  Get the data from a namespace.  
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json GetNamespace(const json::json& params, bool fHelp);
+
+
+            /** TransferNamespace
+             *
+             *  Transfer a name space
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json TransferNamespace(const json::json& params, bool fHelp);
+
+
+            /** ClaimNamespace
+             *
+             *  Claim a transferred namespace .
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json ClaimNamespace(const json::json& params, bool fHelp);
+
+
+            /** NamespaceHistory
+             *
+             *  History of an namespace and its ownership
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json NamespaceHistory(const json::json& params, bool fHelp);
 
 
 
@@ -259,6 +324,7 @@ namespace TAO
             *
             **/
             static std::string ResolveAccountTokenName(const json::json& params, const TAO::Register::Object& account);
+            
 
         };
     }

@@ -11,21 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
-#include <TAO/API/include/json.h>
+#include <TAO/API/types/names.h>
+#include <TAO/API/types/objects.h>
 
-#include <TAO/Operation/include/enum.h>
-#include <TAO/Operation/include/execute.h>
-
-#include <TAO/Register/include/verify.h>
 #include <TAO/Register/include/enum.h>
-
-#include <TAO/Ledger/include/create.h>
-#include <TAO/Ledger/types/mempool.h>
-
-#include <LLC/include/random.h>
-#include <LLD/include/global.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -36,93 +25,7 @@ namespace TAO
         /* Transfer an asset or digital item. */
         json::json Names::TransferName(const json::json& params, bool fHelp)
         {
-            /* Return JSON object */
-            json::json ret;
-
-            /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params);
-
-            /* Get the session to be used for this API call */
-            uint64_t nSession = users->GetSession(params);
-
-            /* Check for destination genesis or username. */
-            uint256_t hashTo = 0;
-            if(params.find("destination") != params.end())
-                hashTo.SetHex(params["destination"].get<std::string>());
-            else if(params.find("username") != params.end())
-                hashTo = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-            else
-                throw APIException(-25, "Missing username or destination address.");
-
-            /* Check that the destination genesis exists. */
-            if(!LLD::Ledger->HasGenesis(hashTo))
-                throw APIException(-25, "Destination doesn't exist");
-
-            /* Get the register address. */
-            uint256_t hashRegister = 0;
-
-            /* name object to transfer */
-            TAO::Register::Object name;
-
-            /* Check whether the caller has provided the name parameter. */
-            if(params.find("name") != params.end())
-                /* If name is provided then use this to retrieve the name object */
-                name = Names::GetName(params,params["name"].get<std::string>(), hashRegister);
-            
-            /* Otherwise try to find the name object by register address. */
-            else if(params.find("address") != params.end())
-            {
-                hashRegister.SetHex(params["address"].get<std::string>());
-
-                /* Retrieve the name by register address */
-                if(!LLD::Register->ReadState(hashRegister, name, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-24, "Invalid address.");
-
-                /* Check that the name object is proper type. */
-                if(name.nType != TAO::Register::REGISTER::OBJECT
-                || !name.Parse()
-                || name.Standard() != TAO::Register::OBJECTS::NAME )
-                    throw APIException(-23, "Address is not a name register");
-            }
-            /* Fail if no required parameters supplied. */
-            else
-                throw APIException(-23, "Missing name / address");
-
-            /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
-            if(!user)
-                throw APIException(-25, "Invalid session ID");
-
-            /* Check that the account is unlocked for creating transactions */
-            if(!users->CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions");
-
-            /* Create the transaction. */
-            TAO::Ledger::Transaction tx;
-            if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-25, "Failed to create transaction");
-
-            /* Submit the payload object.
-               NOTE we pass false for the fForceTransfer parameter so that the Transfer requires a corresponding Claim */
-            tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo << uint8_t(TAO::Operation::TRANSFER::CLAIM);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-26, "Operations failed to execute");
-
-            /* Sign the transaction. */
-            if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-26, "Ledger failed to sign transaction");
-
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-26, "Failed to accept");
-
-            /* Build a JSON response object. */
-            ret["txid"]  = tx.GetHash().ToString();
-            ret["address"] = hashRegister.ToString();
-
-            return ret;
+            return Objects::Transfer(params, TAO::Register::OBJECTS::NAME, std::string("Name"));
         }
     }
 }

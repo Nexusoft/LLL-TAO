@@ -328,6 +328,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_names_names.o \
 		build/API_types_names_transfer.o \
 		build/API_types_names_update.o \
+		build/API_types_objects_claim.o \
+		build/API_types_objects_history.o \
+		build/API_types_objects_transfer.o \
 		build/API_types_RPC_account.o \
 		build/API_types_RPC_daemon.o \
 		build/API_types_RPC_info.o \
@@ -552,6 +555,9 @@ build/API_types_ledger_%.o: ./src/TAO/API/types/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_names_%.o: ./src/TAO/API/types/names/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_types_objects_%.o: ./src/TAO/API/types/objects/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_RPC_%.o: ./src/TAO/API/types/RPC/%.cpp $(HEADERS)
@@ -797,14 +803,21 @@ build/API_types_ledger_%.o: src/TAO/API/types/ledger/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_names_%.o: src/TAO/API/types/names/%.cpp $(HEADERS)
+build/API_types_names_%.o: src/TAO/API/types/names/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_RPC_%.o: src/TAO/API/types/RPC/%.cpp $(HEADERS)
+build/API_types_objects_%.o: src/TAO/API/types/objects/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_RPC_%.o: src/TAO/API/types/RPC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1165,6 +1178,13 @@ build/API_types_ledger_%.o: src/TAO/API/types/ledger/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/API_types_names_%.o: src/TAO/API/types/names/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_objects_%.o: src/TAO/API/types/objects/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

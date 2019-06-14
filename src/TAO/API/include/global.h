@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/users.h>
 #include <TAO/API/types/finance.h>
 #include <TAO/API/types/names.h>
+#include <TAO/API/types/objects.h>
 
 namespace TAO
 {
