@@ -352,12 +352,22 @@ This will get the history of an asset or digital item as well as it's ownership.
 ```
 [
     {
-        "owner": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-        "timestamp": 1553227128
+        "type": "TRANSFER",
+        "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+        "modified": 1560492117,
+        "checksum": 13703027408063695802,
+        "address": "3ff89f7f923bf9e3193540c95434f3bcaafabfe21e49068dca9440903d8233ec",
+        "name": "test",
+        "data": "1234"
     },
     {
-        "owner": bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1,
-        "timestamp": 1553249316
+        "type": "CREATE",
+        "owner": "1ff463e036cbde3595fbe2de9dff15721a89e99ef3e2e9bfa7ce48ed825e9ec2",
+        "modified": 1560492117,
+        "checksum": 13703027408063695802,
+        "address": "3ff89f7f923bf9e3193540c95434f3bcaafabfe21e49068dca9440903d8233ec",
+        "name": "test",
+        "data: "1234"
     }
 ]
 ```
@@ -366,9 +376,20 @@ This will get the history of an asset or digital item as well as it's ownership.
 
 The return value is a JSON array of objects for each entry in the assets history:
 
-`owner` : The genesis hash of the signature chain that owns the asset.
+`type` : The action that occurred - CREATE | MODIFY | TRANSFER | CLAIM
 
-`timestamp` : The Unix timestamp of when the asset was updated.
+`owner` : The genesis hash of the signature chain that owned the asset.
+
+`modified` : The Unix timestamp of when the asset was updated.
+
+`checksum` : A checksum of the state register used for pruning.
+
+`address` : The register address of the asset
+
+`name` : The name of the asset
+
+`<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset at that time.
+
 
 
 

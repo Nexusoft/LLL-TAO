@@ -27,5 +27,11 @@ namespace TAO
         {
             return Objects::Claim(params, TAO::Register::OBJECTS::NAME, std::string("Name"));
         }
+
+        /* Claim a transferred namespace. */
+        json::json Names::ClaimNamespace(const json::json& params, bool fHelp)
+        {
+            return Objects::Claim(params, TAO::Register::OBJECTS::NAMESPACE, std::string("Namespace"));
+        }
     }
 }

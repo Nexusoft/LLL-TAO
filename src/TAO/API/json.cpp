@@ -691,7 +691,7 @@ namespace TAO
                     case TAO::Register::OBJECTS::NAMESPACE:
                     {
                         ret["address"]          = hashRegister.ToString();
-                        ret["namespace"]        = object.get<std::string>("namespace");
+                        ret["name"]        = object.get<std::string>("namespace");
 
                         break;
                     }

@@ -206,12 +206,20 @@ This will get the history of a namespace as well as it's ownership. The API supp
 ```
 [
     {
-        "owner": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-        "timestamp": 1553227128
+        "type": "TRANSFER",
+        "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+        "modified": 1560492117,
+        "checksum": 13703027408063695802,
+        "address": "3ff89f7f923bf9e3193540c95434f3bcaafabfe21e49068dca9440903d8233ec",
+        "name": "test"
     },
     {
-        "owner": bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1,
-        "timestamp": 1553249316
+        "type": "CREATE",
+        "owner": "1ff463e036cbde3595fbe2de9dff15721a89e99ef3e2e9bfa7ce48ed825e9ec2",
+        "modified": 1560492117,
+        "checksum": 13703027408063695802,
+        "address": "3ff89f7f923bf9e3193540c95434f3bcaafabfe21e49068dca9440903d8233ec",
+        "name": "test"
     }
 ]
 ```
@@ -220,9 +228,18 @@ This will get the history of a namespace as well as it's ownership. The API supp
 
 The return value is a JSON array of objects for each entry in the namespaces history:
 
-`owner` : The genesis hash of the signature chain that owns the namespace.
+`type` : The action that occurred - CREATE | MODIFY | TRANSFER | CLAIM
 
-`timestamp` : The Unix timestamp of when the namespace was updated.
+`owner` : The genesis hash of the signature chain that owned the namespace.
+
+`modified` : The Unix timestamp of when the namespace was updated.
+
+`checksum` : A checksum of the state register used for pruning.
+
+`address` : The register address of the namespace
+
+`name` : The name of the namespace
+
 
 
 ****
@@ -470,13 +487,16 @@ This will get the history of a name as well as it's ownership. The API supports 
 ```
 [
     {
-        "owner": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-        "timestamp": 1553227128
-    },
-    {
-        "owner": bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1,
-        "timestamp": 1553249316
+        "type": "CREATE",
+        "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+        "modified": 1560492280,
+        "checksum": 5612332250743384100,
+        "address": "2af7515915a9df9e80c120f68c0ba7973e53669f791da5e6c12f36ca493ac05f",
+        "name": "paul",
+        "namespace": "test",
+        "register_address": "94cdbf13aa1bbb2df228036e280c7b3cc5a5152ae1fed9bacca3b94e9e652bb1"
     }
+
 ]
 ```
 
@@ -484,9 +504,21 @@ This will get the history of a name as well as it's ownership. The API supports 
 
 The return value is a JSON array of objects for each entry in the names history:
 
-`owner` : The genesis hash of the signature chain that owns the name.
+`type` : The action that occurred - CREATE | MODIFY | TRANSFER | CLAIM
 
-`timestamp` : The Unix timestamp of when the name was updated.
+`owner` : The genesis hash of the signature chain that owned the name.
+
+`modified` : The Unix timestamp of when the name was updated.
+
+`checksum` : A checksum of the state register used for pruning.
+
+`address` : The register address of the name
+
+`name` : The name 
+
+`namespace` : The namespace name
+
+`register_address` : The register address that this name points to at this point in history
 
 
 ****

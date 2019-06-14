@@ -22,10 +22,16 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        /* Transfer an asset or digital item. */
+        /* Transfer a name. */
         json::json Names::TransferName(const json::json& params, bool fHelp)
         {
             return Objects::Transfer(params, TAO::Register::OBJECTS::NAME, std::string("Name"));
+        }
+
+        /* Transfer a namespace. */
+        json::json Names::TransferNamespace(const json::json& params, bool fHelp)
+        {
+            return Objects::Transfer(params, TAO::Register::OBJECTS::NAMESPACE, std::string("Namespace"));
         }
     }
 }

@@ -22,10 +22,16 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        /* History of an asset and its ownership */
+        /* History of a name */
         json::json Names::NameHistory(const json::json& params, bool fHelp)
         {
             return Objects::History(params, TAO::Register::OBJECTS::NAME, std::string("Name"));
+        }
+
+        /* History of a namespace */
+        json::json Names::NamespaceHistory(const json::json& params, bool fHelp)
+        {
+            return Objects::History(params, TAO::Register::OBJECTS::NAMESPACE, std::string("Namespace"));
         }
     }
 }

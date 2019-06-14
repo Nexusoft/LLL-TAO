@@ -33,12 +33,13 @@ namespace TAO
             /* The rewritten method name to return.  Default to the method name passed in */
             std::string strMethodRewritten = strMethod;
 
-            /* support passing the  name after the method e.g. get/name/myname */
+            /* support passing the name after the method e.g. get/name/myname */
+            std::string strNameOrAddress;
+
+            /* First check for /name/ */
             std::size_t nPos = strMethod.find("/name/");
             if(nPos != std::string::npos)
             {
-                std::string strNameOrAddress;
-
                 /* Edge case for /names/list/name/history/somename */
                 if(strMethod == "list/name/history")
                     return strMethod;
@@ -57,10 +58,37 @@ namespace TAO
                     /* Get the name or address that comes after the /name/ part */
                     strNameOrAddress = strMethod.substr(nPos +6);
                 }
+            }
 
-                
+            /* Next check for /namespace/ */
+            nPos = strMethod.find("/namespace/");
+            if(nPos != std::string::npos)
+            {
+                /* Edge case for /names/list/namespace/history/somename */
+                if(strMethod == "list/namespace/history")
+                    return strMethod;
+                else if(strMethod.find("list/namespace/history/") != std::string::npos)
+                {
+                    strMethodRewritten = "list/namespace/history";
+
+                    /* Get the name or address that comes after the list/name/history part */
+                    strNameOrAddress = strMethod.substr(23); 
+                }
+                else
+                {
+                    /* get the method name from the incoming string */
+                    strMethodRewritten = strMethod.substr(0, nPos+10);
+
+                    /* Get the name or address that comes after the /namespace/ part */
+                    strNameOrAddress = strMethod.substr(nPos +11);
+                }
+            }
+
+
+            if(!strNameOrAddress.empty())
+            {
                 /* Edge case for claim/name/txid */
-                if(strMethodRewritten == "claim/name")
+                if(strMethodRewritten == "claim/name" || strMethodRewritten == "claim/namespace")
                     jsonParams["txid"] = strNameOrAddress;
                 /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
                 else if(IsRegisterAddress(strNameOrAddress) && strMethodRewritten == "get/name")
@@ -69,8 +97,7 @@ namespace TAO
                     jsonParams["address"] = strNameOrAddress;
                 else
                     jsonParams["name"] = strNameOrAddress;
-                    
-            }
+            }       
 
             return strMethodRewritten;
         }
@@ -85,6 +112,12 @@ namespace TAO
             mapFunctions["transfer/name"]           = Function(std::bind(&Names::TransferName,  this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["claim/name"]              = Function(std::bind(&Names::ClaimName,  this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/name/history"]       = Function(std::bind(&Names::NameHistory,   this, std::placeholders::_1, std::placeholders::_2));
+
+            mapFunctions["create/namespace"]        = Function(std::bind(&Names::CreateNamespace,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/namespace"]           = Function(std::bind(&Names::GetNamespace,       this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["transfer/namespace"]      = Function(std::bind(&Names::TransferNamespace,  this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["claim/namespace"]         = Function(std::bind(&Names::ClaimNamespace,  this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/namespace/history"]  = Function(std::bind(&Names::NamespaceHistory,   this, std::placeholders::_1, std::placeholders::_2));
         }
     }
 }

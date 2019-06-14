@@ -43,9 +43,12 @@ namespace TAO
             /* Check whether the caller has provided the name parameter. */
             if(params.find("name") != params.end())
             {
-                /* Edge case for NAME objects as these do not need to be resolved to an address */
+                /* Edge case for name objects as these do not need to be resolved to an address */
                 if( nType == TAO::Register::OBJECTS::NAME)
                     state = Names::GetName(params, params["name"].get<std::string>(), hashRegister);
+                /* Edge case for namespace objects as the address is a hash of the name */
+                else if( nType == TAO::Register::OBJECTS::NAMESPACE)
+                    hashRegister = LLC::SK256(params["name"].get<std::string>());
                 else
                     /* If name is provided then use this to deduce the register address */
                     hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
@@ -147,8 +150,9 @@ namespace TAO
                             obj["checksum"] = state.hashChecksum;
 
                             /* Get the JSON data for this object.  NOTE that we pass false for fLookupName if the requested type
-                               is a NAME object, as those are the edge case that do not have a Name object themselves */
-                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, nType != TAO::Register::OBJECTS::NAME);
+                               is a name of namesace object, as those are the edge case that do not have a Name object themselves */
+                            bool fLookupName = nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE;
+                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
 
                             /* Copy the asset data in to the response after the type/checksum */
                             obj.insert(data.begin(), data.end());
@@ -211,8 +215,9 @@ namespace TAO
                             obj["checksum"] = state.hashChecksum;
 
                             /* Get the JSON data for this object.  NOTE that we pass false for fLookupName if the requested type
-                               is a NAME object, as those are the edge case that do not have a Name object themselves */
-                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, nType != TAO::Register::OBJECTS::NAME);
+                               is a name of namesace object, as those are the edge case that do not have a Name object themselves */
+                            bool fLookupName = nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE;
+                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
 
                             /* Copy the name data in to the response after the type */
                             obj.insert(data.begin(), data.end());
@@ -271,8 +276,9 @@ namespace TAO
                             obj["checksum"] = state.hashChecksum;
 
                             /* Get the JSON data for this object.  NOTE that we pass false for fLookupName if the requested type
-                               is a NAME object, as those are the edge case that do not have a Name object themselves */
-                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, nType != TAO::Register::OBJECTS::NAME);
+                               is a name of namesace object, as those are the edge case that do not have a Name object themselves */
+                            bool fLookupName = nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE;
+                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
 
                             /* Copy the name data in to the response after the type */
                             obj.insert(data.begin(), data.end());
@@ -331,8 +337,9 @@ namespace TAO
                             obj["checksum"] = state.hashChecksum;
 
                             /* Get the JSON data for this object.  NOTE that we pass false for fLookupName if the requested type
-                               is a NAME object, as those are the edge case that do not have a Name object themselves */
-                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, nType != TAO::Register::OBJECTS::NAME);
+                               is a name of namesace object, as those are the edge case that do not have a Name object themselves */
+                            bool fLookupName = nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE;
+                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
 
                             /* Copy the name data in to the response after the type */
                             obj.insert(data.begin(), data.end());

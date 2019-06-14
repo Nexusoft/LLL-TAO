@@ -69,6 +69,9 @@ namespace TAO
                 /* Edge case for NAME objects as these do not need to be resolved to an address */
                 if( nType == TAO::Register::OBJECTS::NAME)
                     object = Names::GetName(params, params["name"].get<std::string>(), hashRegister);
+                /* Edge case for namespace objects as the address is a hash of the name */
+                else if( nType == TAO::Register::OBJECTS::NAMESPACE)
+                    hashRegister = LLC::SK256(params["name"].get<std::string>());
                 else
                     /* If name is provided then use this to deduce the register address */
                     hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());

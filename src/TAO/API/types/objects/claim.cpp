@@ -137,8 +137,8 @@ namespace TAO
                 /* Add the address to the return JSON */
                 jsonClaimed.push_back( hashAddress.GetHex() );
                 
-                /* Create a name object for the claimed object unless this is a Name already */
-                if(nType != TAO::Register::OBJECTS::NAME)
+                /* Create a name object for the claimed object unless this is a Name or Namespace already */
+                if(nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE)
                 {
                     /* Declare to contract to create new name */
                     TAO::Operation::Contract nameContract;

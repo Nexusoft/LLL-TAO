@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
+#include <TAO/Register/include/names.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -67,6 +69,39 @@ namespace TAO
             jsonRet["register_address"] = name.get<uint256_t>("address").ToString();
             jsonRet["address"] = hashNameRegister.GetHex();
             jsonRet["owner"] = name.hashOwner.GetHex();
+
+            return jsonRet;
+        }
+
+
+        /* Get the data from a namespace */
+        json::json Names::GetNamespace(const json::json& params, bool fHelp)
+        {
+            /* Return JSON object */
+            json::json jsonRet;
+
+            /* Register address of Namespace object */
+            uint256_t hashRegister = 0;
+
+            /* If the caller has provided a name parameter then retrieve it by name */
+            if(params.find("name") == params.end())
+                throw APIException(-23, "Missing namespace name");
+
+            /* Get the namespace name */
+            std::string strNamespace = params["name"].get<std::string>();
+
+            /* Namespace register address is a SK256 hash of the namespace name */
+            hashRegister = LLC::SK256(strNamespace);
+
+            /* Retrieve the namespace object */
+            TAO::Register::Object namespaceObject;
+            if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
+                throw APIException(-23, "Invalid namespace");
+
+            /* Populate the json response */
+            jsonRet["name"] = namespaceObject.get<std::string>("namespace"); 
+            jsonRet["address"] = hashRegister.GetHex();
+            jsonRet["owner"] = namespaceObject.hashOwner.GetHex();
 
             return jsonRet;
         }
