@@ -156,8 +156,8 @@ namespace TAO
                                     /* Increment the contract ID. */
                                     ++nOut;
 
-                                    /* Print the JSON value for the notifications processed. */
-                                    debug::log(0, FUNCTION, "\n", ContractToJSON(txin[nIn], 1).dump(4));
+                                    /* Log debug message. */
+                                    debug::log(0, FUNCTION, "Matching DEBIT with CREDIT");
 
                                     break;
                                 }
@@ -194,8 +194,8 @@ namespace TAO
                                     /* Increment the contract ID. */
                                     ++nOut;
 
-                                    /* Print the JSON value for the notifications processed. */
-                                    debug::log(0, FUNCTION, "\n", ContractToJSON(txin[nIn], 1).dump(4));
+                                    /* Log debug message. */
+                                    debug::log(0, FUNCTION, "Matching COINBASE with CREDIT");
 
                                     break;
                                 }
@@ -210,8 +210,8 @@ namespace TAO
                                     /* Increment the contract ID. */
                                     ++nOut;
 
-                                    /* Print the JSON value for the notifications processed. */
-                                    debug::log(0, FUNCTION, "\n", ContractToJSON(txin[nIn], 1).dump(4));
+                                    /* Log debug message. */
+                                    debug::log(0, FUNCTION, "Matching TRANSFER with CLAIM");
 
                                     break;
                                 }

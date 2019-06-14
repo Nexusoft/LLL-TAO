@@ -235,6 +235,14 @@ namespace TAO
                 if(!LLD::Ledger->ReadTx(hashLast, tx))
                     return debug::error(FUNCTION, "Failed to read transaction");
 
+                /* Skip this transaction if it is immature. */
+                if(!LLD::Ledger->ReadMature(hashLast))
+                {
+                    /* Set the next last. */
+                    hashLast = tx.hashPrevTx;
+                    continue;
+                }
+
                 /* Loop through all contracts and add coinbase contracts to vector. */
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
@@ -242,17 +250,11 @@ namespace TAO
                     /* Check for coinbase opcode */
                     if(Register::Unpack(tx[nContract], Operation::OP::COINBASE))
                     {
-                        /* Get the number of confirmations for this transaction. */
-                        uint32_t nConfirms = 0;
-                        Ledger::BlockState state;
-                        if(LLD::Ledger->ReadBlock(tx.GetHash(), state))
-                            nConfirms = TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight;
-
-                        /* Check that the coinbase transaction is ready to be credited. */
-                        if(nConfirms < (config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
+                        /* Check if proofs are spent. */
+                        if(LLD::Ledger->HasProof(hashGenesis, hashLast, nContract, TAO::Ledger::FLAGS::MEMPOOL))
                             continue;
 
-                        /* Add the coinbase transaction. */
+                        /* Add the coinbase transaction and skip rest of contracts. */
                         vTransactions.push_back(tx);
                         break;
                     }
