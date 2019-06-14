@@ -258,7 +258,7 @@ int main(int argc, char** argv)
 
     /* If wallet is not encrypted, it is unlocked by default. Start stake minter now. It will run until stopped by system shutdown. */
     if(!Legacy::Wallet::GetInstance().IsCrypted() && config::GetBoolArg(std::string("-beta")))
-        Legacy::LegacyMinter::GetInstance().StartStakeMinter();
+        Legacy::LegacyMinter::GetInstance().Start();
 
 
     /* Startup performance metric. */
@@ -301,9 +301,9 @@ int main(int argc, char** argv)
 
     /* Stop stake minter if it is running (before server shutdown). */
     if(config::GetBoolArg(std::string("-beta")))
-        Legacy::LegacyMinter::GetInstance().StopStakeMinter();
+        Legacy::LegacyMinter::GetInstance().Stop();
     else
-        TAO::Ledger::TritiumMinter::GetInstance().StopStakeMinter();
+        TAO::Ledger::TritiumMinter::GetInstance().Stop();
 
 
     /* Shutdown the time server and its subsystems. */

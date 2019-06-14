@@ -223,6 +223,11 @@ namespace TAO
                     /* Store new block cache. */
                     blockCache[nChannel].store(block);
                 }
+                else
+                {
+                    /* Update the producer timestamp. */
+                    block.producer.nTimestamp = runtime::unifiedtimestamp();
+                }
 
                 /* Use the extra nonce if block is coinbase. */
                 if(nChannel == 1 || nChannel == 2)

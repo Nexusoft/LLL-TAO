@@ -33,9 +33,9 @@ namespace Legacy
     /** @class LegacyMinter
       *
       * This class performs all operations for mining legacy blocks on the Proof of Stake channel.
-      * Intialize the LegacyMinter by calling GetInstance() the first time. 
+      * Intialize the LegacyMinter by calling GetInstance() the first time.
       *
-      * Staking does not start, though, until StartStakeMinter() is called for the first time.
+      * Staking does not start, though, until Start() is called for the first time.
       * This retrieves a wallet reference and begins staking for the current legacy wallet.
       *
       * The trust key and balance from the wallet will be used for Proof of Stake.
@@ -43,8 +43,8 @@ namespace Legacy
       * to the wallet's trust key. If the wallet does not have a trust key to start, one will be
       * created from its key pool and the minter will mine for its Genesis transaction.
       *
-      * Staking operations can be suspended by calling StopStakeMinter (for example, if the wallet is locked)
-      * and restarted by calling StartStakeMinter() again.
+      * Staking operations can be suspended by calling Stop (for example, if the wallet is locked)
+      * and restarted by calling Start() again.
       *
       **/
     class LegacyMinter final : public TAO::Ledger::StakeMinter
@@ -81,7 +81,7 @@ namespace Legacy
         bool IsStarted() const override;
 
 
-        /** StartStakeMinter
+        /** Start
           *
           * Start the stake minter.
           *
@@ -106,22 +106,22 @@ namespace Legacy
           * @return true if the stake minter was started, false if it was already running or not started
           *
           */
-        bool StartStakeMinter() override;
+        bool Start() override;
 
 
-        /** StopStakeMinter
+        /** Stop
           *
           * Stops the stake minter.
           *
           * Call this method to signal the stake minter thread stop Proof of Stake mining and end.
-          * It can be restarted via a subsequent call to StartStakeMinter().
+          * It can be restarted via a subsequent call to Start().
           *
           * Should be called whenever the wallet is locked, and on system shutdown.
           *
           * @return true if the stake minter was stopped, false if it was already stopped
           *
           */
-        bool StopStakeMinter() override;
+        bool Stop() override;
 
 
     private:

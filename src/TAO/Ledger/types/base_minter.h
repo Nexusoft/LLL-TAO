@@ -32,11 +32,11 @@ namespace TAO
     /** @class StakeMinter
       *
       * This class provides the base class and process metrics for mining blocks on the Proof of Stake channel.
-      * Implementations will provide the details for mining each specific PoS block type. 
+      * Implementations will provide the details for mining each specific PoS block type.
       *
-      * Staking starts when StartStakeMinter() is called.
+      * Staking starts when Start() is called.
       *
-      * Staking operations can be suspended by calling StopStakeMinter and restarted by calling StartStakeMinter() again.
+      * Staking operations can be suspended by calling Stop and restarted by calling Start() again.
       *
       **/
     class StakeMinter
@@ -75,7 +75,7 @@ namespace TAO
           *
           */
         double GetBlockWeightPercent() const;
- 
+
 
         /** GetTrustWeight
           *
@@ -127,7 +127,7 @@ namespace TAO
         bool IsWaitPeriod() const;
 
 
-        /** StartStakeMinter
+        /** Start
           *
           * Starts the stake minter.
           *
@@ -137,20 +137,20 @@ namespace TAO
           * @return true if the stake minter was started, false if it was already running or not started
           *
           */
-        virtual bool StartStakeMinter() = 0;
+        virtual bool Start() = 0;
 
 
-        /** StopStakeMinter
+        /** Stop
           *
           * Stops the stake minter.
           *
           * Call this method to signal the stake minter thread stop Proof of Stake mining and end.
-          * It can be restarted via a subsequent call to StartStakeMinter().
+          * It can be restarted via a subsequent call to Start().
           *
           * @return true if the stake minter was stopped, false if it was already stopped
           *
           */
-        virtual bool StopStakeMinter() = 0;
+        virtual bool Stop() = 0;
 
 
     protected:
@@ -165,7 +165,7 @@ namespace TAO
 
 
         /** true when the minter is waiting to begin staking **/
-        std::atomic<bool> fIsWaitPeriod;
+        std::atomic<bool> fWait;
 
 
         /** The current internal trust weight value **/
@@ -184,7 +184,7 @@ namespace TAO
         StakeMinter()
         : hashLastBlock(0)
         , nSleepTime(1000)
-        , fIsWaitPeriod(false)
+        , fWait(false)
         , nTrustWeight(0.0)
         , nBlockWeight(0.0)
         , nStakeRate(0.0)
