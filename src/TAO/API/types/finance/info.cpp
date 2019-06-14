@@ -79,10 +79,8 @@ namespace TAO
 
             /* Trust is returned as a percentage of maximum */
             uint64_t nTrustScore = trust.get<uint64_t>("trust");
-            if(nTrustScore > 0)
-                ret["trust"] = ((double)nTrustScore * 100.0) / (double)TAO::Ledger::MaxTrustScore();
-            else
-                ret["trust"] = 0.0;
+
+            ret["trust"] = nTrustScore;
 
             TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
 

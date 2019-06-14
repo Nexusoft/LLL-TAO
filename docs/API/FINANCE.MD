@@ -303,7 +303,7 @@ This will retrieve account values and staking metrics for the trust account belo
     "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
     "balance": 150,
     "stake": 5000,
-    "trust": 30.77,
+    "trust": 54322,
     "stakerate": 1.97,
     "trustweight": 58.97,
     "blockweight": 47.62,
@@ -320,7 +320,7 @@ This will retrieve account values and staking metrics for the trust account belo
 
 `stake` : The amount of NXS currently staked in the trust account.
 
-`trust` : The current trust score of the trust account as a percent of maximum.
+`trust` : The current raw trust score of the trust account.
 
 `stakerate` : The current annual reward rate earned for staking as an annual percent.
 
