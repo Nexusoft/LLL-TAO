@@ -118,8 +118,8 @@ namespace TAO
                 tx[++nCurrent] << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << uint32_t(nContract) << hashAddress;
 
                 /* Add the address to the return JSON */
-                jsonClaimed.push_back( hashAddress.GetHex() );
-                
+                jsonClaimed.push_back(hashAddress.GetHex());
+
                 /* If the caller has passed in a name then create a name record using the new name */
                 if(!strName.empty())
                     CreateName(user->Genesis(), strName, hashAddress, tx[++nCurrent]);

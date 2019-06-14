@@ -51,7 +51,7 @@ namespace TAO
             else if(params.find("username") != params.end())
                 hashTo = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else
-                throw APIException(-25, "Missing Destination");
+                throw APIException(-25, "Missing destination");
 
             /* Check that the destination exists. */
             if(!LLD::Ledger->HasGenesis(hashTo))
@@ -69,7 +69,7 @@ namespace TAO
                 hashRegister.SetHex(params["address"]);
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-23, "Missing memory address");
+                throw APIException(-23, "Missing address");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);

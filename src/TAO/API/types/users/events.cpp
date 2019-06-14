@@ -168,7 +168,7 @@ namespace TAO
                                     /* Check that the coinbase is mature and ready to be credited. */
                                     if(!fMature)
                                     {
-                                        debug::log(0, "Immature coinbase.");
+                                        debug::error(FUNCTION, "Immature coinbase.");
                                         continue;
                                     }
 
@@ -203,9 +203,24 @@ namespace TAO
                                 /* Check for Transfers. */
                                 case Operation::OP::TRANSFER:
                                 {
+                                    /* Get the address of the asset being transfered from the transaction. */
+                                    txin[nIn] >> hashFrom;
+
+                                    /* Get the genesis hash (recipient) of the transfer. */
+                                    txin[nIn] >> hashTo;
+
+                                    /* Read the force transfer flag */
+                                    uint8_t nType = 0;
+                                    txin[nIn] >> nType;
+
+                                    /* Ensure this wasn't a forced transfer (which requires no Claim) */
+                                    if(nType == TAO::Operation::TRANSFER::FORCE)
+                                        continue;
+
                                     /* Submit the payload object. */
                                     txout[nOut] << uint8_t(TAO::Operation::OP::CLAIM);
-                                    txout[nOut] << hashTx;
+                                    txout[nOut] << hashTx << nIn;
+                                    txout[nOut] << hashFrom;
 
                                     /* Increment the contract ID. */
                                     ++nOut;
