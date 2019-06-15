@@ -48,25 +48,26 @@ namespace TAO
             /* Get the coinbase transactions. */
             get_coinbases(hashGenesis, vTransactions);
 
-            /* Get the debit transactions. */
-            get_debits(hashGenesis, vTransactions);
+            /* Get the debit and transfer transactions. */
+            get_events(hashGenesis, vTransactions);
+
+
+            //TODO: sort transactions by timestamp here.
 
             return true;
         }
 
 
-        /* Get the outstanding debits. */
-        bool Users::get_debits(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions)
+        /* Get the outstanding debits and transfer transactions. */
+        bool Users::get_events(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions)
         {
             /* Get the last transaction. */
             uint512_t hashLast = 0;
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
                 return debug::error(FUNCTION, "No transactions found");
 
-
             /* List of token registers to process. */
             std::vector<uint256_t> vRegisters;
-
 
             /* Loop until genesis. */
             while(hashLast != 0)
@@ -102,11 +103,9 @@ namespace TAO
                     if(!LLD::Register->HasIdentifier(hashToken))
                         continue;
 
-
                     /* Check claims against notifications. */
                     if(LLD::Ledger->HasProof(hashAddress, tx.GetHash(), nContract, Ledger::FLAGS::MEMPOOL))
                         continue;
-
 
                     vRegisters.push_back(hashToken);
                 }
@@ -264,13 +263,6 @@ namespace TAO
                 hashLast = tx.hashPrevTx;
             }
 
-            return true;
-        }
-
-
-        /*  Get the outstanding asset transfers. */
-        bool Users::get_transfers(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions)
-        {
             return true;
         }
 

@@ -418,15 +418,15 @@ namespace TAO
           private:
 
 
-              /** get_debits
+              /** get_events
                *
-               *  Get the outstanding debits.
+               *  Get the outstanding debits and transfer transactions.
                *
                *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-               *  @param[out] vTransactions The array of outstanding debit transactions.
+               *  @param[out] vTransactions The array of outstanding transactions.
                *
                **/
-              bool get_debits(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions);
+              bool get_events(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions);
 
 
               /** get_coinbases
@@ -438,20 +438,6 @@ namespace TAO
                *
                **/
               bool get_coinbases(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions);
-
-
-              /** get_transfers
-               *
-               *  Get the outstanding asset transfers.
-               *
-               *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-               *  @param[out] vTransactions The array of outstanding transfer transactions.
-               *
-               **/
-              bool get_transfers(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions);
-
-
-
 
 
         };
