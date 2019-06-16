@@ -52,7 +52,7 @@ namespace TAO
 
             /* Check for credit parameter. */
             if(params.find("amount") == params.end())
-                throw APIException(-25, "Missing Amount. (<amount>)");
+                throw APIException(-25, "Missing amount");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
@@ -61,7 +61,7 @@ namespace TAO
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions.");
+                throw APIException(-25, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
@@ -90,7 +90,7 @@ namespace TAO
             else if(params.find("address") != params.end())
                 hashFrom.SetHex(params["address"].get<std::string>());
             else
-                throw APIException(-22, "Missing account name or address)");
+                throw APIException(-22, "Missing account name or address");
 
             /* Get the account object. */
             TAO::Register::Object object;

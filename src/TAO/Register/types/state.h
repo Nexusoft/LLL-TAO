@@ -83,7 +83,7 @@ namespace TAO
                 //checksum hash not serialized on gethash
                 if(!(nSerType & SER_GETHASH))
                     READWRITE(hashChecksum);
-          )
+            )
 
 
             /** Default Constructor **/

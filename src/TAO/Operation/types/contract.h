@@ -64,6 +64,10 @@ namespace TAO
             /** MEMORY ONLY: the calling txid. **/
             mutable uint512_t hashTx;
 
+
+            /** MEMORY ONLY: the contract-id. **/
+            mutable uint32_t nOutput;
+
         public:
 
             /** Enumeration to handle setting aspects of the contract. */
@@ -98,15 +102,18 @@ namespace TAO
                 READWRITE(ssOperation);
                 READWRITE(ssCondition);
                 READWRITE(ssRegister);
-          )
+            )
 
 
             /** Bind
              *
              *  Bind the contract to a transaction.
              *
+             *  @param[in] tx The transaction to bind the contract to.
+             *  @param[in] nContract The contract ID referenced by the transaction.
+             *
              **/
-            void Bind(const TAO::Ledger::Transaction& tx) const;
+            void Bind(const TAO::Ledger::Transaction& tx, uint32_t nContract) const;
 
 
             /** Primitive
@@ -117,6 +124,16 @@ namespace TAO
              *
              **/
             uint8_t Primitive() const;
+
+
+            /** Output
+             *
+             *  Get the output (contract ID).
+             *
+             *  @return The contract ID.
+             *
+             **/
+            uint32_t Output() const;
 
 
             /** Timestamp
@@ -143,7 +160,7 @@ namespace TAO
              *
              *  Get the hash of calling tx
              *
-             *  @return the genesis-id of caller
+             *  @return Returns the txid of calling tx
              *
              **/
             const uint512_t& Hash() const;

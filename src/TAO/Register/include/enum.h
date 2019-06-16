@@ -23,7 +23,7 @@ namespace TAO
     namespace Register
     {
 
-        /** STATE
+        /** REGISTER
          *
          *  State registers that are available for use.
          *

@@ -149,8 +149,7 @@ namespace LLD
 
 
     /* Writes a partial to the ledger DB. */
-    bool LedgerDB::WriteClaimed(const uint512_t& hashTx,
-                                const uint32_t nContract, const uint64_t nClaimed, const uint8_t nFlags)
+    bool LedgerDB::WriteClaimed(const uint512_t& hashTx, const uint32_t nContract, const uint64_t nClaimed, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
@@ -176,8 +175,7 @@ namespace LLD
 
 
     /* Read a partial to the ledger DB. */
-    bool LedgerDB::ReadClaimed(const uint512_t& hashTx,
-                               const uint32_t nContract, uint64_t& nClaimed, const uint8_t nFlags)
+    bool LedgerDB::ReadClaimed(const uint512_t& hashTx, const uint32_t nContract, uint64_t& nClaimed, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
@@ -192,6 +190,36 @@ namespace LLD
         }
 
         return Read(std::make_pair(hashTx, nContract), nClaimed);
+    }
+
+
+    /* Read if a transaction is mature. */
+    bool LedgerDB::ReadMature(const uint512_t &hashTx)
+    {
+        /* Default confirmations to zero. */
+        uint32_t nConfirms = 0;
+
+        /* Read the number of confirmations. */
+        if(!ReadConfirmations(hashTx, nConfirms))
+            return false;
+
+        /* Compare to the network maturity constants for maturity result. */
+        return (nConfirms >= (config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS));
+    }
+
+
+    /* Read the number of confirmations a transaction has. */
+    bool LedgerDB::ReadConfirmations(const uint512_t &hashTx, uint32_t &nConfirms)
+    {
+        /* Read a block state for this transaction. */
+        TAO::Ledger::BlockState state;
+        if(!ReadBlock(hashTx, state))
+            return false;
+
+        /* Set the number of confirmations based on chainstate/blockstate height. */
+        nConfirms = TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight;
+
+        return true;
     }
 
 

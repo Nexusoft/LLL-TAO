@@ -132,7 +132,7 @@ namespace TAO
 
             /* Always add the contracts if level 1 and up */
             if(nTransactionVerbosity >= 1)
-                ret["contracts"] = ContractsToJSON(tx);
+                ret["contracts"] = ContractsToJSON(tx, nTransactionVerbosity);
 
             /* Basic TX info for level 2 and up */
             if(nTransactionVerbosity >= 2)
@@ -226,26 +226,22 @@ namespace TAO
 
 
         /* Converts a transaction object into a formatted JSON list of contracts bound to the transaction. */
-        json::json ContractsToJSON(const TAO::Ledger::Transaction &tx)
+        json::json ContractsToJSON(const TAO::Ledger::Transaction &tx, uint32_t nVerbosity)
         {
+            /* Declare the return JSON object*/
             json::json ret = json::json::array();
 
             /* Add a contract to the list of contracts. */
             uint32_t nContracts = tx.Size();
             for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
-            {
-                json::json contract = ContractToJSON(tx[nContract], nContract);
+                ret.push_back(ContractToJSON(tx[nContract], nVerbosity));
 
-                ret.push_back(contract);
-            }
-
-            /* Return the list of contracts. */
             return ret;
         }
 
 
         /* Converts a serialized operation stream to formattted JSON */
-        json::json ContractToJSON(const TAO::Operation::Contract& contract, uint32_t nContract)
+        json::json ContractToJSON(const TAO::Operation::Contract& contract, uint32_t nVerbosity)
         {
             /* Declare the return JSON object*/
             json::json ret;
@@ -256,6 +252,12 @@ namespace TAO
             /* Make sure no exceptions are thrown. */
             try
             {
+
+                /* Include the txid if the verbosity level is higher than zero. */
+                if(nVerbosity > 0)
+                    ret["txid"] = contract.Hash().GetHex();
+
+
                 /* Get the contract operations. */
                 uint8_t OPERATION = 0;
                 contract >> OPERATION;
@@ -319,7 +321,7 @@ namespace TAO
                         contract >> vchData;
 
                         /* Output the json information. */
-                        ret["OP"]      = "REGISTER";
+                        ret["OP"]      = "CREATE";
                         ret["address"] = hashAddress.ToString();
                         ret["type"]    = nType;
                         ret["data"]    = HexStr(vchData.begin(), vchData.end());
@@ -398,6 +400,13 @@ namespace TAO
                         ret["genesis"] = hashGenesis.ToString();
                         ret["nonce"]   = nExtraNonce;
                         ret["amount"]  = nCredit;
+
+                        if(nVerbosity > 0)
+                        {
+                            uint32_t nConfirms = 0;
+                            LLD::Ledger->ReadConfirmations(contract.Hash(), nConfirms);
+                            ret["confirms"] = nConfirms;
+                        }
 
                         break;
                     }
@@ -561,10 +570,6 @@ namespace TAO
                         break;
                     }
                 }
-
-                /* Add the contract-id for this contract object. */
-                if(OPERATION != TAO::Operation::OP::CREDIT)
-                    ret["output"] = nContract;
             }
             catch(const std::exception& e)
             {
