@@ -100,7 +100,7 @@ int main(int argc, char** argv)
 
 
     /* Log system startup now, after branching to API/RPC where appropriate */
-    debug::Initialize(argc, argv);
+    debug::Initialize();
 
 
     /** Run the process as Daemon RPC/LLP Server if Flagged. **/

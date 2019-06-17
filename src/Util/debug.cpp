@@ -72,7 +72,7 @@ namespace debug
 
 
     /* Write startup information into the log file */
-    void Initialize(int argc, char** argv)
+    void Initialize()
     {
         strLogFolder = config::GetDataDir() + "log/";
 
