@@ -69,17 +69,20 @@ namespace TAO
             if(params.find("name") == params.end())
                 throw APIException(-25, "Missing name parameter");
 
-            /* Check caller has provided the register adress parameter */
-            if(params.find("register_address") == params.end() )
-                throw APIException(-25, "Missing register address");
             
-            /* Check that the register address is a valid address */
-            if(!IsRegisterAddress(params["register_address"].get<std::string>()))
-                throw APIException(-25, "Invalid register address");
-
             /* The register address to create the name for */
-            uint256_t hashRegister;
-            hashRegister.SetHex(params["register_address"].get<std::string>());
+            uint256_t hashRegister = 0;
+
+            /* Check caller has provided the register adress parameter */
+            if(params.find("register_address") != params.end() )
+            {
+                /* Check that the register address is a valid address */
+                if(!IsRegisterAddress(params["register_address"].get<std::string>()))
+                    throw APIException(-25, "Invalid register address");
+
+                
+                hashRegister.SetHex(params["register_address"].get<std::string>());
+            }
 
             /* Create the Name object contract */
             tx[0] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), hashRegister);

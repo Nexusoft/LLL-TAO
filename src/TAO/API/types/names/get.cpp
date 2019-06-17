@@ -39,12 +39,6 @@ namespace TAO
             /* Register address of Name object */
             uint256_t hashNameRegister = 0;
 
-            /* Get the session to be used for this API call. */
-            uint64_t nSession = users->GetSession(params, true);
-
-            /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
-
             /* If the caller has provided a name parameter then retrieve it by name */
             if(params.find("name") != params.end())
                 name = Names::GetName(params, params["name"].get<std::string>(), hashNameRegister);
@@ -55,6 +49,12 @@ namespace TAO
                 /* Check that the caller has passed a valid register address */
                 if(!IsRegisterAddress(params["register_address"].get<std::string>()))
                     throw APIException(-25, "Invalid register address");
+
+                /* Get the session to be used for this API call. */
+                uint64_t nSession = users->GetSession(params, true);
+
+                /* Get the account. */
+                memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
 
                 /* The register address that the name points to */
                 uint256_t hashRegister;
