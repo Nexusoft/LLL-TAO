@@ -169,12 +169,12 @@ namespace TAO
         }
 
 
-        /* Unpack the amount of NXS minted by a contract. */
-        bool Unpack(const TAO::Operation::Contract& contract, uint64_t& nMint)
+        /* Unpack the amount of NXS in contract. */
+        bool Unpack(const TAO::Operation::Contract& contract, uint64_t& nAmount)
         {
             /* Reset the contract. */
             contract.Reset();
-            nMint = 0;
+            nAmount = 0;
 
             /* Make sure no exceptions are thrown. */
             try
@@ -186,7 +186,6 @@ namespace TAO
                 /* Check the current opcode. */
                 switch(OPERATION)
                 {
-                    /* Extract mint from op codes that can mint NXS. */
                     case TAO::Operation::OP::COINBASE:
                     case TAO::Operation::OP::GENESIS:
                     case TAO::Operation::OP::AMBASSADOR:
@@ -195,7 +194,7 @@ namespace TAO
                         /* Seek to coinbase/coinstake. */
                         contract.Seek(32);
 
-                        contract >> nMint;
+                        contract >> nAmount;
 
                         return true;
                     }
@@ -205,13 +204,43 @@ namespace TAO
                         /* Seek to coinstake. */
                         contract.Seek(72);
 
-                        contract >> nMint;
+                        contract >> nAmount;
+
+                        return true;
+                    }
+
+                    case TAO::Operation::OP::DEBIT:
+                    {
+                        /* Seek to debit amount. */
+                        contract.Seek(64);
+
+                        contract >> nAmount;
+
+                        return true;
+                    }
+
+                    case TAO::Operation::OP::CREDIT:
+                    {
+                        /* Seek to credit amount. */
+                        contract.Seek(132);
+
+                        contract >> nAmount;
+
+                        return true;
+                    }
+
+                    case TAO::Operation::OP::STAKE:
+                    case TAO::Operation::OP::UNSTAKE:
+                    {
+                        /* Amount at beginning of contract, no need to seek. */
+                        contract >> nAmount;
 
                         return true;
                     }
 
                     default:
                     {
+                        nAmount = 0;
                         return false;
                     }
                 }
