@@ -76,7 +76,7 @@ namespace TAO
             jsonRet["created"]  = name.nCreated;
             jsonRet["modified"] = name.nModified;
 
-            json::json data  =TAO::API::ObjectToJSON(params, name, hashNameRegister);
+            json::json data  =TAO::API::ObjectToJSON(params, name, hashNameRegister, false);
 
             /* Copy the asset data in to the response after the type/checksum */
             jsonRet.insert(data.begin(), data.end());
@@ -127,7 +127,7 @@ namespace TAO
             jsonRet["owner"]    = namespaceObject.hashOwner.GetHex();
             jsonRet["created"]  = namespaceObject.nCreated;
 
-            json::json data  =TAO::API::ObjectToJSON(params, namespaceObject, hashRegister);
+            json::json data  =TAO::API::ObjectToJSON(params, namespaceObject, hashRegister, false);
 
             /* Copy the asset data in to the response after the type/checksum */
             jsonRet.insert(data.begin(), data.end());
