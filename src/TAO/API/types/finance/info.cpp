@@ -102,7 +102,7 @@ namespace TAO
             else
             {
                 /* When stake minter not running, return latest known value calculated from trust score (as an annual percent). */
-                ret["stakerate"] = TAO::Ledger::StakeRate(nTrustScore, (nTrustScore == 0)) * 100;
+                ret["stakerate"] = TAO::Ledger::StakeRate(nTrustScore, (nTrustScore == 0)) * 100.0;
 
                 /* Other staking metrics not available if stake minter not running */
                 ret["trustweight"] = 0.0;
@@ -117,10 +117,12 @@ namespace TAO
                 std::string strFieldname =  params["fieldname"].get<std::string>();
 
                 /* Iterate through the response keys */
-                for(auto it = ret.begin(); it != ret.end(); ++it)
+                json::json temp = ret; //iterate on copy or erase will invalidate the iterator
+
+                for(auto it = temp.begin(); it != temp.end(); ++it)
                     /* If this key is not the one that was requested then erase it */
                     if(it.key() != strFieldname)
-                        ret.erase(it);
+                        ret.erase(it.key());
             }
 
             return ret;
