@@ -107,7 +107,7 @@ namespace TAO
                 uint64_t nRemoveStake = nStakePrev - nAmount;
 
                 uint64_t nTrustPrev = trustAccount.get<uint64_t>("trust");
-                uint64_t nTrustPenalty = TAO::Ledger::GetUnstakePenalty(nTrustPrev, nStakePrev, nAmount);
+                uint64_t nTrustPenalty = TAO::Ledger::GetUnstakePenalty(nTrustPrev, nStakePrev, nAmount, user->Genesis());
 
                 tx[0] << uint8_t(TAO::Operation::OP::UNSTAKE) << nRemoveStake << nTrustPenalty;
             }

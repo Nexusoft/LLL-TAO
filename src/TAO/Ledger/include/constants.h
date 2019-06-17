@@ -115,6 +115,14 @@ namespace TAO
         const uint32_t MINIMUM_GENESIS_COIN_AGE_TESTNET = 60 * 10;
 
 
+        /** Grace period during which you can unstake a new stake without trust penalty (24 hours) **/
+        const uint32_t STAKE_GRACE_PERIOD = 60 * 60 * 24;
+
+
+        /** Grace period for testnet (15 minutes) **/
+        const uint32_t STAKE_GRACE_PERIOD_TESTNET = 60 * 15;
+
+
         /** Minimum span between trust blocks testnet **/
         const uint32_t TESTNET_MINIMUM_INTERVAL = 10;
 
