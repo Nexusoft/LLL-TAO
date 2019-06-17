@@ -330,6 +330,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_names_update.o \
 		build/API_types_objects_claim.o \
 		build/API_types_objects_history.o \
+		build/API_types_objects_list.o \
 		build/API_types_objects_transfer.o \
 		build/API_types_RPC_account.o \
 		build/API_types_RPC_daemon.o \
@@ -359,6 +360,8 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_users_lock.o \
 		build/API_types_users_login.o \
 		build/API_types_users_logout.o \
+		build/API_types_users_names.o \
+		build/API_types_users_namespaces.o \
 		build/API_types_users_notifications.o \
 		build/API_types_users_tokens.o \
 		build/API_types_users_transactions.o \

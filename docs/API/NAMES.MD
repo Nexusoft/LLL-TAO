@@ -98,11 +98,14 @@ Retrieves a namespace object.  The API supports an alternative endpoint that can
 
 ### Return values:
 
+`owner` : The genesis hash of the signature chain that owns this Name.
+
+`created` : The UNIX timestamp when the Name was created.
+
 `name` : The name identifying the namespace. 
 
 `address` : The register address of the namespace.  
 
-`owner` : The genesis hash of the signature chain that owns this namespace.
 
 ***
 
@@ -325,13 +328,19 @@ The API supports an alternative endpoint that can include the name in the URL.  
 
 ### Return values:
 
+`owner` : The genesis hash of the signature chain that owns this Name.
+
+`created` : The UNIX timestamp when the Name was created.
+
+`modified` : The UNIX timestamp when the Name was last modified.
+
 `name` : The name identifying the object register. 
 
 `address` : The register address of the Name.  
 
 `register_address` : The register address of the the object that this Name points to.
 
-`owner` : The genesis hash of the signature chain that owns this Name.
+
 
 ***
 

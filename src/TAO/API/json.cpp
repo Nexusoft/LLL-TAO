@@ -715,9 +715,6 @@ namespace TAO
                     default:
                     {
                         ret["address"]    = hashRegister.ToString();
-                        ret["created"]    = object.nCreated;
-                        ret["modified"]   = object.nModified;
-                        ret["owner"]      = object.hashOwner.ToString();
 
                         /* Get List of field names in this asset object */
                         std::vector<std::string> vFieldNames = object.GetFieldNames();

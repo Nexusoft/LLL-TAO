@@ -25,10 +25,10 @@ namespace TAO
     namespace API
     {
 
-        /* Get a list of assets owned by a signature chain. */
-        json::json Users::Assets(const json::json& params, bool fHelp)
+        /* Get a list of names owned by a signature chain. */
+        json::json Users::Namespaces(const json::json& params, bool fHelp)
         {
-            return Objects::List(params, TAO::Register::OBJECTS::NONSTANDARD);
+            return Objects::List(params, TAO::Register::OBJECTS::NAMESPACE);
         }
     }
 }

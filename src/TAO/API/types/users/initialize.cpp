@@ -31,6 +31,8 @@ namespace TAO
             mapFunctions["list/assets"]              = Function(std::bind(&Users::Assets,        this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/tokens"]              = Function(std::bind(&Users::Tokens,        this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/accounts"]            = Function(std::bind(&Users::Accounts,      this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/names"]               = Function(std::bind(&Users::Names,         this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/namespaces"]          = Function(std::bind(&Users::Namespaces,    this, std::placeholders::_1, std::placeholders::_2));
         }
 
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
@@ -51,7 +53,9 @@ namespace TAO
             || strMethod.find("notifications/") != std::string::npos
             || strMethod.find("assets/")        != std::string::npos
             || strMethod.find("accounts/")      != std::string::npos
-            || strMethod.find("tokens/")        != std::string::npos)
+            || strMethod.find("tokens/")        != std::string::npos
+            || strMethod.find("names/")         != std::string::npos
+            || strMethod.find("namespaces/")    != std::string::npos)
             {
                 /* support passing the username after a list method e.g. list/assets/myusername */
                 size_t nPos = strMethod.find_last_of("/");

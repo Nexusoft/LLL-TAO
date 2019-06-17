@@ -178,13 +178,15 @@ Additionally the API supports passing a field name in the URL after the asset na
 ```
 ### Return values:
 
+`owner` : The genesis hash of the signature chain that owns this asset.
+
+`created` : The UNIX timestamp when the asset was created.
+
+`modified` : The UNIX timestamp when the asset was last modified.
+
 `name` : The name identifying the asset. For privacy purposes, this is only included in the response if the caller is the owner of the asset
 
 `address` : The register address of the asset.  
-
-`timestamp` : The Unix timestamp of when the asset was last updated.
-
-`owner` : The genesis hash of the signature chain that owns this asset.
 
 `<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
 

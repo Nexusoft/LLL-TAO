@@ -72,11 +72,28 @@ namespace TAO
                 throw APIException(-23, "Name not found.");
 
             /* Populate the json response */
-            jsonRet["namespace"] = name.get<std::string>("namespace"); 
-            jsonRet["name"] = name.get<std::string>("name");
-            jsonRet["register_address"] = name.get<uint256_t>("address").ToString();
-            jsonRet["address"] = hashNameRegister.GetHex();
-            jsonRet["owner"] = name.hashOwner.GetHex();
+            jsonRet["owner"]    = name.hashOwner.GetHex();
+            jsonRet["created"]  = name.nCreated;
+            jsonRet["modified"] = name.nModified;
+
+            json::json data  =TAO::API::ObjectToJSON(params, name, hashNameRegister);
+
+            /* Copy the asset data in to the response after the type/checksum */
+            jsonRet.insert(data.begin(), data.end());
+
+
+            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
+            if(params.find("fieldname") != params.end())
+            {
+                /* First get the fieldname from the response */
+                std::string strFieldname =  params["fieldname"].get<std::string>();
+
+                /* Iterate through the response keys */
+                for(auto it = jsonRet.begin(); it != jsonRet.end(); ++it)
+                    /* If this key is not the one that was requested then erase it */
+                    if(it.key() != strFieldname)
+                        jsonRet.erase(it);
+            }
 
             return jsonRet;
         }
@@ -107,9 +124,29 @@ namespace TAO
                 throw APIException(-23, "Invalid namespace");
 
             /* Populate the json response */
-            jsonRet["name"] = namespaceObject.get<std::string>("namespace"); 
-            jsonRet["address"] = hashRegister.GetHex();
-            jsonRet["owner"] = namespaceObject.hashOwner.GetHex();
+            jsonRet["owner"]    = namespaceObject.hashOwner.GetHex();
+            jsonRet["created"]  = namespaceObject.nCreated;
+
+            json::json data  =TAO::API::ObjectToJSON(params, namespaceObject, hashRegister);
+
+            /* Copy the asset data in to the response after the type/checksum */
+            jsonRet.insert(data.begin(), data.end());
+
+
+            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
+            if(params.find("fieldname") != params.end())
+            {
+                /* First get the fieldname from the response */
+                std::string strFieldname =  params["fieldname"].get<std::string>();
+
+                /* Iterate through the response keys */
+                for(auto it = jsonRet.begin(); it != jsonRet.end(); ++it)
+                    /* If this key is not the one that was requested then erase it */
+                    if(it.key() != strFieldname)
+                        jsonRet.erase(it);
+            }
+
+            return jsonRet;
 
             return jsonRet;
         }
