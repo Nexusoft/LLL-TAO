@@ -102,6 +102,10 @@ namespace TAO
                     throw APIException(-24, "Name / address is not of type " +strType);
             }
 
+            /* Edge case logic for NAME objects as these can only be transferred if they are created in a namespace */
+            if(nType == TAO::Register::OBJECTS::NAME && object.get<std::string>("namespace").empty())
+                throw APIException(-24, "Cannot transfer names created without a namespace");
+
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
