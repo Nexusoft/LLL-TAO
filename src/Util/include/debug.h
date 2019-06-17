@@ -76,12 +76,23 @@ namespace debug
     };
 
 
-    /** shutdown
+    /** Initialize
+     *
+     *  Write startup information into the log file
+     *
+     *  @param argc The argc value from main()
+     *  @param argv The argv value from main()
+     *
+     **/
+    void Initialize(int argc, char** argv);
+
+
+    /** Shutdown
      *
      *  Close the debug log file.
      *
      **/
-    void shutdown();
+    void Shutdown();
 
 
     /** print_args
@@ -224,17 +235,6 @@ namespace debug
     std::string rfc1123Time();
 
 
-    /** InitializeLog
-     *
-     *  Write startup information into the log file
-     *
-     *  @param argc The argc value from main()
-     *  @param argv The argv value from main()
-     *
-     **/
-    void InitializeLog(int argc, char** argv);
-
-
     /** GetLastError
      *
      *  Gets the last error string logged via debug::error and clears the last error
@@ -266,15 +266,15 @@ namespace debug
     uint32_t debug_filecount();
 
 
-     /** log_path
-      *
-      *  Builds an indexed debug log path for a file.
-      *
-      *  @param[in] nIndex The index for the debug log path.
-      *
-      *  @return Returns the absolute path to the log file.
-      *
-      **/
-     std::string log_path(uint32_t nIndex);
+    /** log_path
+     *
+     *  Builds an indexed debug log path for a file.
+     *
+     *  @param[in] nIndex The index for the debug log path.
+     *
+     *  @return Returns the absolute path to the log file.
+     *
+     **/
+    std::string log_path(uint32_t nIndex);
 }
 #endif
