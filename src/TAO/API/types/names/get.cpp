@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/names.h>
+#include <TAO/API/types/users.h>
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
@@ -37,6 +39,12 @@ namespace TAO
             /* Register address of Name object */
             uint256_t hashNameRegister = 0;
 
+            /* Get the session to be used for this API call. */
+            uint64_t nSession = users->GetSession(params, true);
+
+            /* Get the account. */
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+
             /* If the caller has provided a name parameter then retrieve it by name */
             if(params.find("name") != params.end())
                 name = Names::GetName(params, params["name"].get<std::string>(), hashNameRegister);
@@ -53,7 +61,7 @@ namespace TAO
                 hashRegister.SetHex(params["register_address"].get<std::string>());
 
                 /* Get the name object based on the register address it points to*/
-                name = Names::GetName( params, hashRegister, hashNameRegister);
+                name = Names::GetName( user->Genesis(), hashRegister, hashNameRegister);
             }
             /* Fail if no required parameters supplied. */
             else

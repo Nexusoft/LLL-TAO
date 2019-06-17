@@ -592,12 +592,22 @@ namespace TAO
             /* If the caller has specified to look up the name */
             if(fLookupName)
             {
-                /* Look up the object name based on the Name records in thecaller's sig chain */
-                std::string strName = Names::ResolveName(params, hashRegister);
+                /* Get the session to be used for this API call. */
+                uint64_t nSession = users->GetSession(params, false);
 
-                /* Add the name to the response if one is found. */
-                if(!strName.empty())
-                    ret["name"] = strName;
+                /* Don't attempt to resolve the object name if there is no logged in user as there will be no sig chain  to scan */
+                if(nSession != -1)
+                {
+                    /* Get the account. */
+                    memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+
+                    /* Look up the object name based on the Name records in thecaller's sig chain */
+                    std::string strName = Names::ResolveName(user->Genesis(), hashRegister);
+
+                    /* Add the name to the response if one is found. */
+                    if(!strName.empty())
+                        ret["name"] = strName;
+                }
             }
 
             /* Now build the response based on the register type */

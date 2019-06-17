@@ -272,15 +272,15 @@ namespace TAO
 
             /** GetName
              *
-             *  Retrieves a Name object by the register address.
+             *  Retrieves a Name object by the register address, for a particular sig chain.
              *
-             *  @param[in] params The json request params
+             *  @param[in] hashGenesis The sig chain genesis hash
              *  @param[in] hashObject register address of the object to look up
              *  @param[out] hashNameObject The register address of the Name object, if found
              *
              *  @return The Name object .
              **/
-            static TAO::Register::Object GetName(const json::json& params, 
+            static TAO::Register::Object GetName(const uint256_t& hashGenesis, 
                                                  const uint256_t& hashObject, 
                                                  uint256_t& hashNameObject);
             
@@ -300,15 +300,15 @@ namespace TAO
 
             /** ResolveName
             *
-            *  Scans the Name records associated with the hashCaller sig chain to find an entry with a matching hashObject address
+            *  Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashObject address
             *
-            *  @param[in] params The json request params
+            *  @param[in] hashGenesis The sig chain genesis hash
             *  @param[in] hashRegister register address of the object to look up
             *
             *  @return the name of the object, if one is found
             *
             **/
-            static std::string ResolveName(const json::json& params, const uint256_t& hashRegister);
+            static std::string ResolveName(const uint256_t& hashGenesis, const uint256_t& hashRegister);
 
 
             /** ResolveAccountTokenName

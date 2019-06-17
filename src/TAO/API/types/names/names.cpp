@@ -143,7 +143,7 @@ namespace TAO
                     check >> hashAddress;
 
                     /* Now check the previous owners Name records to see if there was a Name for this object */
-                    std::string strAssetName = ResolveName(params, hashAddress);
+                    std::string strAssetName = ResolveName(txTransfer.hashGenesis, hashAddress);
 
                     /* If a name was found then create a Name record for the new owner using the same name */
                     if(!strAssetName.empty())
@@ -230,21 +230,15 @@ namespace TAO
         }
 
 
-        /* Scans the Name records associated with the hashCaller sig chain to find an entry with a matching hashObject address */
-        TAO::Register::Object Names::GetName(const json::json& params, const uint256_t& hashObject, uint256_t& hashNameObject)
+        /* Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashObject address */
+        TAO::Register::Object Names::GetName(const uint256_t& hashGenesis, const uint256_t& hashObject, uint256_t& hashNameObject)
         {
             /* Declare the return val */
             TAO::Register::Object nameObject;
 
-            /* Get the session to be used for this API call. */
-            uint64_t nSession = users->GetSession(params, true);
-
-            /* Get the account. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
-
             /* Get all object registers owned by this sig chain */
             std::vector<uint256_t> vRegisters;
-            if(ListRegisters(user->Genesis(), vRegisters))
+            if(ListRegisters(hashGenesis, vRegisters))
             {
                 /* Iterate through these to find all Name registers */
                 for(const auto& hashRegister : vRegisters)
@@ -303,8 +297,8 @@ namespace TAO
         }
 
 
-        /* Scans the Name records associated with the hashCaller sig chain to find an entry with a matching hashRegister address */
-        std::string Names::ResolveName(const json::json& params, const uint256_t& hashRegister)
+        /* Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashRegister address */
+        std::string Names::ResolveName(const uint256_t& hashGenesis, const uint256_t& hashRegister)
         {
             /* Declare the return val */
             std::string strName = "";
@@ -313,7 +307,7 @@ namespace TAO
             uint256_t hashNameObject = 0;
 
             /* Look up the Name object for the register address hash */
-            TAO::Register::Object name = Names::GetName( params, hashRegister, hashNameObject);
+            TAO::Register::Object name = Names::GetName( hashGenesis, hashRegister, hashNameObject);
             
             if(!name.IsNull())
             {
@@ -347,8 +341,20 @@ namespace TAO
                 if(hashToken == 0)
                     strTokenName = "NXS";
                 else
-                    /* Look up the token name based on the Name records in the caller's sig chain */
-                    strTokenName = Names::ResolveName(params, hashToken);
+                {
+                    /* Get the session to be used for this API call. */
+                    uint64_t nSession = users->GetSession(params, false);
+
+                    /* Don't attempt to resolve the object name if there is no logged in user as there will be no sig chain  to scan */
+                    if(nSession != -1)
+                    {
+                        /* Get the account. */
+                        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+
+                        /* Look up the token name based on the Name records in the caller's sig chain */
+                        strTokenName = Names::ResolveName(user->Genesis(), hashToken);
+                    }
+                }
             }
             else
                 throw APIException(-27, "Object is not an account.");
