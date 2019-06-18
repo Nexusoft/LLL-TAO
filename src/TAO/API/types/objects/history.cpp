@@ -114,6 +114,7 @@ namespace TAO
                             std::vector<uint8_t> vchData;
                             contract >> vchData;
 
+                            /* Check the register type */
                             if(nRegisterType != TAO::Register::REGISTER::APPEND
                             && nRegisterType != TAO::Register::REGISTER::RAW
                             && nRegisterType != TAO::Register::REGISTER::OBJECT)
@@ -131,6 +132,7 @@ namespace TAO
                             if(!TAO::Operation::Create::Execute(state, vchData, contract.Timestamp()))
                                 throw APIException(-24, "Contract execution failed");
 
+                            /* If it is an object register then parse so that we can check the type */
                             if(state.nType == TAO::Register::REGISTER::OBJECT)
                             {
                                 /* parse object so that the data fields can be accessed */
