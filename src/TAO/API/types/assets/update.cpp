@@ -72,7 +72,7 @@ namespace TAO
             if(params.find("name") != params.end())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = AddressFromName(params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
@@ -100,8 +100,9 @@ namespace TAO
             if(asset.nType != TAO::Register::REGISTER::OBJECT)
                 throw APIException(-24, "Raw assets can not be updated ");
 
-            /* parse object so that the data fields can be accessed */
-            asset.Parse();
+            /* Ensure that the object is an asset */
+            if(!asset.Parse() || asset.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
+                throw APIException(-24, "Name / address is not an asset");
 
             /* Declare operation stream to serialize all of the field updates*/
             TAO::Operation::Stream ssOperationStream;

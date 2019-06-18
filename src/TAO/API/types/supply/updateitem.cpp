@@ -79,7 +79,7 @@ namespace TAO
                 strName = params["name"].get<std::string>();
 
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = AddressFromName(params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
 
             }
 

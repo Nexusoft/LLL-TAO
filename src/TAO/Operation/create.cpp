@@ -94,8 +94,8 @@ namespace TAO
                         std::string strNamespace = object.get<std::string>("namespace");
                         if(!strNamespace.empty())
                         {
-                            /* Generate the namespace hash from the namespace name */
-                            hashNamespace = TAO::Register::NamespaceHash(strNamespace);
+                            /* Namespace hash is a SK256 hash of the namespace name */
+                            hashNamespace = LLC::SK256(strNamespace);
 
                             /* Retrieve the namespace object and check that the hashGenesis is the owner */
                             TAO::Register::Object namespaceObject;
@@ -136,8 +136,8 @@ namespace TAO
                         /* Insert the name of from the Name object */
                         std::string strNamespace = object.get<std::string>("namespace");
 
-                        /* Hash this in the same was as the caller would have to generate hashAddress */
-                        uint256_t hashNamespace = TAO::Register::NamespaceHash(strNamespace);
+                        /* Hash this in the same way as the caller would have to generate hashAddress */
+                        uint256_t hashNamespace = LLC::SK256(strNamespace);
 
                         /* Fail if caller didn't user their own genesis to create name. */
                         if(hashNamespace != hashAddress)

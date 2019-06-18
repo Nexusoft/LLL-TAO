@@ -102,7 +102,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.nTimestamp  = runtime::timestamp();
             
             /* Generate register address for namespace, which must be a hash of the name */
-            uint256_t hashNamespace = TAO::Register::NamespaceHash(strNamespace);
+            uint256_t hashNamespace = LLC::SK256(strNamespace);
 
             //create name object
             Object namespaceObject = CreateNamespace(strNamespace);
@@ -129,7 +129,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.nTimestamp  = runtime::timestamp();
             
             /* Generate register address for namespace based on a different name. */
-            uint256_t hashNamespace = TAO::Register::NamespaceHash("wrongnamespace");
+            uint256_t hashNamespace = LLC::SK256("wrongnamespace");
 
             //create name object
             Object namespaceObject = CreateNamespace(strNamespace);
@@ -159,7 +159,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             /* full name is somename.somenamespace */
             
             /* Generate register address for namespace, which must be a hash of the name */
-            uint256_t hashNamespace = TAO::Register::NamespaceHash(strNamespace);
+            uint256_t hashNamespace = LLC::SK256(strNamespace);
 
             /* Generate  */
             TAO::Register::GetNameAddress(hashNamespace, strName, hashNameAddress);
@@ -191,7 +191,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             /* full name is somename.somenamespace */
             
             /* Generate register address for namespace, which must be a hash of the name */
-            uint256_t hashNamespace = TAO::Register::NamespaceHash(strNamespace);
+            uint256_t hashNamespace = LLC::SK256(strNamespace);
 
             /* Generate  */
             TAO::Register::GetNameAddress(hashNamespace, strName, hashNameAddress);

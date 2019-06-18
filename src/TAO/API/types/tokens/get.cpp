@@ -14,12 +14,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/tokens.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/types/names.h>
 #include <TAO/API/include/json.h>
 
-#include <TAO/Operation/include/enum.h>
-
-#include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -41,7 +38,7 @@ namespace TAO
              * otherwise try to find the raw hex encoded address.
              * Fail if no required parameters supplied. */
             if(params.find("name") != params.end())
-                hashRegister = AddressFromName(params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"].get<std::string>());
             else
@@ -82,23 +79,29 @@ namespace TAO
             else
                 throw APIException(-27, "Unknown object register");
 
+            /* Populate the response JSON */
+            ret["owner"]    = object.hashOwner.GetHex();
+            ret["created"]  = object.nCreated;
+            ret["modified"] = object.nModified;
+
+            json::json data  =TAO::API::ObjectToJSON(params, object, hashRegister);
+
+            /* Copy the asset data in to the response after the type/checksum */
+            ret.insert(data.begin(), data.end());
+
+
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             if(params.find("fieldname") != params.end())
             {
                 /* First get the fieldname from the response */
                 std::string strFieldname =  params["fieldname"].get<std::string>();
 
-                /* Get temp JSON. */
-                json::json temp = ObjectToJSON(params, object, hashRegister);
-                for(auto it = temp.begin(); it != temp.end(); ++it)
-                {
+                /* Iterate through the response keys */
+                for(auto it = ret.begin(); it != ret.end(); ++it)
                     /* If this key is not the one that was requested then erase it */
-                    if(it.key() == strFieldname)
-                        ret[it.key()] = it.value();
-                }
+                    if(it.key() != strFieldname)
+                        ret.erase(it);
             }
-            else
-                ret = ObjectToJSON(params, object, hashRegister);
 
             return ret;
         }

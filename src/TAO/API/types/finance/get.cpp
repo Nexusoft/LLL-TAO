@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/finance.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/types/names.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -39,7 +39,7 @@ namespace TAO
 
             /* Attempt to deduce the register address from name. */
             if(params.find("name") != params.end())
-                hashRegister = AddressFromName(params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
 
             /* Get the RAW address from hex. */
             else if(params.find("address") != params.end())
@@ -65,23 +65,30 @@ namespace TAO
             if(object.get<uint256_t>("token") != 0)
                 throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for accessing non-NXS token accounts.");
 
+            
+            /* Populate the response JSON */
+            ret["owner"]    = object.hashOwner.GetHex();
+            ret["created"]  = object.nCreated;
+            ret["modified"] = object.nModified;
+
+            json::json data  =TAO::API::ObjectToJSON(params, object, hashRegister);
+
+            /* Copy the asset data in to the response after the type/checksum */
+            ret.insert(data.begin(), data.end());
+
+
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             if(params.find("fieldname") != params.end())
             {
                 /* First get the fieldname from the response */
                 std::string strFieldname =  params["fieldname"].get<std::string>();
 
-                /* Get temp JSON. */
-                json::json temp = ObjectToJSON(params, object, hashRegister);
-                for(auto it = temp.begin(); it != temp.end(); ++it)
-                {
+                /* Iterate through the response keys */
+                for(auto it = ret.begin(); it != ret.end(); ++it)
                     /* If this key is not the one that was requested then erase it */
-                    if(it.key() == strFieldname)
-                        ret[it.key()] = it.value();
-                }
+                    if(it.key() != strFieldname)
+                        ret.erase(it);
             }
-            else
-                ret = ObjectToJSON(params, object, hashRegister);
 
             return ret;
         }

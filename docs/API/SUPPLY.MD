@@ -261,18 +261,20 @@ This will get the history of changes to an item, including both the data and it'
 ```
 [
     {
+        "type": "CREATE",
         "name": "mysupplyitem",
         "checksum": 9070277379865698600,
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
-        "state": "0b6e657764617461696e746f",
-        "updated": 1546888868
+        "data": "0b6e657764617461696e746f",
+        "modifed": 1546888868
     },
     {
+        "type": "MODIFY",
         "name": "mysupplyitem",
         "checksum": 9060775569865698900,
         "owner": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-        "state": "0b6e657764617461696e746f",
-        "updated": 1546888999
+        "data": "0b6e657764617461696e746f",
+        "modifed": 1546888999
     }
 ]
 ```
@@ -281,13 +283,21 @@ This will get the history of changes to an item, including both the data and it'
 
 The return value is a JSON array of objects for each entry in the item's history:
 
-`checksum` : A checksum of the state register used for pruning.
+`type` : The action that occurred - CREATE | MODIFY | TRANSFER | CLAIM
 
 `owner` : The genesis hash of the signature chain that owned the item.
 
+`modified` : The Unix timestamp of when the item was updated.
+
+`checksum` : A checksum of the state register used for pruning.
+
+`address` : The register address of the item
+
+`name` : The name of the item
+
 `data` : The data at this point in the history
 
-`updated` : The Unix timestamp of when the item was updated.
+
 
 
 ***

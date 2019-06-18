@@ -11,10 +11,11 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/supply.h>
+#include <TAO/API/types/users.h>
 #include <TAO/API/types/objects.h>
 
 #include <TAO/Register/include/enum.h>
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -24,10 +25,10 @@ namespace TAO
     namespace API
     {
 
-        /* Transfers an item. */
-        json::json Supply::Transfer(const json::json& params, bool fHelp)
+        /* Get a list of names owned by a signature chain. */
+        json::json Users::Namespaces(const json::json& params, bool fHelp)
         {
-            return Objects::Transfer(params, TAO::Register::OBJECTS::NONSTANDARD, std::string("Item"));
+            return Objects::List(params, TAO::Register::OBJECTS::NAMESPACE);
         }
     }
 }

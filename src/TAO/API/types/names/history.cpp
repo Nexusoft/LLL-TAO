@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/supply.h>
+#include <TAO/API/types/names.h>
 #include <TAO/API/types/objects.h>
 
 #include <TAO/Register/include/enum.h>
@@ -19,15 +19,19 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO
 {
-
     /* API Layer namespace. */
     namespace API
     {
-
-        /* Transfers an item. */
-        json::json Supply::Transfer(const json::json& params, bool fHelp)
+        /* History of a name */
+        json::json Names::NameHistory(const json::json& params, bool fHelp)
         {
-            return Objects::Transfer(params, TAO::Register::OBJECTS::NONSTANDARD, std::string("Item"));
+            return Objects::History(params, TAO::Register::OBJECTS::NAME, std::string("Name"));
+        }
+
+        /* History of a namespace */
+        json::json Names::NamespaceHistory(const json::json& params, bool fHelp)
+        {
+            return Objects::History(params, TAO::Register::OBJECTS::NAMESPACE, std::string("Namespace"));
         }
     }
 }

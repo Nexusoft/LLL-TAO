@@ -581,17 +581,34 @@ namespace TAO
 
 
         /* Converts an Object Register to formattted JSON */
-        json::json ObjectToJSON(const json::json& params, const TAO::Register::Object& object, const uint256_t& hashRegister)
+        json::json ObjectToJSON(const json::json& params, 
+                                const TAO::Register::Object& object, 
+                                const uint256_t& hashRegister, 
+                                bool fLookupName /*= true*/)
         {
             /* Declare the return JSON object */
             json::json ret;
 
-            /* Look up the object name based on the Name records in thecaller's sig chain */
-            std::string strName = GetRegisterName(hashRegister, users->GetCallersGenesis(params), object.hashOwner);
+            /* If the caller has specified to look up the name */
+            if(fLookupName)
+            {
+                /* Get the session to be used for this API call. */
+                uint64_t nSession = users->GetSession(params, false);
 
-            /* Add the name to the response if one is found. */
-            if(!strName.empty())
-                ret["name"] = strName;
+                /* Don't attempt to resolve the object name if there is no logged in user as there will be no sig chain  to scan */
+                if(nSession != -1)
+                {
+                    /* Get the account. */
+                    memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+
+                    /* Look up the object name based on the Name records in thecaller's sig chain */
+                    std::string strName = Names::ResolveName(user->Genesis(), hashRegister);
+
+                    /* Add the name to the response if one is found. */
+                    if(!strName.empty())
+                        ret["name"] = strName;
+                }
+            }
 
             /* Now build the response based on the register type */
             if(object.nType == TAO::Register::REGISTER::APPEND
@@ -620,7 +637,7 @@ namespace TAO
                         ret["address"]    = hashRegister.ToString();
 
                         /* Get the token names. */
-                        std::string strTokenName = GetTokenNameForAccount(users->GetCallersGenesis(params), object);
+                        std::string strTokenName = Names::ResolveAccountTokenName(params, object);
                         if(!strTokenName.empty())
                             ret["token_name"] = strTokenName;
 
@@ -674,13 +691,30 @@ namespace TAO
                         break;
                     }
 
+                    /* Handle for a Name Object. */
+                    case TAO::Register::OBJECTS::NAME:
+                    {
+                        ret["address"]          = hashRegister.ToString();
+                        ret["name"]             = object.get<std::string>("name");
+                        ret["namespace"]        = object.get<std::string>("namespace");
+                        ret["register_address"] = object.get<uint256_t>("address").GetHex();
+
+                        break;
+                    }
+
+                    /* Handle for a Name Object. */
+                    case TAO::Register::OBJECTS::NAMESPACE:
+                    {
+                        ret["address"]          = hashRegister.ToString();
+                        ret["name"]             = object.get<std::string>("namespace");
+
+                        break;
+                    }
+
                     /* Handle for all nonstandard object registers. */
                     default:
                     {
                         ret["address"]    = hashRegister.ToString();
-                        ret["created"]    = object.nCreated;
-                        ret["modified"]   = object.nModified;
-                        ret["owner"]      = object.hashOwner.ToString();
 
                         /* Get List of field names in this asset object */
                         std::vector<std::string> vFieldNames = object.GetFieldNames();

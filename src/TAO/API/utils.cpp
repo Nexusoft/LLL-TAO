@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 #include <unordered_set>
 
-#include <Legacy/include/evaluate.h>
-
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
@@ -21,11 +19,6 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/include/difficulty.h>
-#include <TAO/Ledger/types/tritium.h>
-#include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
 
 #include <TAO/Operation/types/stream.h>
 #include <TAO/Operation/include/enum.h>
@@ -39,8 +32,6 @@ ________________________________________________________________________________
 #include <Util/include/base64.h>
 #include <Util/include/debug.h>
 
-#include <LLC/hash/argon2.h>
-
 
 
 /* Global TAO namespace. */
@@ -50,210 +41,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        /* Creates a new Name Object register for the given name and register address */
-        void CreateName(const uint256_t& hashGenesis, const std::string strFullName,
-                        const uint256_t& hashRegister, TAO::Operation::Contract& contract)
-        {
-            uint256_t hashNamespace = 0;
-            uint256_t hashNameAddress = 0;
-            std::string strNamespace = "";
-            std::string strName = strFullName;
-
-            /* Check to see whether the name has a namesace suffix */
-            size_t nPos = strName.find(".");
-            if(nPos != strName.npos)
-            {
-                /* If so then strip off the namespace so that we can check that this user has permission to use it */
-                strName = strName.substr(0, nPos);
-                strNamespace = strFullName.substr(nPos+1);
-            
-                hashNamespace = TAO::Register::NamespaceHash(strNamespace);
-
-                /* Retrieve the namespace object and check that the hashGenesis is the owner */
-                TAO::Register::Object namespaceObject;
-                if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
-                    throw APIException(-23, "Namespace does not exist: " + strNamespace);
-
-                /* Check the owner is the hashGenesis */
-                if(namespaceObject.hashOwner != hashGenesis)
-                    throw APIException(-23, "Cannot create a name in namespace " + strNamespace + " as you are not the owner.");
-            }
-            else
-            {
-                hashNamespace = hashGenesis;
-            }
-            
-
-            /* Obtain the name register address for the genesis/name combination */
-            TAO::Register::GetNameAddress(hashNamespace, strName, hashNameAddress);
-
-            /* Check to see whether the name already exists  */
-            TAO::Register::Object object;
-            if(LLD::Register->ReadState(hashNameAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
-            {
-                if(!strNamespace.empty())
-                    throw APIException(-23, "An object with this name already exists in this namespace.");
-                else
-                    throw APIException(-23, "An object with this name already exists for this user.");
-            }
-                
-
-            /* Create the Name register object pointing to hashRegister */
-            TAO::Register::Object name = TAO::Register::CreateName(strNamespace, strName, hashRegister);
-
-            /* Add the Name object register operation to the transaction */
-            contract << uint8_t(TAO::Operation::OP::CREATE) << hashNameAddress << uint8_t(TAO::Register::REGISTER::OBJECT) << name.GetState();
-        }
-
-
-        /* Creates a new Name Object register for an object being transferred */
-        TAO::Operation::Contract CreateNameFromTransfer(const uint512_t& hashTransfer, const uint256_t& hashGenesis)
-        {
-            /* Declare the contract for the response */
-            TAO::Operation::Contract contract;
-
-            /* Firstly retrieve the transfer transaction that is being claimed so that we can get the address of the object */
-            TAO::Ledger::Transaction txPrev;;
-
-            /* Check disk of writing new block. */
-            if(!LLD::Ledger->ReadTx(hashTransfer, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                debug::error(FUNCTION, hashTransfer.SubString(), " transfer tx doesn't exist or not indexed");
-
-            /* Ensure we are not claiming our own Transfer.  If we are then no need to create a Name object as we already have one */
-            if(txPrev.hashGenesis != hashGenesis)
-            {
-                /* Loop through the contracts. */
-                for(uint32_t nContract = 0; nContract < txPrev.Size(); ++nContract)
-                {
-                    /* Get a reference of the contract. */
-                    const TAO::Operation::Contract& check = txPrev[nContract];
-
-                    /* Extract the OP from tx. */
-                    uint8_t OP = 0;
-                    check >> OP;
-
-                    /* Check for proper op. */
-                    if(OP != TAO::Operation::OP::TRANSFER)
-                        continue;
-
-                    /* Extract the object register address  */
-                    uint256_t hashAddress = 0;
-                    check >> hashAddress;
-
-                    /* Now check the previous owners Name records to see if there was a Name for this object */
-                    std::string strAssetName = GetRegisterName(hashAddress, txPrev.hashGenesis, txPrev.hashGenesis);
-
-                    /* If a name was found then create a Name record for the new owner using the same name */
-                    if(!strAssetName.empty())
-                        CreateName(hashGenesis, strAssetName, hashAddress, contract);
-
-                    /* If found break. */
-                    break;
-                }
-            }
-
-            return contract;
-        }
-
-
-        /* Updates the register address of a Name object */
-        void UpdateName(const uint256_t& hashGenesis, const std::string strName,
-                        const uint256_t& hashRegister, TAO::Operation::Contract& contract)
-        {
-            uint256_t hashNameAddress;
-
-            /* Obtain a new name register address for the updated genesis/name combination */
-            TAO::Register::GetNameAddress(hashGenesis, strName, hashNameAddress);
-
-            /* Check to see whether the name already. */
-            TAO::Register::Object object;
-            if(LLD::Register->ReadState(hashNameAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-23, "An object with this name already exists for this user.");
-
-           /* TODO */
-        }
-
-
-        /* Resolves a register address from a name by looking up the Name object. */
-        uint256_t AddressFromName(const json::json& params, const std::string& strObjectName)
-        {
-            uint256_t hashRegister = 0;
-
-            /* In order to resolve an object name to a register address we also need to know the namespace.
-            *  This must either be provided by the caller explicitly in a namespace parameter or by passing
-            *  the name in the format namespace:name.  However since the default namespace is the username
-            *  of the sig chain that created the object, if no namespace is explicitly provided we will
-            *  also try using the username of currently logged in sig chain */
-            std::string strName = strObjectName;
-            std::string strNamespace = "";
-
-            /* Declare the namespace hash to use for this object. */
-            uint256_t nNamespaceHash = 0;
-
-            /* First check to see if the name parameter has been provided in either the userspace:name  or name.namespace format*/
-            size_t nNamespacePos = strName.find(".");
-            size_t nUserspacePos = strName.find(":");
-            
-            if(nNamespacePos != std::string::npos)
-            {
-                strNamespace = strName.substr(nNamespacePos+1);
-                strName = strName.substr(0, nNamespacePos);
-
-                /* get the namespace hash from the namespace name */
-                nNamespaceHash = TAO::Register::NamespaceHash(strNamespace);
-            }
-            
-            else if(nUserspacePos != std::string::npos)
-            {
-                strNamespace = strName.substr(0, nUserspacePos);
-                strName = strName.substr(nUserspacePos+1);
-
-                /* get the namespace hash from the namespace name */
-                nNamespaceHash = TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
-            }
-
-            // ***namespace parameter removed***
-            // /* If not then check for the explicit namespace parameter*/
-            // else if(params.find("namespace") != params.end())
-            // {
-            //     strNamespace = params["namespace"].get<std::string>();
-
-            //     /* Get the namespace hash from the namespace name */
-            //     nNamespaceHash = TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
-            // }
-
-            /* If neither of those then check to see if there is an active session to access the sig chain */
-            else
-            {
-                /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can
-                   throw a missing namespace exception if no valid session could be found */
-                uint64_t nSession = users->GetSession(params, false);
-
-                /* Get the account. */
-                memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
-                if(!user)
-                    throw APIException(-23, "Missing namespace parameter");
-
-                nNamespaceHash = user->Genesis();
-            }
-
-            /* Read the Name Object */
-            TAO::Register::Object object;
-            if(!TAO::Register::GetNameRegister(nNamespaceHash, strName, object))
-            {
-                if(strNamespace.empty())
-                    throw APIException(-24, debug::safe_printstr( "Unknown name: ", strName));
-                else
-                    throw APIException(-24, debug::safe_printstr( "Unknown name: ", strNamespace, ":", strName));
-            }
-
-            /* Get the address that this name register is pointing to */
-            hashRegister = object.get<uint256_t>("address");
-
-            return hashRegister;
-        }
-
-
         /* Determins whether a string value is a register address.
         *  This only checks to see if the value is 64 characters in length and all hex characters (i.e. can be converted to a uint256).
         *  It does not check to see whether the register address exists in the database
@@ -324,51 +111,6 @@ namespace TAO
             }
 
             return nDigits;
-        }
-
-
-        /* Retrieves the token name for the token that this account object is used for.
-        *  The token is obtained by looking at the token_address field,
-        *  which contains the register address of the issuing token */
-        std::string GetTokenNameForAccount(const uint256_t& hashCaller, const TAO::Register::Object& object)
-        {
-            /* Declare token name to return  */
-            std::string strTokenName;
-
-            /* Get the object standard. */
-            uint8_t nStandard = object.Standard();
-
-            /* Check the object register standard. */
-            if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
-            {
-                /* If debiting an account we need to look at the token definition in order to get the digits.
-                   The token is obtained by looking at the token_address field, which contains the register address of
-                   the issuing token */
-                uint256_t nIdentifier = object.get<uint256_t>("token");
-
-                /* Edge case for NXS token which has identifier 0, so no look up needed */
-                if(nIdentifier == 0)
-                    strTokenName = "NXS";
-                else
-                {
-
-                    TAO::Register::Object token;
-                    if(!LLD::Register->ReadState(nIdentifier, token, TAO::Ledger::FLAGS::MEMPOOL))
-                        throw APIException(-24, "Token not found");
-
-                    /* Parse the object register. */
-                    if(!token.Parse())
-                        throw APIException(-24, "Object failed to parse");
-
-                    /* Look up the token name based on the Name records in thecaller's sig chain */
-                    strTokenName = GetRegisterName(nIdentifier, hashCaller, token.hashOwner);
-
-                }
-            }
-            else
-                throw APIException(-27, "Object is not an account.");
-
-            return strTokenName;
         }
 
 
@@ -572,62 +314,5 @@ namespace TAO
             return true;
         }
 
-
-        /* Scans the Name records associated with the hashCaller sig chain to find an entry with a matching hashObject address */
-        std::string GetRegisterName(const uint256_t& hashObject, const uint256_t& hashCaller, const uint256_t& hashOwner)
-        {
-            /* Declare the return val */
-            std::string strName = "";
-
-            /* If the owner of the object is not the caller, then check to see whether the owner is another object owned by
-               the caller.  This would be the case for a tokenized asset */
-            uint256_t hashOwnerOwner = 0;
-            if(hashCaller != hashOwner)
-            {
-                TAO::Register::Object owner;
-                if(LLD::Register->ReadState(hashOwner, owner, TAO::Ledger::FLAGS::MEMPOOL))
-                   hashOwnerOwner = owner.hashOwner;
-            }
-
-            /* If the caller is the object owner then attempt to find a Name record to look up the Name of this object */
-            if(hashCaller == hashOwner || hashCaller == hashOwnerOwner)
-            {
-                /* Firstly get all object registers owned by this sig chain */
-                std::vector<uint256_t> vRegisters;
-                if(!ListRegisters(hashCaller, vRegisters))
-                    throw APIException(-24, "No registers found");
-
-                /* Iterate through these to find all Name registers */
-                for(const auto& hashRegister : vRegisters)
-                {
-                    /* Get the object from the register DB.  We can read it as an Object and then check its nType
-                    to determine whether or not it is a Name. */
-                    TAO::Register::Object object;
-                    if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                        continue;
-
-                    if(object.nType == TAO::Register::REGISTER::OBJECT)
-                    {
-                        /* parse object so that the data fields can be accessed */
-                        if(!object.Parse())
-                            throw APIException(-24, "Failed to parse object register");
-
-                        /* Check the object register standards. */
-                        if(object.Standard() != TAO::Register::OBJECTS::NAME)
-                            continue;
-
-                        /* Check to see whether the address stored in this Name matches the object being conveted to JSON */
-                        if(object.get<uint256_t>("address") == hashObject)
-                        {
-                            /* Get the name from the Name register and break out since we have a match */
-                            strName = object.get<std::string>("name");
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return strName;
-        }
     }
 }

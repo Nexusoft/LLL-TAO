@@ -409,13 +409,15 @@ This will list off all of the assets owned by a signature chain.
 ```
 ### Return values:
 
+`created` : The UNIX timestamp when the asset was created.
+
+`modified` : The UNIX timestamp when the asset was last modified.
+
 `name` : The name identifying the asset.  For privacy purposes, this is only included in the response if the caller is the owner of the asset
 
 `address` : The register address of the asset.
 
 `timestamp` : The Unix timestamp of when the asset was last updated.
-
-`owner` : The genesis hash of the signature chain that owns this asset.
 
 `<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
 
@@ -468,13 +470,17 @@ This will list off all of the token accounts belonging to a particular signature
 ```
 ### Return values:
 
+`created` : The UNIX timestamp when the account was created.
+
+`modified` : The UNIX timestamp when the account was last modified.
+
 `name` : The name identifying the account.  For privacy purposes, this is only included in the response if the caller is the owner of the account
 
 `address` : The register address for the account
 
 `token_name` : The name of the token that this account can be used with.  For privacy purposes, this is only included in the response if the caller is the owner of the token
 
-`token_address` : The register address of the token that this account can be used for.
+`token` : The register address of the token that this account can be used for.
 
 `balance` : The current balance of the token account.
 
@@ -529,6 +535,10 @@ This will list off all of the tokens that were created by a particular signature
 ```
 ### Return values:
 
+`created` : The UNIX timestamp when the token was created.
+
+`modified` : The UNIX timestamp when the token was last modified.
+
 `name` : The name identifying the token.  For privacy purposes, this is only included in the response if the caller is the owner of the token
 
 `address` : The register address for the account
@@ -574,13 +584,11 @@ This will list off all of the namespaces owned by the signature chain.
 [
     {
         "name": "mynamespace1",
-        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
     },
     {
         "name": "mynamespace2",
-        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
-        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417"
     }
 
 
@@ -588,11 +596,13 @@ This will list off all of the namespaces owned by the signature chain.
 ```
 ### Return values:
 
+`created` : The UNIX timestamp when the namespace was created.
+
+`modified` : The UNIX timestamp when the namespace was last modified.
+
 `name` : The name identifying the namespace. 
 
 `address` : The register address of the namespace.  
-
-`owner` : The genesis hash of the signature chain that owns this namespace.
 
 
 ****
@@ -600,7 +610,7 @@ This will list off all of the namespaces owned by the signature chain.
 
 # `list/names`
 
-This will list off all of the names owned by the signature chain.
+This will list off all of the names owned by the signature chain.  For privacy reasons Names are only returned for the currently logged in user (multiuser=0) or for the logged in session (multiuser=1)
 
 **NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
 
@@ -612,9 +622,7 @@ This will list off all of the names owned by the signature chain.
 
 ### Parameters:
 
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
-
-`username` : The username identifying the signature chain (optional if genesis is supplied).
+`session` : For multi-user API mode (configured with multiuser=1), the session is required to identify  which signature chain should be used to return the Names for. For single-user API mode the session should not be supplied an the currently logged in users signature chain is used.
 
 `page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
 
@@ -628,20 +636,17 @@ This will list off all of the names owned by the signature chain.
     {
         "name": "asset1.ourcompany",
         "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-        "register_address": "597164ddc65ed8e4e481958d578daf0890a625a4957a987c5e966fcfff7084f3",
-        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+        "register_address": "597164ddc65ed8e4e481958d578daf0890a625a4957a987c5e966fcfff7084f3"
     }
     {
         "name": "asset2.ourcompany",
         "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
-        "register_address": "55c559eabe469eb566f302712edf089b165001da8dfda7acdcf9347896e1fff4",
-        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+        "register_address": "55c559eabe469eb566f302712edf089b165001da8dfda7acdcf9347896e1fff4"
     },
     {
         "name": "default",
         "address": "97c2e9fe863e51adeee82b28bf43747291ca801e258a98453d79edb261a02e7a",
-        "register_address": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
-        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+        "register_address": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0"
     }
 
 
@@ -649,12 +654,15 @@ This will list off all of the names owned by the signature chain.
 ```
 ### Return values:
 
+`created` : The UNIX timestamp when the Name was created.
+
+`modified` : The UNIX timestamp when the Name was last modified.
+
 `name` : The name identifying the object register. 
 
 `address` : The register address of the Name.  
 
 `register_address` : The register address of the the object that this Name points to.
 
-`owner` : The genesis hash of the signature chain that owns this Name.
 
 ****

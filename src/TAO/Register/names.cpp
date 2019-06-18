@@ -20,7 +20,6 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 
 #include <vector>
-#include <LLC/hash/argon2.h>
 
 
 /* Global TAO namespace. */
@@ -54,16 +53,15 @@ namespace TAO
         /* Retrieve the name register for a namespace/name combination. */
         bool GetNameRegister(const uint256_t& hashNamespace, const std::string& strName, Object& nameRegister)
         {
+            /* The register address of the Name object */
             uint256_t hashAddress;
 
+            /* Get the register address for the Name object */
             GetNameAddress(hashNamespace, strName, hashAddress);
 
             /* Read the Name Object */
             if(!LLD::Register->ReadState(hashAddress, nameRegister, TAO::Ledger::FLAGS::MEMPOOL))
-            {
-                debug::log(2, FUNCTION, "Name register not found: ", strName);
-                return false;
-            }
+                return debug::error( FUNCTION, "Name register not found: ", strName);
 
             /* Check that the name object is proper type. */
             if(nameRegister.nType != TAO::Register::REGISTER::OBJECT)
@@ -81,21 +79,19 @@ namespace TAO
         }
 
 
-        /* Retrieve the namespace register for a namespace/name combination. */
+        /* Retrieve the namespace register by namespace name. */
         bool GetNamespaceRegister(const std::string& strNamespace, Object& namespaceRegister)
         {
-            uint256_t hashAddress = TAO::Register::NamespaceHash(strNamespace);
+            /* Namespace hash is a SK256 hash of the namespace name */
+            uint256_t hashAddress  = LLC::SK256(strNamespace);
 
             /* Read the Name Object */
             if(!LLD::Register->ReadState(hashAddress, namespaceRegister, TAO::Ledger::FLAGS::MEMPOOL))
-            {
-                debug::log(2, FUNCTION, "Name register not found: ", strNamespace);
-                return false;
-            }
+                return debug::error( FUNCTION, "Namespace register not found: ", strNamespace);
 
             /* Check that the name object is proper type. */
             if(namespaceRegister.nType != TAO::Register::REGISTER::OBJECT)
-                return debug::error( FUNCTION, "Name register not an object: ", strNamespace);
+                return debug::error( FUNCTION, "Namespace register not an object: ", strNamespace);
 
             /* Parse the object. */
             if(!namespaceRegister.Parse())
@@ -107,69 +103,5 @@ namespace TAO
 
             return true;
         }
-
-
-        /* Generates a lightweight argon2 hash of the namespace string.*/
-        uint256_t NamespaceHash(const std::string& strNamespace)
-        {
-            /* Generate the Secret Phrase */
-            std::vector<uint8_t> vNamespace(strNamespace.begin(), strNamespace.end());
-
-            // low-level API
-            std::vector<uint8_t> vHash(32);
-            std::vector<uint8_t> vSalt(16);
-
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &vHash[0],
-                32,
-
-                /* Password input data. */
-                &vNamespace[0],
-                static_cast<uint32_t>(vNamespace.size()),
-
-                /* The salt for usernames */
-                &vSalt[0],
-                static_cast<uint32_t>(vSalt.size()),
-
-                /* Optional secret data */
-                NULL, 0,
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                10,
-
-                /* Memory Cost (4 MB). */
-                (1 << 12),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int32_t nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-
-            /* Set the bytes for the key. */
-            uint256_t hashKey;
-            hashKey.SetBytes(vHash);
-
-            return hashKey;
-        }
-
     }
 }

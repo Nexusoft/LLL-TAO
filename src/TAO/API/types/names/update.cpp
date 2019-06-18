@@ -11,35 +11,36 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
-
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/json.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
-#include <TAO/Register/include/verify.h>
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
+#include <Util/templates/datastream.h>
 
+#include <Util/include/convert.h>
+#include <Util/include/base64.h>
 
 /* Global TAO namespace. */
 namespace TAO
 {
-
     /* API Layer namespace. */
     namespace API
     {
-
-        /* Submits an item. */
-        json::json Supply::CreateItem(const json::json& params, bool fHelp)
+        /* Update the data in an asset */
+        json::json Names::UpdateName(const json::json& params, bool fHelp)
         {
+            /* Return JSON object */
             json::json ret;
 
             /* Get the PIN to be used for this API call */
@@ -47,10 +48,6 @@ namespace TAO
 
             /* Get the session to be used for this API call */
             uint64_t nSession = users->GetSession(params);
-
-            /* Check for data parameter. */
-            if(params.find("data") == params.end())
-                throw APIException(-25, "Missing data");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
@@ -66,24 +63,51 @@ namespace TAO
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-25, "Failed to create transaction");
 
-            /* Generate a random hash for this objects register address */
-            uint256_t hashRegister = LLC::GetRand256();
+            /* Get the Register ID. */
+            uint256_t hashRegister = 0;
 
-            /* name of the object, default to blank */
-            std::string strName = "";
+            /* name object to update */
+            TAO::Register::Object name;
 
-            /* Test the payload feature. */
-            DataStream ssData(SER_REGISTER, 1);
-
-            /* Then the raw data */
-            ssData << params["data"].get<std::string>();
-
-            /* Submit the payload object. */
-            tx[0] << (uint8_t)TAO::Operation::OP::CREATE << hashRegister << (uint8_t)TAO::Register::REGISTER::APPEND << ssData.Bytes();
-
-            /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
+            /* Check whether the caller has provided the asset name parameter. */
             if(params.find("name") != params.end())
-                tx[1] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), hashRegister); 
+                /* If name is provided then use this to retrieve the name object */
+                name = Names::GetName(params,params["name"].get<std::string>(), hashRegister);
+            /* Otherwise try to find the raw hex encoded address. */
+            else if(params.find("address") != params.end())
+            {
+                hashRegister.SetHex(params["address"].get<std::string>());
+
+                /* Retrieve the name by hash */
+                if(!LLD::Register->ReadState(hashRegister, name, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-24, "Invalid address.");
+
+                /* Check that the name object is proper type. */
+                if(name.nType != TAO::Register::REGISTER::OBJECT
+                || !name.Parse()
+                || name.Standard() != TAO::Register::OBJECTS::NAME )
+                    throw APIException(-23, "Address is not a name register");
+            }
+            /* Fail if no required parameters supplied. */
+            else
+                throw APIException(-23, "Missing name / address");
+
+            if(params.find("register_address") == params.end())
+                throw APIException(-23, "Missing register_address parameter");
+                
+
+            /* Declare operation stream to serialize all of the field updates*/
+            TAO::Operation::Stream ssOperationStream;
+
+            /* The new register address to set for the name object */
+            uint256_t hashNewRegisterAddress = 0;
+            hashNewRegisterAddress.SetHex(params["register_address"].get<std::string>());             
+
+            /* Write the new register address value into the operation stream */
+            ssOperationStream << std::string("address") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << hashNewRegisterAddress;
+
+            /* Create the transaction object script. */
+            tx[0] << uint8_t(TAO::Operation::OP::WRITE) << hashRegister << ssOperationStream.Bytes();
 
             /* Execute the operations layer. */
             if(!tx.Build())

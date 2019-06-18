@@ -27,7 +27,7 @@ namespace TAO
         /** Default Constructor **/
         State::State()
         : vchState()
-        , nVersion(1)
+        , nVersion(0)
         , nType(0)
         , hashOwner(0)
         , nCreated(runtime::unifiedtimestamp())
