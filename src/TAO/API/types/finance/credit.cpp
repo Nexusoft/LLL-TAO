@@ -58,6 +58,9 @@ namespace TAO
             if(!user)
                 throw APIException(-25, "Invalid session ID.");
 
+            /* Lock the signature chain. */
+            LOCK(user->CREATE_MUTEX);
+
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions.");
