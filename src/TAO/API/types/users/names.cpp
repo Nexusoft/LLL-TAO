@@ -34,8 +34,14 @@ namespace TAO
                 or for the logged in session (multiuser=1). To ensure this, we first obtain the session and then inject this into
                 the request, thereby allowing us to use the generic Object::List method */
 
+            /* to make this logic clear to callers we will return an error if they have provided a username parameter */
+            if(params.find("username") != params.end())
+                throw APIException(-23, "Username parameter not supported for this method.  Names can only be obtained for the logged in user.");
+
+            /* Get the callers hashGenesis */
             uint256_t hashGenesis = users->GetCallersGenesis(params);
 
+            /* Ensure the hashGenesis is valid */
             if(hashGenesis == 0)
                 throw APIException(-1, "User not logged in");
 
