@@ -102,7 +102,7 @@ namespace TAO
                         throw APIException(-25, "Failed to parse object register");
 
                     /* Only included requested object types. */
-                    if(object.Standard() != nType)
+                    if((object.Standard() & nType) == 0)
                         continue;
                 }
 

@@ -147,7 +147,7 @@ namespace TAO
         /* Null Checking flag for a State Register. */
         bool State::IsNull() const
         {
-            return (nVersion == 0 && vchState.size() == 0 && hashChecksum == 0);
+            return (vchState.size() == 0 && hashChecksum == 0);
         }
 
 

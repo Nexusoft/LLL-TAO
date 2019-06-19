@@ -84,22 +84,22 @@ namespace TAO
             enum
             {
                 /* Non-Standard Object (User Defined Type). */
-                NONSTANDARD  = 0x00,
+                NONSTANDARD  = 0,
 
                 /* Account Object Register. */
-                ACCOUNT      = 0x01,
+                ACCOUNT      = 2,
 
                 /* Token Object Register. */
-                TOKEN        = 0x02,
+                TOKEN        = 4,
 
                 /* Trust Object Register. */
-                TRUST        = 0x03,
+                TRUST        = 8,
 
                 /* Name Object Register. */
-                NAME         = 0x04,
+                NAME         = 16,
 
                 /* Namespace Object Register. */
-                NAMESPACE    = 0x05
+                NAMESPACE    = 32
             };
         }
 
