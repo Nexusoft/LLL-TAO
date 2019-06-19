@@ -34,42 +34,49 @@ namespace LLP
     class BaseAddress
     {
     protected:
-        uint8_t ip[16]; /* in network byte order */
-        uint16_t nPort; /* host order */
+
+        /* IP address in network byte order */
+        uint8_t ip[16];
+
+        /* Port number in host order */
+        uint16_t nPort;
 
     public:
 
-        /**
-         *  Default constructor
-         *
-         **/
+        /** Default constructor. **/
         BaseAddress();
 
 
-        /**
-         *  Copy constructors
-         *
-         **/
+        /** Default destructor **/
+        virtual ~BaseAddress();
+
+
+        /** Copy constructor **/
         BaseAddress(const BaseAddress &other, uint16_t port = 0);
+
+
+        /** Copy constructor **/
         BaseAddress(const struct in_addr &ipv4Addr, uint16_t port = 0);
+
+
+        /** Copy constructor **/
         BaseAddress(const struct in6_addr &ipv6Addr, uint16_t port = 0);
+
+
+        /** Copy constructor **/
         BaseAddress(const struct sockaddr_in &addr);
+
+
+        /** Copy constructor **/
         BaseAddress(const struct sockaddr_in6 &addr);
+
+
+        /** Copy constructor **/
         BaseAddress(const std::string &strIp, uint16_t portDefault = 0, bool fAllowLookup = false);
 
 
-        /**
-         *  Copy assignment operator
-         *
-         **/
+        /** Copy assignment operator **/
         BaseAddress &operator=(const BaseAddress &other);
-
-
-        /**
-         *  Default destructor
-         *
-         **/
-        virtual ~BaseAddress();
 
 
         /** SetPort
@@ -100,7 +107,6 @@ namespace LLP
         void SetIP(const BaseAddress &addr);
 
 
-
         /** IsEID
          *
          *  Determines if address is a LISP EID mapped address.
@@ -119,8 +125,7 @@ namespace LLP
 
         /** IsRFC1918
          *
-         *  Determines if address is IPv4 private networks.
-         *  (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12)
+         *  Determines if address is IPv4 private networks. (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12)
          *
          **/
         bool IsRFC1918() const;
@@ -168,8 +173,7 @@ namespace LLP
 
         /** IsRFC4843
          *
-         *  Determines if address is IPv6 ORCHID.
-         *  (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12)
+         *  Determines if address is IPv6 ORCHID. (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12)
          *
          **/
         bool IsRFC4843() const;
@@ -234,7 +238,6 @@ namespace LLP
         /** ToString
          *
          *  Returns the IP and Port in string format. (IP:Port)
-         *  NOTE: can't be const, for Windows compile, because calls ToStringIP()
          *
          **/
         std::string ToString() const;
@@ -246,7 +249,6 @@ namespace LLP
          *
          **/
         std::string ToStringIP() const;
-
 
 
         /** ToStringPort
@@ -263,6 +265,7 @@ namespace LLP
          *
          **/
         uint8_t GetByte(uint8_t n) const;
+
 
         /** GetHash
          *
@@ -338,19 +341,13 @@ namespace LLP
         virtual void Print() const;
 
 
-        /**
-         *  Relational operators
-         *
-         **/
+        /** Relational operators **/
         friend bool operator==(const BaseAddress& a, const BaseAddress& b);
         friend bool operator!=(const BaseAddress& a, const BaseAddress& b);
         friend bool operator<(const BaseAddress& a,  const BaseAddress& b);
 
 
-        /**
-         *  Serialization
-         *
-         **/
+        /** Serialization **/
         IMPLEMENT_SERIALIZE
         (
             BaseAddress *pthis = const_cast<BaseAddress *>(this);
@@ -359,7 +356,7 @@ namespace LLP
             READWRITE(portN);
             if(fRead)
                 pthis->nPort = ntohs(portN);
-      )
+        )
     };
 
     /* Proxy Settings for Nexus Core. */
