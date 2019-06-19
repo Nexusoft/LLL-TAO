@@ -36,7 +36,7 @@ namespace TAO
     {
 
         /* Generic method to list object registers by sig chain*/
-        json::json Objects::List(const json::json& params, uint8_t nType)
+        json::json Objects::List(const json::json& params, uint8_t nRegisterType, uint8_t nObjectType)
         {
             /* JSON return value. */
             json::json ret = json::json::array();
@@ -76,7 +76,7 @@ namespace TAO
 
             /* We pass false for fLookupName if the requested type is a name of namesace object, 
                as those are the edge case that do not have a Name object themselves */
-            bool fLookupName = nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE;
+            bool fLookupName = nObjectType != TAO::Register::OBJECTS::NAME && nObjectType != TAO::Register::OBJECTS::NAMESPACE;
 
             /* Add the register data to the response */
             uint32_t nTotal = 0;
@@ -88,10 +88,8 @@ namespace TAO
                 if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
                     continue;
 
-                /* Only include raw and non-standard object types (assets)*/
-                if(object.nType != TAO::Register::REGISTER::APPEND
-                && object.nType != TAO::Register::REGISTER::RAW
-                && object.nType != TAO::Register::REGISTER::OBJECT)
+                /* Only include requested register type */
+                if(object.nType != nRegisterType)
                     continue;
 
                 /* Handle for object registers. */
@@ -102,7 +100,7 @@ namespace TAO
                         throw APIException(-25, "Failed to parse object register");
 
                     /* Only included requested object types. */
-                    if((object.Standard() & nType) == 0)
+                    if((object.Standard() & nObjectType) == 0)
                         continue;
                 }
 

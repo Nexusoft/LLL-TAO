@@ -52,7 +52,7 @@ namespace TAO
             paramsCopy["genesis"] = hashGenesis.GetHex();
 
             /* Call the generic List method to output the names */
-            return Objects::List(paramsCopy, TAO::Register::OBJECTS::NAME);
+            return Objects::List(paramsCopy, TAO::Register::REGISTER::OBJECT, TAO::Register::OBJECTS::NAME);
         }
     }
 }

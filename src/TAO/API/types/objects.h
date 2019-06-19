@@ -106,12 +106,13 @@ namespace TAO
              *  Generic method to list object registers by sig chain
              *
              *  @param[in] params The parameters from the API call.
-             *  @param[in] nType The object type to list
+             *  @param[in] nRegisterType The register type to list
+             *  @param[in] nObjectType The object type to list
              *
              *  @return The return object in JSON.
              *
              **/
-            static json::json List(const json::json& params, uint8_t nType);
+            static json::json List(const json::json& params, uint8_t nRegisterType, uint8_t nObjectType);
 
 
         };

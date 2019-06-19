@@ -28,7 +28,7 @@ namespace TAO
         /* Get a list of assets owned by a signature chain. */
         json::json Users::Assets(const json::json& params, bool fHelp)
         {
-            return Objects::List(params, TAO::Register::OBJECTS::NONSTANDARD);
+            return Objects::List(params, TAO::Register::REGISTER::OBJECT, TAO::Register::OBJECTS::NONSTANDARD);
         }
     }
 }

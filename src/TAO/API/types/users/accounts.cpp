@@ -28,7 +28,7 @@ namespace TAO
         /* Get a list of accounts owned by a signature chain. */
         json::json Users::Accounts(const json::json& params, bool fHelp)
         {
-            return Objects::List(params, TAO::Register::OBJECTS::ACCOUNT | TAO::Register::OBJECTS::TRUST);
+            return Objects::List(params, TAO::Register::REGISTER::OBJECT, TAO::Register::OBJECTS::ACCOUNT | TAO::Register::OBJECTS::TRUST);
         }
     }
 }
