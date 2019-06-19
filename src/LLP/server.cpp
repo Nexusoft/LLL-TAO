@@ -307,8 +307,7 @@ namespace LLP
 
         if(pAddressManager)
         {
-            /* Get the base addresses from address manager and convert
-            into legacy addresses */
+            /* Get the base addresses from address manager and convert into legacy addresses */
             pAddressManager->GetAddresses(vAddr);
 
             for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
@@ -438,9 +437,9 @@ namespace LLP
                 fds[0].revents = 0;
 
 #ifdef WIN32
-                int nPoll = WSAPoll(&fds[0], 1, 100);
+                int32_t nPoll = WSAPoll(&fds[0], 1, 100);
 #else
-                int nPoll = poll(&fds[0], 1, 100);
+                int32_t nPoll = poll(&fds[0], 1, 100);
 #endif
 
 				/* Continue on poll error or no data to read */

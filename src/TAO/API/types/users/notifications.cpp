@@ -45,11 +45,16 @@ namespace TAO
         /*  Gets the currently outstanding contracts that have not been matched with a credit or claim. */
         bool Users::GetOutstanding(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions)
         {
+            /* Get the last transaction. */
+            uint512_t hashLast = 0;
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
+                return debug::error(FUNCTION, "No transactions found");
+
             /* Get the coinbase transactions. */
-            get_coinbases(hashGenesis, vTransactions);
+            get_coinbases(hashGenesis, hashLast, vTransactions);
 
             /* Get the debit and transfer transactions. */
-            get_events(hashGenesis, vTransactions);
+            get_events(hashGenesis, hashLast, vTransactions);
 
 
             //TODO: sort transactions by timestamp here.
@@ -59,13 +64,8 @@ namespace TAO
 
 
         /* Get the outstanding debits and transfer transactions. */
-        bool Users::get_events(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions)
+        bool Users::get_events(const uint256_t& hashGenesis, uint512_t hashLast, std::vector<TAO::Ledger::Transaction> &vTransactions)
         {
-            /* Get the last transaction. */
-            uint512_t hashLast = 0;
-            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
-                return debug::error(FUNCTION, "No transactions found");
-
             /* List of token registers to process. */
             std::vector<uint256_t> vRegisters;
 
@@ -219,13 +219,8 @@ namespace TAO
 
 
         /*  Get the outstanding coinbases. */
-        bool Users::get_coinbases(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions)
+        bool Users::get_coinbases(const uint256_t& hashGenesis, uint512_t hashLast, std::vector<TAO::Ledger::Transaction> &vTransactions)
         {
-            /* Get the last transaction. */
-            uint512_t hashLast = 0;
-            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
-                return debug::error(FUNCTION, "No transactions found");
-
             /* Reverse iterate until genesis (newest to oldest). */
             while(hashLast != 0)
             {
