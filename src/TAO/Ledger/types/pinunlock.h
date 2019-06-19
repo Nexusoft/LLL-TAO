@@ -63,12 +63,12 @@ namespace TAO
 
 
             /** CanTransact
-            *
-            *  Determins if the PIN can be used for transactions.
-            *
-            *  @return True if the PIN can be used for transactions.
-            *
-            **/
+             *
+             *  Determins if the PIN can be used for transactions.
+             *
+             *  @return True if the PIN can be used for transactions.
+             *
+             **/
             bool CanTransact() const
             {
                 return nUnlockedActions & TRANSACTIONS;
@@ -76,12 +76,12 @@ namespace TAO
 
 
             /** CanMint
-            *
-            *  Determins if the PIN can be used for minting.
-            *
-            *  @return True if the PIN can be used for minting.
-            *
-            **/
+             *
+             *  Determins if the PIN can be used for minting.
+             *
+             *  @return True if the PIN can be used for minting.
+             *
+             **/
             bool CanMint() const
             {
                 return nUnlockedActions & MINTING;
@@ -89,12 +89,12 @@ namespace TAO
 
 
             /** PIN
-            *
-            *  Accessor for the PIN string.
-            *
-            *  @return the PIN.
-            *
-            **/
+             *
+             *  Accessor for the PIN string.
+             *
+             *  @return the PIN.
+             *
+             **/
             SecureString PIN() const
             {
                 return strPIN;

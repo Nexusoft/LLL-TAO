@@ -58,20 +58,20 @@ namespace TAO
             }
 
             /** RewriteURL
-            *
-            *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
-            *  map directly to a function in the target API.  Insted this method can be overriden to
-            *  parse the incoming URL and route to a different/generic method handler, adding parameter
-            *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-            *  added to the jsonParams
-            *  The return json contains the modifed method URL to be called.
-            *
-            *  @param[in] strMethod The name of the method being invoked.
-            *  @param[in] jsonParams The json array of parameters being passed to this method.
-            *
-            *  @return the API method URL
-            *
-            **/
+             *
+             *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
+             *  map directly to a function in the target API.  Insted this method can be overriden to
+             *  parse the incoming URL and route to a different/generic method handler, adding parameter
+             *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
+             *  added to the jsonParams
+             *  The return json contains the modifed method URL to be called.
+             *
+             *  @param[in] strMethod The name of the method being invoked.
+             *  @param[in] jsonParams The json array of parameters being passed to this method.
+             *
+             *  @return the API method URL
+             *
+             **/
             std::string RewriteURL(const std::string& strMethod, json::json& jsonParams) override;
 
 
@@ -223,33 +223,33 @@ namespace TAO
             /******************* STATIC HELPER METHODS BELOW THIS LINE **********************/
 
             /** CreateName
-            *
-            *  Creates a new Name Object register for the given name and register address adds the register 
-            *  operation to the contract
-            *
-            *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
-            *  @param[in] strFullName The Name of the object.  May include the namespace suffix
-            *  @param[in] hashRegister The register address that the Name object should resolve to
-            *  
-            *  @return The contract to containing the Name object creation .
-            *
-            **/
+             *
+             *  Creates a new Name Object register for the given name and register address adds the register 
+             *  operation to the contract
+             *
+             *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
+             *  @param[in] strFullName The Name of the object.  May include the namespace suffix
+             *  @param[in] hashRegister The register address that the Name object should resolve to
+             *  
+             *  @return The contract to containing the Name object creation .
+             *
+             **/
             static TAO::Operation::Contract CreateName(const uint256_t& hashGenesis, 
                                                        const std::string& strFullName,
                                                        const uint256_t& hashRegister);
 
 
             /** CreateName
-            *
-            *  Creates a new Name Object register for an object being transferred and adds it to a contract
-            *
-            *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
-            *  @param[in] params The json request params
-            *  @param[in] hashTransfer The transaction ID of the transfer transaction being claimed
-            *
-            *  @return The contract to containing the Name object creation .
-            *
-            **/
+             *
+             *  Creates a new Name Object register for an object being transferred and adds it to a contract
+             *
+             *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
+             *  @param[in] params The json request params
+             *  @param[in] hashTransfer The transaction ID of the transfer transaction being claimed
+             *
+             *  @return The contract to containing the Name object creation .
+             *
+             **/
             static TAO::Operation::Contract CreateName(const uint256_t& hashGenesis,
                                                        const json::json& params, 
                                                        const uint512_t& hashTransfer);
@@ -299,30 +299,30 @@ namespace TAO
 
 
             /** ResolveName
-            *
-            *  Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashObject address
-            *
-            *  @param[in] hashGenesis The sig chain genesis hash
-            *  @param[in] hashRegister register address of the object to look up
-            *
-            *  @return the name of the object, if one is found
-            *
-            **/
+             *
+             *  Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashObject address
+             *
+             *  @param[in] hashGenesis The sig chain genesis hash
+             *  @param[in] hashRegister register address of the object to look up
+             *
+             *  @return the name of the object, if one is found
+             *
+             **/
             static std::string ResolveName(const uint256_t& hashGenesis, const uint256_t& hashRegister);
 
 
             /** ResolveAccountTokenName
-            *
-            *  Retrieves the token name for the token that this account object is used for.
-            *  The token is obtained by looking at the token_address field,
-            *  which contains the register address of the issuing token
-            *
-            *  @param[in] params The json request params
-            *  @param[in] account The Object Register of the token account
-            *
-            *  @return the token name for the token that this account object is used for
-            *
-            **/
+             *
+             *  Retrieves the token name for the token that this account object is used for.
+             *  The token is obtained by looking at the token_address field,
+             *  which contains the register address of the issuing token
+             *
+             *  @param[in] params The json request params
+             *  @param[in] account The Object Register of the token account
+             *
+             *  @return the token name for the token that this account object is used for
+             *
+             **/
             static std::string ResolveAccountTokenName(const json::json& params, const TAO::Register::Object& account);
             
 

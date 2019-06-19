@@ -119,15 +119,15 @@ namespace TAO
 
 
             /** Clone
-            *
-            *  Allows polymorphic copying of blocks
-            *  Overridden to return an instance of the TritiumBlock class.
-            *  Return-type covariance allows us to return the more derived type whilst
-            *  still overriding the virtual base-class method
-            *
-            *  @return A pointer to a copy of this TritiumBlock.
-            *
-            **/
+             *
+             *  Allows polymorphic copying of blocks
+             *  Overridden to return an instance of the TritiumBlock class.
+             *  Return-type covariance allows us to return the more derived type whilst
+             *  still overriding the virtual base-class method
+             *
+             *  @return A pointer to a copy of this TritiumBlock.
+             *
+             **/
             virtual TritiumBlock* Clone() const override;
 
 

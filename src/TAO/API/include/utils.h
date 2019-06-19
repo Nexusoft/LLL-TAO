@@ -38,30 +38,30 @@ namespace TAO
 
 
         /** GetDigits
-        *
-        *  Retrieves the number of digits that applies to amounts for this token or account object.
-        *  If the object register passed in is a token account then we need to look at the token definition
-        *  in order to get the digits.  The token is obtained by looking at the token_address field,
-        *  which contains the register address of the issuing token
-        *
-        *  @param[in] object The Object Register to determine the digits for
-        *
-        *  @return the number of digits that apply to amounts for this token or account
-        *
-        **/
+         *
+         *  Retrieves the number of digits that applies to amounts for this token or account object.
+         *  If the object register passed in is a token account then we need to look at the token definition
+         *  in order to get the digits.  The token is obtained by looking at the token_address field,
+         *  which contains the register address of the issuing token
+         *
+         *  @param[in] object The Object Register to determine the digits for
+         *
+         *  @return the number of digits that apply to amounts for this token or account
+         *
+         **/
         uint64_t GetDigits(const TAO::Register::Object& object);
 
 
         /** GetRegistersOwnedBySigChain
-        *
-        *  Scans a signature chain to work out all registers that it owns
-        *
-        *  @param[in] hashGenesis The genesis hash of the signature chain to scan
-        *  @param[out] vRegisters The list of register addresses from sigchain.
-        *
-        *  @return A vector of register addresses owned by the sig chain
-        *
-        **/
+         *
+         *  Scans a signature chain to work out all registers that it owns
+         *
+         *  @param[in] hashGenesis The genesis hash of the signature chain to scan
+         *  @param[out] vRegisters The list of register addresses from sigchain.
+         *
+         *  @return A vector of register addresses owned by the sig chain
+         *
+         **/
         bool ListRegisters(const uint256_t& hashGenesis, std::vector<uint256_t>& vRegisters);
 
 
