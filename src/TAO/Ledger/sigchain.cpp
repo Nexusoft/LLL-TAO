@@ -35,6 +35,7 @@ namespace TAO
         , MUTEX()
         , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
         , hashGenesis()
+        , CREATE_MUTEX()
         {
         }
 
@@ -46,6 +47,7 @@ namespace TAO
         , MUTEX()
         , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
         , hashGenesis(SignatureChain::Genesis(strUsernameIn))
+        , CREATE_MUTEX()
         {
         }
 
@@ -57,6 +59,7 @@ namespace TAO
         , MUTEX()
         , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
         , hashGenesis(chain.hashGenesis)
+        , CREATE_MUTEX()
         {
         }
 
@@ -68,6 +71,7 @@ namespace TAO
         , MUTEX()
         , pairCache(std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
         , hashGenesis(chain.hashGenesis)
+        , CREATE_MUTEX()
         {
         }
 

@@ -117,7 +117,7 @@ namespace LLP
              indefinitely for the prime channel until the generated hash meets the min prime origins
              and is less than 1024 bits*/
 
-         for(;;)
+         while(true)
          {
 
              /* Create the Tritium block with the corresponding sigchain and pin. */
@@ -266,6 +266,14 @@ namespace LLP
             debug::log(0, FUNCTION, "Generated block is stale");
             return false;
         }
+
+        /* Attempt to get the sigchain. */
+        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
+        if(!pSigChain)
+            return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
+
+        /* Lock the sigchain that is being mined. */
+        LOCK(pSigChain->CREATE_MUTEX);
 
         /* Process the block and relay to network if it gets accepted into main chain. */
         if(!TritiumNode::Process(*pBlock, nullptr))

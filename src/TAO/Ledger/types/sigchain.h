@@ -63,7 +63,12 @@ namespace TAO
             /** Internal genesis hash. **/
             const uint256_t hashGenesis;
 
+
         public:
+
+
+            /** Public mutex for creating transactions on signature chain. **/
+            std::mutex CREATE_MUTEX;
 
 
             /** Default constructor. **/

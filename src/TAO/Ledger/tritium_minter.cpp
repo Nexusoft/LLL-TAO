@@ -654,6 +654,9 @@ namespace TAO
                 return false;
             }
 
+            /* Lock the sigchain that is being mined. */
+            LOCK(user->CREATE_MUTEX);
+
             /* Process the block and relay to network if it gets accepted into main chain.
              * This method will call TritiumBlock::Check() TritiumBlock::Accept() and BlockState::Index()
              * After all is approved, BlockState::Index() will call BlockState::SetBest()
