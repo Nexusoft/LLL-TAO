@@ -95,21 +95,28 @@ Additionally the API supports passing a field name in the URL after the asset na
 ### Return value JSON object:
 ```
 {
-    "timestamp": "1553227128",
-    "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
-    "name": "mysupplyitem",
-    "data": "newregister"
+    "name": "myitem",
+    "address": "70f49d996d53317cf2175b89efc2694b85c4ebede5fc468bedb860b3e4dada68",
+    "created": 1560982537,
+    "modified": 1560982615,
+    "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+    "data": "xxxxxx"
 }
+
 ```
 ### Return values:
 
-`timestamp` : The Unix timestamp of when the asset was last updated.
+`created` : The UNIX timestamp when the item was created.
 
-`owner` : The genesis hash of the signature chain that owns this asset.
+`modified` : The UNIX timestamp when the item was last modified.
 
-`name` : The name identifying the item. For privacy purposes, this is only included in the response if the caller is the owner of the asset
+`name` : The name identifying the item.  For privacy purposes, this is only included in the response if the caller is the owner of the item
 
-`data` : The current value of the data in the item.
+`address` : The register address of the item.
+
+`owner` : The genesis hash of the owner of the item.
+
+`data` : The data stored in the item.
 
 
 ***

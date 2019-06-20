@@ -29,6 +29,7 @@ namespace TAO
             mapFunctions["list/transactions"]        = Function(std::bind(&Users::Transactions,  this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/notifications"]       = Function(std::bind(&Users::Notifications, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/assets"]              = Function(std::bind(&Users::Assets,        this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/items"]              = Function(std::bind(&Users::Items,        this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/tokens"]              = Function(std::bind(&Users::Tokens,        this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/accounts"]            = Function(std::bind(&Users::Accounts,      this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/names"]               = Function(std::bind(&Users::Names,         this, std::placeholders::_1, std::placeholders::_2));
@@ -53,6 +54,7 @@ namespace TAO
             || strMethod.find("notifications/") != std::string::npos
             || strMethod.find("assets/")        != std::string::npos
             || strMethod.find("accounts/")      != std::string::npos
+            || strMethod.find("items/")      != std::string::npos
             || strMethod.find("tokens/")        != std::string::npos
             || strMethod.find("names/")         != std::string::npos
             || strMethod.find("namespaces/")    != std::string::npos)

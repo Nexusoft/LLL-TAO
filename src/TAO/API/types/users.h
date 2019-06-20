@@ -410,6 +410,19 @@ namespace TAO
             json::json Namespaces(const json::json& params, bool fHelp);
 
 
+            /** Items
+             *
+             *  Get a list of items (raw registers) owned by a signature chain
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Items(const json::json& params, bool fHelp);
+
+
             /** EventsThread
              *
              *  Background thread to handle/suppress sigchain notifications.

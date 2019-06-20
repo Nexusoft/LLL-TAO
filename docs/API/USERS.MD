@@ -21,13 +21,16 @@ The following methods are currently supported by this API
 [`logout/user`](#logoutuser)   
 [`unlock/user`](#unlockuser)  
 [`lock/user`](#lockuser)  
-[`list/transactions`](#listtransactions)    
-[`list/notifications`](#listnotifications)    
+[`list/accounts`](#listaccounts)   
 [`list/assets`](#listassets)    
-[`list/accounts`](#listaccounts)    
-[`list/tokens`](#listtokens)
-[`list/namespaces`](#listnamespaces)
+[`list/items`](#listitems)    
 [`list/names`](#listnames)    
+[`list/namespaces`](#listnamespaces)  
+[`list/notifications`](#listnotifications)  
+[`list/tokens`](#listtokens)  
+[`list/transactions`](#listtransactions) 
+
+ 
 
 
 -----------------------------------
@@ -223,6 +226,424 @@ The minting/transactions parameters are optional and, if supplied, allow the sig
 }
 ```
 
+
+****
+
+
+# `list/assets`
+
+This will list off all of the assets owned by a signature chain.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/assets`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
+### Return value JSON object:
+```
+[
+    {
+        "name": "myasset1",
+        "address": "8195384518cc4daf2da54479a38c9d93fde145be0bbcd129f420054ff777917c",
+        "timestamp": "1553227256"
+        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+        "serial_number": "123456",
+        "description": "This is the description of my asset",
+        "shelf_location": "A9S2"
+    },
+    {
+        "name": "myasset2",
+        "address": "2673bd356146d1b7ab34dac8f6503cd0c587158b6a017fb9e8ff3e627be8f01c",
+        "timestamp": "1553227128"
+        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+        "serial_number": "78901234",
+        "description": "This is the description of another asset",
+        "shelf_location": "A3S6"
+    }
+]
+```
+### Return values:
+
+`created` : The UNIX timestamp when the asset was created.
+
+`modified` : The UNIX timestamp when the asset was last modified.
+
+`name` : The name identifying the asset.  For privacy purposes, this is only included in the response if the caller is the owner of the asset
+
+`address` : The register address of the asset.
+
+`timestamp` : The Unix timestamp of when the asset was last updated.
+
+`<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
+
+
+****
+
+
+# `list/accounts`
+
+This will list off all of the token accounts belonging to a particular signature chain.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/accounts`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
+
+### Return value JSON object:
+```
+[
+    {
+        "name": "default",
+        "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "token_name": "NXS",
+        "token": "0",
+        "balance": 5000
+    },
+    {
+        "name": "savings",
+        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "token_name": "mytoken",
+        "token": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "balance": 60
+    }
+
+
+]
+```
+### Return values:
+
+`created` : The UNIX timestamp when the account was created.
+
+`modified` : The UNIX timestamp when the account was last modified.
+
+`name` : The name identifying the account.  For privacy purposes, this is only included in the response if the caller is the owner of the account
+
+`address` : The register address for the account
+
+`token_name` : The name of the token that this account can be used with.  For privacy purposes, this is only included in the response if the caller is the owner of the token
+
+`token` : The register address of the token that this account can be used for.
+
+`balance` : The current balance of the token account.
+
+
+****
+
+
+# `list/items`
+
+This will list off all of the supply chain items (append registers) owned by a signature chain.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/items`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
+### Return value JSON object:
+```
+[
+    {
+        "created": 1560982537,
+        "modified": 1560982615,
+        "name": "myitem",
+        "address": "70f49d996d53317cf2175b89efc2694b85c4ebede5fc468bedb860b3e4dada68",
+        "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+        "data": "xxxxxx"
+    }
+]
+
+```
+### Return values:
+
+`created` : The UNIX timestamp when the item was created.
+
+`modified` : The UNIX timestamp when the item was last modified.
+
+`name` : The name identifying the item.  For privacy purposes, this is only included in the response if the caller is the owner of the item
+
+`address` : The register address of the item.
+
+`owner` : The genesis hash of the owner of the item.
+
+`data` : The data stored in the item.
+
+
+****
+
+
+# `list/names`
+
+This will list off all of the names owned by the signature chain.  For privacy reasons Names are only returned for the currently logged in user (multiuser=0) or for the logged in session (multiuser=1)
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/names`
+
+
+### Parameters:
+
+`session` : For multi-user API mode (configured with multiuser=1), the session is required to identify  which signature chain should be used to return the Names for. For single-user API mode the session should not be supplied an the currently logged in users signature chain is used.
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
+
+### Return value JSON object:
+```
+[
+    {
+        "name": "asset1.ourcompany",
+        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+        "register_address": "597164ddc65ed8e4e481958d578daf0890a625a4957a987c5e966fcfff7084f3"
+    }
+    {
+        "name": "asset2.ourcompany",
+        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "register_address": "55c559eabe469eb566f302712edf089b165001da8dfda7acdcf9347896e1fff4"
+    },
+    {
+        "name": "default",
+        "address": "97c2e9fe863e51adeee82b28bf43747291ca801e258a98453d79edb261a02e7a",
+        "register_address": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0"
+    }
+
+
+]
+```
+### Return values:
+
+`created` : The UNIX timestamp when the Name was created.
+
+`modified` : The UNIX timestamp when the Name was last modified.
+
+`name` : The name identifying the object register. 
+
+`address` : The register address of the Name.  
+
+`register_address` : The register address of the the object that this Name points to.
+
+
+****
+
+
+# `list/namespaces`
+
+This will list off all of the namespaces owned by the signature chain.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/namespaces`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
+
+### Return value JSON object:
+```
+[
+    {
+        "name": "mynamespace1",
+        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    },
+    {
+        "name": "mynamespace2",
+        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417"
+    }
+
+
+]
+```
+### Return values:
+
+`created` : The UNIX timestamp when the namespace was created.
+
+`modified` : The UNIX timestamp when the namespace was last modified.
+
+`name` : The name identifying the namespace. 
+
+`address` : The register address of the namespace.  
+
+
+****
+
+
+# `list/notifications`
+
+This will list off all of the transactions sent to a particular genesis or username. It is useful for identifying transactions that you need to accept such as credits.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/notifications`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) notifications.  The default value is 0 if not supplied.
+
+`limit` : The number of notifications to return for the current page.  Default is 100
+
+
+### Return value JSON object:
+```
+[
+    {
+        "txid": "0afb32d8316c9ad97504fbf26093a86cbce03ba8137c5f63e16991e3a99aee3cbb5696f0c889a75fe61541898d350f4023edca2e2b66545f7c2ef9af254f99f0",
+        "contracts": [
+            {
+                "OP": "DEBIT",
+                "from": "6118a477d187277d167bd7965d89d228a4fd04bdc48ae83157554f074eca8e61",
+                "to": "464f3ab4a704a100e6413c2891efaba61375513b00bdc903d8a1f32500f01e36",
+                "amount": 10000
+            }
+        ]
+    },
+]
+
+```
+
+### Return values:
+
+`txid` : The transaction hash.
+
+`contracts` : The list of contracts bound to this transaction and their details with opcodes.
+
+
+****
+
+
+# `list/tokens`
+
+This will list off all of the tokens that were created by a particular signature chain.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/tokens`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
+
+### Return value JSON object:
+```
+[
+    {
+        "name": "mytoken1",
+        "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
+        "balance": 0,
+        "maxsupply": 26738388,
+        "currentsupply": 26738388,
+        "digits": 2
+    },
+    {
+        "name": "mytoken2",
+        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "balance": 990,
+        "maxsupply": 1000,
+        "currentsupply": 10,
+        "digits": 8
+    }
+
+
+]
+```
+### Return values:
+
+`created` : The UNIX timestamp when the token was created.
+
+`modified` : The UNIX timestamp when the token was last modified.
+
+`name` : The name identifying the token.  For privacy purposes, this is only included in the response if the caller is the owner of the token
+
+`address` : The register address for the account
+
+`balance` : The current balance of the token account.
+
+`maxsupply` : The maximum available supply for this token.
+
+`currentsupply` : The current number of tokens that have been distributed from this token register.
+
+`digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
+
+
 ****
 
 
@@ -307,362 +728,5 @@ This will list off all of the transactions for the requested signature chain gen
 `pubkey` : The public key.
 
 `signature` : The signature hash.
-
-****
-
-
-# `list/notifications`
-
-This will list off all of the transactions sent to a particular genesis or username. It is useful for identifying transactions that you need to accept such as credits.
-
-**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
-
-
-### Endpoint:
-
-`/users/list/notifications`
-
-
-### Parameters:
-
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
-
-`username` : The username identifying the signature chain (optional if genesis is supplied).
-
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) notifications.  The default value is 0 if not supplied.
-
-`limit` : The number of notifications to return for the current page.  Default is 100
-
-
-### Return value JSON object:
-```
-[
-    {
-        "txid": "0afb32d8316c9ad97504fbf26093a86cbce03ba8137c5f63e16991e3a99aee3cbb5696f0c889a75fe61541898d350f4023edca2e2b66545f7c2ef9af254f99f0",
-        "contracts": [
-            {
-                "OP": "DEBIT",
-                "from": "6118a477d187277d167bd7965d89d228a4fd04bdc48ae83157554f074eca8e61",
-                "to": "464f3ab4a704a100e6413c2891efaba61375513b00bdc903d8a1f32500f01e36",
-                "amount": 10000
-            }
-        ]
-    },
-]
-
-```
-
-### Return values:
-
-`txid` : The transaction hash.
-
-`contracts` : The list of contracts bound to this transaction and their details with opcodes.
-
-****
-
-
-# `list/assets`
-
-This will list off all of the assets owned by a signature chain.
-
-**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
-
-
-### Endpoint:
-
-`/users/list/assets`
-
-
-### Parameters:
-
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
-
-`username` : The username identifying the signature chain (optional if genesis is supplied).
-
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
-
-`limit` : The number of results to return for the current page.  Default is 100
-
-
-### Return value JSON object:
-```
-[
-    {
-        "name": "myasset1",
-        "address": "8195384518cc4daf2da54479a38c9d93fde145be0bbcd129f420054ff777917c",
-        "timestamp": "1553227256"
-        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
-        "serial_number": "123456",
-        "description": "This is the description of my asset",
-        "shelf_location": "A9S2"
-    },
-    {
-        "name": "myasset2",
-        "address": "2673bd356146d1b7ab34dac8f6503cd0c587158b6a017fb9e8ff3e627be8f01c",
-        "timestamp": "1553227128"
-        "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
-        "serial_number": "78901234",
-        "description": "This is the description of another asset",
-        "shelf_location": "A3S6"
-    }
-]
-```
-### Return values:
-
-`created` : The UNIX timestamp when the asset was created.
-
-`modified` : The UNIX timestamp when the asset was last modified.
-
-`name` : The name identifying the asset.  For privacy purposes, this is only included in the response if the caller is the owner of the asset
-
-`address` : The register address of the asset.
-
-`timestamp` : The Unix timestamp of when the asset was last updated.
-
-`<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
-
-****
-
-# `list/accounts`
-
-This will list off all of the token accounts belonging to a particular signature chain.
-
-**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
-
-
-### Endpoint:
-
-`/users/list/accounts`
-
-
-### Parameters:
-
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
-
-`username` : The username identifying the signature chain (optional if genesis is supplied).
-
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
-
-`limit` : The number of results to return for the current page.  Default is 100
-
-
-
-### Return value JSON object:
-```
-[
-    {
-        "name": "default",
-        "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
-        "token_name": "NXS",
-        "token": "0",
-        "balance": 5000
-    },
-    {
-        "name": "savings",
-        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
-        "token_name": "mytoken",
-        "token": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
-        "balance": 60
-    }
-
-
-]
-```
-### Return values:
-
-`created` : The UNIX timestamp when the account was created.
-
-`modified` : The UNIX timestamp when the account was last modified.
-
-`name` : The name identifying the account.  For privacy purposes, this is only included in the response if the caller is the owner of the account
-
-`address` : The register address for the account
-
-`token_name` : The name of the token that this account can be used with.  For privacy purposes, this is only included in the response if the caller is the owner of the token
-
-`token` : The register address of the token that this account can be used for.
-
-`balance` : The current balance of the token account.
-
-****
-
-# `list/tokens`
-
-This will list off all of the tokens that were created by a particular signature chain.
-
-**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
-
-
-### Endpoint:
-
-`/users/list/tokens`
-
-
-### Parameters:
-
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
-
-`username` : The username identifying the signature chain (optional if genesis is supplied).
-
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
-
-`limit` : The number of results to return for the current page.  Default is 100
-
-
-
-### Return value JSON object:
-```
-[
-    {
-        "name": "mytoken1",
-        "address": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
-        "balance": 0,
-        "maxsupply": 26738388,
-        "currentsupply": 26738388,
-        "digits": 2
-    },
-    {
-        "name": "mytoken2",
-        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
-        "balance": 990,
-        "maxsupply": 1000,
-        "currentsupply": 10,
-        "digits": 8
-    }
-
-
-]
-```
-### Return values:
-
-`created` : The UNIX timestamp when the token was created.
-
-`modified` : The UNIX timestamp when the token was last modified.
-
-`name` : The name identifying the token.  For privacy purposes, this is only included in the response if the caller is the owner of the token
-
-`address` : The register address for the account
-
-`balance` : The current balance of the token account.
-
-`maxsupply` : The maximum available supply for this token.
-
-`currentsupply` : The current number of tokens that have been distributed from this token register.
-
-`digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
-
-
-****
-
-
-# `list/namespaces`
-
-This will list off all of the namespaces owned by the signature chain.
-
-**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
-
-
-### Endpoint:
-
-`/users/list/namespaces`
-
-
-### Parameters:
-
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
-
-`username` : The username identifying the signature chain (optional if genesis is supplied).
-
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
-
-`limit` : The number of results to return for the current page.  Default is 100
-
-
-
-### Return value JSON object:
-```
-[
-    {
-        "name": "mynamespace1",
-        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
-    },
-    {
-        "name": "mynamespace2",
-        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417"
-    }
-
-
-]
-```
-### Return values:
-
-`created` : The UNIX timestamp when the namespace was created.
-
-`modified` : The UNIX timestamp when the namespace was last modified.
-
-`name` : The name identifying the namespace. 
-
-`address` : The register address of the namespace.  
-
-
-****
-
-
-# `list/names`
-
-This will list off all of the names owned by the signature chain.  For privacy reasons Names are only returned for the currently logged in user (multiuser=0) or for the logged in session (multiuser=1)
-
-**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
-
-
-### Endpoint:
-
-`/users/list/names`
-
-
-### Parameters:
-
-`session` : For multi-user API mode (configured with multiuser=1), the session is required to identify  which signature chain should be used to return the Names for. For single-user API mode the session should not be supplied an the currently logged in users signature chain is used.
-
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
-
-`limit` : The number of results to return for the current page.  Default is 100
-
-
-
-### Return value JSON object:
-```
-[
-    {
-        "name": "asset1.ourcompany",
-        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-        "register_address": "597164ddc65ed8e4e481958d578daf0890a625a4957a987c5e966fcfff7084f3"
-    }
-    {
-        "name": "asset2.ourcompany",
-        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
-        "register_address": "55c559eabe469eb566f302712edf089b165001da8dfda7acdcf9347896e1fff4"
-    },
-    {
-        "name": "default",
-        "address": "97c2e9fe863e51adeee82b28bf43747291ca801e258a98453d79edb261a02e7a",
-        "register_address": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0"
-    }
-
-
-]
-```
-### Return values:
-
-`created` : The UNIX timestamp when the Name was created.
-
-`modified` : The UNIX timestamp when the Name was last modified.
-
-`name` : The name identifying the object register. 
-
-`address` : The register address of the Name.  
-
-`register_address` : The register address of the the object that this Name points to.
-
 
 ****

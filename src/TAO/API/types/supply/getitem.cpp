@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/supply.h>
 #include <TAO/API/types/names.h>
+#include <TAO/API/include/global.h>
+#include <TAO/API/include/json.h>
 
 #include <LLD/include/global.h>
 
@@ -52,26 +54,12 @@ namespace TAO
             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-24, "Item not found");
 
+            /* Ensure that it is an append register */
             if(state.nType != TAO::Register::REGISTER::APPEND)
                 throw APIException(-24, "Item not found");
 
             /* Build the response JSON. */
-            //ret["version"]  = state.nVersion;
-            //ret["type"]     = state.nType;
-            ret["address"]    = hashRegister.ToString();
-            ret["created"]   = state.nCreated;
-            ret["modified"]  = state.nModified;
-            ret["owner"]     = state.hashOwner.ToString();
-
-            while(!state.end())
-            {
-                /* If the data type is string. */
-                std::string data;
-                state >> data;
-
-                //ret["checksum"] = state.hashChecksum;
-                ret["data"] = data;
-            }
+            ret = ObjectToJSON(params, state, hashRegister);
 
             return ret;
         }

@@ -357,6 +357,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_users_create.o \
 		build/API_types_users_events.o \
         build/API_types_users_initialize.o \
+		build/API_types_users_items.o \
 		build/API_types_users_lock.o \
 		build/API_types_users_login.o \
 		build/API_types_users_logout.o \
