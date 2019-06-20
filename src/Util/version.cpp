@@ -18,26 +18,21 @@ namespace version
 {
 
     /* The version of the actual wallet client. */
-    const int CLIENT_VERSION =
-                    1000000 * CLIENT_MAJOR
-                  +   10000 * CLIENT_MINOR
-                  +     100 * CLIENT_PATCH
-                  +       1 * CLIENT_BUILD;
-
+    const int CLIENT_VERSION = 10000 * CLIENT_MAJOR + 100 * CLIENT_MINOR + CLIENT_PATCH;
 
     /* Client Version Outputs. */
     const std::string CLIENT_NAME("Tritium");
-    const std::string CLIENT_TYPE("Beta");
+    //const std::string CLIENT_TYPE("Beta");
     const std::string CLIENT_DATE(__DATE__ " " __TIME__);
     /* The version number */
-    const std::string CLIENT_VERSION_STRING = debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH, ".", CLIENT_BUILD);
+    const std::string CLIENT_VERSION_STRING = debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH);
 
 
     /* The interface used Qt, CLI, or Tritium) */
     #if defined QT_GUI
         const std::string CLIENT_INTERFACE("Qt");
     #elif defined TRITIUM_GUI
-        const std::string CLIENT_INTERFACE("Tritium Beta");
+        const std::string CLIENT_INTERFACE("GUI");
     #else
         const std::string CLIENT_INTERFACE("CLI");
     #endif
@@ -60,5 +55,5 @@ namespace version
         const std::string BUILD_ARCH = "[x86]";
     #endif
 
-    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + " " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH +" " +CLIENT_TYPE);
+    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + " " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH);// + " " + CLIENT_TYPE);
 }

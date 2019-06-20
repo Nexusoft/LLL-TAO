@@ -20,10 +20,9 @@ ________________________________________________________________________________
 
 namespace version
 {
-	const int CLIENT_MAJOR	= 	0;
-	const int CLIENT_MINOR	=	3;
+	const int CLIENT_MAJOR	= 	3;
+	const int CLIENT_MINOR	=	0;
 	const int CLIENT_PATCH	=	0;
-	const int CLIENT_BUILD	=	0;
 
 
 	/** These external variables are the display only variables. They are used to track the updates of Nexus independent of Database and Protocol Upgrades. **/
