@@ -79,6 +79,9 @@ namespace LLP
         /* Set it to a null state */
         pBlock->SetNull();
 
+        /* If the primemod flag is set, take the hashProof down to 1017-bit to maximize prime ratio as much as possible. */
+        uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
+
         /* We need to make the block hash unique for each subsribed miner so that they are not
            duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
            the scriptSig to be unique for each subscriber, before rebuilding the merkle tree.
@@ -97,9 +100,6 @@ namespace LLP
             /* Skip if not prime channel or version less than 5 */
             if(nChannel.load() != 1 || pBlock->nVersion < 5)
                 break;
-
-            /* If the primemod flag is set, take the hashProof down to 1017-bit to maximize prime ratio as much as possible. */
-            uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x8000000;
 
              /* Exit loop when the block is above minimum prime origins and less than
                  1024-bit hashes */
