@@ -321,14 +321,37 @@ namespace debug
     int GetFilesize(FILE* file);
 
 
-    /** ShrinkDebugFile
+    /** check_log_archive
      *
-     *  Shrinks the size of the debug.log file if it has grown exceptionally large.
-     *  It keeps some of the end of the file with most recent log history before
-     *  shrinking it down.
+     *  Checks if the current debug log should be closed and archived. This
+     *  function will close the current file if the max file size is exceeded,
+     *  rename it, and open a new file. It will delete the oldest file if it
+     *  exceeds the max number of files.
+     *
+     *  @param[in] outFile The output file stream used to update debug files
      *
      **/
-    void ShrinkDebugFile(std::string debugPath = config::GetDataDir() + "debug.log");
+    void check_log_archive(std::ofstream &outFile);
+
+
+    /** debug_filecount
+     *
+     *  Returns the number of debug files present in the debug directory.
+     *
+     **/
+    uint32_t debug_filecount();
+
+
+    /** log_path
+     *
+     *  Builds an indexed debug log path for a file.
+     *
+     *  @param[in] nIndex The index for the debug log path.
+     *
+     *  @return Returns the absolute path to the log file.
+     *
+     **/
+    std::string log_path(uint32_t nIndex);
 
 }
 #endif

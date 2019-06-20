@@ -63,6 +63,15 @@ namespace debug
     std::mutex DEBUG_MUTEX;
     std::ofstream ssFile;
 
+    /* The debug archive folder path. */
+    std::string strLogFolder;
+
+    /* The maximum number of log files to archive. */
+    uint32_t nLogFiles;
+
+    /* The maximum size threshold of each log file. */
+    uint32_t nLogSizeMB;
+
     /*  Safer snprintf output string is always null terminated even if the limit
      *  is reach. Returns the number of characters printed. */
     int my_snprintf(char* buffer, size_t limit, const char* format, ...)
@@ -151,27 +160,27 @@ namespace debug
      *  Encapsulated log for improved compile time. Not thread safe. */
     void log_(time_t &timestamp, std::string &debug_str)
     {
+        /* Build the timestamp */
+        std::string time_str = safe_printstr(
+            "[",
+            std::put_time(std::localtime(&timestamp), "%H:%M:%S"),
+            ".",
+            std::setfill('0'),
+            std::setw(3),
+            (runtime::timestamp(true) % 1000),
+            "] ");
+
+        /* Get the final timestamped debug string. */
+        std::string final_str = time_str + debug_str;
+
         /* Dump it to the console. */
-        std::cout << "["
-                  << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
-                  << "."
-                  << std::setfill('0')
-                  << std::setw(3)
-                  << (runtime::timestamp(true) % 1000)
-                  << "] "
-                  << debug_str
-                  << std::endl;
+        std::cout << final_str << std::endl;
 
         /* Write it to the debug file. */
-        ssFile    << "["
-                  << std::put_time(std::localtime(&timestamp), "%H:%M:%S")
-                  << "."
-                  << std::setfill('0')
-                  << std::setw(3)
-                  << (runtime::timestamp(true) % 1000)
-                  << "] "
-                  << debug_str
-                  << std::endl;
+        ssFile << final_str << std::endl;
+
+        /* Check if the current file should be archived and take action. */
+        check_log_archive(ssFile);
     }
 
 
@@ -328,44 +337,35 @@ namespace debug
         return nFilesize;
     }
 
-    /*  Shrinks the size of the debug.log file if it has grown exceptionally large.
-     *  It keeps some of the end of the file with most recent log history before
-     *  shrinking it down. */
-    void ShrinkDebugFile(std::string debugPath)
-    {
-        /* Scroll debug.log if it's getting too big */
-        FILE* file = fopen(debugPath.c_str(), "r");
-        if (file && GetFilesize(file) > 10 * 1000000)
-        {
-            /* Restart the file with some of the end */
-            char pch[200000];
-
-            /* define pchSize instead of passing -sizeof() directly to fseek
-               fseek size parameter is long int, which on Windows is 32-bit and throws compile warning for conversion overflow
-               if you pass -sizeof() which is type size_t, or 64 bit on Windows. So we convert the positive, then pass negative of it */
-            uint32_t pchSize = sizeof(pch);
-            fseek(file, -pchSize, SEEK_END);
-
-            int nBytes = fread(pch, 1, sizeof(pch), file);
-            fclose(file);
-
-            file = fopen(debugPath.c_str(), "w");
-            if (file)
-            {
-                fwrite(pch, 1, nBytes, file);
-                fclose(file);
-            }
-        }
-    }
-
 
     /*  Open the debug log file. */
     bool init(std::string debugPath)
     {
         LOCK(DEBUG_MUTEX);
 
-        ssFile.open(debugPath, std::ios::app | std::ios::in | std::ios::out);
-        return ssFile.is_open();
+        strLogFolder = config::GetDataDir() + "log/";
+
+        /* Create the debug archive folder if it doesn't exist. */
+        if(!filesystem::exists(strLogFolder))
+        {
+            filesystem::create_directory(strLogFolder);
+            printf("created debug folder directory\n");
+        }
+
+
+        /* Initialize the logging file stream. */
+        ssFile.open(log_path(0), std::ios::app | std::ios::out);
+        if(!ssFile.is_open())
+        {
+            printf("Unable to initalize system logging\n");
+            return false;
+        }
+
+        /* Get the debug logging configuration parameters (or default if none specified) */
+        nLogFiles  = config::GetArg("-logfiles", 20);
+        nLogSizeMB = config::GetArg("-logsizeMB", 5);
+
+        return true;
     }
 
 
@@ -376,6 +376,73 @@ namespace debug
 
         if(ssFile.is_open())
             ssFile.close();
+    }
+
+
+    /*  Checks if the current debug log should be closed and archived. */
+    void check_log_archive(std::ofstream &outFile)
+    {
+        /* If the file is not open don't bother with archive. */
+        if(!outFile.is_open())
+            return;
+
+        /* Get the current position to determine number of bytes. */
+        uint32_t nBytes = outFile.tellp();
+
+        /* Get the max log size in bytes. */
+        uint32_t nMaxLogSizeBytes = nLogSizeMB << 20;
+
+        /* Check if the log size is exceeded. */
+        if(nBytes > nMaxLogSizeBytes)
+        {
+            /* Close the current debug.log file. */
+            outFile.close();
+
+            /* Get the number of debug files. */
+            uint32_t nDebugFiles = debug_filecount();
+
+            /* Shift the archived debug file name indices by 1. */
+            for(int32_t i = nDebugFiles-1; i >= 0; --i)
+            {
+                /* If the oldest file will exceed the max amount of files, delete it. */
+                if(i + 1 >= nLogFiles)
+                    filesystem::remove(log_path(i));
+                /* Otherwise, rename the files in reverse order. */
+                else
+                    filesystem::rename(log_path(i), log_path(i+1));
+            }
+
+            /* Open the new debug file. */
+            outFile.open(log_path(0), std::ios::app | std::ios::out);
+            if(!outFile.is_open())
+            {
+                printf("Unable to start a new debug file\n");
+                return;
+            }
+        }
+    }
+
+
+    /*  Returns the number of debug files present in the debug directory. */
+    uint32_t debug_filecount()
+    {
+        uint32_t nCount = 0;
+
+        /* Loop through the max file count and check if the file exists. */
+        for(uint32_t i = 0; i < nLogFiles; ++i)
+        {
+            if(filesystem::exists(log_path(i)))
+                ++nCount;
+        }
+
+        return nCount;
+    }
+
+
+    /*  Builds an indexed debug log path for a file. */
+    std::string log_path(uint32_t nIndex)
+    {
+        return strLogFolder + std::to_string(nIndex) + ".log";
     }
 
 }
