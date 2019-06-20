@@ -55,16 +55,6 @@ namespace TAO
         uint64_t MaxBlockAge();
 
 
-        /** MaxTrustScore
-         *
-         *  Retrieve the setting for maximum trust score value allowed.
-         *
-         *  @return the current system setting for maximum trust score
-         *
-         **/
-        uint64_t MaxTrustScore();
-
-
         /** MinCoinAge
          *
          *  Retrieve the setting for minimum coin age required to begin staking Genesis.
