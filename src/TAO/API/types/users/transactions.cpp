@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/users.h>
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
@@ -51,6 +52,9 @@ namespace TAO
             }
             else
                 throw APIException(-25, "Missing Genesis or Username");
+
+            /* The genesis hash of the API caller, if logged in */
+            uint256_t hashCaller = users->GetCallersGenesis(params);
 
             /* Check for paged parameter. */
             uint32_t nPage = 0;
@@ -114,7 +118,7 @@ namespace TAO
                 json::json obj = TAO::API::TransactionToJSON(tx, blockState, nVerbose);
 
                 /* Add the operations to transaction json. */
-                obj["contracts"]     = ContractsToJSON(tx);
+                obj["contracts"]     = ContractsToJSON(hashCaller, tx);
 
                 ret.push_back(obj);
             }

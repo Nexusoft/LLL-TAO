@@ -70,26 +70,28 @@ namespace TAO
          *
          *  Converts a transaction object into a formatted JSON list of contracts bound to the transaction.
          *
+         *  @param[in] hashCaller Genesis hash of the callers sig chain (0 if not logged in)
          *  @param[in] tx The transaction with contracts to convert to JSON
          *  @param[in] nVerbosity The verbose output level.
          *
          *  @return the formatted JSON object
          *
          **/
-        json::json ContractsToJSON(const TAO::Ledger::Transaction& tx, uint32_t nVerbosity = 0);
+        json::json ContractsToJSON(uint256_t hashCaller, const TAO::Ledger::Transaction& tx, uint32_t nVerbosity = 0);
 
 
         /** ContractToJSON
          *
          *  Converts a serialized contract stream to formattted JSON
          *
-         *  @param[in] contract The contract to de-serialize
+         * @param[in] hashCaller Genesis hash of the callers sig chain (0 if not logged in) 
+         * @param[in] contract The contract to de-serialize
          *  @param[in] nVerbosity The verbose output level.
          *
          *  @return the formatted JSON object
          *
          **/
-        json::json ContractToJSON(const TAO::Operation::Contract& contract, uint32_t nVerbosity = 0);
+        json::json ContractToJSON(uint256_t hashCaller, const TAO::Operation::Contract& contract, uint32_t nVerbosity = 0);
 
 
         /** ObjectToJSON

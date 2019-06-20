@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/users.h>
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
@@ -73,7 +74,7 @@ namespace TAO
             while(hashLast != 0)
             {
                 /* Get the transaction from disk. */
-                Ledger::Transaction tx;
+                TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx))
                     return debug::error(FUNCTION, "Failed to read transaction");
 
@@ -86,8 +87,8 @@ namespace TAO
                 {
                     /* Attempt to unpack a register script. */
                     uint256_t hashAddress;
-                    Register::Object account;
-                    if(!Register::Unpack(tx[nContract], account, hashAddress))
+                    TAO::Register::Object account;
+                    if(!TAO::Register::Unpack(tx[nContract], account, hashAddress))
                         continue;
 
                     /* Parse out the object register. */
@@ -95,7 +96,7 @@ namespace TAO
                         continue;
 
                     /* Check that it is an object register account. */
-                    if(account.nType != Register::REGISTER::OBJECT || account.Base() != Register::OBJECTS::ACCOUNT)
+                    if(account.nType != TAO::Register::REGISTER::OBJECT || account.Base() != TAO::Register::OBJECTS::ACCOUNT)
                         continue;
 
                     /* Get the token address and ensure it exists. */
@@ -104,7 +105,7 @@ namespace TAO
                         continue;
 
                     /* Check claims against notifications. */
-                    if(LLD::Ledger->HasProof(hashAddress, tx.GetHash(), nContract, Ledger::FLAGS::MEMPOOL))
+                    if(LLD::Ledger->HasProof(hashAddress, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
                         continue;
 
                     vRegisters.push_back(hashToken);
@@ -141,7 +142,7 @@ namespace TAO
                     {
                         /* Attempt to unpack a register script (DEBIT or TRANSFER). */
                         uint256_t hashAddress;
-                        if(!Register::Unpack(tx[nContract], hashAddress))
+                        if(!TAO::Register::Unpack(tx[nContract], hashAddress))
                             continue;
 
                         /* Get the hash to */
@@ -149,14 +150,14 @@ namespace TAO
                         tx[nContract] >> hashTo;
 
                         /* Verify that the hash to exists. */
-                        Register::State stateTo;
+                        TAO::Register::State stateTo;
                         if(!LLD::Register->ReadState(hashTo, stateTo))
                             continue;
 
                         /* If the operation is a debit, calculate the partial token debit amount. */
-                        if(Register::Unpack(tx[nContract], Operation::OP::DEBIT))
+                        if(TAO::Register::Unpack(tx[nContract], Operation::OP::DEBIT))
                         {
-                            if(stateTo.nType == Register::REGISTER::RAW || stateTo.nType == Register::REGISTER::READONLY)
+                            if(stateTo.nType == TAO::Register::REGISTER::RAW || stateTo.nType == TAO::Register::REGISTER::READONLY)
                             {
                                 /* Seek to the debit amount. */
                                 tx[nContract].Seek(65, Operation::Contract::OPERATIONS);
@@ -230,7 +231,7 @@ namespace TAO
             while(hashLast != 0)
             {
                 /* Get the transaction from disk. */
-                Ledger::Transaction tx;
+                TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx))
                     return debug::error(FUNCTION, "Failed to read transaction");
 
@@ -247,7 +248,7 @@ namespace TAO
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
                     /* Check for coinbase opcode */
-                    if(Register::Unpack(tx[nContract], Operation::OP::COINBASE))
+                    if(TAO::Register::Unpack(tx[nContract], Operation::OP::COINBASE))
                     {
                         /* Check if proofs are spent. */
                         if(LLD::Ledger->HasProof(hashGenesis, hashLast, nContract, TAO::Ledger::FLAGS::MEMPOOL))
@@ -292,6 +293,9 @@ namespace TAO
             else
                 throw APIException(-25, "Missing Genesis or Username");
 
+            /* The genesis hash of the API caller, if logged in */
+            uint256_t hashCaller = users->GetCallersGenesis(params);
+
             /* Check for paged parameter. */
             uint32_t nPage = 0;
             if(params.find("page") != params.end())
@@ -324,7 +328,7 @@ namespace TAO
                     break;
 
                 /* Add the transactions to the JSON object. */
-                ret.push_back(ContractsToJSON(tx, 1));
+                ret.push_back(ContractsToJSON(hashCaller, tx, 1));
 
                 /* Increment the total number of notifications. */
                 ++nTotal;

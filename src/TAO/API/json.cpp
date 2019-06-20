@@ -132,7 +132,7 @@ namespace TAO
 
             /* Always add the contracts if level 1 and up */
             if(nTransactionVerbosity >= 1)
-                ret["contracts"] = ContractsToJSON(tx, nTransactionVerbosity);
+                ret["contracts"] = ContractsToJSON(0, tx, nTransactionVerbosity);
 
             /* Basic TX info for level 2 and up */
             if(nTransactionVerbosity >= 2)
@@ -226,7 +226,7 @@ namespace TAO
 
 
         /* Converts a transaction object into a formatted JSON list of contracts bound to the transaction. */
-        json::json ContractsToJSON(const TAO::Ledger::Transaction &tx, uint32_t nVerbosity)
+        json::json ContractsToJSON(uint256_t hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity)
         {
             /* Declare the return JSON object*/
             json::json ret = json::json::array();
@@ -234,14 +234,14 @@ namespace TAO
             /* Add a contract to the list of contracts. */
             uint32_t nContracts = tx.Size();
             for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
-                ret.push_back(ContractToJSON(tx[nContract], nVerbosity));
+                ret.push_back(ContractToJSON(hashCaller, tx[nContract], nVerbosity));
 
             return ret;
         }
 
 
         /* Converts a serialized operation stream to formattted JSON */
-        json::json ContractToJSON(const TAO::Operation::Contract& contract, uint32_t nVerbosity)
+        json::json ContractToJSON(uint256_t hashCaller, const TAO::Operation::Contract& contract, uint32_t nVerbosity)
         {
             /* Declare the return JSON object*/
             json::json ret;
@@ -510,8 +510,51 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]       = "DEBIT";
                         ret["from"]     = hashFrom.ToString();
+
+                        /* Resolve the name of the token/account that the debit is from */
+                        std::string strFrom = Names::ResolveName(hashCaller, hashFrom);
+                        if(!strFrom.empty())
+                            ret["from_name"] = strFrom; 
+
                         ret["to"]       = hashTo.ToString();
+
+                        /* Resolve the name of the token/account/register that the debit is to */
+                        std::string strTo = Names::ResolveName(hashCaller, hashTo);
+                        if(!strTo.empty())
+                            ret["to_name"] = strTo;
+
+                        /* Add the amount to the response */
                         ret["amount"]   = nAmount;
+
+                        /* Get the token/account we are debiting from so that we can output the token address / name. */
+                        TAO::Register::Object object;
+                        if(!LLD::Register->ReadState(hashFrom, object))
+                            throw APIException(-24, "Account not found");
+
+                        /* Parse the object register. */
+                        if(!object.Parse())
+                            throw APIException(-24, "Object failed to parse");
+
+                        /* Get the object standard. */
+                        uint8_t nStandard = object.Standard();
+
+                        /* Check the object standard. */
+                        if(nStandard != TAO::Register::OBJECTS::ACCOUNT 
+                        && nStandard != TAO::Register::OBJECTS::TRUST
+                        && nStandard != TAO::Register::OBJECTS::TOKEN)
+                            throw APIException(-24, "Object is not an account or token");
+
+                        /* Get the token address */
+                        uint256_t hashToken = object.get<uint256_t>("token");
+
+                        /* Add the token address to the response */
+                        ret["token"]   = hashToken.GetHex();
+
+                        /* Resolve the name of the token name */
+                        std::string strToken = Names::ResolveName(hashCaller, hashToken);
+                        if(!strToken.empty())
+                            ret["token_name"] = strToken;
+
 
                         break;
                     }
@@ -546,7 +589,43 @@ namespace TAO
                         ret["output"]  = nID;
                         ret["proof"]   = hashProof.ToString();
                         ret["account"] = hashAddress.ToString();
+
+                        /* Resolve the name of the account that the credit is to */
+                        std::string strAccount = Names::ResolveName(hashCaller, hashAddress);
+                        if(!strAccount.empty())
+                            ret["account_name"] = strAccount;
+
+                        /* Add the amount to the response */
                         ret["amount"]  = nCredit;
+
+                        /* Get the token/account we are crediting to so that we can output the token address / name. */
+                        TAO::Register::Object account;
+                        if(!LLD::Register->ReadState(hashAddress, account))
+                            throw APIException(-24, "Account not found");
+
+                        /* Parse the object register. */
+                        if(!account.Parse())
+                            throw APIException(-24, "Object failed to parse");
+
+                        /* Get the object standard. */
+                        uint8_t nStandard = account.Standard();
+
+                        /* Check the object standard. */
+                        if(nStandard != TAO::Register::OBJECTS::ACCOUNT 
+                        && nStandard != TAO::Register::OBJECTS::TRUST
+                        && nStandard != TAO::Register::OBJECTS::TOKEN)
+                            throw APIException(-24, "Object is not an account or token");
+
+                        /* Get the token address */
+                        uint256_t hashToken = account.get<uint256_t>("token");
+
+                        /* Add the token address to the response */
+                        ret["token"]   = hashToken.GetHex();
+
+                        /* Resolve the name of the token name */
+                        std::string strToken = Names::ResolveName(hashCaller, hashToken);
+                        if(!strToken.empty())
+                            ret["token_name"] = strToken;
 
                         break;
                     }
