@@ -62,41 +62,41 @@ namespace TAO
 
             /* Check transaction for errors. */
             if(!tx.CheckTransaction())
-                return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " failed");
+                return debug::error(FUNCTION, "tx ", nTxHash.SubString(), " failed");
 
             /* Coinbase is only valid in a block, not as a loose transaction */
             if(tx.IsCoinBase())
-                return debug::error(FUNCTION, "coinbase ", nTxHash.ToString().substr(0, 20), "as individual tx");
+                return debug::error(FUNCTION, "coinbase ", nTxHash.SubString(), "as individual tx");
 
             /* Nexus: coinstake is also only valid in a block, not as a loose transaction */
             if(tx.IsCoinStake())
-                return debug::error(FUNCTION, "coinstake ", nTxHash.ToString().substr(0, 20), " as individual tx");
+                return debug::error(FUNCTION, "coinstake ", nTxHash.SubString(), " as individual tx");
 
             /* To help v0.1.5 clients who would see it as a negative number */
             if((uint64_t) tx.nLockTime > std::numeric_limits<int32_t>::max())
-                return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " not accepting nLockTime beyond 2038 yet");
+                return debug::error(FUNCTION, "tx ", nTxHash.SubString(), " not accepting nLockTime beyond 2038 yet");
 
             /* Rather not work on nonstandard transactions (unless -testnet) */
             if(!config::fTestNet.load() && !tx.IsStandard())
-                return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " nonstandard transaction type");
+                return debug::error(FUNCTION, "tx ", nTxHash.SubString(), " nonstandard transaction type");
 
             /* Check previous inputs. */
             for(auto vin : tx.vin)
                 if(mapInputs.count(vin.prevout) && mapInputs[vin.prevout] != tx.GetHash())
                     return debug::error(FUNCTION,
-                        "inputs ", mapInputs[vin.prevout].ToString().substr(0, 10),
-                        " already spent ", nTxHash.ToString().substr(0, 10));
+                        "inputs ", mapInputs[vin.prevout].SubString(10),
+                        " already spent ", nTxHash.SubString(10));
 
             /* Check the inputs for spends. */
             std::map<uint512_t, Legacy::Transaction> inputs;
 
             /* Fetch the inputs. */
             if(!tx.FetchInputs(inputs))
-                return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " failed to fetch the inputs");
+                return debug::error(FUNCTION, "tx ", nTxHash.SubString(), " failed to fetch the inputs");
 
             /* Check for standard inputs. */
             if(!tx.AreInputsStandard(inputs))
-                return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " inputs are non-standard");
+                return debug::error(FUNCTION, "tx ", nTxHash.SubString(), " inputs are non-standard");
 
             /* Check the transaction fees. */
             uint64_t nFees = tx.GetValueIn(inputs) - tx.GetValueOut();
@@ -104,7 +104,7 @@ namespace TAO
 
             /* Don't accept if the fees are too low. */
             if(nFees < tx.GetMinFee(1000, false))
-                return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " not enough fees");
+                return debug::error(FUNCTION, "tx ", nTxHash.SubString(), " not enough fees");
 
             /* Rate limit free transactions to prevent penny flooding attacks. */
             if(nFees < Legacy::MIN_RELAY_TX_FEE)
@@ -132,7 +132,7 @@ namespace TAO
             /* See if inputs can be connected. */
             TAO::Ledger::BlockState state = ChainState::stateBest.load();
             if(!tx.Connect(inputs, state, Legacy::FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " failed to connect inputs");
+                return debug::error(FUNCTION, "tx ", nTxHash.SubString(), " failed to connect inputs");
 
             /* Set the inputs to be claimed. */
             uint32_t s = tx.vin.size();
@@ -143,7 +143,7 @@ namespace TAO
             mapLegacy[nTxHash] = tx;
 
             /* Log outputs. */
-            debug::log(2, FUNCTION, "tx ", nTxHash.ToString().substr(0, 20), " ACCEPTED");
+            debug::log(2, FUNCTION, "tx ", nTxHash.SubString(), " ACCEPTED");
 
             return true;
         }

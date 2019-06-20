@@ -1056,7 +1056,7 @@ namespace Legacy
         }
 
         /* debug print */
-        debug::log(0, FUNCTION, wtxIn.GetHash().ToString().substr(0,10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+        debug::log(0, FUNCTION, wtxIn.GetHash().SubString(10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
         /* Write to disk */
         if(fInsertedNew || fUpdated)
@@ -1327,7 +1327,7 @@ namespace Legacy
                      */
                     if(!prevTx.IsSpent(txin.prevout.n) && IsMine(prevTx.vout[txin.prevout.n]))
                     {
-                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " NXS ", prevTx.GetHash().ToString().substr(0, 20));
+                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " NXS ", prevTx.GetHash().SubString());
 
                         prevTx.MarkSpent(txin.prevout.n);
                         prevTx.WriteToDisk();
@@ -1368,7 +1368,7 @@ namespace Legacy
                 /* Handle when Transaction on chain records output as unspent but wallet accounting has it as spent */
                 if(IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && !isSpentOnChain)
                 {
-                    debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20), "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
+                    debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().SubString(), "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
 
                     ++nMismatchFound;
                     nBalanceInQuestion += walletTx.vout[n].nValue;
@@ -1383,7 +1383,7 @@ namespace Legacy
                 /* Handle when Transaction on chain records output as spent but wallet accounting has it as unspent */
                 else if(IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && isSpentOnChain)
                 {
-                    debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20),
+                    debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().SubString(),
                         "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
 
                     ++nMismatchFound;

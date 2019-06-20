@@ -56,7 +56,7 @@ namespace TAO
             {
                 /* Wait for the events processing thread to be woken up (such as a login) */
                 std::unique_lock<std::mutex> lk(EVENTS_MUTEX);
-                CONDITION.wait_for(lk, std::chrono::milliseconds(1000), [this]{ return fEvent.load() || fShutdown.load();});
+                CONDITION.wait_for(lk, std::chrono::milliseconds(5000), [this]{ return fEvent.load() || fShutdown.load();});
 
                 /* Check for a shutdown event. */
                 if(fShutdown.load())
@@ -103,7 +103,15 @@ namespace TAO
                     /* hash from, hash to, and amount for operations. */
                     uint256_t hashFrom;
                     uint256_t hashTo;
+
+
                     uint64_t nAmount = 0;
+                    uint32_t nOut = 0;
+
+                    /* Create the transaction output. */
+                    TAO::Ledger::Transaction txout;
+                    if(!TAO::Ledger::CreateTransaction(user, strPIN, txout))
+                        throw APIException(-25, "Failed to create transaction");
 
                     /* Loop through each contract in the notification queue. */
                     for(const auto& txin : vTransactions)
@@ -114,14 +122,8 @@ namespace TAO
                         /* Get the maturity for this transaction. */
                         bool fMature = LLD::Ledger->ReadMature(hashTx);
 
-                        /* Create the transaction output. */
-                        TAO::Ledger::Transaction txout;
-                        if(!TAO::Ledger::CreateTransaction(user, strPIN, txout))
-                            throw APIException(-25, "Failed to create transaction");
-
                         /* Track the number of contracts built. */
                         uint32_t nContracts = txin.Size();
-                        uint32_t nOut = 0;
 
                         for(uint32_t nIn = 0; nIn < nContracts; ++nIn)
                         {
@@ -234,22 +236,22 @@ namespace TAO
                                     break;
                             }
                         }
+                    }
 
-                        /* If any of the notifications have been matched, execute the operations layer and sign the transaction. */
-                        if(nOut)
-                        {
-                            /* Execute the operations layer. */
-                            if(!txout.Build())
-                                throw APIException(-26, "Operations failed to execute");
+                    /* If any of the notifications have been matched, execute the operations layer and sign the transaction. */
+                    if(nOut)
+                    {
+                        /* Execute the operations layer. */
+                        if(!txout.Build())
+                            throw APIException(-26, "Operations failed to execute");
 
-                            /* Sign the transaction. */
-                            if(!txout.Sign(users->GetKey(txout.nSequence, strPIN, users->GetSession(params))))
-                                throw APIException(-26, "Ledger failed to sign transaction");
+                        /* Sign the transaction. */
+                        if(!txout.Sign(users->GetKey(txout.nSequence, strPIN, users->GetSession(params))))
+                            throw APIException(-26, "Ledger failed to sign transaction");
 
-                            /* Execute the operations layer. */
-                            if(!TAO::Ledger::mempool.Accept(txout))
-                                throw APIException(-26, "Failed to accept");
-                        }
+                        /* Execute the operations layer. */
+                        if(!TAO::Ledger::mempool.Accept(txout))
+                            throw APIException(-26, "Failed to accept");
                     }
                 }
                 catch(const APIException& e)

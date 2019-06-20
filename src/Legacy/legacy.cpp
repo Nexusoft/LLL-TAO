@@ -118,10 +118,10 @@ namespace Legacy
     std::string LegacyBlock::ToString() const
     {
         return debug::safe_printstr("Legacy Block("
-            VALUE("hash")     " = ", GetHash().ToString().substr(0, 20), " ",
+            VALUE("hash")     " = ", GetHash().SubString(), " ",
             VALUE("nVersion") " = ", nVersion, ", ",
-            VALUE("hashPrevBlock") " = ", hashPrevBlock.ToString().substr(0, 20), ", ",
-            VALUE("hashMerkleRoot") " = ", hashMerkleRoot.ToString().substr(0, 20), ", ",
+            VALUE("hashPrevBlock") " = ", hashPrevBlock.SubString(), ", ",
+            VALUE("hashMerkleRoot") " = ", hashMerkleRoot.SubString(), ", ",
             VALUE("nChannel") " = ", nChannel, ", ",
             VALUE("nHeight") " = ", nHeight, ", ",
             VALUE("nBits") " = ", nBits, ", ",
@@ -380,7 +380,7 @@ namespace Legacy
     {
         /* Check for duplicates */
         if(LLD::Ledger->HasBlock(GetHash()))
-            return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20), " height=", nHeight);
+            return debug::error(FUNCTION, "already have block ", GetHash().SubString(), " height=", nHeight);
 
         /* Print the block on verbose 2. */
         if(config::GetArg("-verbose", 0) >= 2)
@@ -406,19 +406,20 @@ namespace Legacy
 
 
         /* Verbose logging of proof and target. */
-        debug::log(2, "  proof:  ", hash.ToString().substr(0, 30));
+        debug::log(2, "  proof:  ", hash.SubString(30));
 
 
         /* Channel switched output. */
         if(nChannel == 1)
             debug::log(2, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(nBits, 1));
         else
-            debug::log(2, "  target: ", hashTarget.ToString().substr(0, 30));
+            debug::log(2, "  target: ", hashTarget.SubString(30));
 
 
         /* Check that the nBits match the current Difficulty. **/
         if(nBits != TAO::Ledger::GetNextTargetRequired(statePrev, nChannel))
-            return debug::error(FUNCTION, "incorrect ", nBits, " proof-of-work/proof-of-stake ", TAO::Ledger::GetNextTargetRequired(statePrev, nChannel));
+            return debug::error(FUNCTION, "incorrect ", nBits,
+                " proof-of-work/proof-of-stake ", TAO::Ledger::GetNextTargetRequired(statePrev, nChannel));
 
         /* Get the block time for this block. */
         uint64_t nBlockTime = GetBlockTime();
@@ -593,8 +594,8 @@ namespace Legacy
 
         /* Verbose logging. */
         debug::log(2, FUNCTION,
-            "hash=", StakeHash().ToString().substr(0, 20), ", ",
-            "target=", bnTarget.getuint1024().ToString().substr(0, 20), ", ",
+            "hash=", StakeHash().SubString(), ", ",
+            "target=", bnTarget.getuint1024().SubString(), ", ",
             "trustscore=", nTrustAge, ", ",
             "blockage=", nBlockAge, ", ",
             "trustweight=", nTrustWeight, ", ",

@@ -579,7 +579,7 @@ namespace Legacy
         bnTarget.SetCompact(block.nBits);
         uint1024_t nHashTarget = bnTarget.getuint1024();
 
-        debug::log(0, FUNCTION, "Staking new block from ", hashLastBlock.ToString().substr(0, 20),
+        debug::log(0, FUNCTION, "Staking new block from ", hashLastBlock.SubString(),
                                 " at weight ", (nTrustWeight.load() + nBlockWeight.load()),
                                 " and stake rate ", nStakeRate.load());
 
@@ -620,7 +620,7 @@ namespace Legacy
             uint1024_t hashProof = block.StakeHash();
             if(hashProof < nHashTarget)
             {
-                debug::log(0, FUNCTION, "Found new stake hash ", hashProof.ToString().substr(0, 20));
+                debug::log(0, FUNCTION, "Found new stake hash ", hashProof.SubString());
 
                 ProcessBlock();
                 break;

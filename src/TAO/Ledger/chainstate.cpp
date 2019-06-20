@@ -135,7 +135,7 @@ namespace TAO
             /* Check blocks and check transactions for consistency. */
             if(config::GetArg("-checkblocks", 0) > 0)
             {
-                debug::log(0, FUNCTION, "Checking from height=", stateBest.load().nHeight, " hash=", stateBest.load().GetHash().ToString().substr(0, 20));
+                debug::log(0, FUNCTION, "Checking from height=", stateBest.load().nHeight, " hash=", stateBest.load().GetHash().SubString());
 
                 /* Rollback the chain a given number of blocks. */
                 TAO::Ledger::BlockState state = stateBest.load();
@@ -159,7 +159,7 @@ namespace TAO
                             {
                                 debug::log(0, state.ToString(debug::flags::tx | debug::flags::header));
 
-                                debug::error(FUNCTION, "tx ", item.second.ToString().substr(0, 20), " not found");
+                                debug::error(FUNCTION, "tx ", item.second.SubString(), " not found");
 
                                 stateReset = state;
                                 continue;
@@ -241,9 +241,9 @@ namespace TAO
 
 
             /* Debug logging. */
-            debug::log(0, FUNCTION, config::fTestNet.load() ? "Test" : "Nexus", " Network: genesis=", Genesis().ToString().substr(0, 20),
-            " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", hashBestChain.load().ToString().substr(0, 20),
-            " checkpoint=", hashCheckpoint.load().ToString().substr(0, 20)," height=", std::dec, stateBest.load().nHeight);
+            debug::log(0, FUNCTION, config::fTestNet.load() ? "Test" : "Nexus", " Network: genesis=", Genesis().SubString(),
+            " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", hashBestChain.load().SubString(),
+            " checkpoint=", hashCheckpoint.load().SubString()," height=", std::dec, stateBest.load().nHeight);
 
             return true;
         }

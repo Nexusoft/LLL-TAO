@@ -36,6 +36,12 @@ namespace LLP
     }
 
 
+    /* Default destructor */
+    BaseAddress::~BaseAddress()
+    {
+    }
+
+
     /* Copy constructor */
     BaseAddress::BaseAddress(const BaseAddress &other, uint16_t port)
     : ip {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
@@ -110,7 +116,7 @@ namespace LLP
     {
 
         /* Make sure there is a string to lookup. */
-        size_t s = strIp.size();
+        uint32_t s = strIp.size();
         if(s == 0 || s > 255)
         {
             debug::error(FUNCTION, "Invalid lookup string of size ", s, ".");
@@ -140,12 +146,6 @@ namespace LLP
         nPort = other.nPort;
 
         return *this;
-    }
-
-
-    /* Default destructor */
-    BaseAddress::~BaseAddress()
-    {
     }
 
 
@@ -186,8 +186,7 @@ namespace LLP
     }
 
 
-    /* Determines if address is IPv4 private networks.
-     * (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12) */
+    /* Determines if address is IPv4 private networks. (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12) */
     bool BaseAddress::IsRFC1918() const
     {
         return IsIPv4() && (
@@ -232,8 +231,7 @@ namespace LLP
     }
 
 
-    /* Determines if address is IPv6 ORCHID.
-     * (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12) */
+    /* Determines if address is IPv6 ORCHID. (10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12) */
     bool BaseAddress::IsRFC4843() const
     {
         return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x00 && (GetByte(12) & 0xF0) == 0x10);
@@ -264,11 +262,11 @@ namespace LLP
     /* Determines if address is a local address. */
     bool BaseAddress::IsLocal() const
     {
-        // IPv4 loopback
+        /* IPv4 loopback */
         if(IsIPv4() && (GetByte(3) == 127 || GetByte(3) == 0))
             return true;
 
-        // IPv6 loopback (::1/128)
+        /* IPv6 loopback (::1/128) */
         if(memory::compare(ip, pchLocal, 16) == 0)
             return true;
 
@@ -279,40 +277,33 @@ namespace LLP
     /* Determines if address is a routable address. */
     bool BaseAddress::IsRoutable() const
     {
-        return IsValid() && !(IsRFC3927() ||
-                              IsRFC4862() ||
-                              IsRFC4193() ||
-                              IsRFC4843() ||
-                              IsLocal());
-
+        return IsValid() && !(IsRFC3927() || IsRFC4862() || IsRFC4193() || IsRFC4843() || IsLocal());
     }
 
 
     /* Determines if address is a valid address. */
     bool BaseAddress::IsValid() const
     {
-        // Clean up 3-byte shifted addresses caused by garbage in size field
-        // of addr messages from versions before 0.2.9 checksum.
-        // Two consecutive addr messages look like this:
-        // header20 vectorlen3 addr26 addr26 addr26 header20 vectorlen3 addr26 addr26 addr26...
-        // so if the first length field is garbled, it reads the second batch
-        // of addr misaligned by 3 bytes.
-        //if(memcmp(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
+        /* Clean up 3-byte shifted addresses caused by garbage in size field
+         * of addr messages from versions before 0.2.9 checksum.
+         * Two consecutive addr messages look like this:
+         * header20 vectorlen3 addr26 addr26 addr26 header20 vectorlen3 addr26 addr26 addr26...
+         * so if the first length field is garbled, it reads the second batch
+         * of addr misaligned by 3 bytes. */
         if(memory::compare(ip, pchIPv4+3, sizeof(pchIPv4)-3) == 0)
             return false;
 
-        // unspecified IPv6 address (::/128)
+        /* Unspecified IPv6 address (::/128) */
         uint8_t ipNone[16] = {};
         if(memory::compare(ip, ipNone, 16) == 0)
             return false;
 
-        // documentation IPv6 address
+        /* Documentation IPv6 address */
         if(IsRFC3849())
             return false;
 
         if(IsIPv4())
         {
-            // INADDR_NONE
             uint32_t ip_none = INADDR_NONE;
 
             if(memory::compare(ip+12, (uint8_t *)&ip_none, 4) == 0)
@@ -351,6 +342,7 @@ namespace LLP
         for(int i=0; i<16; ++i)
             ipCopy[i] = ip[i];
 
+        /* Build an IPv4 string. */
         if(IsIPv4())
         {
             char dst[INET_ADDRSTRLEN];
@@ -358,6 +350,7 @@ namespace LLP
             return std::string(dst);
         }
 
+        /* Build an IPv6 string. */
         char dst[INET6_ADDRSTRLEN];
         inet_ntop(AF_INET6, ipCopy, dst, INET6_ADDRSTRLEN);
         return std::string(dst);
@@ -398,37 +391,37 @@ namespace LLP
     std::vector<uint8_t> BaseAddress::GetGroup() const
     {
         std::vector<uint8_t> vchRet;
-        int32_t nClass = 0; // 0=IPv6, 1=IPv4, 254=local, 255=unroutable
+        int32_t nClass = 0; /* 0=IPv6, 1=IPv4, 254=local, 255=unroutable */
         int32_t nStartByte = 0;
         int32_t nBits = 16;
 
-        // all local addresses belong to the same group
+        /* All local addresses belong to the same group. */
         if(IsLocal())
         {
             nClass = 254;
             nBits = 0;
         }
 
-        // all unroutable addresses belong to the same group
+        /* All unroutable addresses belong to the same group. */
         if(!IsRoutable())
         {
             nClass = 255;
             nBits = 0;
         }
-        // for IPv4 addresses, '1' + the 16 higher-order bits of the IP
-        // includes mapped IPv4, SIIT translated IPv4, and the well-known prefix
+        /* for IPv4 addresses, '1' + the 16 higher-order bits of the IP
+         * includes mapped IPv4, SIIT translated IPv4, and the well-known prefix */
         else if(IsIPv4() || IsRFC6145() || IsRFC6052())
         {
             nClass = 1;
             nStartByte = 12;
         }
-        // for 6to4 tunneled addresses, use the encapsulated IPv4 address
+        /* for 6to4 tunneled addresses, use the encapsulated IPv4 address */
         else if(IsRFC3964())
         {
             nClass = 1;
             nStartByte = 2;
         }
-        // for Teredo-tunneled IPv6 addresses, use the encapsulated IPv4 address
+        /* for Teredo-tunneled IPv6 addresses, use the encapsulated IPv4 address */
         else if(IsRFC4380())
         {
             vchRet.push_back(1);
@@ -436,10 +429,10 @@ namespace LLP
             vchRet.push_back(GetByte(2) ^ 0xFF);
             return vchRet;
         }
-        // for he.net, use /36 groups
+        /* for he.net, use /36 groups */
         else if(GetByte(15) == 0x20 && GetByte(14) == 0x11 && GetByte(13) == 0x04 && GetByte(12) == 0x70)
             nBits = 36;
-        // for the rest of the IPv6 network, use /32 groups
+        /* for the rest of the IPv6 network, use /32 groups */
         else
             nBits = 32;
 

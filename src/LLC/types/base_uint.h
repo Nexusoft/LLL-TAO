@@ -773,11 +773,13 @@ const base_uint<BITS> operator-(uint64_t lhs, const base_uint<BITS> &rhs)
     return base_uint<BITS>(lhs) -= rhs;
 }
 
-/* Custom hash function to allow all base_uint specializations to be used wherever a std::hash function 
+
+/* Custom hash function to allow all base_uint specializations to be used wherever a std::hash function
    is required, such as in an unordered_set */
 namespace std
 {
-    template <uint32_t BITS> struct hash<base_uint<BITS>>
+    template <uint32_t BITS>
+    struct hash<base_uint<BITS> >
     {
         size_t operator()(const base_uint<BITS>& val) const
         {

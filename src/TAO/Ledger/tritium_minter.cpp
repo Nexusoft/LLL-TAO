@@ -512,7 +512,7 @@ namespace TAO
             bnTarget.SetCompact(block.nBits);
             uint1024_t nHashTarget = bnTarget.getuint1024();
 
-            debug::log(0, FUNCTION, "Staking new block from ", hashLastBlock.ToString().substr(0, 20),
+            debug::log(0, FUNCTION, "Staking new block from ", hashLastBlock.SubString(),
                                     " at weight ", (nTrustWeight.load() + nBlockWeight.load()),
                                     " and stake rate ", nStakeRate.load());
 
@@ -564,7 +564,7 @@ namespace TAO
                 uint1024_t hashProof = block.StakeHash();
                 if(hashProof <= nHashTarget)
                 {
-                    debug::log(0, FUNCTION, "Found new stake hash ", hashProof.ToString().substr(0, 20));
+                    debug::log(0, FUNCTION, "Found new stake hash ", hashProof.SubString());
 
                     ProcessBlock(user, strPIN);
                     break;
@@ -645,7 +645,7 @@ namespace TAO
                 std::string strTimestamp = std::string(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
 
                 debug::log(1, FUNCTION, "Nexus Stake Minter: New nPoS channel block found at unified time ", strTimestamp);
-                debug::log(1, " blockHash: ", block.GetHash().ToString().substr(0, 30), " block height: ", block.nHeight);
+                debug::log(1, " blockHash: ", block.GetHash().SubString(30), " block height: ", block.nHeight);
             }
 
             if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
@@ -695,12 +695,12 @@ namespace TAO
                     /* Set the secret parameter. */
                     if(!key.SetSecret(vchSecret, true))
                         return debug::error(FUNCTION, "TritiumMinter: Unable to set key for signing Tritium Block ",
-                                            block.GetHash().ToString().substr(0, 20));
+                                            block.GetHash().SubString());
 
                     /* Generate the signature. */
                     if(!block.GenerateSignature(key))
                         return debug::error(FUNCTION, "TritiumMinter: Unable to sign Tritium Block ",
-                                            block.GetHash().ToString().substr(0, 20));
+                                            block.GetHash().SubString());
 
                     break;
                 }
@@ -714,12 +714,12 @@ namespace TAO
                     /* Set the secret parameter. */
                     if(!key.SetSecret(vchSecret, true))
                         return debug::error(FUNCTION, "TritiumMinter: Unable to set key for signing Tritium Block ",
-                                            block.GetHash().ToString().substr(0, 20));
+                                            block.GetHash().SubString());
 
                     /* Generate the signature. */
                     if(!block.GenerateSignature(key))
                         return debug::error(FUNCTION, "TritiumMinter: Unable to sign Tritium Block ",
-                                            block.GetHash().ToString().substr(0, 20));
+                                            block.GetHash().SubString());
 
                     break;
                 }

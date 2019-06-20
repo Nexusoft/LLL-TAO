@@ -67,7 +67,7 @@ namespace Legacy
         else if(IsStakeSig())
             str += debug::safe_printstr(", trust ", HexStr(scriptSig));
         else
-            str += debug::safe_printstr(", scriptSig=", scriptSig.ToString().substr(0,24));
+            str += debug::safe_printstr(", scriptSig=", scriptSig.SubString(24));
         if(nSequence != std::numeric_limits<uint32_t>::max())
             str += debug::safe_printstr(", nSequence=", nSequence);
         str += ")";

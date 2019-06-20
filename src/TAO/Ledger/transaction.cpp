@@ -627,14 +627,14 @@ namespace TAO
                 "nVersion = ", nVersion, ", ",
                 "nSequence = ", nSequence, ", ",
                 "nTimestamp = ", nTimestamp, ", ",
-                "nextHash  = ",  hashNext.ToString().substr(0, 20), ", ",
-                "prevHash  = ",  PrevHash().ToString().substr(0, 20), ", ",
-                "hashPrevTx = ", hashPrevTx.ToString().substr(0, 20), ", ",
-                "hashNextTx = ", hashNextTx.ToString().substr(0, 20), ", ",
-                "hashGenesis = ", hashGenesis.ToString().substr(0, 20), ", ",
+                "nextHash  = ",  hashNext.SubString(), ", ",
+                "prevHash  = ",  PrevHash().SubString(), ", ",
+                "hashPrevTx = ", hashPrevTx.SubString(), ", ",
+                "hashNextTx = ", hashNextTx.SubString(), ", ",
+                "hashGenesis = ", hashGenesis.SubString(), ", ",
                 "pub = ", HexStr(vchPubKey).substr(0, 20), ", ",
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",
-                "hash = ", GetHash().ToString().substr(0, 20)
+                "hash = ", GetHash().SubString()
           );
         }
 

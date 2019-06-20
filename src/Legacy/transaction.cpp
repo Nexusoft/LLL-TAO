@@ -658,7 +658,7 @@ namespace Legacy
         std::string str;
         str += IsCoinBase() ? "Coinbase" : (IsGenesis() ? "Genesis" : (IsTrust() ? "Trust" : "Transaction"));
         str += debug::safe_printstr(
-            "(hash=", GetHash().ToString().substr(0,10),
+            "(hash=", GetHash().SubString(10),
             ", nTime=", nTime,
             ", ver=", nVersion,
             ", vin.size=", vin.size(),
@@ -766,14 +766,14 @@ namespace Legacy
 
             /* Check for existing indexes. */
             if(!LLD::Ledger->HasIndex(prevout.hash))
-                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), "not connected");
+                return debug::error(FUNCTION, "previous transaction ", prevout.hash.SubString(), "not connected");
 
             /* Read the previous transaction. */
             Transaction txPrev;
             if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
             {
                 //TODO: check the memory pool for previous
-                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), " not found");
+                return debug::error(FUNCTION, "previous transaction ", prevout.hash.SubString(), " not found");
             }
 
             /* Check that it is valid. */
@@ -919,7 +919,7 @@ namespace Legacy
 
             /* Check for double spends. */
             if(LLD::Legacy->IsSpent(prevout.hash, prevout.n))
-                return debug::error(FUNCTION, "prev tx ", prevout.hash.ToString().substr(0, 20), " is already spent");
+                return debug::error(FUNCTION, "prev tx ", prevout.hash.SubString(), " is already spent");
 
             /* Check the ECDSA signatures. (...When not syncronizing) */
             if(!TAO::Ledger::ChainState::Synchronizing() && !VerifySignature(txPrev, *this, i, 0))
@@ -937,15 +937,15 @@ namespace Legacy
             /* Get the coinstake interest. */
             uint64_t nStakeReward = 0;
             if(!CoinstakeReward(state, nStakeReward))
-                return debug::error(FUNCTION, GetHash().ToString().substr(0, 10), " failed to get coinstake interest");
+                return debug::error(FUNCTION, GetHash().SubString(10), " failed to get coinstake interest");
 
             /* Check that the interest is within range. */
             //add tolerance to stake reward of + 1 (viz.) for stake rewards
             if(vout[0].nValue > nStakeReward + nValueIn + 1)
-                return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward ", vout[0].nValue, " mismatch ", nStakeReward + nValueIn);
+                return debug::error(FUNCTION, GetHash().SubString(10), " stake reward ", vout[0].nValue, " mismatch ", nStakeReward + nValueIn);
         }
         else if(nValueIn < GetValueOut())
-            return debug::error(FUNCTION, GetHash().ToString().substr(0,10), "value in < value out");
+            return debug::error(FUNCTION, GetHash().SubString(10), "value in < value out");
 
         /* Calculate the mint if connected with a block. */
         if(nFlags == FLAGS::BLOCK)
@@ -1037,8 +1037,8 @@ namespace Legacy
         /* Ensure the last block being checked is the same trust key. */
         if(keyLast != cKey)
             return debug::error(FUNCTION,
-                "trust key in previous block ", cKey.ToString().substr(0, 20),
-                " to this one ", keyLast.ToString().substr(0, 20));
+                "trust key in previous block ", cKey.SubString(),
+                " to this one ", keyLast.SubString());
 
         /* Placeholder in case previous block is a version 4 block. */
         uint32_t nScorePrev = 0;

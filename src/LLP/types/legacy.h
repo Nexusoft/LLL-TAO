@@ -244,7 +244,7 @@ namespace LLP
             PushMessage("getblocks", TAO::Ledger::Locator(hashBlockFrom), hashBlockTo);
 
             /* Debug output for monitoring. */
-            debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getblocks from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
+            debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getblocks from ", hashBlockFrom.SubString(), " to ", hashBlockTo.SubString());
         }
 
 

@@ -25,7 +25,7 @@ namespace config
 {
     std::map<std::string, std::string> mapArgs;
     std::map<std::string, std::vector<std::string> > mapMultiArgs;
-    std::map<uint32_t, std::vector<std::string> > mapIPFilters;
+    std::map<uint16_t, std::vector<std::string> > mapIPFilters;
 
     std::atomic<bool> fShutdown(false);
     std::atomic<bool> fDebug(false);
@@ -186,7 +186,7 @@ namespace config
                 continue;
 
             std::string strIP = entry.substr(0, nPortPos);
-            uint32_t nPort = stoi(entry.substr( nPortPos +1));
+            uint16_t nPort = std::stoi(entry.substr(nPortPos + 1));
 
             mapIPFilters[nPort].push_back(strIP);
         }
