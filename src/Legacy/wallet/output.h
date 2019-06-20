@@ -81,7 +81,7 @@ namespace Legacy
          **/
         std::string ToString() const
         {
-            return debug::safe_printstr("Output(", walletTx.GetHash().ToString().substr(0,10), ", ", i, ", ", nDepth, ") [", FormatMoney(walletTx.vout[i].nValue), "]");
+            return debug::safe_printstr("Output(", walletTx.GetHash().SubString(10), ", ", i, ", ", nDepth, ") [", FormatMoney(walletTx.vout[i].nValue), "]");
         }
 
 

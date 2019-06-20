@@ -205,7 +205,7 @@ namespace LLP
 
 
                         debug::log(2, FUNCTION, "Sent Block ",
-                            hashBlock.ToString().substr(0, 20), " to Worker.");
+                            hashBlock.SubString(), " to Worker.");
                     }
 
 
@@ -617,7 +617,7 @@ namespace LLP
         /* Check that the block exists. */
         if(!mapBlocks.count(hashMerkleRoot))
         {
-            debug::log(2, FUNCTION, "Block Not Found ", hashMerkleRoot.ToString().substr(0, 20));
+            debug::log(2, FUNCTION, "Block Not Found ", hashMerkleRoot.SubString());
 
             return false;
         }

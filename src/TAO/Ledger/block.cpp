@@ -238,10 +238,10 @@ namespace TAO
         std::string Block::ToString() const
         {
             return debug::safe_printstr(
-                "Block(hash=", GetHash().ToString().substr(0,20),
+                "Block(hash=", GetHash().SubString(),
                 ", ver=", nVersion,
-                ", hashPrevBlock=", hashPrevBlock.ToString().substr(0,20),
-                ", hashMerkleRoot=", hashMerkleRoot.ToString().substr(0,10),
+                ", hashPrevBlock=", hashPrevBlock.SubString(),
+                ", hashMerkleRoot=", hashMerkleRoot.SubString(10),
                 ", nTime=", nTime,
                 std::hex, std::setfill('0'), std::setw(8), ", nBits=", nBits,
                 std::dec, std::setfill(' '), std::setw(0), ", nChannel = ", nChannel,

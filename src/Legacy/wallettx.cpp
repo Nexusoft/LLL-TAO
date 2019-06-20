@@ -688,7 +688,7 @@ namespace Legacy
             /* Relay this tx if we don't have it in our database, yet */
             if(!LLD::Legacy->HasTx(hash))
             {
-                debug::log(0, FUNCTION, "Relaying wtx ", hash.ToString().substr(0,10));
+                debug::log(0, FUNCTION, "Relaying wtx ", hash.SubString(10));
 
                 std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_LEGACY) };
 

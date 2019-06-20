@@ -262,7 +262,7 @@ namespace LLD
      *  to the chain height. */
     bool LedgerDB::RepairIndex(const uint512_t& hashTx, const TAO::Ledger::BlockState &state)
     {
-        debug::log(0, FUNCTION, "repairing index for ", hashTx.ToString().substr(0, 20));
+        debug::log(0, FUNCTION, "repairing index for ", hashTx.SubString());
 
         TAO::Ledger::BlockState currState = state;
         uint1024_t hashBlock;
@@ -279,7 +279,7 @@ namespace LLD
 
             /* Check the state vtx size. */
             if(currState.vtx.size() == 0)
-                debug::error(FUNCTION, "block ", hashBlock.ToString().substr(0, 20), " has no transactions");
+                debug::error(FUNCTION, "block ", hashBlock.SubString(), " has no transactions");
 
             /* Check for the transaction. */
             for(const auto& tx : currState.vtx)

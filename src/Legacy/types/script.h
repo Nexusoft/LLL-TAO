@@ -328,6 +328,14 @@ namespace Legacy
         std::string ToString(bool fShort=false) const;
 
 
+        /** SubString
+         *
+         *  Returns a sub-string representation of the script object.
+         *
+         **/
+        std::string SubString(const uint32_t nSize = 20) const;
+
+
         /** print
          *
          *  Dump the Hex data into std::out or console

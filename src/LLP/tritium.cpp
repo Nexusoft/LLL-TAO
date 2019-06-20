@@ -546,7 +546,7 @@ namespace LLP
 
                 /* Set the search from search limit. */
                 int32_t nLimit = 1000;
-                debug::log(2, NODE "getblocks ", state.nHeight, " to ", hashStop.ToString().substr(0, 20), " limit ", nLimit);
+                debug::log(2, NODE "getblocks ", state.nHeight, " to ", hashStop.SubString(), " limit ", nLimit);
 
                 /* Iterate forward the blocks required. */
                 std::vector<CInv> vInv;
@@ -564,7 +564,7 @@ namespace LLP
                     /* Check for hash stop. */
                     if(state.GetHash() == hashStop)
                     {
-                        debug::log(3, NODE "getblocks stopping at ", state.nHeight, " to ", state.GetHash().ToString().substr(0, 20));
+                        debug::log(3, NODE "getblocks stopping at ", state.nHeight, " to ", state.GetHash().SubString());
 
                         /* Tell about latest block if hash stop is found. */
                         if(hashStop != TAO::Ledger::ChainState::hashBestChain.load())
@@ -596,7 +596,7 @@ namespace LLP
                     {
                         // When this block is requested, we'll send an inv that'll make them
                         // getblocks the next batch of inventory.
-                        debug::log(3, NODE "getblocks stopping at limit ", state.nHeight, " to ", state.GetHash().ToString().substr(0,20));
+                        debug::log(3, NODE "getblocks stopping at limit ", state.nHeight, " to ", state.GetHash().SubString());
 
                         hashContinue = state.GetHash();
                         break;
@@ -727,7 +727,7 @@ namespace LLP
                         TAO::Ledger::BlockState state;
                         if(!LLD::Ledger->ReadBlock(inv.GetHash(), state))
                         {
-                            debug::log(3, NODE "getdata readblock failed ", inv.GetHash().ToString().substr(0, 20));
+                            debug::log(3, NODE "getdata readblock failed ", inv.GetHash().SubString());
                             continue;
                         }
 
@@ -853,7 +853,7 @@ namespace LLP
                     if(!LLD::Ledger->HasTx(tx.GetHash()))
                     {
                         /* Debug output for tx. */
-                        debug::log(3, NODE "Received tx ", tx.GetHash().ToString().substr(0, 20));
+                        debug::log(3, NODE "Received tx ", tx.GetHash().SubString());
 
                         /* Add the transaction to the memory pool. */
                         if(TAO::Ledger::mempool.Accept(tx, this))
@@ -870,7 +870,7 @@ namespace LLP
                     else
                     {
                         /* Debug output for offsets. */
-                       debug::log(3, NODE "already have tx ", tx.GetHash().ToString().substr(0, 20));
+                       debug::log(3, NODE "already have tx ", tx.GetHash().SubString());
                     }
 
                 }
@@ -884,12 +884,12 @@ namespace LLP
                     if(!LLD::Legacy->HasTx(tx.GetHash()))
                     {
                         /* Debug output for tx. */
-                        debug::log(3, NODE "Received tx ", tx.GetHash().ToString().substr(0, 20));
+                        debug::log(3, NODE "Received tx ", tx.GetHash().SubString());
 
                         /* Check if tx is valid. */
                         if(!tx.CheckTransaction())
                         {
-                            debug::error(NODE "tx ", tx.GetHash().ToString().substr(0, 20), " REJECTED");
+                            debug::error(NODE "tx ", tx.GetHash().SubString(), " REJECTED");
 
                             break;
                         }
@@ -912,7 +912,7 @@ namespace LLP
                     else
                     {
                         /* Debug output for offsets. */
-                        debug::log(3, NODE "already have tx ", tx.GetHash().ToString().substr(0, 20));
+                        debug::log(3, NODE "already have tx ", tx.GetHash().SubString());
                     }
 
                 }
@@ -930,7 +930,7 @@ namespace LLP
                     Legacy::LegacyBlock block;
                     ssPacket >> block;
 
-                    debug::log(3, NODE "Received legacy block data ", block.GetHash().ToString().substr(0, 20));
+                    debug::log(3, NODE "Received legacy block data ", block.GetHash().SubString());
 
                     /* Process the block. */
                     LegacyNode::Process(block, nullptr);
@@ -941,7 +941,7 @@ namespace LLP
                     TAO::Ledger::TritiumBlock block;
                     ssPacket >> block;
 
-                    debug::log(3, NODE "Received tritium block data ", block.GetHash().ToString().substr(0, 20));
+                    debug::log(3, NODE "Received tritium block data ", block.GetHash().SubString());
 
                     /* Process the block. */
                     TritiumNode::Process(block, this);
@@ -1105,7 +1105,7 @@ namespace LLP
                 mapOrphans.insert(std::make_pair(block.hashPrevBlock, std::unique_ptr<TAO::Ledger::Block>(block.Clone())));
 
             /* Debug output. */
-            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
+            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.SubString());
 
             return true;
         }
@@ -1175,7 +1175,7 @@ namespace LLP
         {
             uint1024_t hashPrev = mapOrphans[hash]->GetHash();
 
-            debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.ToString().substr(0, 20), " size=", mapOrphans.size());
+            debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.SubString(), " size=", mapOrphans.size());
 
             if(!mapOrphans[hash]->Accept())
                 return true;
@@ -1220,7 +1220,7 @@ namespace LLP
         PushMessage(GET_INVENTORY, TAO::Ledger::Locator(hashBlockFrom), hashBlockTo);
 
         /* Debug output for monitoring. */
-        debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getinventory from ", hashBlockFrom.ToString().substr(0, 20), " to ", hashBlockTo.ToString().substr(0, 20));
+        debug::log(0, NODE, "(", nFastSyncAverage.load(), ") requesting getinventory from ", hashBlockFrom.SubString(), " to ", hashBlockTo.SubString());
     }
 
 

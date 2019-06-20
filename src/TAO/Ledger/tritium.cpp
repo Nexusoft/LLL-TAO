@@ -126,10 +126,10 @@ namespace TAO
         std::string TritiumBlock::ToString() const
         {
             return debug::safe_printstr("Tritium Block("
-                VALUE("hash")     " = ", GetHash().ToString().substr(0, 20), " ",
+                VALUE("hash")     " = ", GetHash().SubString(), " ",
                 VALUE("nVersion") " = ", nVersion, ", ",
-                VALUE("hashPrevBlock") " = ", hashPrevBlock.ToString().substr(0, 20), ", ",
-                VALUE("hashMerkleRoot") " = ", hashMerkleRoot.ToString().substr(0, 20), ", ",
+                VALUE("hashPrevBlock") " = ", hashPrevBlock.SubString(), ", ",
+                VALUE("hashMerkleRoot") " = ", hashMerkleRoot.SubString(), ", ",
                 VALUE("nChannel") " = ", nChannel, ", ",
                 VALUE("nHeight") " = ", nHeight, ", ",
                 VALUE("nBits") " = ", nBits, ", ",
@@ -349,7 +349,7 @@ namespace TAO
         {
             /* Read ledger DB for duplicate block. */
             if(LLD::Ledger->HasBlock(GetHash()))
-                return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20));
+                return debug::error(FUNCTION, "already have block ", GetHash().SubString());
 
             /* Read ledger DB for previous block. */
             TAO::Ledger::BlockState statePrev;
@@ -367,13 +367,13 @@ namespace TAO
             uint1024_t hashTarget = LLC::CBigNum().SetCompact(nBits).getuint1024();
 
             /* Verbose logging of proof and target. */
-            debug::log(2, "  proof:  ", hash.ToString().substr(0, 30));
+            debug::log(2, "  proof:  ", hash.SubString(30));
 
             /* Channel switched output. */
             if(GetChannel() == 1)
                 debug::log(2, "  prime cluster verified of size ", GetDifficulty(nBits, 1));
             else
-                debug::log(2, "  target: ", hashTarget.ToString().substr(0, 30));
+                debug::log(2, "  target: ", hashTarget.SubString(30));
 
             /* Check that the nBits match the current Difficulty. **/
             if(nBits != GetNextTargetRequired(statePrev, GetChannel()))
@@ -622,8 +622,8 @@ namespace TAO
 
             /* Verbose logging. */
             debug::log(2, FUNCTION,
-                "stake hash=", StakeHash().ToString().substr(0, 20), ", ",
-                "target=", bnTarget.getuint1024().ToString().substr(0, 20), ", ",
+                "stake hash=", StakeHash().SubString(), ", ",
+                "target=", bnTarget.getuint1024().SubString(), ", ",
                 "type=", (producer.IsTrust()?"Trust":"Genesis"), ", ",
                 "trust score=", nTrust, ", ",
                 "prev trust score=", nTrustPrev, ", ",

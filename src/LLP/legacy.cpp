@@ -872,7 +872,7 @@ namespace LLP
 
             /* Set the search from search limit. */
             int32_t nLimit = 1000;
-            debug::log(2, "getblocks ", state.nHeight, " to ", hashStop.ToString().substr(0, 20), " limit ", nLimit);
+            debug::log(2, "getblocks ", state.nHeight, " to ", hashStop.SubString(), " limit ", nLimit);
 
             /* Iterate forward the blocks required. */
             std::vector<CInv> vInv;
@@ -891,7 +891,7 @@ namespace LLP
                 /* Check for hash stop. */
                 if(nStateHash == hashStop)
                 {
-                    debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", nStateHash.ToString().substr(0, 20));
+                    debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", nStateHash.SubString());
 
                     /* Tell about latest block if hash stop is found. */
                     if(hashStop != TAO::Ledger::ChainState::hashBestChain.load())
@@ -908,7 +908,7 @@ namespace LLP
                 {
                     // When this block is requested, we'll send an inv that'll make them
                     // getblocks the next batch of inventory.
-                    debug::log(3, "  getblocks stopping at limit ", state.nHeight, " to ", nStateHash.ToString().substr(0,20));
+                    debug::log(3, "  getblocks stopping at limit ", state.nHeight, " to ", nStateHash.SubString());
 
                     hashContinue = state.GetHash();
                     break;
@@ -999,7 +999,7 @@ namespace LLP
                 mapLegacyOrphans[block.hashPrevBlock] = block;
 
             /* Debug output. */
-            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
+            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.SubString());
 
             return true;
         }
@@ -1071,7 +1071,7 @@ namespace LLP
         {
             uint1024_t hashPrev = mapLegacyOrphans[hash].GetHash();
 
-            debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.ToString().substr(0, 20), " size=", mapLegacyOrphans.size());
+            debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.SubString(), " size=", mapLegacyOrphans.size());
 
             if(!mapLegacyOrphans[hash].Accept())
                 return true;

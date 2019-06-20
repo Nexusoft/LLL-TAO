@@ -357,11 +357,18 @@ namespace Legacy
                 return str;
             }
             if(0 <= opcode && opcode <= OP_PUSHDATA4)
-                str += fShort? ValueString(vch).substr(0, 10) : ValueString(vch);
+                str += fShort ? ValueString(vch).substr(0, 10) : ValueString(vch);
             else
                 str += GetOpName(opcode);
         }
         return str;
+    }
+
+
+    /*  Returns a sub-string representation of the script object. */
+    std::string Script::SubString(const uint32_t nSize) const
+    {
+        return ToString().substr(0, nSize);
     }
 
 
