@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_API_INCLUDE_GLOBAL_H
 
 #include <TAO/API/types/assets.h>
+#include <TAO/API/types/dex.h>
 #include <TAO/API/types/ledger.h>
 #include <TAO/API/types/register.h>
 #include <TAO/API/types/rpc.h>
@@ -29,30 +30,31 @@ namespace TAO
 {
     namespace API
     {
-        extern Assets* assets;
-        extern Ledger* ledger;
+        extern Assets*   assets;
+        extern Ledger*   ledger;
         extern Register* reg;
-        extern RPC* RPCCommands;
-        extern Supply* supply;
-        extern System* system;
-        extern Tokens* tokens;
-        extern Users* users;
-        extern Finance* finance;
+        extern RPC*      RPCCommands;
+        extern Supply*   supply;
+        extern System*   system;
+        extern Tokens*   tokens;
+        extern Users*    users;
+        extern Finance*  finance;
+        extern DEX*      dex;
 
 
         /** Initialize
-         * 
+         *
          *  Instantiate global instances of the API.
-         * 
+         *
          **/
         void Initialize();
 
 
         /** Shutdown
-         * 
+         *
          *  Delete global instances of the API.
-         * 
-         **/ 
+         *
+         **/
         void Shutdown();
     }
 }

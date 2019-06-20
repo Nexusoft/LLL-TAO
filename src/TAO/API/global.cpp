@@ -20,15 +20,16 @@ namespace TAO
     namespace API
     {
         /* The API global instance pointers. */
-        Assets* assets;
-        Ledger* ledger;
-        Register* reg;
-        RPC* RPCCommands;
-        Supply* supply;
-        System* system;
-        Tokens* tokens;
-        Users* users;
-        Finance* finance;
+        Assets*     assets;
+        Ledger*     ledger;
+        Register*   reg;
+        RPC*        RPCCommands;
+        Supply*     supply;
+        System*     system;
+        Tokens*     tokens;
+        Users*      users;
+        Finance*    finance;
+        DEX*        dex;
 
 
         /*  Instantiate global instances of the API. */
@@ -46,6 +47,7 @@ namespace TAO
             tokens      = new Tokens();
             users       = new Users();
             finance     = new Finance();
+            dex         = new DEX();
         }
 
 
@@ -80,6 +82,9 @@ namespace TAO
 
             if(finance)
                 delete finance;
+
+            if(dex)
+                delete dex;
 
         }
     }
