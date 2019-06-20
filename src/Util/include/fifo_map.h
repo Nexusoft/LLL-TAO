@@ -317,7 +317,7 @@ template <
 
     /// insert value
     template<class P>
-    std::pair<iterator, bool> insert( P&& value)
+    std::pair<iterator, bool> insert(P&& value)
     {
         m_compare.add_key(value.first);
         return m_map.insert(value);

@@ -9882,7 +9882,7 @@ boundaries compute_boundaries(FloatType value)
     // Convert the IEEE representation into a diyfp.
     //
     // If v is denormal:
-    //      value = 0.F * 2^(1 - bias) = (          F) * 2^(1 - bias - (p-1))
+    //      value = 0.F * 2^(1 - bias) = (         F) * 2^(1 - bias - (p-1))
     // If v is normalized:
     //      value = 1.F * 2^(E - bias) = (2^(p-1) + F) * 2^(E - bias - (p-1))
 
@@ -9967,7 +9967,7 @@ boundaries compute_boundaries(FloatType value)
 // The idea is to cut the number c * w = f * 2^e into two parts, which can be
 // processed independently: An integral part p1, and a fractional part p2:
 //
-//      f * 2^e = ( (f div 2^-e) * 2^-e + (f mod 2^-e)) * 2^e
+//      f * 2^e = ((f div 2^-e) * 2^-e + (f mod 2^-e)) * 2^e
 //              = (f div 2^-e) + (f mod 2^-e) * 2^e
 //              = p1 + p2 * 2^e
 //
@@ -10027,8 +10027,8 @@ inline cached_power get_cached_power_for_binary_exponent(int e)
     //
     // If c were an exakt power of ten, i.e. c = 10^k, one may determine k as
     //
-    //      k = ceil( log_10( 2^(alpha - e - 1)))
-    //        = ceil( (alpha - e - 1) * log_10(2))
+    //      k = ceil(log_10(2^(alpha - e - 1)))
+    //        = ceil((alpha - e - 1) * log_10(2))
     //
     // From the paper:
     // "In theory the result of the procedure could be wrong since c is rounded,
@@ -10058,7 +10058,7 @@ inline cached_power get_cached_power_for_binary_exponent(int e)
     // This implies that the difference of the decimal exponents of adjacent
     // table entries must be less than or equal to
     //
-    //      floor( (gamma - alpha) * log_10(2)) = 8.
+    //      floor((gamma - alpha) * log_10(2)) = 8.
     //
     // (A smaller distance gamma-alpha would require a larger table.)
 
@@ -10327,7 +10327,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     //      M+ = p1                                             + p2 * 2^e
     //         = d[k-1] * 10^(k-1) + (p1 mod 10^(k-1))          + p2 * 2^e
     //         = d[k-1] * 10^(k-1) + ((p1 mod 10^(k-1)) * 2^-e + p2) * 2^e
-    //         = d[k-1] * 10^(k-1) + (                         rest) * 2^e
+    //         = d[k-1] * 10^(k-1) + (                        rest) * 2^e
     //
     // Now generate the digits d[n] of p1 from left to right (n = k-1,...,0)
     //
@@ -10424,7 +10424,7 @@ inline void grisu2_digit_gen(char* buffer, int& length, int& decimal_exponent,
     // using
     //
     //      10^m * p2 = ((10^m * p2) div 2^-e) * 2^-e + ((10^m * p2) mod 2^-e)
-    //                = (                   d) * 2^-e + (                   r)
+    //                = (                  d) * 2^-e + (                  r)
     //
     // or
     //      10^m * p2 * 2^e = d + r * 2^e

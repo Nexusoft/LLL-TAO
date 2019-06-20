@@ -90,7 +90,7 @@ namespace TAO
             if(params.find("name_proof") != params.end())
             {
                 /* If name_proof is provided then use this to deduce the register address */
-                hashProof = Names::ResolveAddress( params, params["name_proof"].get<std::string>());
+                hashProof = Names::ResolveAddress(params, params["name_proof"].get<std::string>());
             }
             else if(params.find("address_proof") != params.end())
                 hashProof.SetHex(params["address_proof"].get<std::string>());

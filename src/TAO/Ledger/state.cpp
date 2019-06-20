@@ -926,7 +926,7 @@ namespace TAO
                 if(!LLD::Ledger->ReadTx(vtx[0].second, tx))
                     return debug::error(FUNCTION, "transaction is not on disk");
 
-                return Block::StakeHash( tx.IsGenesis(), tx.hashGenesis);
+                return Block::StakeHash(tx.IsGenesis(), tx.hashGenesis);
             }
             else if(vtx[0].first == TYPE::LEGACY_TX)
             {

@@ -3715,27 +3715,27 @@ mkgauss(falcon_keygen *fk, unsigned logn)
  * Binary case:
  *    depth: 10    fg: 6307.52 (24.48)    FG: 6319.66 (24.51)
  *    depth:  9    fg: 3138.35 (12.25)    FG: 9403.29 (27.55)
- *    depth:  8    fg: 1576.87 ( 7.49)    FG: 4703.30 (14.77)
- *    depth:  7    fg:  794.17 ( 4.98)    FG: 2361.84 ( 9.31)
- *    depth:  6    fg:  400.67 ( 3.10)    FG: 1188.68 ( 6.04)
- *    depth:  5    fg:  202.22 ( 1.87)    FG:  599.81 ( 3.87)
- *    depth:  4    fg:  101.62 ( 1.02)    FG:  303.49 ( 2.38)
- *    depth:  3    fg:   50.37 ( 0.53)    FG:  153.65 ( 1.39)
- *    depth:  2    fg:   24.07 ( 0.25)    FG:   78.20 ( 0.73)
- *    depth:  1    fg:   10.99 ( 0.08)    FG:   39.82 ( 0.41)
- *    depth:  0    fg:    4.00 ( 0.00)    FG:   19.61 ( 0.49)
+ *    depth:  8    fg: 1576.87 (7.49)    FG: 4703.30 (14.77)
+ *    depth:  7    fg:  794.17 (4.98)    FG: 2361.84 (9.31)
+ *    depth:  6    fg:  400.67 (3.10)    FG: 1188.68 (6.04)
+ *    depth:  5    fg:  202.22 (1.87)    FG:  599.81 (3.87)
+ *    depth:  4    fg:  101.62 (1.02)    FG:  303.49 (2.38)
+ *    depth:  3    fg:   50.37 (0.53)    FG:  153.65 (1.39)
+ *    depth:  2    fg:   24.07 (0.25)    FG:   78.20 (0.73)
+ *    depth:  1    fg:   10.99 (0.08)    FG:   39.82 (0.41)
+ *    depth:  0    fg:    4.00 (0.00)    FG:   19.61 (0.49)
  *
  * Ternary case:
  *    depth:  9    fg: 4975.81 (22.38)    FG: 4988.54 (22.43)
  *    depth:  8    fg: 2472.64 (11.20)    FG: 7409.66 (25.93)
- *    depth:  7    fg: 1243.34 ( 6.78)    FG: 3705.30 (13.66)
- *    depth:  6    fg:  626.61 ( 4.40)    FG: 1861.86 ( 8.50)
- *    depth:  5    fg:  316.34 ( 2.75)    FG:  937.68 ( 5.51)
- *    depth:  4    fg:  159.68 ( 1.61)    FG:  473.48 ( 3.45)
- *    depth:  3    fg:   80.16 ( 0.86)    FG:  239.82 ( 2.06)
- *    depth:  2    fg:   39.58 ( 0.51)    FG:  121.80 ( 1.14)
- *    depth:  1    fg:   18.98 ( 0.13)    FG:   61.93 ( 0.61)
- *    depth:  0    fg:    4.76 ( 0.42)    FG:   34.97 ( 0.28)
+ *    depth:  7    fg: 1243.34 (6.78)    FG: 3705.30 (13.66)
+ *    depth:  6    fg:  626.61 (4.40)    FG: 1861.86 (8.50)
+ *    depth:  5    fg:  316.34 (2.75)    FG:  937.68 (5.51)
+ *    depth:  4    fg:  159.68 (1.61)    FG:  473.48 (3.45)
+ *    depth:  3    fg:   80.16 (0.86)    FG:  239.82 (2.06)
+ *    depth:  2    fg:   39.58 (0.51)    FG:  121.80 (1.14)
+ *    depth:  1    fg:   18.98 (0.13)    FG:   61.93 (0.61)
+ *    depth:  0    fg:    4.76 (0.42)    FG:   34.97 (0.28)
  *
  * Integers are actually represented either in binary notation over
  * 31-bit words (signed, using two's complement), or in RNS, modulo
@@ -5922,10 +5922,10 @@ solve_NTRU_ternary_depth0(falcon_keygen *fk,
 		fpct_a_im = (a_im); \
 		fpct_b_re = (b_re); \
 		fpct_b_im = (b_im); \
-		fpct_d_re = fpr_sub( \
+		fpct_d_re = fpr_sub(\
 			fpr_mul(fpct_a_re, fpct_b_re), \
 			fpr_mul(fpct_a_im, fpct_b_im)); \
-		fpct_d_im = fpr_add( \
+		fpct_d_im = fpr_add(\
 			fpr_mul(fpct_a_re, fpct_b_im), \
 			fpr_mul(fpct_a_im, fpct_b_re)); \
 		(d_re) = fpct_d_re; \

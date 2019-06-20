@@ -238,14 +238,14 @@ refill_chacha20(prng *p)
 		state[b] = (state[b] <<  7) | (state[b] >> 25); \
 	} while(0)
 
-			QROUND( 0,  4,  8, 12);
-			QROUND( 1,  5,  9, 13);
-			QROUND( 2,  6, 10, 14);
-			QROUND( 3,  7, 11, 15);
-			QROUND( 0,  5, 10, 15);
-			QROUND( 1,  6, 11, 12);
-			QROUND( 2,  7,  8, 13);
-			QROUND( 3,  4,  9, 14);
+			QROUND(0,  4,  8, 12);
+			QROUND(1,  5,  9, 13);
+			QROUND(2,  6, 10, 14);
+			QROUND(3,  7, 11, 15);
+			QROUND(0,  5, 10, 15);
+			QROUND(1,  6, 11, 12);
+			QROUND(2,  7,  8, 13);
+			QROUND(3,  4,  9, 14);
 
 #undef QROUND
 

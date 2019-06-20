@@ -106,7 +106,7 @@ namespace TAO
                 json::json jsonEIDs = json::json::array();
                 for(const auto& eid :mapEIDs)
                 {
-                    jsonEIDs.push_back( eid.first);
+                    jsonEIDs.push_back(eid.first);
                 }
                 jsonRet["eids"] = jsonEIDs;
             }

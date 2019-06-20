@@ -218,9 +218,9 @@ namespace TAO
             if(!TAO::Register::GetNameRegister(hashNamespace, strName, nameObject))
             {
                 if(strNamespace.empty())
-                    throw APIException(-24, debug::safe_printstr( "Unknown name: ", strName));
+                    throw APIException(-24, debug::safe_printstr("Unknown name: ", strName));
                 else
-                    throw APIException(-24, debug::safe_printstr( "Unknown name: ", strNamespace, ":", strName));
+                    throw APIException(-24, debug::safe_printstr("Unknown name: ", strNamespace, ":", strName));
             }
 
             /* Get the address of the Name object to return */
@@ -307,7 +307,7 @@ namespace TAO
             uint256_t hashNameObject = 0;
 
             /* Look up the Name object for the register address hash */
-            TAO::Register::Object name = Names::GetName( hashGenesis, hashRegister, hashNameObject);
+            TAO::Register::Object name = Names::GetName(hashGenesis, hashRegister, hashNameObject);
             
             if(!name.IsNull())
             {

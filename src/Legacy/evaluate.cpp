@@ -171,7 +171,7 @@ namespace Legacy
                     case OP_15:
                     case OP_16:
                     {
-                        // ( -- value)
+                        // (-- value)
                         LLC::CBigNum bn((int)opcode - (int)(OP_1 - 1));
                         stack.push_back(bn.getvch());
                     }

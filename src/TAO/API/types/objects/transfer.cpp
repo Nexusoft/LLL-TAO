@@ -67,10 +67,10 @@ namespace TAO
             if(params.find("name") != params.end())
             {
                 /* Edge case for NAME objects as these do not need to be resolved to an address */
-                if( nType == TAO::Register::OBJECTS::NAME)
+                if(nType == TAO::Register::OBJECTS::NAME)
                     object = Names::GetName(params, params["name"].get<std::string>(), hashRegister);
                 /* Edge case for namespace objects as the address is a hash of the name */
-                else if( nType == TAO::Register::OBJECTS::NAMESPACE)
+                else if(nType == TAO::Register::OBJECTS::NAMESPACE)
                     hashRegister = LLC::SK256(params["name"].get<std::string>());
                 else
                     /* If name is provided then use this to deduce the register address */
@@ -87,7 +87,7 @@ namespace TAO
             /* Get the object from the register DB if we haven't already. */
             if(object.IsNull())
             {
-                if( !LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-24, strType +" not found.");
 
                 /* Only include raw and non-standard object types (assets)*/

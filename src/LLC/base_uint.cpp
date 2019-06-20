@@ -56,7 +56,7 @@ base_uint<BITS>::base_uint(const base_uint<BITS>& b)
 
 /*
 template<uint32_t BITS>
-base_uint<BITS>::base_uint( template<uint32_t BITS2> const base_uint<BITS2> &b)
+base_uint<BITS>::base_uint(template<uint32_t BITS2> const base_uint<BITS2> &b)
 {
     uint32_t nMinWidth = std::min(WIDTH, b.WIDTH);
 
