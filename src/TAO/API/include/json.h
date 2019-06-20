@@ -77,7 +77,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json ContractsToJSON(uint256_t hashCaller, const TAO::Ledger::Transaction& tx, uint32_t nVerbosity = 0);
+        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx, uint32_t nVerbosity = 0);
 
 
         /** ContractToJSON
@@ -91,7 +91,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json ContractToJSON(uint256_t hashCaller, const TAO::Operation::Contract& contract, uint32_t nVerbosity = 0);
+        json::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract, uint32_t nVerbosity = 0);
 
 
         /** ObjectToJSON

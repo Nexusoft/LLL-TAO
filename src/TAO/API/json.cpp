@@ -226,7 +226,7 @@ namespace TAO
 
 
         /* Converts a transaction object into a formatted JSON list of contracts bound to the transaction. */
-        json::json ContractsToJSON(uint256_t hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity)
+        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity)
         {
             /* Declare the return JSON object*/
             json::json ret = json::json::array();
@@ -241,7 +241,7 @@ namespace TAO
 
 
         /* Converts a serialized operation stream to formattted JSON */
-        json::json ContractToJSON(uint256_t hashCaller, const TAO::Operation::Contract& contract, uint32_t nVerbosity)
+        json::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract, uint32_t nVerbosity)
         {
             /* Declare the return JSON object*/
             json::json ret;
