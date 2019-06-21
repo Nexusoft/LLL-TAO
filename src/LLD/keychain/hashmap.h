@@ -82,6 +82,10 @@ namespace LLD
         uint8_t nFlags;
 
 
+        /* The key level locking hashmap. */
+        mutable std::vector<std::mutex> RECORD_MUTEX;
+
+
     public:
 
         /** Default Constructor **/
@@ -91,9 +95,6 @@ namespace LLD
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND);
 
-
-        /** Default Constructor **/
-        BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn = FLAGS::APPEND);
 
         /** Copy Assignment Operator **/
         BinaryHashMap& operator=(BinaryHashMap map);

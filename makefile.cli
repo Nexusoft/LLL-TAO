@@ -182,8 +182,10 @@ OBJS= \
     build/LLD_key.o \
     build/LLD_transaction.o \
     build/LLD_binary_lru.o \
+	build/LLD_binary_lfu.o \
 	build/LLD_binary_key.o \
     build/LLD_sector.o \
+	build/LLD_xxhash.o \
 	build/LLP_base_address.o \
     build/LLP_base_connection.o \
     build/LLP_connection.o \
@@ -348,6 +350,9 @@ build/LLC_%.o: ./src/LLC/hash/SK/%.c $(HEADERS)
 build/LLD_%.o: ./src/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
+build/LLD_%.o: ./src/LLD/hash/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
 build/LLP_%.o: ./src/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
@@ -467,6 +472,13 @@ build/LLC_%.o: src/LLC/hash/SK/%.cpp $(HEADERS)
 
 build/LLD_%.o: src/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLD_%.o: src/LLD/hash/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
@@ -647,6 +659,13 @@ build/LLC_%.o: src/LLC/hash/SK/%.cpp
 
 build/LLD_%.o: src/LLD/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLD_%.o: src/LLD/hash/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \

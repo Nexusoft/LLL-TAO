@@ -10,7 +10,7 @@
             "ad vocem populi" - To the Voice of the People
 ____________________________________________________________________________________________*/
 
-#include <LLD/cache/binary_lru.h>
+#include <LLD/cache/binary_lfu.h>
 #include <LLD/hash/xxh3.h>
 
 #include <Util/include/mutex.h>
@@ -19,13 +19,13 @@ ________________________________________________________________________________
 namespace LLD
 {
     /*  Node to hold the binary data of the double linked list. */
-    struct BinaryNode
+    struct BinaryNodeLFU
     {
         /** The prev pointer. **/
-        BinaryNode* pprev;
+        BinaryNodeLFU* pprev;
 
         /** The next pointer. **/
-        BinaryNode* pnext;
+        BinaryNodeLFU* pnext;
 
         /** Store the key as 64-bit hash, since we have checksum to verify against too. **/
         uint64_t hashKey;
@@ -33,8 +33,11 @@ namespace LLD
         /** The data in the binary node. **/
         std::vector<uint8_t> vData;
 
+        /** Store the frequency count. */
+        uint32_t nFrequency;
+
         /** Default constructor **/
-        BinaryNode(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn);
+        BinaryNodeLFU(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn);
 
         /** Checksum. **/
         uint64_t Checksum() const
@@ -45,17 +48,18 @@ namespace LLD
 
 
     /** Default constructor **/
-    BinaryNode::BinaryNode(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn)
+    BinaryNodeLFU::BinaryNodeLFU(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn)
     : pprev(nullptr)
     , pnext(nullptr)
     , hashKey(XXH64(&vKey[0], vKey.size(), 0))
     , vData(vDataIn)
+    , nFrequency(1)
     {
     }
 
 
     /** Base Constructor.  **/
-    BinaryLRU::BinaryLRU()
+    BinaryLFU::BinaryLFU()
     : MAX_CACHE_SIZE(1024 * 1024)
     , MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 512)
     , nCurrentSize(MAX_CACHE_BUCKETS * 16)
@@ -69,7 +73,7 @@ namespace LLD
 
 
     /** Cache Size Constructor **/
-    BinaryLRU::BinaryLRU(uint32_t nCacheSizeIn)
+    BinaryLFU::BinaryLFU(uint32_t nCacheSizeIn)
     : MAX_CACHE_SIZE(nCacheSizeIn)
     , MAX_CACHE_BUCKETS(nCacheSizeIn / 512)
     , nCurrentSize(MAX_CACHE_BUCKETS * 16)
@@ -83,7 +87,7 @@ namespace LLD
 
 
     /** Class Destructor. **/
-    BinaryLRU::~BinaryLRU()
+    BinaryLFU::~BinaryLFU()
     {
         /* Loop through the linked list. */
         for(auto& item : hashmap)
@@ -93,14 +97,14 @@ namespace LLD
 
 
     /*  Get the checksum of a data object. */
-    uint64_t BinaryLRU::Checksum(const std::vector<uint8_t>& vData) const
+    uint64_t BinaryLFU::Checksum(const std::vector<uint8_t>& vData) const
     {
         return XXH64(&vData[0], vData.size(), 0);
     }
 
 
     /*  Find a bucket for cache key management. */
-    uint32_t BinaryLRU::Bucket(const BinaryNode* pnode) const
+    uint32_t BinaryLFU::Bucket(const BinaryNodeLFU* pnode) const
     {
         /* Get an xxHash. */
         uint64_t nChecksum = pnode->Checksum();
@@ -111,7 +115,7 @@ namespace LLD
 
 
     /*  Find a bucket for cache key management. */
-    uint32_t BinaryLRU::Bucket(const std::vector<uint8_t>& vKey) const
+    uint32_t BinaryLFU::Bucket(const std::vector<uint8_t>& vKey) const
     {
         /* Get an xxHash. */
         uint64_t nBucket = XXH64(&vKey[0], vKey.size(), 0);
@@ -121,7 +125,7 @@ namespace LLD
 
 
     /*  Find a bucket for checksum key management. */
-    uint32_t BinaryLRU::Bucket(const uint64_t nChecksum) const
+    uint32_t BinaryLFU::Bucket(const uint64_t nChecksum) const
     {
         /* Get an xxHash. */
         uint64_t nBucket = XXH64((uint8_t*)&nChecksum, 8, 0);
@@ -131,7 +135,7 @@ namespace LLD
 
 
     /*  Check if data exists. */
-    bool BinaryLRU::Has(const std::vector<uint8_t>& vKey) const
+    bool BinaryLFU::Has(const std::vector<uint8_t>& vKey) const
     {
         LOCK(MUTEX);
 
@@ -141,7 +145,7 @@ namespace LLD
             return false;
 
         /* Check if the Record Exists. */
-        const BinaryNode* pthis = hashmap[Bucket(nChecksum)];
+        const BinaryNodeLFU* pthis = hashmap[Bucket(nChecksum)];
         if(pthis == nullptr)
             return false;
 
@@ -155,7 +159,7 @@ namespace LLD
 
 
     /*  Remove a node from the double linked list. */
-    void BinaryLRU::RemoveNode(BinaryNode* pthis)
+    void BinaryLFU::RemoveNode(BinaryNodeLFU* pthis)
     {
         /* Relink last pointer. */
         if(plast && pthis == plast)
@@ -186,47 +190,63 @@ namespace LLD
 
 
     /*  Move the node in double linked list to front. */
-    void BinaryLRU::MoveToFront(BinaryNode* pthis)
+    void BinaryLFU::MoveForward(BinaryNodeLFU* pthis)
     {
+        /* Bump frequency. */
+        ++pthis->nFrequency;
+
         /* Don't move to front if already in the front. */
         if(pthis == pfirst)
             return;
 
+        /* Set last if not set. */
+        if(!plast)
+        {
+            plast = pthis;
+
+            return;
+        }
+
+        /* Set first if not set. */
+        if(!pfirst)
+        {
+            pfirst        = pthis;
+            plast->pprev  = pfirst;
+            pfirst->pnext = plast;
+
+            return;
+        }
+
+        /* Check for previous. */
+        if(!pthis->pprev)
+            return;
+
+        /* Check the frequency counter. */
+        if(pthis->pprev->nFrequency > pthis->nFrequency)
+            return;
+
         /* Move last pointer if moving from back. */
-        if(pthis == plast)
-        {
-            if(plast->pprev)
-                plast = plast->pprev;
+        BinaryNodeLFU* pprev = pthis->pprev;
 
-            plast->pnext = nullptr;
-        }
+        /* Set the right link. */
+        if(pprev->pprev)
+            pprev->pprev->pnext = pthis;
         else
-            RemoveNode(pthis);
+            pfirst = pthis;
 
-        /* Set prev to null to signal front of list */
-        pthis->pprev = nullptr;
+        /* Re-link previous. */
+        pprev->pnext = pthis->pnext;
+        if(pprev->pnext)
+            pprev->pnext->pprev = pprev;
 
-        /* Set next to the current first */
-        pthis->pnext = pfirst;
-
-        /* Update the first reference prev */
-        if(pfirst)
-        {
-            pfirst->pprev = pthis;
-            if(!plast)
-            {
-                plast = pfirst;
-                plast->pnext = nullptr;
-            }
-        }
-
-        /* Update the first reference. */
-        pfirst        = pthis;
+        /* Set node's new prev and next. */
+        pthis->pprev = pprev->pprev;
+        pthis->pnext = pprev;
     }
 
 
     /*  Get the data by index */
-    bool BinaryLRU::Get(const std::vector<uint8_t>& vKey, std::vector<uint8_t>& vData)
+    bool BinaryLFU::Get(const std::vector<uint8_t>& vKey, std::vector<uint8_t>& vData)
     {
         LOCK(MUTEX);
 
@@ -236,7 +256,7 @@ namespace LLD
             return false;
 
         /* Get the binary node. */
-        BinaryNode* pthis = hashmap[Bucket(nChecksum)];
+        BinaryNodeLFU* pthis = hashmap[Bucket(nChecksum)];
 
         /* Check if the Record Exists. */
         if(pthis == nullptr)
@@ -258,15 +278,15 @@ namespace LLD
         /* Get the data. */
         vData = pthis->vData;
 
-        /* Move to front of double linked list. */
-        MoveToFront(pthis);
+        /* Move to forward in double linked list. */
+        MoveForward(pthis);
 
         return true;
     }
 
 
     /*  Add data in the Pool. */
-    void BinaryLRU::Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData, bool fReserve)
+    void BinaryLFU::Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData, bool fReserve)
     {
         LOCK(MUTEX);
 
@@ -280,7 +300,7 @@ namespace LLD
 
             /* Get the binary node. */
             uint32_t nBucket  = Bucket(nChecksum);
-            BinaryNode* pthis = hashmap[nBucket];
+            BinaryNodeLFU* pthis = hashmap[nBucket];
 
             /* Check for dereferencing nullptr. */
             if(pthis != nullptr)
@@ -302,21 +322,21 @@ namespace LLD
         }
 
         /* Create a new cache node. */
-        BinaryNode* pthis = new BinaryNode(vKey, vData);
+        BinaryNodeLFU* pthis = new BinaryNodeLFU(vKey, vData);
         nChecksum = pthis->Checksum();
 
         /* Add cache node to objects map. */
         hashmap[Bucket(nChecksum)] = pthis;
         checksums[Bucket(vKey)]    = nChecksum;
 
-        /* Set the new cache node to the front */
-        MoveToFront(pthis);
+        /* Move to forward in double linked list. */
+        MoveForward(pthis);
 
         /* Remove the last node if cache too large. */
         if(nCurrentSize > MAX_CACHE_SIZE)
         {
             /* Get last pointer. */
-            BinaryNode* pnode = plast;
+            BinaryNodeLFU* pnode = plast;
             if(!pnode)
                 return;
 
@@ -351,13 +371,13 @@ namespace LLD
 
 
     /*  Reserve this item in the cache permanently if true, unreserve if false. */
-    void BinaryLRU::Reserve(const std::vector<uint8_t>& vKey, bool fReserve)
+    void BinaryLFU::Reserve(const std::vector<uint8_t>& vKey, bool fReserve)
     {
     }
 
 
     /*  Force Remove Object by Index. */
-    bool BinaryLRU::Remove(const std::vector<uint8_t>& vKey)
+    bool BinaryLFU::Remove(const std::vector<uint8_t>& vKey)
     {
         LOCK(MUTEX);
 
@@ -370,7 +390,7 @@ namespace LLD
 
         /* Get the binary node. */
         uint32_t nBucket  = Bucket(nChecksum);
-        BinaryNode* pthis = hashmap[nBucket];
+        BinaryNodeLFU* pthis = hashmap[nBucket];
 
         /* Check if the Record Exists. */
         if(pthis == nullptr)
