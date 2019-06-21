@@ -91,13 +91,10 @@ namespace TAO
             else
                 throw APIException(-23, "Missing memory address");
 
-            /* Test the payload feature. */
+            /* Declare the register stream for the update. */
             DataStream ssData(SER_REGISTER, 1);
 
-            /* Add the name first */
-            ssData << strName;
-
-            /* Then the raw data */
+            /* Add in the new data */
             ssData << params["data"].get<std::string>();
 
             /* Submit the payload object. */

@@ -231,6 +231,52 @@ namespace TAO
                         }
 
 
+                        case TAO::Operation::OP::APPEND:
+                        {
+                            /* Get the address. */
+                            uint256_t hashAddress = 0;
+                            contract >> hashAddress;
+
+                            /* Check for same address. */
+                            if(hashAddress != hashRegister)
+                                break;
+
+                            /* Get the register data. */
+                            std::vector<uint8_t> vchData;
+                            contract >> vchData;
+
+                            /* Generate return object. */
+                            json::json obj;
+                            obj["type"]       = "MODIFY";
+
+                            /* Get the flag. */
+                            uint8_t nState = 0;
+                            contract >>= nState;
+
+                            /* Get the pre-state. */
+                            TAO::Register::State state;
+                            contract >>= state;
+
+                            /* Complete object parameters. */
+                            obj["owner"]    = contract.Caller().ToString();
+                            obj["modified"] = state.nModified;
+                            obj["checksum"] = state.hashChecksum;
+
+                            /* Get the JSON data for this object.  NOTE that we pass false for fLookupName if the requested type
+                               is a name of namesace object, as those are the edge case that do not have a Name object themselves */
+                            bool fLookupName = nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE;
+                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
+
+                            /* Copy the name data in to the response after the type */
+                            obj.insert(data.begin(), data.end());
+
+                            /* Push to return array. */
+                            ret.push_back(obj);
+
+                            break;
+                        }
+
+
                         case TAO::Operation::OP::CLAIM:
                         {
                             /* Extract the transaction from contract. */

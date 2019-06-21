@@ -671,17 +671,14 @@ namespace TAO
             /* If the caller has specified to look up the name */
             if(fLookupName)
             {
-                /* Get the session to be used for this API call. */
-                uint64_t nSession = users->GetSession(params, false);
+                /* Get callers hashGenesis . */
+                uint256_t hashGenesis = users->GetCallersGenesis(params);
 
                 /* Don't attempt to resolve the object name if there is no logged in user as there will be no sig chain  to scan */
-                if(nSession != -1)
+                if(hashGenesis != 0)
                 {
-                    /* Get the account. */
-                    memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
-
-                    /* Look up the object name based on the Name records in thecaller's sig chain */
-                    std::string strName = Names::ResolveName(user->Genesis(), hashRegister);
+                    /* Look up the object name based on the Name records in the caller's sig chain */
+                    std::string strName = Names::ResolveName(hashGenesis, hashRegister);
 
                     /* Add the name to the response if one is found. */
                     if(!strName.empty())
@@ -694,14 +691,23 @@ namespace TAO
             || object.nType == TAO::Register::REGISTER::RAW)
             {
                 /* Raw state assets only have one data member containing the raw hex-encoded data*/
-                std::string data;
-                object >> data;
 
                 ret["address"]    = hashRegister.ToString();
                 ret["created"]    = object.nCreated;
                 ret["modified"]   = object.nModified;
                 ret["owner"]      = object.hashOwner.ToString();
-                ret["data"]       = data;
+
+                /* If this is an append register we need to grab the data from the end of the stream which will be the most recent data */
+                while(!object.end())
+                {
+                    /* If the data type is string. */
+                    std::string data;
+                    object >> data;
+
+                    //ret["checksum"] = state.hashChecksum;
+                    ret["data"] = data;
+                }
+                
             }
             else if(object.nType == TAO::Register::REGISTER::OBJECT)
             {
@@ -839,7 +845,7 @@ namespace TAO
                                 case TAO::Register::TYPES::UINT64_T:
                                 {
                                     /* Set the return value from object register data. */
-                                    ret[strName] = object.get<uint8_t>(strName);
+                                    ret[strName] = object.get<uint64_t>(strName);
 
                                     break;
                                 }
