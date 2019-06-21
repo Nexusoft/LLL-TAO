@@ -287,15 +287,197 @@ namespace LLD
             }
 
             /* Return the Key existance in the Keychain Database. */
-            bool fErased = pSectorKeys->Erase(ssKey.Bytes());
+            return pSectorKeys->Erase(ssKey.Bytes());
+        }
 
-            if(config::GetBoolArg("-runtime", false))
+
+        /** Read
+         *
+         *  Read a database entry identified by the given key.
+         *
+         *  @param[in] key The key to the database entry to read.
+         *  @param[out] value The database entry value to read out.
+         *
+         *  @return True if the entry read, false otherwise.
+         *
+         **/
+        template<typename Type>
+        bool BatchRead(const std::string& strType, std::vector<Type>& vValues, int32_t nLimit = 1000)
+        {
+            /* The current file being read. */
+            uint32_t nFile = 0;
+
+            /* Scan until limit is reached. */
+            while(nLimit == -1 || nLimit > 0)
             {
-                debug::log(0, ANSI_COLOR_GREEN FUNCTION, "executed in ",
-                    runtime.ElapsedMicroseconds(), " micro-seconds" ANSI_COLOR_RESET);
+                /* Find the file stream for LRU cache. */
+                std::fstream stream = std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
+                if(!stream.is_open())
+                    return (vValues.size() > 0);
+
+                /* Get the Binary Size. */
+                stream.ignore(std::numeric_limits<std::streamsize>::max());
+                uint64_t nFileSize = static_cast<int32_t>(stream.gcount());
+
+                /* Seek to beginning. */
+                stream.seekg(0, std::ios::beg);
+
+                /* Read into serialize stream. */
+                DataStream ssData(SER_LLD, DATABASE_VERSION);
+                ssData.resize(nFileSize);
+
+                /* Read file data. */
+                stream.read((char*)ssData.data(), ssData.size());
+
+                /* Get the current position. */
+                uint64_t nPos = 0;
+
+                /* Read records. */
+                while(!ssData.End())
+                {
+                    /* Read compact size. */
+                    uint64_t nSize = ReadCompactSize(ssData);
+
+                    /* Check for failures or serialization issues. */
+                    if(nSize == 0)
+                        return false;
+
+                    /* Deserialize the String. */
+                    std::string strThis;
+                    ssData >> strThis;
+
+                    /* Check the type. */
+                    if(strType == strThis && strThis != "NONE")
+                    {
+                        /* Get the value. */
+                        Type value;
+                        ssData >> value;
+
+                        /* Push next value. */
+                        vValues.push_back(value);
+
+                        /* Check limits. */
+                        if(nLimit != -1 && --nLimit == 0)
+                            return true;
+                    }
+                    else
+                        ssData.SetPos(nPos);
+
+                    /* Iterate to next position. */
+                    nPos += nSize + GetSizeOfCompactSize(nSize);
+                }
+
+                /* Iterate to the next file. */
+                ++nFile;
             }
 
-            return fErased;
+            return (vValues.size() > 0);
+        }
+
+
+        /** Read
+         *
+         *  Read a database entry identified by the given key.
+         *
+         *  @param[in] key The key to the database entry to read.
+         *  @param[out] value The database entry value to read out.
+         *
+         *  @return True if the entry read, false otherwise.
+         *
+         **/
+        template<typename Key, typename Type>
+        bool BatchRead(const Key& key, const std::string& strType, std::vector<Type>& vValues, int32_t nLimit = 1000)
+        {
+            /* Serialize Key into Bytes. */
+            DataStream ssKey(SER_LLD, DATABASE_VERSION);
+            ssKey << key;
+
+            /* Get the key. */
+            SectorKey cKey;
+            if(!pSectorKeys->Get(ssKey.Bytes(), cKey))
+                return false;
+
+            /* The current file being read. */
+            uint32_t nFile = cKey.nSectorFile;
+
+            /* Scan until limit is reached. */
+            while(nLimit == -1 || nLimit > 0)
+            {
+                /* Find the file stream for LRU cache. */
+                std::fstream stream = std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
+                if(!stream.is_open())
+                    return (vValues.size() > 0);
+
+                /* Get the Binary Size. */
+                stream.ignore(std::numeric_limits<std::streamsize>::max());
+                uint64_t nFileSize = static_cast<int32_t>(stream.gcount());
+
+                /* Read into serialize stream. */
+                DataStream ssData(SER_LLD, DATABASE_VERSION);
+
+                /* Get the current position. */
+                uint64_t nPos = 0;
+
+                /* Seek to beginning. */
+                if(nFile == cKey.nSectorFile)
+                {
+                    /* Seek stream to sector position. */
+                    stream.seekg(cKey.nSectorStart + cKey.nSectorSize, std::ios::beg);
+                    ssData.resize(nFileSize - cKey.nSectorStart + cKey.nSectorSize);
+
+                    /* Set the position. */
+                    nPos = cKey.nSectorStart + cKey.nSectorSize;
+                }
+                else
+                {
+                    /* Seek stream to beginning. */
+                    stream.seekg(0, std::ios::beg);
+                    ssData.resize(nFileSize);
+                }
+
+                /* Read file data. */
+                stream.read((char*)ssData.data(), ssData.size());
+
+                /* Read records. */
+                while(!ssData.End())
+                {
+                    /* Read compact size. */
+                    uint64_t nSize = ReadCompactSize(ssData);
+
+                    /* Check for failures or serialization issues. */
+                    if(nSize == 0)
+                        return false;
+
+                    /* Deserialize the String. */
+                    std::string strThis;
+                    ssData >> strThis;
+
+                    /* Check the type. */
+                    if(strType == strThis && strThis != "NONE")
+                    {
+                        /* Get the value. */
+                        Type value;
+                        ssData >> value;
+
+                        /* Push next value. */
+                        vValues.push_back(value);
+
+                        /* Check limits. */
+                        if(nLimit != -1 && --nLimit == 0)
+                            return true;
+                    }
+                    else
+                        ssData.SetPos(nPos);
+
+                    /* Iterate to next position. */
+                    nPos += nSize + GetSizeOfCompactSize(nSize);
+                }
+
+                /* Iterate to the next file. */
+                ++nFile;
+            }
+
+            return (vValues.size() > 0);
         }
 
 
@@ -337,6 +519,12 @@ namespace LLD
 
                         /* Deserialize Value. */
                         DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+
+                        /* Deserialize the String. */
+                        std::string strType;
+                        ssValue >> strType;
+
+                        /* Deseriazlie the Value. */
                         ssValue >> value;
 
                         return true;
@@ -350,6 +538,12 @@ namespace LLD
 
             /* Deserialize Value. */
             DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+
+            /* Deserialize the String. */
+            std::string strType;
+            ssValue >> strType;
+
+            /* Deseriazlie the Value. */
             ssValue >> value;
 
             return true;
@@ -470,7 +664,7 @@ namespace LLD
          *
          **/
         template<typename Key, typename Type>
-        bool Write(const Key& key, const Type& value)
+        bool Write(const Key& key, const Type& value, const std::string& strType = "NONE")
         {
             if(nFlags & FLAGS::READONLY)
                 return debug::error(FUNCTION, "Write called on database in read-only mode");
@@ -481,6 +675,7 @@ namespace LLD
 
             /* Serialize the Value */
             DataStream ssData(SER_LLD, DATABASE_VERSION);
+            ssData << strType;
             ssData << value;
 
             /* Check for transaction. */
@@ -489,7 +684,6 @@ namespace LLD
 
                 if(pTransaction)
                 {
-
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
                     ssJournal << std::string("write") << ssKey.Bytes() << ssData.Bytes();

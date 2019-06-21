@@ -55,7 +55,7 @@ namespace LLD
          **/
         bool WriteTrustAddress(uint64_t key, const LLP::TrustAddress &addr)
         {
-            return Write(std::make_pair(std::string("addr"), key), addr);
+            return Write(std::make_pair(std::string("addr"), key), addr, "addr");
         }
 
 
@@ -87,7 +87,7 @@ namespace LLD
          **/
         bool WriteThisAddress(uint64_t key, const LLP::BaseAddress &this_addr)
         {
-            return Write(std::make_pair(std::string("this"), key), this_addr);
+            return Write(std::make_pair(std::string("this"), key), this_addr, "this");
         }
 
 

@@ -101,8 +101,8 @@ namespace LLD
 
             /* TODO: Make a worker or thread to check sizes of files and automatically create new file.
                 Keep independent of reads and writes for efficiency. */
-            std::fstream fIncoming(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::in | std::ios::binary);
-            if(!fIncoming)
+            std::fstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::in | std::ios::binary);
+            if(!stream)
             {
 
                 /* Assign the Current Size and File. */
@@ -119,9 +119,9 @@ namespace LLD
             }
 
             /* Get the Binary Size. */
-            fIncoming.seekg(0, std::ios::end);
-            nCurrentFileSize = static_cast<uint32_t>(fIncoming.tellg());
-            fIncoming.close();
+            stream.seekg(0, std::ios::end);
+            nCurrentFileSize = static_cast<uint32_t>(stream.tellg());
+            stream.close();
 
             /* Increment the Current File */
             ++nCurrentFile;
@@ -176,9 +176,14 @@ namespace LLD
                     fileCache->Put(cKey.nSectorFile, pstream);
                 }
 
+                /* Get compact size from record. */
+                uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
+
                 /* Seek to the Sector Position on Disk. */
-                pstream->seekg(cKey.nSectorStart, std::ios::beg);
-                vData.resize(cKey.nSectorSize);
+                pstream->seekg(cKey.nSectorStart + nSize, std::ios::beg);
+
+                /* Resize for proper record length. */
+                vData.resize(cKey.nSectorSize - nSize);
 
                 /* Read the State and Size of Sector Header. */
                 if(!pstream->read((char*) &vData[0], vData.size()))
@@ -226,9 +231,14 @@ namespace LLD
                 fileCache->Put(cKey.nSectorFile, pstream);
             }
 
+            /* Get compact size from record. */
+            uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
+
             /* Seek to the Sector Position on Disk. */
-            pstream->seekg(cKey.nSectorStart, std::ios::beg);
-            vData.resize(cKey.nSectorSize);
+            pstream->seekg(cKey.nSectorStart + nSize, std::ios::beg);
+
+            /* Resize for proper record length. */
+            vData.resize(cKey.nSectorSize - nSize);
 
             /* Read the State and Size of Sector Header. */
             if(!pstream->read((char*) &vData[0], vData.size()))
@@ -252,8 +262,11 @@ namespace LLD
         if(!pSectorKeys->Get(vKey, key))
             return false;
 
+        /* Get current size */
+        uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
+
         /* Check data size constraints. */
-        if(vData.size() != key.nSectorSize)
+        if(nSize != key.nSectorSize)
             return debug::error(FUNCTION, "sector size ", key.nSectorSize, " mismatch ", vData.size());
 
         /* Write the data into the memory cache. */
@@ -280,6 +293,11 @@ namespace LLD
 
             /* If it is a New Sector, Assign a Binary Position. */
             pstream->seekp(key.nSectorStart, std::ios::beg);
+
+            /* Write the size of record. */
+            WriteCompactSize(*pstream, vData.size());
+
+            /* Write the data record. */
             pstream->write((char*) &vData[0], vData.size());
             pstream->flush();
 
@@ -310,7 +328,7 @@ namespace LLD
                 {
                     debug::log(4, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
 
-                    ++ nCurrentFile;
+                    ++nCurrentFile;
                     nCurrentFileSize = 0;
 
                     std::ofstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
@@ -338,14 +356,23 @@ namespace LLD
 
                 /* If it is a New Sector, Assign a Binary Position. */
                 pstream->seekp(nCurrentFileSize, std::ios::beg);
+
+                /* Write the size of record. */
+                WriteCompactSize(*pstream, vData.size());
+
+                /* Write the data record. */
                 pstream->write((char*) &vData[0], vData.size());
                 pstream->flush();
 
+                /* Get current size */
+                uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
+
                 /* Create a new Sector Key. */
-                SectorKey key = SectorKey(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile), nCurrentFileSize, static_cast<uint32_t>(vData.size()));
+                SectorKey key = SectorKey(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
+                                            nCurrentFileSize, static_cast<uint32_t>(nSize));
 
                 /* Increment the current filesize */
-                nCurrentFileSize += static_cast<uint32_t>(vData.size());
+                nCurrentFileSize += static_cast<uint32_t>(nSize);
 
                 /* Assign the Key to Keychain. */
                 if(!pSectorKeys->Put(key))

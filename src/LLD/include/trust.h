@@ -58,7 +58,7 @@ namespace LLD
          **/
         bool WriteTrustKey(const uint576_t& hashKey, const TAO::Ledger::TrustKey& key)
         {
-            return Write(hashKey, key);
+            return Write(hashKey, key, "truet");
         }
 
 

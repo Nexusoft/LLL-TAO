@@ -116,7 +116,7 @@ namespace LLD
          **/
         bool WriteTx(const uint512_t& hashTransaction, const TAO::Ledger::Transaction& tx)
         {
-            return Write(hashTransaction, tx);
+            return Write(hashTransaction, tx, "tx");
         }
 
 
@@ -462,7 +462,7 @@ namespace LLD
          **/
         bool WriteBlock(const uint1024_t& hashBlock, const TAO::Ledger::BlockState& state)
         {
-            return Write(hashBlock, state);
+            return Write(hashBlock, state, "block");
         }
 
 

@@ -57,7 +57,7 @@ namespace LLD
          **/
         bool WriteTx(const uint512_t& hashTransaction, const Legacy::Transaction& tx)
         {
-            return Write(std::make_pair(std::string("tx"), hashTransaction), tx);
+            return Write(std::make_pair(std::string("tx"), hashTransaction), tx, "tx");
         }
 
 

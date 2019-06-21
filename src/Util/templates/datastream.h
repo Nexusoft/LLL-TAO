@@ -175,12 +175,21 @@ public:
      **/
     const std::vector<uint8_t>& Bytes();
 
+
     /** reserve
      *
      *  Implement the same reserve functionality to vector.
      *
      **/
     void reserve(const uint64_t nSize);
+
+
+    /** resize
+     *
+     *  Implement the same resize functionality to vector.
+     *
+     **/
+    void resize(const uint64_t nSize);
 
 
     /** begin

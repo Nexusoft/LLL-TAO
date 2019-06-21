@@ -160,6 +160,13 @@ void DataStream::reserve(const uint64_t nSize)
 }
 
 
+/*  Implement the same reserve functionality to vector. */
+void DataStream::resize(const uint64_t nSize)
+{
+    vData.resize(nSize);
+}
+
+
 /*  Wrapper around the vector constant iterator. */
 std::vector<uint8_t>::const_iterator DataStream::begin() const
 {

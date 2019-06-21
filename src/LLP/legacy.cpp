@@ -291,8 +291,8 @@ namespace LLP
             {
                 LOCK(SESSIONS_MUTEX);
 
-                /** Free this session, if it is this connection that we mapped. 
-                    When we disconnect a duplicate session then it will not have been added to the map, 
+                /** Free this session, if it is this connection that we mapped.
+                    When we disconnect a duplicate session then it will not have been added to the map,
                     so we need to skip removing the session ID **/
                 if(mapConnectedSessions.count(nCurrentSession)
                 && mapConnectedSessions[nCurrentSession] == this)
@@ -392,91 +392,6 @@ namespace LLP
         else if(nCurrentVersion == 0)
         {
             return false;
-        }
-        else if(message == "getoffset")
-        {
-            /* Don't service unified seeds unless time is unified. */
-            //if(!Core::fTimeUnified)
-            //    return true;
-
-            /* De-Serialize the Request ID. */
-            uint32_t nRequestID;
-            ssMessage >> nRequestID;
-
-            /* De-Serialize the timestamp Sent. */
-            uint64_t nTimestamp;
-            ssMessage >> nTimestamp;
-
-            /* Log into the sent requests Map. */
-            mapSentRequests[nRequestID] = runtime::unifiedtimestamp(true);
-
-            /* Calculate the offset to current clock. */
-            int   nOffset    = (int)(runtime::unifiedtimestamp(true) - nTimestamp);
-            PushMessage("offset", nRequestID, runtime::unifiedtimestamp(true), nOffset);
-
-            /* Verbose logging. */
-            debug::log(3, NODE, ": Sent Offset ", nOffset,
-                "Unified ", runtime::unifiedtimestamp());
-        }
-
-        /* Receive a Time Offset from this Node. */
-        else if(message == "offset")
-        {
-
-            /* De-Serialize the Request ID. */
-            uint32_t nRequestID;
-            ssMessage >> nRequestID;
-
-
-            /* De-Serialize the timestamp Sent. */
-            uint64_t nTimestamp;
-            ssMessage >> nTimestamp;
-
-            /* Handle the Request ID's. */
-            //uint32_t nLatencyTime = (Core::runtime::unifiedtimestamp(true) - nTimestamp);
-
-
-            /* Ignore Messages Received that weren't Requested. */
-            if(!mapSentRequests.count(nRequestID))
-            {
-                if(DDOS)
-                    DDOS->rSCORE += 5;
-
-                debug::log(3, NODE, "Invalid Request : Message Not Requested [", nRequestID, "][", nLatency, " ms]");
-
-                return true;
-            }
-
-
-            /* Reject Samples that are received 30 seconds after last check on this node. */
-            if(runtime::unifiedtimestamp(true) - mapSentRequests[nRequestID] > 30000)
-            {
-                mapSentRequests.erase(nRequestID);
-
-                debug::log(3, NODE, "Invalid Request : Message Stale [", nRequestID, "][", nLatency, " ms]");
-
-                if(DDOS)
-                    DDOS->rSCORE += 15;
-
-                return true;
-            }
-
-
-            /* De-Serialize the Offset. */
-            int nOffset;
-            ssMessage >> nOffset;
-
-            /* Adjust the Offset for Latency. */
-            nOffset -= nLatency;
-
-            /* Add the Samples. */
-            //setTimeSamples.insert(nOffset);
-
-            /* Remove the Request from the Map. */
-            mapSentRequests.erase(nRequestID);
-
-            /* Verbose Logging. */
-            debug::log(3, NODE, "Received Unified Offset ", nOffset, " [", nRequestID, "][", nLatency, " ms]");
         }
 
 
@@ -810,19 +725,19 @@ namespace LLP
 
             /* Iterate forward the blocks required. */
             std::vector<CInv> vInv;
-            uint1024_t nStateHash;
+            uint1024_t hashBlock;
             while(!config::fShutdown.load())
             {
                 /* Iterate to next state. */
                 state = state.Next();
 
                 /* Get the state hash. */
-                nStateHash = state.GetHash();
+                hashBlock = state.GetHash();
 
                 /* Check for hash stop. */
-                if (nStateHash == hashStop)
+                if (hashBlock == hashStop)
                 {
-                    debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", nStateHash.ToString().substr(0, 20));
+                    debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", hashBlock.ToString().substr(0, 20));
 
                     /* Tell about latest block if hash stop is found. */
                     if (hashStop != TAO::Ledger::ChainState::hashBestChain.load())
@@ -832,14 +747,14 @@ namespace LLP
                 }
 
                 /* Push new item to inventory. */
-                vInv.push_back(CInv(nStateHash, MSG_BLOCK));
+                vInv.push_back(CInv(hashBlock, MSG_BLOCK));
 
                 /* Stop at limits. */
                 if (--nLimit <= 0)
                 {
                     // When this block is requested, we'll send an inv that'll make them
                     // getblocks the next batch of inventory.
-                    debug::log(3, "  getblocks stopping at limit ", state.nHeight, " to ", nStateHash.ToString().substr(0,20));
+                    debug::log(3, "  getblocks stopping at limit ", state.nHeight, " to ", hashBlock.ToString().substr(0,20));
 
                     hashContinue = state.GetHash();
                     break;
@@ -884,7 +799,7 @@ namespace LLP
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
     {
-
+        /* Check block for validitiy. */
         if(!block.Check())
             return true;
 
