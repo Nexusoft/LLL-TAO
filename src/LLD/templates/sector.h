@@ -185,14 +185,6 @@ namespace LLD
         void Initialize();
 
 
-        /** GetKeys
-         *
-         *  Get the keys for this sector database from the keychain.
-         *
-         **/
-        std::vector< std::vector<uint8_t> > GetKeys();
-
-
         /** Exists
          *
          *  Determine if the entry identified by the given key exists.

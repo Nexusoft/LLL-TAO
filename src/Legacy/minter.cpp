@@ -240,19 +240,14 @@ namespace Legacy
          */
         if(trustKey.IsNull())
         {
-            /* Retrieve all the trust key public keys from the trust db */
-            std::vector< std::vector<uint8_t> > vchTrustKeyList = LLD::trustDB->GetKeys();
+            /* Retrieve all raw trust database keys from keychain */
+            std::vector<TAO::Ledger::TrustKey> vKeys;
+            if(!LLD::trustDB->BatchRead("trust", vKeys, -1))
+                return;
 
-            for (const auto& vchHashKey : vchTrustKeyList)
+            /* Search through the trust keys. */
+            for (const auto& trustKeyCheck : vKeys)
             {
-                /* Read the full trust key from the trust db */
-                uint576_t cKey;
-                cKey.SetBytes(vchHashKey);
-                TAO::Ledger::TrustKey trustKeyCheck;
-
-                if (!LLD::trustDB->ReadTrustKey(cKey, trustKeyCheck))
-                    continue;
-
                 /* Check whether trust key is part of current wallet */
                 NexusAddress address;
                 address.SetPubKey(trustKeyCheck.vchPubKey);
@@ -375,7 +370,7 @@ namespace Legacy
 
                 /* Update log every 60 iterations (5 minutes) */
                 if ((nWaitCounter % 60) == 0)
-                    debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ", 
+                    debug::log(0, FUNCTION, "Stake Minter: Too soon after mining last stake block. ",
                                (nMinimumInterval - nCurrentInterval), " blocks remaining until staking available.");
 
                 ++nWaitCounter;
@@ -571,7 +566,7 @@ namespace Legacy
                 {
 					uint32_t nRemainingWaitTime = (nMinimumCoinAge - nCoinAge) / 60; //minutes
 
-					debug::log(0, FUNCTION, "Stake Minter: Average coin age is immature. ", 
+					debug::log(0, FUNCTION, "Stake Minter: Average coin age is immature. ",
                                nRemainingWaitTime, " minutes remaining until staking available.");
                 }
 

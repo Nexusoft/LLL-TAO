@@ -135,13 +135,6 @@ namespace LLD
     }
 
 
-    template<class KeychainType, class CacheType>
-    std::vector< std::vector<uint8_t> > SectorDatabase<KeychainType, CacheType>::GetKeys()
-    {
-        return pSectorKeys->GetKeys();
-    }
-
-
     /*  Get a record from cache or from disk */
     template<class KeychainType, class CacheType>
     bool SectorDatabase<KeychainType, CacheType>::Get(const std::vector<uint8_t>& vKey, std::vector<uint8_t>& vData)

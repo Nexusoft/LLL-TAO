@@ -120,14 +120,6 @@ namespace LLD
         void CompressKey(std::vector<uint8_t>& vData, uint16_t nSize = 32);
 
 
-        /** GetKeys
-         *
-         *  Placeholder.
-         *
-         **/
-         std::vector< std::vector<uint8_t> > GetKeys();
-
-
         /** GetBucket
          *
          *  Calculates a bucket to be used for the hashmap allocation.

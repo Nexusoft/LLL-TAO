@@ -108,15 +108,6 @@ namespace LLD
     }
 
 
-    /*  Placeholder. */
-    std::vector< std::vector<uint8_t> > BinaryHashMap::GetKeys()
-    {
-        std::vector< std::vector<uint8_t> > vKeys;
-
-        return vKeys;
-    }
-
-
     /*  Calculates a bucket to be used for the hashmap allocation. */
     uint32_t BinaryHashMap::GetBucket(const std::vector<uint8_t>& vKey)
     {
