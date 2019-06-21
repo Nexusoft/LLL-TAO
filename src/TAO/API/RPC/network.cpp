@@ -161,21 +161,13 @@ namespace TAO
             std::multimap<double, TAO::Ledger::TrustKey, std::greater<double>> mapTrustKeys;
 
             /* Retrieve all raw trust database keys from keychain */
-            const std::vector< std::vector<uint8_t> >& vKeys = LLD::trustDB->GetKeys();
+            std::vector<TAO::Ledger::TrustKey> vKeys;
+            if(!LLD::trustDB->BatchRead("trust", vKeys, -1))
+                return debug::safe_printstr("No Trust Keys ", vKeys.size());
 
             /* Search through the trust keys. */
-            for (const auto& key : vKeys)
+            for (const auto& trustKey : vKeys)
             {
-                /* Extract trust key hash from raw database keys. */
-                uint576_t trustKeyHash = 0;
-                DataStream ssKey(key, SER_LLD, LLD::DATABASE_VERSION);
-                ssKey >> trustKeyHash;
-
-                /* Use trust key hash to retrieve trust key */
-                TAO::Ledger::TrustKey trustKey;
-                if (!LLD::trustDB->ReadTrustKey(trustKeyHash, trustKey))
-                    continue;
-
                 /* Ignore trust keys that are inactive (no blocks within timespan) */
                 if (trustKey.nLastBlockTime + (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 3 : TAO::Ledger::TRUST_KEY_TIMESPAN * 3)
                     < TAO::Ledger::ChainState::stateBest.load().GetBlockTime())
