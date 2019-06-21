@@ -80,7 +80,7 @@ namespace TAO
         *  mintonly is optional true/false allowing only block minting. timeout is ignored if mintonly is true / 1*/
         json::json RPC::WalletPassphrase(const json::json& params, bool fHelp)
         {
-            if(fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && ( params.size() < 1 || params.size() > 3)))
+            if(fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && (params.size() < 1 || params.size() > 3)))
                 return std::string(
                     "walletpassphrase <passphrase> [timeout] [mintonly]"
                     " - Stores the wallet decryption key in memory for [timeout] seconds."
@@ -475,7 +475,7 @@ namespace TAO
                 std::string strSecret = Legacy::NexusSecret(vchSecret, fCompressed).ToString();
                 entry["strAccount"] = strSecret;
 
-                ret.push_back( entry);
+                ret.push_back(entry);
             }
 
             return ret;

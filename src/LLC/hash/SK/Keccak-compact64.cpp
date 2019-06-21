@@ -40,7 +40,7 @@ typedef uint64_t tKeccakLane;
 #if defined(_MSC_VER)
 #define ROL64(a, offset) _rotl64(a, offset)
 #elif defined(UseSHLD)
-    #define ROL64(x,N) ( \
+    #define ROL64(x,N) (\
     { \
     register uint64_t __out; \
     register uint64_t __in = x; \
@@ -75,8 +75,8 @@ const UINT8 KeccakF_Mod5[10] =
 
 /* ---------------------------------------------------------------- */
 
-static tKeccakLane KeccakF1600_GetNextRoundConstant( UINT8 *LFSR);
-static tKeccakLane KeccakF1600_GetNextRoundConstant( UINT8 *LFSR)
+static tKeccakLane KeccakF1600_GetNextRoundConstant(UINT8 *LFSR);
+static tKeccakLane KeccakF1600_GetNextRoundConstant(UINT8 *LFSR)
 {
     tSmaUtilInt i;
     tKeccakLane    roundConstant;
@@ -98,13 +98,13 @@ static tKeccakLane KeccakF1600_GetNextRoundConstant( UINT8 *LFSR)
             roundConstant ^= (tKeccakLane)1ULL << (i - 1);
     }
     *LFSR = (UINT8)tempLSFR;
-    return ( roundConstant);
+    return (roundConstant);
 }
 
 
 /* ---------------------------------------------------------------- */
 
-void KeccakF1600_Initialize( void)
+void KeccakF1600_Initialize(void)
 {
 }
 
@@ -113,7 +113,7 @@ void KeccakF1600_Initialize( void)
 void KeccakF1600_StateInitialize(void *argState)
 {
     #if defined(USE_MEMSET)
-    memset( argState, 0, 25 * 8);
+    memset(argState, 0, 25 * 8);
     #else
     tSmaUtilInt i;
     tKeccakLane *state;
@@ -216,7 +216,7 @@ void KeccakF1600_StatePermute(void *argState)
         for(x = 0; x < 24; ++x)
         {
             BC[0] = state[KeccakF_PiLane[x]];
-            state[KeccakF_PiLane[x]] = ROL64( temp, KeccakF_RotationConstants[x]);
+            state[KeccakF_PiLane[x]] = ROL64(temp, KeccakF_RotationConstants[x]);
             temp = BC[0];
         }
 

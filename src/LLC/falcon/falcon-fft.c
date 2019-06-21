@@ -82,10 +82,10 @@
 		fpct_a_im = (a_im); \
 		fpct_b_re = (b_re); \
 		fpct_b_im = (b_im); \
-		fpct_d_re = fpr_sub( \
+		fpct_d_re = fpr_sub(\
 			fpr_mul(fpct_a_re, fpct_b_re), \
 			fpr_mul(fpct_a_im, fpct_b_im)); \
-		fpct_d_im = fpr_add( \
+		fpct_d_im = fpr_add(\
 			fpr_mul(fpct_a_re, fpct_b_im), \
 			fpr_mul(fpct_a_im, fpct_b_re)); \
 		(d_re) = fpct_d_re; \
@@ -137,10 +137,10 @@
 		fpct_m = fpr_add(fpr_sqr(fpct_b_re), fpr_sqr(fpct_b_im)); \
 		fpct_b_re = fpr_div(fpct_b_re, fpct_m); \
 		fpct_b_im = fpr_div(fpr_neg(fpct_b_im), fpct_m); \
-		fpct_d_re = fpr_sub( \
+		fpct_d_re = fpr_sub(\
 			fpr_mul(fpct_a_re, fpct_b_re), \
 			fpr_mul(fpct_a_im, fpct_b_im)); \
-		fpct_d_im = fpr_add( \
+		fpct_d_im = fpr_add(\
 			fpr_mul(fpct_a_re, fpct_b_im), \
 			fpr_mul(fpct_a_im, fpct_b_re)); \
 		(d_re) = fpct_d_re; \

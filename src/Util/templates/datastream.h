@@ -79,7 +79,7 @@ public:
      *  Default constructor for initialization with serialize data, type and version
      *
      **/
-    DataStream( const std::vector<uint8_t>::const_iterator pbegin,
+    DataStream(const std::vector<uint8_t>::const_iterator pbegin,
                 const std::vector<uint8_t>::const_iterator pend,
                 const uint32_t nSerTypeIn, const uint32_t nSerVersionIn);
 

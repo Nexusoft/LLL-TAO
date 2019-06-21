@@ -497,11 +497,43 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_users_list_accounts_by_genesis(self, page, limit):
+    def nexus_users_list_items_by_genesis(self, page, limit):
         """
-        List user created token accounts by genesis-id. The number of account
+        List user account created assets by genesis-id. The number of asset
         entries returned is specified in 'limit' starting with entry offset 
         specified in 'page'. 
+        """
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
+
+        parms = "?genesis={}&page={}&limit={}".format(self.genesis_id, page,
+            limit)
+
+        url = users_url.format(sdk_url, "list/items") + parms
+        json_data = self.__get(url)
+        return(json_data)
+    #enddef
+       
+    def nexus_users_list_items_by_username(self, page, limit):
+        """
+        List user account created assets by username. The number of asset
+        entries returned is specified in 'limit' starting with entry offset 
+        specified in 'page'. 
+        """
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
+
+        parms = "?username={}&page={}&limit={}".format(self.username, page,
+            limit)
+
+        url = users_url.format(sdk_url, "list/items") + parms
+        json_data = self.__get(url)
+        return(json_data)
+    #enddef
+
+    def nexus_users_list_accounts_by_genesis(self, page, limit):
+        """
+        List user created supply-chain items by genesis-id. The number of 
+        item entries returned is specified in 'limit' starting with entry 
+        offset specified in 'page'. 
         """
         if (self.genesis_id == None): return(self.__error("Not logged in"))
 
@@ -515,7 +547,7 @@ class sdk_init():
 
     def nexus_users_list_accounts_by_username(self, page, limit):
         """
-        List user created token accounts by username. The number of account
+        List user created supply-chain items by username. The number of account
         entries returned is specified in 'limit' starting with entry offset 
         specified in 'page'.  
         """

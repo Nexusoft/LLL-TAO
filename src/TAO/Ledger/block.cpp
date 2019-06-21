@@ -371,9 +371,9 @@ namespace TAO
             hashPrevBlock.SetBytes (std::vector<uint8_t>(vData.begin() + 4, vData.begin() + 132));
             hashMerkleRoot.SetBytes(std::vector<uint8_t>(vData.begin() + 132, vData.end() - 20));
 
-            nChannel = convert::bytes2uint(std::vector<uint8_t>(  vData.end() - 20, vData.end() - 16));
-            nHeight  = convert::bytes2uint(std::vector<uint8_t>(  vData.end() - 16, vData.end() - 12));
-            nBits    = convert::bytes2uint(std::vector<uint8_t>(  vData.end() - 12, vData.end() - 8));
+            nChannel = convert::bytes2uint(std::vector<uint8_t>( vData.end() - 20, vData.end() - 16));
+            nHeight  = convert::bytes2uint(std::vector<uint8_t>( vData.end() - 16, vData.end() - 12));
+            nBits    = convert::bytes2uint(std::vector<uint8_t>( vData.end() - 12, vData.end() - 8));
             nNonce   = convert::bytes2uint64(std::vector<uint8_t>(vData.end() -  8, vData.end()));
         }
 

@@ -84,7 +84,7 @@ typedef uint_64t        u64b_t;    /* 64-bit uint32_teger */
 #ifndef Skein_Swap64  /* swap for big-endian, nop for little-endian */
 #if     SKEIN_NEED_SWAP
 #define Skein_Swap64(w64)                       \
-  ( (( ((u64b_t)(w64))       & 0xFF) << 56) |   \
+  (((((u64b_t)(w64))       & 0xFF) << 56) |   \
     (((((u64b_t)(w64)) >> 8) & 0xFF) << 48) |   \
     (((((u64b_t)(w64)) >>16) & 0xFF) << 40) |   \
     (((((u64b_t)(w64)) >>24) & 0xFF) << 32) |   \

@@ -104,7 +104,7 @@ namespace LLP
         try
         {
             /* Attempt to contact the LISP API. */
-            std::string strResponse = LispersAPIRequest( "data/database-mapping");
+            std::string strResponse = LispersAPIRequest("data/database-mapping");
 
             /* Parse items if it succeeded. */
             if(strResponse.length() > 0)

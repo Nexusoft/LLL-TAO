@@ -61,7 +61,7 @@ namespace TAO
                 hashRegister.SetHex(params["register_address"].get<std::string>());
 
                 /* Get the name object based on the register address it points to*/
-                name = Names::GetName( user->Genesis(), hashRegister, hashNameRegister);
+                name = Names::GetName(user->Genesis(), hashRegister, hashNameRegister);
             }
             /* Fail if no required parameters supplied. */
             else
