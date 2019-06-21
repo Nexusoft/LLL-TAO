@@ -288,7 +288,7 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 
 # `get/stakeinfo`
 
-This will retrieve account values and staking metrics for the trust account belonging to the currently logged in signature chain. If called when the stake minter is not running (for multi-user API mode), this method only returns trust account values. Staking metrics will return 0.
+This will retrieve account values and staking metrics for the trust account belonging to the currently logged in signature chain. If called when the stake minter is not running, this method only returns trust account values. Staking metrics will return 0.
 
 
 ### Endpoint:
@@ -310,6 +310,7 @@ This will retrieve account values and staking metrics for the trust account belo
     "balance": 150,
     "stake": 5000,
     "trust": 54322,
+    "staking": true
     "stakerate": 1.97,
     "trustweight": 58.97,
     "blockweight": 47.62,
@@ -320,13 +321,15 @@ This will retrieve account values and staking metrics for the trust account belo
 
 ### Return values:
 
-`address` : The register address of the trust account.  The address is a hash based on the owners username and account name.
+`address` : The register address of the trust account. The address is a hash based on the owners username and account name.
 
 `balance` : The current NXS balance of the trust account. This is general account balance that is not staked.
 
 `stake` : The amount of NXS currently staked in the trust account.
 
 `trust` : The current raw trust score of the trust account.
+
+`staking` : Indicates whether staking is actively running for user account (when false, weight metrics will be 0).
 
 `stakerate` : The current annual reward rate earned for staking as an annual percent.
 
