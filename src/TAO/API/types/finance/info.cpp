@@ -21,6 +21,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake.h>
+
+#include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/tritium_minter.h>
 
 #include <TAO/Register/include/enum.h>
@@ -83,6 +85,9 @@ namespace TAO
             ret["trust"] = nTrustScore;
 
             TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
+
+            /* Return whether stake minter is started and actively running. */
+            ret["staking"] = (bool)(stakeMinter.IsStarted() && trust.hashOwner == user->Genesis());
 
             /* Need the stake minter running for accessing current staking metrics.
              * Verifying current user ownership of trust account is a sanity check.

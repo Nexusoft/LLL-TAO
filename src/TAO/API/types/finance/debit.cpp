@@ -28,6 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/templates/datastream.h>
 
@@ -58,6 +59,9 @@ namespace TAO
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
+
+            /* Lock the signature chain. */
+            LOCK(user->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())

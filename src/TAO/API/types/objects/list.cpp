@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/include/debug.h>
 
@@ -74,7 +75,7 @@ namespace TAO
             if(!ListRegisters(hashGenesis, vRegisters))
                 throw APIException(-24, "No registers found");
 
-            /* We pass false for fLookupName if the requested type is a name of namesace object, 
+            /* We pass false for fLookupName if the requested type is a name of namesace object,
                as those are the edge case that do not have a Name object themselves */
             bool fLookupName = nObjectType != TAO::Register::OBJECTS::NAME && nObjectType != TAO::Register::OBJECTS::NAMESPACE;
 

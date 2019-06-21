@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
+#include <TAO/Ledger/types/sigchain.h>
+
 #include <TAO/Register/include/names.h>
 
 /* Global TAO namespace. */
@@ -145,8 +147,6 @@ namespace TAO
                     if(it.key() != strFieldname)
                         jsonRet.erase(it);
             }
-
-            return jsonRet;
 
             return jsonRet;
         }

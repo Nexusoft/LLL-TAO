@@ -16,8 +16,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 
-#include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/hex.h>
 #include <Util/include/args.h>

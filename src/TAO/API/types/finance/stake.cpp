@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -58,6 +59,9 @@ namespace TAO
             /* Check for amount parameter. */
             if(params.find("amount") == params.end())
                 throw APIException(-25, "Missing Amount. (<amount>)");
+
+            /* Lock the signature chain. */
+            LOCK(user->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
