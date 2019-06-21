@@ -192,7 +192,7 @@ namespace Legacy
         {
             /* Lock wallet so WalletDB can load all data into it */
             //LOCK(cs_wallet);
-            
+
             uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
 
             if (nLoadWalletRet != DB_LOAD_OK)
@@ -533,7 +533,7 @@ namespace Legacy
         Lock();
 
         /* Unlock wallet only to replace key pool. Don't start stake minter for this unlock */
-        Unlock(strWalletPassphrase, 0, false); 
+        Unlock(strWalletPassphrase, 0, false);
 
         /* Replace key pool with encrypted keys */
         {
@@ -1202,7 +1202,7 @@ namespace Legacy
         /* Count the number of transactions process for this wallet to use as return value */
         uint32_t nTransactionCount = 0;
         uint32_t nScannedCount     = 0;
-        uint32_t nScannedBlocks    = 0;
+
         TAO::Ledger::BlockState block;
         if (pstartBlock == nullptr)
             block = TAO::Ledger::ChainState::stateGenesis;
@@ -1211,43 +1211,27 @@ namespace Legacy
 
         runtime::timer timer;
         timer.Start();
-        Legacy::Transaction tx;
-        while (!config::fShutdown.load())
+
+        /* Do a batch read from legacy database. */
+        std::vector<Legacy::Transaction> vtx;
+        if(!LLD::legacyDB->BatchRead("tx", vtx, -1))
+            return 0;
+
+        /* Loop through found transactions. */
+        for(const auto& tx : vtx)
         {
-            /* Output for the debugger. */
-            ++nScannedBlocks;
+            /* Add to the wallet */
+            if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
+                ++nTransactionCount;
 
-            /* Meter to know the progress. */
-            if(nScannedBlocks % 10000 == 0)
-                debug::log(0, FUNCTION, nScannedBlocks, " blocks processed");
-
-            /* Scan each transaction in the block and process those related to this wallet */
-            for(const auto& item : block.vtx)
-            {
-                if (item.first == TAO::Ledger::LEGACY_TX)
-                {
-                    /* Read transaction from database */
-                    if (!LLD::legacyDB->ReadTx(item.second, tx))
-                        continue;
-
-                    /* Add to the wallet */
-                    if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
-                        ++nTransactionCount;
-
-                    /* Update the scanned count for meters. */
-                    ++nScannedCount;
-                }
-            }
-
-            /* Move to next block. Will return false when reach end of chain, ending the while loop */
-            block = block.Next();
-            if(!block)
-                break;
+            /* Update the scanned count for meters. */
+            ++nScannedCount;
         }
 
-        int32_t nElapsedSeconds = timer.Elapsed();
+        /* Get the time it took to rescan. */
+        uint32_t nElapsedSeconds = timer.Elapsed();
         debug::log(0, FUNCTION, "Processed ", nTransactionCount,
-            " transactions, ", nScannedBlocks, " blocks in ", nElapsedSeconds, " seconds (", 
+            " tx in ", nElapsedSeconds, " seconds (",
             std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
 
         return nTransactionCount;
@@ -1388,7 +1372,7 @@ namespace Legacy
                 /* Handle when Transaction on chain records output as unspent but wallet accounting has it as spent */
                 if (walletTx.IsSpent(n) && !isSpentOnChain)
                 {
-                    debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20), 
+                    debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20),
                         "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
 
                     ++nMismatchFound;
