@@ -81,18 +81,17 @@ namespace TAO
 	            obj["stakeweight"] = 0;
 			}
 
-            obj["txtotal"] =(int)Legacy::Wallet::GetInstance().mapWallet.size();
+            obj["txtotal"] = (int32_t)Legacy::Wallet::GetInstance().mapWallet.size();
 
-            obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
+            obj["blocks"] = (int32_t)TAO::Ledger::ChainState::nBestHeight.load();
 
-            obj["timestamp"] =  (int)runtime::unifiedtimestamp();
-            obj["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
-
+            obj["timestamp"] =  (uint64_t)runtime::unifiedtimestamp();
+            obj["offset"]    =  (int32_t)UNIFIED_AVERAGE_OFFSET.load();
             obj["connections"] = GetTotalConnectionCount();
 
             obj["syncnode"]    = LLP::LegacyNode::addrFastSync.load().ToStringIP();
-            obj["syncaverage"] = (int)LLP::LegacyNode::nFastSyncAverage;
-            obj["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
+            obj["syncaverage"] = (int32_t)LLP::LegacyNode::nFastSyncAverage;
+            obj["synccomplete"] = (int32_t)TAO::Ledger::ChainState::PercentSynchronized();
 
             obj["proxy"] = (config::fUseProxy ? LLP::addrProxy.ToString() : std::string());
 
@@ -106,7 +105,7 @@ namespace TAO
                 }
                 obj["eids"] = jsonEIDs;
             }
-            
+
 
 
 
@@ -212,9 +211,9 @@ namespace TAO
             if( TAO::Ledger::ChainState::nBestHeight.load() && TAO::Ledger::ChainState::stateBest.load() != TAO::Ledger::ChainState::stateGenesis)
             {
                 double nPrimeAverageDifficulty = 0.0;
-                unsigned int nPrimeAverageTime = 0;
-                unsigned int nPrimeTimeConstant = 2480;
-                int nTotal = 0;
+                uint32_t nPrimeAverageTime = 0;
+                uint32_t nPrimeTimeConstant = 2480;
+                int32_t nTotal = 0;
                 TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest.load();
 
                 bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
@@ -244,8 +243,8 @@ namespace TAO
 
 
                 // Hash
-                int nHTotal = 0;
-                unsigned int nHashAverageTime = 0;
+                int32_t nHTotal = 0;
+                uint32_t nHashAverageTime = 0;
                 double nHashAverageDifficulty = 0.0;
                 uint64_t nTimeConstant = 276758250000;
 
@@ -279,8 +278,8 @@ namespace TAO
             }
 
             json::json obj;
-            obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
-            obj["timestamp"] = (int)runtime::unifiedtimestamp();
+            obj["blocks"] = (int32_t)TAO::Ledger::ChainState::nBestHeight.load();
+            obj["timestamp"] = (int32_t)runtime::unifiedtimestamp();
 
             //PS TODO
             //obj["currentblocksize"] = (uint64_t)Core::nLastBlockSize;
@@ -304,9 +303,15 @@ namespace TAO
                 debug::error(FUNCTION, "couldn't find last hash block state");
 
 
-            obj["stakeDifficulty"] = fHasStake ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 0, false), 0) : 0;
-            obj["primeDifficulty"] = fHasPrime ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1) : 0;
-            obj["hashDifficulty"] = fHasHash ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2) : 0;
+            obj["stakeDifficulty"] = fHasStake ?
+                TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 0, false), 0) : 0;
+
+            obj["primeDifficulty"] = fHasPrime ?
+                TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1) : 0;
+
+            obj["hashDifficulty"] = fHasHash ?
+                TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2) : 0;
+
             obj["primeReserve"] =    Legacy::SatoshisToAmount(lastPrimeBlockState.nReleasedReserve[0]);
             obj["hashReserve"] =     Legacy::SatoshisToAmount(lastHashBlockState.nReleasedReserve[0]);
             obj["primeValue"] =        Legacy::SatoshisToAmount(TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), 1, 0));

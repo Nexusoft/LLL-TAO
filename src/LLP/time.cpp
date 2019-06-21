@@ -16,9 +16,11 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
 
+/* The location of the unified time seed. To enable a Unified Time System push data to this variable. */
+std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
+
 namespace LLP
 {
-
     std::map<std::string, int32_t> MAP_TIME_DATA;
 
     /* Virtual Functions to Determine Behavior of Message LLP. */
@@ -164,7 +166,7 @@ namespace LLP
                     UNIFIED_AVERAGE_OFFSET.store(UNIFIED_MAJORITY.Majority());
 
                     /* Log the debug output. */
-                    debug::log(0, NODE, MAP_TIME_DATA.size(), " Total Samples | ", nSamples.Majority(), " Offset (", TOTAL_SAMPLES[nSamples.Majority()], ") | ", UNIFIED_AVERAGE_OFFSET, " Majority (", TOTAL_SAMPLES[UNIFIED_AVERAGE_OFFSET], ") | ", runtime::unifiedtimestamp());
+                    debug::log(0, NODE, MAP_TIME_DATA.size(), " Total Samples | ", nSamples.Majority(), " Offset (", TOTAL_SAMPLES[nSamples.Majority()], ") | ", UNIFIED_AVERAGE_OFFSET.load(), " Majority (", TOTAL_SAMPLES[UNIFIED_AVERAGE_OFFSET.load()], ") | ", runtime::unifiedtimestamp());
                 }
 
                 nSamples.clear();

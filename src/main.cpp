@@ -395,7 +395,7 @@ int main(int argc, char** argv)
         10,
         config::GetBoolArg(std::string("-unified"), false),
         config::GetBoolArg(std::string("-meters"), false),
-        config::GetBoolArg(std::string("-manager"), true),
+        true,
         30000);
 
 
