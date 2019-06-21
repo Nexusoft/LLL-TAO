@@ -87,7 +87,7 @@ namespace TAO
             uint1056_t a(nComposite);
             uint1056_t b(FermatTest(nComposite));
 
-            return ( (a - b << 24) / a).getuint32();
+            return ((a - b << 24) / a).getuint32();
     	}
 
 

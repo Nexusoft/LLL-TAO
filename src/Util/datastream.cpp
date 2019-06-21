@@ -44,7 +44,7 @@ DataStream::DataStream(const std::vector<uint64_t>& vchDataIn, const uint32_t nS
 
 
 /*  Default constructor for initialization with serialize data, type and version */
-DataStream::DataStream( const std::vector<uint8_t>::const_iterator pbegin,
+DataStream::DataStream(const std::vector<uint8_t>::const_iterator pbegin,
             const std::vector<uint8_t>::const_iterator pend,
             const uint32_t nSerTypeIn, const uint32_t nSerVersionIn)
 : vData(pbegin, pend)

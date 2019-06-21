@@ -326,7 +326,7 @@ namespace TAO
 
             /* Iterate data map and pull field names out into return vector */
             for(const auto& fieldName : mapData)
-                vFieldNames.push_back( fieldName.first);
+                vFieldNames.push_back(fieldName.first);
 
             return vFieldNames;
         }

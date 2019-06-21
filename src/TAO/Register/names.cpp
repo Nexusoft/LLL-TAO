@@ -61,11 +61,11 @@ namespace TAO
 
             /* Read the Name Object */
             if(!LLD::Register->ReadState(hashAddress, nameRegister, TAO::Ledger::FLAGS::MEMPOOL))
-                return debug::error( FUNCTION, "Name register not found: ", strName);
+                return debug::error(FUNCTION, "Name register not found: ", strName);
 
             /* Check that the name object is proper type. */
             if(nameRegister.nType != TAO::Register::REGISTER::OBJECT)
-                return debug::error( FUNCTION, "Name register not an object: ", strName);
+                return debug::error(FUNCTION, "Name register not an object: ", strName);
 
             /* Parse the object. */
             if(!nameRegister.Parse())
@@ -87,11 +87,11 @@ namespace TAO
 
             /* Read the Name Object */
             if(!LLD::Register->ReadState(hashAddress, namespaceRegister, TAO::Ledger::FLAGS::MEMPOOL))
-                return debug::error( FUNCTION, "Namespace register not found: ", strNamespace);
+                return debug::error(FUNCTION, "Namespace register not found: ", strNamespace);
 
             /* Check that the name object is proper type. */
             if(namespaceRegister.nType != TAO::Register::REGISTER::OBJECT)
-                return debug::error( FUNCTION, "Namespace register not an object: ", strNamespace);
+                return debug::error(FUNCTION, "Namespace register not an object: ", strNamespace);
 
             /* Parse the object. */
             if(!namespaceRegister.Parse())

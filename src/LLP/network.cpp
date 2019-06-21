@@ -34,7 +34,7 @@ namespace LLP
             debug::error(FUNCTION, "TCP/IP socket library failed to start (WSAStartup returned error ", ret, ") ");
             return false;
         }
-        else if(LOBYTE( wsaData.wVersion) != 2 || HIBYTE( wsaData.wVersion) != 2)
+        else if(LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2)
         {
             /* Winsock version incorrect */
             debug::error(FUNCTION, "Windows sockets does not support requested version 2.2");

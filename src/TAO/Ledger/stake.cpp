@@ -51,13 +51,6 @@ namespace TAO
         }
 
 
-        /* Retrieve the setting for maximum trust score value allowed. */
-        uint64_t MaxTrustScore()
-        {
-            return (uint64_t)(config::fTestNet.load() ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX);
-        }
-
-
         /* Retrieve the setting for minimum coin age required to begin staking Genesis.*/
         uint64_t MinCoinAge()
         {
@@ -93,13 +86,12 @@ namespace TAO
         uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge)
         {
             uint64_t nTrust = 0;
-            uint64_t nTrustMax = MaxTrustScore();
             uint64_t nBlockAgeMax = MaxBlockAge();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
             if(nBlockAge <= nBlockAgeMax)
             {
-                nTrust = std::min((nTrustPrev + nBlockAge), nTrustMax);
+                nTrust = nTrustPrev + nBlockAge;
             }
             else
             {
@@ -114,10 +106,6 @@ namespace TAO
                 else
                     nTrust = 0;
             }
-
-            /* Double check that the trust score cannot exceed the maximum */
-            if(nTrust > nTrustMax)
-                nTrust = nTrustMax;
 
             return nTrust;
         }
@@ -220,9 +208,9 @@ namespace TAO
         {
 
             /* Block Weight reaches maximum of 10.0 when Block Age equals the max block age */
-            double nBlockAgeRatio = (double)nBlockAge / (double)MaxBlockAge();
+            double nBlockRatio = (double)nBlockAge / (double)MaxBlockAge();
 
-            return std::min(10.0, (9.0 * log((2.0 * nBlockAgeRatio) + 1.0) / LOG3) + 1.0);
+            return std::min(10.0, (9.0 * log((2.0 * nBlockRatio) + 1.0) / LOG3) + 1.0);
         }
 
 
@@ -232,9 +220,9 @@ namespace TAO
             /* Trust Weight For Genesis is based on Coin Age. Genesis trust weight is less than normal trust weight,
              * reaching a maximum of 10.0 after average Coin Age reaches trust weight base.
              */
-            double nGenesisTrustRatio = (double)nCoinAge / (double)TrustWeightBase();
+            double nWeightRatio = (double)nCoinAge / (double)TrustWeightBase();
 
-            return std::min(10.0, (9.0 * log((2.0 * nGenesisTrustRatio) + 1.0) / LOG3) + 1.0);
+            return std::min(10.0, (9.0 * log((2.0 * nWeightRatio) + 1.0) / LOG3) + 1.0);
         }
 
 
@@ -245,9 +233,9 @@ namespace TAO
              * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base),
              * while requiring close to a year to reach maximum.
              */
-            double nTrustWeightRatio = (double)nTrust / (double)TrustWeightBase();
+            double nWeightRatio = (double)nTrust / (double)TrustWeightBase();
 
-            return std::min(90.0, (44.0 * log((2.0 * nTrustWeightRatio) + 1.0) / LOG3) + 1.0);
+            return std::min(90.0, (44.0 * log((2.0 * nWeightRatio) + 1.0) / LOG3) + 1.0);
         }
 
 
@@ -275,10 +263,10 @@ namespace TAO
             if(isGenesis)
                 return 0.005;
 
-            /* Stake rate starts at 0.005 (0.5%) and grows to 0.03 (3%) when trust score reaches maximum */
-            double nTrustScoreRatio = (double)nTrust / (double)MaxTrustScore();
+            /* Stake rate starts at 0.005 (0.5%) and grows to 0.03 (3%) when trust score reaches or exceeds one year */
+            double nTrustRatio = (double)nTrust / (double)ONE_YEAR;
 
-            return std::min(0.03, (0.025 * log((9.0 * nTrustScoreRatio) + 1.0) / LOG10) + 0.005);
+            return std::min(0.03, (0.025 * log((9.0 * nTrustRatio) + 1.0) / LOG10) + 0.005);
         }
 
 
@@ -288,15 +276,18 @@ namespace TAO
 
             double nStakeRate = StakeRate(nTrust, isGenesis);
 
-            /* Reward rate for time period is annual rate * (time period / annual time) or nStakeRate * (nStakeTime / MaxTrustScore)
+            /* Reward rate for time period is annual rate * (time period / annual time) or nStakeRate * (nStakeTime / ONE_YEAR)
              * Then, overall nStakeReward = nStake * reward rate
              *
-             * Thus, the appropriate way to write this (for clarity) would be: nStakeReward = nStake * nStakeRate * (nStakeTime / MaxTrustScore)
-             * However, with integer arithmetic (nStakeTime / MaxTrustScore) would evaluate to 0 or 1, etc. and the overall nStakeReward would be erroneous
+             * Thus, the appropriate way to write this (for clarity) would be:
+             *      StakeReward = nStake * nStakeRate * (nStakeTime / ONE_YEAR)
              *
-             * Therefore, we apply parentheses around the full multiplication portion before applying the division to get appropriate reward.
+             * However, with integer arithmetic (nStakeTime / ONE_YEAR) would evaluate to 0 or 1, etc. and the nStakeReward
+             * would be erroneous.
+             *
+             * Therefore, it performs the full multiplication portion first.
              */
-            uint64_t nStakeReward = (nStake * nStakeRate * nStakeTime) / MaxTrustScore();
+            uint64_t nStakeReward = (nStake * nStakeRate * nStakeTime) / ONE_YEAR;
 
             return nStakeReward;
         }
