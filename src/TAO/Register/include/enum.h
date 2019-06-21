@@ -84,7 +84,7 @@ namespace TAO
             enum
             {
                 /* Non-Standard Object (User Defined Type). */
-                NONSTANDARD  = 0,
+                NONSTANDARD  = 1,
 
                 /* Account Object Register. */
                 ACCOUNT      = 2,
