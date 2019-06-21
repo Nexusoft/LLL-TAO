@@ -520,8 +520,10 @@ namespace LLD
         /* Create the new Database Transaction Object. */
         pTransaction = new SectorTransaction();
 
-        /* Release the journal file. */
-        TxnRelease();
+        /* Create an append only stream. */
+        STREAM = std::ofstream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
+        if(!STREAM.is_open())
+            throw std::runtime_error("Failed to open Journal File");
     }
 
     /* Rollback the transaction to previous state. */
@@ -589,19 +591,14 @@ namespace LLD
     {
         LOCK(TRANSACTION_MUTEX);
 
-        /* Create an append only stream. */
-        std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
-        if(!stream.is_open())
-            return false;
-
         /* Serialize the key. */
         DataStream ssJournal(SER_LLD, DATABASE_VERSION);
         ssJournal << std::string("commit");
 
         /* Write to the file.  */
         const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
-        stream.write((char*)&vBytes[0], vBytes.size());
-        stream.close();
+        STREAM.write((char*)&vBytes[0], vBytes.size());
+        STREAM.close();
 
         return true;
     }
@@ -612,9 +609,8 @@ namespace LLD
     void SectorDatabase<KeychainType, CacheType>::TxnRelease()
     {
         /* Delete the transaction journal file. */
-        std::string strPath = debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat");
-        if(filesystem::exists(strPath))
-            filesystem::remove(strPath);
+        std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::trunc);
+        stream.close();
     }
 
 
@@ -631,19 +627,19 @@ namespace LLD
         /* Erase data set to be removed. */
         for(const auto& item : pTransaction->mapEraseData)
             if(!pSectorKeys->Erase(item.first))
-                assert(debug::error(FUNCTION, "failed to erase from keychain"));
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to erase from keychain"));
 
         /* Commit the sector data. */
         for(const auto& item : pTransaction->mapTransactions)
             if(!Force(item.first, item.second))
-                assert(debug::error(FUNCTION, "failed to commit sector data"));
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to commit sector data"));
 
         /* Commit keychain entries. */
         for(const auto& item : pTransaction->mapKeychain)
         {
             SectorKey cKey(STATE::READY, item.first, 0, 0, 0);
             if(!pSectorKeys->Put(cKey))
-                assert(debug::error(FUNCTION, "failed to commit to keychain"));
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to commit to keychain"));
         }
 
         /* Commit the index data. */
@@ -657,7 +653,7 @@ namespace LLD
             else
             {
                 if(!pSectorKeys->Get(item.second, cKey))
-                    assert(debug::error(FUNCTION, "failed to read indexing entry"));
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read indexing entry"));
 
                 mapIndex[item.second] = cKey;
             }
@@ -665,7 +661,7 @@ namespace LLD
             /* Write the new sector key. */
             cKey.SetKey(item.first);
             if(!pSectorKeys->Put(cKey))
-                assert(debug::error(FUNCTION, "failed to write indexing entry"));
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to write indexing entry"));
         }
 
         /* Cleanup the transaction object. */
@@ -690,6 +686,12 @@ namespace LLD
 
         /* Get the data buffer. */
         uint32_t nSize = static_cast<uint32_t>(stream.gcount());
+
+        /* Check journal size for 0. */
+        if(nSize == 0)
+            return false;
+
+        /* Create buffer to read into. */
         std::vector<uint8_t> vBuffer(nSize, 0);
 
         /* Read the keychain file. */

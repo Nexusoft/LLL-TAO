@@ -92,6 +92,9 @@ namespace LLD
         /* The condition for thread sleeping. */
         std::condition_variable CONDITION;
 
+        /* Transaction file stream. */
+        std::ofstream STREAM;
+
     protected:
         /* Mutex for Thread Synchronization.
             TODO: Lock Mutex based on Read / Writes on a per Sector Basis.
@@ -268,17 +271,13 @@ namespace LLD
 
                 if(pTransaction)
                 {
-                    /* Create an append only stream. */
-                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
-
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
                     ssJournal << std::string("erase") << ssKey.Bytes();
 
                     /* Write to the file.  */
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
-                    stream.write((char*)&vBytes[0], vBytes.size());
-                    stream.close();
+                    STREAM.write((char*)&vBytes[0], vBytes.size());
 
                     /* Erase the transaction data. */
                     pTransaction->EraseTransaction(ssKey.Bytes());
@@ -384,17 +383,13 @@ namespace LLD
 
                 if(pTransaction)
                 {
-                    /* Create an append only stream. */
-                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
-
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
                     ssJournal << std::string("index") << ssKey.Bytes() << ssIndex.Bytes();
 
                     /* Write to the file.  */
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
-                    stream.write((char*)&vBytes[0], vBytes.size());
-                    stream.close();
+                    STREAM.write((char*)&vBytes[0], vBytes.size());
 
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                     pTransaction->mapIndex[ssKey.Bytes()] = ssIndex.Bytes();
@@ -439,17 +434,13 @@ namespace LLD
 
                 if(pTransaction)
                 {
-                    /* Create an append only stream. */
-                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::app | std::ios::binary);
-
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
                     ssJournal << std::string("key") << ssKey.Bytes();
 
                     /* Write to the file.  */
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
-                    stream.write((char*)&vBytes[0], vBytes.size());
-                    stream.close();
+                    STREAM.write((char*)&vBytes[0], vBytes.size());
 
                     /* Check if data is in erase queue, if so remove it. */
                     if(pTransaction->mapEraseData.count(ssKey.Bytes()))
@@ -498,9 +489,6 @@ namespace LLD
 
                 if(pTransaction)
                 {
-                    /* Create an append only stream. */
-                    std::ofstream stream(debug::safe_printstr(config::GetDataDir(),
-                        strName, "/journal.dat"), std::ios::app | std::ios::binary);
 
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
@@ -508,8 +496,7 @@ namespace LLD
 
                     /* Write to the file.  */
                     const std::vector<uint8_t>& vBytes = ssJournal.Bytes();
-                    stream.write((char*)&vBytes[0], vBytes.size());
-                    stream.close();
+                    STREAM.write((char*)&vBytes[0], vBytes.size());
 
                     /* Check if data is in erase queue, if so remove it. */
                     if(pTransaction->mapEraseData.count(ssKey.Bytes()))
