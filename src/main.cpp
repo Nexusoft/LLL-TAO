@@ -399,20 +399,21 @@ int main(int argc, char** argv)
         30000);
 
 
-    /** Handle the beta server. */
-    if(!config::GetBoolArg(std::string("-beta")))
-    {
-        /* Get the port for Tritium Server. */
-        port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? 8888 : 9888));
+    // No tritium server for initial release
+    // /** Handle the beta server. */
+    // if(!config::GetBoolArg(std::string("-beta")))
+    // {
+    //     /* Get the port for Tritium Server. */
+    //     port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? 8888 : 9888));
 
-        /* Initialize the Tritium Server. */
-        LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(port);
+    //      Initialize the Tritium Server.
+    //     LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(port);
 
-        /* Handle Manual Connections from Command Line, if there are any. */
-        LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
-    }
-    else
-    {
+    //     /* Handle Manual Connections from Command Line, if there are any. */
+    //     LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
+    // }
+    // else
+    // {
         /* Get the port for Legacy Server. */
         port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? 8323 : 9323));
 
@@ -421,7 +422,7 @@ int main(int argc, char** argv)
 
         /* Handle Manual Connections from Command Line, if there are any. */
         LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
-    }
+    // }
 
 
     /* Get the port for the Core API Server. */
@@ -461,10 +462,10 @@ int main(int argc, char** argv)
     /* Set up Mining Server */
     if(config::GetBoolArg(std::string("-mining")))
     {
-      if(config::GetBoolArg(std::string("-beta")))
+      // if(config::GetBoolArg(std::string("-beta")))
           LEGACY_MINING_SERVER  = LLP::CreateMiningServer<LLP::LegacyMiner>();
-      else
-          TRITIUM_MINING_SERVER = LLP::CreateMiningServer<LLP::TritiumMiner>();
+      // else
+      //     TRITIUM_MINING_SERVER = LLP::CreateMiningServer<LLP::TritiumMiner>();
     }
 
     /* cache the EIDs and RLOCs if using LISP so that we don't need to hit the lispers.net API

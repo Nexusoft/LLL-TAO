@@ -139,13 +139,14 @@ namespace Legacy
         	return false;
         }
 
-        /* Disable stake minter if not in beta mode. */
-        if(!config::GetBoolArg("-beta"))
-        {
-            debug::error(FUNCTION, "Stake minter disabled if not in -beta mode");
+        //beta mode removed for release
+        // /* Disable stake minter if not in beta mode. */
+        // if(!config::GetBoolArg("-beta"))
+        // {
+        //     debug::error(FUNCTION, "Stake minter disabled if not in -beta mode");
 
-            return false;
-        }
+        //     return false;
+        // }
 
     	/* Check that stake minter is configured to run.
     	 * Stake Minter default is to run for non-server and not to run for server
