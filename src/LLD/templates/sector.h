@@ -399,6 +399,10 @@ namespace LLD
                             if(nStart + nBufferSize > nFileSize)
                                 nBufferSize = (nFileSize - nStart);
 
+                            /* Check for end. */
+                            if(nBufferSize == 0)
+                                return (vValues.size() > 0);
+
                             /* Seek stream to beginning. */
                             pstream->seekg(nStart, std::ios::beg);
                             ssData.resize(ssData.size() + nBufferSize);
@@ -560,6 +564,10 @@ namespace LLD
                             /* Check for exceeding of buffer size. */
                             if(nStart + nBufferSize > nFileSize)
                                 nBufferSize = (nFileSize - nStart);
+
+                            /* Check for end. */
+                            if(nBufferSize == 0)
+                                return (vValues.size() > 0);
 
                             /* Seek stream to beginning. */
                             pstream->seekg(nStart, std::ios::beg);
