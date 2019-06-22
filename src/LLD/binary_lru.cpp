@@ -300,15 +300,37 @@ namespace LLD
         }
 
         /* Create a new cache node. */
-        pthis = new BinaryNode(vKey, vData);
-        nChecksum = pthis->Checksum();
+        BinaryNode* pnew = new BinaryNode(vKey, vData);
+        nChecksum = pnew->Checksum();
+
+        /* Get the bucket. */
+        nBucket = Bucket(nChecksum);
+        pthis   = hashmap[nBucket];
+
+        /* Cleanup if colliding with another bucket. */
+        if(pthis != nullptr)
+        {
+            /* Remove from the linked list. */
+            RemoveNode(pthis);
+
+            /* Dereference the pointers. */
+            hashmap[nBucket]           = nullptr;
+            pthis->pprev               = nullptr;
+            pthis->pnext               = nullptr;
+
+            /* Reduce the current size. */
+            nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
+
+            /* Free the memory. */
+            delete pthis;
+        }
 
         /* Add cache node to objects map. */
-        hashmap[nBucket]           = pthis;
-        checksums[Bucket(vKey)]    = nChecksum;
+        hashmap[nBucket]            = pnew;
+        checksums[Bucket(vKey)]     = nChecksum;
 
         /* Set the new cache node to the front */
-        MoveToFront(pthis);
+        MoveToFront(pnew);
 
         /* Remove the last node if cache too large. */
         if(nCurrentSize > MAX_CACHE_SIZE)
