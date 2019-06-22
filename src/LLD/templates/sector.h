@@ -920,14 +920,6 @@ namespace LLD
         void TxnRollback();
 
 
-        /** TxnAbort
-         *
-         *  Abort a transaction from happening.
-         *
-         **/
-        void TxnAbort();
-
-
         /** TxnCheckpoint
          *
          *  Write the transaction commitment message.

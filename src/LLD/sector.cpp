@@ -584,24 +584,6 @@ namespace LLD
      }
 
 
-    /*  Abort a transaction from happening. */
-    template<class KeychainType, class CacheType>
-    void SectorDatabase<KeychainType, CacheType>::TxnAbort()
-    {
-        LOCK(TRANSACTION_MUTEX);
-
-        /** Delete the previous transaction pointer if applicable. **/
-        if(pTransaction)
-            delete pTransaction;
-
-        /** Set the transaction pointer to null also acting like a flag **/
-        pTransaction = nullptr;
-
-        /* Release the journal file. */
-        TxnRelease();
-    }
-
-
     /*  Write the transaction commitment message. */
     template<class KeychainType, class CacheType>
     bool SectorDatabase<KeychainType, CacheType>::TxnCheckpoint()
@@ -626,6 +608,13 @@ namespace LLD
     void SectorDatabase<KeychainType, CacheType>::TxnRelease()
     {
         LOCK(TRANSACTION_MUTEX);
+
+        /** Delete the previous transaction pointer if applicable. **/
+        if(pTransaction)
+            delete pTransaction;
+
+        /** Set the transaction pointer to null also acting like a flag **/
+        pTransaction = nullptr;
 
         /* Delete the transaction journal file. */
         std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::trunc);

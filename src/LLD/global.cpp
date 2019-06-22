@@ -100,19 +100,19 @@ namespace LLD
     void TxnAbort()
     {
         /* Abort the register DB transaction. */
-        regDB->TxnAbort();
+        regDB->TxnRelease();
 
         /* Abort the ledger DB transaction. */
-        legDB->TxnAbort();
+        legDB->TxnRelease();
 
         /* Abort the local DB transaction. */
-        locDB->TxnAbort();
+        locDB->TxnRelease();
 
         /* Abort the trust DB transaction. */
-        trustDB->TxnAbort();
+        trustDB->TxnRelease();
 
         /* Abort the legacy DB transaction. */
-        legacyDB->TxnAbort();
+        legacyDB->TxnRelease();
     }
 
 
