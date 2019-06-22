@@ -92,6 +92,13 @@ public:
     DataStream(const std::vector<char>& vchDataIn, const uint32_t nSerTypeIn, const uint32_t nSerVersionIn);
 
 
+    /** Destructor. */
+    ~DataStream()
+    {
+        std::vector<uint8_t>().swap(vData);
+    }
+
+
     /** SetType
      *
      *  Sets the type of stream.

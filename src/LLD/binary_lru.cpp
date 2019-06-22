@@ -87,7 +87,7 @@ namespace LLD
     {
         /* Loop through the linked list. */
         for(auto& item : hashmap)
-            if(item)
+            if(item != nullptr)
                 delete item;
     }
 
@@ -272,45 +272,36 @@ namespace LLD
 
         /* Check for empty slot. */
         uint64_t nChecksum = checksums[Bucket(vKey)];
-        if(nChecksum != 0)
-        {
-            /* Check the checksums. */
-            if(nChecksum == Checksum(vData))
-                return;
 
-            /* Get the binary node. */
-            uint32_t nBucket  = Bucket(nChecksum);
-            BinaryNode* pthis = hashmap[nBucket];
-
-            /* Check for dereferencing nullptr. */
-            if(pthis != nullptr)
-            {
-                /* Remove from the linked list. */
-                RemoveNode(pthis);
-
-                /* Dereference the pointers. */
-                hashmap[Bucket(pthis)]     = nullptr;
-                pthis->pprev               = nullptr;
-                pthis->pnext               = nullptr;
-
-                /* Reduce the current size. */
-                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 8);
-
-                /* Free the memory. */
-                delete pthis;
-            }
-        }
+        /* Check the checksums. */
+        if(nChecksum == Checksum(vData))
+            return;
 
         /* Get the binary node. */
         uint32_t nBucket  = Bucket(nChecksum);
+        BinaryNode* pthis = hashmap[nBucket];
+
+        /* Check for dereferencing nullptr. */
+        if(pthis != nullptr)
+        {
+            /* Remove from the linked list. */
+            RemoveNode(pthis);
+
+            /* Dereference the pointers. */
+            hashmap[nBucket]           = nullptr;
+            pthis->pprev               = nullptr;
+            pthis->pnext               = nullptr;
+
+            /* Reduce the current size. */
+            nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
+
+            /* Free the memory. */
+            delete pthis;
+        }
 
         /* Create a new cache node. */
-        BinaryNode* pthis = new BinaryNode(vKey, vData);
+        pthis = new BinaryNode(vKey, vData);
         nChecksum = pthis->Checksum();
-
-        /* Check for lingering pointers. */
-        if(hashmap[nBucket])
-            delete hashmap[nBucket];
 
         /* Add cache node to objects map. */
         hashmap[nBucket]           = pthis;
@@ -347,13 +338,13 @@ namespace LLD
             pnode->pnext = nullptr;
 
             /* Free the memory */
-            nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() + 8);
+            nCurrentSize -= static_cast<uint32_t>(pnode->vData.size() + 48);
 
             delete pnode;
         }
 
         /* Set the new cache size. */
-        nCurrentSize += static_cast<uint32_t>(vData.size());
+        nCurrentSize += static_cast<uint32_t>(vData.size() + 48);
     }
 
 

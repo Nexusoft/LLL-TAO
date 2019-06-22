@@ -1214,24 +1214,36 @@ namespace Legacy
 
         /* Do a batch read from legacy database. */
         std::vector<Legacy::Transaction> vtx;
-        if(!LLD::legacyDB->BatchRead("tx", vtx, -1))
+        if(!LLD::legacyDB->BatchRead("tx", vtx, 1000))
             return 0;
 
-        /* Loop through found transactions. */
-        for(const auto& tx : vtx)
+        /* Loop in batches of 1000 until finished. */
+        uint512_t hashLast = vtx.back().GetHash();
+        do
         {
-            /* Add to the wallet */
-            if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
-                ++nTransactionCount;
+            /* Loop through found transactions. */
+            for(const auto& tx : vtx)
+            {
+                /* Add to the wallet */
+                if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
+                    ++nTransactionCount;
 
-            /* Update the scanned count for meters. */
-            ++nScannedCount;
-        }
+                /* Update the scanned count for meters. */
+                ++nScannedCount;
+            }
+
+            /* Set hash Last. */
+            hashLast = vtx.back().GetHash();
+
+            /* Clear the transactions. */
+            vtx.clear();
+
+        } while(!config::fShutdown.load() && LLD::legacyDB->BatchRead(std::make_pair(std::string("tx"), hashLast), "tx", vtx, 1000));
 
         /* Get the time it took to rescan. */
         uint32_t nElapsedSeconds = timer.Elapsed();
         debug::log(0, FUNCTION, "Processed ", nTransactionCount,
-            " tx in ", nElapsedSeconds, " seconds (",
+            " tx of ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
             std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
 
         return nTransactionCount;

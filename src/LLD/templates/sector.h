@@ -354,10 +354,12 @@ namespace LLD
                     {
                         /* Read compact size. */
                         uint64_t nSize = ReadCompactSize(ssData);
+                        if(nSize == 0)
+                            continue;
 
                         /* Check for failures or serialization issues. */
-                        if(nSize == 0 || (nPos + nSize + GetSizeOfCompactSize(nSize)) > nFileSize)
-                            return (vValues.size() > 0);
+                        if(nPos + nSize + GetSizeOfCompactSize(nSize) > nFileSize)
+                            break;
 
                         /* Deserialize the String. */
                         std::string strThis;
@@ -398,7 +400,7 @@ namespace LLD
 
                             /* Check for end. */
                             if(nBufferSize == 0)
-                                return (vValues.size() > 0);
+                                break;
 
                             /* Seek stream to beginning. */
                             stream.seekg(nStart, std::ios::beg);
@@ -517,10 +519,12 @@ namespace LLD
                     {
                         /* Read compact size. */
                         uint64_t nSize = ReadCompactSize(ssData);
+                        if(nSize == 0)
+                            continue;
 
                         /* Check for failures or serialization issues. */
-                        if(nSize == 0 || (nPos + nSize + GetSizeOfCompactSize(nSize)) > nFileSize)
-                            return (vValues.size() > 0);
+                        if((nPos + nSize + GetSizeOfCompactSize(nSize)) > nFileSize)
+                            break;
 
                         /* Deserialize the String. */
                         std::string strThis;
@@ -561,7 +565,7 @@ namespace LLD
 
                             /* Check for end. */
                             if(nBufferSize == 0)
-                                return (vValues.size() > 0);
+                                break;
 
                             /* Seek stream to beginning. */
                             stream.seekg(nStart, std::ios::beg);
