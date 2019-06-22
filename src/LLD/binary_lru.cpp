@@ -301,12 +301,19 @@ namespace LLD
             }
         }
 
+        /* Get the binary node. */
+        uint32_t nBucket  = Bucket(nChecksum);
+
         /* Create a new cache node. */
         BinaryNode* pthis = new BinaryNode(vKey, vData);
         nChecksum = pthis->Checksum();
 
+        /* Check for lingering pointers. */
+        if(hashmap[nBucket])
+            delete hashmap[nBucket];
+
         /* Add cache node to objects map. */
-        hashmap[Bucket(nChecksum)] = pthis;
+        hashmap[nBucket]           = pthis;
         checksums[Bucket(vKey)]    = nChecksum;
 
         /* Set the new cache node to the front */
