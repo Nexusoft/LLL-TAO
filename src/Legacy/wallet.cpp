@@ -1885,6 +1885,8 @@ namespace Legacy
     /* Add inputs (and output amount with reward) to the coinstake txin for a coinstake block */
     bool Wallet::AddCoinstakeInputs(LegacyBlock& block)
     {
+        const uint32_t nMinimumCoinAge = (config::fTestNet ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE);
+
         /* Add Each Input to Transaction. */
         std::vector<WalletTx> vAllWalletTx;
         std::vector<WalletTx> vInputWalletTx;
@@ -1913,7 +1915,6 @@ namespace Legacy
                 continue;
 
             /* Do not add coins to Genesis block if age less than trust timestamp */
-            uint32_t nMinimumCoinAge = (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN);
             if (block.vtx[0].IsGenesis() && (block.vtx[0].nTime - walletTx.nTime) < nMinimumCoinAge)
                 continue;
 
