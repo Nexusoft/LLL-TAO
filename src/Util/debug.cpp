@@ -347,10 +347,7 @@ namespace debug
 
         /* Create the debug archive folder if it doesn't exist. */
         if(!filesystem::exists(strLogFolder))
-        {
             filesystem::create_directory(strLogFolder);
-            printf("created debug folder directory\n");
-        }
 
 
         /* Initialize the logging file stream. */
