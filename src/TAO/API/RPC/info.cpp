@@ -65,9 +65,11 @@ namespace TAO
 
             /* Staking metrics */
             Legacy::StakeMinter& stakeMinter = Legacy::StakeMinter::GetInstance();
-			obj["staking"] = stakeMinter.IsStarted() ? "Started" : "Not Started";
+            obj["staking"] = stakeMinter.IsStarted() ? "Started" : "Not Started";
+
 			if (stakeMinter.IsStarted())
 			{
+                obj["genesismature"] = !stakeMinter.IsWaitPeriod();
 	            obj["stakerate"]   = stakeMinter.GetStakeRatePercent();
 	            obj["trustweight"] = stakeMinter.GetTrustWeightPercent();
 	            obj["blockweight"] = stakeMinter.GetBlockWeightPercent();
@@ -75,10 +77,11 @@ namespace TAO
 			}
 			else
 			{
-	            obj["stakerate"]   = 0;
-	            obj["trustweight"] = 0;
-	            obj["blockweight"] = 0;
-	            obj["stakeweight"] = 0;
+                obj["genesismature"] = false;
+	            obj["stakerate"]   = 0.0;
+	            obj["trustweight"] = 0.0;
+	            obj["blockweight"] = 0.0;
+	            obj["stakeweight"] = 0.0;
 			}
 
             obj["txtotal"] = (int32_t)Legacy::Wallet::GetInstance().mapWallet.size();
