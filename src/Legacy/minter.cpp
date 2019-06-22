@@ -242,38 +242,38 @@ namespace Legacy
         {
             /* Retrieve all raw trust database keys from keychain */
             std::vector<TAO::Ledger::TrustKey> vKeys;
-            if(!LLD::trustDB->BatchRead("trust", vKeys, -1))
-                return;
-
-            /* Search through the trust keys. */
-            for (const auto& trustKeyCheck : vKeys)
+            if(LLD::trustDB->BatchRead("trust", vKeys, -1))
             {
-                /* Check whether trust key is part of current wallet */
-                NexusAddress address;
-                address.SetPubKey(trustKeyCheck.vchPubKey);
-
-                if (pStakingWallet->HaveKey(address))
+                /* Search through the trust keys. */
+                for (const auto& trustKeyCheck : vKeys)
                 {
-                    /* Trust key belongs to current wallet. Verify this is the one to use. */
-                    TAO::Ledger::BlockState blockStateCheck = TAO::Ledger::ChainState::stateBest.load();
+                    /* Check whether trust key is part of current wallet */
+                    NexusAddress address;
+                    address.SetPubKey(trustKeyCheck.vchPubKey);
 
-                    /* Check for keys that are expired version 4. */
-                    if (TAO::Ledger::GetLastTrust(trustKeyCheck, blockStateCheck) && blockStateCheck.nVersion < 5)
+                    if (pStakingWallet->HaveKey(address))
                     {
-                        /* Expired pre-v5 Trust Key. Do not use. */
-                        debug::log(2, FUNCTION, "Found expired version 4 trust key in wallet. Not using.");
-                        continue;
+                        /* Trust key belongs to current wallet. Verify this is the one to use. */
+                        TAO::Ledger::BlockState blockStateCheck = TAO::Ledger::ChainState::stateBest.load();
+
+                        /* Check for keys that are expired version 4. */
+                        if (TAO::Ledger::GetLastTrust(trustKeyCheck, blockStateCheck) && blockStateCheck.nVersion < 5)
+                        {
+                            /* Expired pre-v5 Trust Key. Do not use. */
+                            debug::log(2, FUNCTION, "Found expired version 4 trust key in wallet. Not using.");
+                            continue;
+                        }
+
+                        /* Set the trust key if found. */
+                        trustKey = trustKeyCheck;
+
+                        /* Store trust key */
+                        pStakingWallet->SetTrustKey(trustKey.vchPubKey);
+
+                        debug::log(0, FUNCTION, "Found Trust Key matching current wallet");
                     }
 
-                    /* Set the trust key if found. */
-                    trustKey = trustKeyCheck;
-
-                    /* Store trust key */
-                    pStakingWallet->SetTrustKey(trustKey.vchPubKey);
-
-                    debug::log(0, FUNCTION, "Found Trust Key matching current wallet");
                 }
-
             }
         }
 
@@ -281,6 +281,7 @@ namespace Legacy
         {
             /* No trust key found. Reserve a new key to use as the trust key for Genesis */
             debug::log(0, FUNCTION, "Staking for Genesis with new trust key");
+
             pReservedTrustKey = new ReserveKey(pStakingWallet);
             pReservedTrustKey->GetReservedKey();
         }
@@ -504,7 +505,6 @@ namespace Legacy
         /* Use local variables for calculations, then set instance variables with a lock scope at the end */
         double nCurrentTrustWeight = 0.0;
         double nCurrentBlockWeight = 0.0;
-        bool fNewIsWaitPeriod = false;
 
         static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
@@ -556,7 +556,7 @@ namespace Legacy
             if (nCoinAge < nMinimumCoinAge)
             {
                 /* Record that stake minter is in wait period */
-                fNewIsWaitPeriod = true;
+                fIsWaitPeriod.store(true);
 
                 /* Increase sleep time to wait for coin age to meet requirement (can't sleep too long or will hang until wakes up on shutdown) */
                 nSleepTime = 5000;
@@ -577,7 +577,7 @@ namespace Legacy
             else
             {
                 /* Reset wait period setting */
-                fNewIsWaitPeriod = false;
+                fIsWaitPeriod.store(false);
 
                 /* Reset sleep time after coin age meets requirement. */
                 nSleepTime = 1000;
@@ -597,7 +597,6 @@ namespace Legacy
     		/* Update instance settings */
     		nBlockWeight.store(nCurrentBlockWeight);
     		nTrustWeight.store(nCurrentTrustWeight);
-    		fIsWaitPeriod.store(fNewIsWaitPeriod);
 
         return true;
     }
