@@ -303,19 +303,11 @@ namespace LLD
             while(nLimit == -1 || nLimit > 0)
             {
                 /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(nFile, pstream))
+                std::fstream* pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::out | std::ios::binary);
+                if(!pstream->is_open())
                 {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::out | std::ios::binary);
-                    if(!pstream->is_open())
-                    {
-                        delete pstream;
-                        return (vValues.size() > 0);
-                    }
-
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(nFile, pstream);
+                    delete pstream;
+                    return (vValues.size() > 0);
                 }
 
                 /* Read into serialize stream. */
@@ -367,8 +359,8 @@ namespace LLD
                         uint64_t nSize = ReadCompactSize(ssData);
 
                         /* Check for failures or serialization issues. */
-                        if(nSize == 0)
-                            return false;
+                        if(nSize == 0 || (nPos + nSize + GetSizeOfCompactSize(nSize)) > nFileSize)
+                            return (vValues.size() > 0);
 
                         /* Deserialize the String. */
                         std::string strThis;
@@ -386,7 +378,7 @@ namespace LLD
 
                             /* Check limits. */
                             if(nLimit != -1 && --nLimit == 0)
-                                return true;
+                                return (vValues.size() > 0);
                         }
 
                         /* Iterate to next position. */
@@ -460,19 +452,11 @@ namespace LLD
             while(nLimit == -1 || nLimit > 0)
             {
                 /* Find the file stream for LRU cache. */
-                std::fstream* pstream;
-                if(!fileCache->Get(nFile, pstream))
+                std::fstream* pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
+                if(!pstream->is_open())
                 {
-                    /* Set the new stream pointer. */
-                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
-                    if(!pstream->is_open())
-                    {
-                        delete pstream;
-                        return (vValues.size() > 0);
-                    }
-
-                    /* If file not found add to LRU cache. */
-                    fileCache->Put(nFile, pstream);
+                    delete pstream;
+                    return (vValues.size() > 0);
                 }
 
                 /* Read into serialize stream. */
@@ -537,8 +521,8 @@ namespace LLD
                         uint64_t nSize = ReadCompactSize(ssData);
 
                         /* Check for failures or serialization issues. */
-                        if(nSize == 0)
-                            return false;
+                        if(nSize == 0 || (nPos + nSize + GetSizeOfCompactSize(nSize)) > nFileSize)
+                            return (vValues.size() > 0);
 
                         /* Deserialize the String. */
                         std::string strThis;
