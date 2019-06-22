@@ -338,6 +338,10 @@ namespace LLD
                     /* Get the Binary Size. */
                     uint64_t nBufferSize = ((nLimit == -1) ? nFileSize : (1024 * nLimit));
 
+                    /* Check for exceeding actual size. */
+                    if(nBufferSize > nFileSize)
+                        nBufferSize = nFileSize;
+
                     /* Seek to beginning. */
                     pstream->seekg(0, std::ios::beg);
 
@@ -398,6 +402,10 @@ namespace LLD
 
                             /* Get the Binary Size. */
                             uint64_t nBufferSize = (1024 * nLimit);
+
+                            /* Check for exceeding of buffer size. */
+                            if(nStart + nBufferSize > nFileSize)
+                                nBufferSize = (nFileSize - nStart);
 
                             /* Seek stream to beginning. */
                             pstream->seekg(nStart, std::ios::beg);
@@ -490,6 +498,10 @@ namespace LLD
                     /* Get the Binary Size. */
                     uint64_t nBufferSize = ((nLimit == -1) ? nFileSize : (1024 * nLimit));
 
+                    /* Check for exceeding actual size. */
+                    if(nBufferSize > nFileSize)
+                        nBufferSize = nFileSize;
+
                     /* Seek to the key's binary location. */
                     if(nFile == cKey.nSectorFile)
                     {
@@ -544,7 +556,7 @@ namespace LLD
 
                             /* Check limits. */
                             if(nLimit != -1 && --nLimit == 0)
-                                return true;
+                                return (vValues.size() > 0);
                         }
 
                         /* Iterate to next position. */
@@ -560,6 +572,10 @@ namespace LLD
 
                             /* Get the Binary Size. */
                             uint64_t nBufferSize = (1024 * nLimit);
+
+                            /* Check for exceeding of buffer size. */
+                            if(nStart + nBufferSize > nFileSize)
+                                nBufferSize = (nFileSize - nStart);
 
                             /* Seek stream to beginning. */
                             pstream->seekg(nStart, std::ios::beg);
