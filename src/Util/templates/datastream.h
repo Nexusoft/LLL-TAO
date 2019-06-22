@@ -229,7 +229,7 @@ public:
      *  Wrapper around data to get the start of vector.
      *
      **/
-     uint8_t* data();
+    uint8_t* data(const uint64_t nOffset = 0);
 
 
     /** clear

@@ -321,22 +321,34 @@ namespace LLD
                 /* Read into serialize stream. */
                 DataStream ssData(SER_LLD, DATABASE_VERSION);
 
+                /* Get the current file position. */
+                uint64_t nStart = 0;
+
+                /* Get the Binary Size. */
+                uint64_t nFileSize = 0;
+
                 /* Read file data. */
                 {
                     LOCK(SECTOR_MUTEX);
 
                     /* Get the Binary Size. */
                     pstream->seekg(0, std::ios::end);
-                    uint64_t nFileSize = pstream->tellg();
+                    nFileSize = pstream->tellg();
+
+                    /* Get the Binary Size. */
+                    uint64_t nBufferSize = ((nLimit == -1) ? nFileSize : (1024 * nLimit));
 
                     /* Seek to beginning. */
                     pstream->seekg(0, std::ios::beg);
 
                     /* Resize the buffer. */
-                    ssData.resize(nFileSize);
+                    ssData.resize(nBufferSize);
 
                     /* Read the data into the buffer. */
                     pstream->read((char*)ssData.data(), ssData.size());
+
+                    /* Set the start to read size. */
+                    nStart += ssData.size();
                 }
 
                 /* Get the current position. */
@@ -345,35 +357,62 @@ namespace LLD
                 /* Read records. */
                 while(!ssData.End())
                 {
-                    /* Read compact size. */
-                    uint64_t nSize = ReadCompactSize(ssData);
-
-                    /* Check for failures or serialization issues. */
-                    if(nSize == 0)
-                        return false;
-
-                    /* Deserialize the String. */
-                    std::string strThis;
-                    ssData >> strThis;
-
-                    /* Check the type. */
-                    if(strType == strThis && strThis != "NONE")
+                    try
                     {
-                        /* Get the value. */
-                        Type value;
-                        ssData >> value;
+                        /* Read compact size. */
+                        uint64_t nSize = ReadCompactSize(ssData);
 
-                        /* Push next value. */
-                        vValues.push_back(value);
+                        /* Check for failures or serialization issues. */
+                        if(nSize == 0)
+                            return false;
 
-                        /* Check limits. */
-                        if(nLimit != -1 && --nLimit == 0)
-                            return true;
+                        /* Deserialize the String. */
+                        std::string strThis;
+                        ssData >> strThis;
+
+                        /* Check the type. */
+                        if(strType == strThis && strThis != "NONE")
+                        {
+                            /* Get the value. */
+                            Type value;
+                            ssData >> value;
+
+                            /* Push next value. */
+                            vValues.push_back(value);
+
+                            /* Check limits. */
+                            if(nLimit != -1 && --nLimit == 0)
+                                return true;
+                        }
+
+                        /* Iterate to next position. */
+                        nPos += nSize + GetSizeOfCompactSize(nSize);
+                        ssData.SetPos(nPos);
+
                     }
+                    catch(const std::exception& e)
+                    {
+                        /* Read file data. */
+                        {
+                            LOCK(SECTOR_MUTEX);
 
-                    /* Iterate to next position. */
-                    nPos += nSize + GetSizeOfCompactSize(nSize);
-                    ssData.SetPos(nPos);
+                            /* Get the Binary Size. */
+                            uint64_t nBufferSize = (1024 * nLimit);
+
+                            /* Seek stream to beginning. */
+                            pstream->seekg(nStart, std::ios::beg);
+                            ssData.resize(ssData.size() + nBufferSize);
+
+                            /* Read the data into the buffer. */
+                            pstream->read((char*)ssData.data(ssData.size() - nBufferSize), nBufferSize);
+
+                            /* Set the start to read size. */
+                            nStart += nBufferSize;
+
+                            /* Reset the position. */
+                            ssData.SetPos(nPos);
+                        }
+                    }
                 }
 
                 /* Iterate to the next file. */
@@ -434,23 +473,32 @@ namespace LLD
                 /* Get the current position. */
                 uint64_t nPos = 0;
 
+                /* Get the current file position. */
+                uint64_t nStart = 0;
+
+                /* Get the Binary Size. */
+                uint64_t nFileSize = 0;
+
                 /* Read file data. */
                 {
                     LOCK(SECTOR_MUTEX);
 
                     /* Get the Binary Size. */
                     pstream->seekg(0, std::ios::end);
-                    uint64_t nFileSize = pstream->tellg();
+                    nFileSize = pstream->tellg();
+
+                    /* Get the Binary Size. */
+                    uint64_t nBufferSize = ((nLimit == -1) ? nFileSize : (1024 * nLimit));
 
                     /* Seek to the key's binary location. */
                     if(nFile == cKey.nSectorFile)
                     {
                         /* Set the position. */
-                        uint64_t nStart = cKey.nSectorStart + cKey.nSectorSize;
+                        nStart = cKey.nSectorStart + cKey.nSectorSize;
 
                         /* Seek stream to sector position. */
                         pstream->seekg(nStart, std::ios::beg);
-                        ssData.resize(nFileSize - nStart);
+                        ssData.resize(nBufferSize);
                     }
 
                     /* Otherwise seek to beginning if next file. */
@@ -458,45 +506,75 @@ namespace LLD
                     {
                         /* Seek stream to beginning. */
                         pstream->seekg(0, std::ios::beg);
-                        ssData.resize(nFileSize);
+                        ssData.resize(nBufferSize);
                     }
 
                     /* Read the data into the buffer. */
-                    pstream->read((char*)ssData.data(), ssData.size());
+                    pstream->read((char*)ssData.data(), nBufferSize);
+
+                    /* Set the start to read size. */
+                    nStart += ssData.size();
                 }
 
                 /* Read records. */
                 while(!ssData.End())
                 {
-                    /* Read compact size. */
-                    uint64_t nSize = ReadCompactSize(ssData);
-
-                    /* Check for failures or serialization issues. */
-                    if(nSize == 0)
-                        return false;
-
-                    /* Deserialize the String. */
-                    std::string strThis;
-                    ssData >> strThis;
-
-                    /* Check the type. */
-                    if(strType == strThis && strThis != "NONE")
+                    try
                     {
-                        /* Get the value. */
-                        Type value;
-                        ssData >> value;
+                        /* Read compact size. */
+                        uint64_t nSize = ReadCompactSize(ssData);
 
-                        /* Push next value. */
-                        vValues.push_back(value);
+                        /* Check for failures or serialization issues. */
+                        if(nSize == 0)
+                            return false;
 
-                        /* Check limits. */
-                        if(nLimit != -1 && --nLimit == 0)
-                            return true;
+                        /* Deserialize the String. */
+                        std::string strThis;
+                        ssData >> strThis;
+
+                        /* Check the type. */
+                        if(strType == strThis && strThis != "NONE")
+                        {
+                            /* Get the value. */
+                            Type value;
+                            ssData >> value;
+
+                            /* Push next value. */
+                            vValues.push_back(value);
+
+                            /* Check limits. */
+                            if(nLimit != -1 && --nLimit == 0)
+                                return true;
+                        }
+
+                        /* Iterate to next position. */
+                        nPos += nSize + GetSizeOfCompactSize(nSize);
+                        ssData.SetPos(nPos);
+
                     }
+                    catch(const std::exception& e)
+                    {
+                        /* Read file data. */
+                        {
+                            LOCK(SECTOR_MUTEX);
 
-                    /* Iterate to next position. */
-                    nPos += nSize + GetSizeOfCompactSize(nSize);
-                    ssData.SetPos(nPos);
+                            /* Get the Binary Size. */
+                            uint64_t nBufferSize = (1024 * nLimit);
+
+                            /* Seek stream to beginning. */
+                            pstream->seekg(nStart, std::ios::beg);
+                            ssData.resize(ssData.size() + nBufferSize);
+
+                            /* Read the data into the buffer. */
+                            pstream->read((char*)ssData.data(ssData.size() - nBufferSize), nBufferSize);
+
+                            /* Set the start to read size. */
+                            nStart += nBufferSize;
+
+                            /* Reset the position. */
+                            ssData.SetPos(nPos);
+                        }
+                    }
                 }
 
                 /* Iterate to the next file. */

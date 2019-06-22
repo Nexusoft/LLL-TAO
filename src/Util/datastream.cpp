@@ -196,9 +196,9 @@ std::vector<uint8_t>::iterator DataStream::end()
 
 
 /*  Wrapper around data to get the start of vector. */
-uint8_t* DataStream::data()
+uint8_t* DataStream::data(const uint64_t nOffset)
 {
-    return vData.data();
+    return &vData[nOffset];
 }
 
 
