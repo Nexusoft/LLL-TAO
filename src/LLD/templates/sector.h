@@ -303,23 +303,41 @@ namespace LLD
             while(nLimit == -1 || nLimit > 0)
             {
                 /* Find the file stream for LRU cache. */
-                std::fstream stream = std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
-                if(!stream.is_open())
-                    return (vValues.size() > 0);
+                std::fstream* pstream;
+                if(!fileCache->Get(nFile, pstream))
+                {
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::out | std::ios::binary);
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
+                        return (vValues.size() > 0);
+                    }
 
-                /* Get the Binary Size. */
-                stream.ignore(std::numeric_limits<std::streamsize>::max());
-                uint64_t nFileSize = static_cast<int32_t>(stream.gcount());
-
-                /* Seek to beginning. */
-                stream.seekg(0, std::ios::beg);
+                    /* If file not found add to LRU cache. */
+                    fileCache->Put(nFile, pstream);
+                }
 
                 /* Read into serialize stream. */
                 DataStream ssData(SER_LLD, DATABASE_VERSION);
-                ssData.resize(nFileSize);
 
                 /* Read file data. */
-                stream.read((char*)ssData.data(), ssData.size());
+                {
+                    LOCK(SECTOR_MUTEX);
+
+                    /* Get the Binary Size. */
+                    pstream->seekg(0, std::ios::end);
+                    uint64_t nFileSize = pstream->tellg();
+
+                    /* Seek to beginning. */
+                    pstream->seekg(0, std::ios::beg);
+
+                    /* Resize the buffer. */
+                    ssData.resize(nFileSize);
+
+                    /* Read the data into the buffer. */
+                    pstream->read((char*)ssData.data(), ssData.size());
+                }
 
                 /* Get the current position. */
                 uint64_t nPos = 0;
@@ -352,11 +370,10 @@ namespace LLD
                         if(nLimit != -1 && --nLimit == 0)
                             return true;
                     }
-                    else
-                        ssData.SetPos(nPos);
 
                     /* Iterate to next position. */
                     nPos += nSize + GetSizeOfCompactSize(nSize);
+                    ssData.SetPos(nPos);
                 }
 
                 /* Iterate to the next file. */
@@ -396,13 +413,20 @@ namespace LLD
             while(nLimit == -1 || nLimit > 0)
             {
                 /* Find the file stream for LRU cache. */
-                std::fstream stream = std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
-                if(!stream.is_open())
-                    return (vValues.size() > 0);
+                std::fstream* pstream;
+                if(!fileCache->Get(nFile, pstream))
+                {
+                    /* Set the new stream pointer. */
+                    pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
+                    if(!pstream->is_open())
+                    {
+                        delete pstream;
+                        return (vValues.size() > 0);
+                    }
 
-                /* Get the Binary Size. */
-                stream.ignore(std::numeric_limits<std::streamsize>::max());
-                uint64_t nFileSize = static_cast<int32_t>(stream.gcount());
+                    /* If file not found add to LRU cache. */
+                    fileCache->Put(nFile, pstream);
+                }
 
                 /* Read into serialize stream. */
                 DataStream ssData(SER_LLD, DATABASE_VERSION);
@@ -410,25 +434,36 @@ namespace LLD
                 /* Get the current position. */
                 uint64_t nPos = 0;
 
-                /* Seek to beginning. */
-                if(nFile == cKey.nSectorFile)
-                {
-                    /* Seek stream to sector position. */
-                    stream.seekg(cKey.nSectorStart + cKey.nSectorSize, std::ios::beg);
-                    ssData.resize(nFileSize - cKey.nSectorStart + cKey.nSectorSize);
-
-                    /* Set the position. */
-                    nPos = cKey.nSectorStart + cKey.nSectorSize;
-                }
-                else
-                {
-                    /* Seek stream to beginning. */
-                    stream.seekg(0, std::ios::beg);
-                    ssData.resize(nFileSize);
-                }
-
                 /* Read file data. */
-                stream.read((char*)ssData.data(), ssData.size());
+                {
+                    LOCK(SECTOR_MUTEX);
+
+                    /* Get the Binary Size. */
+                    pstream->seekg(0, std::ios::end);
+                    uint64_t nFileSize = pstream->tellg();
+
+                    /* Seek to the key's binary location. */
+                    if(nFile == cKey.nSectorFile)
+                    {
+                        /* Set the position. */
+                        uint64_t nStart = cKey.nSectorStart + cKey.nSectorSize;
+
+                        /* Seek stream to sector position. */
+                        pstream->seekg(nStart, std::ios::beg);
+                        ssData.resize(nFileSize - nStart);
+                    }
+
+                    /* Otherwise seek to beginning if next file. */
+                    else
+                    {
+                        /* Seek stream to beginning. */
+                        pstream->seekg(0, std::ios::beg);
+                        ssData.resize(nFileSize);
+                    }
+
+                    /* Read the data into the buffer. */
+                    pstream->read((char*)ssData.data(), ssData.size());
+                }
 
                 /* Read records. */
                 while(!ssData.End())
@@ -458,11 +493,10 @@ namespace LLD
                         if(nLimit != -1 && --nLimit == 0)
                             return true;
                     }
-                    else
-                        ssData.SetPos(nPos);
 
                     /* Iterate to next position. */
                     nPos += nSize + GetSizeOfCompactSize(nSize);
+                    ssData.SetPos(nPos);
                 }
 
                 /* Iterate to the next file. */
