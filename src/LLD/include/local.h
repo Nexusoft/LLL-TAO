@@ -32,14 +32,14 @@ namespace LLD
    *  Database class for storing local wallet transactions.
    *
    **/
-    class LocalDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
+    class LocalDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
     public:
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         LocalDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase(std::string("local"), nFlags) {}
+        : SectorDatabase(std::string("local"), nFlags, 256 * 256 * 8) {}
 
 
         /** Default Destructor **/

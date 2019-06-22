@@ -66,10 +66,6 @@ namespace LLD
         uint32_t HASHMAP_TOTAL_BUCKETS;
 
 
-        /** The Maximum cache size for allocated keys. **/
-        uint32_t HASHMAP_MAX_CACHE_SIZE;
-
-
         /** The Maximum key size for static key sectors. **/
         uint16_t HASHMAP_MAX_KEY_SIZE;
 
@@ -93,7 +89,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND);
+        BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND, uint64_t nBucketsIn = 256 * 256 * 64);
 
 
         /** Copy Assignment Operator **/

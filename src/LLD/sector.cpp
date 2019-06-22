@@ -22,7 +22,7 @@ namespace LLD
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     template<class KeychainType, class CacheType>
-    SectorDatabase<KeychainType, CacheType>::SectorDatabase(std::string strNameIn, uint8_t nFlagsIn)
+    SectorDatabase<KeychainType, CacheType>::SectorDatabase(std::string strNameIn, uint8_t nFlagsIn, uint64_t nBucketsIn)
     : CONDITION_MUTEX()
     , CONDITION()
     , SECTOR_MUTEX()
@@ -32,7 +32,7 @@ namespace LLD
     , strName(strNameIn)
     , runtime()
     , pTransaction(nullptr)
-    , pSectorKeys(nullptr)
+    , pSectorKeys(new KeychainType((config::GetDataDir() + strName + "/keychain/"), nFlags, nBucketsIn))
     , cachePool(new CacheType(static_cast<uint32_t>(config::GetArg("-maxcache", 64) * 1024 * 1024) / 4))
     , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
     , nCurrentFile(0)
@@ -126,9 +126,6 @@ namespace LLD
             /* Increment the Current File */
             ++nCurrentFile;
         }
-
-        /* Initialize the Keys Class. */
-        pSectorKeys = new KeychainType((config::GetDataDir() + strName + "/keychain/"), nFlags);
 
         pTransaction = nullptr;
         fInitialized = true;
@@ -802,7 +799,6 @@ namespace LLD
 
 
     /* Explicity instantiate all template instances needed for compiler. */
-    template class SectorDatabase<BinaryFileMap, BinaryLRU>;
     template class SectorDatabase<BinaryHashMap, BinaryLRU>;
 
 }

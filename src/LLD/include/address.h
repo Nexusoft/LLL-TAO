@@ -29,14 +29,14 @@ namespace LLD
      *  The database class for peer addresses to determine trust relationships.
      *
      **/
-    class AddressDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
+    class AddressDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
     public:
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase(std::string("addr/") + std::to_string(port), nFlags) { }
+        : SectorDatabase(std::string("addr/") + std::to_string(port), nFlags, 256 * 256 * 8) { }
 
 
         /** Default Destructor **/

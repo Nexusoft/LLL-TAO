@@ -31,7 +31,7 @@ namespace LLD
      *  The database class for trust keys for both Legacy and Tritium.
      *
      **/
-    class TrustDB : public SectorDatabase<BinaryFileMap, BinaryLRU>
+    class TrustDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
 
     public:
@@ -39,7 +39,7 @@ namespace LLD
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         TrustDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase(std::string("trust"), nFlagsIn) { }
+        : SectorDatabase(std::string("trust"), nFlagsIn, 256 * 256 * 8) { }
 
 
         /** Default Destructor **/
