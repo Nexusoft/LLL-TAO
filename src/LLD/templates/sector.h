@@ -302,13 +302,10 @@ namespace LLD
             /* Scan until limit is reached. */
             while(nLimit == -1 || nLimit > 0)
             {
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::out | std::ios::binary);
-                if(!pstream->is_open())
-                {
-                    delete pstream;
+                /* Get filestream object. */
+                std::fstream stream = std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
+                if(!stream.is_open())
                     return (vValues.size() > 0);
-                }
 
                 /* Read into serialize stream. */
                 DataStream ssData(SER_LLD, DATABASE_VERSION);
@@ -324,8 +321,8 @@ namespace LLD
                     LOCK(SECTOR_MUTEX);
 
                     /* Get the Binary Size. */
-                    pstream->seekg(0, std::ios::end);
-                    nFileSize = pstream->tellg();
+                    stream.seekg(0, std::ios::end);
+                    nFileSize = stream.tellg();
 
                     /* Get the Binary Size. */
                     uint64_t nBufferSize = ((nLimit == -1) ? nFileSize : (1024 * nLimit));
@@ -335,13 +332,13 @@ namespace LLD
                         nBufferSize = nFileSize;
 
                     /* Seek to beginning. */
-                    pstream->seekg(0, std::ios::beg);
+                    stream.seekg(0, std::ios::beg);
 
                     /* Resize the buffer. */
                     ssData.resize(nBufferSize);
 
                     /* Read the data into the buffer. */
-                    pstream->read((char*)ssData.data(), ssData.size());
+                    stream.read((char*)ssData.data(), ssData.size());
 
                     /* Set the start to read size. */
                     nStart += ssData.size();
@@ -404,11 +401,11 @@ namespace LLD
                                 return (vValues.size() > 0);
 
                             /* Seek stream to beginning. */
-                            pstream->seekg(nStart, std::ios::beg);
+                            stream.seekg(nStart, std::ios::beg);
                             ssData.resize(ssData.size() + nBufferSize);
 
                             /* Read the data into the buffer. */
-                            pstream->read((char*)ssData.data(ssData.size() - nBufferSize), nBufferSize);
+                            stream.read((char*)ssData.data(ssData.size() - nBufferSize), nBufferSize);
 
                             /* Set the start to read size. */
                             nStart += nBufferSize;
@@ -455,13 +452,10 @@ namespace LLD
             /* Scan until limit is reached. */
             while(nLimit == -1 || nLimit > 0)
             {
-                /* Find the file stream for LRU cache. */
-                std::fstream* pstream = new std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
-                if(!pstream->is_open())
-                {
-                    delete pstream;
+                /* Get filestream object. */
+                std::fstream stream = std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
+                if(!stream.is_open())
                     return (vValues.size() > 0);
-                }
 
                 /* Read into serialize stream. */
                 DataStream ssData(SER_LLD, DATABASE_VERSION);
@@ -480,8 +474,8 @@ namespace LLD
                     LOCK(SECTOR_MUTEX);
 
                     /* Get the Binary Size. */
-                    pstream->seekg(0, std::ios::end);
-                    nFileSize = pstream->tellg();
+                    stream.seekg(0, std::ios::end);
+                    nFileSize = stream.tellg();
 
                     /* Get the Binary Size. */
                     uint64_t nBufferSize = ((nLimit == -1) ? nFileSize : (1024 * nLimit));
@@ -497,7 +491,7 @@ namespace LLD
                         nStart = cKey.nSectorStart + cKey.nSectorSize;
 
                         /* Seek stream to sector position. */
-                        pstream->seekg(nStart, std::ios::beg);
+                        stream.seekg(nStart, std::ios::beg);
                         ssData.resize(nBufferSize);
                     }
 
@@ -505,12 +499,12 @@ namespace LLD
                     else
                     {
                         /* Seek stream to beginning. */
-                        pstream->seekg(0, std::ios::beg);
+                        stream.seekg(0, std::ios::beg);
                         ssData.resize(nBufferSize);
                     }
 
                     /* Read the data into the buffer. */
-                    pstream->read((char*)ssData.data(), nBufferSize);
+                    stream.read((char*)ssData.data(), nBufferSize);
 
                     /* Set the start to read size. */
                     nStart += ssData.size();
@@ -570,11 +564,11 @@ namespace LLD
                                 return (vValues.size() > 0);
 
                             /* Seek stream to beginning. */
-                            pstream->seekg(nStart, std::ios::beg);
+                            stream.seekg(nStart, std::ios::beg);
                             ssData.resize(ssData.size() + nBufferSize);
 
                             /* Read the data into the buffer. */
-                            pstream->read((char*)ssData.data(ssData.size() - nBufferSize), nBufferSize);
+                            stream.read((char*)ssData.data(ssData.size() - nBufferSize), nBufferSize);
 
                             /* Set the start to read size. */
                             nStart += nBufferSize;
