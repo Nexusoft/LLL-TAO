@@ -310,6 +310,9 @@ namespace LLD
     {
         if(nFlags & FLAGS::APPEND || !Update(vKey, vData))
         {
+            /* Write the data into the memory cache. */
+            cachePool->Put(vKey, vData, false);
+
             {
                 LOCK(SECTOR_MUTEX);
 
@@ -324,9 +327,6 @@ namespace LLD
                     std::ofstream stream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nCurrentFile).c_str(), std::ios::out | std::ios::binary);
                     stream.close();
                 }
-
-                /* Write the data into the memory cache. */
-                cachePool->Put(vKey, vData, false);
 
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -354,24 +354,25 @@ namespace LLD
                 pstream->write((char*) &vData[0], vData.size());
                 pstream->flush();
 
-                /* Get current size */
-                uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
-
-                /* Create a new Sector Key. */
-                SectorKey key = SectorKey(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
-                                            nCurrentFileSize, static_cast<uint32_t>(nSize));
-
-                /* Increment the current filesize */
-                nCurrentFileSize += static_cast<uint32_t>(nSize);
-
-                /* Assign the Key to Keychain. */
-                if(!pSectorKeys->Put(key))
-                    return debug::error(FUNCTION, "failed to write key to keychain");
-
-                /* Verboe output. */
-                debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
-                    " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
             }
+
+            /* Get current size */
+            uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
+
+            /* Create a new Sector Key. */
+            SectorKey key = SectorKey(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
+                                        nCurrentFileSize, static_cast<uint32_t>(nSize));
+
+            /* Increment the current filesize */
+            nCurrentFileSize += static_cast<uint32_t>(nSize);
+
+            /* Assign the Key to Keychain. */
+            if(!pSectorKeys->Put(key))
+                return debug::error(FUNCTION, "failed to write key to keychain");
+
+            /* Verboe output. */
+            debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
+                " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
         }
 
         return true;
@@ -577,7 +578,6 @@ namespace LLD
             if(!pSectorKeys->Erase(item.first))
                 assert(debug::error(FUNCTION, "failed to erase indexes"));
 
-
          /* Cleanup the transaction object. */
          delete pTransaction;
          pTransaction = nullptr;
@@ -625,6 +625,8 @@ namespace LLD
     template<class KeychainType, class CacheType>
     void SectorDatabase<KeychainType, CacheType>::TxnRelease()
     {
+        LOCK(TRANSACTION_MUTEX);
+
         /* Delete the transaction journal file. */
         std::ofstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::trunc);
         stream.close();
@@ -644,19 +646,19 @@ namespace LLD
         /* Erase data set to be removed. */
         for(const auto& item : pTransaction->mapEraseData)
             if(!pSectorKeys->Erase(item.first))
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to erase from keychain"));
+                return debug::error(FUNCTION, "failed to erase from keychain");
 
         /* Commit the sector data. */
         for(const auto& item : pTransaction->mapTransactions)
             if(!Force(item.first, item.second))
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to commit sector data"));
+                return debug::error(FUNCTION, "failed to commit sector data");
 
         /* Commit keychain entries. */
         for(const auto& item : pTransaction->mapKeychain)
         {
             SectorKey cKey(STATE::READY, item.first, 0, 0, 0);
             if(!pSectorKeys->Put(cKey))
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to commit to keychain"));
+                return debug::error(FUNCTION, "failed to commit to keychain");
         }
 
         /* Commit the index data. */
@@ -670,7 +672,7 @@ namespace LLD
             else
             {
                 if(!pSectorKeys->Get(item.second, cKey))
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read indexing entry"));
+                    return debug::error(FUNCTION, "failed to read indexing entry");
 
                 mapIndex[item.second] = cKey;
             }
@@ -678,7 +680,7 @@ namespace LLD
             /* Write the new sector key. */
             cKey.SetKey(item.first);
             if(!pSectorKeys->Put(cKey))
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to write indexing entry"));
+                return debug::error(FUNCTION, "failed to write indexing entry");
         }
 
         /* Cleanup the transaction object. */
@@ -693,6 +695,8 @@ namespace LLD
     template<class KeychainType, class CacheType>
     bool SectorDatabase<KeychainType, CacheType>::TxnRecovery()
     {
+        LOCK(TRANSACTION_MUTEX);
+
         /* Create an append only stream. */
         std::ifstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::in | std::ios::out | std::ios::binary);
         if(!stream.is_open())
