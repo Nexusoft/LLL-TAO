@@ -355,7 +355,7 @@ namespace LLD
                 /* Write the data record. */
                 if(!pstream->write((char*) &vData[0], vData.size()))
                     return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
-                    
+
                 pstream->flush();
 
             }
@@ -688,8 +688,6 @@ namespace LLD
     template<class KeychainType, class CacheType>
     bool SectorDatabase<KeychainType, CacheType>::TxnRecovery()
     {
-        LOCK(TRANSACTION_MUTEX);
-
         /* Create an append only stream. */
         std::ifstream stream(debug::safe_printstr(config::GetDataDir(), strName, "/journal.dat"), std::ios::in | std::ios::out | std::ios::binary);
         if(!stream.is_open())
