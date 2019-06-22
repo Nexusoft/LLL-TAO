@@ -177,7 +177,7 @@ namespace LLD
 
                 /* Read the State and Size of Sector Header. */
                 if(!pstream->read((char*) &vData[0], vData.size()))
-                    debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
+                    return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
 
             }
 
@@ -232,7 +232,7 @@ namespace LLD
 
             /* Read the State and Size of Sector Header. */
             if(!pstream->read((char*) &vData[0], vData.size()))
-                debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
+                return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
 
             /* Verboe output. */
             debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
@@ -288,7 +288,9 @@ namespace LLD
             WriteCompactSize(*pstream, vData.size());
 
             /* Write the data record. */
-            pstream->write((char*) &vData[0], vData.size());
+            if(!pstream->write((char*) &vData[0], vData.size()))
+                return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
+
             pstream->flush();
 
             /* Records flushed indicator. */
@@ -351,7 +353,9 @@ namespace LLD
                 WriteCompactSize(*pstream, vData.size());
 
                 /* Write the data record. */
-                pstream->write((char*) &vData[0], vData.size());
+                if(!pstream->write((char*) &vData[0], vData.size()))
+                    return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
+                    
                 pstream->flush();
 
             }
