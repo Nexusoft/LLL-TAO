@@ -68,7 +68,7 @@ namespace TAO
 
             /* Read the last hash of owner. */
             uint512_t hashLast = 0;
-            if(!LLD::Ledger->ReadLast(state.hashOwner, hashLast))
+            if(!LLD::Ledger->ReadLast(state.hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-24, "No history found");
 
             /* Iterate through sigchain for register updates. */
