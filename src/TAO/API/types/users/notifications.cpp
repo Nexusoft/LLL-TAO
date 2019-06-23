@@ -49,15 +49,16 @@ namespace TAO
         {
             /* Get the last transaction. */
             uint512_t hashLast = 0;
-            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
-                return debug::error(FUNCTION, "No transactions found");
 
-            /* Get the coinbase transactions. */
-            get_coinbases(hashGenesis, hashLast, vTransactions);
+            if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+            {
+                /* Get the coinbase transactions. */
+                get_coinbases(hashGenesis, hashLast, vTransactions);
 
-            /* Get the debit and transfer transactions. */
-            get_events(hashGenesis, hashLast, vTransactions);
+                /* Get the debit and transfer transactions. */
+                get_events(hashGenesis, hashLast, vTransactions);
 
+            }
 
             //TODO: sort transactions by timestamp here.
 
@@ -76,7 +77,7 @@ namespace TAO
             {
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashLast, tx))
+                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
                     return debug::error(FUNCTION, "Failed to read transaction");
 
                 /* Set the next last. */
@@ -119,7 +120,7 @@ namespace TAO
             {
                 /* Read the object register. */
                 TAO::Register::Object object;
-                if(!LLD::Register->ReadState(hashToken, object))
+                if(!LLD::Register->ReadState(hashToken, object, TAO::Ledger::FLAGS::MEMPOOL))
                     continue;
 
                 /* Parse the object register. */
@@ -152,7 +153,7 @@ namespace TAO
 
                         /* Verify that the hash to exists. */
                         TAO::Register::State stateTo;
-                        if(!LLD::Register->ReadState(hashTo, stateTo))
+                        if(!LLD::Register->ReadState(hashTo, stateTo, TAO::Ledger::FLAGS::MEMPOOL))
                             continue;
 
                         /* If the operation is a debit, calculate the partial token debit amount. */
