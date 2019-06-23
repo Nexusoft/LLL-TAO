@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/names.h>
 #include <TAO/API/include/json.h>
 
+#include <TAO/Ledger/types/sigchain.h>
+
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
@@ -65,7 +67,7 @@ namespace TAO
             if(object.get<uint256_t>("token") != 0)
                 throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for accessing non-NXS token accounts.");
 
-            
+
             /* Populate the response JSON */
             ret["owner"]    = object.hashOwner.GetHex();
             ret["created"]  = object.nCreated;

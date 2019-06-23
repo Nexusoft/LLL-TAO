@@ -26,6 +26,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/templates/datastream.h>
 
@@ -59,6 +60,9 @@ namespace TAO
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
+
+            /* Lock the signature chain. */
+            LOCK(user->CREATE_MUTEX);
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;

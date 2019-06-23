@@ -148,7 +148,7 @@ def no_parms(*args):
 show_html = '''
 <br><table align="left" style="word-break:break-all;">
 <tr><td>{}</td></tr>
-</table><br>&nbsp;<br><hr>
+</table><br>&nbsp;<br><hr size="5">
 '''
 
 #
@@ -176,9 +176,9 @@ landing_page = '''
     <font face="verdana"><center>
     <br><head><a href="/" style="text-decoration:none;"><font color="black">
     <b>Nexus Interactive SDK/API Cook Book</b></a></head><br>
-    <font size="2""><br>Running on {}</font><br><br><hr>
+    <font size="2""><br>Running on {}</font><br><br><hr size="5">
     {}
-    <hr></center></font></body></html>
+    <hr size="5"></center></font></body></html>
 '''
 
 #

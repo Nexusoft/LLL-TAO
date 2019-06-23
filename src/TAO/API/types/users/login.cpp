@@ -17,10 +17,11 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/users.h>
 
-#include <TAO/Ledger/types/sigchain.h>
-#include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/enum.h>
+
+#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/include/allocators.h>
 

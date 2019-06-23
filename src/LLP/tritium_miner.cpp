@@ -19,16 +19,16 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/supply.h>
-#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/supply.h>
 
-#include <TAO/Ledger/types/tritium.h>
+#include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
-#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/tritium.h>
 
 #include <TAO/API/include/global.h>
 

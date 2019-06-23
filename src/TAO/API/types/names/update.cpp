@@ -25,6 +25,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/templates/datastream.h>
 
@@ -53,6 +54,9 @@ namespace TAO
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
+
+            /* Lock the signature chain. */
+            LOCK(user->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
@@ -94,14 +98,14 @@ namespace TAO
 
             if(params.find("register_address") == params.end())
                 throw APIException(-23, "Missing register_address parameter");
-                
+
 
             /* Declare operation stream to serialize all of the field updates*/
             TAO::Operation::Stream ssOperationStream;
 
             /* The new register address to set for the name object */
             uint256_t hashNewRegisterAddress = 0;
-            hashNewRegisterAddress.SetHex(params["register_address"].get<std::string>());             
+            hashNewRegisterAddress.SetHex(params["register_address"].get<std::string>());
 
             /* Write the new register address value into the operation stream */
             ssOperationStream << std::string("address") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << hashNewRegisterAddress;

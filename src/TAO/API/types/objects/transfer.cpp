@@ -22,6 +22,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <LLC/include/random.h>
 #include <LLD/include/global.h>
@@ -91,11 +92,11 @@ namespace TAO
                     throw APIException(-24, strType +" not found.");
 
                 /* Only include raw and non-standard object types (assets)*/
-                if(object.nType != TAO::Register::REGISTER::OBJECT 
+                if(object.nType != TAO::Register::REGISTER::OBJECT
                 && object.nType != TAO::Register::REGISTER::APPEND
                 && object.nType != TAO::Register::REGISTER::RAW)
                     throw APIException(-24, strType + "not found.");
-                    
+
                 /* parse object so that the data fields can be accessed and check that it is an asset*/
                 if(object.nType == TAO::Register::REGISTER::OBJECT
                 && (!object.Parse() || object.Standard() != nType))
@@ -110,6 +111,9 @@ namespace TAO
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID");
+
+            /* Lock the signature chain. */
+            LOCK(user->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())

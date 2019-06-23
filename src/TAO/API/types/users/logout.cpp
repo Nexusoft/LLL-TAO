@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/include/hex.h>
 

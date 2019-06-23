@@ -22,6 +22,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <LLC/include/random.h>
 #include <LLD/include/global.h>
@@ -52,6 +53,9 @@ namespace TAO
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
                 throw APIException(-25, "Invalid session ID.");
+
+            /* Lock the signature chain. */
+            LOCK(user->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
@@ -121,11 +125,11 @@ namespace TAO
                     throw APIException(-24, "Object not found");
 
                 /* Only include raw and non-standard object types */
-                if(object.nType != TAO::Register::REGISTER::OBJECT 
+                if(object.nType != TAO::Register::REGISTER::OBJECT
                 && object.nType != TAO::Register::REGISTER::APPEND
                 && object.nType != TAO::Register::REGISTER::RAW)
                     continue;
-                    
+
                 /* parse object so that the data fields can be accessed */
                 if(object.nType == TAO::Register::REGISTER::OBJECT
                 && (!object.Parse() || object.Standard() != nType))
@@ -136,17 +140,17 @@ namespace TAO
 
                 /* Add the address to the return JSON */
                 jsonClaimed.push_back(hashAddress.GetHex() );
-                
+
                 /* Create a name object for the claimed object unless this is a Name or Namespace already */
                 if(nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE)
                 {
                     /* Declare to contract to create new name */
                     TAO::Operation::Contract nameContract;
-                    
+
                     /* If the caller has passed in a name then create a name record using the new name */
                     if(!strName.empty())
                         nameContract = Names::CreateName(user->Genesis(), strName, hashAddress);
-                        
+
                     /* Otherwise create a new name from the previous owners name */
                     else
                         nameContract = Names::CreateName(user->Genesis(), params, hashTx);

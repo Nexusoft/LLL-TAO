@@ -9,6 +9,7 @@
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
+
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
@@ -32,9 +33,9 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        /* Creates a new Name Object register for the given name and register 
+        /* Creates a new Name Object register for the given name and register
            address adds the register operation to the contract */
-        TAO::Operation::Contract Names::CreateName(const uint256_t& hashGenesis, 
+        TAO::Operation::Contract Names::CreateName(const uint256_t& hashGenesis,
                                                    const std::string& strFullName,
                                                    const uint256_t& hashRegister)
         {
@@ -62,13 +63,13 @@ namespace TAO
                 /* If so then strip off the namespace so that we can check that this user has permission to use it */
                 strName = strName.substr(0, nPos);
                 strNamespace = strFullName.substr(nPos+1);
-            
+
                 /* Namespace hash is a SK256 hash of the namespace name */
                 hashNamespace = LLC::SK256(strNamespace);
 
                 /* Namespace object to retrieve*/
                 TAO::Register::Object namespaceObject;
-                
+
                 /* Retrieve the Namespace object by name */
                 if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
                     throw APIException(-23, "Namespace does not exist: " + strNamespace);
@@ -80,7 +81,7 @@ namespace TAO
             else
                 /* If no global namespace suffix has been passed in then use the callers genesis hash for the hashNamespace. */
                 hashNamespace = hashGenesis;
-            
+
 
             /* Obtain the name register address for the genesis/name combination */
             TAO::Register::GetNameAddress(hashNamespace, strName, hashNameAddress);
@@ -94,21 +95,21 @@ namespace TAO
                 else
                     throw APIException(-23, "An object with this name already exists for this user.");
             }
-                
+
 
             /* Create the Name register object pointing to hashRegister */
             TAO::Register::Object name = TAO::Register::CreateName(strNamespace, strName, hashRegister);
 
             /* Add the Name object register operation to the transaction */
             contract << uint8_t(TAO::Operation::OP::CREATE) << hashNameAddress << uint8_t(TAO::Register::REGISTER::OBJECT) << name.GetState();
-        
+
             return contract;
         }
 
 
         /* Creates a new Name Object register for an object being transferred */
-        TAO::Operation::Contract Names::CreateName(const uint256_t& hashGenesis, 
-                                                   const json::json& params, 
+        TAO::Operation::Contract Names::CreateName(const uint256_t& hashGenesis,
+                                                   const json::json& params,
                                                    const uint512_t& hashTransfer)
         {
             /* Declare the contract for the response */
@@ -177,7 +178,7 @@ namespace TAO
             /* First check to see if the name parameter has been provided in either the userspace:name or name.namespace format */
             size_t nNamespacePos = strName.find(".");
             size_t nUserspacePos = strName.find(":");
-            
+
             if(nNamespacePos != std::string::npos)
             {
                 /* If the name is in name.namespace format then split the namespace and name into separate variables */
@@ -187,7 +188,7 @@ namespace TAO
                 /* Namespace hash is a SK256 hash of the namespace name */
                 hashNamespace = LLC::SK256(strNamespace);
             }
-            
+
             else if(nUserspacePos != std::string::npos)
             {
                 /* If the name is in username:name format then split the username and name into separate variables */
@@ -272,7 +273,7 @@ namespace TAO
                     }
                 }
             }
-            
+
             return nameObject;
         }
 
@@ -308,13 +309,13 @@ namespace TAO
 
             /* Look up the Name object for the register address hash */
             TAO::Register::Object name = Names::GetName(hashGenesis, hashRegister, hashNameObject);
-            
+
             if(!name.IsNull())
             {
                 /* Get the name from the Name register */
                 strName = name.get<std::string>("name");
             }
-            
+
             return strName;
         }
 
@@ -333,7 +334,7 @@ namespace TAO
             /* Check the object register standard. */
             if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
             {
-                /* The token name is obtained by first looking at the token field int the account, 
+                /* The token name is obtained by first looking at the token field int the account,
                    which contains the register address of the issuing token */
                 uint256_t hashToken = account.get<uint256_t>("token");
 

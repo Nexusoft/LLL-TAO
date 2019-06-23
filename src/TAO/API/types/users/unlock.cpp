@@ -16,9 +16,9 @@ ________________________________________________________________________________
 #include <TAO/API/types/users.h>
 #include <Util/include/args.h>
 
-#include <TAO/Ledger/types/transaction.h>
-#include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/tritium_minter.h>
 
 #include <Util/include/allocators.h>
@@ -144,7 +144,7 @@ namespace TAO
             {
                 TAO::Ledger::TritiumMinter& stakeMinter = TAO::Ledger::TritiumMinter::GetInstance();
 
-                if(!config::fMultiuser.load() && !stakeMinter.IsStarted())
+                if(!stakeMinter.IsStarted())
                     stakeMinter.Start();
             }
 

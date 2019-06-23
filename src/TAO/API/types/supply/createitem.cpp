@@ -26,7 +26,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
-
+#include <TAO/Ledger/types/sigchain.h>
 
 
 /* Global TAO namespace. */
@@ -57,6 +57,9 @@ namespace TAO
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
+            /* Lock the signature chain. */
+            LOCK(user->CREATE_MUTEX);
+
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
@@ -83,7 +86,7 @@ namespace TAO
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
             if(params.find("name") != params.end())
-                tx[1] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), hashRegister); 
+                tx[1] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), hashRegister);
 
             /* Execute the operations layer. */
             if(!tx.Build())

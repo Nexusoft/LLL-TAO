@@ -27,6 +27,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/templates/datastream.h>
 
@@ -56,6 +57,9 @@ namespace TAO
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
+            /* Lock the signature chain. */
+            LOCK(user->CREATE_MUTEX);
+
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
@@ -69,7 +73,7 @@ namespace TAO
             if(params.find("name") == params.end())
                 throw APIException(-25, "Missing name parameter");
 
-            
+
             /* The register address to create the name for */
             uint256_t hashRegister = 0;
 
@@ -80,13 +84,13 @@ namespace TAO
                 if(!IsRegisterAddress(params["register_address"].get<std::string>()))
                     throw APIException(-25, "Invalid register address");
 
-                
+
                 hashRegister.SetHex(params["register_address"].get<std::string>());
             }
 
             /* Create the Name object contract */
             tx[0] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), hashRegister);
-            
+
             /* Execute the operations layer. */
             if(!tx.Build())
                 throw APIException(-26, "Operations failed to execute");
@@ -124,6 +128,9 @@ namespace TAO
             if(!user)
                 throw APIException(-25, "Invalid session ID");
 
+            /* Lock the signature chain. */
+            LOCK(user->CREATE_MUTEX);
+
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
                 throw APIException(-25, "Account has not been unlocked for transactions");
@@ -139,7 +146,7 @@ namespace TAO
 
             /* Get the namespace name */
             std::string strNamespace = params["name"].get<std::string>();
-            
+
             /* Generate register address for namespace, which must be a hash of the name */
             uint256_t hashRegister = LLC::SK256(strNamespace);
 
@@ -153,7 +160,7 @@ namespace TAO
 
             /* Submit the payload object. */
             tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << namespaceObject.GetState();
-            
+
             /* Execute the operations layer. */
             if(!tx.Build())
                 throw APIException(-26, "Operations failed to execute");
