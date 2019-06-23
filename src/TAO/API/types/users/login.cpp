@@ -134,6 +134,10 @@ namespace TAO
                 }
             }
 
+            /* If not using multiuser then check to see whether another user is already logged in */
+            if(!config::fMultiuser.load() && mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
+                throw APIException(-28, "Already logged in with a different username.");
+
             /* For sessionless API use the active sig chain which is stored in session 0 */
             uint64_t nSession = config::fMultiuser.load() ? LLC::GetRand() : 0;
             ret["genesis"] = hashGenesis.ToString();
