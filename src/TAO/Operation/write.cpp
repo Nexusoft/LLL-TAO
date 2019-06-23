@@ -236,8 +236,8 @@ namespace TAO
             /* Catch for all state register types except READONLY. */
             else
             {
-                /* Check the new data size against register's allocated size. */
-                if(vchData.size() != state.GetState().size())
+                /* Check the new data size against register's allocated size, except for APPEND as these keep growing */
+                if(state.nType != TAO::Register::REGISTER::APPEND && vchData.size() != state.GetState().size())
                     return debug::error(FUNCTION, "size mismatch");
 
                 /* For all non objects, write the state as raw byte sequence. */

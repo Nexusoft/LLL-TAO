@@ -257,6 +257,10 @@ namespace TAO
                             TAO::Register::State state;
                             contract >>= state;
 
+                            /* Get the post state, as this is what we need to output for the history */
+                            if(!TAO::Operation::Write::Execute(state, vchData, contract.Timestamp()))
+                                throw APIException(-24, "Contract execution failed");
+
                             /* Complete object parameters. */
                             obj["owner"]    = contract.Caller().ToString();
                             obj["modified"] = state.nModified;
