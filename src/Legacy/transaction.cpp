@@ -377,8 +377,8 @@ namespace Legacy
             TAO::Ledger::TrustKey trustKey;
             if(LLD::trustDB->ReadTrustKey(cKey, trustKey))
             {
-                /* This method can be called on a candidate block to calculate reward for it, 
-                 * so don't use the StakeRate version that takes the BlockState. This would 
+                /* This method can be called on a candidate block to calculate reward for it,
+                 * so don't use the StakeRate version that takes the BlockState. This would
                  * fail because coinstake tx not in database. But this tx is the coinstake tx
                  * so can call the version that takes tx directly and pass *this
                  */
@@ -438,7 +438,7 @@ namespace Legacy
              *
              * Formerly, this calculation used TAO::Ledger::TRUST_SCORE_MAX which was set to same value
              * as ONE_YEAR. However, rate is ALWAYS annual, regardless of the possible max trust score which
-             * could at some point be changed. Thus, ONE_YEAR was defined and used here instead. 
+             * could at some point be changed. Thus, ONE_YEAR was defined and used here instead.
              */
             nStakeReward += ((nValue * nStakeRate * nCoinAge) / TAO::Ledger::ONE_YEAR);
         }
@@ -783,15 +783,12 @@ namespace Legacy
 
             /* Check for existing indexes. */
             if(!LLD::legDB->HasIndex(prevout.hash))
-                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), "not connected");
+                return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not connected");
 
             /* Read the previous transaction. */
             Transaction txPrev;
             if(!LLD::legacyDB->ReadTx(prevout.hash, txPrev))
-            {
-                //TODO: check the memory pool for previous
-                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), " not found");
-            }
+                return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not found");
 
             /* Check that it is valid. */
             if(prevout.n >= txPrev.vout.size())

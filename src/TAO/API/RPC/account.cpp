@@ -960,7 +960,7 @@ namespace TAO
             // Sent
             if ((!listSent.empty() || nFee != 0) && (fAllAccounts || strAccount == strSentAccount))
             {
-                for( const auto& s : listSent)
+                for(const auto& s : listSent)
                 {
                     if(mapExclude.count(s.first))
                         continue;

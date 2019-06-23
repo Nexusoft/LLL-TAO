@@ -197,6 +197,7 @@ namespace TAO
                 else
                     parameters.push_back(argv[i]);
             }
+            
             /* Build the HTTP Header. */
             json::json body = { {"method", argv[argn]}, {"params", parameters}, {"id", 1} };
             std::string strContent = body.dump();
