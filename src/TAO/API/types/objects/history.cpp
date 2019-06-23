@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/create.h>
 #include <TAO/Operation/include/write.h>
+#include <TAO/Operation/include/append.h>
 
 #include <LLD/include/global.h>
 
@@ -258,7 +259,7 @@ namespace TAO
                             contract >>= state;
 
                             /* Get the post state, as this is what we need to output for the history */
-                            if(!TAO::Operation::Write::Execute(state, vchData, contract.Timestamp()))
+                            if(!TAO::Operation::Append::Execute(state, vchData, contract.Timestamp()))
                                 throw APIException(-24, "Contract execution failed");
 
                             /* Complete object parameters. */
