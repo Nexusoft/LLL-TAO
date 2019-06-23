@@ -16,8 +16,13 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/global.h>
+
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/include/chainstate.h>
+
+#include <LLP/include/global.h>
+#include <LLP/types/apinode.h>
 
 #include <Util/include/filesystem.h>
 #include <Util/include/args.h>
@@ -60,4 +65,24 @@ TEST_CASE("Arguments Tests", "[args]")
 
     //set best block
     TAO::Ledger::ChainState::stateBest.store(state);
+
+
+    /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
+    REQUIRE(LLP::NetworkStartup());
+
+    /* Create the API instances. */
+    TAO::API::Initialize();
+
+    /* Create the Core API Server. */
+    LLP::API_SERVER = new LLP::Server<LLP::APINode>(
+        8080,
+        10,
+        30,
+        false,
+        0,
+        0,
+        60,
+        true,
+        false,
+        false);
 }

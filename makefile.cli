@@ -190,23 +190,25 @@ HEADERS= $(wildcard *.h)
 #Run Unit Tests
 ifdef UNIT_TESTS
 	OBJS = build/Tests_main.o \
-		   build/Tests_aes.o \
-		   build/Tests_testvm.o \
-		   build/Tests_objects.o \
-		   build/Tests_system.o \
-		   build/Tests_rollback.o \
-		   build/Tests_block.o \
-		   build/Tests_mempool.o \
-		   build/Tests_register.o \
-		   build/Tests_debit.o \
-		   build/Tests_names.o \
-		   build/Tests_trust.o \
-		   build/Tests_validate.o \
-		   build/Tests_write.o \
-		   build/Tests_conditions.o \
-		   build/Tests_contract.o \
-		   build/Tests_transfer.o \
-           build/Tests_hex.o
+		   build/Tests_LLC_aes.o \
+		   build/Tests_TAO_API_apicall.o \
+		   build/Tests_TAO_API_users.o \
+		   build/Tests_TAO_Ledger_block.o \
+		   build/Tests_TAO_Ledger_mempool.o \
+		   build/Tests_TAO_Register_objects.o \
+		   build/Tests_TAO_Register_rollback.o \
+		   build/Tests_TAO_Register_system.o \
+		   build/Tests_TAO_Register_testvm.o \
+		   build/Tests_TAO_Operation_conditions.o \
+		   build/Tests_TAO_Operation_contract.o \
+		   build/Tests_TAO_Operation_debit.o \
+		   build/Tests_TAO_Operation_names.o \
+		   build/Tests_TAO_Operation_register.o \
+		   build/Tests_TAO_Operation_transfer.o \
+		   build/Tests_TAO_Operation_trust.o \
+		   build/Tests_TAO_Operation_validate.o \
+		   build/Tests_TAO_Operation_write.o \
+		   build/Tests_Util_hex.o
 
 	DEFS += -DUNIT_TESTS
 
@@ -603,25 +605,28 @@ build/Legacy_%.o: ./src/Legacy/%.cpp $(HEADERS)
 build/Tests_%.o: ./tests/unit/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/LLC/%.cpp $(HEADERS)
+build/Tests_LLC_%.o: ./tests/unit/LLC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/LLD/%.cpp $(HEADERS)
+build/Tests_LLD_%.o: ./tests/unit/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/LLP/%.cpp $(HEADERS)
+build/Tests_LLP_%.o: ./tests/unit/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/TAO/Ledger/%.cpp $(HEADERS)
+build/Tests_TAO_API_%.o: ./tests/unit/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/TAO/Operation/%.cpp $(HEADERS)
+build/Tests_TAO_Ledger_%.o: ./tests/unit/TAO/Ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/TAO/Register/%.cpp $(HEADERS)
+build/Tests_TAO_Operation_%.o: ./tests/unit/TAO/Operation/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/Util/%.cpp $(HEADERS)
+build/Tests_TAO_Register%.o: ./tests/unit/TAO/Register/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/Tests_Util_%.o: ./tests/unit/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Benchmarks_%.o: ./tests/bench/%.cpp $(HEADERS)
@@ -911,49 +916,56 @@ build/Tests_%.o: tests/unit/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/LLC/%.cpp $(HEADERS)
+build/Tests_LLC_%.o: tests/unit/LLC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/LLD/%.cpp $(HEADERS)
+build/Tests_LLD_%.o: tests/unit/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/LLP/%.cpp $(HEADERS)
+build/Tests_LLP_%.o: tests/unit/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/TAO/Ledger/%.cpp $(HEADERS)
+build/Tests_TAO_API_%.o: tests/unit/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/TAO/Operation/%.cpp $(HEADERS)
+build/Tests_TAO_Ledger_%.o: tests/unit/TAO/Ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/TAO/Register/%.cpp $(HEADERS)
+build/Tests_TAO_Operation_%.o: tests/unit/TAO/Operation/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/Util/%.cpp $(HEADERS)
+build/Tests_TAO_Register_%.o: tests/unit/TAO/Register/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Tests_Util_%.o: tests/unit/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1292,49 +1304,56 @@ build/Tests_%.o: tests/unit/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/LLC/%.cpp $(HEADERS)
+build/Tests_LLC_%.o: tests/unit/LLC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/LLD/%.cpp $(HEADERS)
+build/Tests_LLD_%.o: tests/unit/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/LLP/%.cpp $(HEADERS)
+build/Tests_LLP_%.o: tests/unit/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/TAO/Ledger/%.cpp $(HEADERS)
+build/Tests_TAO_API_%.o: tests/unit/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/TAO/Operation/%.cpp $(HEADERS)
+build/Tests_TAO_Ledger_%.o: tests/unit/TAO/Ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/TAO/Register/%.cpp $(HEADERS)
+build/Tests_TAO_Operation_%.o: tests/unit/TAO/Operation/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/Util/%.cpp $(HEADERS)
+build/Tests_TAO_Register_%.o: tests/unit/TAO/Register/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Tests_Util_%.o: tests/unit/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

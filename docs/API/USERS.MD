@@ -155,7 +155,7 @@ in encrypted memory.
 ### Return value JSON object:
 ```
 {
-    "genesis": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+    true
 }
 ```
 
