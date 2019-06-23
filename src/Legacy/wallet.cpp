@@ -1237,6 +1237,7 @@ namespace Legacy
 
             /* Clear the transactions. */
             vtx.clear();
+            vtx.shrink_to_fit();
 
         } while(!config::fShutdown.load() && LLD::legacyDB->BatchRead(std::make_pair(std::string("tx"), hashLast), "tx", vtx, 1000));
 
