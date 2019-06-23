@@ -151,7 +151,7 @@ namespace Legacy
     	/* Check that stake minter is configured to run.
     	 * Stake Minter default is to run for non-server and not to run for server
     	 */
-    	if ((!config::fServer && !config::GetBoolArg("-stake", true)) || (config::fServer && !config::GetBoolArg("-stake", false)))
+        if(!config::GetBoolArg("-stake"))
     	{
     		debug::log(2, "Stake Minter not configured. Startup cancelled.");
 
@@ -344,7 +344,10 @@ namespace Legacy
 
                 /* For next iteration, go back to staking for Genesis */
                 if (pReservedTrustKey != nullptr)
+                {
                     delete pReservedTrustKey;  // should never happen, this is a precaution
+                    pReservedTrustKey = nullptr;
+                }
 
                 pReservedTrustKey = new ReserveKey(pStakingWallet);
                 pReservedTrustKey->GetReservedKey();
@@ -736,6 +739,7 @@ namespace Legacy
             debug::log(0, FUNCTION, "New trust key generated and stored");
 
             delete pReservedTrustKey;
+            pReservedTrustKey = nullptr;
         }
 
         return true;
