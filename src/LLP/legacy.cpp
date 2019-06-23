@@ -722,7 +722,7 @@ namespace LLP
 
             /* If no ancestor blocks were found. */
             if(vStates.size() == 0)
-                return debug::error(FUNCTION, "no ancestor blocks found");
+                return true;
 
             /* Set the search from search limit. */
             debug::log(2, "getblocks ", vStates[0].nHeight, " to ", hashStop.ToString().substr(0, 20));
