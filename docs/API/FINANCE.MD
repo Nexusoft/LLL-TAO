@@ -237,7 +237,7 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `address` : The register address of the account.  The address is a hash based on the owners username and account name.
 
-`token_address` : This will always be set to 0 for NXS accounts.
+`token` : This will always be set to 0 for NXS accounts.
 
 `balance` : The current balance of this account.
 
@@ -280,7 +280,7 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 
 `address` : The register address for the account
 
-`token_address` : This will always be set to 0 for NXS accounts.
+`token` : This will always be set to 0 for NXS accounts.
 
 `balance` : The current balance of the token account.
 

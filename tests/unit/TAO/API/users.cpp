@@ -11,36 +11,40 @@
 
 ____________________________________________________________________________________________*/
 
-#include "apicall.h"
+#include "util.h"
 
 #include <LLC/include/random.h>
 
 #include <unit/catch2/catch.hpp>
 
-std::string SESSION;
-
 TEST_CASE( "Test Users API", "[API/users]")
 {
     /* Declare variables shared across test cases */
-    std::string strUsername;
     json::json params;
     json::json ret;
     json::json result;
     json::json error;
+
+    /* Dont use the global USERNAME / SESSION for these tests as we can't be sure that it hasn't already been created by 
+       one of the other API tests, due to the unknown order that the tests are run in */
+    std::string strUsername = LLC::GetRand256().ToString();
+    std::string strSession = "";
     
     /* Enure that we use low argon2 requirements for unit test to speed up the use of the sig chain */
     config::SoftSetArg("-argon2", "0");
     config::SoftSetArg("-argon2_memory", "0");
 
+    /* Ensure User1 is logged out before we start testing.  This is only an issue when not in multiuser mode */
+    if(!config::fMultiuser.load())
+        LogoutUser(GENESIS1, SESSION1);
+
     /* Test creating a new user */
     {
-        /* Generate a random string for the username */
-        strUsername = LLC::GetRand256().ToString();
 
         /* Build the parameters to pass to the API */
         params["username"] = strUsername;
-        params["password"] = "pw";
-        params["pin"] = "1234";
+        params["password"] = PASSWORD;
+        params["pin"] = PIN;
 
         /* Invoke the API */
         ret = APICall("users/create/user", params);
@@ -74,7 +78,7 @@ TEST_CASE( "Test Users API", "[API/users]")
         /* Build the parameters to pass to the API */
         params["username"] = strUsername;
         params["password"] = "wrongpass";
-        params["pin"] = "1234";
+        params["pin"] = PIN;
 
         /* Invoke the API */
         ret = APICall("users/login/user", params);
@@ -88,8 +92,8 @@ TEST_CASE( "Test Users API", "[API/users]")
     {
         /* Build the parameters to pass to the API */
         params["username"] = strUsername;
-        params["password"] = "pw";
-        params["pin"] = "1234";
+        params["password"] = PASSWORD;
+        params["pin"] = PIN;
 
         /* Invoke the API */
         ret = APICall("users/login/user", params);
@@ -100,17 +104,17 @@ TEST_CASE( "Test Users API", "[API/users]")
 
         REQUIRE(result.find("genesis") != result.end());
 
-        if(config::fMultiuser)
+        if(config::fMultiuser.load())
         {
             REQUIRE(result.find("session") != result.end());
 
             /* Grab the session ID for future calls */
-            SESSION = result["session"].get<std::string>();
+            strSession = result["session"].get<std::string>();
         }
     }
 
     /* Test unlock fail wrong pin */
-    if(!config::fMultiuser)
+    if(!config::fMultiuser.load())
     {
         /* Build the parameters to pass to the API */
         params["pin"] = "5678";
@@ -123,10 +127,10 @@ TEST_CASE( "Test Users API", "[API/users]")
     }
 
     /* Test unlock */
-    if(!config::fMultiuser)
+    if(!config::fMultiuser.load())
     {
         /* Build the parameters to pass to the API */
-        params["pin"] = "1234";
+        params["pin"] = PIN;
 
         /* Invoke the API */
         ret = APICall("users/unlock/user", params);
@@ -140,10 +144,10 @@ TEST_CASE( "Test Users API", "[API/users]")
 
 
     /* Test lock */
-    if(!config::fMultiuser)
+    if(!config::fMultiuser.load())
     {
         /* Build the parameters to pass to the API */
-        params["pin"] = "1234";
+        params["pin"] = PIN;
 
         /* Invoke the API */
         ret = APICall("users/lock/user", params);
@@ -159,7 +163,7 @@ TEST_CASE( "Test Users API", "[API/users]")
     /* Test logout success */
     {
         /* Build the parameters to pass to the API */
-        params["session"] = SESSION;
+        params["session"] = strSession;
 
         /* Invoke the API */
         ret = APICall("users/logout/user", params);
@@ -171,4 +175,5 @@ TEST_CASE( "Test Users API", "[API/users]")
         REQUIRE(result.get<bool>() == true);
 
     }
+
 }

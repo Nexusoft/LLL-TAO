@@ -191,8 +191,9 @@ HEADERS= $(wildcard *.h)
 ifdef UNIT_TESTS
 	OBJS = build/Tests_main.o \
 		   build/Tests_LLC_aes.o \
-		   build/Tests_TAO_API_apicall.o \
+		   build/Tests_TAO_API_finance.o \
 		   build/Tests_TAO_API_users.o \
+		   build/Tests_TAO_API_util.o \
 		   build/Tests_TAO_Ledger_block.o \
 		   build/Tests_TAO_Ledger_mempool.o \
 		   build/Tests_TAO_Register_objects.o \
