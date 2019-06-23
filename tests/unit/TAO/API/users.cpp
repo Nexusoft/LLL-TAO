@@ -28,8 +28,9 @@ TEST_CASE( "Test Users API", "[API/users]")
     json::json result;
     json::json error;
     
-    /* Enure that we use brainpool for unit test to speed up the use of the sig chain */
-    config::SoftSetBoolArg("-brainpool", true);
+    /* Enure that we use low argon2 requirements for unit test to speed up the use of the sig chain */
+    config::SoftSetArg("-argon2", "0");
+    config::SoftSetArg("-argon2_memory", "0");
 
     /* Test creating a new user */
     {
