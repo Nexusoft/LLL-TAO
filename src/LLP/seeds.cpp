@@ -99,7 +99,7 @@ namespace LLP
       /*  Testnet seed nodes. */
       const std::vector<std::string> DNS_SeedNodes_Testnet =
       {
-          "node5.nexusoft.io",
+          "node4.nexusearth.com",
           //"test1.mercuryminer.com",
           //"test2.mercuryminer.com",
           //"test3.mercuryminer.com",
