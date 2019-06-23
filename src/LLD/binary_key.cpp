@@ -118,7 +118,7 @@ namespace LLD
             return false;
 
         /* If the time has expired, return false. */
-        if(pthis->nTimestamp + 60 < runtime::timestamp())
+        if(pthis->nTimestamp + 10 < runtime::timestamp())
             return false;
 
         /* Move to front of LRU. */
