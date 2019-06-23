@@ -99,12 +99,12 @@ namespace LLP
       /*  Testnet seed nodes. */
       const std::vector<std::string> DNS_SeedNodes_Testnet =
       {
-          "test1.nexusoft.io",
-          "test1.mercuryminer.com",
-          "test2.mercuryminer.com",
-          "test3.mercuryminer.com",
-          "test4.mercuryminer.com",
-          "test5.mercuryminer.com",
+          "node5.nexusoft.io",
+          //"test1.mercuryminer.com",
+          //"test2.mercuryminer.com",
+          //"test3.mercuryminer.com",
+          //"test4.mercuryminer.com",
+          //"test5.mercuryminer.com",
           "nexus-lisp-seed.lispers.net",
           "fe::255:255"
       };
