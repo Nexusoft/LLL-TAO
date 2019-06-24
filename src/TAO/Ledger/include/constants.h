@@ -130,6 +130,7 @@ namespace TAO
 
         /** Set the Maximum Output Value of Coinstake Transaction. **/
         const uint64_t MAX_STAKE_WEIGHT = 1000 * Legacy::COIN;
+
     }
 }
 

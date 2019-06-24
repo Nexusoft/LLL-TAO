@@ -283,6 +283,8 @@ namespace LLP
             /* Detect if the fast sync node was disconnected. */
             if(addrFastSync == GetAddress())
             {
+                debug::log(0, NODE, "fast sync node disconnected");
+
                 /* Switch the node. */
                 SwitchNode();
             }
@@ -303,7 +305,7 @@ namespace LLP
                 LEGACY_SERVER->pAddressManager->AddAddress(GetAddress(), ConnectState::DROPPED);
 
             /* Debug output for node disconnect. */
-            debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming",
+            debug::log(0, NODE, fOUTGOING ? "Outgoing" : "Incoming",
                 " Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
 
             return;
