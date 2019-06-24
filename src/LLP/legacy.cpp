@@ -223,8 +223,7 @@ namespace LLP
             uint64_t nTimestamp = runtime::timestamp();
 
             /* Unreliabilitiy re-requesting (max time since getblocks) */
-            if(config::GetBoolArg("-fastsync")
-            && TAO::Ledger::ChainState::Synchronizing()
+            if(TAO::Ledger::ChainState::Synchronizing()
             && addrFastSync == GetAddress()
             && nLastTimeReceived.load() + 10 < nTimestamp
             && nLastGetBlocks.load() + 10 < nTimestamp)
@@ -537,8 +536,7 @@ namespace LLP
             }
 
             /* Fast sync mode. */
-            if(config::GetBoolArg("-fastsync")
-            && addrFastSync == GetAddress()
+            if(addrFastSync == GetAddress()
             && TAO::Ledger::ChainState::Synchronizing()
             && vInv.back().GetType() == MSG_BLOCK
             && nInvSize > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
@@ -802,11 +800,6 @@ namespace LLP
             /* Fast sync block requests. */
             if(!TAO::Ledger::ChainState::Synchronizing())
                 pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-            else if(!config::GetBoolArg("-fastsync"))
-            {
-                /* Switch to a new node. */
-                SwitchNode();
-            }
 
             LOCK(ORPHAN_MUTEX);
 
@@ -856,8 +849,7 @@ namespace LLP
             {
 
                 /* Fast Sync node switch. */
-                if(config::GetBoolArg("-fastsync")
-                && TAO::Ledger::ChainState::Synchronizing())
+                if(TAO::Ledger::ChainState::Synchronizing())
                 {
                     /* Find a new fast sync node if too many failures. */
                     if(addrFastSync == pnode->GetAddress())

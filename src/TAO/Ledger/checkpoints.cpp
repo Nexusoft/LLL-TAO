@@ -29,7 +29,7 @@ namespace TAO
     {
 
         /** Checkpoint timespan. **/
-        uint32_t CHECKPOINT_TIMESPAN = 10;
+        uint32_t CHECKPOINT_TIMESPAN = 30;
 
 
         /* Check if the new block triggers a new Checkpoint timespan.*/
