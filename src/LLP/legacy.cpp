@@ -799,15 +799,32 @@ namespace LLP
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
-            /* Fast sync block requests. */
-            if(!TAO::Ledger::ChainState::Synchronizing())
-                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-
             LOCK(ORPHAN_MUTEX);
 
-            /* Continue if already have this orphan. */
-            if(mapLegacyOrphans.count(block.hashPrevBlock))
-                return true;
+            /* Fast sync block requests. */
+            if(!TAO::Ledger::ChainState::Synchronizing())
+            {
+                /* Inventory requests. */
+                std::vector<CInv> vInv = { CInv(block.hashPrevBlock, LLP::MSG_BLOCK) };
+
+                /* Check for orphans. */
+                uint1024_t hashOrphan = block.hashPrevBlock;
+                while(mapLegacyOrphans.count(hashOrphan))
+                {
+                    /* Loop back to next previous. */
+                    hashOrphan = mapLegacyOrphans[hashOrphan].hashPrevBlock;
+
+                    /* Push to inventory. */
+                    vInv.insert(vInv.begin(), CInv(hashOrphan, LLP::MSG_BLOCK));;
+                }
+
+                /* Get batch of inventory. */
+                pnode->PushMessage("getdata", vInv);
+
+                /* Return if recursive orphans. */
+                if(vInv.size() == 1)
+                    return true;
+            }
 
             /* Increment the consecutive orphans. */
             if(pnode)
