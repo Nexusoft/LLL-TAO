@@ -355,22 +355,21 @@ namespace LLP
 
     /*  Get the number of active connection pointers from data threads. */
      template <class ProtocolType>
-     uint16_t DataThread<ProtocolType>::GetConnectionCount()
+     uint32_t DataThread<ProtocolType>::GetConnectionCount()
      {
-         uint16_t nConnectionCount = 0;
-         uint16_t nSize = static_cast<uint16_t>(CONNECTIONS->size());
+         return nConnections.load();
+     }
 
-         /* Loop through connections in data thread and add any that are connected to count. */
-         for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+
+     template <class ProtocolType>
+     void DataThread<ProtocolType>::GetConnected(std::vector<BaseAddress> &vAddr)
+     {
+         uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
+         for(uint32_t i = 0; i < nSize; ++i)
          {
-             /* Skip over inactive connections. */
-             if(!CONNECTIONS->at(nIndex))
-                 continue;
-
-             ++nConnectionCount;
+             if(CONNECTIONS->at(i)->Connected())
+                vAddr.push_back(CONNECTIONS->at(i)->addr);
          }
-
-         return nConnectionCount;
      }
 
 
