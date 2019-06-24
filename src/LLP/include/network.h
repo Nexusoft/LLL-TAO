@@ -52,6 +52,7 @@ typedef int socklen_t;
 #include <netdb.h>
 #include <net/if.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <poll.h>
 #include <ifaddrs.h>
 #include <errno.h>

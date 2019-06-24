@@ -554,6 +554,18 @@ namespace LLP
         setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEPORT, (void*)&nOne, sizeof(int32_t));
 #endif
 
+#ifndef WIN32
+        /* Set the MSS to a lower than default value to support the increased bytes required for LISP */
+        int nMaxSeg = 1300;
+        if(setsockopt(hListenSocket, IPPROTO_TCP, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
+        { //TODO: this fails on OSX systems. Need to find out why
+            //debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
+            //closesocket(hListenSocket);
+
+            //return false;
+        }
+#endif
+
 
         /* The sockaddr_in structure specifies the address family, IP address, and port for the socket that is being bound */
         if(fIPv4)
