@@ -22,7 +22,9 @@ namespace LLD
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     template<class KeychainType, class CacheType>
-    SectorDatabase<KeychainType, CacheType>::SectorDatabase(std::string strNameIn, uint8_t nFlagsIn, uint64_t nBucketsIn)
+    SectorDatabase<KeychainType, CacheType>::SectorDatabase(const std::string& strNameIn,
+                                                            const uint8_t nFlagsIn, const uint64_t nBucketsIn,
+                                                            const uint32_t nCacheIn)
     : CONDITION_MUTEX()
     , CONDITION()
     , SECTOR_MUTEX()
@@ -33,7 +35,7 @@ namespace LLD
     , runtime()
     , pTransaction(nullptr)
     , pSectorKeys(new KeychainType((config::GetDataDir() + strName + "/keychain/"), nFlags, nBucketsIn))
-    , cachePool(new CacheType(static_cast<uint32_t>(config::GetArg("-maxcache", 64) * 1024 * 1024) / 4))
+    , cachePool(new CacheType(nCacheIn))
     , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
     , nCurrentFile(0)
     , nCurrentFileSize(0)

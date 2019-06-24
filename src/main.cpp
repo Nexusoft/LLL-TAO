@@ -333,16 +333,21 @@ int main(int argc, char** argv)
     }
 
 
-    /* Create the database instances. */
-    //LLD::regDB = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::APPEND | LLD::FLAGS::FORCE);
-    //LLD::locDB = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
-    LLD::legDB = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+    /* Create the ledger database instance. */
+    LLD::legDB    = new LLD::LedgerDB(
+                    LLD::FLAGS::CREATE | LLD::FLAGS::WRITE,
+                    256 * 256 * 128,
+                    config::GetArg("-maxcache", 64) * 1024 * 512);
 
+    /* Create the legacy database instance. */
+    LLD::legacyDB = new LLD::LegacyDB(
+                    LLD::FLAGS::CREATE | LLD::FLAGS::WRITE,
+                    256 * 256 * 128,
+                    config::GetArg("-maxcache", 64) * 1024 * 512);
 
-    /* Initialize the Legacy Database. */
-    LLD::trustDB  = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
-    LLD::legacyDB = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
-
+    /* Create the trust database instance. */
+    LLD::trustDB  = new LLD::TrustDB(
+                    LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
     /* Handle database recovery mode. */
     LLD::TxnRecovery();
@@ -399,48 +404,14 @@ int main(int argc, char** argv)
         30000);
 
 
-    // No tritium server for initial release
-    // /** Handle the beta server. */
-    // if(!config::GetBoolArg(std::string("-beta")))
-    // {
-    //     /* Get the port for Tritium Server. */
-    //     port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? 8888 : 9888));
+    /* Get the port for Legacy Server. */
+    port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? 8323 : 9323));
 
-    //      Initialize the Tritium Server.
-    //     LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(port);
+    /* Initialize the Legacy Server. */
+    LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(port);
 
-    //     /* Handle Manual Connections from Command Line, if there are any. */
-    //     LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
-    // }
-    // else
-    // {
-        /* Get the port for Legacy Server. */
-        port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? 8323 : 9323));
-
-        /* Initialize the Legacy Server. */
-        LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(port);
-
-        /* Handle Manual Connections from Command Line, if there are any. */
-        LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
-    // }
-
-
-    /* Get the port for the Core API Server. */
-    port = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), 8080));
-
-    /* Create the Core API Server. */
-    CORE_SERVER = new LLP::Server<LLP::CoreNode>(
-        port,
-        10,
-        30,
-        false,
-        0,
-        0,
-        60,
-        config::GetBoolArg("-listen", true),
-        false,
-        false);
-
+    /* Handle Manual Connections from Command Line, if there are any. */
+    LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
 
     /* Get the port for the Core API Server. */
     port = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet? 8336 : 9336));

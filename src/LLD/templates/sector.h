@@ -170,7 +170,8 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(std::string strNameIn, uint8_t nFlagsIn, uint64_t nBucketsIn = 256 * 256 * 64);
+        SectorDatabase(const std::string& strNameIn, const uint8_t nFlagsIn,
+                       const uint64_t nBucketsIn = 256 * 256 * 64, const uint32_t nCacheIn = 1024 * 1024);
 
 
         /** Default Destructor **/

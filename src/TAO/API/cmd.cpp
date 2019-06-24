@@ -148,6 +148,9 @@ namespace TAO
                 runtime::sleep(10);
             }
 
+            /* Disconnect node. */
+            apiNode.Disconnect();
+
             /* Parse response JSON. */
             json::json ret = json::json::parse(apiNode.INCOMING.strContent);
 
@@ -197,7 +200,7 @@ namespace TAO
                 else
                     parameters.push_back(argv[i]);
             }
-            
+
             /* Build the HTTP Header. */
             json::json body = { {"method", argv[argn]}, {"params", parameters}, {"id", 1} };
             std::string strContent = body.dump();
@@ -258,6 +261,9 @@ namespace TAO
                 rpcNode.ReadPacket();
                 runtime::sleep(10);
             }
+
+            /* Disconnect node. */
+            rpcNode.Disconnect();
 
             /* Dump the response to the console. */
             int nRet = 0;
