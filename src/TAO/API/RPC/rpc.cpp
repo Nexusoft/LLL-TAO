@@ -209,11 +209,12 @@ namespace TAO
         {
             uint32_t nConnections = 0;
 
-            if(LLP::TRITIUM_SERVER  && LLP::TRITIUM_SERVER->pAddressManager)
-                nConnections += LLP::TRITIUM_SERVER->pAddressManager->Count(LLP::ConnectState::CONNECTED);
+            if(LLP::LEGACY_SERVER)
+                nConnections += LLP::LEGACY_SERVER->GetConnectionCount();
+            else if(LLP::TRITIUM_SERVER)
+                nConnections += LLP::TRITIUM_SERVER->GetConnectionCount();
 
-            if(LLP::LEGACY_SERVER && LLP::LEGACY_SERVER->pAddressManager)
-                nConnections += LLP::LEGACY_SERVER->pAddressManager->Count(LLP::ConnectState::CONNECTED);
+
 
             return nConnections;
         }

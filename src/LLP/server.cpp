@@ -304,15 +304,11 @@ namespace LLP
         std::vector<BaseAddress> vAddr;
         std::vector<LegacyAddress> vLegacyAddr;
 
-        if(pAddressManager)
-        {
-            /* Get the base addresses from address manager and convert
-            into legacy addresses */
-            pAddressManager->GetAddresses(vAddr);
+        for(uint16_t i = 0; i < MAX_THREADS; ++i)
+            DATA_THREADS[i]->GetConnected(vAddr);
 
-            for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
-                vLegacyAddr.push_back((LegacyAddress)*it);
-        }
+        for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
+            vLegacyAddr.push_back((LegacyAddress)*it);
 
         return vLegacyAddr;
     }
@@ -355,8 +351,7 @@ namespace LLP
                 runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
-            if(GetConnectionCount() < nMaxConnections
-               && pAddressManager->StochasticSelect(addr))
+            if(GetConnectionCount() < nMaxConnections && pAddressManager->StochasticSelect(addr))
             {
                 /* Check for invalid address */
                 if(!addr.IsValid())
