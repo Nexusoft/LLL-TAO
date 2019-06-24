@@ -228,7 +228,7 @@ namespace Legacy
 
 
         /* Check the Required Mining Outputs. */
-        if (nHeight > 0 && fIsProofOfWork && nVersion >= 3)
+        if (nHeight > 0 && fIsProofOfWork)
         {
             uint32_t nSize = vtx[0].vout.size();
 
@@ -237,7 +237,7 @@ namespace Legacy
                 return debug::error(FUNCTION, "coinbase too small");
 
             /* Check the ambassador and developer addresses. */
-            if(!config::fTestNet)
+            if(!config::fTestNet && nHeight != 112283) //112283 is an exception before clean rules implemented for sigs
             {
                 /* Check the ambassador signatures. */
                 if (!VerifyAddressList(vtx[0].vout[nSize - 2].scriptPubKey,
@@ -456,19 +456,19 @@ namespace Legacy
                 nMiningReward += vtx[0].vout[nIndex].nValue;
 
             /* Check that the Mining Reward Matches the Coinbase Calculations. */
-            if (nMiningReward != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 0))
+            if (nMiningReward / 1000 != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 0) / 1000)
                 return debug::error(FUNCTION, "miner reward mismatch ",
-                    nMiningReward, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 0));
+                    nMiningReward / 1000, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 0) / 1000);
 
             /* Check that the Ambassador Reward Matches the Coinbase Calculations. */
-            if (vtx[0].vout[nSize - 2].nValue != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 1))
+            if (vtx[0].vout[nSize - 2].nValue / 1000 != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 1) / 1000)
                 return debug::error(FUNCTION, "ambassador reward mismatch ",
-                    vtx[0].vout[nSize - 2].nValue, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 1));
+                    vtx[0].vout[nSize - 2].nValue / 1000, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 1) / 1000);
 
             /* Check that the Developer Reward Matches the Coinbase Calculations. */
-            if (vtx[0].vout[nSize - 1].nValue != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 2))
+            if (vtx[0].vout[nSize - 1].nValue / 1000 != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 2) / 1000)
                 return debug::error(FUNCTION, "developer reward mismatch ",
-                    vtx[0].vout[nSize - 1].nValue, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 2));
+                    vtx[0].vout[nSize - 1].nValue / 1000, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 2) / 1000);
 
         }
         else if (IsProofOfStake())

@@ -961,8 +961,8 @@ namespace Legacy
 
             /* Check that the interest is within range. */
             //add tolerance to stake reward of + 1 (viz.) for stake rewards
-            if (vout[0].nValue > nStakeReward + nValueIn + 1)
-                return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward ", vout[0].nValue, " mismatch ", nStakeReward + nValueIn);
+            if (vout[0].nValue / 1000 > (nStakeReward + nValueIn) / 1000)
+                return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward ", vout[0].nValue / 1000, " mismatch ", (nStakeReward + nValueIn) / 1000);
         }
         else if (nValueIn < GetValueOut())
             return debug::error(FUNCTION, GetHash().ToString().substr(0,10), "value in < value out");
