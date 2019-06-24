@@ -818,12 +818,15 @@ namespace LLP
                     vInv.insert(vInv.begin(), CInv(hashOrphan, LLP::MSG_BLOCK));;
                 }
 
+                /* Return if recursive orphans. */
+                if(vInv.size() == 2)
+                    return true;
+
                 /* Get batch of inventory. */
                 pnode->PushMessage("getdata", vInv);
 
-                /* Return if recursive orphans. */
-                if(vInv.size() == 1)
-                    return true;
+                /* Run a getblocks to be sure. */
+                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
             }
 
             /* Increment the consecutive orphans. */
