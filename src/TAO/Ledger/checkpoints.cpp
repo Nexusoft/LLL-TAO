@@ -68,7 +68,7 @@ namespace TAO
             if(ChainState::Synchronizing())
             {
                 /* Check that height isn't exceeded. */
-                if(state.nHeight > CHECKPOINT_HEIGHT)
+                if(config::fTestNet || state.nHeight > CHECKPOINT_HEIGHT)
                     return true;
 
                 /* Check map checkpoints. */
