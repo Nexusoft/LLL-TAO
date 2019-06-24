@@ -168,8 +168,12 @@ namespace TAO
             /* Search through the trust keys. */
             for (const auto& trustKey : vKeys)
             {
-                /* Ignore trust keys that are inactive (no blocks within timespan) */
-                if (trustKey.nLastBlockTime + (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 3 : TAO::Ledger::TRUST_KEY_TIMESPAN * 3)
+                /* Ignore v4 trust keys */
+                if (trustKey.nLastBlockTime < (config::fTestNet ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[3] : TAO::Ledger::NETWORK_VERSION_TIMELOCK[3]))
+                    continue;
+
+                /* Ignore trust keys that are inactive (no trust blocks within timespan x 10 = 30 days mainnet) */
+                if (trustKey.nLastBlockTime + (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 10 : TAO::Ledger::TRUST_KEY_TIMESPAN * 10)
                     < TAO::Ledger::ChainState::stateBest.load().GetBlockTime())
                     continue;
 
