@@ -153,6 +153,18 @@ namespace LLP
         fcntl(nFile, F_SETFL, O_NONBLOCK);
     #endif
 
+#ifndef WIN32
+        /* Set the MSS to a lower than default value to support the increased bytes required for LISP */
+        int nMaxSeg = 1300;
+        if(setsockopt(nFile, IPPROTO_TCP, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
+        { //TODO: this fails on OSX systems. Need to find out why
+            //debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
+            //closesocket(nFile);
+
+            //return false;
+        }
+#endif
+
         /* Open the socket connection for IPv4 / IPv6. */
         if(addrDest.IsIPv4())
         {
