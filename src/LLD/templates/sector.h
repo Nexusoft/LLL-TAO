@@ -456,7 +456,8 @@ namespace LLD
             while(nLimit == -1 || nLimit > 0)
             {
                 /* Get filestream object. */
-                std::fstream stream = std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
+                std::fstream stream = std::fstream(debug::strprintf("%s_block.%05u",
+                                        strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
                 if(!stream.is_open())
                     return (vValues.size() > 0);
 

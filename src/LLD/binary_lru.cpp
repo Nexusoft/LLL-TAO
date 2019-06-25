@@ -344,7 +344,7 @@ namespace LLD
         MoveToFront(pnew);
 
         /* Remove the last node if cache too large. */
-        if(nCurrentSize > MAX_CACHE_SIZE)
+        while(nCurrentSize > MAX_CACHE_SIZE)
         {
             /* Get last pointer. */
             BinaryNode* pnode = plast;
@@ -421,7 +421,7 @@ namespace LLD
         pthis->pnext             = nullptr;
 
         /* Free the memory. */
-        nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 8);
+        nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
         checksums[Bucket(vKey)] = 0;
 
         delete pthis;

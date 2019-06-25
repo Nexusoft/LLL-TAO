@@ -93,7 +93,7 @@ namespace LLD
 
 
         /** Copy Assignment Operator **/
-        BinaryHashMap& operator=(BinaryHashMap map);
+        BinaryHashMap& operator=(const BinaryHashMap& map);
 
 
         /** Copy Constructor **/

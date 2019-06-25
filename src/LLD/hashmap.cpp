@@ -36,6 +36,7 @@ namespace LLD
     , HASHMAP_TOTAL_BUCKETS(256 * 256 * 64)
     , HASHMAP_MAX_KEY_SIZE(32)
     , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
+    , nFlags(0)
     , RECORD_MUTEX(1024)
     {
     }
@@ -58,21 +59,38 @@ namespace LLD
     }
 
 
-    /** Copy Assignment Operator **/
-    BinaryHashMap& BinaryHashMap::operator=(BinaryHashMap map)
+    /** Copy Constructor **/
+    BinaryHashMap::BinaryHashMap(const BinaryHashMap& map)
+    : KEY_MUTEX()
+    , strBaseLocation(map.strBaseLocation)
+    , fileCache(map.fileCache)
+    , pindex(map.pindex)
+    , hashmap(map.hashmap)
+    , HASHMAP_TOTAL_BUCKETS(map.HASHMAP_TOTAL_BUCKETS)
+    , HASHMAP_MAX_KEY_SIZE(map.HASHMAP_MAX_KEY_SIZE)
+    , HASHMAP_KEY_ALLOCATION(map.HASHMAP_KEY_ALLOCATION)
+    , nFlags(map.nFlags)
+    , RECORD_MUTEX(map.RECORD_MUTEX.size())
     {
-        strBaseLocation       = map.strBaseLocation;
-        fileCache             = map.fileCache;
-
-        return *this;
+        Initialize();
     }
 
 
-    /** Copy Constructor **/
-    BinaryHashMap::BinaryHashMap(const BinaryHashMap& map)
+    /** Copy Assignment Operator **/
+    BinaryHashMap& BinaryHashMap::operator=(const BinaryHashMap& map)
     {
-        strBaseLocation    = map.strBaseLocation;
-        fileCache          = map.fileCache;
+        strBaseLocation        = map.strBaseLocation;
+        fileCache              = map.fileCache;
+        pindex                 = map.pindex;
+        hashmap                = map.hashmap;
+        HASHMAP_TOTAL_BUCKETS  = map.HASHMAP_TOTAL_BUCKETS;
+        HASHMAP_MAX_KEY_SIZE   = map.HASHMAP_MAX_KEY_SIZE;
+        HASHMAP_KEY_ALLOCATION = map.HASHMAP_KEY_ALLOCATION;
+        nFlags                 = map.nFlags;
+
+        Initialize();
+
+        return *this;
     }
 
 
