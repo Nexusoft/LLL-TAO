@@ -15,19 +15,26 @@ ________________________________________________________________________________
 #include <Util/include/json.h>
 #include <Util/include/runtime.h>
 #include <LLP/include/version.h>
+
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/supply.h>
+
 #include <LLP/include/global.h>
 #include <LLP/include/base_address.h>
 #include <LLP/include/legacy_address.h>
 #include <LLP/include/manager.h>
+
+#include <LLP/types/legacy.h>
+#include <LLP/templates/data.h>
+
 #include <Util/include/version.h>
 
 #include <Legacy/types/minter.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/include/money.h>
+
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/API/include/lisp.h>
 #include <LLP/include/lisp.h>
@@ -144,37 +151,49 @@ namespace TAO
                         "getpeerinfo"
                         " - Returns data about each connected network node.");
 
-            std::vector<LLP::LegacyAddress> vLegacyAddr;
-            std::vector<LLP::LegacyAddress> vTritiumAddr;
-
-            /* query address information from tritium server address manager */
+            /* Check for legacy server */
             if(LLP::LEGACY_SERVER)
-                 vLegacyAddr = LLP::LEGACY_SERVER->GetAddresses();
-
-            for(auto& addr : vLegacyAddr)
             {
-                json::json obj;
+                for(uint16_t nThread = 0; nThread < LLP::LEGACY_SERVER->MAX_THREADS; ++nThread)
+                {
+                    /* Get the data threads. */
+                    LLP::DataThread<LLP::LegacyNode>* dt = LLP::LEGACY_SERVER->DATA_THREADS[nThread];
 
-                obj["addr"]     = addr.ToString();
-                obj["type"]     = std::string("Legacy");
-                obj["version"]  = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
+                    /* Lock the data thread. */
+                    uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
 
-                response.push_back(obj);
-            }
+                    /* Loop through connections in data thread. */
+                    for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+                    {
+                        try
+                        {
+                            /* Skip over inactive connections. */
+                            if(!dt->CONNECTIONS->at(nIndex))
+                                continue;
 
-            /* query address information from legacy server address manager */
-            if(LLP::TRITIUM_SERVER)
-                 vTritiumAddr = LLP::TRITIUM_SERVER->GetAddresses();
+                            /* Push the active connection. */
+                            if(dt->CONNECTIONS->at(nIndex)->Connected())
+                            {
+                                json::json obj;
 
-            for(auto& addr : vTritiumAddr)
-            {
-                json::json obj;
+                                obj["addr"]     = dt->CONNECTIONS->at(nIndex)->addr.ToString();
+                                obj["type"]     = dt->CONNECTIONS->at(nIndex)->strNodeVersion;
+                                obj["version"]  = dt->CONNECTIONS->at(nIndex)->nCurrentVersion;
+                                obj["height"]   = dt->CONNECTIONS->at(nIndex)->nStartingHeight;
+                                obj["latency"]  = dt->CONNECTIONS->at(nIndex)->nLatency.load();
+                                obj["lastseen"] = dt->CONNECTIONS->at(nIndex)->nLastPing.load();
+                                obj["session"]  = dt->CONNECTIONS->at(nIndex)->nCurrentSession;
+                                obj["outgoing"] = dt->CONNECTIONS->at(nIndex)->fOUTGOING.load();
 
-                obj["addr"]     = addr.ToString();
-                obj["type"]     = std::string("Tritium");
-                obj["version"]  = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
-
-                response.push_back(obj);
+                                response.push_back(obj);
+                            }
+                        }
+                        catch(const std::exception& e)
+                        {
+                            //debug::error(FUNCTION, e.what());
+                        }
+                    }
+                }
             }
 
             return response;

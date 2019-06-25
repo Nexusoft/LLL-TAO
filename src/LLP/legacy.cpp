@@ -33,6 +33,7 @@ ________________________________________________________________________________
 #include <Util/include/hex.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+#include <Util/include/version.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -132,7 +133,7 @@ namespace LLP
 
         /* Push the Message to receiving node. */
         PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
-                    LegacyNode::nSessionID, strProtocolName, TAO::Ledger::ChainState::nBestHeight.load());
+                    LegacyNode::nSessionID, version::CLIENT_VERSION_BUILD_STRING, TAO::Ledger::ChainState::nBestHeight.load());
     }
 
 
@@ -381,7 +382,6 @@ namespace LLP
             PushMessage("verack");
 
             /* Push our version back since we just completed getting the version from the other node. */
-
             if (fOUTGOING && nAsked == 0)
             {
                 ++nAsked;

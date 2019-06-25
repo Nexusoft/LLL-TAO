@@ -354,23 +354,11 @@ namespace LLP
 
 
     /*  Get the number of active connection pointers from data threads. */
-     template <class ProtocolType>
-     uint32_t DataThread<ProtocolType>::GetConnectionCount()
-     {
-         return nConnections.load();
-     }
-
-
-     template <class ProtocolType>
-     void DataThread<ProtocolType>::GetConnected(std::vector<BaseAddress> &vAddr)
-     {
-         uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-         for(uint32_t i = 0; i < nSize; ++i)
-         {
-             if(CONNECTIONS->at(i)->Connected())
-                vAddr.push_back(CONNECTIONS->at(i)->addr);
-         }
-     }
+    template <class ProtocolType>
+    uint32_t DataThread<ProtocolType>::GetConnectionCount()
+    {
+        return nConnections.load();
+    }
 
 
     /*  Fires off a Disconnect event with the given disconnect reason

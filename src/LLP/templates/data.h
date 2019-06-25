@@ -168,17 +168,6 @@ namespace LLP
         uint32_t GetConnectionCount();
 
 
-
-        /** GetConnected
-         *
-         *  Returns a list of connected peer addresses.
-         *
-         *  @param[out] vAddr The list of peer addresses to output.
-         *
-         **/
-         void GetConnected(std::vector<BaseAddress> &vAddr);
-
-
       private:
 
 

@@ -286,9 +286,9 @@ namespace LLP
                         nRetIndex  = nIndex;
                     }
                 }
-                catch(const std::runtime_error& e)
+                catch(const std::exception& e)
                 {
-                    debug::error(FUNCTION, e.what());
+                    //debug::error(FUNCTION, e.what());
                 }
             }
         }
@@ -301,16 +301,37 @@ namespace LLP
     template <class ProtocolType>
     std::vector<LegacyAddress> Server<ProtocolType>::GetAddresses()
     {
-        std::vector<BaseAddress> vAddr;
-        std::vector<LegacyAddress> vLegacyAddr;
+        /* Loop through the data threads. */
+        std::vector<LegacyAddress> vAddr;
+        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+        {
+            /* Get the data threads. */
+            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-        for(uint16_t i = 0; i < MAX_THREADS; ++i)
-            DATA_THREADS[i]->GetConnected(vAddr);
+            /* Lock the data thread. */
+            uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
 
-        for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
-            vLegacyAddr.push_back((LegacyAddress)*it);
+            /* Loop through connections in data thread. */
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+            {
+                try
+                {
+                    /* Skip over inactive connections. */
+                    if(!dt->CONNECTIONS->at(nIndex))
+                        continue;
 
-        return vLegacyAddr;
+                    /* Push the active connection. */
+                    if(dt->CONNECTIONS->at(nIndex)->Connected())
+                        vAddr.emplace_back(dt->CONNECTIONS->at(nIndex)->addr);
+                }
+                catch(const std::runtime_error& e)
+                {
+                    debug::error(FUNCTION, e.what());
+                }
+            }
+        }
+
+        return vAddr;
     }
 
 

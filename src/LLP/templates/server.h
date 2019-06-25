@@ -32,6 +32,7 @@ namespace LLP
     /* forward declarations */
     class AddressManager;
     class DDOS_Filter;
+    class InfoAddress;
 
 
     /** Server
