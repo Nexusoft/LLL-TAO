@@ -182,10 +182,6 @@ namespace TAO
                 mapTrustKeys.insert (std::make_pair(stakeRate, trustKey));
             }
 
-            /* Clear the memory. */
-            vKeys.clear();
-            vKeys.shrink_to_fit();
-
             /* Now have map of all trust keys. Assemble into response data */
             for (auto& item : mapTrustKeys)
             {

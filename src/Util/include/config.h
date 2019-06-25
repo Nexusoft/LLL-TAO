@@ -31,7 +31,7 @@ namespace config
 
     /** ReadConfigFile
      *
-     *  Read the Config file from the Disk. 
+     *  Read the Config file from the Disk.
      *
      *  @param[out] mapSettingsRet The map of config settings.
      *
@@ -48,7 +48,7 @@ namespace config
 
     /** ReadConfigFile
      *
-     *  Read the Config file from the Disk, loading -datadir setting if provided. 
+     *  Read the Config file from the Disk, loading -datadir setting if provided.
      *
      *  Use this version if need to read config file before parsing command line parameters.
      *
@@ -86,7 +86,7 @@ namespace config
      *  @return The system complete path to the default data directory.
      *
      **/
-    std::string GetDefaultDataDir(std::string strName = "TAO");
+    std::string GetDefaultDataDir(std::string strName = "Nexus");
 
 
     /** GetConfigFile
