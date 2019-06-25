@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 #include <Legacy/include/create.h>
 #include <Legacy/types/legacy.h>
@@ -40,6 +41,7 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
+    , nBlockIterator(0)
     {
     }
 
@@ -53,6 +55,7 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
+    , nBlockIterator(0)
     {
     }
 
@@ -66,6 +69,7 @@ namespace LLP
     , nBestHeight(0)
     , nSubscribed(0)
     , nChannel(0)
+    , nBlockIterator(0)
     {
     }
 
@@ -153,27 +157,28 @@ namespace LLP
             /* On Generic Event, Broadcast new block if flagged. */
             case EVENT_GENERIC:
             {
+                /* On generic events, return if no workers subscribed. */
                 if(nSubscribed.load() == 0)
                     return;
 
-                bool new_round = false;
-
+                /* Check for a new round. */
+                bool fNewRound = false;
                 {
                   LOCK(MUTEX);
-                  new_round = check_best_height();
+                  fNewRound = check_best_height();
                 }
 
-                if(!new_round)
+                /* Push new message to workers on new round. */
+                if(!fNewRound)
                 {
+                    /* Alert workers of new round. */
                     respond(NEW_ROUND);
 
-                    uint1024_t block_hash;
-                    std::vector<uint8_t> data;
+                    uint1024_t hashBlock;
+                    std::vector<uint8_t> vData;
                     TAO::Ledger::Block *pBlock = nullptr;
-                    uint32_t len = 0;
-                    uint16_t subscribed = nSubscribed.load();
 
-                    for(uint16_t i = 0; i < subscribed; ++i)
+                    for(uint16_t i = 0; i < nSubscribed.load(); ++i)
                     {
                         {
                             LOCK(MUTEX);
@@ -181,27 +186,26 @@ namespace LLP
                             /* Get a new block for the subscriber */
                             pBlock = new_block();
 
+                            /* Handle if block cfeation failed. */
                             if(!pBlock)
                             {
-                              debug::log(2, FUNCTION, "Failed to create block.");
-                              return;
+                                debug::log(2, FUNCTION, "Failed to create block.");
+                                return;
                             }
 
-
-                            /* Serialize the block data */
-                            data = pBlock->Serialize();
-                            len = static_cast<uint32_t>(data.size());
+                            /* Serialize the block vData */
+                            vData = pBlock->Serialize();
 
                             /* Get the block hash for display purposes */
-                            block_hash = pBlock->GetHash();
+                            hashBlock = pBlock->GetHash();
                         }
 
                         /* Create and send a packet response */
-                        respond(BLOCK_DATA, len, data);
+                        respond(BLOCK_DATA, vData);
 
 
-                        debug::log(2, FUNCTION, "Mining LLP: Sent Block ",
-                            block_hash.ToString().substr(0, 20), " to Worker.");
+                        debug::log(2, FUNCTION, "Sent Block ",
+                            hashBlock.ToString().substr(0, 20), " to Worker.");
                     }
 
 
@@ -213,7 +217,7 @@ namespace LLP
             case EVENT_CONNECT:
             {
                 /* Debut output. */
-                debug::log(2, FUNCTION, "Mining LLP: New Connection from ", GetAddress().ToStringIP());
+                debug::log(2, FUNCTION, "New Connection from ", GetAddress().ToStringIP());
                 return;
             }
 
@@ -243,7 +247,7 @@ namespace LLP
                         strReason = "UNKNOWN";
                         break;
                 }
-                debug::log(2, FUNCTION, "Mining LLP: Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
+                debug::log(2, FUNCTION, "Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
                 return;
             }
         }
@@ -263,11 +267,11 @@ namespace LLP
 
         /* No mining when synchronizing. */
         if(TAO::Ledger::ChainState::Synchronizing())
-            return debug::error(FUNCTION, " Cannot mine while ledger is synchronizing.");
+            return debug::error(FUNCTION, "Cannot mine while ledger is synchronizing.");
 
         /* No mining when wallet is locked */
         if(is_locked())
-            return debug::error(FUNCTION, " Cannot mine while wallet is locked.");
+            return debug::error(FUNCTION, "Cannot mine while wallet is locked.");
 
 
         /* Set the Mining Channel this Connection will Serve Blocks for. */
@@ -280,16 +284,16 @@ namespace LLP
                 switch (nChannel.load())
                 {
                     case 1:
-                    debug::log(2, FUNCTION, " Prime Channel Set.");
+                    debug::log(2, FUNCTION, "Prime Channel Set.");
                     break;
 
                     case 2:
-                    debug::log(2, FUNCTION, " Hash Channel Set.");
+                    debug::log(2, FUNCTION, "Hash Channel Set.");
                     break;
 
                     /** Don't allow Mining LLP Requests for Proof of Stake Channel. **/
                     default:
-                    return debug::error(2, FUNCTION, " Invalid PoW Channel (", nChannel.load(), ")");
+                    return debug::error(2, FUNCTION, "Invalid PoW Channel (", nChannel.load(), ")");
                 }
 
                 return true;
@@ -330,7 +334,7 @@ namespace LLP
                     if(!address.IsValid())
                     {
                         respond(COINBASE_FAIL);
-                        debug::log(2, "***** Mining LLP: Invalid Address in Coinbase Tx: ", strAddress) ;
+                        debug::log(2, "Invalid Address in Coinbase Tx: ", strAddress) ;
                         return false; //disconnect immediately if an invalid address is provided
                     }
                     /** Add the Transaction as an Output. **/
@@ -345,7 +349,7 @@ namespace LLP
                 if(!pCoinbase.IsValid())
                 {
                     respond(COINBASE_FAIL);
-                    debug::log(2, "***** Mining LLP: Invalid Coinbase Tx") ;
+                    debug::log(2, "Invalid Coinbase Tx") ;
                 }
                 else
                 {
@@ -362,7 +366,7 @@ namespace LLP
                     }
 
                     respond(COINBASE_SET);
-                    debug::log(2, "***** Mining LLP: Coinbase Set") ;
+                    debug::log(2, "Coinbase Set") ;
                 }
 
                 return true;
@@ -383,7 +387,6 @@ namespace LLP
             /* Respond to the miner with the new height. */
             case GET_HEIGHT:
             {
-
                 {
                     /* Check the best height before responding. */
                     LOCK(MUTEX);
@@ -391,10 +394,7 @@ namespace LLP
                 }
 
                 /* Create the response packet and write. */
-                respond(BLOCK_HEIGHT, 4, convert::uint2bytes(nBestHeight + 1));
-
-                /* Prevent mining clients from spamming with GET_HEIGHT messages*/
-                runtime::sleep(500);
+                respond(BLOCK_HEIGHT, convert::uint2bytes(nBestHeight + 1));
 
                 return true;
             }
@@ -403,16 +403,16 @@ namespace LLP
             case GET_ROUND:
             {
 
-              bool new_round = false;
-
-              {
-                LOCK(MUTEX);
-                new_round = check_best_height();
-              }
+                /* Check for a new round. */
+                bool fNewRound = false;
+                {
+                    LOCK(MUTEX);
+                    fNewRound = check_best_height();
+                }
 
                 /* If height was outdated, respond with old round, otherwise
                  * respond with a new round */
-                if(new_round)
+                if(fNewRound)
                     respond(NEW_ROUND);
                 else
                     respond(OLD_ROUND);
@@ -420,16 +420,18 @@ namespace LLP
                 return true;
             }
 
+
             case GET_REWARD:
             {
                 uint64_t nCoinbaseReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
 
-                respond(BLOCK_REWARD, 8, convert::uint2bytes64(nCoinbaseReward));
+                respond(BLOCK_REWARD, convert::uint2bytes64(nCoinbaseReward));
 
                 debug::log(2, "***** Mining LLP: Sent Coinbase Reward of ", nCoinbaseReward);
 
                 return true;
             }
+
 
             case SUBSCRIBE:
             {
@@ -439,44 +441,48 @@ namespace LLP
                 if(nSubscribed == 0 || nChannel.load() == 0)
                     return false;
 
-                debug::log(2, FUNCTION, "***** Mining LLP: Subscribed to ", nSubscribed, " Blocks");
+                debug::log(2, FUNCTION, "Subscribed to ", nSubscribed, " Blocks");
 
                 return true;
             }
+
+
             /* Get a new block for the miner. */
             case GET_BLOCK:
             {
                 TAO::Ledger::Block *pBlock = nullptr;
-                std::vector<uint8_t> data;
-                uint32_t len = 0;
 
+                /* Prepare the data to serialize on request. */
+                std::vector<uint8_t> vData;
                 {
                     LOCK(MUTEX);
 
+                    /* Check for the best block height. */
                     check_best_height();
 
                     /* Create a new block */
                     pBlock = new_block();
 
+                    /* Handle if the block failed to be created. */
                     if(!pBlock)
                     {
-                      debug::log(2, FUNCTION, "Failed to create block.");
-                      return true;
+                        debug::log(2, FUNCTION, "Failed to create block.");
+                        return true;
                     }
 
                     /* Store the new block in the memory map of recent blocks being worked on. */
                     mapBlocks[pBlock->hashMerkleRoot] = pBlock;
 
-                    /* Serialize the block data */
-                    data = pBlock->Serialize();
-                    len = static_cast<uint32_t>(data.size());
+                    /* Serialize the block vData */
+                    vData = pBlock->Serialize();
                 }
 
                 /* Create and write the response packet. */
-                respond(BLOCK_DATA, len, data);
+                respond(BLOCK_DATA, vData);
 
                 return true;
             }
+
 
             /* Submit a block using the merkle root as the key. */
             case SUBMIT_BLOCK:
@@ -490,39 +496,39 @@ namespace LLP
                 /* Get the nonce */
                 nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
 
-                bool rejected = true;
+                LOCK(MUTEX);
 
-                {
-                    LOCK(MUTEX);
-
-                    /* Find, sign, and validate the submitted block in order to
-                       not be rejected. */
-                    rejected = !find_block(hashMerkleRoot)
-                            || !sign_block(nonce, hashMerkleRoot)
-                            || !validate_block(hashMerkleRoot);
-                }
-
-
-                /* Generate a Rejected response. */
-                if(rejected)
+                /* Make sure the block was created by this mining server. */
+                if(!find_block(hashMerkleRoot))
                 {
                     respond(BLOCK_REJECTED);
                     return true;
                 }
 
+                /* Make sure there is no inconsistencies in signing block. */
+                if(!sign_block(nonce, hashMerkleRoot))
                 {
-                    LOCK(MUTEX);
-
-                    /* Clear map on new block found. */
-                    clear_map();
-                    CoinbaseTx.SetNull();
+                    respond(BLOCK_REJECTED);
+                    return true;
                 }
+
+                /* Make sure there is no inconsistencies in validating block. */
+                if(!validate_block(hashMerkleRoot))
+                {
+                    respond(BLOCK_REJECTED);
+                    return true;
+                }
+
+                /* Clear map on new block found. */
+                clear_map();
+                CoinbaseTx.SetNull();
 
                 /* Generate an Accepted response. */
                 respond(BLOCK_ACCEPTED);
                 return true;
 
             }
+
 
             /** Check Block Command: Allows Client to Check if a Block is part of the Main Chain. **/
             case CHECK_BLOCK:
@@ -536,16 +542,16 @@ namespace LLP
                 /* Read the block state from disk. */
                 if(LLD::legDB->ReadBlock(hashBlock, state))
                 {
-                    /*If the block state is in the main chain send a good response. */
-                    if(state.IsInMainChain())
+                    /* If the block state is not in main chain, send a orphan response. */
+                    if(!state.IsInMainChain())
                     {
-                        respond(GOOD_BLOCK, PACKET.LENGTH, PACKET.DATA);
+                        respond(ORPHAN_BLOCK, PACKET.DATA);
                         return true;
                     }
                 }
 
-                /* Block state is not in the main chain, send an orphan response */
-                respond(ORPHAN_BLOCK, PACKET.LENGTH, PACKET.DATA);
+                /* Block state is in the main chain, send a good response */
+                respond(GOOD_BLOCK, PACKET.DATA);
                 return true;
             }
         }
@@ -554,13 +560,13 @@ namespace LLP
     }
 
 
-    void BaseMiner::respond(uint8_t header_response, uint32_t length, const std::vector<uint8_t> &data)
+    void BaseMiner::respond(uint8_t nHeader, const std::vector<uint8_t>& vData)
     {
         Packet RESPONSE;
 
-        RESPONSE.HEADER = header_response;
-        RESPONSE.LENGTH = length;
-        RESPONSE.DATA = data;
+        RESPONSE.HEADER = nHeader;
+        RESPONSE.LENGTH = vData.size();
+        RESPONSE.DATA   = vData;
 
         this->WritePacket(RESPONSE);
     }
@@ -590,6 +596,7 @@ namespace LLP
     /*  Clear the blocks map. */
     void BaseMiner::clear_map()
     {
+        /* Delete the dynamically allocated blocks in the map. */
         for(auto it = mapBlocks.begin(); it != mapBlocks.end(); ++it)
         {
             if(it->second)
@@ -597,17 +604,20 @@ namespace LLP
         }
         mapBlocks.clear();
 
+        /* Set the block iterator back to zero so we can iterate new blocks next round. */
+        nBlockIterator = 0;
+
         debug::log(2, FUNCTION, "Cleared map of blocks");
     }
 
 
     /*  Determines if the block exists. */
-    bool BaseMiner::find_block(const uint512_t &merkle_root)
+    bool BaseMiner::find_block(const uint512_t& hashMerkleRoot)
     {
         /* Check that the block exists. */
-        if(!mapBlocks.count(merkle_root))
+        if(!mapBlocks.count(hashMerkleRoot))
         {
-            debug::log(2, FUNCTION, "***** Mining LLP: Block Not Found ", merkle_root.ToString().substr(0, 20));
+            debug::log(2, FUNCTION, "Block Not Found ", hashMerkleRoot.ToString().substr(0, 20));
 
             return false;
         }

@@ -98,6 +98,9 @@ namespace LLP
             CLOSE    = 254
         };
 
+        /* Used as an ID iterator for generating unique hashes from same block transactions. */
+        uint32_t nBlockIterator;
+
 
     public:
 
@@ -145,11 +148,10 @@ namespace LLP
          *  Sends a packet response.
          *
          *  @param[in] header_response The header message to send.
-         *  @param[in] length The number of bytes for packet data.
          *  @param[in] data The packet data to send.
          *
          **/
-        void respond(uint8_t header, uint32_t length = 0, const std::vector<uint8_t> &data = std::vector<uint8_t>());
+        void respond(uint8_t nHeader, const std::vector<uint8_t>& vData = std::vector<uint8_t>());
 
 
         /** check_best_height
@@ -184,7 +186,7 @@ namespace LLP
           *  validates the block for the derived miner class.
           *
           **/
-          virtual bool validate_block(const uint512_t &merkle_root) = 0;
+          virtual bool validate_block(const uint512_t& hashMerkleRoot) = 0;
 
 
           /** sign_block
@@ -192,8 +194,7 @@ namespace LLP
            *  validates the block for the derived miner class.
            *
            **/
-           virtual bool sign_block(uint64_t nonce, const uint512_t &merkle_root) = 0;
-
+           virtual bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot) = 0;
 
 
            /** is_locked
@@ -209,7 +210,7 @@ namespace LLP
             *  Determines if the block exists.
             *
             **/
-           bool find_block(const uint512_t &merkle_root);
+           bool find_block(const uint512_t& hashMerkleRoot);
 
 
 
