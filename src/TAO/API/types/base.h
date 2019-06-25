@@ -100,7 +100,7 @@ namespace TAO
                 if(mapFunctions.find(strMethodToCall) != mapFunctions.end())
                     return mapFunctions[strMethodToCall].Execute(SanitizeParams(strMethodToCall, jsonParamsUpdated), fHelp);
                 else
-                    throw APIException(-32601, debug::safe_printstr("Method not found: ", strMethodToCall));
+                    throw APIException(-2, debug::safe_printstr("Method not found: ", strMethodToCall));
             }
 
 

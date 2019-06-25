@@ -47,25 +47,25 @@ namespace TAO
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"].get<std::string>());
             else
-                throw APIException(-23, "Missing account name/address");
+                throw APIException(-33, "Missing name / address");
 
             /* Get the token / account object. */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-24, "Account not found");
+                throw APIException(-13, "Account not found");
 
             /* Parse the object register. */
             if(!object.Parse())
-                throw APIException(-24, "Object failed to parse");
+                throw APIException(-14, "Object failed to parse");
 
             /* Check the object standard. */
             uint8_t nStandard = object.Standard();
             if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
-                throw APIException(-24, "Object is not an account");
+                throw APIException(-65, "Object is not an account");
 
             /* Check the account is a NXS account */
             if(object.get<uint256_t>("token") != 0)
-                throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for accessing non-NXS token accounts.");
+                throw APIException(-67, "Account is not a NXS account.  Please use the tokens API for accessing non-NXS token accounts.");
 
 
             /* Populate the response JSON */

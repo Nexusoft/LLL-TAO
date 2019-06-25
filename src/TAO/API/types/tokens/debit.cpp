@@ -52,24 +52,24 @@ namespace TAO
 
             /* Check for credit parameter. */
             if(params.find("amount") == params.end())
-                throw APIException(-25, "Missing Amount. (<amount>)");
+                throw APIException(-46, "Missing amount.");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
-                throw APIException(-25, "Invalid session ID");
+                throw APIException(-10, "Invalid session ID");
 
             /* Lock the signature chain. */
             LOCK(user->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions.");
+                throw APIException(-16, "Account has not been unlocked for transactions.");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-25, "Failed to create transaction.");
+                throw APIException(-17, "Failed to create transaction.");
 
             /* Submit the transaction payload. */
             uint256_t hashTo = 0;
@@ -81,7 +81,7 @@ namespace TAO
             else if(params.find("address_to") != params.end())
                 hashTo.SetHex(params["address_to"].get<std::string>());
             else
-                throw APIException(-22, "Missing recipient. (<name_to> or <address_to>)");
+                throw APIException(-64, "Missing recipient account name_to / address_to");
 
             /* Get the transaction id. */
             uint256_t hashFrom = 0;
@@ -93,17 +93,17 @@ namespace TAO
             else if(params.find("address") != params.end())
                 hashFrom.SetHex(params["address"].get<std::string>());
             else
-                throw APIException(-22, "Missing name or address)");
+                throw APIException(-33, "Missing name / address");
 
 
             /* Get the token / account object. */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashFrom, object))
-                throw APIException(-24, "Token/account not found");
+                throw APIException(-122, "Token/account not found");
 
             /* Parse the object register. */
             if(!object.Parse())
-                throw APIException(-24, "Object failed to parse");
+                throw APIException(-14, "Object failed to parse");
 
             /* Get the object standard. */
             uint8_t nStandard = object.Standard();
@@ -119,16 +119,16 @@ namespace TAO
                 /* If the user requested a particular object type then check it is that type */
                 std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
                 if(strType == "token" && (nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST))
-                    throw APIException(-24, "Object is not a token");
+                    throw APIException(-123, "Object is not a token");
                 else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
-                    throw APIException(-24, "Object is not an account");
+                    throw APIException(-65, "Object is not an account");
 
                 nCurrentBalance = object.get<uint64_t>("balance");
                 nDigits = GetDigits(object);
             }
             else
             {
-                throw APIException(-27, "Unknown token / account.");
+                throw APIException(-124, "Unknown token / account.");
             }
 
 
@@ -137,26 +137,26 @@ namespace TAO
 
             /* Check the amount is not too small once converted by the token digits */
             if(nAmount == 0)
-                throw APIException(-25, "Amount too small");
+                throw APIException(-68, "Amount too small");
 
             /* Check they have the required funds */
             if(nAmount > nCurrentBalance)
-                throw APIException(-25, "Insufficient funds");
+                throw APIException(-69, "Insufficient funds");
 
             /* Submit the payload object. */
             tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-26, "Operations failed to execute");
+                throw APIException(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-26, "Ledger failed to sign transaction");
+                throw APIException(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-26, "Failed to accept");
+                throw APIException(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"] = tx.GetHash().ToString();

@@ -46,7 +46,7 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-23, "Missing name / address");
+                throw APIException(-33, "Missing name / address");
 
 
             /* Check to see whether the caller has requested a specific data field to return */
@@ -58,25 +58,25 @@ namespace TAO
                created as a raw format asset */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-24, "Asset not found");
+                throw APIException(-34, "Asset not found");
 
             /* Only include raw and non-standard object types (assets)*/
             if(object.nType != TAO::Register::REGISTER::APPEND
             && object.nType != TAO::Register::REGISTER::RAW
             && object.nType != TAO::Register::REGISTER::OBJECT)
             {
-                throw APIException(-24, "Specified name/address is not an asset.");
+                throw APIException(-35, "Specified name/address is not an asset.");
             }
 
             if(object.nType == TAO::Register::REGISTER::OBJECT)
             {
                 /* parse object so that the data fields can be accessed */
                 if(!object.Parse())
-                    throw APIException(-24, "Failed to parse object register");
+                    throw APIException(-36, "Failed to parse object register");
 
                 /* Only include non standard object registers (assets) */
                 if(object.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
-                    throw APIException(-24, "Specified name/address is not an asset.");
+                    throw APIException(-35, "Specified name/address is not an asset.");
             }
 
             /* Populate the response JSON */

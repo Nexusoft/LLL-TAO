@@ -54,18 +54,18 @@ namespace TAO
             /* Get the user account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
-                throw APIException(-25, "Invalid session ID");
+                throw APIException(-10, "Invalid session ID");
 
             /* Check for amount parameter. */
             if(params.find("amount") == params.end())
-                throw APIException(-25, "Missing Amount. (<amount>)");
+                throw APIException(-46, "Missing amount.");
 
             /* Lock the signature chain. */
             LOCK(user->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions.");
+                throw APIException(-16, "Account has not been unlocked for transactions.");
 
             /* Get trust account. Any trust account that has completed Genesis will be indexed. */
             TAO::Register::Object trustAccount;
@@ -74,20 +74,20 @@ namespace TAO
             {
                 /* Trust account is indexed */
                 if(!LLD::Register->ReadTrust(user->Genesis(), trustAccount))
-                   throw APIException(-24, "Unable to retrieve trust account.");
+                   throw APIException(-75, "Unable to retrieve trust account.");
 
                 if(!trustAccount.Parse())
-                    throw APIException(-24, "Unable to parse trust account register.");
+                    throw APIException(-71, "Unable to parse trust account.");
             }
             else
             {
-                throw APIException(-25, "Cannot set stake for trust account until after Genesis transaction");
+                throw APIException(-76, "Cannot set stake for trust account until after Genesis transaction");
             }
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-25, "Failed to create transaction.");
+                throw APIException(-17, "Failed to create transaction.");
 
             uint64_t nBalancePrev = trustAccount.get<uint64_t>("balance");
             uint64_t nStakePrev = trustAccount.get<uint64_t>("stake");
@@ -98,7 +98,7 @@ namespace TAO
             {
                 /* Adding to stake from balance */
                 if((nAmount - nStakePrev) > nBalancePrev)
-                    throw APIException(-25, "Insufficient trust account balance to add to stake");
+                    throw APIException(-77, "Insufficient trust account balance to add to stake");
 
                 /* Set the transaction payload for stake operation */
                 uint64_t nAddStake = nAmount - nStakePrev;
@@ -116,19 +116,19 @@ namespace TAO
                 tx[0] << uint8_t(TAO::Operation::OP::UNSTAKE) << nRemoveStake << nTrustPenalty;
             }
             else
-                throw APIException(-26, "Stake not changed");
+                throw APIException(-78, "Stake not changed");
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-26, "Transaction failed to build");
+                throw APIException(-44, "Transaction failed to build");
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-26, "Ledger failed to sign transaction");
+                throw APIException(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-26, "Failed to accept");
+                throw APIException(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"] = tx.GetHash().ToString();

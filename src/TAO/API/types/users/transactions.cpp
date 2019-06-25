@@ -52,7 +52,7 @@ namespace TAO
                 hashGenesis = mapSessions[0]->Genesis();
             }
             else
-                throw APIException(-25, "Missing Genesis or Username");
+                throw APIException(-111, "Missing genesis / username");
 
             /* The genesis hash of the API caller, if logged in */
             uint256_t hashCaller = users->GetCallersGenesis(params);
@@ -83,7 +83,7 @@ namespace TAO
             /* Get the last transaction. */
             uint512_t hashLast = 0;
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-28, "No transactions found");
+                throw APIException(-144, "No transactions found");
 
             /* Loop until genesis. */
             uint32_t nTotal = 0;
@@ -95,7 +95,7 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-28, "Failed to read transaction");
+                    throw APIException(-108, "Failed to read transaction");
 
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;

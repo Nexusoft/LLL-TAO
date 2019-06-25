@@ -47,7 +47,7 @@ namespace TAO
             /* Get the user account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
-                throw APIException(-25, "Invalid session ID");
+                throw APIException(-10, "Invalid session ID");
 
             /* Retrieve the trust register address from the trust account name */
             uint256_t hashRegister = Names::ResolveAddress(params, std::string("trust"));
@@ -58,19 +58,19 @@ namespace TAO
             /* Check for trust index. */
             if(!LLD::Register->ReadTrust(user->Genesis(), trust)
             && !LLD::Register->ReadState(hashRegister, trust, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-24, "Trust account not found");
+                throw APIException(-70, "Trust account not found");
 
             /* Parse the object. */
             if(!trust.Parse())
-                throw APIException(-24, "Unable to parse trust account.");
+                throw APIException(-71, "Unable to parse trust account.");
 
             /* Check the object standard. */
             if(trust.Standard() != TAO::Register::OBJECTS::TRUST)
-                throw APIException(-24, "Register is not a trust account");
+                throw APIException(-72, "Register is not a trust account");
 
             /* Check the account is a NXS account */
             if(trust.get<uint256_t>("token") != 0)
-                throw APIException(-24, "Trust account is not a NXS account.");
+                throw APIException(-73, "Trust account is not a NXS account.");
 
             /* Set trust account values for return data */
             ret["address"] = hashRegister.ToString();

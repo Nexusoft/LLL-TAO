@@ -288,7 +288,7 @@ namespace TAO
 
             /* Handle for no genesis. */
             else
-                throw APIException(-25, "Missing Genesis or Username");
+                throw APIException(-111, "Missing genesis / username");
 
             /* The genesis hash of the API caller, if logged in */
             uint256_t hashCaller = users->GetCallersGenesis(params);
@@ -333,7 +333,7 @@ namespace TAO
 
             /* Check for size. */
             if(ret.empty())
-                throw APIException(-26, "No notifications available");
+                throw APIException(-143, "No notifications available");
 
             return ret;
         }

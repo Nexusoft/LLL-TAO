@@ -72,11 +72,11 @@ namespace TAO
 
                 /* Retrieve the Namespace object by name */
                 if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
-                    throw APIException(-23, "Namespace does not exist: " + strNamespace);
+                    throw APIException(-95, "Namespace does not exist: " + strNamespace);
 
                 /* Check the owner is the hashGenesis */
                 if(namespaceObject.hashOwner != hashGenesis)
-                    throw APIException(-23, "Cannot create a name in namespace " + strNamespace + " as you are not the owner.");
+                    throw APIException(-96, "Cannot create a name in namespace " + strNamespace + " as you are not the owner.");
             }
             else
                 /* If no global namespace suffix has been passed in then use the callers genesis hash for the hashNamespace. */
@@ -91,9 +91,9 @@ namespace TAO
             if(LLD::Register->ReadState(hashNameAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 if(!strNamespace.empty())
-                    throw APIException(-23, "An object with this name already exists in this namespace.");
+                    throw APIException(-97, "An object with this name already exists in this namespace.");
                 else
-                    throw APIException(-23, "An object with this name already exists for this user.");
+                    throw APIException(-98, "An object with this name already exists for this user.");
             }
 
 
@@ -120,7 +120,7 @@ namespace TAO
 
             /* Check disk of writing new block. */
             if(!LLD::Ledger->ReadTx(hashTransfer, txTransfer, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-23, "Transfer transaction not found.");
+                throw APIException(-99, "Transfer transaction not found.");
 
             /* Ensure we are not claiming our own Transfer.  If we are then no need to create a Name object as we already have one */
             if(txTransfer.hashGenesis != hashGenesis)
@@ -209,7 +209,7 @@ namespace TAO
                 /* Get the account. */
                 memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
                 if(!user)
-                    throw APIException(-23, "Missing namespace parameter");
+                    throw APIException(-100, "Missing username prefix before name");
 
                 /* Set the namespace name to be the user's genesis ID */
                 hashNamespace = user->Genesis();
@@ -219,9 +219,9 @@ namespace TAO
             if(!TAO::Register::GetNameRegister(hashNamespace, strName, nameObject))
             {
                 if(strNamespace.empty())
-                    throw APIException(-24, debug::safe_printstr("Unknown name: ", strName));
+                    throw APIException(-101, debug::safe_printstr("Unknown name: ", strName));
                 else
-                    throw APIException(-24, debug::safe_printstr("Unknown name: ", strNamespace, ":", strName));
+                    throw APIException(-101, debug::safe_printstr("Unknown name: ", strNamespace, ":", strName));
             }
 
             /* Get the address of the Name object to return */
@@ -254,7 +254,7 @@ namespace TAO
                     {
                         /* parse object so that the data fields can be accessed */
                         if(!object.Parse())
-                            throw APIException(-24, "Failed to parse object register");
+                            throw APIException(-36, "Failed to parse object register");
 
                         /* Check the object register standards. */
                         if(object.Standard() != TAO::Register::OBJECTS::NAME)
@@ -358,7 +358,7 @@ namespace TAO
                 }
             }
             else
-                throw APIException(-27, "Object is not an account.");
+                throw APIException(-65, "Object is not an account.");
 
             return strTokenName;
         }

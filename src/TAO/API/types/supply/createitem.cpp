@@ -50,24 +50,24 @@ namespace TAO
 
             /* Check for data parameter. */
             if(params.find("data") == params.end())
-                throw APIException(-25, "Missing data");
+                throw APIException(-18, "Missing data");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
-                throw APIException(-25, "Invalid session ID");
+                throw APIException(-10, "Invalid session ID");
 
             /* Lock the signature chain. */
             LOCK(user->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions");
+                throw APIException(-16, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-25, "Failed to create transaction");
+                throw APIException(-17, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
             uint256_t hashRegister = LLC::GetRand256();
@@ -90,15 +90,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-26, "Operations failed to execute");
+                throw APIException(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-26, "Ledger failed to sign transaction");
+                throw APIException(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-26, "Failed to accept");
+                throw APIException(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

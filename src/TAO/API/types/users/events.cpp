@@ -77,7 +77,7 @@ namespace TAO
                     /* Get the account. */
                     memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
                     if(!user)
-                        throw APIException(-25, "Invalid session ID");
+                        throw APIException(-10, "Invalid session ID");
 
                     /* Lock the signature chain. */
                     LOCK(user->CREATE_MUTEX);
@@ -95,7 +95,7 @@ namespace TAO
                     std::string strAccount = "default";
                     TAO::Register::Object account;
                     if(!TAO::Register::GetNameRegister(hashGenesis, strAccount, account))
-                        throw APIException(-25, debug::safe_printstr("Could not retrieve NXS account: ", strAccount));
+                        throw APIException(-63, "Could not retrieve default NXS account to credit");
 
                     /* Get the list of outstanding contracts. */
                     std::vector<TAO::Ledger::Transaction> vTransactions;
@@ -115,7 +115,7 @@ namespace TAO
                     /* Create the transaction output. */
                     TAO::Ledger::Transaction txout;
                     if(!TAO::Ledger::CreateTransaction(user, strPIN, txout))
-                        throw APIException(-25, "Failed to create transaction");
+                        throw APIException(-17, "Failed to create transaction");
 
                     /* Loop through each contract in the notification queue. */
                     for(const auto& txin : vTransactions)
@@ -157,7 +157,7 @@ namespace TAO
 
                                     TAO::Register::Object object;
                                     if(!LLD::Register->ReadState(hashTo, object))
-                                        throw APIException(-25, "Couldn't read the state object");
+                                        throw APIException(-104, "Object not found ");
 
                                     /* Increment the contract ID. */
                                     ++nOut;
@@ -183,7 +183,7 @@ namespace TAO
 
                                     /* Check that the coinbase was mined by the current active user. */
                                     if(hashFrom != hashGenesis)
-                                        throw APIException(-25, "Coinbase transaction mined by different user.");
+                                        throw APIException(-62, "Coinbase transaction mined by different user.");
 
                                     /* Get the amount from the coinbase transaction. */
                                     txin[nIn] >> nAmount;
@@ -247,15 +247,15 @@ namespace TAO
                     {
                         /* Execute the operations layer. */
                         if(!txout.Build())
-                            throw APIException(-26, "Operations failed to execute");
+                            throw APIException(-30, "Operations failed to execute");
 
                         /* Sign the transaction. */
                         if(!txout.Sign(users->GetKey(txout.nSequence, strPIN, users->GetSession(params))))
-                            throw APIException(-26, "Ledger failed to sign transaction");
+                            throw APIException(-31, "Ledger failed to sign transaction");
 
                         /* Execute the operations layer. */
                         if(!TAO::Ledger::mempool.Accept(txout))
-                            throw APIException(-26, "Failed to accept");
+                            throw APIException(-32, "Failed to accept");
                     }
                 }
                 catch(const APIException& e)

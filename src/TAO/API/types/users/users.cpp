@@ -135,9 +135,9 @@ namespace TAO
             if(!mapSessions.count(nSessionToUse))
             {
                 if(config::fMultiuser.load())
-                    throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
+                    throw APIException(-9, debug::safe_printstr("Session ", nSessionToUse, " doesn't exist"));
                 else
-                    throw APIException(-1, "User not logged in");
+                    throw APIException(-11, "User not logged in");
             }
 
             return mapSessions[nSessionToUse]->Generate(nKey, strSecret);
@@ -157,9 +157,9 @@ namespace TAO
                 if(fThrow)
                 {
                     if(config::fMultiuser.load())
-                        throw APIException(-1, debug::safe_printstr("session ", nSessionToUse, " doesn't exist"));
+                        throw APIException(-9, debug::safe_printstr("Session ", nSessionToUse, " doesn't exist"));
                     else
-                        throw APIException(-1, "User not logged in");
+                        throw APIException(-11, "User not logged in");
                 }
                 else
                 {
@@ -218,7 +218,7 @@ namespace TAO
             bool fNeedPin = users->Locked();
 
             if(fNeedPin && params.find("pin") == params.end())
-                throw APIException(-25, "Missing PIN");
+                throw APIException(-129, "Missing PIN");
             else if(fNeedPin)
                 strPIN = params["pin"].get<std::string>().c_str();
             else
@@ -241,7 +241,7 @@ namespace TAO
             if(!config::fMultiuser.load() && !users->LoggedIn())
             {
                 if(fThrow)
-                    throw APIException(-25, "User not logged in");
+                    throw APIException(-11, "User not logged in");
                 else
                     return -1;
             }
@@ -250,7 +250,7 @@ namespace TAO
                 if(params.find("session") == params.end())
                 {
                     if(fThrow)
-                        throw APIException(-25, "Missing Session ID");
+                        throw APIException(-12, "Missing Session ID");
                     else
                         return -1;
                 }

@@ -45,7 +45,7 @@ namespace TAO
             else if(params.find("txid") != params.end())
                 hash.SetHex(params["txid"].get<std::string>());
             else
-                throw APIException(-25, "Missing hash or txid");
+                throw APIException(-86, "Missing hash or txid");
 
 
             /* Get the transaction verbosity level from the request*/
@@ -113,7 +113,7 @@ namespace TAO
 
             else
             {
-                throw APIException(-28, "Invalid or unknown transaction");
+                throw APIException(-87, "Invalid or unknown transaction");
             }
 
             return ret;
@@ -128,7 +128,7 @@ namespace TAO
 
             /* Check for the transaction data parameter. */
             if(params.find("data") == params.end())
-                throw APIException(-25, "Missing data");
+                throw APIException(-18, "Missing data");
 
 
             /* Extract the data out of the JSON params*/
@@ -159,10 +159,10 @@ namespace TAO
                         ret["hash"] = tx.GetHash().ToString();
                     }
                     else
-                        throw APIException(-25, "Transaction rejected.");
+                        throw APIException(-150, "Transaction rejected.");
                 }
                 else
-                    throw APIException(-25, "Transaction already in database.");
+                    throw APIException(-151, "Transaction already in database.");
 
             }
             else if(type == LLP::MSG_TX_LEGACY)
@@ -176,7 +176,7 @@ namespace TAO
                 {
                     /* Check if tx is valid. */
                     if(!tx.CheckTransaction())
-                        throw APIException(-25, "Transaction rejected.");
+                        throw APIException(-150, "Transaction rejected.");
 
                     /* Add the transaction to the memory pool. */
                     if(TAO::Ledger::mempool.Accept(tx))
@@ -192,10 +192,10 @@ namespace TAO
                         ret["hash"] = tx.GetHash().ToString();
                     }
                     else
-                        throw APIException(-25, "Transaction rejected.");
+                        throw APIException(-150, "Transaction rejected.");
                 }
                 else
-                    throw APIException(-25, "Transaction already in database.");
+                    throw APIException(-151, "Transaction already in database.");
 
             }
 

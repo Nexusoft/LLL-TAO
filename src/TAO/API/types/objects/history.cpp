@@ -61,16 +61,16 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-23, "Missing memory address");
+                throw APIException(-105, "Missing address");
 
             /* Get the register if we haven't already loaded it. */
             if(state.IsNull() && !LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-24, "Invalid name / address");
+                throw APIException(-106, "Invalid name / address");
 
             /* Read the last hash of owner. */
             uint512_t hashLast = 0;
             if(!LLD::Ledger->ReadLast(state.hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-24, "No history found");
+                throw APIException(-107, "No history found");
 
             /* Iterate through sigchain for register updates. */
             while(hashLast != 0)
@@ -78,7 +78,7 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-28, "Failed to read transaction");
+                    throw APIException(-108, "Failed to read transaction");
 
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;
@@ -120,7 +120,7 @@ namespace TAO
                             && nRegisterType != TAO::Register::REGISTER::RAW
                             && nRegisterType != TAO::Register::REGISTER::OBJECT)
                             {
-                                throw APIException(-24, "Specified name/address is not of type " + strType);
+                                throw APIException(-109, "Specified name/address is not of type " + strType);
                             }
 
                             /* Create the register object. */
@@ -131,18 +131,18 @@ namespace TAO
 
                             /* Calculate the new operation. */
                             if(!TAO::Operation::Create::Execute(state, vchData, contract.Timestamp()))
-                                throw APIException(-24, "Contract execution failed");
+                                throw APIException(-110, "Contract execution failed");
 
                             /* If it is an object register then parse so that we can check the type */
                             if(state.nType == TAO::Register::REGISTER::OBJECT)
                             {
                                 /* parse object so that the data fields can be accessed */
                                 if(!state.Parse())
-                                    throw APIException(-24, "Failed to parse object register");
+                                    throw APIException(-36, "Failed to parse object register");
 
                                 /* Only include object registers of the specified type */
                                 if(state.Standard() != nType)
-                                    throw APIException(-24, "Specified name/address is not of type " + strType);
+                                    throw APIException(-109, "Specified name/address is not of type " + strType);
                             }
 
                             /* Generate return object. */
@@ -199,17 +199,17 @@ namespace TAO
 
                             /* Calculate the new operation. */
                             if(!TAO::Operation::Write::Execute(state, vchData, contract.Timestamp()))
-                                throw APIException(-24, "Contract execution failed");
+                                throw APIException(-110, "Contract execution failed");
 
                             if(state.nType == TAO::Register::REGISTER::OBJECT)
                             {
                                 /* parse object so that the data fields can be accessed */
                                 if(!state.Parse())
-                                    throw APIException(-24, "Failed to parse object register");
+                                    throw APIException(-36, "Failed to parse object register");
 
                                 /* Only include object registers of the specified type */
                                 if(state.Standard() != nType)
-                                    throw APIException(-24, "Specified name/address is not of type " + strType);
+                                    throw APIException(-109, "Specified name/address is not of type " + strType);
                             }
 
                             /* Complete object parameters. */
@@ -260,7 +260,7 @@ namespace TAO
 
                             /* Get the post state, as this is what we need to output for the history */
                             if(!TAO::Operation::Append::Execute(state, vchData, contract.Timestamp()))
-                                throw APIException(-24, "Contract execution failed");
+                                throw APIException(-110, "Contract execution failed");
 
                             /* Complete object parameters. */
                             obj["owner"]    = contract.Caller().ToString();
@@ -316,11 +316,11 @@ namespace TAO
                             {
                                 /* parse object so that the data fields can be accessed */
                                 if(!state.Parse())
-                                    throw APIException(-24, "Failed to parse object register");
+                                    throw APIException(-36, "Failed to parse object register");
 
                                 /* Only include object registers of the specified type */
                                 if(state.Standard() != nType)
-                                    throw APIException(-24, "Specified name/address is not of type " + strType);
+                                    throw APIException(-109, "Specified name/address is not of type " + strType);
                             }
 
                             /* Complete object parameters. */
@@ -377,11 +377,11 @@ namespace TAO
                             {
                                 /* parse object so that the data fields can be accessed */
                                 if(!state.Parse())
-                                    throw APIException(-24, "Failed to parse object register");
+                                    throw APIException(-36, "Failed to parse object register");
 
                                 /* Only include object registers of the specified type */
                                 if(state.Standard() != nType)
-                                    throw APIException(-24, "Specified name/address is not of type " + strType);
+                                    throw APIException(-109, "Specified name/address is not of type " + strType);
                             }
 
                             /* Complete object parameters. */

@@ -36,21 +36,21 @@ namespace TAO
         {
             /* Restrict Unlock to sessionless API */
             if(config::fMultiuser.load())
-                throw APIException(-23, "Unlock not supported for session-based API");
+                throw APIException(-145, "Unlock not supported in multiuser mode");
 
             /* Check default session (unlock only supported in single user mode). */
             if(!mapSessions.count(0))
-                throw APIException(-1, "User not logged in.");
+                throw APIException(-11, "User not logged in.");
 
             /* Check for pin parameter. */
             if(params.find("pin") == params.end())
-                throw APIException(-24, "Missing PIN");
+                throw APIException(-129, "Missing PIN");
 
             /* Parse the pin parameter. */
             SecureString strPin = SecureString(params["pin"].get<std::string>().c_str());
 
             if(strPin.size() == 0)
-                throw APIException(-24, "Zero-Length PIN");
+                throw APIException(-135, "Zero-length PIN");
 
             /* Check for unlock actions */
             uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to ALL actions
@@ -64,7 +64,7 @@ namespace TAO
                 {
                      /* Check if already unlocked. */
                     if(!pActivePIN.IsNull() && pActivePIN->CanMint())
-                        throw APIException(-26, "Account already unlocked for minting");
+                        throw APIException(-146, "Account already unlocked for minting");
                     else
                         nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::MINTING;
                 }
@@ -79,7 +79,7 @@ namespace TAO
                 {
                      /* Check if already unlocked. */
                     if(!pActivePIN.IsNull() && pActivePIN->CanTransact())
-                        throw APIException(-26, "Account already unlocked for minting");
+                        throw APIException(-147, "Account already unlocked for transactions");
                     else
                         nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
                 }
@@ -90,7 +90,7 @@ namespace TAO
             if(nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::NONE)
             {
                 if(!Locked())
-                    throw APIException(-26, "Account already unlocked");
+                    throw APIException(-148, "Account already unlocked");
                 else
                     nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::ALL;
             }
@@ -107,22 +107,22 @@ namespace TAO
             {
                 /* Check the memory pool and compare hashes. */
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
-                    throw APIException(-26, "Account doesn't exist");
+                    throw APIException(-136, "Account doesn't exist");
 
                 /* Get the memory pool tranasction. */
                 if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
-                    throw APIException(-26, "Couldn't get transaction");
+                    throw APIException(-137, "Couldn't get transaction");
             }
             else
             {
                 /* Get the last transaction. */
                 uint512_t hashLast;
                 if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
-                    throw APIException(-27, "No previous transaction found");
+                    throw APIException(-138, "No previous transaction found");
 
                 /* Get previous transaction */
                 if(!LLD::Ledger->ReadTx(hashLast, txPrev))
-                    throw APIException(-27, "No previous transaction found");
+                    throw APIException(-138, "No previous transaction found");
             }
 
             /* Genesis Transaction. */
@@ -131,7 +131,7 @@ namespace TAO
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
-                throw APIException(-28, "Invalid PIN");
+                throw APIException(-149, "Invalid PIN");
 
             /* Extract the PIN. */
             if(!pActivePIN.IsNull())

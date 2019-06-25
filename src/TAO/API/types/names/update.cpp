@@ -53,19 +53,19 @@ namespace TAO
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
-                throw APIException(-25, "Invalid session ID");
+                throw APIException(-10, "Invalid session ID");
 
             /* Lock the signature chain. */
             LOCK(user->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions");
+                throw APIException(-16, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-25, "Failed to create transaction");
+                throw APIException(-17, "Failed to create transaction");
 
             /* Get the Register ID. */
             uint256_t hashRegister = 0;
@@ -84,20 +84,20 @@ namespace TAO
 
                 /* Retrieve the name by hash */
                 if(!LLD::Register->ReadState(hashRegister, name, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-24, "Invalid address.");
+                    throw APIException(-102, "Invalid address.");
 
                 /* Check that the name object is proper type. */
                 if(name.nType != TAO::Register::REGISTER::OBJECT
                 || !name.Parse()
                 || name.Standard() != TAO::Register::OBJECTS::NAME )
-                    throw APIException(-23, "Address is not a name register");
+                    throw APIException(-102, "Invalid address");
             }
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-23, "Missing name / address");
+                throw APIException(-33, "Missing name / address");
 
             if(params.find("register_address") == params.end())
-                throw APIException(-23, "Missing register_address parameter");
+                throw APIException(-103, "Missing register_address parameter");
 
 
             /* Declare operation stream to serialize all of the field updates*/
@@ -115,15 +115,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-26, "Operations failed to execute");
+                throw APIException(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-26, "Ledger failed to sign transaction");
+                throw APIException(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-26, "Failed to accept");
+                throw APIException(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

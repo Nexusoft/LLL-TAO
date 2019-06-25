@@ -46,7 +46,7 @@ namespace TAO
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
-                throw APIException(-25, "Invalid session ID");
+                throw APIException(-10, "Invalid session ID");
 
             /* Check for paged parameter. */
             uint32_t nPage = 0;
@@ -61,7 +61,7 @@ namespace TAO
             /* Get the list of registers owned by this sig chain */
             std::vector<uint256_t> vRegisters;
             if(!ListRegisters(user->Genesis(), vRegisters))
-                throw APIException(-24, "No registers found");
+                throw APIException(-74, "No registers found");
 
             /* Add the register data to the response */
             uint32_t nTotal = 0;
@@ -71,7 +71,7 @@ namespace TAO
                    whether or not it is an asset. */
                 TAO::Register::Object object;
                 if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-24, "Account not found");
+                    throw APIException(-13, "Account not found");
 
                 /* Check that this is a non-standard object type so that we can parse it and check the type*/
                 if(object.nType != TAO::Register::REGISTER::OBJECT)
@@ -79,7 +79,7 @@ namespace TAO
 
                 /* parse object so that the data fields can be accessed */
                 if(!object.Parse())
-                    throw APIException(-24, "Failed to parse object register");
+                    throw APIException(-36, "Failed to parse object register");
 
                 /* Check that this is an account */
                 uint8_t nStandard = object.Standard();

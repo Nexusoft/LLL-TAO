@@ -51,24 +51,24 @@ namespace TAO
 
             /* Check for identifier parameter. */
             if(params.find("type") == params.end())
-                throw APIException(-25, "Missing Type (<type>)");
+                throw APIException(-118, "Missing type");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
-                throw APIException(-25, "Invalid session ID");
+                throw APIException(-10, "Invalid session ID");
 
             /* Lock the signature chain. */
             LOCK(user->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions");
+                throw APIException(-16, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-25, "Failed to create transaction");
+                throw APIException(-17, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
             uint256_t hashRegister = LLC::GetRand256();
@@ -86,7 +86,7 @@ namespace TAO
                 else if(params.find("token_name") != params.end())
                     strTokenIdentifier = params["token_name"].get<std::string>();
                 else
-                    throw APIException(-25, "Missing token name / address");
+                    throw APIException(-37, "Missing token name / address");
 
                 uint256_t hashIdentifier = 0;
 
@@ -110,7 +110,7 @@ namespace TAO
             {
                 /* Check for supply parameter. */
                 if(params.find("supply") == params.end())
-                    throw APIException(-25, "Missing Supply");
+                    throw APIException(-119, "Missing supply");
 
                 /* Extract the supply parameter */
                 double dSupply = 0;
@@ -137,7 +137,7 @@ namespace TAO
                 tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();
             }
             else
-                throw APIException(-27, "Unknown object register");
+                throw APIException(-118, "Missing type");
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
             if(params.find("name") != params.end())
@@ -145,15 +145,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-26, "Operations failed to execute");
+                throw APIException(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-26, "Ledger failed to sign transaction");
+                throw APIException(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-26, "Failed to accept");
+                throw APIException(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

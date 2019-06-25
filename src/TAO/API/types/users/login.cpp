@@ -43,36 +43,36 @@ namespace TAO
 
             /* Check for username parameter. */
             if(params.find("username") == params.end())
-                throw APIException(-23, "Missing Username");
+                throw APIException(-127, "Missing username");
 
             /* Parse out username. */
             SecureString strUser = SecureString(params["username"].get<std::string>().c_str());
 
             /* Check for username size. */
             if(strUser.size() == 0)
-                throw APIException(-23, "Zero-Length Username");
+                throw APIException(-133, "Zero-length username");
 
             /* Check for password parameter. */
             if(params.find("password") == params.end())
-                throw APIException(-24, "Missing Password");
+                throw APIException(-128, "Missing password");
 
             /* Parse out password. */
             SecureString strPass = SecureString(params["password"].get<std::string>().c_str());
 
             /* Check for password size. */
             if(strPass.size() == 0)
-                throw APIException(-24, "Zero-Length Password");
+                throw APIException(-134, "Zero-length password");
 
             /* Check for pin parameter. */
             if(params.find("pin") == params.end())
-                throw APIException(-24, "Missing PIN");
+                throw APIException(-129, "Missing PIN");
 
             /* Parse out pin. */
             SecureString strPin  = SecureString(params["pin"].get<std::string>().c_str());
 
             /* Check for pin size. */
             if(strPin.size() == 0)
-                throw APIException(-24, "Zero-Length PIN");
+                throw APIException(-135, "Zero-length PIN");
 
             /* Create the sigchain. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUser, strPass);
@@ -88,23 +88,23 @@ namespace TAO
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
                 {
                     user.free();
-                    throw APIException(-26, "Account doesn't exist");
+                    throw APIException(-136, "Account doesn't exist");
                 }
 
                 /* Get the memory pool tranasction. */
                 if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
-                    throw APIException(-26, "Couldn't get transaction");
+                    throw APIException(-137, "Couldn't get transaction");
             }
             else
             {
                 /* Get the last transaction. */
                 uint512_t hashLast;
                 if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
-                    throw APIException(-27, "No previous transaction found");
+                    throw APIException(-138, "No previous transaction found");
 
                 /* Get previous transaction */
                 if(!LLD::Ledger->ReadTx(hashLast, txPrev))
-                    throw APIException(-27, "No previous transaction found");
+                    throw APIException(-138, "No previous transaction found");
             }
 
             /* Genesis Transaction. */
@@ -113,7 +113,7 @@ namespace TAO
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
-                throw APIException(-28, "Invalid credentials");
+                throw APIException(-139, "Invalid credentials");
 
             /* Check the sessions. */
             {
@@ -136,7 +136,7 @@ namespace TAO
 
             /* If not using multiuser then check to see whether another user is already logged in */
             if(!config::fMultiuser.load() && mapSessions.count(0) && mapSessions[0]->Genesis() != hashGenesis)
-                throw APIException(-28, "Already logged in with a different username.");
+                throw APIException(-140, "Already logged in with a different username.");
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
             uint64_t nSession = config::fMultiuser.load() ? LLC::GetRand() : 0;

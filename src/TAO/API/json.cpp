@@ -190,12 +190,12 @@ namespace TAO
                         /* Read the previous transaction in order to get its outputs */
                         Legacy::Transaction txprev;
                         if(!LLD::Legacy->ReadTx(txin.prevout.hash, txprev))
-                            throw APIException(-5, "Invalid transaction id");
+                            throw APIException(-7, "Invalid transaction id");
 
                         /* Extract the Nexus Address. */
                         Legacy::NexusAddress address;
                         if(!Legacy::ExtractAddress(txprev.vout[txin.prevout.n].scriptPubKey, address))
-                            throw APIException(-5, "Unable to Extract Input Address");
+                            throw APIException(-8, "Unable to Extract Input Address");
 
                         /* Push new input to return value. */
                         inputs.push_back(debug::safe_printstr("%s:%f",
@@ -213,7 +213,7 @@ namespace TAO
                     /* Extract the Nexus Address. */
                     Legacy::NexusAddress address;
                     if(!Legacy::ExtractAddress(txout.scriptPubKey, address))
-                        throw APIException(-5, "Unable to Extract Input Address");
+                        throw APIException(-8, "Unable to Extract Input Address");
 
                     /* Add to the outputs. */
                     outputs.push_back(debug::safe_printstr("%s:%f", address.ToString().c_str(), (double) txout.nValue / Legacy::COIN));
@@ -529,11 +529,11 @@ namespace TAO
                         /* Get the token/account we are debiting from so that we can output the token address / name. */
                         TAO::Register::Object object;
                         if(!LLD::Register->ReadState(hashFrom, object))
-                            throw APIException(-24, "Account not found");
+                            throw APIException(-13, "Account not found");
 
                         /* Parse the object register. */
                         if(!object.Parse())
-                            throw APIException(-24, "Object failed to parse");
+                            throw APIException(-14, "Object failed to parse");
 
                         /* Get the object standard. */
                         uint8_t nStandard = object.Standard();
@@ -542,7 +542,7 @@ namespace TAO
                         if(nStandard != TAO::Register::OBJECTS::ACCOUNT 
                         && nStandard != TAO::Register::OBJECTS::TRUST
                         && nStandard != TAO::Register::OBJECTS::TOKEN)
-                            throw APIException(-24, "Object is not an account or token");
+                            throw APIException(-15, "Object is not an account or token");
 
                         /* Get the token address */
                         uint256_t hashToken = object.get<uint256_t>("token");
@@ -601,11 +601,11 @@ namespace TAO
                         /* Get the token/account we are crediting to so that we can output the token address / name. */
                         TAO::Register::Object account;
                         if(!LLD::Register->ReadState(hashAddress, account))
-                            throw APIException(-24, "Account not found");
+                            throw APIException(-13, "Account not found");
 
                         /* Parse the object register. */
                         if(!account.Parse())
-                            throw APIException(-24, "Object failed to parse");
+                            throw APIException(-14, "Object failed to parse");
 
                         /* Get the object standard. */
                         uint8_t nStandard = account.Standard();
@@ -614,7 +614,7 @@ namespace TAO
                         if(nStandard != TAO::Register::OBJECTS::ACCOUNT 
                         && nStandard != TAO::Register::OBJECTS::TRUST
                         && nStandard != TAO::Register::OBJECTS::TOKEN)
-                            throw APIException(-24, "Object is not an account or token");
+                            throw APIException(-15, "Object is not an account or token");
 
                         /* Get the token address */
                         uint256_t hashToken = account.get<uint256_t>("token");

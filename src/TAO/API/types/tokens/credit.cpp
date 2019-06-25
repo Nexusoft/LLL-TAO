@@ -51,24 +51,24 @@ namespace TAO
 
             /* Check for txid parameter. */
             if(params.find("txid") == params.end())
-                throw APIException(-25, "Missing TxID.");
+                throw APIException(-50, "Missing txid.");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
-                throw APIException(-25, "Invalid session ID.");
+                throw APIException(-10, "Invalid session ID.");
 
             /* Lock the signature chain. */
             LOCK(user->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions.");
+                throw APIException(-16, "Account has not been unlocked for transactions.");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-25, "Failed to create transaction.");
+                throw APIException(-17, "Failed to create transaction.");
 
             /* Submit the transaction payload. */
             uint256_t hashAccountTo = 0;
@@ -101,7 +101,7 @@ namespace TAO
             /* Read the previous transaction. */
             TAO::Ledger::Transaction txPrev;
             if(!LLD::Ledger->ReadTx(hashTx, txPrev))
-                throw APIException(-23, "Previous transaction not found.");
+                throw APIException(-40, "Previous transaction not found.");
 
             /* Loop through all transactions. */
             int32_t nCurrent = -1;
@@ -165,7 +165,7 @@ namespace TAO
 
                 /* Parse the object register. */
                 if(!objectTo.Parse())
-                    throw APIException(-24, "Failed to parse object from debit transaction");
+                    throw APIException(-41, "Failed to parse object from debit transaction");
 
                 /* Get the object standard. */
                 uint8_t nStandard = objectTo.Base();
@@ -191,7 +191,7 @@ namespace TAO
                             continue;
 
                         if(objectTo.get<uint256_t>("token") == 0)
-                                throw APIException(-24, "Debit transacton is for a NXS account.  Please use the Finance API for crediting NXS accounts.");
+                                throw APIException(-120, "Debit transacton is for a NXS account.  Please use the Finance API for crediting NXS accounts.");
 
                         /* if we passed these checks then insert the credit contract into the tx */
                         tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashTo <<  hashFrom << nAmount;
@@ -215,27 +215,27 @@ namespace TAO
 
                         /* Parse the object register. */
                         if(!assetOwner.Parse())
-                            throw APIException(-25, "Failed to parse asset owner object");
+                            throw APIException(-52, "Failed to parse asset owner object");
 
                         if(assetOwner.Standard() == TAO::Register::OBJECTS::TOKEN)
                         {
                             /* This is definitely a split payment so we now need to verify the token account and proof that
                                were passed in as parameters */
                             if(hashAccountTo == 0)
-                                throw APIException(-25, "Missing name / address of account to credit.");
+                                throw APIException(-53, "Missing name / address of account to credit.");
 
                             if(hashProof == 0)
-                                throw APIException(-25, "Missing name_proof / address_proof of token account that proves your credit share.");
+                                throw APIException(-54, "Missing name_proof / address_proof of token account that proves your credit share.");
 
                             /* Retrieve the account that the user has specified to make the payment to and ensure that it is for
                                the same token as the debit hashFrom */
                             TAO::Register::Object accountToCredit;
                             if(!LLD::Register->ReadState(hashAccountTo, accountToCredit))
-                                throw APIException(-25, "Invalid name / address of account to credit. ");
+                                throw APIException(-55, "Invalid name / address of account to credit. ");
 
                             /* Parse the object register. */
                             if(!accountToCredit.Parse())
-                                throw APIException(-24, "Failed to parse account to credit.");
+                                throw APIException(-56, "Failed to parse account to credit.");
 
                             /* Retrieve the account to debit from. */
                             TAO::Register::Object debitFromObject;
@@ -244,12 +244,12 @@ namespace TAO
 
                             /* Parse the object register. */
                             if(!debitFromObject.Parse())
-                                throw APIException(-24, "Failed to parse object to debit from.");
+                                throw APIException(-57, "Failed to parse object to debit from.");
 
                             /* Check that the account being debited from is the same token type as as the account being
                                credited to*/
                             if(debitFromObject.get<uint256_t>("token") != accountToCredit.get<uint256_t>("token"))
-                                throw APIException(-24, "Account to credit is not for the same token as the debit.");
+                                throw APIException(-121, "Account to credit is not for the same token as the debit.");
 
 
                             /* Retrieve the hash proof account and check that it is the same token type as the asset owner */
@@ -259,11 +259,11 @@ namespace TAO
 
                             /* Parse the object register. */
                             if(!proofObject.Parse())
-                                throw APIException(-24, "Failed to parse proof object.");
+                                throw APIException(-60, "Failed to parse proof object.");
 
                             /* Check that the proof is an account for the same token as the asset owner */
                             if(proofObject.get<uint256_t>("token") != assetOwner.get<uint256_t>("token"))
-                                throw APIException(-24, "Failed to proof account is for a different token than the asset token.");
+                                throw APIException(-61, "Proof account is for a different token than the asset token.");
 
                             /* Calculate the partial amount we want to claim based on our share of the proof tokens */
                             uint64_t nPartial = (proofObject.get<uint64_t>("balance") * nAmount) / assetOwner.get<uint64_t>("supply");
@@ -284,19 +284,19 @@ namespace TAO
 
             /* Check that output was found. */
             if(nCurrent == -1)
-                throw APIException(-24, "no valid contracts in debit tx.");
+                throw APIException(-43, "No valid contracts in debit tx.");
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-26, "Transaction failed to build");
+                throw APIException(-44, "Transaction failed to build");
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-26, "Ledger failed to sign transaction.");
+                throw APIException(-31, "Ledger failed to sign transaction.");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-26, "Failed to accept.");
+                throw APIException(-32, "Failed to accept.");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

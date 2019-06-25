@@ -42,16 +42,16 @@ namespace TAO
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"].get<std::string>());
             else
-                throw APIException(-23, "Missing memory address");
+                throw APIException(-105, "Missing address");
 
             /* Get the token / account object. */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-24, "No token/account found");
+                throw APIException(-122, "Token/account not found");
 
             /* Parse the object register. */
             if(!object.Parse())
-                throw APIException(-24, "Object failed to parse");
+                throw APIException(-14, "Object failed to parse");
 
             /* Get the object standard. */
             uint8_t nStandard = object.Standard();
@@ -61,7 +61,7 @@ namespace TAO
             {
                 /* If the user requested a particular object type then check it is that type */
                 if(params.find("type") != params.end() && params["type"].get<std::string>() == "token")
-                    throw APIException(-24, "Requested object is not a token");
+                    throw APIException(-123, "Object is not a token");
 
                 /* Convert the account object to JSON */
                 ret = ObjectToJSON(params, object, hashRegister);
@@ -71,13 +71,13 @@ namespace TAO
             {
                 /* If the user requested a particular object type then check it is that type */
                 if(params.find("type") != params.end() && params["type"].get<std::string>() == "account")
-                    throw APIException(-24, "Requested object is not an account");
+                    throw APIException(-126, "Object is not an account");
 
                 /* Convert the token object to JSON */
                 ret = ObjectToJSON(params, object, hashRegister);
             }
             else
-                throw APIException(-27, "Unknown object register");
+                throw APIException(-122, "Token/account not found");
 
             /* Populate the response JSON */
             ret["owner"]    = object.hashOwner.GetHex();

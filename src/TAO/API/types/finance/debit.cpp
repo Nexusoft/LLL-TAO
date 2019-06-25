@@ -53,24 +53,24 @@ namespace TAO
 
             /* Check for credit parameter. */
             if(params.find("amount") == params.end())
-                throw APIException(-25, "Missing amount");
+                throw APIException(-46, "Missing amount");
 
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
-                throw APIException(-25, "Invalid session ID");
+                throw APIException(-10, "Invalid session ID");
 
             /* Lock the signature chain. */
             LOCK(user->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
-                throw APIException(-25, "Account has not been unlocked for transactions");
+                throw APIException(-16, "Account has not been unlocked for transactions");
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
-                throw APIException(-25, "Failed to create transaction.");
+                throw APIException(-17, "Failed to create transaction.");
 
             /* Submit the transaction payload. */
             uint256_t hashTo = 0;
@@ -82,7 +82,7 @@ namespace TAO
             else if(params.find("address_to") != params.end())
                 hashTo.SetHex(params["address_to"].get<std::string>());
             else
-                throw APIException(-22, "Missing recipient account name_to or address_to");
+                throw APIException(-64, "Missing recipient account name_to / address_to");
 
             /* Get the transaction id. */
             uint256_t hashFrom = 0;
@@ -94,27 +94,27 @@ namespace TAO
             else if(params.find("address") != params.end())
                 hashFrom.SetHex(params["address"].get<std::string>());
             else
-                throw APIException(-22, "Missing account name or address");
+                throw APIException(-33, "Missing name or address");
 
             /* Get the account object. */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashFrom, object))
-                throw APIException(-24, "Account not found");
+                throw APIException(-13, "Account not found");
 
             /* Parse the object register. */
             if(!object.Parse())
-                throw APIException(-24, "Object failed to parse");
+                throw APIException(-14, "Object failed to parse");
 
             /* Get the object standard. */
             uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
             if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
-                throw APIException(-24, "Object is not an account");
+                throw APIException(-65, "Object is not an account");
 
             /* Check the account is a NXS account */
             if(object.get<uint256_t>("token") != 0)
-                throw APIException(-24, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
+                throw APIException(-66, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
 
 
             uint64_t nDigits = TAO::Ledger::NXS_DIGITS;
@@ -125,26 +125,26 @@ namespace TAO
 
             /* Check the amount is not too small once converted by the token digits */
             if(nAmount == 0)
-                throw APIException(-25, "Amount too small");
+                throw APIException(-68, "Amount too small");
 
             /* Check they have the required funds */
             if(nAmount > nCurrentBalance)
-                throw APIException(-25, "Insufficient funds");
+                throw APIException(-69, "Insufficient funds");
 
             /* Submit the payload object. */
             tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-26, "Transaction failed to build");
+                throw APIException(-44, "Transaction failed to build");
 
             /* Sign the transaction. */
             if(!tx.Sign(users->GetKey(tx.nSequence, strPIN, nSession)))
-                throw APIException(-26, "Ledger failed to sign transaction");
+                throw APIException(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-26, "Failed to accept");
+                throw APIException(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"] = tx.GetHash().ToString();

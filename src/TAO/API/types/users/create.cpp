@@ -47,15 +47,15 @@ namespace TAO
 
             /* Check for username parameter. */
             if(params.find("username") == params.end())
-                throw APIException(-23, "Missing Username");
+                throw APIException(-127, "Missing username");
 
             /* Check for password parameter. */
             if(params.find("password") == params.end())
-                throw APIException(-24, "Missing Password");
+                throw APIException(-128, "Missing password");
 
             /* Check for pin parameter. */
             if(params.find("pin") == params.end())
-                throw APIException(-25, "Missing PIN");
+                throw APIException(-129, "Missing PIN");
 
             /* Generate the signature chain. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
@@ -68,14 +68,14 @@ namespace TAO
             if(LLD::Ledger->HasGenesis(hashGenesis) || TAO::Ledger::mempool.Has(hashGenesis))
             {
                 user.free();
-                throw APIException(-26, "Account already exists");
+                throw APIException(-130, "Account already exists");
             }
 
             /* Create the transaction. */
             if(!TAO::Ledger::CreateTransaction(user, params["pin"].get<std::string>().c_str(), tx))
             {
                 user.free();
-                throw APIException(-25, "Failed to create transaction");
+                throw APIException(-17, "Failed to create transaction");
             }
 
             /* Create trust account register  within the user sig chain namespace */
@@ -103,14 +103,14 @@ namespace TAO
             if(!tx.Build())
             {
                 user.free();
-                throw APIException(-26, "Operations failed to execute");
+                throw APIException(-30, "Operations failed to execute");
             }
 
             /* Sign the transaction. */
             if(!tx.Sign(user->Generate(tx.nSequence, params["pin"].get<std::string>().c_str())))
             {
                 user.free();
-                throw APIException(-26, "Ledger failed to sign transaction");
+                throw APIException(-31, "Ledger failed to sign transaction");
             }
 
             /* Free the sigchain. */

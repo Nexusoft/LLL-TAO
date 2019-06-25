@@ -38,7 +38,7 @@ namespace TAO
 
             /* Check for username parameter. */
             if(config::fMultiuser.load() && params.find("session") == params.end())
-                throw APIException(-23, "Missing Session ID");
+                throw APIException(-12, "Missing Session ID");
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
             uint64_t nSession = config::fMultiuser.load() ? std::stoull(params["session"].get<std::string>()) : 0;
@@ -48,7 +48,7 @@ namespace TAO
                 LOCK(MUTEX);
 
                 if(!mapSessions.count(nSession))
-                    throw APIException(-1, "Already logged out");
+                    throw APIException(-141, "Already logged out");
 
                 memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = mapSessions[nSession];
                 user.free();

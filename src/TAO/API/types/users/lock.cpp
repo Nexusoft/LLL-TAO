@@ -27,11 +27,11 @@ namespace TAO
         {
             /* Restrict Unlock / Lock to sessionless API */
             if(config::fMultiuser.load())
-                throw APIException(-23, "Lock not supported for session-based API");
+                throw APIException(-131, "Lock not supported in multiuser mode");
 
             /* Check if already unlocked. */
             if(!pActivePIN.IsNull() && pActivePIN->PIN() == "")
-                throw APIException(-26, "Account already locked");
+                throw APIException(-132, "Account already locked");
 
 
             /* Clear the pin */

@@ -92,11 +92,11 @@ namespace TAO
 
                         TAO::Register::Object token;
                         if(!LLD::Register->ReadState(nIdentifier, token, TAO::Ledger::FLAGS::MEMPOOL))
-                            throw APIException(-24, "Token not found");
+                            throw APIException(-125, "Token not found");
 
                         /* Parse the object register. */
                         if(!token.Parse())
-                            throw APIException(-24, "Object failed to parse");
+                            throw APIException(-14, "Object failed to parse");
 
                         nDigits = token.get<uint64_t>("digits");
                     }
@@ -105,7 +105,7 @@ namespace TAO
 
                 default:
                 {
-                    throw APIException(-27, "Unknown token / account.");
+                    throw APIException(-124, "Unknown token / account.");
                 }
 
             }
@@ -145,7 +145,7 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-28, "Failed to read transaction");
+                    throw APIException(-108, "Failed to read transaction");
 
                 /* Set the next last. */
                 hashLast = tx.hashPrevTx;
@@ -267,7 +267,7 @@ namespace TAO
                             {
                                 TAO::Register::Object newOwner;
                                 if(!LLD::Register->ReadState(hashTransfer, newOwner))
-                                    throw APIException(-24, "Transfer recipient object not found");
+                                    throw APIException(-153, "Transfer recipient object not found");
 
                                 if(newOwner.hashOwner == hashGenesis)
                                     break;

@@ -37,7 +37,7 @@ namespace TAO
         /* Creates a block . */
         json::json Ledger::Create(const json::json& params, bool fHelp)
         {
-            throw APIException(-25, "ledger create not available.");
+            throw APIException(-1, "Method not available.");
         }
 
         /* Retrieves the blockhash for the given height. */
@@ -46,30 +46,30 @@ namespace TAO
             /* Check that the node is configured to index blocks by height */
             if(!config::GetBoolArg("-indexheight"))
             {
-                throw APIException(-25, "getblockhash requires the daemon to be started with the -indexheight flag.");
+                throw APIException(-79, "getblockhash requires the daemon to be started with the -indexheight flag.");
             }
 
             /* Check for the block height parameter. */
             if(params.find("height") == params.end())
-                throw APIException(-25, "Missing height");
+                throw APIException(-80, "Missing height");
 
             /* Check that the height parameter is numeric*/
             std::string strHeight = params["height"].get<std::string>();
 
             if(!IsAllDigit(strHeight))
-                throw APIException(-25, "Invalid height parameter");
+                throw APIException(-81, "Invalid height parameter");
 
             /* Convert the incoming height string to an int*/
             uint32_t nHeight = std::stoul(strHeight);
 
             /* Check that the requested height is within our chain range*/
             if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
-                throw APIException(-25, "Block number out of range.");
+                throw APIException(-82, "Block number out of range.");
 
             TAO::Ledger::BlockState blockState;
             /* Read the block state from the the ledger DB using the height index */
             if(!LLD::Ledger->ReadBlock(nHeight, blockState))
-                throw APIException(-25, "Block not found");
+                throw APIException(-83, "Block not found");
 
             json::json ret;
             ret["hash"] = blockState.GetHash().GetHex();
@@ -83,7 +83,7 @@ namespace TAO
         {
             /* Check for the block height parameter. */
             if(params.find("hash") == params.end() && params.find("height") == params.end())
-                throw APIException(-25, "Missing hash or height");
+                throw APIException(-84, "Missing hash or height");
 
             /* Declare the BlockState to load from the DB */
             TAO::Ledger::BlockState blockState;
@@ -93,24 +93,24 @@ namespace TAO
             {
                 /* Check that the node is configured to index blocks by height */
                 if(!config::GetBoolArg("-indexheight"))
-                    throw APIException(-25, "getblock by height requires the daemon to be started with the -indexheight flag.");
+                    throw APIException(-85, "getblock by height requires the daemon to be started with the -indexheight flag.");
 
                 /* Check that the height parameter is numeric*/
                 std::string strHeight = params["height"].get<std::string>();
 
                 if(!IsAllDigit(strHeight))
-                    throw APIException(-25, "Invalid height parameter");
+                    throw APIException(-81, "Invalid height parameter");
 
                 /* Convert the incoming height string to an int*/
                 uint32_t nHeight = std::stoul(strHeight);
 
                 /* Check that the requested height is within our chain range*/
                 if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
-                    throw APIException(-25, "Block number out of range.");
+                    throw APIException(-82, "Block number out of range.");
 
                 /* Read the block state from the the ledger DB using the height index */
                 if(!LLD::Ledger->ReadBlock(nHeight, blockState))
-                    throw APIException(-25, "Block not found");
+                    throw APIException(-83, "Block not found");
             }
             else if(params.find("hash") != params.end())
             {
@@ -120,7 +120,7 @@ namespace TAO
 
                 /* Read the block state from the the ledger DB using the hash index */
                 if(!LLD::Ledger->ReadBlock(blockHash, blockState))
-                    throw APIException(-25, "Block not found");
+                    throw APIException(-83, "Block not found");
             }
 
             std::string strVerbose = "default";
@@ -149,7 +149,7 @@ namespace TAO
         {
             /* Check for the block height parameter. */
             if(params.find("hash") == params.end() && params.find("height") == params.end())
-                throw APIException(-25, "Missing hash or height");
+                throw APIException(-84, "Missing hash or height");
 
             /* Declare the BlockState to load from the DB */
             TAO::Ledger::BlockState blockState;
@@ -169,24 +169,24 @@ namespace TAO
             {
                 /* Check that the node is configured to index blocks by height */
                 if(!config::GetBoolArg("-indexheight"))
-                    throw APIException(-25, "getblock by height requires the daemon to be started with the -indexheight flag.");
+                    throw APIException(-85, "getblock by height requires the daemon to be started with the -indexheight flag.");
 
                 /* Check that the height parameter is numeric*/
                 std::string strHeight = params["height"].get<std::string>();
 
                 if(!IsAllDigit(strHeight))
-                    throw APIException(-25, "Invalid height parameter");
+                    throw APIException(-81, "Invalid height parameter");
 
                 /* Convert the incoming height string to an int*/
                 uint32_t nHeight = std::stoul(strHeight);
 
                 /* Check that the requested height is within our chain range*/
                 if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
-                    throw APIException(-25, "Block number out of range.");
+                    throw APIException(-82, "Block number out of range.");
 
                 /* Read the block state from the the ledger DB using the height index */
                 if(!LLD::Ledger->ReadBlock(nHeight, blockState))
-                    throw APIException(-25, "Block not found");
+                    throw APIException(-83, "Block not found");
             }
             else if(params.find("hash") != params.end())
             {
@@ -196,7 +196,7 @@ namespace TAO
 
                 /* Read the block state from the the ledger DB using the hash index */
                 if(!LLD::Ledger->ReadBlock(blockHash, blockState))
-                    throw APIException(-25, "Block not found");
+                    throw APIException(-83, "Block not found");
             }
 
             /* Get the transaction verbosity level from the request*/

@@ -58,7 +58,7 @@ namespace TAO
             else if(!config::fMultiuser.load() && users->LoggedIn())
                 hashGenesis = users->GetGenesis(0);
             else
-                throw APIException(-25, "Missing Genesis or Username");
+                throw APIException(-111, "Missing genesis / username");
 
             /* Check for paged parameter. */
             uint32_t nPage = 0;
@@ -73,7 +73,7 @@ namespace TAO
             /* Get the list of registers owned by this sig chain */
             std::vector<uint256_t> vRegisters;
             if(!ListRegisters(hashGenesis, vRegisters))
-                throw APIException(-24, "No registers found");
+                throw APIException(-74, "No registers found");
 
             /* We pass false for fLookupName if the requested type is a name of namesace object,
                as those are the edge case that do not have a Name object themselves */
@@ -98,7 +98,7 @@ namespace TAO
                 {
                     /* parse object so that the data fields can be accessed */
                     if(!object.Parse())
-                        throw APIException(-25, "Failed to parse object register");
+                        throw APIException(-36, "Failed to parse object register");
 
                     /* Only included requested object types. */
                     if((object.Standard() & nObjectType) == 0)

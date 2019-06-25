@@ -47,16 +47,16 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-23, "Missing name / address");
+                throw APIException(-33, "Missing name / address");
 
             /* Get the history. */
             TAO::Register::State state;
             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-24, "Item not found");
+                throw APIException(-117, "Item not found");
 
             /* Ensure that it is an append register */
             if(state.nType != TAO::Register::REGISTER::APPEND)
-                throw APIException(-24, "Item not found");
+                throw APIException(-117, "Item not found");
 
             /* Build the response JSON. */
             ret = ObjectToJSON(params, state, hashRegister);
