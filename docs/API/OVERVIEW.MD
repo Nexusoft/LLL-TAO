@@ -171,7 +171,7 @@ Error Codes
 | -48 | Failed to read to state |
 | -49 | Failed to parse to state |
 | -50 | Missing txid |
-| -51 | Debit transacton is not for a NXS account.  Please use the tokens API for crediting token accounts |
+| -51 | Debit transaction is not for a NXS account.  Please use the tokens API for crediting token accounts |
 | -52 | Failed to parse asset owner object |
 | -53 | Missing name / address of account to credit |
 | -54 | Missing name_proof / address_proof of token account that proves your credit share |

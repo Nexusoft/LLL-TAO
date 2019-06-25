@@ -164,7 +164,7 @@ namespace TAO
                                 continue;
 
                             if(debit.get<uint256_t>("token") != 0)
-                                throw APIException(-51, "Debit transacton is not for a NXS account.  Please use the tokens API for crediting token accounts.");
+                                throw APIException(-51, "Debit transaction is not for a NXS account.  Please use the tokens API for crediting token accounts.");
 
                             /* if we passed these checks then insert the credit contract into the tx */
                             tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashTo <<  hashFrom << nAmount;
