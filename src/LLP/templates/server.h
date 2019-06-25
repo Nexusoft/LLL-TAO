@@ -82,6 +82,10 @@ namespace LLP
         uint32_t nSleepTime;
 
 
+        /* The listener socket instance. */
+        std::pair<int32_t, int32_t> hListenSocket;
+
+
         /** Name
          *
          *  Returns the name of the protocol type of this server.

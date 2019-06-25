@@ -28,6 +28,8 @@ ________________________________________________________________________________
 #include <LLP/include/trust_address.h>
 
 #include <Util/include/args.h>
+#include <Util/include/signals.h>
+
 #include <LLP/include/permissions.h>
 #include <functional>
 #include <numeric>
@@ -57,6 +59,7 @@ namespace LLP
     , DATA_THREADS()
     , pAddressManager(nullptr)
     , nSleepTime(nSleepTimeIn)
+    , hListenSocket(-1, -1)
     {
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
         {
@@ -78,8 +81,14 @@ namespace LLP
         /* Initialize the listeners. */
         if(fListen)
         {
+            /* Bind the Listener. */
+            if(!BindListenPort(hListenSocket.first, true))
+            {
+                ::Shutdown();
+                return;
+            }
+
             LISTEN_THREAD_V4 = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
-            LISTEN_THREAD_V6 = std::thread(std::bind(&Server::ListeningThread, this, false)); //IPv6 Listener
         }
 
         /* Initialize the meter. */
@@ -429,25 +438,20 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::ListeningThread(bool fIPv4)
     {
-        int32_t hListenSocket = 0;
         SOCKET hSocket;
         BaseAddress addr;
         socklen_t len_v4 = sizeof(struct sockaddr_in);
         socklen_t len_v6 = sizeof(struct sockaddr_in6);
 
-        /* Bind the Listener. */
-        if(!BindListenPort(hListenSocket, fIPv4))
-            return;
-
         /* Setup poll objects. */
         pollfd fds[1];
         fds[0].events = POLLIN;
-        fds[0].fd     = hListenSocket;
+        fds[0].fd     = (fIPv4 ? hListenSocket.first : hListenSocket.second);
 
         /* Main listener loop. */
         while(!config::fShutdown.load())
         {
-            if (hListenSocket != INVALID_SOCKET)
+            if ((fIPv4 ? hListenSocket.first : hListenSocket.second) != INVALID_SOCKET)
             {
                 /* Poll the sockets. */
                 fds[0].revents = 0;
@@ -469,7 +473,7 @@ namespace LLP
                 {
                     struct sockaddr_in sockaddr;
 
-                    hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v4);
+                    hSocket = accept(hListenSocket.first, (struct sockaddr*)&sockaddr, &len_v4);
                     if (hSocket != INVALID_SOCKET)
                         addr = BaseAddress(sockaddr);
                 }
@@ -477,7 +481,7 @@ namespace LLP
                 {
                     struct sockaddr_in6 sockaddr;
 
-                    hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v6);
+                    hSocket = accept(hListenSocket.second, (struct sockaddr*)&sockaddr, &len_v6);
                     if (hSocket != INVALID_SOCKET)
                         addr = BaseAddress(sockaddr);
                 }
@@ -537,6 +541,8 @@ namespace LLP
                 }
             }
         }
+
+        closesocket(fIPv4 ? hListenSocket.first : hListenSocket.second);
     }
 
 
@@ -567,7 +573,6 @@ namespace LLP
         /* Allow binding if the port is still in TIME_WAIT state after the program was closed and restarted.  Not an issue on windows. */
 #ifndef WIN32
         setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEADDR, (void*)&nOne, sizeof(int32_t));
-        setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEPORT, (void*)&nOne, sizeof(int32_t));
 #endif
 
 #ifndef WIN32
@@ -595,11 +600,9 @@ namespace LLP
             {
                 int32_t nErr = WSAGetLastError();
                 if (nErr == WSAEADDRINUSE)
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer. Address already in use.");
+                    return debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), "... Nexus is probably still running");
                 else
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer (bind returned error )",  nErr);
-
-                return false;
+                    return debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer (bind returned error )",  nErr);
             }
 
             debug::log(0, FUNCTION,"(v4) Bound to port ", ntohs(sockaddr.sin_port));
@@ -615,11 +618,9 @@ namespace LLP
             {
                 int32_t nErr = WSAGetLastError();
                 if (nErr == WSAEADDRINUSE)
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer. Address already in use.");
+                    return debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), "... Nexus is probably still running");
                 else
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer (bind returned error )",  nErr);
-
-                return false;
+                    return debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer (bind returned error )",  nErr);
             }
 
             debug::log(0, FUNCTION, "(v6) Bound to port ", ntohs(sockaddr.sin6_port));

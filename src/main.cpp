@@ -333,85 +333,11 @@ int main(int argc, char** argv)
     }
 
 
-    /* Create the ledger database instance. */
-    LLD::legDB    = new LLD::LedgerDB(
-                    LLD::FLAGS::CREATE | LLD::FLAGS::WRITE,
-                    256 * 256 * 128,
-                    config::GetArg("-maxcache", 64) * 1024 * 512);
-
-    /* Create the legacy database instance. */
-    LLD::legacyDB = new LLD::LegacyDB(
-                    LLD::FLAGS::CREATE | LLD::FLAGS::WRITE,
-                    256 * 256 * 128,
-                    config::GetArg("-maxcache", 64) * 1024 * 512);
-
-    /* Create the trust database instance. */
-    LLD::trustDB  = new LLD::TrustDB(
-                    LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
-
-    /* Handle database recovery mode. */
-    LLD::TxnRecovery();
-
-
-    /** Load the Wallet Database. **/
-    bool fFirstRun;
-    if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
-        return debug::error("Failed initializing wallet");
-
-
-    /** Check the wallet loading for errors. **/
-    uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
-    if (nLoadWalletRet != Legacy::DB_LOAD_OK)
-    {
-        if (nLoadWalletRet == Legacy::DB_CORRUPT)
-            return debug::error("Failed loading wallet.dat: Wallet corrupted");
-        else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
-            return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
-        else
-            return debug::error("Failed loading wallet.dat");
-    }
-
-
-    /** Rebroadcast transactions. **/
-    Legacy::Wallet::GetInstance().ResendWalletTransactions();
-
-
-    /** Initialize ChainState. */
-    TAO::Ledger::ChainState::Initialize();
-
-
-    /** Initialize the scripts for legacy mode. **/
-    Legacy::InitializeScripts();
-
-
-    /** Handle Rescanning. **/
-    if(config::GetBoolArg(std::string("-rescan")))
-        Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
-
-
-    /** Startup the time server. **/
-    LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
-        9324,
-        10,
-        30,
-        false,
-        0,
-        0,
-        10,
-        config::GetBoolArg(std::string("-unified"), false),
-        config::GetBoolArg(std::string("-meters"), false),
-        true,
-        30000);
-
-
     /* Get the port for Legacy Server. */
     port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? 8323 : 9323));
 
     /* Initialize the Legacy Server. */
     LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(port);
-
-    /* Handle Manual Connections from Command Line, if there are any. */
-    LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
 
     /* Get the port for the Core API Server. */
     port = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet? 8336 : 9336));
@@ -429,71 +355,151 @@ int main(int argc, char** argv)
         false,
         false);
 
+    /* Startup timer stats. */
+    uint32_t nElapsed = 0;
 
-    /* Set up Mining Server */
-    if(config::GetBoolArg(std::string("-mining")))
+    /* Check for failures. */
+    bool fFailed = config::fShutdown.load();
+    if(!fFailed)
     {
-      // if(config::GetBoolArg(std::string("-beta")))
-          LEGACY_MINING_SERVER  = LLP::CreateMiningServer<LLP::LegacyMiner>();
-      // else
-      //     TRITIUM_MINING_SERVER = LLP::CreateMiningServer<LLP::TritiumMiner>();
-    }
 
-    /* cache the EIDs and RLOCs if using LISP so that we don't need to hit the lispers.net API
-       to obtain this data after this point.  NOTE that we do this in a separate thread because the API call
-       can take several seconds to timeout on Windows, if the user is not using LISP */
-    LLP::CacheEIDs();
+        /* Create the ledger database instance. */
+        LLD::legDB    = new LLD::LedgerDB(
+                        LLD::FLAGS::CREATE | LLD::FLAGS::WRITE,
+                        256 * 256 * 128,
+                        config::GetArg("-maxcache", 64) * 1024 * 512);
 
+        /* Create the legacy database instance. */
+        LLD::legacyDB = new LLD::LegacyDB(
+                        LLD::FLAGS::CREATE | LLD::FLAGS::WRITE,
+                        256 * 256 * 128,
+                        config::GetArg("-maxcache", 64) * 1024 * 512);
 
-    /* Elapsed Milliseconds from timer. */
-    uint32_t nElapsed = timer.ElapsedMilliseconds();
-    timer.Stop();
+        /* Create the trust database instance. */
+        LLD::trustDB  = new LLD::TrustDB(
+                        LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
 
-
-    /* If wallet is not encrypted, it is unlocked by default. Start stake minter now. It will run until stopped by system shutdown. */
-    if (!Legacy::Wallet::GetInstance().IsCrypted())
-        Legacy::StakeMinter::GetInstance().StartStakeMinter();
-
-
-    /* Startup performance metric. */
-    debug::log(0, FUNCTION, "Started up in ", nElapsed, "ms");
+        /* Handle database recovery mode. */
+        LLD::TxnRecovery();
 
 
-    /* Initialize generator thread. */
-    std::thread thread;
-    if(config::GetBoolArg(std::string("-private")))
-        thread = std::thread(TAO::Ledger::ThreadGenerator);
+        /** Load the Wallet Database. **/
+        bool fFirstRun;
+        if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
+            return debug::error("Failed initializing wallet");
 
 
-    /* Wait for shutdown. */
-    if(!config::GetBoolArg(std::string("-gdb")))
-    {
-        std::mutex SHUTDOWN_MUTEX;
-        std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
-        SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown.load(); });
-    }
-
-    /* GDB mode waits for keyboard input to initiate clean shutdown. */
-    else
-    {
-        getchar();
-        config::fShutdown = true;
-    }
+        /** Check the wallet loading for errors. **/
+        uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
+        if (nLoadWalletRet != Legacy::DB_LOAD_OK)
+        {
+            if (nLoadWalletRet == Legacy::DB_CORRUPT)
+                return debug::error("Failed loading wallet.dat: Wallet corrupted");
+            else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
+                return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
+            else
+                return debug::error("Failed loading wallet.dat");
+        }
 
 
-    /* Wait for the private condition. */
-    if(config::GetBoolArg(std::string("-private")))
-    {
-        TAO::Ledger::PRIVATE_CONDITION.notify_all();
-        thread.join();
+        /** Rebroadcast transactions. **/
+        Legacy::Wallet::GetInstance().ResendWalletTransactions();
+
+
+        /** Initialize ChainState. */
+        TAO::Ledger::ChainState::Initialize();
+
+
+        /** Initialize the scripts for legacy mode. **/
+        Legacy::InitializeScripts();
+
+
+        /** Handle Rescanning. **/
+        if(config::GetBoolArg(std::string("-rescan")))
+            Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+
+
+        /** Startup the time server. **/
+        LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
+            9324,
+            10,
+            30,
+            false,
+            0,
+            0,
+            10,
+            config::GetBoolArg(std::string("-unified"), false),
+            config::GetBoolArg(std::string("-meters"), false),
+            true,
+            30000);
+
+
+        /* Set up Mining Server */
+        if(config::GetBoolArg(std::string("-mining")))
+        {
+             LEGACY_MINING_SERVER  = LLP::CreateMiningServer<LLP::LegacyMiner>();
+        }
+
+        /* cache the EIDs and RLOCs if using LISP so that we don't need to hit the lispers.net API
+           to obtain this data after this point.  NOTE that we do this in a separate thread because the API call
+           can take several seconds to timeout on Windows, if the user is not using LISP */
+        LLP::CacheEIDs();
+
+
+        /* Handle Manual Connections from Command Line, if there are any. */
+        LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
+
+
+        /* Elapsed Milliseconds from timer. */
+        nElapsed = timer.ElapsedMilliseconds();
+        timer.Stop();
+
+
+        /* If wallet is not encrypted, it is unlocked by default. Start stake minter now. It will run until stopped by system shutdown. */
+        if (!Legacy::Wallet::GetInstance().IsCrypted())
+            Legacy::StakeMinter::GetInstance().StartStakeMinter();
+
+
+        /* Startup performance metric. */
+        debug::log(0, FUNCTION, "Started up in ", nElapsed, "ms");
+
+
+        /* Initialize generator thread. */
+        std::thread thread;
+        if(config::GetBoolArg(std::string("-private")))
+            thread = std::thread(TAO::Ledger::ThreadGenerator);
+
+
+        /* Wait for shutdown. */
+        if(!config::GetBoolArg(std::string("-gdb")))
+        {
+            std::mutex SHUTDOWN_MUTEX;
+            std::unique_lock<std::mutex> SHUTDOWN_LOCK(SHUTDOWN_MUTEX);
+            SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown.load(); });
+        }
+
+        /* GDB mode waits for keyboard input to initiate clean shutdown. */
+        else
+        {
+            getchar();
+            config::fShutdown = true;
+        }
+
+
+        /* Wait for the private condition. */
+        if(config::GetBoolArg(std::string("-private")))
+        {
+            TAO::Ledger::PRIVATE_CONDITION.notify_all();
+            thread.join();
+        }
+
+        /* Stop stake minter if it is running (before server shutdown). */
+        Legacy::StakeMinter::GetInstance().StopStakeMinter();
     }
 
 
     /* Shutdown metrics. */
     timer.Reset();
-
-    /* Stop stake minter if it is running (before server shutdown). */
-    Legacy::StakeMinter::GetInstance().StopStakeMinter();
 
     /* Shutdown the time server and its subsystems. */
     LLP::ShutdownServer<LLP::TimeNode>(LLP::TIME_SERVER);
@@ -519,56 +525,63 @@ int main(int argc, char** argv)
     /** After all servers shut down, clean up underlying networking resources **/
     LLP::NetworkShutdown();
 
-    /* Cleanup the ledger database. */
-    if(LLD::legDB)
+
+    /* Shutdown these subsystems if nothing failed. */
+    if(!fFailed)
     {
-        debug::log(0, FUNCTION, "Shutting down ledgerDB");
 
-        delete LLD::legDB;
+        /* Cleanup the ledger database. */
+        if(LLD::legDB)
+        {
+            debug::log(0, FUNCTION, "Shutting down ledgerDB");
+
+            delete LLD::legDB;
+        }
+
+
+        /* Cleanup the register database. */
+        if(LLD::regDB)
+        {
+            debug::log(0, FUNCTION, "Shutting down registerDB");
+
+            delete LLD::regDB;
+        }
+
+
+        /* Cleanup the local database. */
+        if(LLD::locDB)
+        {
+            debug::log(0, FUNCTION, "Shutting down localDB");
+
+            delete LLD::locDB;
+        }
+
+
+        /* Cleanup the legacy database. */
+        if(LLD::legacyDB)
+        {
+            debug::log(0, FUNCTION, "Shutting down legacyDB");
+
+            delete LLD::legacyDB;
+        }
+
+
+        /* Cleanup the local database. */
+        if(LLD::trustDB)
+        {
+            debug::log(0, FUNCTION, "Shutting down trustDB");
+
+            delete LLD::trustDB;
+        }
+
+
+        /* Shut down wallet database environment. */
+        if (config::GetBoolArg(std::string("-flushwallet"), true))
+            Legacy::WalletDB::ShutdownFlushThread();
+
+        Legacy::BerkeleyDB::GetInstance().EnvShutdown();
+
     }
-
-
-    /* Cleanup the register database. */
-    if(LLD::regDB)
-    {
-        debug::log(0, FUNCTION, "Shutting down registerDB");
-
-        delete LLD::regDB;
-    }
-
-
-    /* Cleanup the local database. */
-    if(LLD::locDB)
-    {
-        debug::log(0, FUNCTION, "Shutting down localDB");
-
-        delete LLD::locDB;
-    }
-
-
-    /* Cleanup the legacy database. */
-    if(LLD::legacyDB)
-    {
-        debug::log(0, FUNCTION, "Shutting down legacyDB");
-
-        delete LLD::legacyDB;
-    }
-
-
-    /* Cleanup the local database. */
-    if(LLD::trustDB)
-    {
-        debug::log(0, FUNCTION, "Shutting down trustDB");
-
-        delete LLD::trustDB;
-    }
-
-
-    /* Shut down wallet database environment. */
-    if (config::GetBoolArg(std::string("-flushwallet"), true))
-        Legacy::WalletDB::ShutdownFlushThread();
-
-    Legacy::BerkeleyDB::GetInstance().EnvShutdown();
 
 
     /* Elapsed Milliseconds from timer. */
