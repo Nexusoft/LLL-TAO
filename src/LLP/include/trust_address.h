@@ -66,8 +66,6 @@ namespace LLP
          **/
         TrustAddress(const TrustAddress &other);
         TrustAddress(const BaseAddress &other);
-        TrustAddress(TrustAddress &other) = delete;
-        TrustAddress(BaseAddress &other) = delete;
 
 
         /** operator=
@@ -77,8 +75,6 @@ namespace LLP
          **/
         TrustAddress &operator=(const BaseAddress &other);
         TrustAddress &operator=(const TrustAddress &other);
-        TrustAddress &operator=(BaseAddress &other) = delete;
-        TrustAddress &operator=(TrustAddress &other) = delete;
 
 
         /** ~TrustAddress
