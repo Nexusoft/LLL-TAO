@@ -366,8 +366,8 @@ namespace LLD
             uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
 
             /* Create a new Sector Key. */
-            SectorKey key = SectorKey(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
-                                        nCurrentFileSize, static_cast<uint32_t>(nSize));
+            SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
+                            nCurrentFileSize, static_cast<uint32_t>(nSize));
 
             /* Increment the current filesize */
             nCurrentFileSize += static_cast<uint32_t>(nSize);

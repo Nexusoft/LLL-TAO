@@ -146,7 +146,7 @@ namespace LLD
         if(!filesystem::exists(index))
         {
             /* Generate empty space for new file. */
-            const static std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * 4, 0);
+            std::vector<uint8_t> vSpace(HASHMAP_TOTAL_BUCKETS * 4, 0);
 
             /* Write the new disk index .*/
             std::fstream stream(index, std::ios::out | std::ios::binary | std::ios::trunc);

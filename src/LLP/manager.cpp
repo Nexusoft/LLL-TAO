@@ -81,9 +81,9 @@ namespace LLP
         vBaseAddr.clear();
 
         /* build out base address vector */
-        for(auto it = vTrustAddr.begin(); it != vTrustAddr.end(); ++it)
+        for(const auto &trust_addr : vTrustAddr)
         {
-            const BaseAddress &base_addr = *it;
+            BaseAddress base_addr = static_cast<BaseAddress>(trust_addr);
             vBaseAddr.push_back(base_addr);
         }
     }
@@ -126,17 +126,17 @@ namespace LLP
         if(mapTrustAddress.find(hash) == mapTrustAddress.end())
             mapTrustAddress[hash] = addr;
 
-        TrustAddress *pAddr = &mapTrustAddress[hash];
+        TrustAddress &trust_addr = mapTrustAddress[hash];
 
         /* Set the port number to match this server */
-        pAddr->SetPort(nPort);
+        trust_addr.SetPort(nPort);
 
         /* Update the stats for this address based on the state. */
-        update_state(pAddr, state);
+        update_state(&trust_addr, state);
 
         /* Update the LLD Address database for this entry */
         //pDatabase->TxnBegin();
-        pDatabase->WriteTrustAddress(hash, *pAddr);
+        pDatabase->WriteTrustAddress(hash, trust_addr);
         //pDatabase->TxnCommit();
     }
 
@@ -385,7 +385,7 @@ namespace LLP
             if(pDatabase->BatchRead("addr", vAddr, -1))
             {
                 /* Loop through items read. */
-                for(auto& addr : vAddr)
+                for(const auto& addr : vAddr)
                 {
                     /* Get the hash and load it into the map. */
                     uint64_t hash = addr.GetHash();

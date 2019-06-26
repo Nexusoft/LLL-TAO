@@ -588,8 +588,10 @@ namespace LLD
                     }
                 }
 
+
                 /* Close the stream. */
-                stream.close();
+                if(stream.is_open())
+                    stream.close();
 
                 /* Iterate to the next file. */
                 ++nFile;

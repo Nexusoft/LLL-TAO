@@ -62,8 +62,10 @@ namespace Legacy
 		 *
 		 **/
 		TxIn()
+        : prevout()
+        , scriptSig()
+        , nSequence(std::numeric_limits<uint32_t>::max())
 		{
-			nSequence = std::numeric_limits<uint32_t>::max();
 		}
 
 

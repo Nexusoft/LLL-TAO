@@ -36,7 +36,7 @@ namespace LLD
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE)
-        : SectorDatabase(std::string("addr/") + std::to_string(port), nFlags, 256 * 256 * 8) { }
+        : SectorDatabase(std::string("addr/") + std::to_string(port), nFlags) { }
 
 
         /** Default Destructor **/

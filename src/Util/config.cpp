@@ -40,9 +40,6 @@ namespace config
         {
             std::getline(streamConfig, line);
 
-            if(streamConfig.eof())
-                break;
-
             size_t i = line.find('=');
             if(i == std::string::npos)
                 continue;
@@ -77,7 +74,7 @@ namespace config
             const std::string datadirSwitch("-datadir");
             const std::string configFileSwitch("-conf");
 
-            /* Form is -datadir=path so path setting starts at location 9. 
+            /* Form is -datadir=path so path setting starts at location 9.
              * Any length <9 on argv is either a different option or datadir with no value. Ignore these.
              */
             if (argValue.length() > 9 && argValue.compare(0, 8, datadirSwitch) == 0)
@@ -229,7 +226,7 @@ namespace config
                 path = filesystem::system_complete(path);
             }
 
-            /* Validate the resulting path length */            
+            /* Validate the resulting path length */
             if  (path.length() > MAX_PATH)
             {
                 debug::error(FUNCTION, "-datadir path exceeds maximum allowed path length. Using default.");

@@ -54,8 +54,9 @@ namespace Legacy
 		 *
 		 **/
 		TxOut()
+        : nValue(-1)
+        , scriptPubKey()
 		{
-				SetNull();
 		}
 
 
@@ -66,9 +67,9 @@ namespace Legacy
 		 *
 		 **/
 		TxOut(int64_t nValueIn, Script scriptPubKeyIn)
+        : nValue(nValueIn)
+        , scriptPubKey(scriptPubKeyIn)
 		{
-				nValue = nValueIn;
-				scriptPubKey = scriptPubKeyIn;
 		}
 
 

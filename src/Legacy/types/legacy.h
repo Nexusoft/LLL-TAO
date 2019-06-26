@@ -42,20 +42,20 @@ namespace Legacy
         IMPLEMENT_SERIALIZE
         (
             READWRITE(nVersion);
-	          READWRITE(hashPrevBlock);
-		        READWRITE(hashMerkleRoot);
-		        READWRITE(nChannel);
+	        READWRITE(hashPrevBlock);
+		    READWRITE(hashMerkleRoot);
+		    READWRITE(nChannel);
             READWRITE(nHeight);
             READWRITE(nBits);
             READWRITE(nNonce);
             READWRITE(nTime);
 
-      			// ConnectBlock depends on vtx following header to generate CDiskTxPos
-      			if (!(nSerType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
-      			{
-      				READWRITE(vtx);
-      				READWRITE(vchBlockSig);
-      			}
+  			// ConnectBlock depends on vtx following header to generate CDiskTxPos
+  			if (!(nSerType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
+  			{
+  				READWRITE(vtx);
+  				READWRITE(vchBlockSig);
+  			}
         )
 
 

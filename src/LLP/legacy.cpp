@@ -498,12 +498,14 @@ namespace LLP
             if(LEGACY_SERVER)
             {
                 /* Try to establish the connection on the port the server is listening to. */
-                for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
+                for(const auto& legacyAddr : vLegacyAddr)
                 {
-                    it->SetPort(LEGACY_SERVER->GetPort());
+                    BaseAddress addr;
+                    addr.SetPort(LEGACY_SERVER->GetPort());
+                    addr.SetIP(legacyAddr);
 
                     /* Create a base address vector from legacy addresses */
-                    vAddr.push_back(*it);
+                    vAddr.push_back(addr);
                 }
 
                 /* Add new addresses to Legacy Server. */

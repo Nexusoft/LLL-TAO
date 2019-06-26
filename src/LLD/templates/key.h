@@ -82,6 +82,10 @@ namespace LLD
 
         /** Copy Assignment Operator **/
         SectorKey& operator=(const SectorKey& key);
+        SectorKey& operator=(SectorKey &key);
+
+
+
 
 
         /** Default Copy Constructor **/
