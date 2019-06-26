@@ -11,32 +11,40 @@ The core base upgrades utilizing the LLL as base templates for Tritium, Amine, a
 
 The first of the three updates in the TAO Framework. Tritium will include the following feature sets:
 
-* Tritium Transactions / Signature Chains (Key Suites)
-* Advanced Contracts (Phase 1)
-* LISP Integration (Optional)
-* L1 Locking Groups (LISP IP Multicast)
-* Twin Blocks (No more Orphans)
+* Trust System  
+* Legacy Mode  
+* Contract Layers  
+* API/SDK  
+* Hybrid Mode  
+* Ambassador DAO  
+* LISP  
+* Interface/Wallet  
 
 ### Amine
 
 The second of the three updates in the TAO Framework. Amine will include the following feature sets:
 
-* L1 Ledger Sharding Channels
-* L2 Ledger Sharding Groups
-* Advanced Contracts (Phase 2)
-* IP Multicast Groups over LISP (L1, L2, and L3)
-* L1 and L2 Trust Locking and Reputation
+* pBFT + Reputation Channels (L1)
+* Network Data Sharding
+* LLD Global File System
+* Domain Specific Languages
+* DAO Voting Groups
+* pBFT + PoS Trust Network (L2)
+* LISP Multicast Links for (L1) and (L2)
+* Interface Application Market
 
 ### Obsidian
 
 The third of the three updates in the TAO Framework. Obsidian will include the following feature sets:
 
-* L3 Ledger Sharding Cubes
-* L3 Distributed Mining Pool
-* L3 Trust Locking and Reputation
-* Distributed Autonomous Community
-* Ambassador / Developer Contracts
-* Advanced Contracts (Phase 3)
+* Extended Data Sharding
+* Decentralized Mining Pool (L3)
+* Miner Reputation to Improve BFT
+* Extended DAO Voting Groups
+* DAO L1 Voting Group (Implement)
+* DAO L2 Voting Group (Extend)
+* LISP Multicast Links for (L1) and (L2)
+* DAO L3 Voting Group (Implement)
 
 
 ## LISP (Locator / Identifier Separation Protocol)
@@ -127,17 +135,10 @@ information or see https://opensource.org/licenses/MIT.
 ## Contributing
 If you would like to contribute as always submit a pull request. This library development is expected to be on-going, with new higher level templates created for any types of use in the web.
 
-
-## Applications
-This is a foundational piece of Nexus that can be rebased over a Nexus branch to incorporate new LLL features into Nexus. It could also be useful for:
-
-* Custom MySQL Servers
-* Custom WebServers
-* Custom Protocols
-* Scaleable Databases
-
-These core templates can be expanded in any way by inheriting the base templates and creating any type of new backend that one would like.
-
+## L5 Stack
+L5 stands for 'Linux Lower Level Library & LISP' which is the stack that the TAO framework is built on top of.
+We envision this becoming a new standard for component based web design, which has the potential to decentralize web services.
+It is also a very useful and scale-able stack for Cryptocurrency and Blockchain designs.
 
 ## Why?
 A lot of software that we use today for databases, or protocols, or cryptography was created back in the 1990's as open source software. Since then the industry has expanded and bloated this code causing performance degradation. The aim of these templates is performance in simplicity. Include only what is needed, no more, and no less. This allows extremely high performance and scaleability necessary for the new distributed systems that will continue to evolve over the next few decades.
