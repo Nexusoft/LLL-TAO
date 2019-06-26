@@ -419,6 +419,9 @@ namespace LLD
                     }
                 }
 
+                /* Close the stream. */
+                stream.close();
+
                 /* Iterate to the next file. */
                 ++nFile;
             }
@@ -584,6 +587,9 @@ namespace LLD
                         }
                     }
                 }
+
+                /* Close the stream. */
+                stream.close();
 
                 /* Iterate to the next file. */
                 ++nFile;
