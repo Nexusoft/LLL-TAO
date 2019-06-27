@@ -79,7 +79,7 @@ typedef u_int SOCKET;
 
 namespace LLP
 {
-    /** Initialize
+    /** NetworkInitialize
      *
      *  Perform any necessary processing to initialize the underlying network
      *  resources such as sockets, etc.
@@ -91,10 +91,10 @@ namespace LLP
      *  @return true if the network resource initialization was successful, false otherwise
      *
      **/
-    bool Initialize();
+    bool NetworkInitialize();
 
 
-    /** Shutdown
+    /** NetworkShutdown
      *
      *  Perform any necessary processing to shutdown and release underlying network resources.
      *
@@ -105,7 +105,7 @@ namespace LLP
      *  @return true if the network resource initialization was successful, false otherwise
      *
      **/
-    bool Shutdown();
+    bool NetworkShutdown();
 
 }
 

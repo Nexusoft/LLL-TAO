@@ -64,13 +64,12 @@ int main(int argc, char** argv)
     config::CacheArgs();
 
 
-    /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
-    if(!LLP::Initialize())
-    {
-        printf("ERROR: Failed initializing network resources");
+    /* Initialize debug file logging. */
+    debug::Initialize();
 
-        return 0;
-    }
+
+    /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
+    LLP::Initialize();
 
 
     /* Handle Commandline switch */
@@ -99,10 +98,6 @@ int main(int argc, char** argv)
     }
 
 
-    /* Log system startup now, after branching to API/RPC where appropriate */
-    debug::Initialize();
-
-
     /** Run the process as Daemon RPC/LLP Server if Flagged. **/
     if(config::fDaemon)
     {
@@ -112,11 +107,9 @@ int main(int argc, char** argv)
 
 
     /* Create directories if they don't exist yet. */
-    if(!filesystem::exists(config::GetDataDir()) &&
-        filesystem::create_directory(config::GetDataDir()))
-    {
+    if(!filesystem::exists(config::GetDataDir()) && filesystem::create_directory(config::GetDataDir()))
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
-    }
+        
 
     /** Handle the beta server. */
     uint16_t nPort = 0;
@@ -303,39 +296,11 @@ int main(int argc, char** argv)
         TAO::Ledger::TritiumMinter::GetInstance().Stop();
 
 
-    /* Shutdown the time server and its subsystems. */
-    LLP::ShutdownServer<LLP::TimeNode>(LLP::TIME_SERVER);
-
-
-    /* Shutdown the tritium server and its subsystems. */
-    LLP::ShutdownServer<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
-
-
-    /* Shutdown the legacy server and its subsystems. */
-    LLP::ShutdownServer<LLP::LegacyNode>(LLP::LEGACY_SERVER);
-
-
-    /* Shutdown the core API server and its subsystems. */
-    LLP::ShutdownServer<LLP::APINode>(LLP::API_SERVER);
-
-
-    /* Shutdown the RPC server and its subsystems. */
-    LLP::ShutdownServer<LLP::RPCNode>(LLP::RPC_SERVER);
-
-
-    /* Shutdown the legacy mining server and its subsystems. */
-    LLP::ShutdownServer<LLP::LegacyMiner>(LLP::LEGACY_MINING_SERVER);
-
-
-    /* Shutdown the tritium mining server and its subsystems. */
-    LLP::ShutdownServer<LLP::TritiumMiner>(LLP::TRITIUM_MINING_SERVER);
-
-
     /* Shutdown the API. */
     TAO::API::Shutdown();
 
 
-    /* After all servers shut down, clean up underlying networking resources */
+    /* Shutdown the LLP. */
     LLP::Shutdown();
 
 

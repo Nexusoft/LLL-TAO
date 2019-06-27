@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLP/include/global.h>
+#include <LLP/include/network.h>
 
 namespace LLP
 {
@@ -24,4 +25,43 @@ namespace LLP
     Server<RPCNode>*      RPC_SERVER;
     Server<LegacyMiner>*  LEGACY_MINING_SERVER;
     Server<TritiumMiner>* TRITIUM_MINING_SERVER;
+
+
+    /*  Initialize the LLP. */
+    void Initialize()
+    {
+        /* Initialize the underlying network resources such as sockets, etc */
+        if(!NetworkInitialize())
+            debug::error(FUNCTION, "NetworkInitialize: Failed initializing network resources.");
+    }
+
+
+    /*  Shutdown the LLP. */
+    void Shutdown()
+    {
+        /* Shutdown the time server and its subsystems. */
+        Shutdown<TimeNode>(TIME_SERVER);
+
+        /* Shutdown the tritium server and its subsystems. */
+        Shutdown<TritiumNode>(TRITIUM_SERVER);
+
+        /* Shutdown the legacy server and its subsystems. */
+        Shutdown<LegacyNode>(LEGACY_SERVER);
+
+        /* Shutdown the core API server and its subsystems. */
+        Shutdown<APINode>(API_SERVER);
+
+        /* Shutdown the RPC server and its subsystems. */
+        Shutdown<RPCNode>(RPC_SERVER);
+
+        /* Shutdown the legacy mining server and its subsystems. */
+        Shutdown<LegacyMiner>(LEGACY_MINING_SERVER);
+
+        /* Shutdown the tritium mining server and its subsystems. */
+        Shutdown<TritiumMiner>(TRITIUM_MINING_SERVER);
+
+        /* After all servers shut down, clean up underlying network resources. */
+        NetworkShutdown();
+    }
+
 }

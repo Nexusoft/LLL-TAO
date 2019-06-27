@@ -30,10 +30,27 @@ namespace LLP
     extern Server<LegacyNode>*        LEGACY_SERVER;
     extern Server<TritiumNode>*       TRITIUM_SERVER;
     extern Server<TimeNode>*          TIME_SERVER;
-    extern Server<APINode>*          API_SERVER;
+    extern Server<APINode>*           API_SERVER;
     extern Server<RPCNode>*           RPC_SERVER;
     extern Server<LegacyMiner>*       LEGACY_MINING_SERVER;
     extern Server<TritiumMiner>*      TRITIUM_MINING_SERVER;
+
+
+    /** Initialize
+     *
+     *  Initialize the LLP.
+     *
+     **/
+    void Initialize();
+
+
+    /** Shutdown
+     *
+     *  Shutdown the LLP.
+     *
+     **/
+    void Shutdown();
+
 
     /** CreateMiningServer
      *
@@ -156,7 +173,7 @@ namespace LLP
     }
 
 
-    /** ShutdownServer
+    /** Shutdown
      *
      *  Performs a shutdown and cleanup of resources on a server if it exists.
      *
@@ -164,7 +181,7 @@ namespace LLP
      *
      **/
     template <class ProtocolType>
-    void ShutdownServer(Server<ProtocolType> *pServer)
+    void Shutdown(Server<ProtocolType> *pServer)
     {
         if(pServer)
         {
