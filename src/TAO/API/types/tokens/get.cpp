@@ -42,7 +42,7 @@ namespace TAO
             else if(params.find("address") != params.end())
                 hashRegister.SetHex(params["address"].get<std::string>());
             else
-                throw APIException(-105, "Missing address");
+                throw APIException(-33, "Missing name / address");
 
             /* Get the token / account object. */
             TAO::Register::Object object;

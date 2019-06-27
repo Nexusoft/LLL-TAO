@@ -100,7 +100,7 @@ namespace TAO
 
             /* Read the previous transaction. */
             TAO::Ledger::Transaction txPrev;
-            if(!LLD::Ledger->ReadTx(hashTx, txPrev))
+            if(!LLD::Ledger->ReadTx(hashTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-40, "Previous transaction not found.");
 
             /* Loop through all transactions. */
@@ -109,6 +109,9 @@ namespace TAO
             {
                 /* Get the contract. */
                 const TAO::Operation::Contract& contract = txPrev[nContract];
+
+                /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
+                contract.Reset();
 
                 /* Get the operation byte. */
                 uint8_t nType = 0;
@@ -160,7 +163,7 @@ namespace TAO
 
                 /* Get the token / account object that the debit was made to. */
                 TAO::Register::Object objectTo;
-                if(!LLD::Register->ReadState(hashTo, objectTo))
+                if(!LLD::Register->ReadState(hashTo, objectTo, TAO::Ledger::FLAGS::MEMPOOL))
                     continue;
 
                 /* Parse the object register. */
@@ -210,7 +213,7 @@ namespace TAO
                     {
                         /* retrieve the owner and check that it is a token */
                         TAO::Register::Object assetOwner;
-                        if(!LLD::Register->ReadState(objectTo.hashOwner, assetOwner))
+                        if(!LLD::Register->ReadState(objectTo.hashOwner, assetOwner, TAO::Ledger::FLAGS::MEMPOOL))
                             continue;
 
                         /* Parse the object register. */
@@ -230,7 +233,7 @@ namespace TAO
                             /* Retrieve the account that the user has specified to make the payment to and ensure that it is for
                                the same token as the debit hashFrom */
                             TAO::Register::Object accountToCredit;
-                            if(!LLD::Register->ReadState(hashAccountTo, accountToCredit))
+                            if(!LLD::Register->ReadState(hashAccountTo, accountToCredit, TAO::Ledger::FLAGS::MEMPOOL))
                                 throw APIException(-55, "Invalid name / address of account to credit. ");
 
                             /* Parse the object register. */
@@ -239,7 +242,7 @@ namespace TAO
 
                             /* Retrieve the account to debit from. */
                             TAO::Register::Object debitFromObject;
-                            if(!LLD::Register->ReadState(hashFrom, debitFromObject))
+                            if(!LLD::Register->ReadState(hashFrom, debitFromObject, TAO::Ledger::FLAGS::MEMPOOL))
                                 continue;
 
                             /* Parse the object register. */
@@ -254,7 +257,7 @@ namespace TAO
 
                             /* Retrieve the hash proof account and check that it is the same token type as the asset owner */
                             TAO::Register::Object proofObject;
-                            if(!LLD::Register->ReadState(hashProof, proofObject))
+                            if(!LLD::Register->ReadState(hashProof, proofObject, TAO::Ledger::FLAGS::MEMPOOL))
                                 continue;
 
                             /* Parse the object register. */

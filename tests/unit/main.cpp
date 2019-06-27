@@ -32,8 +32,12 @@ TEST_CASE("Arguments Tests", "[args]")
     config::fTestNet = true;
     config::mapArgs["-testnet"] = "92349234";
 
+    /* To simplify the API testing we will always use multiuser mode */
+    config::fMultiuser = true;
+
     REQUIRE(config::fTestNet.load() == true);
     REQUIRE(config::GetArg("-testnet", 0) == 92349234);
+    REQUIRE(config::fMultiuser.load() == true);
 
     //get the data directory
     std::string strPath = config::GetDataDir();

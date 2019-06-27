@@ -10,8 +10,8 @@
 
 
 /* Generate a random string for the username */
-std::string USERNAME1 = LLC::GetRand256().ToString();
-std::string USERNAME2 = LLC::GetRand256().ToString();
+std::string USERNAME1 = "USERNAME" +std::to_string(LLC::GetRand());
+std::string USERNAME2 = "USERNAME" +std::to_string(LLC::GetRand());
 uint256_t GENESIS1 = 0;
 uint256_t GENESIS2 = 0;
 std::string PASSWORD = "pw";

@@ -27,7 +27,7 @@ TEST_CASE( "Test Users API", "[API/users]")
 
     /* Dont use the global USERNAME / SESSION for these tests as we can't be sure that it hasn't already been created by 
        one of the other API tests, due to the unknown order that the tests are run in */
-    std::string strUsername = LLC::GetRand256().ToString();
+    std::string strUsername = "USER" +std::to_string(LLC::GetRand());
     std::string strSession = "";
     
     /* Enure that we use low argon2 requirements for unit test to speed up the use of the sig chain */
@@ -42,6 +42,7 @@ TEST_CASE( "Test Users API", "[API/users]")
     {
 
         /* Build the parameters to pass to the API */
+        params.clear();
         params["username"] = strUsername;
         params["password"] = PASSWORD;
         params["pin"] = PIN;
@@ -69,13 +70,15 @@ TEST_CASE( "Test Users API", "[API/users]")
         /* Params are already populated from the previous call so just invoke the API again */
         ret = APICall("users/create/user", params);
 
-        /* Check that the result is an error */
+        /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -130);
     }
 
     /* Test login failure */
     {
         /* Build the parameters to pass to the API */
+        params.clear();
         params["username"] = strUsername;
         params["password"] = "wrongpass";
         params["pin"] = PIN;
@@ -91,6 +94,7 @@ TEST_CASE( "Test Users API", "[API/users]")
     /* Test login success */
     {
         /* Build the parameters to pass to the API */
+        params.clear();
         params["username"] = strUsername;
         params["password"] = PASSWORD;
         params["pin"] = PIN;
@@ -117,19 +121,22 @@ TEST_CASE( "Test Users API", "[API/users]")
     if(!config::fMultiuser.load())
     {
         /* Build the parameters to pass to the API */
+        params.clear();
         params["pin"] = "5678";
 
         /* Invoke the API */
         ret = APICall("users/unlock/user", params);
 
-        /* Check that the result is as we expect it to be */
+        /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -149);
     }
 
     /* Test unlock */
     if(!config::fMultiuser.load())
     {
         /* Build the parameters to pass to the API */
+        params.clear();
         params["pin"] = PIN;
 
         /* Invoke the API */
@@ -147,6 +154,7 @@ TEST_CASE( "Test Users API", "[API/users]")
     if(!config::fMultiuser.load())
     {
         /* Build the parameters to pass to the API */
+        params.clear();
         params["pin"] = PIN;
 
         /* Invoke the API */
@@ -163,6 +171,7 @@ TEST_CASE( "Test Users API", "[API/users]")
     /* Test logout success */
     {
         /* Build the parameters to pass to the API */
+        params.clear();
         params["session"] = strSession;
 
         /* Invoke the API */

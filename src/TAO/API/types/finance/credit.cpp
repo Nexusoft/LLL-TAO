@@ -108,6 +108,9 @@ namespace TAO
                 /* Get the contract. */
                 const TAO::Operation::Contract& contract = txPrev[nContract];
 
+                /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
+                contract.Reset();
+
                 /* Get the operation byte. */
                 uint8_t nType = 0;
                 contract >> nType;

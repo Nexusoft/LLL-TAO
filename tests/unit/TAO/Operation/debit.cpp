@@ -17,7 +17,6 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
-#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/create.h>

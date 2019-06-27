@@ -26,7 +26,7 @@ TEST_CASE( "Test Finance API - create acccount", "[finance/create/account]")
     json::json result;
     json::json error;
 
-    std::string strAccount = "account1";
+    std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
     
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -35,32 +35,36 @@ TEST_CASE( "Test Finance API - create acccount", "[finance/create/account]")
     if(config::fMultiuser.load())
     {
         /* Build the parameters to pass to the API */
+        params.clear();
         params["session"] = SESSION1;
 
         /* Invoke the API */
         ret = APICall("finance/create/account", params);
 
-        /* Check that the result is as we expect it to be */
+        /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -129);
     }
 
     /* finance/create/account fail with missing session (only relevant for multiuser)*/
     if(config::fMultiuser.load())
     {
         /* Build the parameters to pass to the API */
+        params.clear();
         params["pin"] = PIN;
 
         /* Invoke the API */
         ret = APICall("finance/create/account", params);
 
-        /* Check that the result is as we expect it to be */
+        /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -12);
     }
 
     /* finance/create/account success */
     {
-
         /* Build the parameters to pass to the API */
+        params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["name"] = strAccount;
@@ -86,7 +90,7 @@ TEST_CASE( "Test Finance API - get acccount", "[finance/get/account]")
     json::json result;
     json::json error;
 
-    std::string strAccount = LLC::GetRand256().GetHex();
+    std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
     uint256_t hashAccount = 0;
     
     /* Ensure user is created and logged in for testing */
@@ -95,6 +99,7 @@ TEST_CASE( "Test Finance API - get acccount", "[finance/get/account]")
     /* create an account to list */
     {
         /* Build the parameters to pass to the API */
+        params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["name"] = strAccount;
@@ -114,47 +119,49 @@ TEST_CASE( "Test Finance API - get acccount", "[finance/get/account]")
 
     /* Failure case with missing name / address */
     {
-        params.clear();
         /* Invoke the API */
+        params.clear();
         ret = APICall("finance/get/account", params);
 
-        /* Check that the result is as we expect it to be */
+        /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -33);
     }
 
     /* Failure case with invalid name */
     {
+       /* Build the parameters to pass to the API */
         params.clear();
-
-        /* Build the parameters to pass to the API */
+        params["session"] = SESSION1;
         params["name"] = "notanaccount";
 
         /* Invoke the API */
         ret = APICall("finance/get/account", params);
 
-        /* Check that the result is as we expect it to be */
+        /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -101);
     }
 
     /* Failure case with invalid address */
     {
-        params.clear();
-
         /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = SESSION1;
         params["address"] = LLC::GetRand256().GetHex();
 
         /* Invoke the API */
         ret = APICall("finance/get/account", params);
 
-        /* Check that the result is as we expect it to be */
+        /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -13);
     }
 
     /* Successful get by name */
     {
-        params.clear();
-
         /* Build the parameters to pass to the API */
+        params.clear();
         params["session"] = SESSION1;
         params["name"] = strAccount;
 
@@ -173,9 +180,8 @@ TEST_CASE( "Test Finance API - get acccount", "[finance/get/account]")
 
     /* Successful get by address */
     {
-        params.clear();
-
         /* Build the parameters to pass to the API */
+        params.clear();
         params["session"] = SESSION1;
         params["address"] = hashAccount.GetHex();
 
@@ -205,7 +211,7 @@ TEST_CASE( "Test Finance API - list acccounts", "[finance/list/accounts]")
     json::json result;
     json::json error;
 
-    std::string strAccount = LLC::GetRand256().GetHex();
+    std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
     uint256_t hashAccount = 0;
     
     /* Ensure user is created and logged in for testing */
@@ -233,9 +239,8 @@ TEST_CASE( "Test Finance API - list acccounts", "[finance/list/accounts]")
 
     /* Successful get for logged in user*/
     {
-        params.clear();
-
         /* Build the parameters to pass to the API */
+        params.clear();
         params["session"] = SESSION1;
 
         /* Invoke the API */
@@ -269,7 +274,7 @@ TEST_CASE( "Test Finance API - get stakeinfo", "[finance/get/stakeinfo]")
     json::json result;
     json::json error;
 
-    std::string strAccount = LLC::GetRand256().GetHex();
+    std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
     uint256_t hashAccount = 0;
     
     /* Ensure user is created and logged in for testing */
@@ -278,9 +283,8 @@ TEST_CASE( "Test Finance API - get stakeinfo", "[finance/get/stakeinfo]")
 
     /* Successful get for logged in user*/
     {
-        params.clear();
-
         /* Build the parameters to pass to the API */
+        params.clear();
         params["session"] = SESSION1;
 
         /* Invoke the API */
@@ -311,7 +315,7 @@ TEST_CASE( "Test Finance API - set stake", "[finance/set/stake]")
     json::json result;
     json::json error;
 
-    std::string strAccount = LLC::GetRand256().GetHex();
+    std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
     uint256_t hashAccount = 0;
     
     /* Ensure user is created and logged in for testing */
@@ -319,16 +323,17 @@ TEST_CASE( "Test Finance API - set stake", "[finance/set/stake]")
 
     /* Failure case with insufficient balance */
     {
-        params.clear();
-
         /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
         params["session"] = SESSION1;
         params["amount"] = "1000000";
 
         /* Invoke the API */
         ret = APICall("finance/set/stake", params);
 
-        /* Check that the result is as we expect it to be */
+        /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -76);
     }
 }

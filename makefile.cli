@@ -192,6 +192,7 @@ ifdef UNIT_TESTS
 	OBJS = build/Tests_main.o \
 		   build/Tests_LLC_aes.o \
 		   build/Tests_TAO_API_finance.o \
+		   build/Tests_TAO_API_tokens.o \
 		   build/Tests_TAO_API_users.o \
 		   build/Tests_TAO_API_util.o \
 		   build/Tests_TAO_Ledger_block.o \
