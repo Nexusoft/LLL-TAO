@@ -67,6 +67,10 @@ namespace TAO
             /* Check hard coded checkpoints when syncing. */
             if(ChainState::Synchronizing())
             {
+                /* Don't check checkpoints for non legacy mode. */
+                if(!config::GetBoolArg("-beta"))
+                    return true;
+
                 /* Check that height isn't exceeded. */
                 if(config::fTestNet || state.nHeight > CHECKPOINT_HEIGHT)
                     return true;
