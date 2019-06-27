@@ -37,6 +37,7 @@ namespace TAO
 
             /** Default Constructor. **/
             Ledger()
+            : Base()
             {
                 Initialize();
             }

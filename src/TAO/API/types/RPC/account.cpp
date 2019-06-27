@@ -1248,7 +1248,6 @@ namespace TAO
             int64_t nDebit = wtx.GetDebit();
             int64_t nNet = nCredit - nDebit;
 
-            debug::log(0, FUNCTION, "credit ", nCredit, " debut ", nDebit, " net ", nNet);
             int64_t nFee = (wtx.IsFromMe() ? wtx.GetValueOut() - nDebit : 0);
 
             ret["amount"] = Legacy::SatoshisToAmount(nNet - nFee);

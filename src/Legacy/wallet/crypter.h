@@ -22,6 +22,9 @@ ________________________________________________________________________________
 
 #include <Util/include/allocators.h>
 
+#include <vector>
+
+
 namespace Legacy
 {
 

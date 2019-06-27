@@ -69,19 +69,7 @@ namespace LLD
 
         Initialize();
     }
-
-
-    /*  Return the Keys to the Records Held in the Database. */
-    std::vector< std::vector<uint8_t> > BinaryFileMap::GetKeys() const
-    {
-        std::vector< std::vector<uint8_t> > vKeys;
-        auto nIterator = mapKeys.begin();
-
-        for(; nIterator != mapKeys.end(); ++nIterator)
-            vKeys.push_back(nIterator->first);
-
-        return vKeys;
-    }
+    
 
     /*  Determines if the database has the Key. */
     bool BinaryFileMap::HasKey(const std::vector<uint8_t>& vKey) const

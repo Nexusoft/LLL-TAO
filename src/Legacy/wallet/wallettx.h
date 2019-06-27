@@ -15,16 +15,16 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_WALLETTX_H
 #define NEXUS_LEGACY_WALLET_WALLETTX_H
 
-#include <list>
-#include <map>
-#include <string>
-#include <vector>
-
 #include <Legacy/types/merkle.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <Util/include/debug.h>
 #include <Util/templates/serialize.h>
+
+#include <list>
+#include <map>
+#include <string>
+#include <vector>
 
 
 /* forward declaration */
@@ -78,7 +78,7 @@ namespace Legacy
 
     public:
         /** Previous transactions that contain outputs spent by inputs to this transaction **/
-        std::vector<WalletTx> vtxPrev;
+        std::vector<MerkleTx> vtxPrev;
 
 
         /** Used by serialization to store/retrieve vfSpent and other settings.

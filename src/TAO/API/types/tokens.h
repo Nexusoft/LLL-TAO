@@ -37,6 +37,7 @@ namespace TAO
 
             /** Default Constructor. **/
             Tokens()
+            : Base()
             {
                 Initialize();
             }

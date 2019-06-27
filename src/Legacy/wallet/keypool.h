@@ -15,10 +15,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_KEYPOOL_H
 #define NEXUS_LEGACY_WALLET_KEYPOOL_H
 
+#include <Util/include/mutex.h>
+
 #include <set>
 #include <vector>
 
-#include <Util/include/mutex.h>
 
 /** Defines the default number of keys contained by a key pool **/
 #define DEFAULT_KEY_POOL_SIZE 100

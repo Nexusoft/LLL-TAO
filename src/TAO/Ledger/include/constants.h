@@ -95,7 +95,7 @@ namespace TAO
         const uint32_t TRUST_SCORE_MAX = 60 * 60 * 24 * 28 * 13;
 
 
-        /** The maximum allowed value for trust score for testnet (364 hrs).  Legacy value. **/
+        /** The maximum allowed value for trust score for testnet (364 hrs) **/
         const uint32_t TRUST_SCORE_MAX_TESTNET = 60 * 60 * 28 * 13;
 
 

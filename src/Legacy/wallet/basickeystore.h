@@ -28,6 +28,11 @@ ________________________________________________________________________________
 
 #include <Util/include/mutex.h>
 
+#include <map>
+#include <set>
+#include <utility>
+
+
 namespace Legacy
 {
 

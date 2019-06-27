@@ -34,7 +34,11 @@ namespace TAO
         public:
 
             /** Default Constructor. **/
-            Objects() { Initialize(); }
+            Objects()
+            : Base()
+            {
+                Initialize();
+            }
 
 
             /** Initialize.

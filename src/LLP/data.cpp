@@ -348,24 +348,11 @@ namespace LLP
 
 
     /*  Get the number of active connection pointers from data threads. */
-     template <class ProtocolType>
-     uint16_t DataThread<ProtocolType>::GetConnectionCount()
-     {
-         uint16_t nConnectionCount = 0;
-         uint16_t nSize = static_cast<uint16_t>(CONNECTIONS->size());
-
-         /* Loop through connections in data thread and add any that are connected to count. */
-         for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
-         {
-             /* Skip over inactive connections. */
-             if(!CONNECTIONS->at(nIndex))
-                 continue;
-
-             ++nConnectionCount;
-         }
-
-         return nConnectionCount;
-     }
+    template <class ProtocolType>
+    uint32_t DataThread<ProtocolType>::GetConnectionCount()
+    {
+        return nConnections.load();
+    }
 
 
     /*  Fires off a Disconnect event with the given disconnect reason

@@ -37,6 +37,7 @@ namespace TAO
 
             /** Default Constructor. **/
             Supply()
+            : Base()
             {
                 Initialize();
             }
@@ -155,7 +156,7 @@ namespace TAO
              *
              **/
             json::json History(const json::json& params, bool fHelp);
-        }; 
+        };
     }
 }
 

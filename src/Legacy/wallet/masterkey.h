@@ -15,9 +15,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_MASTERKEY_H
 #define NEXUS_LEGACY_WALLET_MASTERKEY_H
 
+#include <Util/templates/serialize.h>
+
 #include <vector>
 
-#include <Util/templates/serialize.h>
 
 namespace Legacy
 {

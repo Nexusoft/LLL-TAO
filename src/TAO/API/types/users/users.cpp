@@ -37,7 +37,8 @@ namespace TAO
 
         /** Default Constructor. **/
         Users::Users()
-        : mapSessions()
+        : Base()
+        , mapSessions()
         , pActivePIN()
         , MUTEX()
         , EVENTS_MUTEX()

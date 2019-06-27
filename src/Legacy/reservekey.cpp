@@ -11,16 +11,16 @@
 
 ____________________________________________________________________________________________*/
 
-#include <memory>
-#include <string>
-#include <vector>
-
 #include <LLP/include/network.h>
 
 #include <Legacy/wallet/keypoolentry.h>
 #include <Legacy/wallet/reservekey.h>
 
 #include <Util/include/debug.h>
+
+#include <memory>
+#include <string>
+#include <vector>
 
 
 namespace Legacy

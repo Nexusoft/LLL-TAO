@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <LLD/templates/sector.h>
 #include <LLD/cache/binary_lfu.h>
-#include <LLD/keychain/filemap.h>
+#include <LLD/keychain/hashmap.h>
 
 
 /** Forward declarations **/
@@ -40,7 +40,7 @@ namespace LLD
    *  Database class for storing local wallet transactions.
    *
    **/
-    class LocalDB : public SectorDatabase<BinaryFileMap, BinaryLFU>
+    class LocalDB : public SectorDatabase<BinaryHashMap, BinaryLFU>
     {
 
     public:

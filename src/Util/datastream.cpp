@@ -169,6 +169,13 @@ void DataStream::reserve(const uint64_t nSize)
 }
 
 
+/*  Implement the same reserve functionality to vector. */
+void DataStream::resize(const uint64_t nSize)
+{
+    vData.resize(nSize);
+}
+
+
 /*  Wrapper around the vector constant iterator. */
 std::vector<uint8_t>::const_iterator DataStream::begin() const
 {
@@ -198,9 +205,9 @@ std::vector<uint8_t>::iterator DataStream::end()
 
 
 /*  Wrapper around data to get the start of vector. */
-uint8_t* DataStream::data()
+uint8_t* DataStream::data(const uint64_t nOffset)
 {
-    return vData.data();
+    return &vData[nOffset];
 }
 
 

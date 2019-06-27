@@ -15,9 +15,10 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_ACCOUNTINGENTRY_H
 #define NEXUS_LEGACY_WALLET_ACCOUNTINGENTRY_H
 
+#include <Util/templates/serialize.h>
+
 #include <string>
 
-#include <Util/templates/serialize.h>
 
 namespace Legacy
 {

@@ -21,7 +21,7 @@ namespace LLP
     /* Perform any necessary processing to initialize the underlying network
      * resources such as sockets, etc.
      */
-    bool NetworkStartup()
+    bool Initialize()
     {
 
     #ifdef WIN32
@@ -69,7 +69,7 @@ namespace LLP
 
 
     /* Perform any necessary processing to shutdown and release underlying network resources.*/
-    bool NetworkShutdown()
+    bool Shutdown()
     {
 
     #ifdef WIN32
@@ -94,7 +94,7 @@ namespace LLP
     *  and caches them for future use */
     void CacheEIDsAndRLOCs()
     {
-        
+
     }
 
 }

@@ -54,7 +54,7 @@ namespace TAO
             || strMethod.find("notifications/") != std::string::npos
             || strMethod.find("assets/")        != std::string::npos
             || strMethod.find("accounts/")      != std::string::npos
-            || strMethod.find("items/")      != std::string::npos
+            || strMethod.find("items/")         != std::string::npos
             || strMethod.find("tokens/")        != std::string::npos
             || strMethod.find("names/")         != std::string::npos
             || strMethod.find("namespaces/")    != std::string::npos)

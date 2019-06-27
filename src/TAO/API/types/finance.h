@@ -35,6 +35,7 @@ namespace TAO
 
             /** Default Constructor. **/
             Finance()
+            : Base()
             {
                 Initialize();
             }
@@ -170,4 +171,3 @@ namespace TAO
         };
     }
 }
-

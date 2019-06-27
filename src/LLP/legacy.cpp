@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <Legacy/types/transaction.h>
-#include <TAO/Ledger/types/locator.h>
+#include <Legacy/types/locator.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <LLP/include/hosts.h>
@@ -33,6 +33,7 @@ ________________________________________________________________________________
 #include <Util/include/hex.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+#include <Util/include/version.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -192,7 +193,7 @@ namespace LLP
 
         /* Push the Message to receiving node. */
         PushMessage("version", LLP::PROTOCOL_VERSION, nLocalServices, nTime, addrYou, addrMe,
-                    LegacyNode::nSessionID, strProtocolName, TAO::Ledger::ChainState::nBestHeight.load());
+                    LegacyNode::nSessionID, version::CLIENT_VERSION_BUILD_STRING, TAO::Ledger::ChainState::nBestHeight.load());
     }
 
 
@@ -283,11 +284,10 @@ namespace LLP
             uint64_t nTimestamp = runtime::timestamp();
 
             /* Unreliabilitiy re-requesting (max time since getblocks) */
-            if(config::GetBoolArg("-fastsync", true)
-            && TAO::Ledger::ChainState::Synchronizing()
+            if(TAO::Ledger::ChainState::Synchronizing()
             && addrFastSync == GetAddress()
-            && nLastTimeReceived.load() + 10 < nTimestamp
-            && nLastGetBlocks.load() + 10 < nTimestamp)
+            && nLastTimeReceived.load() + 30 < nTimestamp
+            && nLastGetBlocks.load() + 30 < nTimestamp)
             {
                 debug::log(0, NODE, "fast sync event timeout");
 
@@ -344,6 +344,8 @@ namespace LLP
             /* Detect if the fast sync node was disconnected. */
             if(addrFastSync == GetAddress())
             {
+                debug::log(0, NODE, "fast sync node disconnected");
+
                 /* Switch the node. */
                 SwitchNode();
             }
@@ -440,8 +442,7 @@ namespace LLP
             PushMessage("verack");
 
             /* Push our version back since we just completed getting the version from the other node. */
-
-            if(fOUTGOING && nAsked == 0)
+            if (fOUTGOING && nAsked == 0)
             {
                 ++nAsked;
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
@@ -452,91 +453,6 @@ namespace LLP
         else if(nCurrentVersion == 0)
         {
             return false;
-        }
-        else if(message == "getoffset")
-        {
-            /* Don't service unified seeds unless time is unified. */
-            //if(!Core::fTimeUnified)
-            //    return true;
-
-            /* De-Serialize the Request ID. */
-            uint32_t nRequestID;
-            ssMessage >> nRequestID;
-
-            /* De-Serialize the timestamp Sent. */
-            uint64_t nTimestamp;
-            ssMessage >> nTimestamp;
-
-            /* Log into the sent requests Map. */
-            mapSentRequests[nRequestID] = runtime::unifiedtimestamp(true);
-
-            /* Calculate the offset to current clock. */
-            int   nOffset    = (int)(runtime::unifiedtimestamp(true) - nTimestamp);
-            PushMessage("offset", nRequestID, runtime::unifiedtimestamp(true), nOffset);
-
-            /* Verbose logging. */
-            debug::log(3, NODE, ": Sent Offset ", nOffset,
-                "Unified ", runtime::unifiedtimestamp());
-        }
-
-        /* Receive a Time Offset from this Node. */
-        else if(message == "offset")
-        {
-
-            /* De-Serialize the Request ID. */
-            uint32_t nRequestID;
-            ssMessage >> nRequestID;
-
-
-            /* De-Serialize the timestamp Sent. */
-            uint64_t nTimestamp;
-            ssMessage >> nTimestamp;
-
-            /* Handle the Request ID's. */
-            //uint32_t nLatencyTime = (Core::runtime::unifiedtimestamp(true) - nTimestamp);
-
-
-            /* Ignore Messages Received that weren't Requested. */
-            if(!mapSentRequests.count(nRequestID))
-            {
-                if(DDOS)
-                    DDOS->rSCORE += 5;
-
-                debug::log(3, NODE, "Invalid Request : Message Not Requested [", nRequestID, "][", nLatency, " ms]");
-
-                return true;
-            }
-
-
-            /* Reject Samples that are received 30 seconds after last check on this node. */
-            if(runtime::unifiedtimestamp(true) - mapSentRequests[nRequestID] > 30000)
-            {
-                mapSentRequests.erase(nRequestID);
-
-                debug::log(3, NODE, "Invalid Request : Message Stale [", nRequestID, "][", nLatency, " ms]");
-
-                if(DDOS)
-                    DDOS->rSCORE += 15;
-
-                return true;
-            }
-
-
-            /* De-Serialize the Offset. */
-            int nOffset;
-            ssMessage >> nOffset;
-
-            /* Adjust the Offset for Latency. */
-            nOffset -= nLatency;
-
-            /* Add the Samples. */
-            //setTimeSamples.insert(nOffset);
-
-            /* Remove the Request from the Map. */
-            mapSentRequests.erase(nRequestID);
-
-            /* Verbose Logging. */
-            debug::log(3, NODE, "Received Unified Offset ", nOffset, " [", nRequestID, "][", nLatency, " ms]");
         }
 
 
@@ -641,12 +557,14 @@ namespace LLP
             if(LEGACY_SERVER)
             {
                 /* Try to establish the connection on the port the server is listening to. */
-                for(auto it = vLegacyAddr.begin(); it != vLegacyAddr.end(); ++it)
+                for(const auto& legacyAddr : vLegacyAddr)
                 {
-                    it->SetPort(LEGACY_SERVER->GetPort());
+                    BaseAddress addr;
+                    addr.SetPort(LEGACY_SERVER->GetPort());
+                    addr.SetIP(legacyAddr);
 
                     /* Create a base address vector from legacy addresses */
-                    vAddr.push_back(*it);
+                    vAddr.push_back(addr);
                 }
 
                 /* Add new addresses to Legacy Server. */
@@ -681,8 +599,7 @@ namespace LLP
             }
 
             /* Fast sync mode. */
-            if(config::GetBoolArg("-fastsync", true)
-            && addrFastSync == GetAddress()
+            if(addrFastSync == GetAddress()
             && TAO::Ledger::ChainState::Synchronizing()
             && vInv.back().GetType() == MSG_BLOCK_LEGACY
             && vInv.size() > 100) //an assumption that a getblocks batch will be at least 100 blocks or more.
@@ -702,10 +619,11 @@ namespace LLP
                 uint512_t hashTx;
 
                 /* Reverse iterate for blocks in inventory. */
-                //std::reverse(vInv.begin(), vInv.end());
-                //for(const auto& inv : vInv)
                 for(auto inv = vInv.rbegin(); inv != vInv.rend(); ++inv)
                 {
+                    /* Get the inventory hash. */
+                    hashBlock = inv->GetHash();
+                    hashTx    = hashBlock;
 
                     /* If this is a block type, only request if not in database. */
                     if(inv->GetType() == MSG_BLOCK_LEGACY)
@@ -723,27 +641,17 @@ namespace LLP
                             /* Add this item to cached relay inventory (key only). */
                             cacheInventory.Add(hashBlock);
                         }
-                        else
-                            break; //break since iterating backwards (searching newest to oldest)
-                                   //the assumtion here is that if you have newer inventory, you have older
                     }
 
                     /* Check the memory pool for transactions being relayed. */
-                    else
+                    else if(!cacheInventory.Has(hashTx)
+                         && !TAO::Ledger::mempool.Has(hashTx))
                     {
                         /* Get the inventory hash. */
                         hashTx = hashBlock;
 
-                        /* Check for transaction. */
-                        if(!cacheInventory.Has(hashTx)
-                        && !TAO::Ledger::mempool.Has(hashTx))
-                        {
-                            /* Add this item to request queue. */
-                            vGet.push_back(*inv);
-
-                            /* Add this item to cached relay inventory (key only). */
-                            cacheInventory.Add(hashTx);
-                        }
+                        /* Add this item to cached relay inventory (key only). */
+                        cacheInventory.Add(hashTx);
                     }
                 }
 
@@ -781,8 +689,8 @@ namespace LLP
 
             /* Precompute values for inventory. */
             uint1024_t hashBlock;
-            uint512_t  hashTx;
-            uint8_t    nInvType;
+            uint512_t hashTx;
+            int32_t nInvType;
 
             /* Loop the inventory and deliver messages. */
             for(const auto& inv : vInv)
@@ -825,7 +733,7 @@ namespace LLP
                     PushMessage("block", block);
 
                     /* Trigger a new getblocks if hash continue is set. */
-                    if(hashBlock == hashContinue)
+                    if (hashBlock == hashContinue)
                     {
                         std::vector<CInv> vInv = { CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK_LEGACY) };
                         PushMessage("inv", vInv);
@@ -849,8 +757,13 @@ namespace LLP
         /* Handle a Request to get a list of Blocks from a Node. */
         else if(message == "getblocks")
         {
-            TAO::Ledger::Locator locator;
+            /* Get the locator. */
+            Legacy::Locator locator;
+
+            /* Get the stopping hash. */
             uint1024_t hashStop;
+
+            /* De-serialize the values. */
             ssMessage >> locator >> hashStop;
 
             /* Return if nothing in locator. */
@@ -858,61 +771,48 @@ namespace LLP
                 return false;
 
             /* Get the block state from. */
-            TAO::Ledger::BlockState state;
+            std::vector<TAO::Ledger::BlockState> vStates;
             for(const auto& have : locator.vHave)
             {
                 /* Check the database for the ancestor block. */
-                if(LLD::Ledger->ReadBlock(have, state))
+                if(LLD::Ledger->BatchRead(have, "block", vStates, 1000))
                     break;
             }
 
             /* If no ancestor blocks were found. */
-            if(!state)
-                return debug::error(FUNCTION, "no ancestor blocks found");
+            if(vStates.size() == 0)
+                return true;
 
             /* Set the search from search limit. */
-            int32_t nLimit = 1000;
-            debug::log(2, "getblocks ", state.nHeight, " to ", hashStop.SubString(), " limit ", nLimit);
+            debug::log(2, "getblocks ", vStates[0].nHeight, " to ", hashStop.ToString().substr(0, 20));
 
             /* Iterate forward the blocks required. */
             std::vector<CInv> vInv;
-            uint1024_t nStateHash;
-            while(!config::fShutdown.load())
-            {
-                /* Iterate to next state, if there is one */
-                state = state.Next();
 
-                if(!state)
-                    break;
+            /* Loop through found states. */
+            for(const auto& state : vStates)
+            {
+                /* Check if in main chain. */
+                if(!state.IsInMainChain())
+                    continue;
 
                 /* Get the state hash. */
-                nStateHash = state.GetHash();
+                hashContinue = state.GetHash();
 
                 /* Check for hash stop. */
-                if(nStateHash == hashStop)
+                if(hashContinue == hashStop)
                 {
-                    debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", nStateHash.SubString());
+                    debug::log(3, "  getblocks stopping at ", state.nHeight, " to ", hashContinue.ToString().substr(0, 20));
 
                     /* Tell about latest block if hash stop is found. */
                     if(hashStop != TAO::Ledger::ChainState::hashBestChain.load())
-                        vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), MSG_BLOCK_LEGACY));
+                        vInv.push_back(CInv(TAO::Ledger::ChainState::hashBestChain.load(), LLP::MSG_BLOCK_LEGACY));
 
                     break;
                 }
 
                 /* Push new item to inventory. */
-                vInv.push_back(CInv(nStateHash, MSG_BLOCK_LEGACY));
-
-                /* Stop at limits. */
-                if(--nLimit <= 0)
-                {
-                    // When this block is requested, we'll send an inv that'll make them
-                    // getblocks the next batch of inventory.
-                    debug::log(3, "  getblocks stopping at limit ", state.nHeight, " to ", nStateHash.SubString());
-
-                    hashContinue = state.GetHash();
-                    break;
-                }
+                vInv.push_back(CInv(hashContinue, LLP::MSG_BLOCK_LEGACY));
             }
 
             /* Push the inventory. */
@@ -962,20 +862,35 @@ namespace LLP
         /* Check for orphan. */
         if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
         {
-            /* Fast sync block requests. */
-            if(!TAO::Ledger::ChainState::Synchronizing())
-                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-            else if(!config::GetBoolArg("-fastsync", true))
-            {
-                /* Switch to a new node. */
-                SwitchNode();
-            }
-
             LOCK(ORPHAN_MUTEX);
 
-            /* Continue if already have this orphan. */
-            if(mapLegacyOrphans.count(block.hashPrevBlock))
-                return true;
+            /* Fast sync block requests. */
+            if(!TAO::Ledger::ChainState::Synchronizing())
+            {
+                /* Inventory requests. */
+                std::vector<CInv> vInv = { CInv(block.hashPrevBlock, LLP::MSG_BLOCK_LEGACY) };
+
+                /* Check for orphans. */
+                uint1024_t hashOrphan = block.hashPrevBlock;
+                while(mapLegacyOrphans.count(hashOrphan))
+                {
+                    /* Loop back to next previous. */
+                    hashOrphan = mapLegacyOrphans[hashOrphan].hashPrevBlock;
+
+                    /* Push to inventory. */
+                    vInv.insert(vInv.begin(), CInv(hashOrphan, LLP::MSG_BLOCK_LEGACY));;
+                }
+
+                /* Return if recursive orphans. */
+                if(vInv.size() == 2)
+                    return true;
+
+                /* Get batch of inventory. */
+                pnode->PushMessage("getdata", vInv);
+
+                /* Run a getblocks to be sure. */
+                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+            }
 
             /* Increment the consecutive orphans. */
             if(pnode)
@@ -1019,8 +934,7 @@ namespace LLP
             {
 
                 /* Fast Sync node switch. */
-                if(config::GetBoolArg("-fastsync", true)
-                && TAO::Ledger::ChainState::Synchronizing())
+                if(TAO::Ledger::ChainState::Synchronizing())
                 {
                     /* Find a new fast sync node if too many failures. */
                     if(addrFastSync == pnode->GetAddress())

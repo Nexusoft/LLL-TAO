@@ -21,7 +21,7 @@ namespace LLD
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     TrustDB::TrustDB(uint8_t nFlagsIn)
-    : SectorDatabase(std::string("trust"), nFlagsIn)
+    : SectorDatabase(std::string("trust"), nFlagsIn, 256 * 256 * 8)
     {
     }
 

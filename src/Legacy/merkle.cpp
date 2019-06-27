@@ -51,8 +51,16 @@ namespace Legacy
         if(!(IsCoinBase() || IsCoinStake()))
             return 0;
 
-        int32_t nCoinbaseMaturity = config::fTestNet.load() ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS;
-        return std::max((int32_t)0, (int32_t)(nCoinbaseMaturity + (config::fTestNet.load() ? 1 : 20) - GetDepthInMainChain()));
-    }
+        /* Mainnet maturity blocks needs +20 added. The NEXUS_MATURITY_BLOCKS setting of 100 was kept for backwards compatability within other parts of code. */
+        int32_t nCoinbaseMaturity = config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : (TAO::Ledger::NEXUS_MATURITY_BLOCKS + 20);
 
+        /* Need to add an extra 1 to nCoinbaseMaturity because maturity requires that many blocks AFTER the coinbase/coinstake
+         * which counts as 1 itself for value returned by GetDepthInMainChain(), where top of chain is depth 1.
+         *
+         * So, for mainnet, 120 blocks for maturity is reached when depth of block containing this transaction is 121
+         * Thus, blocks remaining to maturity is 121 - (depth of block containing this transactions).
+         * For example, immediately after being added to chain, this transaction is at top of chain with depth 1 and (121 - 1) = 120 blocks to maturity
+         */
+        return std::max((int32_t)0, (int32_t)(nCoinbaseMaturity + 1 - GetDepthInMainChain()));
+    }
 }

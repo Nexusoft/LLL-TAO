@@ -90,14 +90,6 @@ namespace LLD
         BinaryFileMap(const BinaryFileMap& map);
 
 
-        /** GetKeys
-         *
-         *  Return the Keys to the Records Held in the Database.
-         *
-         **/
-        std::vector< std::vector<uint8_t> > GetKeys() const;
-
-
         /** HasKey
          *
          *  Determines if the database has the Key.

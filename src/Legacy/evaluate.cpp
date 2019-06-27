@@ -24,13 +24,12 @@ ________________________________________________________________________________
 
 #include <Legacy/types/script.h>
 
+#include <openssl/bn.h>
+
 #include <string>
 #include <vector>
 #include <algorithm>
 #include <stdexcept>
-
-#include <openssl/bn.h>
-
 
 namespace Legacy
 {

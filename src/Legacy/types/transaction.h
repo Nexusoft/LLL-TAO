@@ -15,14 +15,14 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_TRANSACTION_H
 #define NEXUS_LEGACY_TYPES_TRANSACTION_H
 
-#include <Util/templates/serialize.h>
-
 #include <Legacy/include/enum.h>
 
 #include <Legacy/types/txin.h>
 #include <Legacy/types/txout.h>
 
 #include <TAO/Ledger/types/state.h>
+#include <Util/templates/serialize.h>
+
 
 namespace Legacy
 {

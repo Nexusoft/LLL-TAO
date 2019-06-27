@@ -50,8 +50,8 @@ namespace Legacy
          **/
 		void Init()
 		{
-				hashBlock = 0;
-				nIndex = -1;
+			hashBlock = 0;
+			nIndex = -1;
 		}
 
 
@@ -84,7 +84,7 @@ namespace Legacy
          **/
 		MerkleTx()
 		{
-				Init();
+			Init();
 		}
 
 
@@ -100,7 +100,7 @@ namespace Legacy
 		MerkleTx(const Transaction& txIn)
 		: Transaction(txIn)
 		{
-				Init();
+			Init();
 		}
 
 
@@ -115,11 +115,11 @@ namespace Legacy
 		 */
 		IMPLEMENT_SERIALIZE
 		(
-				nSerSize += SerReadWrite(s, *(Transaction*)this, nSerType, nSerVersion, ser_action);
-				nSerVersion = this->nVersion;
-				READWRITE(hashBlock);
-				READWRITE(vMerkleBranch);
-				READWRITE(nIndex);
+			nSerSize += SerReadWrite(s, *(Transaction*)this, nSerType, nSerVersion, ser_action);
+			nSerVersion = this->nVersion;
+			READWRITE(hashBlock);
+			READWRITE(vMerkleBranch);
+			READWRITE(nIndex);
 		)
 
 
@@ -127,7 +127,15 @@ namespace Legacy
          *
          *  Retrieve the depth in chain of block containing this transaction
          *
-         *  @return Depth in chain, 0 if not in main chain
+         *  The current best in chain has depth 1. (0 indicates not added to chain)
+         *
+         *  Thus, if you want to test for x blocks added after block containing this transactions (ie, for maturity)
+         *  then need to test that GetDepthInMainChain() >= (x + 1)
+         *
+         *  More concretely, if 10 blocks are required for maturity, that is reached when this method returns >= 11
+         *  That tells us at least 10 blocks were added after block containing this transaction.
+         *
+         *  @return Depth in chain where top of chain is 1, 0 if not added to chain
          *
          **/
 		uint32_t GetDepthInMainChain() const;
@@ -142,7 +150,7 @@ namespace Legacy
          **/
 		inline bool IsInMainChain() const
 		{
-				return GetDepthInMainChain() > 0;
+			return GetDepthInMainChain() > 0;
 		}
 
 

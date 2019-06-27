@@ -17,10 +17,12 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/timelocks.h>
 
-#include <inttypes.h>
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
 #include <Util/include/convert.h>
+
+#include <inttypes.h>
+
 
 namespace Legacy
 {

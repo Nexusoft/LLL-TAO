@@ -15,20 +15,27 @@ ________________________________________________________________________________
 #include <Util/include/json.h>
 #include <Util/include/runtime.h>
 #include <LLP/include/version.h>
+
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
+
 #include <LLP/include/global.h>
 #include <LLP/include/base_address.h>
-#include <LLP/include/trust_address.h>
+#include <LLP/include/legacy_address.h>
 #include <LLP/include/manager.h>
+
+#include <LLP/types/legacy.h>
+#include <LLP/templates/data.h>
+
 #include <Util/include/version.h>
 
 #include <Legacy/types/legacy_minter.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/include/money.h>
+
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/API/types/system.h>
 #include <LLP/include/lisp.h>
@@ -64,34 +71,36 @@ namespace TAO
 
             /* Staking metrics */
             Legacy::LegacyMinter& stakeMinter = Legacy::LegacyMinter::GetInstance();
-			obj["staking"] = stakeMinter.IsStarted() ? "Started" : "Not Started";
-			if(stakeMinter.IsStarted())
-			{
-	            obj["stakerate"]   = stakeMinter.GetStakeRatePercent();
-	            obj["trustweight"] = stakeMinter.GetTrustWeightPercent();
-	            obj["blockweight"] = stakeMinter.GetBlockWeightPercent();
-	            obj["stakeweight"] = stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight(); // These total to 100, so can use as a %
-			}
-			else
-			{
-	            obj["stakerate"]   = 0;
-	            obj["trustweight"] = 0;
-	            obj["blockweight"] = 0;
-	            obj["stakeweight"] = 0;
-			}
+            obj["staking"] = stakeMinter.IsStarted() ? "Started" : "Not Started";
 
-            obj["txtotal"] =(int)Legacy::Wallet::GetInstance().mapWallet.size();
+            if (stakeMinter.IsStarted())
+            {
+                obj["genesismature"] = !stakeMinter.IsWaitPeriod();
+                obj["stakerate"]   = stakeMinter.GetStakeRatePercent();
+                obj["trustweight"] = stakeMinter.GetTrustWeightPercent();
+                obj["blockweight"] = stakeMinter.GetBlockWeightPercent();
+                obj["stakeweight"] = stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight(); // These total to 100, so can use as a %
+            }
+            else
+            {
+                obj["genesismature"] = false;
+                obj["stakerate"]   = 0.0;
+                obj["trustweight"] = 0.0;
+                obj["blockweight"] = 0.0;
+                obj["stakeweight"] = 0.0;
+            }
 
-            obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
+            obj["txtotal"] = (int32_t)Legacy::Wallet::GetInstance().mapWallet.size();
 
-            obj["timestamp"] =  (int)runtime::unifiedtimestamp();
-            obj["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
+            obj["blocks"] = (int32_t)TAO::Ledger::ChainState::nBestHeight.load();
 
+            obj["timestamp"] =  (uint64_t)runtime::unifiedtimestamp();
+            obj["offset"]    =  (int32_t)UNIFIED_AVERAGE_OFFSET.load();
             obj["connections"] = GetTotalConnectionCount();
 
             obj["syncnode"]    = LLP::LegacyNode::addrFastSync.load().ToStringIP();
-            obj["syncaverage"] = (int)LLP::LegacyNode::nFastSyncAverage;
-            obj["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
+            obj["syncaverage"] = (int32_t)LLP::LegacyNode::nFastSyncAverage;
+            obj["synccomplete"] = (int32_t)TAO::Ledger::ChainState::PercentSynchronized();
 
             obj["proxy"] = (config::fUseProxy.load() ? LLP::addrProxy.ToString() : std::string());
 
@@ -106,6 +115,7 @@ namespace TAO
                 }
                 obj["eids"] = jsonEIDs;
             }
+
 
 
 
@@ -141,55 +151,49 @@ namespace TAO
                     return std::string(
                         "getpeerinfo - Returns data about each connected network node.");
 
-            std::vector<LLP::TrustAddress> vLegacyInfo;
-            std::vector<LLP::TrustAddress> vTritiumInfo;
-
-            /* query address information from tritium server address manager */
-            if(LLP::LEGACY_SERVER && LLP::LEGACY_SERVER->pAddressManager)
-                 LLP::LEGACY_SERVER->pAddressManager->GetAddresses(vLegacyInfo, LLP::ConnectState::CONNECTED);
-
-            std::sort(vLegacyInfo.begin(), vLegacyInfo.end());
-
-            for(auto& addr : vLegacyInfo)
+            /* Check for legacy server */
+            if(LLP::LEGACY_SERVER)
             {
-                json::json obj;
+                for(uint16_t nThread = 0; nThread < LLP::LEGACY_SERVER->MAX_THREADS; ++nThread)
+                {
+                    /* Get the data threads. */
+                    LLP::DataThread<LLP::LegacyNode>* dt = LLP::LEGACY_SERVER->DATA_THREADS[nThread];
 
-                obj["addr"]     = addr.ToString();
-                obj["type"]     = std::string("Legacy");
-                obj["height"]   = addr.nHeight;
-                obj["latency"]  = debug::safe_printstr(addr.nLatency, " ms");
-                obj["lastseen"] = addr.nLastSeen;
-                obj["connects"] = addr.nConnected;
-                obj["drops"]    = addr.nDropped;
-                obj["fails"]    = addr.nFailed;
-                obj["score"]    = addr.Score();
-                obj["version"]  = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
+                    /* Lock the data thread. */
+                    uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
 
-                response.push_back(obj);
-            }
+                    /* Loop through connections in data thread. */
+                    for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+                    {
+                        try
+                        {
+                            /* Skip over inactive connections. */
+                            if(!dt->CONNECTIONS->at(nIndex))
+                                continue;
 
-            /* query address information from legacy server address manager */
-            if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->pAddressManager)
-                 LLP::TRITIUM_SERVER->pAddressManager->GetAddresses(vTritiumInfo, LLP::ConnectState::CONNECTED);
+                            /* Push the active connection. */
+                            if(dt->CONNECTIONS->at(nIndex)->Connected())
+                            {
+                                json::json obj;
 
-            std::sort(vTritiumInfo.begin(), vTritiumInfo.end());
+                                obj["addr"]     = dt->CONNECTIONS->at(nIndex)->addr.ToString();
+                                obj["type"]     = dt->CONNECTIONS->at(nIndex)->strNodeVersion;
+                                obj["version"]  = dt->CONNECTIONS->at(nIndex)->nCurrentVersion;
+                                obj["height"]   = dt->CONNECTIONS->at(nIndex)->nStartingHeight;
+                                obj["latency"]  = dt->CONNECTIONS->at(nIndex)->nLatency.load();
+                                obj["lastseen"] = dt->CONNECTIONS->at(nIndex)->nLastPing.load();
+                                obj["session"]  = dt->CONNECTIONS->at(nIndex)->nCurrentSession;
+                                obj["outgoing"] = dt->CONNECTIONS->at(nIndex)->fOUTGOING.load();
 
-            for(auto& addr : vTritiumInfo)
-            {
-                json::json obj;
-
-                obj["addr"]     = addr.ToString();
-                obj["type"]     = std::string("Tritium");
-                obj["height"]   = addr.nHeight;
-                obj["latency"]  = debug::safe_printstr(addr.nLatency, " ms");
-                obj["lastseen"] = addr.nLastSeen;
-                obj["connects"] = addr.nConnected;
-                obj["drops"]    = addr.nDropped;
-                obj["fails"]    = addr.nFailed;
-                obj["score"]    = addr.Score();
-                obj["version"]  = addr.IsIPv4() ? std::string("IPv4") : std::string("IPv6");
-
-                response.push_back(obj);
+                                response.push_back(obj);
+                            }
+                        }
+                        catch(const std::exception& e)
+                        {
+                            //debug::error(FUNCTION, e.what());
+                        }
+                    }
+                }
             }
 
             return response;
@@ -211,9 +215,9 @@ namespace TAO
             && TAO::Ledger::ChainState::stateBest.load() != TAO::Ledger::ChainState::stateGenesis)
             {
                 double nPrimeAverageDifficulty = 0.0;
-                unsigned int nPrimeAverageTime = 0;
-                unsigned int nPrimeTimeConstant = 2480;
-                int nTotal = 0;
+                uint32_t nPrimeAverageTime = 0;
+                uint32_t nPrimeTimeConstant = 2480;
+                int32_t nTotal = 0;
                 TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest.load();
 
                 bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
@@ -243,8 +247,8 @@ namespace TAO
 
 
                 // Hash
-                int nHTotal = 0;
-                unsigned int nHashAverageTime = 0;
+                int32_t nHTotal = 0;
+                uint32_t nHashAverageTime = 0;
                 double nHashAverageDifficulty = 0.0;
                 uint64_t nTimeConstant = 276758250000;
 
@@ -278,8 +282,8 @@ namespace TAO
             }
 
             json::json obj;
-            obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
-            obj["timestamp"] = (int)runtime::unifiedtimestamp();
+            obj["blocks"] = (int32_t)TAO::Ledger::ChainState::nBestHeight.load();
+            obj["timestamp"] = (int32_t)runtime::unifiedtimestamp();
 
             //PS TODO
             //obj["currentblocksize"] = (uint64_t)Core::nLastBlockSize;
@@ -303,9 +307,15 @@ namespace TAO
                 debug::error(FUNCTION, "couldn't find last hash block state");
 
 
-            obj["stakeDifficulty"] = fHasStake ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 0, false), 0) : 0;
-            obj["primeDifficulty"] = fHasPrime ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1) : 0;
-            obj["hashDifficulty"] = fHasHash ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2) : 0;
+            obj["stakeDifficulty"] = fHasStake ?
+                TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 0, false), 0) : 0;
+
+            obj["primeDifficulty"] = fHasPrime ?
+                TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1) : 0;
+
+            obj["hashDifficulty"] = fHasHash ?
+                TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2) : 0;
+
             obj["primeReserve"] =    Legacy::SatoshisToAmount(lastPrimeBlockState.nReleasedReserve[0]);
             obj["hashReserve"] =     Legacy::SatoshisToAmount(lastHashBlockState.nReleasedReserve[0]);
             obj["primeValue"] =        Legacy::SatoshisToAmount(TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), 1, 0));

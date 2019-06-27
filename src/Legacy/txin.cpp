@@ -11,9 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/types/address.h>
 #include <Legacy/types/outpoint.h>
 #include <Legacy/types/script.h>
-#include <Legacy/types/address.h>
 #include <Legacy/types/txin.h>
 
 #include <Util/include/hex.h>

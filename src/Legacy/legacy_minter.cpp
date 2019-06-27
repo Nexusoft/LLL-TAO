@@ -44,8 +44,8 @@ namespace Legacy
 
 
     /* Initialize static variables */
-    std::atomic<bool> LegacyMinter::fisStarted(false);
-    std::atomic<bool> LegacyMinter::fstopMinter(false);
+    std::atomic<bool> LegacyMinter::fIsStarted(false);
+    std::atomic<bool> LegacyMinter::fStopMinter(false);
 
     std::thread LegacyMinter::minterThread;
 
@@ -76,33 +76,85 @@ namespace Legacy
     /* Tests whether or not the stake minter is currently running. */
     bool LegacyMinter::IsStarted() const
     {
-        return LegacyMinter::fisStarted.load();
+        return LegacyMinter::fIsStarted.load();
+    }
+
+
+    /* Retrieves the current internal value for the block weight metric. */
+    double LegacyMinter::GetBlockWeight() const
+    {
+        return nBlockWeight.load();
+    }
+
+
+    /* Retrieves the current block weight metric as a percentage of maximum. */
+    double LegacyMinter::GetBlockWeightPercent() const
+    {
+        return (nBlockWeight.load() * 100.0 / 10.0);
+    }
+
+
+    /* Retrieves the current internal value for the trust weight metric. */
+    double LegacyMinter::GetTrustWeight() const
+    {
+        return nTrustWeight.load();
+    }
+
+
+    /* Retrieves the current trust weight metric as a percentage of maximum. */
+    double LegacyMinter::GetTrustWeightPercent() const
+    {
+        return (nTrustWeight.load() * 100.0 / 90.0);
+    }
+
+
+    /* Retrieves the current staking reward rate (previously, interest rate) */
+    double LegacyMinter::GetStakeRate() const
+    {
+        return nStakeRate.load();
+    }
+
+
+    /* Retrieves the current staking reward rate as an annual percentage */
+    double LegacyMinter::GetStakeRatePercent() const
+    {
+        return nStakeRate.load() * 100.0;
+    }
+
+
+    /* Checks whether the stake minter is waiting for average coin
+     * age to reach the required minimum before staking Genesis.
+     */
+    bool LegacyMinter::IsWaitPeriod() const
+    {
+        return LegacyMinter::fIsStarted.load();
     }
 
 
     /* Start the stake minter. */
     bool LegacyMinter::Start()
     {
-        if(LegacyMinter::fisStarted.load())
+        if(LegacyMinter::fIsStarted.load())
         {
             debug::log(0, FUNCTION, "Attempt to start Stake Minter when already started.");
             return false;
         }
 
-        /* Disable stake minter if not in beta mode. */
-        if(!config::GetBoolArg("-beta"))
-        {
-            debug::log(0, FUNCTION, "Stake minter disabled if not in -beta mode");
+        //beta mode removed for release
+        // /* Disable stake minter if not in beta mode. */
+        // if(!config::GetBoolArg("-beta"))
+        // {
+        //     debug::error(FUNCTION, "Stake minter disabled if not in -beta mode");
 
-            return false;
-        }
+        //     return false;
+        // }
 
-        /* Check that stake minter is configured to run.
-         * Stake Minter default is to run for non-server and not to run for server
-         */
+    	/* Check that stake minter is configured to run.
+    	 * Stake Minter default is to run for non-server and not to run for server
+    	 */
         if(!config::GetBoolArg("-stake"))
-        {
-            debug::log(0, "Stake Minter not configured. Startup cancelled.");
+    	{
+    		debug::log(2, "Stake Minter not configured. Startup cancelled.");
 
             return false;
         }
@@ -119,11 +171,11 @@ namespace Legacy
         }
 
         /* Ensure stop flag is reset or thread will immediately exit */
-        LegacyMinter::fstopMinter.store(false);
+        LegacyMinter::fStopMinter.store(false);
 
         LegacyMinter::minterThread = std::thread(LegacyMinter::LegacyMinterThread, this);
 
-        LegacyMinter::fisStarted.store(true);
+        LegacyMinter::fIsStarted.store(true);
 
         return true;
     }
@@ -132,12 +184,12 @@ namespace Legacy
     /* Stop the stake minter. */
     bool LegacyMinter::Stop()
     {
-        if(LegacyMinter::fisStarted.load())
+        if(LegacyMinter::fIsStarted.load())
         {
             debug::log(0, FUNCTION, "Shutting down Stake Minter");
 
             /* Set signal flag to tell minter thread to stop */
-            LegacyMinter::fstopMinter.store(true);
+            LegacyMinter::fStopMinter.store(true);
 
             /* Wait for minter thread to stop */
             LegacyMinter::minterThread.join();
@@ -150,8 +202,8 @@ namespace Legacy
                 pReservedTrustKey = nullptr;
             }
 
-            LegacyMinter::fisStarted.store(false);
-            LegacyMinter::fstopMinter.store(false);
+            LegacyMinter::fIsStarted.store(false);
+            LegacyMinter::fStopMinter.store(false);
             return true;
         }
 
@@ -174,7 +226,7 @@ namespace Legacy
             uint576_t cKey;
             cKey.SetBytes(vchTrustKey);
 
-            /* Read the key cached in wallet from the trustDB */
+            /* Read the key cached in wallet from the Trust */
             if(!LLD::Trust->ReadTrustKey(cKey, trustKey))
             {
                 /* Cached wallet trust key not found in trust db, reset it */
@@ -193,47 +245,39 @@ namespace Legacy
          */
         if(trustKey.IsNull())
         {
-            /* Retrieve all the trust key public keys from the trust db */
-            std::vector< std::vector<uint8_t> > vchTrustKeyList = LLD::Trust->GetKeys();
-
-            for(const auto& vchHashKey : vchTrustKeyList)
+            /* Retrieve all raw trust database keys from keychain */
+            std::vector<Legacy::TrustKey> vKeys;
+            if(LLD::Trust->BatchRead("trust", vKeys, -1))
             {
-                /* It can take some time to check all trust keys, so cancel process if shutdown flag tripped */
-                if(config::fShutdown.load())
-                    break;
-
-                /* Read the full trust key from the trust db */
-                uint576_t cKey;
-                cKey.SetBytes(vchHashKey);
-                TrustKey trustKeyCheck;
-
-                if(!LLD::Trust->ReadTrustKey(cKey, trustKeyCheck))
-                    continue;
-
-                /* Check whether trust key is part of current wallet */
-                NexusAddress address;
-                address.SetPubKey(trustKeyCheck.vchPubKey);
-
-                if(pStakingWallet->HaveKey(address))
+                /* Search through the trust keys. */
+                for (const auto& trustKeyCheck : vKeys)
                 {
-                    /* Trust key belongs to current wallet. Verify this is the one to use. */
-                    TAO::Ledger::BlockState blockStateCheck = TAO::Ledger::ChainState::stateBest.load();
+                    /* Check whether trust key is part of current wallet */
+                    NexusAddress address;
+                    address.SetPubKey(trustKeyCheck.vchPubKey);
 
-                    /* Check for keys that are expired version 4. */
-                    if(GetLastTrust(trustKeyCheck, blockStateCheck) && blockStateCheck.nVersion < 5)
+                    if (pStakingWallet->HaveKey(address))
                     {
-                        /* Expired pre-v5 Trust Key. Do not use. */
-                        debug::log(2, FUNCTION, "Found expired version 4 trust key in wallet. Not using.");
-                        continue;
+                        /* Trust key belongs to current wallet. Verify this is the one to use. */
+                        TAO::Ledger::BlockState blockStateCheck = TAO::Ledger::ChainState::stateBest.load();
+
+                        /* Check for keys that are expired version 4. */
+                        if (Legacy::GetLastTrust(trustKeyCheck, blockStateCheck) && blockStateCheck.nVersion < 5)
+                        {
+                            /* Expired pre-v5 Trust Key. Do not use. */
+                            debug::log(2, FUNCTION, "Found expired version 4 trust key in wallet. Not using.");
+                            continue;
+                        }
+
+                        /* Set the trust key if found. */
+                        trustKey = trustKeyCheck;
+
+                        /* Store trust key */
+                        pStakingWallet->SetTrustKey(trustKey.vchPubKey);
+
+                        debug::log(0, FUNCTION, "Found Trust Key matching current wallet");
                     }
 
-                    /* Set the trust key if found. */
-                    trustKey = trustKeyCheck;
-
-                    /* Store trust key */
-                    pStakingWallet->SetTrustKey(trustKey.vchPubKey);
-
-                    debug::log(0, FUNCTION, "Found Trust Key matching current wallet");
                 }
             }
         }
@@ -242,6 +286,7 @@ namespace Legacy
         {
             /* No trust key found. Reserve a new key to use as the trust key for Genesis */
             debug::log(0, FUNCTION, "Staking for Genesis with new trust key");
+
             pReservedTrustKey = new ReserveKey(pStakingWallet);
             pReservedTrustKey->GetReservedKey();
         }
@@ -300,8 +345,11 @@ namespace Legacy
                 trustKey.SetNull();
 
                 /* For next iteration, go back to staking for Genesis */
-                if(pReservedTrustKey != nullptr)
+                if (pReservedTrustKey != nullptr)
+                {
                     delete pReservedTrustKey;  // should never happen, this is a precaution
+                    pReservedTrustKey = nullptr;
+                }
 
                 pReservedTrustKey = new ReserveKey(pStakingWallet);
                 pReservedTrustKey->GetReservedKey();
@@ -554,9 +602,9 @@ namespace Legacy
             nCurrentBlockWeight = 0.0;
         }
 
-            /* Update instance settings */
-            nBlockWeight.store(nCurrentBlockWeight);
-            nTrustWeight.store(nCurrentTrustWeight);
+    		/* Update instance settings */
+    		nBlockWeight.store(nCurrentBlockWeight);
+    		nTrustWeight.store(nCurrentTrustWeight);
 
         return true;
     }
@@ -586,7 +634,7 @@ namespace Legacy
         /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
          * or network generates a new block (minter must start over with new candidate)
          */
-        while(!LegacyMinter::fstopMinter.load() && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
+        while(!LegacyMinter::fStopMinter.load() && !config::fShutdown.load() && hashLastBlock == TAO::Ledger::ChainState::hashBestChain.load())
         {
             /* Update the block time for difficulty accuracy. */
             block.UpdateTime();
@@ -660,8 +708,8 @@ namespace Legacy
             return debug::error(FUNCTION, "Check state failed");
 
         /* Check the trust. */
-        TAO::Ledger::BlockState candidateBlockStake(block);
-        if(!block.vtx[0].CheckTrust(candidateBlockStake))
+        TAO::Ledger::BlockState state(block);
+        if(!block.vtx[0].CheckTrust(state))
             return debug::error(FUNCTION, "Check trust failed");
 
         /* Check the work for the block.
@@ -698,6 +746,7 @@ namespace Legacy
             debug::log(0, FUNCTION, "New trust key generated and stored");
 
             delete pReservedTrustKey;
+            pReservedTrustKey = nullptr;
         }
 
         return true;
@@ -714,13 +763,13 @@ namespace Legacy
 
         /* If the system is still syncing/connecting on startup, wait to run minter */
         while((TAO::Ledger::ChainState::Synchronizing() || (LLP::LEGACY_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
-                && !LegacyMinter::fstopMinter.load() && !config::fShutdown.load())
+                && !LegacyMinter::fStopMinter.load() && !config::fShutdown.load())
         {
             runtime::sleep(pLegacyMinter->nSleepTime);
         }
 
         /* Check stop/shutdown status after wait ends */
-        if(LegacyMinter::fstopMinter.load() || config::fShutdown.load())
+        if(LegacyMinter::fStopMinter.load() || config::fShutdown.load())
             return;
 
         debug::log(0, FUNCTION, "Stake Minter Initialized");
@@ -729,12 +778,12 @@ namespace Legacy
         pLegacyMinter->nSleepTime = 1000;
 
         /* Minting thread will continue repeating this loop until shutdown */
-        while(!LegacyMinter::fstopMinter.load() && !config::fShutdown.load())
+        while(!LegacyMinter::fStopMinter.load() && !config::fShutdown.load())
         {
             runtime::sleep(pLegacyMinter->nSleepTime);
 
             /* Check stop/shutdown status after wakeup */
-            if(LegacyMinter::fstopMinter.load() || config::fShutdown.load())
+            if(LegacyMinter::fStopMinter.load() || config::fShutdown.load())
                 continue;
 
             /* Save the current best block hash immediately in case it changes while we do setup */
@@ -754,7 +803,7 @@ namespace Legacy
         }
 
         /* If get here because fShutdown set, have to wait for join. Join is issued in Stop, which needs to be called by shutdown process, too. */
-        while(!LegacyMinter::fstopMinter.load())
+        while(!LegacyMinter::fStopMinter.load())
             runtime::sleep(100);
 
 

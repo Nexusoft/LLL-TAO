@@ -42,21 +42,21 @@ namespace Legacy
         IMPLEMENT_SERIALIZE
         (
             READWRITE(nVersion);
-	          READWRITE(hashPrevBlock);
-		        READWRITE(hashMerkleRoot);
-		        READWRITE(nChannel);
+	        READWRITE(hashPrevBlock);
+		    READWRITE(hashMerkleRoot);
+		    READWRITE(nChannel);
             READWRITE(nHeight);
             READWRITE(nBits);
             READWRITE(nNonce);
             READWRITE(nTime);
 
-      			// ConnectBlock depends on vtx following header to generate CDiskTxPos
-      			if(!(nSerType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
-      			{
-      				READWRITE(vtx);
-      				READWRITE(vchBlockSig);
-      			}
-      )
+  			// ConnectBlock depends on vtx following header to generate CDiskTxPos
+  			if (!(nSerType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
+  			{
+  				READWRITE(vtx);
+  				READWRITE(vchBlockSig);
+  			}
+        )
 
 
         /** The default constructor. **/
@@ -70,7 +70,7 @@ namespace Legacy
         *
         *  Allows polymorphic copying of blocks
         *  Overridden to return an instance of the LegacyBlock class.
-        *  Return-type covariance allows us to return the more derived type whilst 
+        *  Return-type covariance allows us to return the more derived type whilst
         *  still overriding the virtual base-class method
         *
         *  @return A pointer to a copy of this LegacyBlock.

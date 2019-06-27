@@ -11,9 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <map>
-#include <utility>
-
 #include <Legacy/include/ambassador.h>
 #include <Legacy/include/create.h>
 #include <Legacy/include/enum.h>
@@ -43,6 +40,9 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+
+#include <map>
+#include <utility>
 
 /* Global Legacy namespace. */
 namespace Legacy

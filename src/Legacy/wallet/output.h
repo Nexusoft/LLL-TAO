@@ -15,12 +15,13 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_OUTPUT_H
 #define NEXUS_LEGACY_WALLET_OUTPUT_H
 
-#include <string>
-
 #include <Legacy/wallet/wallettx.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/string.h> /* for FormatMoney() */
+
+#include <string>
+
 
 namespace Legacy
 {

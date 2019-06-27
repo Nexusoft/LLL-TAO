@@ -29,7 +29,7 @@ namespace TAO
     {
 
         /** Checkpoint timespan. **/
-        uint32_t CHECKPOINT_TIMESPAN = 10;
+        uint32_t CHECKPOINT_TIMESPAN = 30;
 
 
         /* Check if the new block triggers a new Checkpoint timespan.*/
@@ -60,8 +60,28 @@ namespace TAO
         /* Check that the checkpoint is a Descendant of previous Checkpoint.*/
         bool IsDescendant(const BlockState& state)
         {
+            /* If no checkpoint defined, return true. */
             if(ChainState::hashCheckpoint == 0)
                 return true;
+
+            /* Check hard coded checkpoints when syncing. */
+            if(ChainState::Synchronizing())
+            {
+                /* Check that height isn't exceeded. */
+                if(config::fTestNet || state.nHeight > CHECKPOINT_HEIGHT)
+                    return true;
+
+                /* Check map checkpoints. */
+                auto it = mapCheckpoints.find(state.nHeight);
+                if(it == mapCheckpoints.end())
+                    return true;
+
+                /* Verbose logging for hardcoded checkpoints. */
+                debug::log(0, "===== HARDCODED Checkpoint ", it->first, " Hash ", it->second.ToString().substr(0, 20));
+
+                /* Block must match checkpoints map. */
+                return it->second == state.hashCheckpoint;
+            }
 
             /* Get checkpoint state. */
             BlockState stateCheckpoint;

@@ -30,8 +30,8 @@ ________________________________________________________________________________
 #define NOMINMAX //prevents windows.h from including min/max and potentially interfering with std::min/std::max
 #endif
 
-#include <windows.h>
 #include <winsock2.h>
+#include <windows.h>
 #include <mswsock.h>
 #include <ws2tcpip.h>
 
@@ -79,7 +79,7 @@ typedef u_int SOCKET;
 
 namespace LLP
 {
-    /** NetworkStartup
+    /** Initialize
      *
      *  Perform any necessary processing to initialize the underlying network
      *  resources such as sockets, etc.
@@ -91,10 +91,10 @@ namespace LLP
      *  @return true if the network resource initialization was successful, false otherwise
      *
      **/
-    bool NetworkStartup();
+    bool Initialize();
 
 
-    /** NetworkShutdown
+    /** Shutdown
      *
      *  Perform any necessary processing to shutdown and release underlying network resources.
      *
@@ -105,7 +105,7 @@ namespace LLP
      *  @return true if the network resource initialization was successful, false otherwise
      *
      **/
-    bool NetworkShutdown();
+    bool Shutdown();
 
 }
 

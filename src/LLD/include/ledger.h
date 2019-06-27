@@ -64,7 +64,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE);
+        LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE, uint64_t nBuckets = 256 * 256 * 128, uint32_t nCacheIn = 1024 * 1024 * 32);
 
 
         /** Default Destructor **/

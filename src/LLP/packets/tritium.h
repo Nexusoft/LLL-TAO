@@ -104,7 +104,7 @@ namespace LLP
             READWRITE(MESSAGE);
             READWRITE(LENGTH);
             READWRITE(CHECKSUM);
-      )
+        )
 
 
         /** SetNull

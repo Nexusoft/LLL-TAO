@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <cmath>
-
 #include <LLC/types/uint1024.h>
 
 #include <Legacy/include/money.h>
@@ -22,6 +20,9 @@ ________________________________________________________________________________
 
 #include <Util/include/args.h>
 #include <Util/include/runtime.h>
+
+#include <cmath>
+
 
 /* Global TAO namespace. */
 namespace TAO

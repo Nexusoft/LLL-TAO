@@ -72,7 +72,7 @@ TEST_CASE("Arguments Tests", "[args]")
 
 
     /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
-    REQUIRE(LLP::NetworkStartup());
+    REQUIRE(LLP::Initialize());
 
     /* Create the API instances. */
     TAO::API::Initialize();

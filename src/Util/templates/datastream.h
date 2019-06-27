@@ -104,6 +104,13 @@ public:
     DataStream(const std::vector<char>& vchDataIn, const uint32_t nSerTypeIn, const uint32_t nSerVersionIn);
 
 
+    /** Destructor. */
+    ~DataStream()
+    {
+        std::vector<uint8_t>().swap(vData);
+    }
+
+
     /** SetType
      *
      *  Sets the type of stream.
@@ -187,12 +194,21 @@ public:
      **/
     const std::vector<uint8_t>& Bytes();
 
+
     /** reserve
      *
      *  Implement the same reserve functionality to vector.
      *
      **/
     void reserve(const uint64_t nSize);
+
+
+    /** resize
+     *
+     *  Implement the same resize functionality to vector.
+     *
+     **/
+    void resize(const uint64_t nSize);
 
 
     /** begin
@@ -232,7 +248,7 @@ public:
      *  Wrapper around data to get the start of vector.
      *
      **/
-     uint8_t* data();
+    uint8_t* data(const uint64_t nOffset = 0);
 
 
     /** clear

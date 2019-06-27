@@ -36,7 +36,11 @@ namespace TAO
         public:
 
             /** Default Constructor. **/
-            Names() { Initialize(); }
+            Names()
+            : Base()
+            {
+                Initialize();
+            }
 
 
             /** Initialize.
@@ -90,7 +94,7 @@ namespace TAO
 
             /** Get
              *
-             *  Get the data from a name.  NOTE the intentional naming of this method that does not fit with the convention of 
+             *  Get the data from a name.  NOTE the intentional naming of this method that does not fit with the convention of
              *  the rest of the class - this is intentional as GetName is already a base class method that has been marked as final.
              *
              *  @param[in] params The parameters from the API call.
@@ -117,7 +121,7 @@ namespace TAO
 
             /** TransferName
              *
-             *  Transfer a name 
+             *  Transfer a name
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
@@ -169,7 +173,7 @@ namespace TAO
 
             /** GetNamespace
              *
-             *  Get the data from a namespace.  
+             *  Get the data from a namespace.
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
@@ -224,17 +228,17 @@ namespace TAO
 
             /** CreateName
              *
-             *  Creates a new Name Object register for the given name and register address adds the register 
+             *  Creates a new Name Object register for the given name and register address adds the register
              *  operation to the contract
              *
              *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
              *  @param[in] strFullName The Name of the object.  May include the namespace suffix
              *  @param[in] hashRegister The register address that the Name object should resolve to
-             *  
+             *
              *  @return The contract to containing the Name object creation .
              *
              **/
-            static TAO::Operation::Contract CreateName(const uint256_t& hashGenesis, 
+            static TAO::Operation::Contract CreateName(const uint256_t& hashGenesis,
                                                        const std::string& strFullName,
                                                        const uint256_t& hashRegister);
 
@@ -251,7 +255,7 @@ namespace TAO
              *
              **/
             static TAO::Operation::Contract CreateName(const uint256_t& hashGenesis,
-                                                       const json::json& params, 
+                                                       const json::json& params,
                                                        const uint512_t& hashTransfer);
 
 
@@ -265,8 +269,8 @@ namespace TAO
              *
              *  @return The Name object .
              **/
-            static TAO::Register::Object GetName(const json::json& params, 
-                                                 const std::string& strObjectName, 
+            static TAO::Register::Object GetName(const json::json& params,
+                                                 const std::string& strObjectName,
                                                  uint256_t& hashRegister);
 
 
@@ -280,11 +284,11 @@ namespace TAO
              *
              *  @return The Name object .
              **/
-            static TAO::Register::Object GetName(const uint256_t& hashGenesis, 
-                                                 const uint256_t& hashObject, 
+            static TAO::Register::Object GetName(const uint256_t& hashGenesis,
+                                                 const uint256_t& hashObject,
                                                  uint256_t& hashNameObject);
-            
-            
+
+
 
             /** ResolveAddress
              *
@@ -324,7 +328,7 @@ namespace TAO
              *
              **/
             static std::string ResolveAccountTokenName(const json::json& params, const TAO::Register::Object& account);
-            
+
 
         };
     }

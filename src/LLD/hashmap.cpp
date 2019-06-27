@@ -14,13 +14,14 @@ ________________________________________________________________________________
 #include <LLD/keychain/hashmap.h>
 #include <LLD/include/enum.h>
 #include <LLD/include/version.h>
+#include <LLD/hash/xxh3.h>
 
 #include <Util/templates/datastream.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 
-#include <openssl/md5.h>
+#include <iomanip>
 
 namespace LLD
 {
@@ -33,7 +34,6 @@ namespace LLD
     , pindex(nullptr)
     , hashmap(256 * 256 * 64)
     , HASHMAP_TOTAL_BUCKETS(256 * 256 * 64)
-    , HASHMAP_MAX_CACHE_SIZE(10 * 1024)
     , HASHMAP_MAX_KEY_SIZE(32)
     , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
     , RECORD_MUTEX(1024)
@@ -42,14 +42,13 @@ namespace LLD
 
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
-    BinaryHashMap::BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn)
+    BinaryHashMap::BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn, uint64_t nBucketsIn)
     : KEY_MUTEX()
     , strBaseLocation(strBaseLocationIn)
     , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
     , pindex(nullptr)
-    , hashmap(256 * 256 * 64)
-    , HASHMAP_TOTAL_BUCKETS(256 * 256 * 64)
-    , HASHMAP_MAX_CACHE_SIZE(10 * 1024)
+    , hashmap(nBucketsIn)
+    , HASHMAP_TOTAL_BUCKETS(nBucketsIn)
     , HASHMAP_MAX_KEY_SIZE(32)
     , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
     , nFlags(nFlagsIn)
@@ -59,39 +58,38 @@ namespace LLD
     }
 
 
-    /** Default Constructor **/
-    BinaryHashMap::BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn)
+    /** Copy Constructor **/
+    BinaryHashMap::BinaryHashMap(const BinaryHashMap& map)
     : KEY_MUTEX()
-    , strBaseLocation(strBaseLocationIn)
-    , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
-    , pindex(nullptr)
-    , hashmap(nTotalBuckets)
-    , HASHMAP_TOTAL_BUCKETS(nTotalBuckets)
-    , HASHMAP_MAX_CACHE_SIZE(nMaxCacheSize)
-    , HASHMAP_MAX_KEY_SIZE(32)
-    , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
-    , nFlags(nFlagsIn)
-    , RECORD_MUTEX(1024)
+    , strBaseLocation(map.strBaseLocation)
+    , fileCache(map.fileCache)
+    , pindex(map.pindex)
+    , hashmap(map.hashmap)
+    , HASHMAP_TOTAL_BUCKETS(map.HASHMAP_TOTAL_BUCKETS)
+    , HASHMAP_MAX_KEY_SIZE(map.HASHMAP_MAX_KEY_SIZE)
+    , HASHMAP_KEY_ALLOCATION(map.HASHMAP_KEY_ALLOCATION)
+    , nFlags(map.nFlags)
+    , RECORD_MUTEX(map.RECORD_MUTEX.size())
     {
         Initialize();
     }
 
 
     /** Copy Assignment Operator **/
-    BinaryHashMap& BinaryHashMap::operator=(BinaryHashMap map)
+    BinaryHashMap& BinaryHashMap::operator=(const BinaryHashMap& map)
     {
-        strBaseLocation       = map.strBaseLocation;
-        fileCache             = map.fileCache;
+        strBaseLocation        = map.strBaseLocation;
+        fileCache              = map.fileCache;
+        pindex                 = map.pindex;
+        hashmap                = map.hashmap;
+        HASHMAP_TOTAL_BUCKETS  = map.HASHMAP_TOTAL_BUCKETS;
+        HASHMAP_MAX_KEY_SIZE   = map.HASHMAP_MAX_KEY_SIZE;
+        HASHMAP_KEY_ALLOCATION = map.HASHMAP_KEY_ALLOCATION;
+        nFlags                 = map.nFlags;
+
+        Initialize();
 
         return *this;
-    }
-
-
-    /** Copy Constructor **/
-    BinaryHashMap::BinaryHashMap(const BinaryHashMap& map)
-    {
-        strBaseLocation    = map.strBaseLocation;
-        fileCache          = map.fileCache;
     }
 
 
@@ -122,15 +120,6 @@ namespace LLD
             /* Resize the container to half its size. */
             vData.resize(std::max(uint16_t(nSize2), nSize));
         }
-    }
-
-
-    /*  Placeholder. */
-    std::vector< std::vector<uint8_t> > BinaryHashMap::GetKeys()
-    {
-        std::vector< std::vector<uint8_t> > vKeys;
-
-        return vKeys;
     }
 
 

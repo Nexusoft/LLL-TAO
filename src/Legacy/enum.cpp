@@ -11,9 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/include/enum.h>
+
 #include <cstddef>
 
-#include <Legacy/include/enum.h>
 
 namespace Legacy
 {

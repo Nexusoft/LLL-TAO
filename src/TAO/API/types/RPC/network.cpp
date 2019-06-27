@@ -158,23 +158,19 @@ namespace TAO
             std::multimap<double, Legacy::TrustKey, std::greater<double> > mapTrustKeys;
 
             /* Retrieve all raw trust database keys from keychain */
-            const std::vector<std::vector<uint8_t> >& vKeys = LLD::Trust->GetKeys();
+            std::vector<Legacy::TrustKey> vKeys;
+            if(!LLD::Trust->BatchRead("trust", vKeys, -1))
+                return debug::safe_printstr("No Trust Keys ", vKeys.size());
 
             /* Search through the trust keys. */
-            for(const auto& key : vKeys)
+            for (const auto& trustKey : vKeys)
             {
-                /* Extract trust key hash from raw database keys. */
-                uint576_t trustKeyHash = 0;
-                DataStream ssKey(key, SER_LLD, LLD::DATABASE_VERSION);
-                ssKey >> trustKeyHash;
-
-                /* Use trust key hash to retrieve trust key */
-                Legacy::TrustKey trustKey;
-                if(!LLD::Trust->ReadTrustKey(trustKeyHash, trustKey))
+                /* Ignore v4 trust keys */
+                if (trustKey.nLastBlockTime < (config::fTestNet ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[3] : TAO::Ledger::NETWORK_VERSION_TIMELOCK[3]))
                     continue;
 
-                /* Ignore trust keys that are inactive (no blocks within timespan) */
-                if(trustKey.nLastBlockTime + (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 3 : TAO::Ledger::TRUST_KEY_TIMESPAN * 3)
+                /* Ignore trust keys that are inactive (no trust blocks within timespan x 10 = 30 days mainnet) */
+                if (trustKey.nLastBlockTime + (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 10 : TAO::Ledger::TRUST_KEY_TIMESPAN * 10)
                     < TAO::Ledger::ChainState::stateBest.load().GetBlockTime())
                     continue;
 

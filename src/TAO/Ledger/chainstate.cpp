@@ -71,15 +71,19 @@ namespace TAO
             if(config::fTestNet.load())
                 return (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60) && (runtime::unifiedtimestamp() - nLastTime < 30);
 
-            /* Check if block has been created within 20 minutes. */
-            return (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60);
+            /* Check if block has been created within 60 minutes. */
+            return (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 60 * 60);
         }
+
 
         /* Flag to tell if initial blocks are downloading. */
         double ChainState::PercentSynchronized()
         {
-            uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 20 * 60) - (config::fTestNet.load() ? TAO::Ledger::NEXUS_TESTNET_TIMELOCK : TAO::Ledger::NEXUS_NETWORK_TIMELOCK);
-            uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - static_cast<uint64_t>(config::fTestNet.load() ? TAO::Ledger::NEXUS_TESTNET_TIMELOCK : TAO::Ledger::NEXUS_NETWORK_TIMELOCK));
+            uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 60 * 60) - (config::fTestNet.load() ?
+                NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK);
+
+            uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - static_cast<uint64_t>(config::fTestNet.load() ?
+                NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
 
             return (100.0 * nSyncAge) / nChainAge;
         }

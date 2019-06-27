@@ -32,9 +32,9 @@ namespace version
     /* The version of the actual wallet client. */
     const uint32_t CLIENT_VERSION = 10000 * CLIENT_MAJOR + 100 * CLIENT_MINOR + CLIENT_PATCH;
 
-
     /* Client Version Outputs. */
-    const std::string CLIENT_NAME("Tritium Beta");
+    const std::string CLIENT_NAME("Tritium");
+
     const std::string CLIENT_DATE(__DATE__ " " __TIME__);
 
     /* The version number */

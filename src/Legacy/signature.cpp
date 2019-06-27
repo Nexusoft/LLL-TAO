@@ -14,18 +14,19 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 #include <LLC/hash/SK.h>
 
-#include <Util/templates/datastream.h>
-#include <Util/include/base58.h>
-
-#include <Legacy/include/signature.h>
-#include <Legacy/include/evaluate.h>
-
 #include <Legacy/include/enum.h>
+#include <Legacy/include/evaluate.h>
+#include <Legacy/include/signature.h>
+
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/script.h>
 
+#include <Util/templates/datastream.h>
+#include <Util/include/base58.h>
+
 #include <string>
 #include <vector>
+
 
 namespace Legacy
 {

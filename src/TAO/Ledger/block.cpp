@@ -49,6 +49,7 @@ namespace TAO
         Block::Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn)
         : nVersion(nVersionIn)
         , hashPrevBlock(hashPrevBlockIn)
+        , hashMerkleRoot()
         , nChannel(nChannelIn)
         , nHeight(nHeightIn)
         , nBits(0)

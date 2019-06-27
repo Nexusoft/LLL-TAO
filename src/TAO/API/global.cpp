@@ -85,7 +85,6 @@ namespace TAO
             if(finance)
                 delete finance;
 
-
             if(names)
                 delete names;
 

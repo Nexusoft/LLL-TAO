@@ -27,6 +27,9 @@ ________________________________________________________________________________
 #include <atomic>
 #include <thread>
 
+#include <atomic>
+#include <thread>
+
 
 namespace Legacy
 {
@@ -53,6 +56,7 @@ namespace Legacy
         /** Copy constructor deleted **/
         LegacyMinter(const LegacyMinter&) = delete;
 
+
         /** Copy assignment deleted **/
         LegacyMinter& operator=(const LegacyMinter&) = delete;
 
@@ -72,16 +76,87 @@ namespace Legacy
 
 
         /** IsStarted
-          *
-          * Tests whether or not the stake minter is currently running.
-          *
-          * @return true if the stake minter is started, false otherwise
-          *
-          */
-        bool IsStarted() const override;
+         *
+         * Tests whether or not the stake minter is currently running.
+         *
+         * @return true if the stake minter is started, false otherwise
+         *
+         */
+        bool IsStarted() const;
 
 
-        /** Start
+        /** GetBlockWeight
+         *
+         * Retrieves the current internal value for the block weight metric.
+         *
+         * @return value of current block weight
+         *
+         */
+        double GetBlockWeight() const;
+
+
+        /** GetBlockWeight
+         *
+         * Retrieves the block weight metric as a percentage of maximum.
+         *
+         * @return the current block weight percentage
+         *
+         */
+        double GetBlockWeightPercent() const;
+
+
+        /** GetTrustWeight
+         *
+         * Retrieves the current internal value for the trust weight metric.
+         *
+         * @return value of current trust weight
+         *
+         */
+        double GetTrustWeight() const;
+
+
+        /** GetTrustWeight
+         *
+         * Retrieves the trust weight metric as a percentage of maximum.
+         *
+         * @return the current trust weight percentage
+         *
+         */
+        double GetTrustWeightPercent() const;
+
+
+        /** GetStakeRate
+         *
+         * Retrieves the current staking reward rate (previously, interest rate)
+         *
+         * @return the current stake rate
+         *
+         */
+        double GetStakeRate() const;
+
+
+        /** GetStakeRatePercent
+         *
+         * Retrieves the current staking reward rate as an annual percentage.
+         *
+         * @return the current stake rate percentage
+         *
+         */
+        double GetStakeRatePercent() const;
+
+
+        /** IsWaitPeriod
+         *
+         * Checks whether the stake minter is waiting for average coin
+         * age to reach the required minimum before staking Genesis.
+         *
+         * @return true if minter is waiting on coin age, false otherwise
+         *
+         */
+        bool IsWaitPeriod() const;
+
+
+        /** StartStakeMinter
           *
           * Start the stake minter.
           *
@@ -126,11 +201,11 @@ namespace Legacy
 
     private:
         /** Set true when stake miner thread starts and remains true while it is running **/
-        static std::atomic<bool> fisStarted;
+        static std::atomic<bool> fIsStarted;
 
 
         /** Flag to tell the stake minter thread to stop processing and exit. **/
-        static std::atomic<bool> fstopMinter;
+        static std::atomic<bool> fStopMinter;
 
 
         /** Thread for operating the stake minter **/

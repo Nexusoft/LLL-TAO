@@ -11,12 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <openssl/rand.h>   // For RAND_bytes
-
-#include <algorithm>
-#include <thread>
-#include <utility>
-
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 
@@ -49,6 +43,12 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 #include <Util/include/signals.h>
+
+#include <openssl/rand.h>   // For RAND_bytes
+
+#include <algorithm>
+#include <thread>
+#include <utility>
 
 namespace Legacy
 {
@@ -531,7 +531,9 @@ namespace Legacy
 
         /* Lock wallet, then unlock with new passphrase to update key pool */
         Lock();
-        Unlock(strWalletPassphrase);
+
+        /* Unlock wallet only to replace key pool. Don't start stake minter for this unlock */
+        Unlock(strWalletPassphrase, 0, false);
 
         /* Replace key pool with encrypted keys */
         {
@@ -581,13 +583,14 @@ namespace Legacy
 
 
     /* Attempt to unlock an encrypted wallet using the passphrase provided. */
-    bool Wallet::Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds)
+    bool Wallet::Unlock(const SecureString& strWalletPassphrase, const uint32_t nUnlockSeconds, const bool fStartStake)
     {
         if(!IsLocked())
             return false;
 
         Crypter crypter;
         CKeyingMaterial vMasterKey;
+        bool fUnlockSuccessful = false;
 
         {
             LOCK(cs_wallet);
@@ -600,11 +603,17 @@ namespace Legacy
             {
                 /* Set the encryption context using the passphrase provided */
                 if(!crypter.SetKeyFromPassphrase(strWalletPassphrase, pMasterKey.second.vchSalt, pMasterKey.second.nDeriveIterations, pMasterKey.second.nDerivationMethod))
-                    return false;
+                {
+                    debug::error(FUNCTION, "Error setting encryption context from passphrase");
+                    break;
+                }
 
                 /* Attempt to decrypt the master key using the passphrase crypter */
-                if(!crypter.Decrypt(pMasterKey.second.vchCryptedKey, vMasterKey))
-                    return false;
+                if (!crypter.Decrypt(pMasterKey.second.vchCryptedKey, vMasterKey))
+                {
+                    debug::error(FUNCTION, "Error unlocking key with passphrase");
+                    break;
+                }
 
                 /* Attempt to unlock the wallet using the decrypted value for the master key */
                 if(CryptoKeyStore::Unlock(vMasterKey))
@@ -629,15 +638,19 @@ namespace Legacy
 
                     }
 
-                    /* Whether unlocked fully or for minting only, start the stake minter if configured */
-                    LegacyMinter::GetInstance().Start();
-
-                    return true;
+                    fUnlockSuccessful = true;
+                    break;
                 }
             }
         }
 
-        return false;
+        if (fUnlockSuccessful && fStartStake)
+        {
+            /* Whether unlocked fully or for minting only, start the stake minter if configured */
+            LegacyMinter::GetInstance().Start();
+        }
+
+        return fUnlockSuccessful;
     }
 
 
@@ -853,7 +866,8 @@ namespace Legacy
             {
                 const WalletTx& walletTx = item.second;
 
-                if(walletTx.IsCoinStake() && walletTx.GetBlocksToMaturity() > 0 && walletTx.GetDepthInMainChain() > 1)
+                /* Amount currently being staked is that amount in a coinstake tx that is not yet mature but has been added to chain */
+                if (walletTx.IsCoinStake() && walletTx.GetBlocksToMaturity() > 0 && walletTx.GetDepthInMainChain() > 0)
                     nTotalStake += GetCredit(walletTx);
             }
         }
@@ -1019,7 +1033,7 @@ namespace Legacy
         bool fInsertedNew = ret.second;
         wtx.BindWallet(this);
 
-        if(fInsertedNew)
+        if (fInsertedNew && wtx.nTimeReceived == 0) // Time will be non-zero if preset by processing (such as rescan)
         {
             /* wtx.nTimeReceive must remain uint32_t for backward compatability */
             wtx.nTimeReceived = (uint32_t)runtime::unifiedtimestamp();
@@ -1187,7 +1201,7 @@ namespace Legacy
         /* Count the number of transactions process for this wallet to use as return value */
         uint32_t nTransactionCount = 0;
         uint32_t nScannedCount     = 0;
-        uint32_t nScannedBlocks    = 0;
+
         TAO::Ledger::BlockState block;
         if(pstartBlock == nullptr)
             block = TAO::Ledger::ChainState::stateGenesis;
@@ -1196,43 +1210,40 @@ namespace Legacy
 
         runtime::timer timer;
         timer.Start();
-        Legacy::Transaction tx;
-        while(!config::fShutdown.load())
+
+        /* Do a batch read from legacy database. */
+        std::vector<Legacy::Transaction> vtx;
+        if(!LLD::Legacy->BatchRead("tx", vtx, 1000))
+            return 0;
+
+        /* Loop in batches of 1000 until finished. */
+        uint512_t hashLast = vtx.back().GetHash();
+        do
         {
-            /* Output for the debugger. */
-            ++nScannedBlocks;
-
-            /* Meter to know the progress. */
-            if(nScannedBlocks % 10000 == 0)
-                debug::log(0, FUNCTION, nScannedBlocks, " blocks processed");
-
-            /* Scan each transaction in the block and process those related to this wallet */
-            for(const auto& item : block.vtx)
+            /* Loop through found transactions. */
+            for(const auto& tx : vtx)
             {
-                if(item.first == TAO::Ledger::LEGACY_TX)
-                {
-                    /* Read transaction from database */
-                    if(!LLD::Legacy->ReadTx(item.second, tx))
-                        continue;
+                /* Add to the wallet */
+                if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
+                    ++nTransactionCount;
 
-                    /* Add to the wallet */
-                    if(AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
-                        ++nTransactionCount;
-
-                    /* Update the scanned count for meters. */
-                    ++nScannedCount;
-                }
+                /* Update the scanned count for meters. */
+                ++nScannedCount;
             }
 
-            /* Move to next block. Will return false when reach end of chain, ending the while loop */
-            block = block.Next();
-            if(!block)
-                break;
-        }
+            /* Set hash Last. */
+            hashLast = vtx.back().GetHash();
 
-        int32_t nElapsedSeconds = timer.Elapsed();
-        debug::log(0, FUNCTION, "Scanned ", nTransactionCount,
-            " transactions, ", nScannedBlocks, " blocks  in ", nElapsedSeconds, " seconds (", std::fixed, nScannedCount > 0 ? (double)(nScannedCount / nElapsedSeconds > 0 ? nElapsedSeconds : 1) : 1, " tx/s)");
+            /* Clear the transactions. */
+            vtx.clear();
+
+        } while(!config::fShutdown.load() && LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), hashLast), "tx", vtx, 1000));
+
+        /* Get the time it took to rescan. */
+        uint32_t nElapsedSeconds = timer.Elapsed();
+        debug::log(0, FUNCTION, "Processed ", nTransactionCount,
+            " tx of ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
+            std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
 
         return nTransactionCount;
     }
@@ -1344,18 +1355,19 @@ namespace Legacy
         nMismatchFound = 0;
         nBalanceInQuestion = 0;
 
-        std::vector<WalletTx> transactionsInWallet;
+        std::vector<WalletTx> vTransactionsInWallet;
+        std::vector<WalletTx> vRepairedTx;
 
         {
             LOCK(cs_wallet);
 
-            transactionsInWallet.reserve(mapWallet.size());
-            for(auto& item : mapWallet)
-                transactionsInWallet.push_back(item.second);
+            vTransactionsInWallet.reserve(mapWallet.size());
+            for (auto& item : mapWallet)
+                vTransactionsInWallet.push_back(item.second);
 
         }
 
-        for(WalletTx& walletTx : transactionsInWallet)
+        for(WalletTx& walletTx : vTransactionsInWallet)
         {
             /* Verify transaction is in the tx db */
             Legacy::Transaction txTemp;
@@ -1363,12 +1375,16 @@ namespace Legacy
             /* Check all the outputs to make sure the flags are all set properly. */
             for(uint32_t n=0; n < walletTx.vout.size(); n++)
             {
-                bool isSpentOnChain = LLD::Legacy->IsSpent(walletTx.GetHash(), n);
+                if (!IsMine(walletTx.vout[n]))
+                    continue;
+
+                bool fSpent = LLD::Legacy->IsSpent(walletTx.GetHash(), n);
 
                 /* Handle when Transaction on chain records output as unspent but wallet accounting has it as spent */
-                if(IsMine(walletTx.vout[n]) && walletTx.IsSpent(n) && !isSpentOnChain)
+                if (walletTx.IsSpent(n) && !fSpent)
                 {
-                    debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().SubString(), "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
+                    debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20),
+                        "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
 
                     ++nMismatchFound;
                     nBalanceInQuestion += walletTx.vout[n].nValue;
@@ -1377,11 +1393,12 @@ namespace Legacy
                     {
                         walletTx.MarkUnspent(n);
                         walletTx.WriteToDisk();
+                        vRepairedTx.push_back(walletTx);
                     }
                 }
 
                 /* Handle when Transaction on chain records output as spent but wallet accounting has it as unspent */
-                else if(IsMine(walletTx.vout[n]) && !walletTx.IsSpent(n) && isSpentOnChain)
+                else if (!walletTx.IsSpent(n) && fSpent)
                 {
                     debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().SubString(),
                         "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
@@ -1394,9 +1411,19 @@ namespace Legacy
                     {
                         walletTx.MarkSpent(n);
                         walletTx.WriteToDisk();
+                        vRepairedTx.push_back(walletTx);
                     }
                 }
             }
+        }
+
+        if (nMismatchFound > 0 && vRepairedTx.size() > 0)
+        {
+            /* Update mapWallet with repaired transactions */
+            LOCK(cs_wallet);
+
+            for (WalletTx& walletTx : vRepairedTx)
+                mapWallet[walletTx.GetHash()] = walletTx;
         }
     }
 
@@ -1869,6 +1896,8 @@ namespace Legacy
     /* Add inputs (and output amount with reward) to the coinstake txin for a coinstake block */
     bool Wallet::AddCoinstakeInputs(LegacyBlock& block)
     {
+        const uint32_t nMinimumCoinAge = (config::fTestNet ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE);
+
         /* Add Each Input to Transaction. */
         std::vector<WalletTx> vAllWalletTx;
         std::vector<WalletTx> vInputWalletTx;
@@ -1897,7 +1926,6 @@ namespace Legacy
                 continue;
 
             /* Do not add coins to Genesis block if age less than trust timestamp */
-            uint32_t nMinimumCoinAge = (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN);
             if(block.vtx[0].IsGenesis() && (block.vtx[0].nTime - walletTx.nTime) < nMinimumCoinAge)
                 continue;
 

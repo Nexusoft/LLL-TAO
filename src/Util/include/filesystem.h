@@ -53,14 +53,14 @@ namespace filesystem
 
 
     /** rename
-     * 
+     *
      *  Renames a file or folder from the specified old path to a new path.
-     * 
-     *  @param[in] pathOld The path to rename. 
+     *
+     *  @param[in] pathOld The path to rename.
      *  @param[in] pathNew The renamed path.
-     * 
+     *
      *  @return Returns true if the file or folder was renamed, false otherwise.
-     * 
+     *
      **/
     bool rename(const std::string &pathOld, const std::string &pathNew); 
 

@@ -45,6 +45,7 @@ namespace TAO
             /** Default Constructor **/
             Base()
             : fInitialized(false)
+            , mapFunctions()
             {
             }
 
