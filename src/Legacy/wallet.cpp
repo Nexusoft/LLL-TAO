@@ -1122,18 +1122,18 @@ namespace Legacy
         if (IsMine(tx) || IsFromMe(tx))
         {
             WalletTx wtx(this, tx);
-            if (fRescan || TAO::Ledger::ChainState::Synchronizing()) {
+            if (fRescan || TAO::Ledger::ChainState::Synchronizing())
+            {
                 /* On rescan or initial download, set wtx time to transaction time instead of time tx received.
                  * These are both uint32_t timestamps to support unserialization of legacy data.
                  */
                 wtx.nTimeReceived = tx.nTime;
             }
 
+            /* If find is enabled, read the block from LLD. */
             if (fFindBlock)
             {
-                /* If have transaction, but need its block, read it now */
-                state.SetNull();
-
+                /* Read the block state. */
                 if (LLD::legDB->ReadBlock(tx.GetHash(), state))
                     wtx.hashBlock = state.GetHash();
             }

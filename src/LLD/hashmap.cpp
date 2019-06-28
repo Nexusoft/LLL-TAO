@@ -26,22 +26,6 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** Default Constructor **/
-    BinaryHashMap::BinaryHashMap()
-    : KEY_MUTEX()
-    , strBaseLocation()
-    , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
-    , pindex(nullptr)
-    , hashmap(256 * 256 * 64)
-    , HASHMAP_TOTAL_BUCKETS(256 * 256 * 64)
-    , HASHMAP_MAX_KEY_SIZE(32)
-    , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
-    , nFlags(0)
-    , RECORD_MUTEX(1024)
-    {
-    }
-
-
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
     BinaryHashMap::BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn, uint64_t nBucketsIn)
     : KEY_MUTEX()

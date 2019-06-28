@@ -84,9 +84,6 @@ namespace LLD
 
     public:
 
-        /** Default Constructor **/
-        BinaryHashMap();
-
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND, uint64_t nBucketsIn = 256 * 256 * 64);

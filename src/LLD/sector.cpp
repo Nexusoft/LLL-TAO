@@ -34,7 +34,7 @@ namespace LLD
     , strName(strNameIn)
     , runtime()
     , pTransaction(nullptr)
-    , pSectorKeys(new KeychainType((config::GetDataDir() + strName + "/keychain/"), nFlags, nBucketsIn))
+    , pSectorKeys(new KeychainType((config::GetDataDir() + strName + "/keychain/"), nFlagsIn, nBucketsIn))
     , cachePool(new CacheType(nCacheIn))
     , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
     , nCurrentFile(0)
@@ -259,7 +259,7 @@ namespace LLD
 
         /* Check data size constraints. */
         if(nSize != key.nSectorSize)
-            return debug::error(FUNCTION, "sector size ", key.nSectorSize, " mismatch ", vData.size());
+            return false;
 
         /* Write the data into the memory cache. */
         cachePool->Put(vKey, vData, false);
