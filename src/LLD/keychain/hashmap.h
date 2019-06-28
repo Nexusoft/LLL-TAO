@@ -94,12 +94,10 @@ namespace LLD
 
         /** Copy Assignment Operator **/
         BinaryHashMap& operator=(const BinaryHashMap& map);
-        BinaryHashMap& operator=(BinaryHashMap& map) = delete;
 
 
         /** Copy Constructor **/
         BinaryHashMap(const BinaryHashMap& map);
-        BinaryHashMap(BinaryHashMap& map) = delete;
 
 
         /** Default Destructor **/

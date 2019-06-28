@@ -64,8 +64,8 @@ int main(int argc, char** argv)
     config::CacheArgs();
 
 
-    /* Initialize LLD. */
-    LLD::Initialize();
+    /* Log system startup now, after branching to API/RPC where appropriate */
+    debug::Initialize();
 
 
     /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
@@ -97,9 +97,8 @@ int main(int argc, char** argv)
         }
     }
 
-
-    /* Log system startup now, after branching to API/RPC where appropriate */
-    debug::Initialize();
+    /* Initialize LLD. */
+    LLD::Initialize();
 
 
     /** Run the process as Daemon RPC/LLP Server if Flagged. **/
