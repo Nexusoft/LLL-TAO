@@ -28,11 +28,13 @@ namespace LLP
 
 
     /*  Initialize the LLP. */
-    void Initialize()
+    bool Initialize()
     {
         /* Initialize the underlying network resources such as sockets, etc */
         if(!NetworkInitialize())
-            debug::error(FUNCTION, "NetworkInitialize: Failed initializing network resources.");
+            return debug::error(FUNCTION, "NetworkInitialize: Failed initializing network resources.");
+
+        return true;
     }
 
 

@@ -64,8 +64,8 @@ int main(int argc, char** argv)
     config::CacheArgs();
 
 
-    /* Initialize debug file logging. */
-    debug::Initialize();
+    /* Initialize LLD. */
+    LLD::Initialize();
 
 
     /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
@@ -98,6 +98,10 @@ int main(int argc, char** argv)
     }
 
 
+    /* Log system startup now, after branching to API/RPC where appropriate */
+    debug::Initialize();
+
+
     /** Run the process as Daemon RPC/LLP Server if Flagged. **/
     if(config::fDaemon)
     {
@@ -107,9 +111,11 @@ int main(int argc, char** argv)
 
 
     /* Create directories if they don't exist yet. */
-    if(!filesystem::exists(config::GetDataDir()) && filesystem::create_directory(config::GetDataDir()))
+    if(!filesystem::exists(config::GetDataDir()) &&
+        filesystem::create_directory(config::GetDataDir()))
+    {
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
-
+    }
 
     /** Handle the beta server. */
     uint16_t nPort = 0;
@@ -151,9 +157,6 @@ int main(int argc, char** argv)
     bool fFailed = config::fShutdown.load();
     if(!fFailed)
     {
-        /* Initialize LLD. */
-        LLD::Initialize();
-
         /** Load the Wallet Database. **/
         bool fFirstRun;
         if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
@@ -295,26 +298,17 @@ int main(int argc, char** argv)
             thread.join();
         }
     }
-    else
-        debug::error(FUNCTION, "Failed to Initialize LLP. Is a wallet daemon running?");
 
 
     /* Shutdown metrics. */
     timer.Reset();
 
 
-    /* Stop stake minter if it is running (before server shutdown). */
-    if(config::GetBoolArg(std::string("-beta")))
-        Legacy::LegacyMinter::GetInstance().Stop();
-    else
-        TAO::Ledger::TritiumMinter::GetInstance().Stop();
-
-
     /* Shutdown the API. */
     TAO::API::Shutdown();
 
 
-    /* Shutdown the LLP. */
+    /* After all servers shut down, clean up underlying networking resources */
     LLP::Shutdown();
 
 

@@ -42,7 +42,7 @@ namespace LLD
     , strName(strNameIn)
     , runtime()
     , pTransaction(nullptr)
-    , pSectorKeys(new KeychainType((config::GetDataDir() + strName + "/keychain/"), nFlags, nBucketsIn))
+    , pSectorKeys(new KeychainType((config::GetDataDir() + strName + "/keychain/"), nFlagsIn, nBucketsIn))
     , cachePool(new CacheType(nCacheIn))
     , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
     , nCurrentFile(0)

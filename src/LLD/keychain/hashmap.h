@@ -92,13 +92,14 @@ namespace LLD
         BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND, uint64_t nBucketsIn = 256 * 256 * 64);
 
 
-
         /** Copy Assignment Operator **/
         BinaryHashMap& operator=(const BinaryHashMap& map);
+        BinaryHashMap& operator=(BinaryHashMap& map) = delete;
 
 
         /** Copy Constructor **/
         BinaryHashMap(const BinaryHashMap& map);
+        BinaryHashMap(BinaryHashMap& map) = delete;
 
 
         /** Default Destructor **/

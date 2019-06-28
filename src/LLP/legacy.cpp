@@ -560,9 +560,6 @@ namespace LLP
                 /* Try to establish the connection on the port the server is listening to. */
                 for(const auto& legacyAddr : vLegacyAddr)
                 {
-                    legacyAddr.Print();
-
-
                     BaseAddress addr;
                     addr.SetPort(LEGACY_SERVER->GetPort());
                     addr.SetIP(legacyAddr);

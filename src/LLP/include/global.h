@@ -41,7 +41,7 @@ namespace LLP
      *  Initialize the LLP.
      *
      **/
-    void Initialize();
+    bool Initialize();
 
 
     /** Shutdown
