@@ -138,7 +138,7 @@ Error Codes
 | -16 | Account has not been unlocked for transactions |
 | -17 | Failed to create transaction |
 | -18 | Missing data |
-| -19 | Non-string types not supported in basic format |
+| -19 | Data must be a string with this asset format |
 | -20 | Missing asset value fields |
 | -21 | Missing json parameter |
 | -21 | json field must be an array |
@@ -274,6 +274,12 @@ Error Codes
 | -151 | Transaction already in database |
 | -152 | Transaction contains no valid transfers |
 | -153 | Transfer recipient object not found |
+| -154 | Invalid field type (field) |
+| -155 | Raw assets can not be updated |
+| -156 | Field not found in asset (field) |
+| -157 | Field not mutable in asset (field) |
+| -158 | Value longer than maximum length (field) |
+| -159 | Values must be passed in as strings |
 
 
 

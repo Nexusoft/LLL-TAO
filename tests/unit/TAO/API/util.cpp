@@ -2,6 +2,8 @@
 
 #include <LLC/include/random.h>
 
+#include <LLD/include/global.h>
+
 #include <Util/include/json.h>
 #include <Util/include/config.h>
 #include <Util/include/base64.h>
@@ -113,12 +115,19 @@ void InitializeUser(const std::string& strUsername, const std::string& strPasswo
 
     /* Invoke the API to create the user */
     ret = APICall("users/create/user", params);
+    result = ret["result"];
+
+    hashGenesis.SetHex(result["genesis"].get<std::string>());
+
+    uint512_t txid;
+    txid.SetHex(result["hash"].get<std::string>());
+
+    /* Write the genesis to disk so that we have it for later use */
+    LLD::Ledger->WriteGenesis(hashGenesis, txid);
 
     /* Invoke the API to create the user */
     ret = APICall("users/login/user", params);
     result = ret["result"];
-
-    hashGenesis.SetHex(result["genesis"].get<std::string>());
 
     if(config::fMultiuser)
     {
