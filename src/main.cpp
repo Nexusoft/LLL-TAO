@@ -109,7 +109,7 @@ int main(int argc, char** argv)
     /* Create directories if they don't exist yet. */
     if(!filesystem::exists(config::GetDataDir()) && filesystem::create_directory(config::GetDataDir()))
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
-        
+
 
     /** Handle the beta server. */
     uint16_t nPort = 0;
@@ -129,6 +129,20 @@ int main(int argc, char** argv)
         /* Initialize the Legacy Server. */
         LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(nPort);
     }
+
+    /** Startup the time server. **/
+    LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
+        9324,
+        10,
+        30,
+        false,
+        0,
+        0,
+        10,
+        config::GetBoolArg(std::string("-unified"), false),
+        config::GetBoolArg(std::string("-meters"), false),
+        true,
+        30000);
 
     /* Startup timer stats. */
     uint32_t nElapsed = 0;
@@ -176,25 +190,11 @@ int main(int argc, char** argv)
             Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
 
 
-        /** Startup the time server. **/
-        LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
-            9324,
-            10,
-            30,
-            false,
-            0,
-            0,
-            10,
-            config::GetBoolArg(std::string("-unified"), false),
-            config::GetBoolArg(std::string("-meters"), false),
-            true,
-            30000);
+        /* Initialize API Pointers. */
+        TAO::API::Initialize();
 
         /* Get the port for the Core API Server. */
         nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), 8080));
-
-        /* Initialize API Pointers. */
-        TAO::API::Initialize();
 
         /* Create the Core API Server. */
         LLP::API_SERVER = new LLP::Server<LLP::APINode>(
@@ -208,6 +208,7 @@ int main(int argc, char** argv)
             config::GetBoolArg("-listen", true),
             false,
             false);
+
 
         /* Get the port for the Core API Server. */
         nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet? 8336 : 9336));
@@ -232,6 +233,7 @@ int main(int argc, char** argv)
         else
             LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
 
+
         /* Set up Mining Server */
         if(config::GetBoolArg(std::string("-mining")))
         {
@@ -241,9 +243,11 @@ int main(int argc, char** argv)
               LLP::TRITIUM_MINING_SERVER = LLP::CreateMiningServer<LLP::TritiumMiner>();
         }
 
+
         /* Elapsed Milliseconds from timer. */
         nElapsed = timer.ElapsedMilliseconds();
         timer.Stop();
+
 
         /* If wallet is not encrypted, it is unlocked by default. Start stake minter now. It will run until stopped by system shutdown. */
         if (!Legacy::Wallet::GetInstance().IsCrypted())
@@ -268,12 +272,20 @@ int main(int argc, char** argv)
             SHUTDOWN.wait(SHUTDOWN_LOCK, []{ return config::fShutdown.load(); });
         }
 
+
         /* GDB mode waits for keyboard input to initiate clean shutdown. */
         else
         {
             getchar();
             config::fShutdown = true;
         }
+
+
+        /* Stop stake minter if it is running (before server shutdown). */
+        if(config::GetBoolArg(std::string("-beta")))
+            Legacy::LegacyMinter::GetInstance().Stop();
+        else
+            TAO::Ledger::TritiumMinter::GetInstance().Stop();
 
 
         /* Wait for the private condition. */
@@ -283,6 +295,8 @@ int main(int argc, char** argv)
             thread.join();
         }
     }
+    else
+        debug::error(FUNCTION, "Failed to Initialize LLP. Is a wallet daemon running?");
 
 
     /* Shutdown metrics. */

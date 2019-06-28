@@ -99,11 +99,11 @@ namespace TAO
             {
                 /* Get the last transaction. */
                 uint512_t hashLast;
-                if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
+                if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-138, "No previous transaction found");
 
                 /* Get previous transaction */
-                if(!LLD::Ledger->ReadTx(hashLast, txPrev))
+                if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-138, "No previous transaction found");
             }
 

@@ -82,7 +82,7 @@ namespace LLP
          *  Prints information about this address.
          *
          **/
-        virtual void Print();
+        virtual void Print() const;
 
     protected:
 

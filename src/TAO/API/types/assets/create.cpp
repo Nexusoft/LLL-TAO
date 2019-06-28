@@ -84,6 +84,10 @@ namespace TAO
                 if(params.find("data") == params.end())
                     throw APIException(-18, "Missing data");
 
+                /* Check data is in a string field */
+                if(!params["data"].is_string())
+                    throw APIException(-19, "Data must be a string with this asset format.");
+
                 /* Serialise the incoming data into a state register*/
                 DataStream ssData(SER_REGISTER, 1);
 
@@ -125,7 +129,7 @@ namespace TAO
                         asset << it.key() << uint8_t(TAO::Register::TYPES::STRING) << strValue;
                     }
                     else
-                        throw APIException(-19, "Non-string types not supported in basic format.");
+                        throw APIException(-19, "Data must be a string with this asset format.");
                 }
 
                 if(nFieldCount == 0)
@@ -177,8 +181,18 @@ namespace TAO
 
                     /* Convert the value to bytes if the type is bytes */
                     if(strType == "bytes")
-                        vchBytes = encoding::DecodeBase64(strValue.c_str(), &fBytesInvalid);
-
+                    {
+                        try
+                        {
+                            vchBytes = encoding::DecodeBase64(strValue.c_str(), &fBytesInvalid);
+                        }
+                        catch(const std::exception& e)
+                        {
+                            fBytesInvalid = true;
+                        }
+                        
+                        
+                    }
                     /* Declare the max length variable */
                     size_t nMaxLength = 0;
 
@@ -263,6 +277,11 @@ namespace TAO
 
                         asset << uint8_t(TAO::Register::TYPES::BYTES) << vchBytes;
                     }
+                    else
+                    {
+                        throw APIException(-154, "Invalid field type " + strType);
+                    }
+                    
 
                     /* Increment total fields. */
                     ++nFieldCount;

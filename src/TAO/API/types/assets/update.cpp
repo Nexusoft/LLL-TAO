@@ -98,15 +98,15 @@ namespace TAO
                created as a raw format asset */
             TAO::Register::Object asset;
             if(!LLD::Register->ReadState(hashRegister, asset, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-24, "Asset not found");
+                throw APIException(-34, "Asset not found");
 
             /* Check that this is an updatable object, i.e. not a raw / append obejct */
             if(asset.nType != TAO::Register::REGISTER::OBJECT)
-                throw APIException(-24, "Raw assets can not be updated ");
+                throw APIException(-155, "Raw assets can not be updated");
 
             /* Ensure that the object is an asset */
             if(!asset.Parse() || asset.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
-                throw APIException(-24, "Name / address is not an asset");
+                throw APIException(-35, "Specified name/address is not an asset");
 
             /* Declare operation stream to serialize all of the field updates*/
             TAO::Operation::Stream ssOperationStream;
@@ -135,10 +135,10 @@ namespace TAO
                         /* Check that the data field exists in the asset */
                         uint8_t nType = TAO::Register::TYPES::UNSUPPORTED;
                         if(!asset.Type(strDataField, nType))
-                            throw APIException(-25, debug::safe_printstr("Field not found in asset: ", strDataField));
+                            throw APIException(-156, debug::safe_printstr("Field not found in asset ", strDataField));
 
                         if(!asset.Check(strDataField, nType, true))
-                            throw APIException(-25, debug::safe_printstr("Field not mutable in asset: ", strDataField));
+                            throw APIException(-157, debug::safe_printstr("Field not mutable in asset ", strDataField));
 
                         /* Convert the incoming value to the correct type and write it into the asset object */
                         if(nType == TAO::Register::TYPES::UINT8_T)
@@ -160,7 +160,7 @@ namespace TAO
                             /* Check that the incoming value is not longer than the current value */
                             size_t nMaxLength = asset.Size(strDataField);
                             if(strValue.length() > nMaxLength)
-                                throw APIException(-25, debug::safe_printstr("Value longer than maximum length: ", strDataField));
+                                throw APIException(-158, debug::safe_printstr("Value longer than maximum length ", strDataField));
 
                             /* Ensure that the serialized value is padded out to the max length */
                             strValue.resize(nMaxLength);
@@ -179,7 +179,7 @@ namespace TAO
                             /* Check that the incoming value is not longer than the current value */
                             size_t nMaxLength = asset.Size(strDataField);
                             if(vchBytes.size() > nMaxLength)
-                                throw APIException(-25, debug::safe_printstr("Value longer than maximum length: ", strDataField));
+                                throw APIException(-158, debug::safe_printstr("Value longer than maximum length ", strDataField));
 
                             /* Ensure that the serialized value is padded out to the max length */
                             vchBytes.resize(nMaxLength);
@@ -189,7 +189,7 @@ namespace TAO
                     }
                     else
                     {
-                        throw APIException(-25, "Non-string types not supported in basic format.");
+                        throw APIException(-159, "Values must be passed in as strings");
                     }
                 }
             }
