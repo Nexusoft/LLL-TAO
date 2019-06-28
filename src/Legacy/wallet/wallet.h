@@ -714,11 +714,12 @@ namespace Legacy
          *
          *  @param[in] tx The transaction to check
          *
-         *  @param[in] containingBlock The block containing the transaction
+         *  @param[in, out] state The block containing the transaction, pass IsNull() block if transaction not added to block yet
          *
          *  @param[in] fUpdate Flag indicating whether or not to update transaction already in wallet
          *
-         *  @param[in] fFindBlock No longer used
+         *  @param[in] fFindBlock Set true if don't know block containing the tx
+         *                        Method will find the containing block and return it via the parameter reference
          *
          *  @param[in] fRescan Set true if processing as part of wallet rescan
          *                     This will set WalletTx time to tx time if it is added (otherwise uses current timestamp)
@@ -726,7 +727,7 @@ namespace Legacy
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::BlockState& containingBlock,
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, TAO::Ledger::BlockState& state,
                                       bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
 
 
@@ -759,7 +760,7 @@ namespace Legacy
          *  Add/update the current wallet transactions for anyhat found.
          *
          *  @param[in] pState Block state for location in block chain to start the scan.
-         *                    If nullptr, will scan full chain from Genesis
+         *                    (no longer used, scans full chain)
          *
          *  @param[in] fUpdate If true, any transaction found by scan that is already in the
          *                     wallet will be updated
