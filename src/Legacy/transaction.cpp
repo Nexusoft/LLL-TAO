@@ -353,9 +353,6 @@ namespace Legacy
     /* Get the total calculated coinstake reward for a Proof of Stake block */
     bool Transaction::CoinstakeReward(const TAO::Ledger::BlockState& block, uint64_t& nStakeReward) const
     {
-        /* Use appropriate settings for Testnet or Mainnet */
-        uint32_t nMaxTrustScore = config::fTestNet.load() ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX;
-
         /* Check that the transaction is Coinstake. */
         if(!IsCoinStake())
             return debug::error(FUNCTION, "not coinstake transaction");
@@ -380,7 +377,14 @@ namespace Legacy
             /* Read the trust key from the disk. */
             Legacy::TrustKey trustKey;
             if(LLD::Trust->ReadTrustKey(cKey, trustKey))
+            {
+                /* This method can be called on a candidate block to calculate reward for it,
+                 * so don't use the StakeRate version that takes the BlockState. This would
+                 * fail because coinstake tx not in database. But this tx is the coinstake tx
+                 * so can call the version that takes tx directly and pass *this
+                 */
                 nStakeRate = trustKey.StakeRate(block, nTime);
+            }
 
             /* Check if it failed to read and this is genesis. */
             else if(!IsGenesis())
@@ -396,8 +400,20 @@ namespace Legacy
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
             if(!LLD::Ledger->ReadBlock(vin[nIndex].prevout.hash, statePrev))
-                if(!LLD::Ledger->RepairIndex(vin[nIndex].prevout.hash, block))
+            {
+                if (block.hashPrevBlock == 0)
+                {
+                    /* Current state is not connected (eg, this is a candidate block)
+                     * so begin repair from best state
+                     */
+                    statePrev = TAO::Ledger::ChainState::stateBest.load();
+                }
+                else
+                    statePrev = block;
+
+                if(!LLD::Ledger->RepairIndex(vin[nIndex].prevout.hash, statePrev))
                     return debug::error(FUNCTION, "failed to read previous tx block");
+            }
 
             /* Read the previous transaction. */
             Legacy::Transaction txPrev;
@@ -412,10 +428,20 @@ namespace Legacy
             nTotalCoins += nValue;
             nAverageAge += nCoinAge;
 
-            /* Reward rate for time period is annual rate * (time period / annual time) = nStakeRate * (nCoinAge / nMaxTrustScore)
-             * Then, nStakeReward = nValue * reward rate
+            /* Reward rate for time period is annual rate * (time period / annual time) = nStakeRate * (nCoinAge / ONE_YEAR)
+             * Then, nStakeReward = nValue * reward rate.
+             *
+             * But, while easier to understand if write as nValue * nStakeRate * (nCoinAge / ONE_YEAR)
+             * you can't do that because this is integer math. It will do division first, which will be zero
+             *
+             * Instead, write as (nValue * nStakeRate * nCoinAge) / ONE_YEAR
+             * thus saving any truncation from integer division until the final result.
+             *
+             * Formerly, this calculation used TAO::Ledger::TRUST_SCORE_MAX which was set to same value
+             * as ONE_YEAR. However, rate is ALWAYS annual, regardless of the possible max trust score which
+             * could at some point be changed. Thus, ONE_YEAR was defined and used here instead.
              */
-            nStakeReward += ((nValue * nStakeRate * nCoinAge) / nMaxTrustScore);
+            nStakeReward += ((nValue * nStakeRate * nCoinAge) / TAO::Ledger::ONE_YEAR);
         }
 
         nAverageAge /= (nInSize - 1);
@@ -658,7 +684,7 @@ namespace Legacy
         std::string str;
         str += IsCoinBase() ? "Coinbase" : (IsGenesis() ? "Genesis" : (IsTrust() ? "Trust" : "Transaction"));
         str += debug::safe_printstr(
-            "(hash=", GetHash().ToString().substr(0,10),
+            "(hash=", GetHash().SubString(10),
             ", nTime=", nTime,
             ", ver=", nVersion,
             ", vin.size=", vin.size(),
@@ -764,17 +790,14 @@ namespace Legacy
             if(inputs.count(prevout.hash))
                 continue;
 
-            /* Check for existing indexes. */
-            if(!LLD::Ledger->HasIndex(prevout.hash))
-                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), "not connected");
-
             /* Read the previous transaction. */
             Transaction txPrev;
             if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
-            {
-                //TODO: check the memory pool for previous
-                return debug::error(FUNCTION, "previous transaction ", prevout.hash.ToString().substr(0, 20), " not found");
-            }
+                return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not found");
+
+            /* Check for existing indexes. */
+            if(!LLD::Ledger->HasIndex(prevout.hash))
+                return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not connected");
 
             /* Check that it is valid. */
             if(prevout.n >= txPrev.vout.size())
@@ -811,6 +834,8 @@ namespace Legacy
 
                 return true;
             }
+
+            /* When reach here, tx is not a coinbase (just processed), so the rest handles coinstake */
 
             /* Get the trust key. */
             std::vector<uint8_t> vTrustKey;
@@ -866,7 +891,7 @@ namespace Legacy
             trustKey.nLastBlockTime = nBlockTime;
 
             /* Get the stake rate. */
-            trustKey.nStakeRate     = trustKey.StakeRate(state, nBlockTime);
+            trustKey.nStakeRate = trustKey.StakeRate(state, nBlockTime);
 
             /* Write the trust key. */
             LLD::Trust->WriteTrustKey(cKey, trustKey);
@@ -900,8 +925,12 @@ namespace Legacy
             {
                 TAO::Ledger::BlockState statePrev;
                 if(!LLD::Ledger->ReadBlock(txPrev.GetHash(), statePrev))
-                    if(!LLD::Ledger->RepairIndex(txPrev.GetHash(), state))
+                {
+                    /* On failure to read, attempt to retrieve the prev state via an index repair */
+                    statePrev = state;
+                    if(!LLD::Ledger->RepairIndex(txPrev.GetHash(), statePrev))
                         return debug::error(FUNCTION, "failed to read previous tx block");
+                }
 
                 /* Check the maturity. */
                 if((state.nHeight - statePrev.nHeight) < (config::fTestNet.load() ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
@@ -919,7 +948,7 @@ namespace Legacy
 
             /* Check for double spends. */
             if(LLD::Legacy->IsSpent(prevout.hash, prevout.n))
-                return debug::error(FUNCTION, "prev tx ", prevout.hash.ToString().substr(0, 20), " is already spent");
+                return debug::error(FUNCTION, "prev tx ", prevout.hash.SubString(), " is already spent");
 
             /* Check the ECDSA signatures. (...When not syncronizing) */
             if(!TAO::Ledger::ChainState::Synchronizing() && !VerifySignature(txPrev, *this, i, 0))
@@ -937,15 +966,15 @@ namespace Legacy
             /* Get the coinstake interest. */
             uint64_t nStakeReward = 0;
             if(!CoinstakeReward(state, nStakeReward))
-                return debug::error(FUNCTION, GetHash().ToString().substr(0, 10), " failed to get coinstake interest");
+                return debug::error(FUNCTION, GetHash().SubString(10), " failed to get coinstake interest");
 
             /* Check that the interest is within range. */
             //add tolerance to stake reward of + 1 (viz.) for stake rewards
-            if(vout[0].nValue > nStakeReward + nValueIn + 1)
-                return debug::error(FUNCTION, GetHash().ToString().substr(0,10), " stake reward ", vout[0].nValue, " mismatch ", nStakeReward + nValueIn);
+            if (vout[0].nValue / 1000 > (nStakeReward + nValueIn) / 1000)
+                return debug::error(FUNCTION, GetHash().SubString(), " stake reward ", vout[0].nValue / 1000, " mismatch ", (nStakeReward + nValueIn) / 1000);
         }
         else if(nValueIn < GetValueOut())
-            return debug::error(FUNCTION, GetHash().ToString().substr(0,10), "value in < value out");
+            return debug::error(FUNCTION, GetHash().SubString(), "value in < value out");
 
         /* Calculate the mint if connected with a block. */
         if(nFlags == FLAGS::BLOCK)
@@ -1037,8 +1066,8 @@ namespace Legacy
         /* Ensure the last block being checked is the same trust key. */
         if(keyLast != cKey)
             return debug::error(FUNCTION,
-                "trust key in previous block ", cKey.ToString().substr(0, 20),
-                " to this one ", keyLast.ToString().substr(0, 20));
+                "trust key in previous block ", cKey.SubString(),
+                " to this one ", keyLast.SubString());
 
         /* Placeholder in case previous block is a version 4 block. */
         uint32_t nScorePrev = 0;

@@ -21,7 +21,7 @@ namespace Legacy
 	/* Full object debug output */
 	std::string OutPoint::ToString() const
 	{
-		return debug::safe_printstr("OutPoint(", hash.ToString().substr(0, 20), ", ", n, ")");
+		return debug::safe_printstr("OutPoint(", hash.SubString(), ", ", n, ")");
 	}
 
 

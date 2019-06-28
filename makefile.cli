@@ -190,21 +190,27 @@ HEADERS= $(wildcard *.h)
 #Run Unit Tests
 ifdef UNIT_TESTS
 	OBJS = build/Tests_main.o \
-		   build/Tests_aes.o \
-		   build/Tests_testvm.o \
-		   build/Tests_objects.o \
-		   build/Tests_rollback.o \
-		   build/Tests_block.o \
-		   build/Tests_mempool.o \
-		   build/Tests_register.o \
-		   build/Tests_debit.o \
-		   build/Tests_trust.o \
-		   build/Tests_validate.o \
-		   build/Tests_write.o \
-		   build/Tests_conditions.o \
-		   build/Tests_contract.o \
-		   build/Tests_transfer.o \
-           build/Tests_hex.o
+		   build/Tests_LLC_aes.o \
+		   build/Tests_TAO_API_assets.o \
+		   build/Tests_TAO_API_finance.o \
+		   build/Tests_TAO_API_tokens.o \
+		   build/Tests_TAO_API_users.o \
+		   build/Tests_TAO_API_util.o \
+		   build/Tests_TAO_Ledger_block.o \
+		   build/Tests_TAO_Ledger_mempool.o \
+		   build/Tests_TAO_Register_objects.o \
+		   build/Tests_TAO_Register_rollback.o \
+		   build/Tests_TAO_Register_testvm.o \
+		   build/Tests_TAO_Operation_conditions.o \
+		   build/Tests_TAO_Operation_contract.o \
+		   build/Tests_TAO_Operation_debit.o \
+		   build/Tests_TAO_Operation_names.o \
+		   build/Tests_TAO_Operation_register.o \
+		   build/Tests_TAO_Operation_transfer.o \
+		   build/Tests_TAO_Operation_trust.o \
+		   build/Tests_TAO_Operation_validate.o \
+		   build/Tests_TAO_Operation_write.o \
+		   build/Tests_Util_hex.o
 
 	DEFS += -DUNIT_TESTS
 
@@ -298,62 +304,81 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_tritium.o \
 		build/LLP_tritium_miner.o \
 		build/LLP_trust_address.o \
-		build/API_global.o \
-		build/API_cmd.o \
-		build/API_assets_claim.o \
-		build/API_assets_create.o \
-		build/API_assets_get.o \
-		build/API_assets_history.o \
-		build/API_assets_initialize.o \
-		build/API_assets_tokenize.o \
-		build/API_assets_transfer.o \
-		build/API_assets_update.o \
-		build/API_finance_create.o \
-		build/API_finance_credit.o \
-		build/API_finance_debit.o \
-		build/API_finance_get.o \
-		build/API_finance_info.o \
-		build/API_finance_initialize.o \
-		build/API_finance_list.o \
-		build/API_finance_stake.o \
-		build/API_ledger_block.o \
-		build/API_ledger_initialize.o \
-		build/API_ledger_state.o \
-		build/API_ledger_transaction.o \
-		build/API_system_lisp.o \
-		build/API_system_system.o \
-		build/API_RPC_account.o \
-		build/API_RPC_daemon.o \
-		build/API_RPC_info.o \
-		build/API_RPC_network.o \
-		build/API_RPC_rpc.o \
-		build/API_RPC_wallet.o \
-		build/API_supply_claim.o \
-		build/API_supply_createitem.o \
-		build/API_supply_getitem.o \
-		build/API_supply_history.o \
-		build/API_supply_initialize.o \
-		build/API_supply_transfer.o \
-		build/API_supply_updateitem.o \
-		build/API_tokens_create.o \
-		build/API_tokens_credit.o \
-		build/API_tokens_debit.o \
-		build/API_tokens_get.o \
-		build/API_tokens_initialize.o \
-		build/API_users_accounts.o \
-		build/API_users_assets.o \
-		build/API_users_create.o \
-		build/API_users_events.o \
-		build/API_users_lock.o \
-		build/API_users_login.o \
-		build/API_users_logout.o \
-		build/API_users_notifications.o \
-		build/API_users_tokens.o \
-		build/API_users_transactions.o \
-		build/API_users_unlock.o \
-		build/API_users_users.o \
-		build/API_utils_utils.o \
-		build/API_utils_jsonutils.o \
+		build/API_types_assets_claim.o \
+		build/API_types_assets_create.o \
+		build/API_types_assets_get.o \
+		build/API_types_assets_history.o \
+		build/API_types_assets_initialize.o \
+		build/API_types_assets_tokenize.o \
+		build/API_types_assets_transfer.o \
+		build/API_types_assets_update.o \
+		build/API_types_dex_buy.o \
+		build/API_types_dex_sell.o \
+		build/API_types_dex_initialize.o \
+		build/API_types_finance_create.o \
+		build/API_types_finance_credit.o \
+		build/API_types_finance_debit.o \
+		build/API_types_finance_get.o \
+		build/API_types_finance_info.o \
+		build/API_types_finance_initialize.o \
+		build/API_types_finance_list.o \
+		build/API_types_finance_stake.o \
+		build/API_types_ledger_block.o \
+		build/API_types_ledger_initialize.o \
+		build/API_types_ledger_state.o \
+		build/API_types_ledger_transaction.o \
+		build/API_types_names_claim.o \
+		build/API_types_names_create.o \
+		build/API_types_names_get.o \
+		build/API_types_names_history.o \
+		build/API_types_names_initialize.o \
+		build/API_types_names_names.o \
+		build/API_types_names_transfer.o \
+		build/API_types_names_update.o \
+		build/API_types_objects_claim.o \
+		build/API_types_objects_history.o \
+		build/API_types_objects_list.o \
+		build/API_types_objects_transfer.o \
+		build/API_types_RPC_account.o \
+		build/API_types_RPC_daemon.o \
+		build/API_types_RPC_info.o \
+		build/API_types_RPC_network.o \
+		build/API_types_RPC_rpc.o \
+		build/API_types_RPC_wallet.o \
+		build/API_types_supply_claim.o \
+		build/API_types_supply_createitem.o \
+		build/API_types_supply_getitem.o \
+		build/API_types_supply_history.o \
+		build/API_types_supply_initialize.o \
+		build/API_types_supply_transfer.o \
+		build/API_types_supply_updateitem.o \
+		build/API_types_system_lisp.o \
+		build/API_types_system_system.o \
+		build/API_types_tokens_create.o \
+		build/API_types_tokens_credit.o \
+		build/API_types_tokens_debit.o \
+		build/API_types_tokens_get.o \
+		build/API_types_tokens_initialize.o \
+		build/API_types_users_accounts.o \
+		build/API_types_users_assets.o \
+		build/API_types_users_create.o \
+		build/API_types_users_events.o \
+        build/API_types_users_initialize.o \
+		build/API_types_users_items.o \
+		build/API_types_users_lock.o \
+		build/API_types_users_login.o \
+		build/API_types_users_logout.o \
+		build/API_types_users_names.o \
+		build/API_types_users_namespaces.o \
+		build/API_types_users_notifications.o \
+		build/API_types_users_tokens.o \
+		build/API_types_users_transactions.o \
+		build/API_types_users_unlock.o \
+		build/API_types_users_users.o \
+		build/API_utils.o \
+		build/API_json.o \
+        build/API_global.o \
+        build/API_cmd.o \
 		build/Operation_append.o \
 		build/Operation_claim.o \
 		build/Operation_condition.o \
@@ -415,7 +440,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_ambassador.o \
 		build/Legacy_basickeystore.o \
 		build/Legacy_create.o \
-		build/Legacy_crypted.o \
 		build/Legacy_crypter.o \
 		build/Legacy_cryptokeystore.o \
 		build/Legacy_db.o \
@@ -532,31 +556,37 @@ build/LLP_%.o: ./src/LLP/%.cpp $(HEADERS)
 build/API_%.o: ./src/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_assets_%.o: ./src/TAO/API/assets/%.cpp $(HEADERS)
+build/API_types_assets_%.o: ./src/TAO/API/types/assets/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_finance_%.o: ./src/TAO/API/finance/%.cpp $(HEADERS)
+build/API_types_dex_%.o: ./src/TAO/API/types/dex/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_ledger_%.o: ./src/TAO/API/ledger/%.cpp $(HEADERS)
+build/API_types_finance_%.o: ./src/TAO/API/types/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_RPC_%.o: ./src/TAO/API/RPC/%.cpp $(HEADERS)
+build/API_types_ledger_%.o: ./src/TAO/API/types/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_supply_%.o: ./src/TAO/API/supply/%.cpp $(HEADERS)
+build/API_types_names_%.o: ./src/TAO/API/types/names/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_tokens_%.o: ./src/TAO/API/tokens/%.cpp $(HEADERS)
+build/API_types_objects_%.o: ./src/TAO/API/types/objects/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_users_%.o: ./src/TAO/API/users/%.cpp $(HEADERS)
+build/API_types_RPC_%.o: ./src/TAO/API/types/RPC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_utils_%.o: ./src/TAO/API/utils/%.cpp $(HEADERS)
+build/API_types_supply_%.o: ./src/TAO/API/types/supply/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_system_%.o: ./src/TAO/API/system/%.cpp $(HEADERS)
+build/API_types_tokens_%.o: ./src/TAO/API/types/tokens/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_types_users_%.o: ./src/TAO/API/types/users/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_types_system_%.o: ./src/TAO/API/types/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Ledger_%.o: ./src/TAO/Ledger/%.cpp $(HEADERS)
@@ -577,25 +607,28 @@ build/Legacy_%.o: ./src/Legacy/%.cpp $(HEADERS)
 build/Tests_%.o: ./tests/unit/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/LLC/%.cpp $(HEADERS)
+build/Tests_LLC_%.o: ./tests/unit/LLC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/LLD/%.cpp $(HEADERS)
+build/Tests_LLD_%.o: ./tests/unit/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/LLP/%.cpp $(HEADERS)
+build/Tests_LLP_%.o: ./tests/unit/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/TAO/Ledger/%.cpp $(HEADERS)
+build/Tests_TAO_API_%.o: ./tests/unit/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/TAO/Operation/%.cpp $(HEADERS)
+build/Tests_TAO_Ledger_%.o: ./tests/unit/TAO/Ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/TAO/Register/%.cpp $(HEADERS)
+build/Tests_TAO_Operation_%.o: ./tests/unit/TAO/Operation/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/Tests_%.o: ./tests/unit/Util/%.cpp $(HEADERS)
+build/Tests_TAO_Register%.o: ./tests/unit/TAO/Register/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/Tests_Util_%.o: ./tests/unit/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Benchmarks_%.o: ./tests/bench/%.cpp $(HEADERS)
@@ -766,63 +799,77 @@ build/API_%.o: src/TAO/API/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_assets_%.o: src/TAO/API/assets/%.cpp $(HEADERS)
+build/API_types_assets_%.o: src/TAO/API/types/assets/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_finance_%.o: src/TAO/API/finance/%.cpp $(HEADERS)
+build/API_types_dex_%.o: src/TAO/API/types/dex/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_ledger_%.o: src/TAO/API/ledger/%.cpp $(HEADERS)
+build/API_types_finance_%.o: src/TAO/API/types/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_RPC_%.o: src/TAO/API/RPC/%.cpp $(HEADERS)
+build/API_types_ledger_%.o: src/TAO/API/types/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_supply_%.o: src/TAO/API/supply/%.cpp $(HEADERS)
+build/API_types_names_%.o: src/TAO/API/types/names/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_tokens_%.o: src/TAO/API/tokens/%.cpp $(HEADERS)
+build/API_types_objects_%.o: src/TAO/API/types/objects/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_users_%.o: src/TAO/API/users/%.cpp $(HEADERS)
+build/API_types_RPC_%.o: src/TAO/API/types/RPC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_system_%.o: src/TAO/API/system/%.cpp $(HEADERS)
+build/API_types_supply_%.o: src/TAO/API/types/supply/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_utils_%.o: src/TAO/API/utils/%.cpp $(HEADERS)
+build/API_types_tokens_%.o: src/TAO/API/types/tokens/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_users_%.o: src/TAO/API/types/users/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_system_%.o: src/TAO/API/types/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -871,49 +918,56 @@ build/Tests_%.o: tests/unit/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/LLC/%.cpp $(HEADERS)
+build/Tests_LLC_%.o: tests/unit/LLC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/LLD/%.cpp $(HEADERS)
+build/Tests_LLD_%.o: tests/unit/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/LLP/%.cpp $(HEADERS)
+build/Tests_LLP_%.o: tests/unit/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/TAO/Ledger/%.cpp $(HEADERS)
+build/Tests_TAO_API_%.o: tests/unit/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/TAO/Operation/%.cpp $(HEADERS)
+build/Tests_TAO_Ledger_%.o: tests/unit/TAO/Ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/TAO/Register/%.cpp $(HEADERS)
+build/Tests_TAO_Operation_%.o: tests/unit/TAO/Operation/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/Util/%.cpp $(HEADERS)
+build/Tests_TAO_Register_%.o: tests/unit/TAO/Register/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Tests_Util_%.o: tests/unit/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1133,63 +1187,77 @@ build/API_%.o: src/TAO/API/%.cpp
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_assets_%.o: src/TAO/API/assets/%.cpp
+build/API_types_assets_%.o: src/TAO/API/types/assets/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_finance_%.o: src/TAO/API/finance/%.cpp
+build/API_types_dex_%.o: src/TAO/API/types/dex/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_ledger_%.o: src/TAO/API/ledger/%.cpp
+build/API_types_finance_%.o: src/TAO/API/types/finance/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_RPC_%.o: src/TAO/API/RPC/%.cpp
+build/API_types_ledger_%.o: src/TAO/API/types/ledger/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_supply_%.o: src/TAO/API/supply/%.cpp
+build/API_types_names_%.o: src/TAO/API/types/names/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_tokens_%.o: src/TAO/API/tokens/%.cpp
+build/API_types_objects_%.o: src/TAO/API/types/objects/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_users_%.o: src/TAO/API/users/%.cpp
+build/API_types_RPC_%.o: src/TAO/API/types/RPC/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_system_%.o: src/TAO/API/system/%.cpp
+build/API_types_supply_%.o: src/TAO/API/types/supply/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_utils_%.o: src/TAO/API/utils/%.cpp
+build/API_types_tokens_%.o: src/TAO/API/types/tokens/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_users_%.o: src/TAO/API/types/users/%.cpp
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_system_%.o: src/TAO/API/types/system/%.cpp
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1238,49 +1306,56 @@ build/Tests_%.o: tests/unit/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/LLC/%.cpp $(HEADERS)
+build/Tests_LLC_%.o: tests/unit/LLC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/LLD/%.cpp $(HEADERS)
+build/Tests_LLD_%.o: tests/unit/LLD/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/LLP/%.cpp $(HEADERS)
+build/Tests_LLP_%.o: tests/unit/LLP/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/TAO/Ledger/%.cpp $(HEADERS)
+build/Tests_TAO_API_%.o: tests/unit/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/TAO/Operation/%.cpp $(HEADERS)
+build/Tests_TAO_Ledger_%.o: tests/unit/TAO/Ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/TAO/Register/%.cpp $(HEADERS)
+build/Tests_TAO_Operation_%.o: tests/unit/TAO/Operation/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/Tests_%.o: tests/unit/Util/%.cpp $(HEADERS)
+build/Tests_TAO_Register_%.o: tests/unit/TAO/Register/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Tests_Util_%.o: tests/unit/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

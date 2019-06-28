@@ -13,9 +13,11 @@ ________________________________________________________________________________
 
 #pragma once
 
-#include <map>
 #include <LLC/types/uint1024.h>
 #include <Util/include/debug.h>
+
+#include <map>
+
 
 namespace Legacy
 {

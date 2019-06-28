@@ -48,6 +48,8 @@ namespace TAO
 
             /** Default Constructor. **/
             Function()
+            : function()
+            , fEnabled(true)
             {
             }
 

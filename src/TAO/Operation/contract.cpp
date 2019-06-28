@@ -32,6 +32,7 @@ namespace TAO
         , hashCaller(0)
         , nTimestamp(0)
         , hashTx(0)
+        , nOutput(0)
         {
         }
 
@@ -44,6 +45,7 @@ namespace TAO
         , hashCaller(contract.hashCaller)
         , nTimestamp(contract.nTimestamp)
         , hashTx(contract.hashTx)
+        , nOutput(contract.nOutput)
         {
         }
 
@@ -56,6 +58,7 @@ namespace TAO
         , hashCaller(contract.hashCaller)
         , nTimestamp(contract.nTimestamp)
         , hashTx(contract.hashTx)
+        , nOutput(contract.nOutput)
         {
         }
 
@@ -72,6 +75,7 @@ namespace TAO
             hashCaller  = contract.hashCaller;
             nTimestamp  = contract.nTimestamp;
             hashTx      = contract.hashTx;
+            nOutput     = contract.nOutput;
 
 
             return *this;
@@ -79,11 +83,12 @@ namespace TAO
 
 
         /* Bind the contract to a transaction. */
-        void Contract::Bind(const TAO::Ledger::Transaction& tx) const
+        void Contract::Bind(const TAO::Ledger::Transaction& tx, uint32_t nContract) const
         {
             hashCaller = tx.hashGenesis;
             nTimestamp = tx.nTimestamp;
             hashTx     = tx.GetHash();
+            nOutput    = nContract;
         }
 
 
@@ -96,6 +101,12 @@ namespace TAO
 
             /* Return first byte. */
             return ssOperation.get(0);
+        }
+
+
+        uint32_t Contract::Output() const
+        {
+            return nOutput;
         }
 
 

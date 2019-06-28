@@ -37,7 +37,9 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 
-/* Global TAO namespace. */
+#include <cmath>
+
+
 namespace Legacy
 {
 
@@ -118,10 +120,10 @@ namespace Legacy
     std::string LegacyBlock::ToString() const
     {
         return debug::safe_printstr("Legacy Block("
-            VALUE("hash")     " = ", GetHash().ToString().substr(0, 20), " ",
+            VALUE("hash")     " = ", GetHash().SubString(), " ",
             VALUE("nVersion") " = ", nVersion, ", ",
-            VALUE("hashPrevBlock") " = ", hashPrevBlock.ToString().substr(0, 20), ", ",
-            VALUE("hashMerkleRoot") " = ", hashMerkleRoot.ToString().substr(0, 20), ", ",
+            VALUE("hashPrevBlock") " = ", hashPrevBlock.SubString(), ", ",
+            VALUE("hashMerkleRoot") " = ", hashMerkleRoot.SubString(), ", ",
             VALUE("nChannel") " = ", nChannel, ", ",
             VALUE("nHeight") " = ", nHeight, ", ",
             VALUE("nBits") " = ", nBits, ", ",
@@ -309,7 +311,7 @@ namespace Legacy
     {
         /* Check for duplicates */
         if(LLD::Ledger->HasBlock(GetHash()))
-            return debug::error(FUNCTION, "already have block ", GetHash().ToString().substr(0, 20), " height=", nHeight);
+            return debug::error(FUNCTION, "already have block ", GetHash().SubString(), " height=", nHeight);
 
         /* Print the block on verbose 2. */
         if(config::GetArg("-verbose", 0) >= 2)
@@ -331,11 +333,12 @@ namespace Legacy
         if(nChannel == 1)
             debug::log(2, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(nBits, 1));
         else
-            debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().ToString().substr(0, 30));
+            debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().SubString());
 
         /* Check that the nBits match the current Difficulty. **/
         if(nBits != TAO::Ledger::GetNextTargetRequired(statePrev, nChannel))
-            return debug::error(FUNCTION, "incorrect ", nBits, " proof-of-work/proof-of-stake ", TAO::Ledger::GetNextTargetRequired(statePrev, nChannel));
+            return debug::error(FUNCTION, "incorrect ", nBits,
+                " proof-of-work/proof-of-stake ", TAO::Ledger::GetNextTargetRequired(statePrev, nChannel));
 
         /* Get the block time for this block. */
         uint64_t nBlockTime = GetBlockTime();
@@ -345,7 +348,7 @@ namespace Legacy
             return debug::error(FUNCTION, "block's timestamp too early Block: ", nBlockTime, " Prev: ", statePrev.GetBlockTime());
 
         /* Check that Block is Descendant of Hardened Checkpoints. */
-        if(!TAO::Ledger::ChainState::Synchronizing() && !TAO::Ledger::IsDescendant(statePrev))
+        if(!TAO::Ledger::IsDescendant(statePrev))
             return debug::error(FUNCTION, "not descendant of last checkpoint");
 
         /* Check the block proof of work rewards. */
@@ -364,19 +367,19 @@ namespace Legacy
                 nMiningReward += vtx[0].vout[nIndex].nValue;
 
             /* Check that the Mining Reward Matches the Coinbase Calculations. */
-            if(nMiningReward != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 0))
+            if (nMiningReward / 1000 != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 0) / 1000)
                 return debug::error(FUNCTION, "miner reward mismatch ",
-                    nMiningReward, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 0));
+                    nMiningReward / 1000, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 0) / 1000);
 
             /* Check that the Ambassador Reward Matches the Coinbase Calculations. */
-            if(vtx[0].vout[nSize - 2].nValue != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 1))
+            if (vtx[0].vout[nSize - 2].nValue / 1000 != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 1) / 1000)
                 return debug::error(FUNCTION, "ambassador reward mismatch ",
-                    vtx[0].vout[nSize - 2].nValue, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 1));
+                    vtx[0].vout[nSize - 2].nValue / 1000, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 1) / 1000);
 
             /* Check that the Developer Reward Matches the Coinbase Calculations. */
-            if(vtx[0].vout[nSize - 1].nValue != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 2))
+            if (vtx[0].vout[nSize - 1].nValue / 1000 != TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 2) / 1000)
                 return debug::error(FUNCTION, "developer reward mismatch ",
-                    vtx[0].vout[nSize - 1].nValue, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 2));
+                    vtx[0].vout[nSize - 1].nValue / 1000, " to ", TAO::Ledger::GetCoinbaseReward(statePrev, nChannel, 2) / 1000);
 
         }
         else if(IsProofOfStake())
@@ -450,6 +453,11 @@ namespace Legacy
         /* Make static const for reducing repeated computation. */
         static const double LOG3 = log(3);
 
+        /* Use appropriate settings for Testnet or Mainnet */
+        static const uint32_t nTrustWeightBase = config::fTestNet ? TAO::Ledger::TRUST_WEIGHT_BASE_TESTNET : TAO::Ledger::TRUST_WEIGHT_BASE;
+        static const uint32_t nMaxBlockAge = config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN;
+        static const uint32_t nMinimumCoinAge = config::fTestNet ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE;
+
         /* Check the proof hash of the stake block on version 5 and above. */
         LLC::CBigNum bnTarget;
         bnTarget.SetCompact(nBits);
@@ -457,12 +465,15 @@ namespace Legacy
             return debug::error(FUNCTION, "proof of stake hash not meeting target");
 
         /* Weight for Trust transactions combine block weight and stake weight. */
-        double nTrustWeight = 0.0, nBlockWeight = 0.0;
-        uint32_t nTrustAge = 0, nBlockAge = 0;
+        double nTrustWeight = 0.0;
+        double nBlockWeight = 0.0;
+        uint32_t nTrustScore = 0;
+        uint32_t nBlockAge = 0;
+
         if(vtx[0].IsTrust())
         {
             /* Get the score and make sure it all checks out. */
-            if(!TrustScore(nTrustAge))
+            if(!TrustScore(nTrustScore))
                 return debug::error(FUNCTION, "failed to get trust score");
 
             /* Get the weights with the block age. */
@@ -470,16 +481,16 @@ namespace Legacy
                 return debug::error(FUNCTION, "failed to get block age");
 
             /* Trust Weight Continues to grow the longer you have staked and higher your interest rate */
-            nTrustWeight = std::min(90.0, (((44.0 * log(((2.0 * nTrustAge) /
-                (TAO::Ledger::TRUST_WEIGHT_BASE)) + 1.0)) / LOG3)) + 1.0);
+            double nTrustWeightRatio = (double)nTrustScore / (double)nTrustWeightBase;
+            nTrustWeight = std::min(90.0, (44.0 * log((2.0 * nTrustWeightRatio) + 1.0) / LOG3) + 1.0);
 
             /* Block Weight Reaches Maximum At Trust Key Expiration. */
-            nBlockWeight = std::min(10.0, (((9.0 * log(((2.0 * nBlockAge) /
-                ((config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))) + 1.0)) / LOG3)) + 1.0);
+            double nBlockAgeRatio = (double)nBlockAge / (double)nMaxBlockAge;
+            nBlockWeight = std::min(10.0, (9.0 * log((2.0 * nBlockAgeRatio) + 1.0) / LOG3) + 1.0);
 
         }
 
-        /* Weight for Gensis transactions are based on your coin age. */
+        /* Weight for Genesis transactions are based on your coin age. */
         else
         {
             /* Genesis transaction can't have any transactions. */
@@ -492,24 +503,29 @@ namespace Legacy
                 return debug::error(FUNCTION, "failed to get coinstake age");
 
             /* Genesis has to wait for one full trust key timespan. */
-            if(nCoinAge < (config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN))
+            if(nCoinAge < nMinimumCoinAge)
                 return debug::error(FUNCTION, "genesis age is immature");
 
             /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
-            nTrustWeight = std::min(10.0, (((9.0 * log(((2.0 * nCoinAge) / (TAO::Ledger::TRUST_WEIGHT_BASE)) + 1.0)) / LOG3)) + 1.0);
+            double nGenesisTrustRatio = (double)nCoinAge / (double)nTrustWeightBase;
+            nTrustWeight = std::min(10.0, (9.0 * log((2.0 * nGenesisTrustRatio) + 1.0) / LOG3) + 1.0);
+
+            /* Block Weight remains zero while staking for Genesis */
+            nBlockWeight = 0.0;
         }
 
         /* Check the energy efficiency requirements. */
-        double nThreshold = ((nTime - vtx[0].nTime) * 100.0) / nNonce;
         double nRequired  = ((108.0 - nTrustWeight - nBlockWeight) * TAO::Ledger::MAX_STAKE_WEIGHT) / vtx[0].vout[0].nValue;
+        double nThreshold = ((nTime - vtx[0].nTime) * 100.0) / nNonce;
+
         if(nThreshold < nRequired)
             return debug::error(FUNCTION, "energy threshold too low ", nThreshold, " required ", nRequired);
 
         /* Verbose logging. */
         debug::log(2, FUNCTION,
-            "hash=", StakeHash().ToString().substr(0, 20), ", ",
-            "target=", bnTarget.getuint1024().ToString().substr(0, 20), ", ",
-            "trustscore=", nTrustAge, ", ",
+            "hash=", StakeHash().SubString(), ", ",
+            "target=", bnTarget.getuint1024().SubString(), ", ",
+            "trustscore=", nTrustScore, ", ",
             "blockage=", nBlockAge, ", ",
             "trustweight=", nTrustWeight, ", ",
             "blockweight=", nBlockWeight, ", ",

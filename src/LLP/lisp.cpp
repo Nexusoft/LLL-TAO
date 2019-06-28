@@ -96,7 +96,7 @@ namespace LLP
         /* Declare the return map */
         std::map<std::string, EID> mapEIDs;
 
-        /* LISP not supported on Windows so don't attempt tp make the lispers.net API call, which can take 
+        /* LISP not supported on Windows so don't attempt tp make the lispers.net API call, which can take
            several seconds to timeout on Windows */
 #ifdef WIN32
         return mapEIDs;
@@ -104,7 +104,7 @@ namespace LLP
         try
         {
             /* Attempt to contact the LISP API. */
-            std::string strResponse = LispersAPIRequest( "data/database-mapping");
+            std::string strResponse = LispersAPIRequest("data/database-mapping");
 
             /* Parse items if it succeeded. */
             if(strResponse.length() > 0)

@@ -153,11 +153,11 @@ enum
 #define WRITEDATA(s, obj)   s.write((char*)&(obj), sizeof(obj))
 #define READDATA(s, obj)    s.read((char*)&(obj), sizeof(obj))
 
-inline uint64_t GetSerializeSize( int8_t a,                                     uint32_t, uint32_t=0) { return sizeof(a); }
+inline uint64_t GetSerializeSize(int8_t a,                                     uint32_t, uint32_t=0) { return sizeof(a); }
 inline uint64_t GetSerializeSize(uint8_t a,                                     uint32_t, uint32_t=0) { return sizeof(a); }
-inline uint64_t GetSerializeSize( int16_t a,                                    uint32_t, uint32_t=0) { return sizeof(a); }
+inline uint64_t GetSerializeSize(int16_t a,                                    uint32_t, uint32_t=0) { return sizeof(a); }
 inline uint64_t GetSerializeSize(uint16_t a,                                    uint32_t, uint32_t=0) { return sizeof(a); }
-inline uint64_t GetSerializeSize( int32_t a,                                    uint32_t, uint32_t=0) { return sizeof(a); }
+inline uint64_t GetSerializeSize(int32_t a,                                    uint32_t, uint32_t=0) { return sizeof(a); }
 inline uint64_t GetSerializeSize(uint32_t a,                                    uint32_t, uint32_t=0) { return sizeof(a); }
 inline uint64_t GetSerializeSize(int64_t a,                                     uint32_t, uint32_t=0) { return sizeof(a); }
 inline uint64_t GetSerializeSize(uint64_t a,                                    uint32_t, uint32_t=0) { return sizeof(a); }

@@ -11,9 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <exception>
-#include <mutex>
-
 #include <LLC/hash/SK.h>
 
 #include <Legacy/wallet/keypool.h>
@@ -24,6 +21,10 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+
+#include <exception>
+#include <mutex>
+
 
 namespace Legacy
 {

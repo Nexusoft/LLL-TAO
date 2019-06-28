@@ -61,6 +61,17 @@ namespace TAO
         }
 
 
+        /** Copy constructor from base block. **/
+        TritiumBlock::TritiumBlock(const Block& block)
+        : Block(block)
+        , producer()
+        , ssSystem()
+        , vtx(0)
+        {
+
+        }
+
+
         /** Copy Constructor. **/
         TritiumBlock::TritiumBlock(const TritiumBlock& block)
         : Block(block)
@@ -93,6 +104,14 @@ namespace TAO
         }
 
 
+        /*  Allows polymorphic copying of blocks
+         *  Overridden to return an instance of the TritiumBlock class. */
+        TritiumBlock* TritiumBlock::Clone() const
+        {
+            return new TritiumBlock(*this);
+        }
+
+
         /*  Set the block to Null state. */
         void TritiumBlock::SetNull()
         {
@@ -107,16 +126,16 @@ namespace TAO
         std::string TritiumBlock::ToString() const
         {
             return debug::safe_printstr("Tritium Block("
-                VALUE("hash")     " = ", GetHash().ToString().substr(0, 20), " ",
+                VALUE("hash")     " = ", GetHash().SubString(), " ",
                 VALUE("nVersion") " = ", nVersion, ", ",
-                VALUE("hashPrevBlock") " = ", hashPrevBlock.ToString().substr(0, 20), ", ",
-                VALUE("hashMerkleRoot") " = ", hashMerkleRoot.ToString().substr(0, 20), ", ",
+                VALUE("hashPrevBlock") " = ", hashPrevBlock.SubString(), ", ",
+                VALUE("hashMerkleRoot") " = ", hashMerkleRoot.SubString(), ", ",
                 VALUE("nChannel") " = ", nChannel, ", ",
                 VALUE("nHeight") " = ", nHeight, ", ",
                 VALUE("nBits") " = ", nBits, ", ",
                 VALUE("nNonce") " = ", nNonce, ", ",
                 VALUE("nTime") " = ", nTime, ", ",
-                VALUE("vchBlockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ", ",
+                VALUE("vchBlockSig") " = ", HexStr(vchBlockSig.begin(), vchBlockSig.end()).substr(0, 20), ", ",
                 VALUE("vtx.size()") " = ", vtx.size(), ")");
         }
 
@@ -436,18 +455,21 @@ namespace TAO
         /* Check the proof of stake calculations. */
         bool TritiumBlock::CheckStake() const
         {
+            /* Reset the coinstake contract streams. */
+            producer[0].Reset(TAO::Operation::Contract::ALL);
+
             /* Get the trust object register. */
-            TAO::Register::Object trustAccount;
+            TAO::Register::Object account;
 
             /* Deserialize from the stream. */
             uint8_t nState = 0;
             producer[0] >>= nState;
 
             /* Get the pre-state. */
-            producer[0] >>= trustAccount;
+            producer[0] >>= account;
 
             /* Parse the object. */
-            if(!trustAccount.Parse())
+            if(!account.Parse())
                 return debug::error(FUNCTION, "failed to parse object register from pre-state");
 
             /* Get previous block. Block time used for block age/coin age calculation */
@@ -461,7 +483,7 @@ namespace TAO
 
             uint64_t nTrust = 0;
             uint64_t nTrustPrev = 0;
-            uint64_t nCoinstakeReward = 0;
+            uint64_t nReward = 0;
             uint64_t nBlockAge = 0;
             uint64_t nStake = 0;
 
@@ -477,7 +499,7 @@ namespace TAO
 
                 /* Get last trust hash. */
                 uint512_t hashLastTrust = 0;
-                producer[0]>> hashLastTrust;
+                producer[0] >> hashLastTrust;
 
                 uint64_t nClaimedTrust = 0;
                 producer[0] >> nClaimedTrust;
@@ -491,14 +513,14 @@ namespace TAO
                     return debug::error(FUNCTION, "last block not in database");
 
                 /* Enforce the minimum interval between stake blocks. */
-                const uint32_t nCurrentInterval = nHeight - stateLast.nHeight;
+                const uint32_t nInterval = nHeight - stateLast.nHeight;
 
-                if(nCurrentInterval <= MinStakeInterval())
-                    return debug::error(FUNCTION, "stake block interval ", nCurrentInterval, " below minimum interval");
+                if(nInterval <= MinStakeInterval())
+                    return debug::error(FUNCTION, "stake block interval ", nInterval, " below minimum interval");
 
                 /* Get pre-state trust account values */
-                nTrustPrev = trustAccount.get<uint64_t>("trust");
-                nStake     = trustAccount.get<uint64_t>("stake");
+                nTrustPrev = account.get<uint64_t>("trust");
+                nStake     = account.get<uint64_t>("stake");
 
                 /* Calculate Block Age (time from last stake block until previous block) */
                 nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
@@ -511,12 +533,12 @@ namespace TAO
                     return debug::error(FUNCTION, "claimed trust score ", nClaimedTrust, " does not match calculated trust score ", nTrust);
 
                 /* Calculate the coinstake reward */
-                const uint64_t nStakeTime = GetBlockTime() - stateLast.GetBlockTime();
-                nCoinstakeReward = GetCoinstakeReward(nStake, nStakeTime, nTrust, false);
+                const uint64_t nTime = GetBlockTime() - stateLast.GetBlockTime();
+                nReward = GetCoinstakeReward(nStake, nTime, nTrust, false);
 
                 /* Validate the coinstake reward calculation */
-                if(nClaimedReward != nCoinstakeReward)
-                    return debug::error(FUNCTION, "claimed stake reward ", nClaimedReward, " does not match calculated reward ", nCoinstakeReward);
+                if(nClaimedReward != nReward)
+                    return debug::error(FUNCTION, "claimed stake reward ", nClaimedReward, " does not match calculated reward ", nReward);
 
                 /* Calculate Trust Weight corresponding to new trust score. */
                 nTrustWeight = TrustWeight(nTrust);
@@ -542,28 +564,28 @@ namespace TAO
                 producer[0] >> nClaimedReward;
 
                 /* Get Genesis stake from the trust account pre-state balance. Genesis reward based on balance (that will move to stake) */
-                nStake = trustAccount.get<uint64_t>("balance");
+                nStake = account.get<uint64_t>("balance");
 
                 /* Genesis transaction can't have any transactions. */
-                if(vtx.size() != 1)
+                if(vtx.size() != 0)
                     return debug::error(FUNCTION, "genesis cannot include transactions");
 
-                /* Calculate the Coinstake Age. */
-                const uint64_t nCoinAge = GetBlockTime() - trustAccount.nModified;
+                /* Calculate the Coin Age. */
+                const uint64_t nAge = GetBlockTime() - account.nModified;
 
                 /* Validate that Genesis coin age exceeds required minimum. */
-                if(nCoinAge < MinCoinAge())
+                if(nAge < MinCoinAge())
                     return debug::error(FUNCTION, "genesis age is immature");
 
                 /* Calculate the coinstake reward */
-                nCoinstakeReward = GetCoinstakeReward(nStake, nCoinAge, 0, true);
+                nReward = GetCoinstakeReward(nStake, nAge, 0, true);
 
                 /* Validate the coinstake reward calculation */
-                if(nClaimedReward != nCoinstakeReward)
-                    return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nCoinstakeReward);
+                if(nClaimedReward != nReward)
+                    return debug::error(FUNCTION, "claimed hashGenesis reward ", nClaimedReward, " does not match calculated reward ", nReward);
 
                 /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
-                nTrustWeight = GenesisWeight(nCoinAge);
+                nTrustWeight = GenesisWeight(nAge);
             }
 
             else
@@ -588,15 +610,15 @@ namespace TAO
 
             /* Verbose logging. */
             debug::log(2, FUNCTION,
-                "hash=", StakeHash().ToString().substr(0, 20), ", ",
-                "target=", bnTarget.getuint1024().ToString().substr(0, 20), ", ",
+                "stake hash=", StakeHash().SubString(), ", ",
+                "target=", bnTarget.getuint1024().SubString(), ", ",
                 "type=", (producer.IsTrust()?"Trust":"Genesis"), ", ",
                 "trust score=", nTrust, ", ",
                 "prev trust score=", nTrustPrev, ", ",
-                "trust change=", (nTrust - nTrustPrev), ", ",
+                "trust change=", int64_t(nTrust - nTrustPrev), ", ",
                 "block age=", nBlockAge, ", ",
                 "stake=", nStake, ", ",
-                "reward=", nCoinstakeReward, ", ",
+                "reward=", nReward, ", ",
                 "trust weight=", nTrustWeight, ", ",
                 "block weight=", nBlockWeight, ", ",
                 "block time=", nBlockTime, ", ",
@@ -633,7 +655,7 @@ namespace TAO
         /* Prove that you staked a number of seconds based on weight */
         uint1024_t TritiumBlock::StakeHash() const
         {
-            return Block::StakeHash( producer.IsGenesis(), producer.hashGenesis);
+            return Block::StakeHash(producer.IsGenesis(), producer.hashGenesis);
         }
     }
 }

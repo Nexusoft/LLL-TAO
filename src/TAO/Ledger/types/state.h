@@ -57,7 +57,7 @@ namespace TAO
              *  uint8_t = TransactionType (per enum)
              *  uint512_t = Tx hash
              **/
-            std::vector< std::pair<uint8_t, uint512_t> > vtx;
+            std::vector<std::pair<uint8_t, uint512_t> > vtx;
 
 
             /** The Trust of the Chain to this Block. */
@@ -139,23 +139,7 @@ namespace TAO
 
 
             /** Default Constructor. **/
-            BlockState()
-            : Block()
-            , ssSystem()
-            , vtx()
-            , nChainTrust(0)
-            , nMoneySupply(0)
-            , nMint(0)
-            , nFees(0)
-            , nChannelHeight(0)
-            , nChannelWeight{0, 0, 0}
-            , nReleasedReserve{0, 0, 0}
-            , nFeeReserve(0)
-            , hashNextBlock(0)
-            , hashCheckpoint(0)
-            {
-                SetNull();
-            }
+            BlockState();
 
 
             /** Default Constructor. **/
@@ -167,95 +151,27 @@ namespace TAO
 
 
             /** Virtual Destructor. **/
-            virtual ~BlockState() { }
+            virtual ~BlockState();
 
 
             /** Copy Constructor. **/
-            BlockState(const BlockState& state)
-            : Block(state)
-            {
-                vtx                 = state.vtx;
-                vOffsets            = state.vOffsets;
-
-                nChainTrust         = state.nChainTrust;
-                nMoneySupply        = state.nMoneySupply;
-                nMint               = state.nMint;
-                nFees               = state.nFees;
-                nChannelHeight      = state.nChannelHeight;
-
-                nChannelWeight[0]   = state.nChannelWeight[0];
-                nChannelWeight[1]   = state.nChannelWeight[1];
-                nChannelWeight[2]   = state.nChannelWeight[2];
-
-                nReleasedReserve[0] = state.nReleasedReserve[0];
-                nReleasedReserve[1] = state.nReleasedReserve[1];
-                nReleasedReserve[2] = state.nReleasedReserve[2];
-
-                nFeeReserve         = state.nFeeReserve;
-
-                hashNextBlock       = state.hashNextBlock;
-                hashCheckpoint      = state.hashCheckpoint;
-            }
+            BlockState(const BlockState& state);
 
 
             /** Copy Assignment Operator. **/
-            BlockState& operator=(const BlockState& state)
-            {
-                nVersion            = state.nVersion;
-                hashPrevBlock       = state.hashPrevBlock;
-                hashMerkleRoot      = state.hashMerkleRoot;
-                nChannel            = state.nChannel;
-                nHeight             = state.nHeight;
-                nBits               = state.nBits;
-                nNonce              = state.nNonce;
-                nTime               = state.nTime;
-                vchBlockSig         = state.vchBlockSig;
-
-                vtx                 = state.vtx;
-                vOffsets            = state.vOffsets;
-
-                nChainTrust         = state.nChainTrust;
-                nMoneySupply        = state.nMoneySupply;
-                nMint               = state.nMint;
-                nFees               = state.nFees;
-                nChannelHeight      = state.nChannelHeight;
-
-                nChannelWeight[0]   = state.nChannelWeight[0];
-                nChannelWeight[1]   = state.nChannelWeight[1];
-                nChannelWeight[2]   = state.nChannelWeight[2];
-
-                nReleasedReserve[0] = state.nReleasedReserve[0];
-                nReleasedReserve[1] = state.nReleasedReserve[1];
-                nReleasedReserve[2] = state.nReleasedReserve[2];
-
-                nFeeReserve         = state.nFeeReserve;
-
-                hashNextBlock       = state.hashNextBlock;
-                hashCheckpoint      = state.hashCheckpoint;
-
-                return *this;
-            }
+            BlockState& operator=(const BlockState& state);
 
 
             /** Equivilence checking **/
-            bool operator==(const BlockState& state) const
-            {
-                return GetHash() == state.GetHash();
-            }
+            bool operator==(const BlockState& state) const;
 
 
             /** Equivilence checking **/
-            bool operator!=(const BlockState& state) const
-            {
-                return GetHash() != state.GetHash();
-            }
+            bool operator!=(const BlockState& state) const;
 
 
             /** Not operator overloading. **/
-            bool operator !(void)
-            {
-                return IsNull();
-            }
+            bool operator!(void);
 
 
             /** Prev

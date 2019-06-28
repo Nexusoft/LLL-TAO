@@ -11,13 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
-#include <assert.h>
-
 #include <Legacy/types/secret.h>
 #include <Legacy/include/enum.h>
 
 #include <Util/include/args.h>
 #include <Util/include/debug.h>
+
+#include <assert.h>
+
 
 namespace Legacy
 {

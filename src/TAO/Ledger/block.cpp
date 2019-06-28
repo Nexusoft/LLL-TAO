@@ -49,6 +49,7 @@ namespace TAO
         Block::Block(uint32_t nVersionIn, uint1024_t hashPrevBlockIn, uint32_t nChannelIn, uint32_t nHeightIn)
         : nVersion(nVersionIn)
         , hashPrevBlock(hashPrevBlockIn)
+        , hashMerkleRoot()
         , nChannel(nChannelIn)
         , nHeight(nHeightIn)
         , nBits(0)
@@ -79,6 +80,15 @@ namespace TAO
         {
         }
 
+
+        /*  Allows polymorphic copying of blocks
+         *  Derived classes should override this and return an instance of the derived type. */
+        Block* Block::Clone() const
+        {
+            return new Block(*this);
+        }
+
+
         /* Set the block state to null. */
         void Block::SetNull()
         {
@@ -91,6 +101,20 @@ namespace TAO
             nNonce = 0;
             nTime = 0;
             vchBlockSig.clear();
+        }
+
+
+        /*  Check a block for consistency. */
+        bool Block::Check() const
+        {
+            return true; /* No implementation in base class. */
+        }
+
+
+        /*  Accept a block with chain state parameters. */
+        bool Block::Accept() const
+        {
+            return true; /* No implementation in base class. */
         }
 
 
@@ -228,16 +252,16 @@ namespace TAO
         std::string Block::ToString() const
         {
             return debug::safe_printstr(
-                "Block(hash=", GetHash().ToString().substr(0,20),
+                "Block(hash=", GetHash().SubString(),
                 ", ver=", nVersion,
-                ", hashPrevBlock=", hashPrevBlock.ToString().substr(0,20),
-                ", hashMerkleRoot=", hashMerkleRoot.ToString().substr(0,10),
+                ", hashPrevBlock=", hashPrevBlock.SubString(),
+                ", hashMerkleRoot=", hashMerkleRoot.SubString(10),
                 ", nTime=", nTime,
                 std::hex, std::setfill('0'), std::setw(8), ", nBits=", nBits,
                 std::dec, std::setfill(' '), std::setw(0), ", nChannel = ", nChannel,
                 ", nHeight= ", nHeight,
                 ", nNonce=",  nNonce,
-                ", vchBlockSig=", HexStr(vchBlockSig.begin(), vchBlockSig.end()), ")");
+                ", vchBlockSig=", HexStr(vchBlockSig.begin(), vchBlockSig.end()).substr(0,20), ")");
         }
 
         /* Dump the Block data to Console / Debug.log. */
@@ -360,9 +384,9 @@ namespace TAO
             hashPrevBlock.SetBytes (std::vector<uint8_t>(vData.begin() + 4, vData.begin() + 132));
             hashMerkleRoot.SetBytes(std::vector<uint8_t>(vData.begin() + 132, vData.end() - 20));
 
-            nChannel = convert::bytes2uint(std::vector<uint8_t>(  vData.end() - 20, vData.end() - 16));
-            nHeight  = convert::bytes2uint(std::vector<uint8_t>(  vData.end() - 16, vData.end() - 12));
-            nBits    = convert::bytes2uint(std::vector<uint8_t>(  vData.end() - 12, vData.end() - 8));
+            nChannel = convert::bytes2uint(std::vector<uint8_t>( vData.end() - 20, vData.end() - 16));
+            nHeight  = convert::bytes2uint(std::vector<uint8_t>( vData.end() - 16, vData.end() - 12));
+            nBits    = convert::bytes2uint(std::vector<uint8_t>( vData.end() - 12, vData.end() - 8));
             nNonce   = convert::bytes2uint64(std::vector<uint8_t>(vData.end() -  8, vData.end()));
         }
 

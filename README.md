@@ -11,14 +11,14 @@ The core base upgrades utilizing the LLL as base templates for Tritium, Amine, a
 
 The first of the three updates in the TAO Framework. Tritium will include the following feature sets:
 
-* Trust System
-* Legacy Mode
-* Contract Layers
-* API / SDK
-* Hybrid Mode
-* Ambassador DAO
-* LISP
-* Interface / Wallet
+* Trust System  
+* Legacy Mode  
+* Contract Layers  
+* API/SDK  
+* Hybrid Mode  
+* Ambassador DAO  
+* LISP  
+* Interface/Wallet  
 
 ### Amine
 
@@ -30,8 +30,8 @@ The second of the three updates in the TAO Framework. Amine will include the fol
 * Domain Specific Languages
 * DAO Voting Groups
 * pBFT + PoS Trust Network (L2)
-* LISP Multicast Links for(L1) and (L2)
-* Application Store
+* LISP Multicast Links for (L1) and (L2)
+* Interface Application Market
 
 ### Obsidian
 
@@ -134,17 +134,10 @@ information or see https://opensource.org/licenses/MIT.
 ## Contributing
 If you would like to contribute as always submit a pull request. This library development is expected to be on-going, with new higher level templates created for any types of use in the web.
 
-
-## Applications
-This is a foundational piece of Nexus that can be rebased over a Nexus branch to incorporate new LLL features into Nexus. It could also be useful for:
-
-* Custom MySQL Servers
-* Custom WebServers
-* Custom Protocols
-* Scaleable Databases
-
-These core templates can be expanded in any way by inheriting the base templates and creating any type of new backend that one would like.
-
+## L5 Stack
+L5 stands for 'Linux Lower Level Library & LISP' which is the stack that the TAO framework is built on top of.
+We envision this becoming a new standard for component based web design, which has the potential to decentralize web services.
+It is also a very useful and scale-able stack for Cryptocurrency and Blockchain designs.
 
 ## Why?
 A lot of software that we use today for databases, or protocols, or cryptography was created back in the 1990's as open source software. Since then the industry has expanded and bloated this code causing performance degradation. The aim of these templates is performance in simplicity. Include only what is needed, no more, and no less. This allows extremely high performance and scaleability necessary for the new distributed systems that will continue to evolve over the next few decades.

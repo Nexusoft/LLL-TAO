@@ -75,7 +75,7 @@ namespace TAO
              *  uint8_t = TransactionType (per enum)
              *  uint512_t = Tx hash
              **/
-            std::vector< std::pair<uint8_t, uint512_t> > vtx;
+            std::vector<std::pair<uint8_t, uint512_t> > vtx;
 
 
             /** Serialization **/
@@ -104,14 +104,8 @@ namespace TAO
 
 
             /** Copy constructor from base block. **/
-            TritiumBlock(const Block& block)
-            : Block(block)
-            , producer()
-            , ssSystem()
-            , vtx(0)
-            {
+            TritiumBlock(const Block& block);
 
-            }
 
             /** Copy Constructor. **/
             TritiumBlock(const TritiumBlock& block);
@@ -126,19 +120,16 @@ namespace TAO
 
 
             /** Clone
-            *
-            *  Allows polymorphic copying of blocks
-            *  Overridden to return an instance of the TritiumBlock class.
-            *  Return-type covariance allows us to return the more derived type whilst
-            *  still overriding the virtual base-class method
-            *
-            *  @return A pointer to a copy of this TritiumBlock.
-            *
-            **/
-            virtual TritiumBlock* Clone() const override
-            {
-                return new TritiumBlock(*this);
-            };
+             *
+             *  Allows polymorphic copying of blocks
+             *  Overridden to return an instance of the TritiumBlock class.
+             *  Return-type covariance allows us to return the more derived type whilst
+             *  still overriding the virtual base-class method
+             *
+             *  @return A pointer to a copy of this TritiumBlock.
+             *
+             **/
+            virtual TritiumBlock* Clone() const override;
 
 
             /** SetNull

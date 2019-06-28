@@ -21,7 +21,7 @@ namespace LLP
     /* Perform any necessary processing to initialize the underlying network
      * resources such as sockets, etc.
      */
-    bool NetworkStartup()
+    bool Initialize()
     {
 
     #ifdef WIN32
@@ -34,7 +34,7 @@ namespace LLP
             debug::error(FUNCTION, "TCP/IP socket library failed to start (WSAStartup returned error ", ret, ") ");
             return false;
         }
-        else if(LOBYTE( wsaData.wVersion) != 2 || HIBYTE( wsaData.wVersion) != 2)
+        else if(LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2)
         {
             /* Winsock version incorrect */
             debug::error(FUNCTION, "Windows sockets does not support requested version 2.2");
@@ -69,7 +69,7 @@ namespace LLP
 
 
     /* Perform any necessary processing to shutdown and release underlying network resources.*/
-    bool NetworkShutdown()
+    bool Shutdown()
     {
 
     #ifdef WIN32
@@ -94,7 +94,7 @@ namespace LLP
     *  and caches them for future use */
     void CacheEIDsAndRLOCs()
     {
-        
+
     }
 
 }

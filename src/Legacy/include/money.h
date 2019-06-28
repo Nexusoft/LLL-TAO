@@ -17,10 +17,12 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/timelocks.h>
 
-#include <inttypes.h>
 #include <Util/include/runtime.h>
 #include <Util/include/args.h>
 #include <Util/include/convert.h>
+
+#include <inttypes.h>
+
 
 namespace Legacy
 {
@@ -92,7 +94,7 @@ namespace Legacy
     inline int64_t AmountToSatoshis(double dAmount)
     {
         if(dAmount <= 0.0 || dAmount > static_cast<double>(Legacy::MaxTxOut()))
-            throw std::runtime_error( "Invalid amount");
+            throw std::runtime_error("Invalid amount");
         int64_t nAmount = convert::roundint64(dAmount * COIN);
         if(!MoneyRange(nAmount))
             throw std::runtime_error("Invalid amount");

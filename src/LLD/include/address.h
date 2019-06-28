@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLD/templates/sector.h>
 #include <LLD/cache/binary_lfu.h>
-#include <LLD/keychain/filemap.h>
+#include <LLD/keychain/hashmap.h>
 
 #include <LLP/include/trust_address.h>
 
@@ -29,7 +29,7 @@ namespace LLD
      *  The database class for peer addresses to determine trust relationships.
      *
      **/
-    class AddressDB : public SectorDatabase<BinaryFileMap, BinaryLFU>
+    class AddressDB : public SectorDatabase<BinaryHashMap, BinaryLFU>
     {
     public:
 

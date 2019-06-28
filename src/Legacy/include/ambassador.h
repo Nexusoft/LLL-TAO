@@ -15,9 +15,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_INCLUDE_AMBASSADOR_H
 #define NEXUS_LEGACY_INCLUDE_AMBASSADOR_H
 
+#include <inttypes.h>
+
 #include <string>
 #include <vector>
-#include <inttypes.h>
+
 
 namespace Legacy
 {

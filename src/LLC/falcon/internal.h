@@ -49,7 +49,7 @@ extern "C" {
  * quite often.
  */
 #if _MSC_VER
-#pragma warning( disable : 4146)
+#pragma warning(disable : 4146)
 #endif
 
 /*

@@ -30,33 +30,6 @@ ________________________________________________________________________________
  *  @return Returns true if address is permissable, false otherwise.
  *
  **/
-bool CheckPermissions(const std::string &strAddress, uint32_t nPort);
-
-
-/** WildcardMatch
- *
- *  Performs a wildcard match string search given a search string and a mask.
- *
- *  @param[in] psz The string to find wildcard match in.
- *  @param[in] mask The wildcard string to match.
- *
- *  @return Returns true if match was found, false otherwise.
- *
- **/
-bool WildcardMatch(const char* psz, const char* mask);
-
-
-/** WildcardMatch
- *
- *  Performs a wildcard match string search given a search string and a mask.
- *
- *  @param[in] str The string to find wildcard match in.
- *  @param[in] mask The wildcard string to match.
- *
- *  @return Returns true if match was found, false otherwise.
- *
- **/
-bool WildcardMatch(const std::string& str, const std::string& mask);
-
+bool CheckPermissions(const std::string &strAddress, uint16_t nPort);
 
 #endif

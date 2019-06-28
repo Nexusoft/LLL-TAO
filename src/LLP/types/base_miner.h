@@ -197,7 +197,6 @@ namespace LLP
            virtual bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot) = 0;
 
 
-
            /** is_locked
             *
             *  Determines if the mining wallet is unlocked.

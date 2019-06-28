@@ -1,9 +1,5 @@
-cd ../../../
-
 #Get system info
-echo "===Get/Info==="
-./nexus system/get/info
+./api_call.sh system/get/info
 
 #Get peers
-echo "===List/Peers==="
-./nexus system/list/peers
+./api_call.sh system/list/peers

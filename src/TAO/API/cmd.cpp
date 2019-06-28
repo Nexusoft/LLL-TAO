@@ -154,7 +154,7 @@ namespace TAO
                 runtime::sleep(1);
             }
 
-            /* Clean socket disconnect. */
+            /* Disconnect node. */
             apiNode.Disconnect();
 
             /* Parse response JSON. */
@@ -168,7 +168,7 @@ namespace TAO
                 strPrint = ret["result"].dump(4);
 
             /* Dump response to console. */
-            printf("%s\n", strPrint.c_str());
+            debug::log(0, strPrint);
 
             return 0;
         }
@@ -206,6 +206,7 @@ namespace TAO
                 else
                     parameters.push_back(argv[i]);
             }
+
             /* Build the HTTP Header. */
             json::json body =
             {
@@ -273,7 +274,7 @@ namespace TAO
                 runtime::sleep(1);
             }
 
-            /* Clean socket disconnect. */
+            /* Disconnect node. */
             rpcNode.Disconnect();
 
             /* Dump the response to the console. */

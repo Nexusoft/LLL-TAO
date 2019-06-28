@@ -24,13 +24,12 @@ ________________________________________________________________________________
 
 #include <Legacy/types/script.h>
 
+#include <openssl/bn.h>
+
 #include <string>
 #include <vector>
 #include <algorithm>
 #include <stdexcept>
-
-#include <openssl/bn.h>
-
 
 namespace Legacy
 {
@@ -171,7 +170,7 @@ namespace Legacy
                     case OP_15:
                     case OP_16:
                     {
-                        // ( -- value)
+                        // (-- value)
                         LLC::CBigNum bn((int)opcode - (int)(OP_1 - 1));
                         stack.push_back(bn.getvch());
                     }

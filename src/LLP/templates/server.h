@@ -32,6 +32,7 @@ namespace LLP
     /* forward declarations */
     class AddressManager;
     class DDOS_Filter;
+    class InfoAddress;
 
 
     /** Server
@@ -79,6 +80,10 @@ namespace LLP
 
         /* The sleep time of address manager. */
         uint32_t nSleepTime;
+
+
+        /* The listener socket instance. */
+        std::pair<int32_t, int32_t> hListenSocket;
 
 
         /** Name

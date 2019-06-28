@@ -42,9 +42,9 @@ namespace Legacy
         IMPLEMENT_SERIALIZE
         (
             READWRITE(nVersion);
-            READWRITE(hashPrevBlock);
-            READWRITE(hashMerkleRoot);
-            READWRITE(nChannel);
+	        READWRITE(hashPrevBlock);
+		    READWRITE(hashMerkleRoot);
+		    READWRITE(nChannel);
             READWRITE(nHeight);
             READWRITE(nBits);
             READWRITE(nNonce);

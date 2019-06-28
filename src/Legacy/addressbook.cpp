@@ -11,9 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <exception>
-#include <mutex>
-
 #include <Legacy/include/evaluate.h>
 #include <Legacy/types/address.h>
 #include <Legacy/types/script.h>
@@ -23,6 +20,8 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallettx.h>
 
 #include <algorithm>
+#include <exception>
+#include <mutex>
 
 namespace Legacy
 {

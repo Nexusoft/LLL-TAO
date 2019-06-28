@@ -11,12 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <exception>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <utility>
-
 #include <LLD/include/version.h>
 
 #include <Legacy/types/script.h>
@@ -34,6 +28,12 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/runtime.h>
+
+#include <exception>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <utility>
 
 
 namespace Legacy
@@ -677,6 +677,7 @@ namespace Legacy
                 {
                     EraseTx(hash);
                     wallet.mapWallet.erase(hash);
+                    ++nWalletDBUpdated;
 
                     debug::log(0, FUNCTION, "Erasing Transaction with hash ", hash.ToString());
                 }
@@ -819,7 +820,7 @@ namespace Legacy
         const int64_t minTimeSinceLastUpdate = 2;
 
         uint32_t nLastSeen = WalletDB::nWalletDBUpdated.load();
-        uint32_t nLastFlushed = nLastSeen;
+        uint32_t nLastFlushed = 0;
         uint64_t nLastWalletUpdate = runtime::unifiedtimestamp();
 
         debug::log(1, FUNCTION, "Wallet flush thread started");

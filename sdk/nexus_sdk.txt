@@ -279,12 +279,12 @@ CLASSES
      |      and pin parameters are supplied on the sdk_init() call.
      |  
      |  nexus_users_list_accounts_by_genesis(self, page, limit)
-     |      List user created token accounts by genesis-id. The number of account
-     |      entries returned is specified in 'limit' starting with entry offset 
-     |      specified in 'page'.
+     |      List user created supply-chain items by genesis-id. The number of 
+     |      item entries returned is specified in 'limit' starting with entry 
+     |      offset specified in 'page'.
      |  
      |  nexus_users_list_accounts_by_username(self, page, limit)
-     |      List user created token accounts by username. The number of account
+     |      List user created supply-chain items by username. The number of account
      |      entries returned is specified in 'limit' starting with entry offset 
      |      specified in 'page'.
      |  
@@ -294,6 +294,16 @@ CLASSES
      |      specified in 'page'.
      |  
      |  nexus_users_list_assets_by_username(self, page, limit)
+     |      List user account created assets by username. The number of asset
+     |      entries returned is specified in 'limit' starting with entry offset 
+     |      specified in 'page'.
+     |  
+     |  nexus_users_list_items_by_genesis(self, page, limit)
+     |      List user account created assets by genesis-id. The number of asset
+     |      entries returned is specified in 'limit' starting with entry offset 
+     |      specified in 'page'.
+     |  
+     |  nexus_users_list_items_by_username(self, page, limit)
      |      List user account created assets by username. The number of asset
      |      entries returned is specified in 'limit' starting with entry offset 
      |      specified in 'page'.

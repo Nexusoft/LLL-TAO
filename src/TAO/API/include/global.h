@@ -15,22 +15,25 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_API_INCLUDE_GLOBAL_H
 #define NEXUS_TAO_API_INCLUDE_GLOBAL_H
 
-#include <TAO/API/include/assets.h>
-#include <TAO/API/include/ledger.h>
-#include <TAO/API/include/register.h>
-#include <TAO/API/include/rpc.h>
-#include <TAO/API/include/supply.h>
-#include <TAO/API/include/system.h>
-#include <TAO/API/include/tokens.h>
-#include <TAO/API/include/users.h>
-#include <TAO/API/include/finance.h>
+#include <TAO/API/types/assets.h>
+#include <TAO/API/types/dex.h>
+#include <TAO/API/types/ledger.h>
+#include <TAO/API/types/register.h>
+#include <TAO/API/types/rpc.h>
+#include <TAO/API/types/supply.h>
+#include <TAO/API/types/system.h>
+#include <TAO/API/types/tokens.h>
+#include <TAO/API/types/users.h>
+#include <TAO/API/types/finance.h>
+#include <TAO/API/types/names.h>
+#include <TAO/API/types/objects.h>
 
 namespace TAO
 {
     namespace API
     {
-        extern Assets* assets;
-        extern Ledger* ledger;
+        extern Assets*   assets;
+        extern Ledger*   ledger;
         extern Register* reg;
         extern RPC* RPCCommands;
         extern Supply* supply;
@@ -38,21 +41,23 @@ namespace TAO
         extern Tokens* tokens;
         extern Users* users;
         extern Finance* finance;
+        extern Names* names;
+        extern DEX*      dex;
 
 
         /** Initialize
-         * 
+         *
          *  Instantiate global instances of the API.
-         * 
+         *
          **/
         void Initialize();
 
 
         /** Shutdown
-         * 
+         *
          *  Delete global instances of the API.
-         * 
-         **/ 
+         *
+         **/
         void Shutdown();
     }
 }

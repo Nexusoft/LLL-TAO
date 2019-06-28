@@ -11,10 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <exception>
-#include <set>
-#include <utility>
-
 #include <LLC/types/uint1024.h>
 
 #include <LLD/include/legacy.h>
@@ -33,6 +29,11 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/args.h>
+
+#include <exception>
+#include <set>
+#include <utility>
+
 
 namespace Legacy
 {
@@ -584,7 +585,7 @@ namespace Legacy
                 LOCK(WalletTx::cs_wallettx);
 
                 /* Map keeps track of tx previously loaded, while set contains hash values already processed */
-                std::map<uint512_t, const WalletTx*> mapWalletPrev;
+                std::map<uint512_t, const MerkleTx*> mapWalletPrev;
                 std::set<uint512_t> setAlreadyDone;
 
                 for(uint32_t i = 0; i < vWorkQueue.size(); i++) //Cannot use iterator because loop adds to vWorkQueue
@@ -597,7 +598,7 @@ namespace Legacy
 
                     setAlreadyDone.insert(prevoutTxHash);
 
-                    WalletTx prevTx;
+                    MerkleTx prevMerkleTx;
                     Legacy::Transaction parentTransaction;
 
                     /* Find returns iterator to equivalent of pair<uint512_t, WalletTx> */
@@ -606,26 +607,27 @@ namespace Legacy
                     if(mi != ptransactionWallet->mapWallet.end())
                     {
                         /* Found previous transaction (input to this one) in wallet */
-                        prevTx = (*mi).second;
+                        const WalletTx& prevTx = (*mi).second; // Need WalletTx for access to vtxPrev
+                        prevMerkleTx = prevTx;
 
                         /* Copy vtxPrev (inputs) from previous transaction into mapWalletPrev.
-                         * This saves them so we can get prevTx from mapWalletPrev if it isn't in mapWallet
+                         * This saves them so we can get MerkleTx from mapWalletPrev if it isn't in mapWallet
                          * and need to process deeper because tx depth is less than copy depth (unlikely, see below)
                          */
-                        for(const WalletTx& txWalletPrev : prevTx.vtxPrev)
+                        for(const MerkleTx& txWalletPrev : prevTx.vtxPrev)
                             mapWalletPrev[txWalletPrev.GetHash()] = &txWalletPrev;
 
                     }
                     else if(mapWalletPrev.count(prevoutTxHash))
                     {
                         /* Previous transaction not in wallet, but already in mapWalletPrev */
-                        prevTx = *mapWalletPrev[prevoutTxHash];
+                        prevMerkleTx = *mapWalletPrev[prevoutTxHash];
 
                     }
                     else if(!config::fClient && LLD::Legacy->ReadTx(prevoutTxHash, parentTransaction))
                     {
-                        /* Found transaction in database, but it isn't in wallet. Create a new WalletTx from it to use as prevTx */
-                        prevTx = WalletTx(ptransactionWallet, parentTransaction);
+                        /* Found transaction in database, but it isn't in wallet. Create a new WalletTx from it to use as prevMerkleTx */
+                        prevMerkleTx = WalletTx(ptransactionWallet, parentTransaction);
                     }
                     else
                     {
@@ -634,8 +636,8 @@ namespace Legacy
                         continue;
                     }
 
-                    uint32_t nDepth = prevTx.GetDepthInMainChain();
-                    vtxPrev.push_back(prevTx);
+                    uint32_t nDepth = prevMerkleTx.GetDepthInMainChain();
+                    vtxPrev.push_back(prevMerkleTx);
 
                     if(nDepth < COPY_DEPTH)
                     {
@@ -646,7 +648,7 @@ namespace Legacy
                          * within the copy depth because we'd be spending balance that probably is not confirmed,
                          * so this really should never be processed. Code is from legacy and left here intact just in case.
                          */
-                        for(const TxIn& txin : prevTx.vin)
+                        for(const TxIn& txin : prevMerkleTx.vin)
                             vWorkQueue.push_back(txin.prevout.hash);
                     }
                 }
@@ -660,7 +662,7 @@ namespace Legacy
     /* Send this transaction to the network if not in our database, yet. */
     void WalletTx::RelayWalletTransaction() const
     {
-        for(const WalletTx& tx : vtxPrev)
+        for(const MerkleTx& tx : vtxPrev)
         {
             /* Also relay any tx in vtxPrev that we don't have in our database, yet */
             if(!(tx.IsCoinBase() || tx.IsCoinStake()))
@@ -688,7 +690,7 @@ namespace Legacy
             /* Relay this tx if we don't have it in our database, yet */
             if(!LLD::Legacy->HasTx(hash))
             {
-                debug::log(0, FUNCTION, "Relaying wtx ", hash.ToString().substr(0,10));
+                debug::log(0, FUNCTION, "Relaying wtx ", hash.SubString(10));
 
                 std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX_LEGACY) };
 

@@ -11,16 +11,17 @@
 
 ____________________________________________________________________________________________*/
 
-#include <exception>
-
 #include <Legacy/wallet/db.h>
 
 #include <Util/include/args.h>
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
+
 #include <sys/stat.h>
+
 #include <cmath>
+#include <exception>
 
 
 namespace Legacy
@@ -84,7 +85,7 @@ namespace Legacy
 
             delete dbenv;
             dbenv = nullptr;
-        }       
+        }
     }
 
 
@@ -96,9 +97,9 @@ namespace Legacy
         int32_t ret = 0;
 
         {
-            LOCK(cs_db); 
+            LOCK(cs_db);
 
-            if(dbenv == nullptr)  //Should be true when this is called 
+            if(dbenv == nullptr)  //Should be true when this is called
             {
                 if(config::fShutdown.load())
                     return;
@@ -176,7 +177,7 @@ namespace Legacy
                 {
                     delete dbenv;
                     dbenv = nullptr;
-                    
+
                     debug::error(FUNCTION, "Error ", ret, " initializing Berkeley database environment for ", strDbFile);
 
                     throw std::runtime_error(
@@ -194,7 +195,7 @@ namespace Legacy
 
 
         /* Successfully opening db for the first time will create the database file.
-         * When file is new, it will not yet contain version. Write the database version as the first entry. 
+         * When file is new, it will not yet contain version. Write the database version as the first entry.
          *
          * These methods lock, so call must be outside lock scope
          */
@@ -279,7 +280,7 @@ namespace Legacy
     Dbc* BerkeleyDB::GetCursor()
     {
         LOCK(cs_db);
-        
+
         if(pdb == nullptr)
             OpenHandle();
 
@@ -298,7 +299,7 @@ namespace Legacy
     int32_t BerkeleyDB::ReadAtCursor(Dbc* pcursor, DataStream& ssKey, DataStream& ssValue, uint32_t fFlags)
     {
         LOCK(cs_db);
-        
+
         if(pcursor == nullptr)
             return 99998;
 
@@ -355,7 +356,7 @@ namespace Legacy
     void BerkeleyDB::CloseCursor(Dbc* pcursor)
     {
         LOCK(cs_db);
-        
+
         if(pcursor == nullptr)
             return;
 
@@ -369,7 +370,7 @@ namespace Legacy
     bool BerkeleyDB::TxnBegin()
     {
         LOCK(cs_db);
-        
+
         if(pdb == nullptr)
             OpenHandle();
 
@@ -393,7 +394,7 @@ namespace Legacy
     bool BerkeleyDB::TxnCommit()
     {
         LOCK(cs_db);
-        
+
         auto pTxn = GetTxn();
 
         if(pTxn == nullptr)
@@ -411,7 +412,7 @@ namespace Legacy
     bool BerkeleyDB::TxnAbort()
     {
         LOCK(cs_db);
-        
+
         auto pTxn = GetTxn();
 
         if(pTxn == nullptr)
@@ -664,9 +665,9 @@ namespace Legacy
 
 
     /* Shut down the Berkeley database environment for this instance. */
-    void BerkeleyDB::EnvShutdown()
+    void BerkeleyDB::Shutdown()
     {
-        debug::log(0, FUNCTION, "Shutting down Legacy Berkeley database environment for ", strDbFile);
+        debug::log(0, FUNCTION, "Shutting down ", strDbFile);
 
         LOCK(cs_db);
 

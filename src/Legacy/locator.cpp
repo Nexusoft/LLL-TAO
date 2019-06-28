@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/state.h>
 
+
 /* Global Legacy namespace. */
 namespace Legacy
 {

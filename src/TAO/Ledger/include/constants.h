@@ -91,7 +91,7 @@ namespace TAO
         const uint32_t TRUST_KEY_TIMESPAN_TESTNET = 60 * 60 * 3;
 
 
-        /** The maximum allowed value for trust score (364 days). **/
+        /** The maximum allowed value for trust score (364 days). Legacy value. **/
         const uint32_t TRUST_SCORE_MAX = 60 * 60 * 24 * 28 * 13;
 
 
@@ -113,6 +113,14 @@ namespace TAO
 
         /** Minimum average coin age to stake Genesis on Testnet (10 minutes) **/
         const uint32_t MINIMUM_GENESIS_COIN_AGE_TESTNET = 60 * 10;
+
+
+        /** Grace period during which you can unstake a new stake without trust penalty (4 hours) **/
+        const uint32_t STAKE_GRACE_PERIOD = 60 * 60 * 4;
+
+
+        /** Grace period for testnet (15 minutes) **/
+        const uint32_t STAKE_GRACE_PERIOD_TESTNET = 60 * 15;
 
 
         /** Minimum span between trust blocks testnet **/

@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/reserved.h>
 #include <TAO/Register/include/reserved.h>
+#include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
@@ -86,8 +87,33 @@ namespace TAO
                     /* Enforce hash on Name objects to ensure that a Name cannot be created for someone elses genesis ID . */
                     case TAO::Register::OBJECTS::NAME:
                     {
+                        /* Declare the namespace hash */
+                        uint256_t hashNamespace = 0;
+
+                        /* If the Name contains a namespace then use a hash of this to verify the register address hash */
+                        std::string strNamespace = object.get<std::string>("namespace");
+                        if(!strNamespace.empty())
+                        {
+                            /* Namespace hash is a SK256 hash of the namespace name */
+                            hashNamespace = LLC::SK256(strNamespace);
+
+                            /* Retrieve the namespace object and check that the hashGenesis is the owner */
+                            TAO::Register::Object namespaceObject;
+                            if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
+                                return debug::error(FUNCTION, "Namespace does not exist: ", strNamespace);
+
+                            /* Check the owner is the hashGenesis */
+                            if(namespaceObject.hashOwner != state.hashOwner)
+                                return debug::error(FUNCTION, "Namespace not owned by caller: ", strNamespace );
+
+                        }
+                        else
+                            /* Otherwise we use the owner genesis Hash */
+                            hashNamespace = state.hashOwner;
+                        
+
                         /* Build vector to hold the genesis + name data for hashing */
-                        std::vector<uint8_t> vData((uint8_t*)&state.hashOwner, (uint8_t*)&state.hashOwner + 32);
+                        std::vector<uint8_t> vData((uint8_t*)&hashNamespace, (uint8_t*)&hashNamespace + 32);
 
                         /* Insert the name of from the Name object */
                         std::string strName = object.get<std::string>("name");
@@ -104,20 +130,17 @@ namespace TAO
                     }
 
 
-                    /* Enforce hash on Name objects to ensure that a Name cannot be created for someone elses genesis ID . */
+                    /* Enforce hash on Namespace objects to ensure that the register address is a hash of the namespace name. */
                     case TAO::Register::OBJECTS::NAMESPACE:
                     {
                         /* Insert the name of from the Name object */
                         std::string strNamespace = object.get<std::string>("namespace");
 
-                        /* Build vector to hold the genesis + name data for hashing */
-                        std::vector<uint8_t> vData(strNamespace.begin(), strNamespace.end());
-
-                        /* Hash this in the same was as the caller would have to generate hashAddress */
-                        uint256_t hashName = LLC::SK256(vData);
+                        /* Hash this in the same way as the caller would have to generate hashAddress */
+                        uint256_t hashNamespace = LLC::SK256(strNamespace);
 
                         /* Fail if caller didn't user their own genesis to create name. */
-                        if(hashName != hashAddress)
+                        if(hashNamespace != hashAddress)
                             return debug::error(FUNCTION, "incorrect name or genesis");
 
                         break;

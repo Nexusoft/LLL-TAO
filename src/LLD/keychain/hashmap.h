@@ -66,10 +66,6 @@ namespace LLD
         uint32_t HASHMAP_TOTAL_BUCKETS;
 
 
-        /** The Maximum cache size for allocated keys. **/
-        uint32_t HASHMAP_MAX_CACHE_SIZE;
-
-
         /** The Maximum key size for static key sectors. **/
         uint16_t HASHMAP_MAX_KEY_SIZE;
 
@@ -93,15 +89,12 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND);
+        BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn = FLAGS::APPEND, uint64_t nBucketsIn = 256 * 256 * 64);
 
-
-        /** Default Constructor **/
-        BinaryHashMap(std::string strBaseLocationIn, uint32_t nTotalBuckets, uint32_t nMaxCacheSize, uint8_t nFlagsIn = FLAGS::APPEND);
 
 
         /** Copy Assignment Operator **/
-        BinaryHashMap& operator=(BinaryHashMap map);
+        BinaryHashMap& operator=(const BinaryHashMap& map);
 
 
         /** Copy Constructor **/
@@ -122,14 +115,6 @@ namespace LLD
          *
          **/
         void CompressKey(std::vector<uint8_t>& vData, uint16_t nSize = 32);
-
-
-        /** GetKeys
-         *
-         *  Placeholder.
-         *
-         **/
-         std::vector< std::vector<uint8_t> > GetKeys();
 
 
         /** GetBucket

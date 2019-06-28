@@ -37,6 +37,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/debug.h>
+#include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -45,6 +46,79 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+
+        /* Default Constructor. */
+        Transaction::Transaction()
+        : vContracts()
+        , nVersion(1)
+        , nSequence(0)
+        , nTimestamp(runtime::unifiedtimestamp())
+        , hashNext(0)
+        , hashRecovery(0)
+        , hashGenesis(0)
+        , hashPrevTx(0)
+        , hashNextTx(0)
+        , nKeyType(0)
+        , nNextType(0)
+        , vchPubKey()
+        , vchSig()
+        {
+        }
+
+
+        /* Default Destructor. */
+        Transaction::~Transaction()
+        {
+        }
+
+
+        /* Used for sorting transactions by sequence. */
+        bool Transaction::operator>(const Transaction& tx) const
+        {
+            return nSequence > tx.nSequence;
+        }
+
+
+        /*  Used for sorting transactions by sequence. */
+        bool  Transaction::operator<(const Transaction& tx) const
+        {
+            return nSequence < tx.nSequence;
+        }
+
+
+        /*  Access for the contract operator overload. This is for read-only objects. */
+        const TAO::Operation::Contract& Transaction::operator[](const uint32_t n) const
+        {
+            /* Check contract bounds. */
+            if(n >= vContracts.size())
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
+
+            /* Bind this transaction. */
+            vContracts[n].Bind(*this, n);
+
+            return vContracts[n];
+        }
+
+
+        /*  Write access fot the contract operator overload. This handles writes to create new contracts. */
+        TAO::Operation::Contract& Transaction::operator[](const uint32_t n)
+        {
+            /* Allocate a new contract if on write. */
+            if(n >= vContracts.size())
+                vContracts.resize(n + 1);
+
+            /* Bind this transaction. */
+            vContracts[n].Bind(*this, n);
+
+            return vContracts[n];
+        }
+
+
+        /*  Get the total contracts in transaction. */
+        uint32_t Transaction::Size() const
+        {
+            return vContracts.size();
+        }
 
         /* This extracts the leading script byte from genesis-id. */
         uint8_t Transaction::Type() const
@@ -165,14 +239,18 @@ namespace TAO
             std::map<uint256_t, TAO::Register::State> mapStates;
 
             /* Run through all the contracts. */
+            uint32_t nContract = 0;
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(*this);
+                contract.Bind(*this, nContract);
 
                 /* Verify the register pre-states. */
                 if(!TAO::Register::Verify(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
+
+                /* Increment the contract id. */
+                ++nContract;
             }
 
             return true;
@@ -186,14 +264,18 @@ namespace TAO
             std::map<uint256_t, TAO::Register::State> mapStates;
 
             /* Run through all the contracts. */
+            uint32_t nContract = 0;
             for(auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(*this);
+                contract.Bind(*this, nContract);
 
                 /* Calculate the pre-states and post-states. */
                 if(!TAO::Register::Build(contract, mapStates))
                     return false;
+
+                /* Increment the contract id. */
+                ++nContract;
             }
 
             return true;
@@ -292,14 +374,18 @@ namespace TAO
             }
 
             /* Run through all the contracts. */
+            uint32_t nContract = 0;
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(*this);
+                contract.Bind(*this, nContract);
 
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags))
                     return false;
+
+                /* Increment the contract id. */
+                ++nContract;
             }
 
             return true;
@@ -611,14 +697,14 @@ namespace TAO
                 "nVersion = ", nVersion, ", ",
                 "nSequence = ", nSequence, ", ",
                 "nTimestamp = ", nTimestamp, ", ",
-                "nextHash  = ",  hashNext.ToString().substr(0, 20), ", ",
-                "prevHash  = ",  PrevHash().ToString().substr(0, 20), ", ",
-                "hashPrevTx = ", hashPrevTx.ToString().substr(0, 20), ", ",
-                "hashNextTx = ", hashNextTx.ToString().substr(0, 20), ", ",
-                "hashGenesis = ", hashGenesis.ToString().substr(0, 20), ", ",
+                "nextHash  = ",  hashNext.SubString(), ", ",
+                "prevHash  = ",  PrevHash().SubString(), ", ",
+                "hashPrevTx = ", hashPrevTx.SubString(), ", ",
+                "hashNextTx = ", hashNextTx.SubString(), ", ",
+                "hashGenesis = ", hashGenesis.SubString(), ", ",
                 "pub = ", HexStr(vchPubKey).substr(0, 20), ", ",
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",
-                "hash = ", GetHash().ToString().substr(0, 20)
+                "hash = ", GetHash().SubString()
           );
         }
 

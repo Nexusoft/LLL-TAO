@@ -1035,8 +1035,8 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             tx.nTimestamp  = runtime::timestamp();
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
-            //payload
-            tx[0] << uint8_t(OP::COINBASE) << hashGenesis << uint64_t(5000);
+            //payload (hashGenesis, coinbase reward, extra nonce)
+            tx[0] << uint8_t(OP::COINBASE) << hashGenesis << uint64_t(5000) << (uint64_t)0;
 
             //write transaction
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));

@@ -27,7 +27,7 @@ namespace TAO
         /** Default Constructor **/
         State::State()
         : vchState()
-        , nVersion(1)
+        , nVersion(0)
         , nType(0)
         , hashOwner(0)
         , nCreated(runtime::unifiedtimestamp())
@@ -147,7 +147,7 @@ namespace TAO
         /* Null Checking flag for a State Register. */
         bool State::IsNull() const
         {
-            return (nVersion == 0 && vchState.size() == 0 && hashChecksum == 0);
+            return (vchState.size() == 0 && hashChecksum == 0);
         }
 
 

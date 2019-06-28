@@ -14,18 +14,18 @@ ________________________________________________________________________________
 #include <LLC/include/eckey.h>
 #include <LLC/hash/SK.h>
 
+#include <Legacy/include/enum.h>
+#include <Legacy/types/address.h>
+#include <Legacy/types/script.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/memory.h>
 
-#include <Legacy/include/enum.h>
-#include <Legacy/types/address.h>
-#include <Legacy/types/script.h>
-
+#include <algorithm>
 #include <cstring>
 #include <vector>
-#include <algorithm>
+
 
 namespace Legacy
 {
@@ -357,11 +357,18 @@ namespace Legacy
                 return str;
             }
             if(0 <= opcode && opcode <= OP_PUSHDATA4)
-                str += fShort? ValueString(vch).substr(0, 10) : ValueString(vch);
+                str += fShort ? ValueString(vch).substr(0, 10) : ValueString(vch);
             else
                 str += GetOpName(opcode);
         }
         return str;
+    }
+
+
+    /*  Returns a sub-string representation of the script object. */
+    std::string Script::SubString(const uint32_t nSize) const
+    {
+        return ToString().substr(0, nSize);
     }
 
 

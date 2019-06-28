@@ -45,6 +45,7 @@ namespace TAO
             /** Default Constructor **/
             Base()
             : fInitialized(false)
+            , mapFunctions()
             {
             }
 
@@ -100,25 +101,25 @@ namespace TAO
                 if(mapFunctions.find(strMethodToCall) != mapFunctions.end())
                     return mapFunctions[strMethodToCall].Execute(SanitizeParams(strMethodToCall, jsonParamsUpdated), fHelp);
                 else
-                    throw APIException(-32601, debug::safe_printstr("Method not found: ", strMethodToCall));
+                    throw APIException(-2, debug::safe_printstr("Method not found: ", strMethodToCall));
             }
 
 
             /** RewriteURL
-            *
-            *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
-            *  map directly to a function in the target API.  Insted this method can be overriden to
-            *  parse the incoming URL and route to a different/generic method handler, adding parameter
-            *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-            *  added to the jsonParams
-            *  The return json contains the modifed method URL to be called.
-            *
-            *  @param[in] strMethod The name of the method being invoked.
-            *  @param[in] jsonParams The json array of parameters being passed to this method.
-            *
-            *  @return the API method URL
-            *
-            **/
+             *
+             *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
+             *  map directly to a function in the target API.  Insted this method can be overriden to
+             *  parse the incoming URL and route to a different/generic method handler, adding parameter
+             *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
+             *  added to the jsonParams
+             *  The return json contains the modifed method URL to be called.
+             *
+             *  @param[in] strMethod The name of the method being invoked.
+             *  @param[in] jsonParams The json array of parameters being passed to this method.
+             *
+             *  @return the API method URL
+             *
+             **/
             virtual std::string RewriteURL(const std::string& strMethod, json::json& jsonParams)
             {
                 return strMethod;
@@ -127,17 +128,17 @@ namespace TAO
 
 
             /** SanitizeParams
-            *
-            *  Allows derived API's to check the values in the parameters array for the method being called.
-            *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
-            *  for the method being called.
-            *
-            *  @param[in] strMethod The name of the method being invoked.
-            *  @param[in] jsonParams The json array of parameters being passed to this method.
-            *
-            *  @return the sanitized json parameters array.
-            *
-            **/
+             *
+             *  Allows derived API's to check the values in the parameters array for the method being called.
+             *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
+             *  for the method being called.
+             *
+             *  @param[in] strMethod The name of the method being invoked.
+             *  @param[in] jsonParams The json array of parameters being passed to this method.
+             *
+             *  @return the sanitized json parameters array.
+             *
+             **/
             virtual json::json SanitizeParams(const std::string& strMethod, const json::json& jsonParams)
             {
                 return jsonParams;

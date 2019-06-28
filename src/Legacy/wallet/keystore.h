@@ -15,6 +15,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_KEYSTORE_H
 #define NEXUS_LEGACY_WALLET_KEYSTORE_H
 
+#include <LLC/include/eckey.h>
+#include <LLC/types/uint1024.h>
+
 #include <set>
 #include <vector>
 

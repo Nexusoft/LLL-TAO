@@ -24,6 +24,7 @@ namespace LLD
     , nSectorFile(0)
     , nSectorSize(0)
     , nSectorStart(0)
+    , vKey()
     {
     }
 
@@ -53,6 +54,20 @@ namespace LLD
 
     /** Copy Assignment Operator **/
     SectorKey& SectorKey::operator=(const SectorKey& key)
+    {
+        nState          = key.nState;
+        nLength         = key.nLength;
+        nSectorFile     = key.nSectorFile;
+        nSectorSize     = key.nSectorSize;
+        nSectorStart    = key.nSectorStart;
+        vKey            = key.vKey;
+
+        return *this;
+    }
+
+
+    /** Copy Assignment Operator **/
+    SectorKey& SectorKey::operator=(SectorKey& key)
     {
         nState          = key.nState;
         nLength         = key.nLength;

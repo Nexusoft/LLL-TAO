@@ -64,7 +64,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE);
+        LedgerDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE, uint64_t nBuckets = 256 * 256 * 128, uint32_t nCacheIn = 1024 * 1024 * 32);
 
 
         /** Default Destructor **/
@@ -191,6 +191,31 @@ namespace LLD
          **/
         bool ReadClaimed(const uint512_t& hashTx, const uint32_t nContract, uint64_t& nClaimed,
                          const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** ReadMature
+         *
+         *  Read if a transaction is mature.
+         *
+         *  @param[in] hashTx The transaction to determine if it is mature.
+         *
+         *  @return True if txid was successfully read.
+         *
+         **/
+        bool ReadMature(const uint512_t &hashTx);
+
+
+        /** ReadConfirmations
+         *
+         *  Read the number of confirmations a transaction has.
+         *
+         *  @param[in] hashTx The transaction to determine if it is mature.
+         *  @param[out] nConfirms The number of confirmations.
+         *
+         *  @return True if txid was successfully read.
+         *
+         **/
+        bool ReadConfirmations(const uint512_t &hashTx, uint32_t &nConfirms);
 
 
         /** HasIndex

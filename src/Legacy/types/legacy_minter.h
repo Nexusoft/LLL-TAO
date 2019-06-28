@@ -27,15 +27,18 @@ ________________________________________________________________________________
 #include <atomic>
 #include <thread>
 
+#include <atomic>
+#include <thread>
+
 
 namespace Legacy
 {
     /** @class LegacyMinter
       *
       * This class performs all operations for mining legacy blocks on the Proof of Stake channel.
-      * Intialize the LegacyMinter by calling GetInstance() the first time. 
+      * Intialize the LegacyMinter by calling GetInstance() the first time.
       *
-      * Staking does not start, though, until StartStakeMinter() is called for the first time.
+      * Staking does not start, though, until Start() is called for the first time.
       * This retrieves a wallet reference and begins staking for the current legacy wallet.
       *
       * The trust key and balance from the wallet will be used for Proof of Stake.
@@ -43,8 +46,8 @@ namespace Legacy
       * to the wallet's trust key. If the wallet does not have a trust key to start, one will be
       * created from its key pool and the minter will mine for its Genesis transaction.
       *
-      * Staking operations can be suspended by calling StopStakeMinter (for example, if the wallet is locked)
-      * and restarted by calling StartStakeMinter() again.
+      * Staking operations can be suspended by calling Stop (for example, if the wallet is locked)
+      * and restarted by calling Start() again.
       *
       **/
     class LegacyMinter final : public TAO::Ledger::StakeMinter
@@ -52,6 +55,7 @@ namespace Legacy
     public:
         /** Copy constructor deleted **/
         LegacyMinter(const LegacyMinter&) = delete;
+
 
         /** Copy assignment deleted **/
         LegacyMinter& operator=(const LegacyMinter&) = delete;
@@ -72,13 +76,84 @@ namespace Legacy
 
 
         /** IsStarted
-          *
-          * Tests whether or not the stake minter is currently running.
-          *
-          * @return true if the stake minter is started, false otherwise
-          *
-          */
-        bool IsStarted() const override;
+         *
+         * Tests whether or not the stake minter is currently running.
+         *
+         * @return true if the stake minter is started, false otherwise
+         *
+         */
+        bool IsStarted() const;
+
+
+        /** GetBlockWeight
+         *
+         * Retrieves the current internal value for the block weight metric.
+         *
+         * @return value of current block weight
+         *
+         */
+        double GetBlockWeight() const;
+
+
+        /** GetBlockWeight
+         *
+         * Retrieves the block weight metric as a percentage of maximum.
+         *
+         * @return the current block weight percentage
+         *
+         */
+        double GetBlockWeightPercent() const;
+
+
+        /** GetTrustWeight
+         *
+         * Retrieves the current internal value for the trust weight metric.
+         *
+         * @return value of current trust weight
+         *
+         */
+        double GetTrustWeight() const;
+
+
+        /** GetTrustWeight
+         *
+         * Retrieves the trust weight metric as a percentage of maximum.
+         *
+         * @return the current trust weight percentage
+         *
+         */
+        double GetTrustWeightPercent() const;
+
+
+        /** GetStakeRate
+         *
+         * Retrieves the current staking reward rate (previously, interest rate)
+         *
+         * @return the current stake rate
+         *
+         */
+        double GetStakeRate() const;
+
+
+        /** GetStakeRatePercent
+         *
+         * Retrieves the current staking reward rate as an annual percentage.
+         *
+         * @return the current stake rate percentage
+         *
+         */
+        double GetStakeRatePercent() const;
+
+
+        /** IsWaitPeriod
+         *
+         * Checks whether the stake minter is waiting for average coin
+         * age to reach the required minimum before staking Genesis.
+         *
+         * @return true if minter is waiting on coin age, false otherwise
+         *
+         */
+        bool IsWaitPeriod() const;
 
 
         /** StartStakeMinter
@@ -106,31 +181,31 @@ namespace Legacy
           * @return true if the stake minter was started, false if it was already running or not started
           *
           */
-        bool StartStakeMinter() override;
+        bool Start() override;
 
 
-        /** StopStakeMinter
+        /** Stop
           *
           * Stops the stake minter.
           *
           * Call this method to signal the stake minter thread stop Proof of Stake mining and end.
-          * It can be restarted via a subsequent call to StartStakeMinter().
+          * It can be restarted via a subsequent call to Start().
           *
           * Should be called whenever the wallet is locked, and on system shutdown.
           *
           * @return true if the stake minter was stopped, false if it was already stopped
           *
           */
-        bool StopStakeMinter() override;
+        bool Stop() override;
 
 
     private:
         /** Set true when stake miner thread starts and remains true while it is running **/
-        static std::atomic<bool> fisStarted;
+        static std::atomic<bool> fIsStarted;
 
 
         /** Flag to tell the stake minter thread to stop processing and exit. **/
-        static std::atomic<bool> fstopMinter;
+        static std::atomic<bool> fStopMinter;
 
 
         /** Thread for operating the stake minter **/

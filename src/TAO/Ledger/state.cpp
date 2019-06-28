@@ -79,6 +79,23 @@ namespace TAO
 
 
         /** Default Constructor. **/
+        BlockState::BlockState()
+        : Block()
+        , ssSystem()
+        , vtx()
+        , nChainTrust(0)
+        , nMoneySupply(0)
+        , nMint(0)
+        , nChannelHeight(0)
+        , nReleasedReserve{0, 0, 0}
+        , hashNextBlock(0)
+        , hashCheckpoint(0)
+        {
+            SetNull();
+        }
+
+
+        /** Default Constructor. **/
         BlockState::BlockState(const TritiumBlock& block)
         : Block(block)
         , ssSystem()
@@ -124,6 +141,84 @@ namespace TAO
 
             if(vtx.size() != block.vtx.size())
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "legacy block to state incorrect sizes"));
+        }
+
+
+        /** Default Destructor. **/
+        BlockState::~BlockState()
+        {
+        }
+
+
+        /** Copy Constructor. **/
+        BlockState::BlockState(const BlockState& state)
+        : Block(state)
+        {
+            vtx                 = state.vtx;
+
+            nChainTrust         = state.nChainTrust;
+            nMoneySupply        = state.nMoneySupply;
+            nMint               = state.nMint;
+            nChannelHeight      = state.nChannelHeight;
+
+            nReleasedReserve[0] = state.nReleasedReserve[0];
+            nReleasedReserve[1] = state.nReleasedReserve[1];
+            nReleasedReserve[2] = state.nReleasedReserve[2];
+
+            hashNextBlock       = state.hashNextBlock;
+            hashCheckpoint      = state.hashCheckpoint;
+        }
+
+
+        /** Copy Assignment Operator. **/
+        BlockState& BlockState::operator=(const BlockState& state)
+        {
+            nVersion            = state.nVersion;
+            hashPrevBlock       = state.hashPrevBlock;
+            hashMerkleRoot      = state.hashMerkleRoot;
+            nChannel            = state.nChannel;
+            nHeight             = state.nHeight;
+            nBits               = state.nBits;
+            nNonce              = state.nNonce;
+            nTime               = state.nTime;
+            vchBlockSig         = state.vchBlockSig;
+
+            vtx                 = state.vtx;
+
+            nChainTrust         = state.nChainTrust;
+            nMoneySupply        = state.nMoneySupply;
+            nMint               = state.nMint;
+            nChannelHeight      = state.nChannelHeight;
+
+            nReleasedReserve[0] = state.nReleasedReserve[0];
+            nReleasedReserve[1] = state.nReleasedReserve[1];
+            nReleasedReserve[2] = state.nReleasedReserve[2];
+
+            hashNextBlock       = state.hashNextBlock;
+            hashCheckpoint      = state.hashCheckpoint;
+
+            return *this;
+        }
+
+
+        /** Equivilence checking **/
+        bool BlockState::operator==(const BlockState& state) const
+        {
+            return GetHash() == state.GetHash();
+        }
+
+
+        /** Equivilence checking **/
+        bool BlockState::operator!=(const BlockState& state) const
+        {
+            return GetHash() != state.GetHash();
+        }
+
+
+        /** Not operator overloading. **/
+        bool BlockState::operator!(void)
+        {
+            return IsNull();
         }
 
 
@@ -253,16 +348,14 @@ namespace TAO
                 /* Set new checkpoint hash. */
                 hashCheckpoint = GetHash();
 
-                /* Verbose output. */
-                debug::log(1, "===== New Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
+                debug::log(1, "===== New Pending Checkpoint Hash = ", hashCheckpoint.SubString(15));
             }
             else
             {
                 /* Continue the old checkpoint through chain. */
                 hashCheckpoint = statePrev.hashCheckpoint;
 
-                /* Verbose output. */
-                debug::log(1, "===== Pending Checkpoint Hash = ", hashCheckpoint.ToString().substr(0, 15));
+                debug::log(1, "===== Pending Checkpoint Hash = ", hashCheckpoint.SubString(15));
             }
 
             /* Start the database transaction. */
@@ -426,11 +519,11 @@ namespace TAO
                 if(vDisconnect.size() > 0)
                 {
                     debug::log(0, FUNCTION, "REORGANIZE: Disconnect ", vDisconnect.size(),
-                        " blocks; ", fork.GetHash().ToString().substr(0,20),
-                        "..",  ChainState::stateBest.load().GetHash().ToString().substr(0,20));
+                        " blocks; ", fork.GetHash().SubString(),
+                        "..",  ChainState::stateBest.load().GetHash().SubString());
 
-                    debug::log(0, FUNCTION, "REORGANIZE: Connect ", vConnect.size(), " blocks; ", fork.GetHash().ToString().substr(0,20),
-                        "..", nHash.ToString().substr(0,20));
+                    debug::log(0, FUNCTION, "REORGANIZE: Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
+                        "..", nHash.SubString());
                 }
 
                 /* Disconnect given blocks. */
@@ -448,7 +541,7 @@ namespace TAO
 
                         /* Debug errors. */
                         return debug::error(FUNCTION, "failed to disconnect ",
-                            state.GetHash().ToString().substr(0, 20));
+                            state.GetHash().SubString());
                     }
 
                     /* Erase block if not connecting anything. */
@@ -473,7 +566,8 @@ namespace TAO
                         LLD::TxnAbort();
 
                         /* Debug errors. */
-                        return debug::error(FUNCTION, "failed to connect ", state->GetHash().ToString().substr(0, 20));
+                        return debug::error(FUNCTION, "failed to connect ",
+                            state->GetHash().SubString());
                     }
 
                     /* Harden a checkpoint if there is any. */
@@ -491,7 +585,7 @@ namespace TAO
 
                 /* Debug output about the best chain. */
                 debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
-                    "New Best Block hash=", nHash.ToString().substr(0, 20),
+                    "New Best Block hash=", nHash.SubString(),
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
                     " tx=", vtx.size(),
@@ -871,10 +965,10 @@ namespace TAO
             if(nState & debug::flags::header)
             {
                 strDebug += debug::safe_printstr("Block(",
-                VALUE("hash") " = ", GetHash().ToString().substr(0, 20), ", ",
+                VALUE("hash") " = ", GetHash().SubString(), ", ",
                 VALUE("nVersion") " = ", nVersion, ", ",
-                VALUE("hashPrevBlock") " = ", hashPrevBlock.ToString().substr(0, 20), ", ",
-                VALUE("hashMerkleRoot") " = ", hashMerkleRoot.ToString().substr(0, 20), ", ",
+                VALUE("hashPrevBlock") " = ", hashPrevBlock.SubString(), ", ",
+                VALUE("hashMerkleRoot") " = ", hashMerkleRoot.SubString(), ", ",
                 VALUE("nChannel") " = ", nChannel, ", ",
                 VALUE("nHeight") " = ", nHeight, ", ",
                 VALUE("nDiff") " = ", GetDifficulty(nBits, nChannel), ", ",
@@ -893,8 +987,8 @@ namespace TAO
                 VALUE("nMinerReserve") " = ", nReleasedReserve[0], ", ",
                 VALUE("nAmbassadorReserve") " = ", nReleasedReserve[1], ", ",
                 VALUE("nDeveloperReserve") " = ", nReleasedReserve[2], ", ",
-                VALUE("hashNextBlock") " = ", hashNextBlock.ToString().substr(0, 20), ", ",
-                VALUE("hashCheckpoint") " = ", hashCheckpoint.ToString().substr(0, 20));
+                VALUE("hashNextBlock") " = ", hashNextBlock.SubString(), ", ",
+                VALUE("hashCheckpoint") " = ", hashCheckpoint.SubString());
             }
 
             strDebug += ")";
@@ -903,7 +997,7 @@ namespace TAO
             if(nState & debug::flags::tx)
             {
                 for(const auto& tx : vtx)
-                    strDebug += debug::safe_printstr("\nProof(nType = ", (uint32_t)tx.first, ", hash = ", tx.second.ToString().substr(0, 20), ")");
+                    strDebug += debug::safe_printstr("\nProof(nType = ", (uint32_t)tx.first, ", hash = ", tx.second.SubString(), ")");
             }
 
             return strDebug;
@@ -925,7 +1019,7 @@ namespace TAO
                 if(!LLD::Ledger->ReadTx(vtx[0].second, tx))
                     return debug::error(FUNCTION, "transaction is not on disk");
 
-                return Block::StakeHash( tx.IsGenesis(), tx.hashGenesis);
+                return Block::StakeHash(tx.IsGenesis(), tx.hashGenesis);
             }
             else if(vtx[0].first == TYPE::LEGACY_TX)
             {

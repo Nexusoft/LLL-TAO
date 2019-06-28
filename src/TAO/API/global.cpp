@@ -15,26 +15,28 @@ ________________________________________________________________________________
 
 #include <Util/include/debug.h>
 
-namespace TAO 
+namespace TAO
 {
     namespace API
     {
         /* The API global instance pointers. */
-        Assets* assets;
-        Ledger* ledger;
-        Register* reg;
-        RPC* RPCCommands;
-        Supply* supply;
-        System* system;
-        Tokens* tokens;
-        Users* users;
-        Finance* finance;
+        Assets*     assets;
+        Ledger*     ledger;
+        Register*   reg;
+        RPC*        RPCCommands;
+        Supply*     supply;
+        System*     system;
+        Tokens*     tokens;
+        Users*      users;
+        Finance*    finance;
+        Names*      names;
+        DEX*        dex;
 
-        
+
         /*  Instantiate global instances of the API. */
         void Initialize()
         {
-            debug::log(0, "Initializing API");
+            debug::log(0, FUNCTION, "Initializing API");
 
             /* Create the API instances. */
             assets      = new Assets();
@@ -46,13 +48,15 @@ namespace TAO
             tokens      = new Tokens();
             users       = new Users();
             finance     = new Finance();
+            names       = new Names();
+            dex         = new DEX();
         }
 
 
         /*  Delete global instances of the API. */
         void Shutdown()
         {
-            debug::log(0, "Shutting down API");
+            debug::log(0, FUNCTION, "Shutting down API");
 
             if(assets)
                 delete assets;
@@ -81,6 +85,12 @@ namespace TAO
             if(finance)
                 delete finance;
 
-        }    
+            if(names)
+                delete names;
+
+            if(dex)
+                delete dex;
+
+        }
     }
 }

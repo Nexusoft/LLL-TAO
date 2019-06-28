@@ -154,9 +154,9 @@ Increment an amount received from another NXS account to an account owned by you
 
 `txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.
 
-`name` : The name identifying the account to credit. This is only required for split payments (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
-`address` : The register address of the account to credit. This is only required for split payments (where the receiving account is not included in the credit transaction) and is optional if the name is provided.
+`address` : The register address of the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the name is provided.
 
 `name_proof` : The name identifying the account that proves your ownership of the share of the debit. This is only required for split payments and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
@@ -227,11 +227,17 @@ Additionally the API supports passing a field name in the URL after the account 
 
 ### Return values:
 
+`owner` : The genesis hash of the signature chain that owns this account.
+
+`created` : The UNIX timestamp when the account was created.
+
+`modified` : The UNIX timestamp when the account was last modified.
+
 `name` : The name identifying the account.  For privacy purposes, this is only included in the response if the caller is the owner of the account
 
 `address` : The register address of the account.  The address is a hash based on the owners username and account name.
 
-`token_address` : This will always be set to 0 for NXS accounts.
+`token` : This will always be set to 0 for NXS accounts.
 
 `balance` : The current balance of this account.
 
@@ -274,7 +280,7 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 
 `address` : The register address for the account
 
-`token_address` : This will always be set to 0 for NXS accounts.
+`token` : This will always be set to 0 for NXS accounts.
 
 `balance` : The current balance of the token account.
 
@@ -282,7 +288,7 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 
 # `get/stakeinfo`
 
-This will retrieve account values and staking metrics for the trust account belonging to the currently logged in signature chain. If called when the stake minter is not running (for multi-user API mode), this method only returns trust account values. Staking metrics will return 0.
+This will retrieve account values and staking metrics for the trust account belonging to the currently logged in signature chain. If called when the stake minter is not running, this method only returns trust account values. Staking metrics will return 0.
 
 
 ### Endpoint:
@@ -303,7 +309,8 @@ This will retrieve account values and staking metrics for the trust account belo
     "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
     "balance": 150,
     "stake": 5000,
-    "trust": 30.77,
+    "trust": 54322,
+    "staking": true
     "stakerate": 1.97,
     "trustweight": 58.97,
     "blockweight": 47.62,
@@ -314,13 +321,15 @@ This will retrieve account values and staking metrics for the trust account belo
 
 ### Return values:
 
-`address` : The register address of the trust account.  The address is a hash based on the owners username and account name.
+`address` : The register address of the trust account. The address is a hash based on the owners username and account name.
 
 `balance` : The current NXS balance of the trust account. This is general account balance that is not staked.
 
 `stake` : The amount of NXS currently staked in the trust account.
 
-`trust` : The current trust score of the trust account as a percent of maximum.
+`trust` : The current raw trust score of the trust account.
+
+`staking` : Indicates whether staking is actively running for user account (when false, weight metrics will be 0).
 
 `stakerate` : The current annual reward rate earned for staking as an annual percent.
 

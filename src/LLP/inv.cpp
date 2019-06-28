@@ -102,7 +102,7 @@ namespace LLP
 						return debug::safe_printstr(GetCommand(), " ", invHash.substr(invHash.length() - 20, invHash.length()));
 				}
 
-				return debug::safe_printstr(GetCommand(), " ", hash.ToString().substr(0,20));
+				return debug::safe_printstr(GetCommand(), " ", hash.SubString());
 		}
 
 

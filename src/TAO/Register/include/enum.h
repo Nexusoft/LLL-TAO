@@ -23,7 +23,7 @@ namespace TAO
     namespace Register
     {
 
-        /** STATE
+        /** REGISTER
          *
          *  State registers that are available for use.
          *
@@ -84,22 +84,22 @@ namespace TAO
             enum
             {
                 /* Non-Standard Object (User Defined Type). */
-                NONSTANDARD  = 0xb0,
+                NONSTANDARD  = 1,
 
                 /* Account Object Register. */
-                ACCOUNT      = 0xb1,
+                ACCOUNT      = 2,
 
                 /* Token Object Register. */
-                TOKEN        = 0xb2,
+                TOKEN        = 4,
 
                 /* Trust Object Register. */
-                TRUST        = 0xb3,
+                TRUST        = 8,
 
                 /* Name Object Register. */
-                NAME         = 0xb4,
+                NAME         = 16,
 
                 /* Namespace Object Register. */
-                NAMESPACE    = 0xb5
+                NAMESPACE    = 32
             };
         }
 

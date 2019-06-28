@@ -18,7 +18,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -46,13 +48,6 @@ namespace TAO
         uint64_t MaxBlockAge()
         {
             return (uint64_t)(config::fTestNet.load() ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET : TAO::Ledger::TRUST_KEY_TIMESPAN);
-        }
-
-
-        /* Retrieve the setting for maximum trust score value allowed. */
-        uint64_t MaxTrustScore()
-        {
-            return (uint64_t)(config::fTestNet.load() ? TAO::Ledger::TRUST_SCORE_MAX_TESTNET : TAO::Ledger::TRUST_SCORE_MAX);
         }
 
 
@@ -91,13 +86,12 @@ namespace TAO
         uint64_t GetTrustScore(const uint64_t nTrustPrev, const uint64_t nStake, const uint64_t nBlockAge)
         {
             uint64_t nTrust = 0;
-            uint64_t nTrustMax = MaxTrustScore();
             uint64_t nBlockAgeMax = MaxBlockAge();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
             if(nBlockAge <= nBlockAgeMax)
             {
-                nTrust = std::min((nTrustPrev + nBlockAge), nTrustMax);
+                nTrust = nTrustPrev + nBlockAge;
             }
             else
             {
@@ -113,27 +107,96 @@ namespace TAO
                     nTrust = 0;
             }
 
-            /* Double check that the trust score cannot exceed the maximum */
-            if(nTrust > nTrustMax)
-                nTrust = nTrustMax;
-
             return nTrust;
         }
 
 
         /* Calculate trust score penalty that results from unstaking a portion of stake balance. */
-        uint64_t GetUnstakePenalty(const uint64_t nTrustPrev, const uint64_t nStakePrev, const uint64_t nStakeNew)
+        uint64_t GetUnstakePenalty(const uint64_t nTrustPrev, const uint64_t nStakePrev,
+                                   const uint64_t nStakeNew, const uint256_t& hashGenesis)
         {
             /* Unstake penalty only applies if stake balance is reduced */
             if(nStakeNew >= nStakePrev)
-                return nTrustPrev;
+                return 0;
+
+            /* Cutoff time of grace period. Stake added within grace period can be removed without penalty */
+            uint64_t nCutoff = runtime::unifiedtimestamp() - (uint64_t)(config::fTestNet.load() ? STAKE_GRACE_PERIOD_TESTNET : STAKE_GRACE_PERIOD);
+
+            /* Look through tx history to calculate any amount of stake added within the grace period */
+            uint512_t hashLast = 0;
+            int64_t nStakeAdded = 0;
+
+            /* Get the most recent tx hash for the user account. */
+            if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+            {
+                /* Loop through all transactions within grace period and accumulate net amount of stake added. */
+                while(hashLast != 0)
+                {
+                    /* Get the transaction for the current hashLast. */
+                    TAO::Ledger::Transaction txCheck;
+                    if(!LLD::Ledger->ReadTx(hashLast, txCheck, TAO::Ledger::FLAGS::MEMPOOL))
+                        break;
+
+                    /* Transaction must be after cutoff to be within the grace period */
+                    if(txCheck.nTimestamp < nCutoff)
+                        break;
+
+                    /* Test whether the transaction contains a staking operation */
+                    for(uint32_t i = 0; i < txCheck.Size(); ++i)
+                    {
+                        if(TAO::Register::Unpack(txCheck[i], TAO::Operation::OP::STAKE))
+                        {
+                            /* Unpack the amount added to stake by stake operation */
+                            uint64_t nAmount;
+                            TAO::Register::Unpack(txCheck[i], nAmount);
+
+                            nStakeAdded += nAmount;
+                        }
+
+                        /* Also have to account for stake removed during grace period as this negates the amount added */
+                        if(TAO::Register::Unpack(txCheck[i], TAO::Operation::OP::UNSTAKE))
+                        {
+                            /* Unpack the amount added to stake by stake operation */
+                            uint64_t nAmount;
+                            TAO::Register::Unpack(txCheck[i], nAmount);
+
+                            nStakeAdded -= nAmount;
+                        }
+                    }
+
+                    /* Iterate to next previous user tx */
+                    hashLast = txCheck.hashPrevTx;
+                }
+            }
+
+            /* If net change during grace period is unstake, then amount added is 0 */
+            if(nStakeAdded < 0)
+                nStakeAdded = 0;
+
+            /* Unstake penalty only applies if stake balance reduced by more than amount added during grace period */
+            if((nStakeNew + nStakeAdded) >= nStakePrev)
+                return 0;
 
             /* When unstake, new trust score is fraction of old trust score equal to fraction of balance remaining.
-             * (nStakeNew / nStakePrev) is fraction of balance remaining, multiply by old trust score to get new.
-             * Example: have 100 stake and remove 30, new stake is 70 and new trust score is (70 / 100) * old trust score
-             * Multiplication is done first to allow this to use integer math.
+             * (nStakeNew / nStakePrev) is fraction of balance remaining, multiply by old trust score to get new one.
+             * In other words, (nStakeNew / nStakePrev) * old trust score = new trust score
+             *
+             * In implementation, multiplication is done first to allow this to use integer math.
+             *
+             * If have stake added during grace period, this amount is added to nStakeNew, reducing the trust penalty.
+             *
+             * Example 1: have 100 stake and remove 30, new stake is 70 and new trust score is (70 / 100) * old trust score
+             * New score is 70% old score, a 30% penalty.
+             *
+             * Example 2: have 100 stake and add 100 more (200 stake), then remove 150 within grace period, new stake is 50.
+             * If penalty applied to full amount removed, new score = (50 / 200) * old trust score, a 75% penalty
+             * but because it was removed during grace period, new score = ((50 + 100) / 200) * old trust score, a 25% penalty
+             *
+             * Note that, in example 2, if only remove 50, then (nStakeNew + nStakeAdded) = (150 + 100) > current 200 stake
+             * so the if-check above is true and penalty is 0 because have only removed a portion of the stake added
+             * during the grace period.
              */
-            uint64_t nTrustNew = (nStakeNew * nTrustPrev) / nStakePrev;
+            uint64_t nTrustNew = ((nStakeNew + (uint64_t)nStakeAdded) * nTrustPrev) / nStakePrev;
 
             /* Penalty is amount of trust reduction */
             return (nTrustPrev - nTrustNew);
@@ -145,9 +208,9 @@ namespace TAO
         {
 
             /* Block Weight reaches maximum of 10.0 when Block Age equals the max block age */
-            double nBlockAgeRatio = (double)nBlockAge / (double)MaxBlockAge();
+            double nBlockRatio = (double)nBlockAge / (double)MaxBlockAge();
 
-            return std::min(10.0, (9.0 * log((2.0 * nBlockAgeRatio) + 1.0) / LOG3) + 1.0);
+            return std::min(10.0, (9.0 * log((2.0 * nBlockRatio) + 1.0) / LOG3) + 1.0);
         }
 
 
@@ -157,9 +220,9 @@ namespace TAO
             /* Trust Weight For Genesis is based on Coin Age. Genesis trust weight is less than normal trust weight,
              * reaching a maximum of 10.0 after average Coin Age reaches trust weight base.
              */
-            double nGenesisTrustRatio = (double)nCoinAge / (double)TrustWeightBase();
+            double nWeightRatio = (double)nCoinAge / (double)TrustWeightBase();
 
-            return std::min(10.0, (9.0 * log((2.0 * nGenesisTrustRatio) + 1.0) / LOG3) + 1.0);
+            return std::min(10.0, (9.0 * log((2.0 * nWeightRatio) + 1.0) / LOG3) + 1.0);
         }
 
 
@@ -170,9 +233,9 @@ namespace TAO
              * This formula will reach 45.0 (50%) after accumulating 84 days worth of Trust Score (Mainnet base),
              * while requiring close to a year to reach maximum.
              */
-            double nTrustWeightRatio = (double)nTrust / (double)TrustWeightBase();
+            double nWeightRatio = (double)nTrust / (double)TrustWeightBase();
 
-            return std::min(90.0, (44.0 * log((2.0 * nTrustWeightRatio) + 1.0) / LOG3) + 1.0);
+            return std::min(90.0, (44.0 * log((2.0 * nWeightRatio) + 1.0) / LOG3) + 1.0);
         }
 
 
@@ -200,10 +263,10 @@ namespace TAO
             if(isGenesis)
                 return 0.005;
 
-            /* Stake rate starts at 0.005 (0.5%) and grows to 0.03 (3%) when trust score reaches maximum */
-            double nTrustScoreRatio = (double)nTrust / (double)MaxTrustScore();
+            /* Stake rate starts at 0.005 (0.5%) and grows to 0.03 (3%) when trust score reaches or exceeds one year */
+            double nTrustRatio = (double)nTrust / (double)ONE_YEAR;
 
-            return std::min(0.03, (0.025 * log((9.0 * nTrustScoreRatio) + 1.0) / LOG10) + 0.005);
+            return std::min(0.03, (0.025 * log((9.0 * nTrustRatio) + 1.0) / LOG10) + 0.005);
         }
 
 
@@ -213,15 +276,18 @@ namespace TAO
 
             double nStakeRate = StakeRate(nTrust, isGenesis);
 
-            /* Reward rate for time period is annual rate * (time period / annual time) or nStakeRate * (nStakeTime / MaxTrustScore)
+            /* Reward rate for time period is annual rate * (time period / annual time) or nStakeRate * (nStakeTime / ONE_YEAR)
              * Then, overall nStakeReward = nStake * reward rate
              *
-             * Thus, the appropriate way to write this (for clarity) would be: nStakeReward = nStake * nStakeRate * (nStakeTime / MaxTrustScore)
-             * However, with integer arithmetic (nStakeTime / MaxTrustScore) would evaluate to 0 or 1, etc. and the overall nStakeReward would be erroneous
+             * Thus, the appropriate way to write this (for clarity) would be:
+             *      StakeReward = nStake * nStakeRate * (nStakeTime / ONE_YEAR)
              *
-             * Therefore, we apply parentheses around the full multiplication portion before applying the division to get appropriate reward.
+             * However, with integer arithmetic (nStakeTime / ONE_YEAR) would evaluate to 0 or 1, etc. and the nStakeReward
+             * would be erroneous.
+             *
+             * Therefore, it performs the full multiplication portion first.
              */
-            uint64_t nStakeReward = (nStake * nStakeRate * nStakeTime) / MaxTrustScore();
+            uint64_t nStakeReward = (nStake * nStakeRate * nStakeTime) / ONE_YEAR;
 
             return nStakeReward;
         }

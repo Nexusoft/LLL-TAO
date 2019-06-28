@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <Legacy/types/transaction.h>
 
+
 namespace Legacy
 {
 

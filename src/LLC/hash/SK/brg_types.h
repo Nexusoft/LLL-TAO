@@ -76,7 +76,7 @@ extern "C" {
 #  elif ULONG_MAX == 4294967295u
 #    define li_32(h) 0x##h##ul
      typedef unsigned long uint_32t;
-#  elif defined( _CRAY)
+#  elif defined(_CRAY)
 #    error This code needs 32-bit data types, which Cray machines do not provide
 #  else
 #    error Please define uint_32t as a 32-bit uint32_teger type in brg_types.h
@@ -84,37 +84,37 @@ extern "C" {
 #endif
 
 #ifndef BRG_UI64
-#  if defined( __BORLANDC__) && !defined( __MSDOS__)
+#  if defined(__BORLANDC__) && !defined(__MSDOS__)
 #    define BRG_UI64
 #    define li_64(h) 0x##h##ui64
      typedef unsigned __int64 uint_64t;
-#  elif defined( _MSC_VER) && ( _MSC_VER < 1300)    /* 1300 == VC++ 7.0 */
+#  elif defined(_MSC_VER) && (_MSC_VER < 1300)    /* 1300 == VC++ 7.0 */
 #    define BRG_UI64
 #    define li_64(h) 0x##h##ui64
      typedef unsigned __int64 uint_64t;
-#  elif defined( __sun) && defined(ULONG_MAX) && ULONG_MAX == 0xfffffffful
+#  elif defined(__sun) && defined(ULONG_MAX) && ULONG_MAX == 0xfffffffful
 #    define BRG_UI64
 #    define li_64(h) 0x##h##ull
      typedef unsigned long long uint_64t;
-#  elif defined( UINT_MAX) && UINT_MAX > 4294967295u
+#  elif defined(UINT_MAX) && UINT_MAX > 4294967295u
 #    if UINT_MAX == 18446744073709551615u
 #      define BRG_UI64
 #      define li_64(h) 0x##h##u
        typedef uint32_t uint_64t;
 #    endif
-#  elif defined( ULONG_MAX) && ULONG_MAX > 4294967295u
+#  elif defined(ULONG_MAX) && ULONG_MAX > 4294967295u
 #    if ULONG_MAX == 18446744073709551615ul
 #      define BRG_UI64
 #      define li_64(h) 0x##h##ul
        typedef unsigned long uint_64t;
 #    endif
-#  elif defined( ULLONG_MAX) && ULLONG_MAX > 4294967295u
+#  elif defined(ULLONG_MAX) && ULLONG_MAX > 4294967295u
 #    if ULLONG_MAX == 18446744073709551615ull
 #      define BRG_UI64
 #      define li_64(h) 0x##h##ull
        typedef unsigned long long uint_64t;
 #    endif
-#  elif defined( ULONG_LONG_MAX) && ULONG_LONG_MAX > 4294967295u
+#  elif defined(ULONG_LONG_MAX) && ULONG_LONG_MAX > 4294967295u
 #    if ULONG_LONG_MAX == 18446744073709551615ull
 #      define BRG_UI64
 #      define li_64(h) 0x##h##ull
@@ -127,33 +127,33 @@ extern "C" {
 #  endif
 #endif
 
-#if defined( NEED_UINT_64T) && !defined( BRG_UI64)
+#if defined(NEED_UINT_64T) && !defined(BRG_UI64)
 #  error Please define uint_64t as an unsigned 64 bit type in brg_types.h
 #endif
 
 #ifndef RETURN_VALUES
 #  define RETURN_VALUES
-#  if defined( DLL_EXPORT)
-#    if defined( _MSC_VER) || defined ( __INTEL_COMPILER)
-#      define VOID_RETURN    __declspec( dllexport) void __stdcall
-#      define INT_RETURN     __declspec( dllexport) int  __stdcall
-#    elif defined( __GNUC__)
-#      define VOID_RETURN    __declspec( __dllexport__) void
-#      define INT_RETURN     __declspec( __dllexport__) int
+#  if defined(DLL_EXPORT)
+#    if defined(_MSC_VER) || defined (__INTEL_COMPILER)
+#      define VOID_RETURN    __declspec(dllexport) void __stdcall
+#      define INT_RETURN     __declspec(dllexport) int  __stdcall
+#    elif defined(__GNUC__)
+#      define VOID_RETURN    __declspec(__dllexport__) void
+#      define INT_RETURN     __declspec(__dllexport__) int
 #    else
 #      error Use of the DLL is only available on the Microsoft, Intel and GCC compilers
 #    endif
-#  elif defined( DLL_IMPORT)
-#    if defined( _MSC_VER) || defined ( __INTEL_COMPILER)
-#      define VOID_RETURN    __declspec( dllimport) void __stdcall
-#      define INT_RETURN     __declspec( dllimport) int  __stdcall
-#    elif defined( __GNUC__)
-#      define VOID_RETURN    __declspec( __dllimport__) void
-#      define INT_RETURN     __declspec( __dllimport__) int
+#  elif defined(DLL_IMPORT)
+#    if defined(_MSC_VER) || defined (__INTEL_COMPILER)
+#      define VOID_RETURN    __declspec(dllimport) void __stdcall
+#      define INT_RETURN     __declspec(dllimport) int  __stdcall
+#    elif defined(__GNUC__)
+#      define VOID_RETURN    __declspec(__dllimport__) void
+#      define INT_RETURN     __declspec(__dllimport__) int
 #    else
 #      error Use of the DLL is only available on the Microsoft, Intel and GCC compilers
 #    endif
-#  elif defined( __WATCOMC__)
+#  elif defined(__WATCOMC__)
 #    define VOID_RETURN  void __cdecl
 #    define INT_RETURN   int  __cdecl
 #  else

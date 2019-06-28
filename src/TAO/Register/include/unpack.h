@@ -71,6 +71,25 @@ namespace TAO
 
         /** Unpack
          *
+         *  Unpack the amount of NXS in contract.
+         *
+         *  Will unpack amount minted from coinbase, genesis, trust, ambassador, developer operations.
+         *  Debit or credit unpack the amount debited or credited.
+         *  Stake or unstake unpack the amount of NXS added to or removed from stake.
+         *
+         *  Other operations return false with nAmount of zero.
+         *
+         *  @param[in] contract The contract to unpack from.
+         *  @param[out] nAmount NXS amount included in contract operation
+         *
+         *  @return true if the amount was unpacked successfully
+         *
+         **/
+        bool Unpack(const TAO::Operation::Contract& contract, uint64_t& nAmount);
+
+
+        /** Unpack
+         *
          *  Unpack a contract to find it's primitive operation.
          *
          *  @param[in] tx the transaction to unpack

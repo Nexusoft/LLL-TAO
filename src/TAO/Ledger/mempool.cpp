@@ -97,7 +97,7 @@ namespace TAO
 
                 /* The next hash that is being claimed. */
                 if(mapPrevHashes.count(hashClaim))
-                    return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.ToString().substr(0, 20));
+                    return debug::error(FUNCTION, "trying to claim spent next hash ", hashClaim.SubString());
 
                 /* Check memory and disk for previous transaction. */
                 TAO::Ledger::Transaction txPrev;
@@ -133,7 +133,7 @@ namespace TAO
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.IsCoinstake())
-                return debug::error(FUNCTION, "coinstake ", hashTx.ToString().substr(0, 20), " not accepted in pool");
+                return debug::error(FUNCTION, "coinstake ", hashTx.SubString(), " not accepted in pool");
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.nTimestamp > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)

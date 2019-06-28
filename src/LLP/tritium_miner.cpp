@@ -19,22 +19,23 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/supply.h>
-#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/supply.h>
 
-#include <TAO/Ledger/types/tritium.h>
+#include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
-#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/tritium.h>
 
 #include <TAO/API/include/global.h>
 
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
 #include <Util/include/args.h>
+
 
 namespace LLP
 {
@@ -66,41 +67,37 @@ namespace LLP
     }
 
 
-    /** new_block
-     *
-     *  Adds a new block to the map.
-     *
-     **/
-     TAO::Ledger::Block* TritiumMiner::new_block()
-     {
-         /*  make a copy of the base block before making the hash  unique for this requst*/
-         uint1024_t hashProof = 0;
+    /* Adds a new block to the map. */
+    TAO::Ledger::Block* TritiumMiner::new_block()
+    {
+        /*  make a copy of the base block before making the hash  unique for this requst*/
+        uint1024_t hashProof = 0;
 
-         /* Create a new Tritium Block. */
-         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
+        /* Create a new Tritium Block. */
+        TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
-         /* Set it to a null state */
-         pBlock->SetNull();
+        /* Set it to a null state */
+        pBlock->SetNull();
 
-         /* Get the sigchain and the PIN. */
-         SecureString PIN;
+        /* Get the sigchain and the PIN. */
+        SecureString PIN;
 
-         /* Attempt to unlock the account. */
-         if(TAO::API::users->Locked())
-         {
+        /* Attempt to unlock the account. */
+        if(TAO::API::users->Locked())
+        {
             debug::error(FUNCTION, "No unlocked account available");
             return nullptr;
-         }
-         else
+        }
+        else
             PIN = TAO::API::users->GetActivePin();
 
-         /* Attempt to get the sigchain. */
-         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
-         if(!pSigChain)
-         {
+        /* Attempt to get the sigchain. */
+        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
+        if(!pSigChain)
+        {
             debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
             return nullptr;
-         }
+        }
 
         /* Check that the account is unlocked for minting */
         if(!TAO::API::users->CanMint())
@@ -109,70 +106,67 @@ namespace LLP
             return nullptr;
         }
 
-         /* We need to make the block hash unique for each subsribed miner so that they are not
-             duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
-             the scriptSig to be unique for each subscriber, before rebuilding the merkle tree.
+        /* If the primemod flag is set, take the hashProof down to 1017-bit to maximize prime ratio as much as possible. */
+        uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
 
-             We need to drop into this for loop at least once to set the unique hash, but we will iterate
-             indefinitely for the prime channel until the generated hash meets the min prime origins
-             and is less than 1024 bits*/
+        /* We need to make the block hash unique for each subsribed miner so that they are not
+           duplicating their work.  To achieve this we take a copy of pBaseblock and then modify
+           the scriptSig to be unique for each subscriber, before rebuilding the merkle tree.
 
-         for(;;)
-         {
+           We need to drop into this for loop at least once to set the unique hash, but we will iterate
+           indefinitely for the prime channel until the generated hash meets the min prime origins
+           and is less than 1024 bits */
+        while(true)
+        {
+            /* Create the Tritium block with the corresponding sigchain and pin. */
+            if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *pBlock, ++nBlockIterator))
+            {
+                debug::error(FUNCTION, "Failed to create a new Tritium Block.");
+                return nullptr;
+            }
 
-             /* Create the Tritium block with the corresponding sigchain and pin. */
-             if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *pBlock, ++nBlockIterator))
-             {
-                 debug::error(FUNCTION, "Failed to create a new Tritium Block.");
-                 return nullptr;
-             }
+            /* Update the time. */
+            pBlock->UpdateTime();
 
-             /* Update the time. */
-             pBlock->UpdateTime();
+            /* Get the proof hash. */
+            hashProof = pBlock->ProofHash();
 
-             /* Get the proof hash. */
-             hashProof = pBlock->ProofHash();
+            /* Skip if not prime channel or version less than 5. */
+            if(nChannel != 1 || pBlock->nVersion < 5)
+                break;
 
-             /* Skip if not prime channel or version less than 5. */
-             if(nChannel != 1 || pBlock->nVersion < 5)
-                 break;
+            /* Exit loop when the block is above minimum prime origins and less than
+            1024-bit hashes */
+            if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !hashProof.high_bits(nBitMask))
+                break;
+        }
 
-             /* Exit loop when the block is above minimum prime origins and less than
-                 1024-bit hashes */
-             if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024()
-             && !hashProof.high_bits(0x80000000))
-                 break;
-         }
+        debug::log(2, FUNCTION, "Created new Tritium Block ", hashProof.SubString(), " nVersion=", pBlock->nVersion);
 
-         debug::log(2, FUNCTION, "Created new Tritium Block ",
-             hashProof.ToString().substr(0, 20), " nVersion=", pBlock->nVersion);
-
-         /* Return a pointer to the heap memory */
-         return pBlock;
-     }
+        /* Return a pointer to the heap memory */
+        return pBlock;
+    }
 
 
-    /** validates the block for the derived miner class. **/
+    /* Validates the block for the derived miner class. **/
     bool TritiumMiner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
     {
         /* Create the pointer to the heap. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
         pBlock->nNonce = nNonce;
         pBlock->UpdateTime();
-        pBlock->print();
 
         /* Get the sigchain and the PIN. */
         SecureString PIN;
 
         /* Attempt to unlock the account. */
-         if(TAO::API::users->Locked())
+        if(TAO::API::users->Locked())
             return debug::error(FUNCTION, "No unlocked account available");
-
         else
             PIN = TAO::API::users->GetActivePin();
 
         /* Attempt to get the sigchain. */
-         memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
+        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
         if(!pSigChain)
             return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
@@ -195,11 +189,11 @@ namespace LLP
 
                 /* Set the secret parameter. */
                 if(!key.SetSecret(vchSecret, true))
-                    return debug::error(FUNCTION, "TritiumMiner: Unable to set key for signing Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+                    return debug::error(FUNCTION, "Unable to set key for signing Tritium Block ", hashMerkleRoot.SubString());
 
                 /* Generate the signature. */
                 if(!pBlock->GenerateSignature(key))
-                    return debug::error(FUNCTION, "TritiumMiner: Unable to sign Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+                    return debug::error(FUNCTION, "Unable to sign Tritium Block ", hashMerkleRoot.SubString());
 
                 break;
             }
@@ -212,21 +206,21 @@ namespace LLP
 
                 /* Set the secret parameter. */
                 if(!key.SetSecret(vchSecret, true))
-                    return debug::error(FUNCTION, "TritiumMiner: Unable to set key for signing Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+                    return debug::error(FUNCTION, "Unable to set key for signing Tritium Block ", hashMerkleRoot.SubString());
 
                 /* Generate the signature. */
                 if(!pBlock->GenerateSignature(key))
-                    return debug::error(FUNCTION, "TritiumMiner: Unable to sign Tritium Block ", hashMerkleRoot.ToString().substr(0, 20));
+                    return debug::error(FUNCTION, "Unable to sign Tritium Block ", hashMerkleRoot.SubString());
 
                 break;
             }
 
             default:
-                return debug::error(FUNCTION, "unknown signature type");
+                return debug::error(FUNCTION, "Unknown signature type");
         }
 
         return true;
-     }
+    }
 
 
     /* Validates the block for the derived miner class. */
@@ -235,13 +229,7 @@ namespace LLP
         /* Create the pointer to the heap. */
         TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
 
-        /* Check block for inconsistencies. */
-        if(!pBlock->Check())
-            return false;
-
-        /* Check block for proof of work requirements. */
-        if(!pBlock->VerifyWork())
-            return false;
+        pBlock->print();
 
         /* Log block found */
         if(config::GetArg("-verbose", 0) > 0)
@@ -251,7 +239,7 @@ namespace LLP
             if(pBlock->nChannel == 1)
             {
                 debug::log(1, FUNCTION, "Nexus Tritium Miner: new Prime channel block found at unified time ", strTimestamp);
-                debug::log(1, "  blockHash: ", pBlock->ProofHash().ToString().substr(0, 30), " block height: ", pBlock->nHeight);
+                debug::log(1, "  blockHash: ", pBlock->ProofHash().SubString(30), " block height: ", pBlock->nHeight);
                 debug::log(1, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(pBlock->nBits, 1));
             }
             else if(pBlock->nChannel == 2)
@@ -259,8 +247,8 @@ namespace LLP
                 uint1024_t hashTarget = LLC::CBigNum().SetCompact(pBlock->nBits).getuint1024();
 
                 debug::log(1, FUNCTION, "Nexus Tritium Miner: new Hash channel block found at unified time ", strTimestamp);
-                debug::log(1, "  blockHash: ", pBlock->ProofHash().ToString().substr(0, 30), " block height: ", pBlock->nHeight);
-                debug::log(1, "  target: ", hashTarget.ToString().substr(0, 30));
+                debug::log(1, "  blockHash: ", pBlock->ProofHash().SubString(30), " block height: ", pBlock->nHeight);
+                debug::log(1, "  target: ", hashTarget.SubString(30));
             }
         }
 
@@ -270,18 +258,30 @@ namespace LLP
             return false;
         }
 
+        /* Attempt to get the sigchain. */
+        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
+        if(!pSigChain)
+            return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
+
+        /* Lock the sigchain that is being mined. */
+        LOCK(pSigChain->CREATE_MUTEX);
+
         /* Process the block and relay to network if it gets accepted into main chain. */
-        TritiumNode::Process(*pBlock, nullptr);
+        if(!TritiumNode::Process(*pBlock, nullptr))
+        {
+            debug::log(0, FUNCTION, "Generated block not accepted");
+            return false;
+        }
 
         return true;
     }
 
 
-     /*  Determines if the mining wallet is unlocked. */
-     bool TritiumMiner::is_locked()
-     {
-         /* Attempt to unlock the account. */
-         return TAO::API::users->Locked();
-     }
+    /*  Determines if the mining wallet is unlocked. */
+    bool TritiumMiner::is_locked()
+    {
+        /* Attempt to unlock the account. */
+        return TAO::API::users->Locked();
+    }
 
 }

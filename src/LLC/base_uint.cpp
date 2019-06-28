@@ -56,7 +56,7 @@ base_uint<BITS>::base_uint(const base_uint<BITS>& b)
 
 /*
 template<uint32_t BITS>
-base_uint<BITS>::base_uint( template<uint32_t BITS2> const base_uint<BITS2> &b)
+base_uint<BITS>::base_uint(template<uint32_t BITS2> const base_uint<BITS2> &b)
 {
     uint32_t nMinWidth = std::min(WIDTH, b.WIDTH);
 
@@ -663,8 +663,9 @@ void base_uint<BITS>::SetBytes(const std::vector<uint8_t> DATA)
 template<uint32_t BITS>
 uint32_t base_uint<BITS>::BitCount() const
 {
-    uint32_t i = WIDTH << 5;
-    for(; i > 0; --i)
+    uint32_t i = (WIDTH << 5) - 1;
+
+    for(; i >= 0; --i)
     {
         if(pn[i >> 5] & (1 << (i & 31)))
             break;
@@ -681,6 +682,7 @@ std::string base_uint<BITS>::ToString() const
 {
     return (GetHex());
 }
+
 
 /**  Returns a string representation of the base_uint object. **/
 template<uint32_t BITS>

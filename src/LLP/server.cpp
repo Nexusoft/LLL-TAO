@@ -28,6 +28,8 @@ ________________________________________________________________________________
 #include <LLP/include/trust_address.h>
 
 #include <Util/include/args.h>
+#include <Util/include/signals.h>
+
 #include <LLP/include/permissions.h>
 #include <functional>
 #include <numeric>
@@ -58,6 +60,7 @@ namespace LLP
     , DATA_THREADS()
     , pAddressManager(nullptr)
     , nSleepTime(nSleepTimeIn)
+    , hListenSocket(-1, -1)
     {
         for(uint16_t index = 0; index < MAX_THREADS; ++index)
         {
@@ -79,8 +82,14 @@ namespace LLP
         /* Initialize the listeners. */
         if(fListen)
         {
+            /* Bind the Listener. */
+            if(!BindListenPort(hListenSocket.first, true))
+            {
+                ::Shutdown();
+                return;
+            }
+
             LISTEN_THREAD_V4 = std::thread(std::bind(&Server::ListeningThread, this, true));  //IPv4 Listener
-            LISTEN_THREAD_V6 = std::thread(std::bind(&Server::ListeningThread, this, false)); //IPv6 Listener
         }
 
         /* Initialize the meter. */
@@ -287,9 +296,9 @@ namespace LLP
                         nRetIndex  = nIndex;
                     }
                 }
-                catch(const std::runtime_error& e)
+                catch(const std::exception& e)
                 {
-                    debug::error(FUNCTION, e.what());
+                    //debug::error(FUNCTION, e.what());
                 }
             }
         }
@@ -302,20 +311,37 @@ namespace LLP
     template <class ProtocolType>
     std::vector<LegacyAddress> Server<ProtocolType>::GetAddresses()
     {
-        std::vector<BaseAddress> vAddr;
-        std::vector<LegacyAddress> vLegacyAddr;
-
-        if(pAddressManager)
+        /* Loop through the data threads. */
+        std::vector<LegacyAddress> vAddr;
+        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
-            /* Get the base addresses from address manager and convert
-            into legacy addresses */
-            pAddressManager->GetAddresses(vAddr);
+            /* Get the data threads. */
+            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
-            for(auto it = vAddr.begin(); it != vAddr.end(); ++it)
-                vLegacyAddr.push_back((LegacyAddress)*it);
+            /* Lock the data thread. */
+            uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
+
+            /* Loop through connections in data thread. */
+            for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
+            {
+                try
+                {
+                    /* Skip over inactive connections. */
+                    if(!dt->CONNECTIONS->at(nIndex))
+                        continue;
+
+                    /* Push the active connection. */
+                    if(dt->CONNECTIONS->at(nIndex)->Connected())
+                        vAddr.emplace_back(dt->CONNECTIONS->at(nIndex)->addr);
+                }
+                catch(const std::runtime_error& e)
+                {
+                    debug::error(FUNCTION, e.what());
+                }
+            }
         }
 
-        return vLegacyAddr;
+        return vAddr;
     }
 
 
@@ -356,8 +382,7 @@ namespace LLP
                 runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
-            if(GetConnectionCount() < nMaxConnections
-               && pAddressManager->StochasticSelect(addr))
+            if(GetConnectionCount() < nMaxConnections && pAddressManager->StochasticSelect(addr))
             {
                 /* Check for invalid address */
                 if(!addr.IsValid())
@@ -414,33 +439,28 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::ListeningThread(bool fIPv4)
     {
-        int32_t hListenSocket = 0;
         SOCKET hSocket;
         BaseAddress addr;
         socklen_t len_v4 = sizeof(struct sockaddr_in);
         socklen_t len_v6 = sizeof(struct sockaddr_in6);
 
-        /* Bind the Listener. */
-        if(!BindListenPort(hListenSocket, fIPv4))
-            return;
-
         /* Setup poll objects. */
         pollfd fds[1];
         fds[0].events = POLLIN;
-        fds[0].fd     = hListenSocket;
+        fds[0].fd     = (fIPv4 ? hListenSocket.first : hListenSocket.second);
 
         /* Main listener loop. */
         while(!config::fShutdown.load())
         {
-            if(hListenSocket != INVALID_SOCKET)
+            if ((fIPv4 ? hListenSocket.first : hListenSocket.second) != INVALID_SOCKET)
             {
                 /* Poll the sockets. */
                 fds[0].revents = 0;
 
 #ifdef WIN32
-                int nPoll = WSAPoll(&fds[0], 1, 100);
+                int32_t nPoll = WSAPoll(&fds[0], 1, 100);
 #else
-                int nPoll = poll(&fds[0], 1, 100);
+                int32_t nPoll = poll(&fds[0], 1, 100);
 #endif
 
 				/* Continue on poll error or no data to read */
@@ -454,16 +474,16 @@ namespace LLP
                 {
                     struct sockaddr_in sockaddr;
 
-                    hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v4);
-                    if(hSocket != INVALID_SOCKET)
+                    hSocket = accept(hListenSocket.first, (struct sockaddr*)&sockaddr, &len_v4);
+                    if (hSocket != INVALID_SOCKET)
                         addr = BaseAddress(sockaddr);
                 }
                 else
                 {
                     struct sockaddr_in6 sockaddr;
 
-                    hSocket = accept(hListenSocket, (struct sockaddr*)&sockaddr, &len_v6);
-                    if(hSocket != INVALID_SOCKET)
+                    hSocket = accept(hListenSocket.second, (struct sockaddr*)&sockaddr, &len_v6);
+                    if (hSocket != INVALID_SOCKET)
                         addr = BaseAddress(sockaddr);
                 }
 
@@ -522,6 +542,8 @@ namespace LLP
                 }
             }
         }
+
+        closesocket(fIPv4 ? hListenSocket.first : hListenSocket.second);
     }
 
 
@@ -552,19 +574,18 @@ namespace LLP
         /* Allow binding if the port is still in TIME_WAIT state after the program was closed and restarted.  Not an issue on windows. */
 #ifndef WIN32
         setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEADDR, (void*)&nOne, sizeof(int32_t));
-        setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEPORT, (void*)&nOne, sizeof(int32_t));
 #endif
 
 #ifndef WIN32
-    /* Set the MSS to a lower than default value to support the increased bytes required for LISP */
-    int nMaxSeg = 1300;
-    if(setsockopt(hListenSocket, IPPROTO_TCP /*SOL_SOCKET*/, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
-    {
-        //debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
-        //closesocket(hListenSocket);
+        /* Set the MSS to a lower than default value to support the increased bytes required for LISP */
+        int nMaxSeg = 1300;
+        if(setsockopt(hListenSocket, IPPROTO_TCP, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
+        { //TODO: this fails on OSX systems. Need to find out why
+            //debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
+            //closesocket(hListenSocket);
 
-        //return false;
-    }
+            //return false;
+        }
 #endif
 
         /* The sockaddr_in structure specifies the address family, IP address, and port for the socket that is being bound */
@@ -578,12 +599,10 @@ namespace LLP
             if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
                 int32_t nErr = WSAGetLastError();
-                if(nErr == WSAEADDRINUSE)
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer. Address already in use.");
+                if (nErr == WSAEADDRINUSE)
+                    return debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), "... Nexus is probably still running");
                 else
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer (bind returned error)",  nErr);
-
-                return false;
+                    return debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer (bind returned error )",  nErr);
             }
 
             debug::log(0, FUNCTION,"(v4) Bound to port ", ntohs(sockaddr.sin_port));
@@ -598,12 +617,10 @@ namespace LLP
             if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
                 int32_t nErr = WSAGetLastError();
-                if(nErr == WSAEADDRINUSE)
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer. Address already in use.");
+                if (nErr == WSAEADDRINUSE)
+                    return debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), "... Nexus is probably still running");
                 else
-                    debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer (bind returned error)",  nErr);
-
-                return false;
+                    return debug::error("Unable to bind to port ", ntohs(sockaddr.sin6_port), " on this computer (bind returned error )",  nErr);
             }
 
             debug::log(0, FUNCTION, "(v6) Bound to port ", ntohs(sockaddr.sin6_port));

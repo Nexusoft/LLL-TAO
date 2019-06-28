@@ -165,7 +165,7 @@ namespace LLP
          *  Returns the number of active connections.
          *
          **/
-        uint16_t GetConnectionCount();
+        uint32_t GetConnectionCount();
 
 
       private:

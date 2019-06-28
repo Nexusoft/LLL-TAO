@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_VERSION_H
 
 #include <string>
+#include <cstdint>
 
 /* Nexus follows Semantic Versioning 2.0.0 according to this SPEC: https://semver.org/ */
 namespace version
@@ -25,7 +26,7 @@ namespace version
 	 * incompatible changes are introduced to the public API. It MAY include
 	 * minor and patch level changes. Patch and minor version MUST be reset
 	 * to 0 when major version is incremented. */
-	const int CLIENT_MAJOR	= 	3;
+	extern const uint32_t CLIENT_MAJOR;
 
 
 	/* Minor version Y (x.Y.z | x > 0) MUST be incremented if new, backwards
@@ -34,26 +35,23 @@ namespace version
 	 * It MAY be incremented if substantial new functionality or improvements
 	 * are introduced within the private code. It MAY include patch level
 	 * changes. Patch version MUST be reset to 0 when minor version is incremented. */
-	const int CLIENT_MINOR	=	0;
+	extern const uint32_t CLIENT_MINOR;
 
 
 	/* Patch version Z (x.y.Z | x > 0) MUST be incremented if only backwards
 	 * compatible bug fixes are introduced. A bug fix is defined as an internal
 	 * change that fixes incorrect behavior. */
-	const int CLIENT_PATCH	=	0;
+	extern const uint32_t CLIENT_PATCH;
 
 
-	/* Optional Build Version. */
-	const int CLIENT_BUILD	=	0;
+    /* The version of the actual wallet client. */
+    extern const uint32_t CLIENT_VERSION;
 
 
 	/** These external variables are the display only variables. They are used to track the updates of Nexus independent of Database and Protocol Upgrades. **/
 	extern const std::string CLIENT_VERSION_BUILD_STRING;
 	extern const std::string CLIENT_DATE;
 
-
-	/* The version of the actual wallet client. */
-	extern const int CLIENT_VERSION;
 
 }
 

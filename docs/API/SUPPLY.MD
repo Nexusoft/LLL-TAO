@@ -95,21 +95,28 @@ Additionally the API supports passing a field name in the URL after the asset na
 ### Return value JSON object:
 ```
 {
-    "timestamp": "1553227128",
-    "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
-    "name": "mysupplyitem",
-    "data": "newregister"
+    "name": "myitem",
+    "address": "70f49d996d53317cf2175b89efc2694b85c4ebede5fc468bedb860b3e4dada68",
+    "created": 1560982537,
+    "modified": 1560982615,
+    "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+    "data": "xxxxxx"
 }
+
 ```
 ### Return values:
 
-`timestamp` : The Unix timestamp of when the asset was last updated.
+`created` : The UNIX timestamp when the item was created.
 
-`owner` : The genesis hash of the signature chain that owns this asset.
+`modified` : The UNIX timestamp when the item was last modified.
 
-`name` : The name identifying the item. For privacy purposes, this is only included in the response if the caller is the owner of the asset
+`name` : The name identifying the item.  For privacy purposes, this is only included in the response if the caller is the owner of the item
 
-`data` : The current value of the data in the item.
+`address` : The register address of the item.
+
+`owner` : The genesis hash of the owner of the item.
+
+`data` : The data stored in the item.
 
 
 ***
@@ -180,16 +187,19 @@ Items that have been transferred need to be claimed by the recipient before the 
 ### Return value JSON object:
 ```
 {
+    "claimed" : 
+    [
+        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    ],
     "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
 }
 ```
 
 ### Return values:
 
-`txid` : The ID (hash) of the transaction that includes the item transfer.
+`claimed` : Array of addresses for each item that was claimed by this transaction
 
-`address` : The new register address for this item.   
+`txid` : The ID (hash) of the transaction that includes the item transfer.
 
 ****
 
@@ -258,18 +268,20 @@ This will get the history of changes to an item, including both the data and it'
 ```
 [
     {
+        "type": "CREATE",
         "name": "mysupplyitem",
         "checksum": 9070277379865698600,
         "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
-        "state": "0b6e657764617461696e746f",
-        "updated": 1546888868
+        "data": "0b6e657764617461696e746f",
+        "modifed": 1546888868
     },
     {
+        "type": "MODIFY",
         "name": "mysupplyitem",
         "checksum": 9060775569865698900,
         "owner": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-        "state": "0b6e657764617461696e746f",
-        "updated": 1546888999
+        "data": "0b6e657764617461696e746f",
+        "modifed": 1546888999
     }
 ]
 ```
@@ -278,13 +290,21 @@ This will get the history of changes to an item, including both the data and it'
 
 The return value is a JSON array of objects for each entry in the item's history:
 
-`checksum` : A checksum of the state register used for pruning.
+`type` : The action that occurred - CREATE | MODIFY | TRANSFER | CLAIM
 
 `owner` : The genesis hash of the signature chain that owned the item.
 
+`modified` : The Unix timestamp of when the item was updated.
+
+`checksum` : A checksum of the state register used for pruning.
+
+`address` : The register address of the item
+
+`name` : The name of the item
+
 `data` : The data at this point in the history
 
-`updated` : The Unix timestamp of when the item was updated.
+
 
 
 ***

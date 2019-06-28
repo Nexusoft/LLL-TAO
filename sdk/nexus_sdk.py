@@ -87,12 +87,12 @@ def sdk_change_url(url=sdk_default_url):
     #
     # Check if input is a string. Return False if not.
     #
-    if(type(url) != str): return(False)
+    if (type(url) != str): return(False)
 
-    if(url[0:7] != "http://"): return(False)
-    if(url.count(":") != 2): return(False)
+    if (url[0:7] != "http://"): return(False)
+    if (url.count(":") != 2): return(False)
     port = url.split(":")[2]
-    if(port.isdigit() == False): return(False)
+    if (port.isdigit() == False): return(False)
 
     sdk_url = url
     return(True)
@@ -313,7 +313,7 @@ class sdk_init():
         Login a user on the Nexus blockchain. Username, password, and pin 
         parameters are supplied on the sdk_init() call.
         """
-        if(self.session_id != None): return(self.__error("Already logged in"))
+        if (self.session_id != None): return(self.__error("Already logged in"))
 
         pw = self.password.replace("&", "%26")
         pw = urllib.quote_plus(pw)
@@ -323,9 +323,9 @@ class sdk_init():
 
         url = users_url.format(sdk_url, "login/user") + parms
         json_data = self.__get(url)
-        if(json_data.has_key("error")): return(json_data)
+        if (json_data.has_key("error")): return(json_data)
 
-        if(json_data.has_key("result")):
+        if (json_data.has_key("result")):
             if json_data["result"].has_key("genesis"):
                 self.genesis_id = json_data["result"]["genesis"]
             #endif
@@ -340,15 +340,15 @@ class sdk_init():
         """
         Logout a user from the Nexus blockchain.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session={}".format(self.session_id)
 
         url = users_url.format(sdk_url, "logout/user") + parms
         json_data = self.__get(url)
-        if(json_data.has_key("error")): return(json_data)
+        if (json_data.has_key("error")): return(json_data)
 
-        if(json_data != {}): self.session_id = None
+        if (json_data != {}): self.session_id = None
         return(json_data)
     #enddef
 
@@ -360,7 +360,7 @@ class sdk_init():
         'transactions' to 0 if the user account should not create or claim 
         transactions.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session={}&minting={}&transactions={}".format( \
             self.session_id, minting, transactions)
@@ -379,7 +379,7 @@ class sdk_init():
         'transactions' to 0 if the user account should not create or claim 
         transactions.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&minting={}&transactions={}".format( \
             self.pin, self.session_id, minting, transactions)
@@ -397,9 +397,9 @@ class sdk_init():
         is specified in 'limit'. Valid values for 'verbosity' are "default", 
         "summary", "detail".
         """
-        if(self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
 
-        if(self.__test_tx_verbosity(verbosity) == False):
+        if (self.__test_tx_verbosity(verbosity) == False):
             return(self.__error("verbosity value invalid"))
         #endif
 
@@ -419,9 +419,9 @@ class sdk_init():
         is specified in 'limit'. Valid values for 'verbosity' are "default", 
         "summary", "detail".
         """
-        if(self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
 
-        if(self.__test_tx_verbosity(verbosity) == False):
+        if (self.__test_tx_verbosity(verbosity) == False):
             return(self.__error("verbosity value invalid"))
         #endif
 
@@ -439,7 +439,7 @@ class sdk_init():
         is 0) is specified in 'page' and the number of transactions returned 
         is specified in 'limit'.
         """
-        if(self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
 
         parms = "?genesis={}&page={}&limit={}".format(self.genesis_id, page,
             limit)
@@ -455,7 +455,7 @@ class sdk_init():
         is 0) is specified in 'page' and the number of transactions returned 
         is specified in 'limit'.
         """
-        if(self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
 
         parms = "?username={}&page={}&limit={}".format(self.username, page,
             limit)
@@ -471,7 +471,7 @@ class sdk_init():
         entries returned is specified in 'limit' starting with entry offset 
         specified in 'page'. 
         """
-        if(self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
 
         parms = "?genesis={}&page={}&limit={}".format(self.genesis_id, page,
             limit)
@@ -487,7 +487,7 @@ class sdk_init():
         entries returned is specified in 'limit' starting with entry offset 
         specified in 'page'. 
         """
-        if(self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
 
         parms = "?username={}&page={}&limit={}".format(self.username, page,
             limit)
@@ -497,13 +497,45 @@ class sdk_init():
         return(json_data)
     #enddef
 
-    def nexus_users_list_accounts_by_genesis(self, page, limit):
+    def nexus_users_list_items_by_genesis(self, page, limit):
         """
-        List user created token accounts by genesis-id. The number of account
+        List user account created assets by genesis-id. The number of asset
         entries returned is specified in 'limit' starting with entry offset 
         specified in 'page'. 
         """
-        if(self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
+
+        parms = "?genesis={}&page={}&limit={}".format(self.genesis_id, page,
+            limit)
+
+        url = users_url.format(sdk_url, "list/items") + parms
+        json_data = self.__get(url)
+        return(json_data)
+    #enddef
+       
+    def nexus_users_list_items_by_username(self, page, limit):
+        """
+        List user account created assets by username. The number of asset
+        entries returned is specified in 'limit' starting with entry offset 
+        specified in 'page'. 
+        """
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
+
+        parms = "?username={}&page={}&limit={}".format(self.username, page,
+            limit)
+
+        url = users_url.format(sdk_url, "list/items") + parms
+        json_data = self.__get(url)
+        return(json_data)
+    #enddef
+
+    def nexus_users_list_accounts_by_genesis(self, page, limit):
+        """
+        List user created supply-chain items by genesis-id. The number of 
+        item entries returned is specified in 'limit' starting with entry 
+        offset specified in 'page'. 
+        """
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
 
         parms = "?genesis={}&page={}&limit={}".format(self.genesis_id, page,
             limit)
@@ -515,11 +547,11 @@ class sdk_init():
 
     def nexus_users_list_accounts_by_username(self, page, limit):
         """
-        List user created token accounts by username. The number of account
+        List user created supply-chain items by username. The number of account
         entries returned is specified in 'limit' starting with entry offset 
         specified in 'page'.  
         """
-        if(self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
 
         parms = "?username={}&page={}&limit={}".format(self.username, page,
             limit)
@@ -535,7 +567,7 @@ class sdk_init():
         entries returned is specified in 'limit' starting with entry offset 
         specified in 'page'.  
         """
-        if(self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
 
         parms = "?genesis={}&page={}&limit={}".format(self.genesis_id, page,
             limit)
@@ -551,7 +583,7 @@ class sdk_init():
         entries returned is specified in 'limit' starting with entry offset 
         specified in 'page'.
         """
-        if(self.genesis_id == None): return(self.__error("Not logged in"))
+        if (self.genesis_id == None): return(self.__error("Not logged in"))
 
         parms = "?username={}&page={}&limit={}".format(self.username, page,
             limit)
@@ -566,13 +598,13 @@ class sdk_init():
         Create supply chain item with name specified in 'name'. Store data 
         with item specified in 'data'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # URL quote data since specical characters in data string don't
         # conflict with URI encoding characters.
         #
-        if(type(data) != str): data = str(data)
+        if (type(data) != str): data = str(data)
         data = data.replace("&", "%26")
         data = urllib.quote_plus(data)
 
@@ -614,7 +646,7 @@ class sdk_init():
         Transfer supply chain item, specified by name in 'name' to new owner.
         The new owner username is specified in 'new_owner'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&name={}&username={}".format( \
             self.pin, self.session_id, name, new_owner)
@@ -629,7 +661,7 @@ class sdk_init():
         Transfer supply chain item, specified by address in 'address' to new 
         owner. The new owner genesis-id is specified in 'new_owner'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&address={}&destination={}".format( \
             self.pin, self.session_id, address, new_owner)
@@ -645,7 +677,7 @@ class sdk_init():
         transaction id, specified in 'txid' is returned from when the
         user did a supply/transfer/item API call.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&txid={}".format(self.pin, self.session_id,
             txid)
@@ -660,13 +692,13 @@ class sdk_init():
         Update data stored from a previously created supply chain item using
         name specified in 'name' with data stored in 'data'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # URL quote data since specical characters in data string don't
         # conflict with URI encoding characters.
         #
-        if(type(data) != str): data = str(data)
+        if (type(data) != str): data = str(data)
         data = data.replace("&", "%26")
         data = urllib.quote_plus(data)
 
@@ -683,13 +715,13 @@ class sdk_init():
         Update data stored from a previously created supply chain item using
         register address specifiied in 'address' with data stored in 'data'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # URL quote data since specical characters in data string don't
         # conflict with URI encoding characters.
         #
-        if(type(data) != str): data = str(data)
+        if (type(data) != str): data = str(data)
         data = data.replace("&", "%26")
         data = urllib.quote_plus(data)
 
@@ -730,13 +762,13 @@ class sdk_init():
         Create asset with name 'asset_name' and store data specified in
         'data' for asset transaction.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # URL quote data since specical characters in data string don't
         # conflict with URI encoding characters.
         #
-        if(type(data) != str): data = str(data)
+        if (type(data) != str): data = str(data)
         data = data.replace("&", "%26")
         data = urllib.quote_plus(data)
 
@@ -777,7 +809,7 @@ class sdk_init():
         Update data stored in asset by name specified in 'asset_name' with
         JSON data stored in 'data'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&name={}&data={}".format(self.pin,
             self.session_id, asset_name, data)
@@ -792,7 +824,7 @@ class sdk_init():
         Update data stored in asset by address specified in 'asset_address'
         with JSON data stored in 'data'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&address={}&data={}".format( \
             self.pin, self.session_id, asset_address, data)
@@ -807,7 +839,7 @@ class sdk_init():
         Transfer ownership of an asset by name specified in 'asset_name' to 
         username specified in 'dest_username'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&name={}&username={}".format(self.pin,
             self.session_id, asset_name, dest_username)
@@ -823,7 +855,7 @@ class sdk_init():
         Transfer ownership of an asset by address specified in 'asset_address'
         to address specified in 'dest_address'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&address={}&destination={}".format( \
             self.pin, self.session_id, asset_address, dest_address)
@@ -839,7 +871,7 @@ class sdk_init():
         id, specified in 'txid' is returned from when the user did a 
         assets//transfer/asset API call.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&txid={}".format(self.pin, self.session_id,
             txid)
@@ -854,7 +886,7 @@ class sdk_init():
         Tokenize an asset specified by 'asset_name' to a previously created 
         token specified by 'token_name'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&name={}&token_name={}".format( \
             self.pin, self.session_id, asset_name, token_name)
@@ -870,7 +902,7 @@ class sdk_init():
         Tokenize an asset specified by 'asset_address' to a previously created 
         token specified by 'token_address'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&address={}&token_address={}". \
             format(self.pin, self.session_id, asset_address, token_address)
@@ -910,7 +942,7 @@ class sdk_init():
         Create a token by name with with an initial reserve supply of 
         'supply'. Give the token accuracy precision specified in 'digits'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&name={}&supply={}&digits={}".format( \
             self.pin, self.session_id, token_name, supply, digits)
@@ -925,7 +957,7 @@ class sdk_init():
         Create a token account associated with previously create token
         with token name 'token_name'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&name={}&token_name={}".format(self.pin,
             self.session_id, account_name, token_name)
@@ -989,7 +1021,7 @@ class sdk_init():
         Debit token account from token account 'from_name' for the amount
         specified in 'amount' for token account 'to_name'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # Arguments from_name and to_name are token account names.
@@ -1008,7 +1040,7 @@ class sdk_init():
         Debit token account from token account 'from_name' for the amount
         specified in 'amount' for token account 'to_name'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # Arguments from_address and to_address are token account addresses.
@@ -1026,7 +1058,7 @@ class sdk_init():
         Debit token with name specified iin 'from_name' for the amount
         specified in 'amount' for token account 'to_name'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # Arguments from_name and to_name are token account names.
@@ -1045,7 +1077,7 @@ class sdk_init():
         Debit token by address specified iin 'from_address' for the amount
         specified in 'amount' for token account address 'to_address'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # Arguments from_address and to_address are token account addresses.
@@ -1064,7 +1096,7 @@ class sdk_init():
         'amount' from the debit transaction with transaction id 'txid'. This
         function is used to replenish tokens.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # Argument from_name is a token account name.
@@ -1083,7 +1115,7 @@ class sdk_init():
         amount specified in 'amount' from the debit transaction with 
         transaction id 'txid'. This function is used to replenish tokens.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # Argument from_address is a token account address.
@@ -1103,7 +1135,7 @@ class sdk_init():
         specified in 'amount' from the debit transaction with transaction
         id 'txid'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # Argument from_name is a token account name.
@@ -1111,7 +1143,7 @@ class sdk_init():
         parms = "?pin={}&session={}&txid={}&amount={}&name={}".format( \
             self.pin, self.session_id, txid, amount, to_name)
 
-        if(name_proof != None): parms += "&name_proof={}".format(name_proof)
+        if (name_proof != None): parms += "&name_proof={}".format(name_proof)
 
         url = tokens_url.format(sdk_url, "credit/account") + parms
         json_data = self.__get(url)
@@ -1125,7 +1157,7 @@ class sdk_init():
         amount specified in 'amount' from the debit transaction with 
         transaction id 'txid'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # Argument from_address is a token account address.
@@ -1133,7 +1165,7 @@ class sdk_init():
         parms = ("?pin={}&session={}&txid={}&amount={}&address={}"). \
             format(self.pin, self.session_id, txid, amount, to_address)
 
-        if(address_proof != None): parms += "&address_proof={}".format( \
+        if (address_proof != None): parms += "&address_proof={}".format( \
             address_proof)
                  
         url = tokens_url.format(sdk_url, "credit/account") + parms
@@ -1145,7 +1177,7 @@ class sdk_init():
         """
         Create a NXS crypto-currency account with name specified in 'name'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # Argument from_address is a token account address.
@@ -1163,7 +1195,7 @@ class sdk_init():
         Get NXS crypto-currency account information with name specified in 
         'name'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session={}&name={}".format(self.session_id, name)
 
@@ -1177,7 +1209,7 @@ class sdk_init():
         Get NXS crypto-currency account information with register address
         specified in 'address'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session={}&address={}".format(self.session_id, address)
 
@@ -1191,7 +1223,7 @@ class sdk_init():
         Debit NXS by name from account 'from_name' to account 'to_name' for the
         amount 'amount'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&amount={}&name={}&name_to={}". \
             format(self.pin, self.session_id, amount, from_name, to_name)
@@ -1207,7 +1239,7 @@ class sdk_init():
         Debit NXS by address from account 'from_address' to account 
         'to_address' for the amount 'amount'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&amount={}&address={}&address_to={}". \
             format(self.pin, self.session_id, amount, from_address, to_address)
@@ -1222,7 +1254,7 @@ class sdk_init():
         Credit NXS by name to account 'to_name' for account 'amount' from
         debit transaction-id 'txid'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # Argument from_name is a token account name.
@@ -1241,7 +1273,7 @@ class sdk_init():
         Credit NXS by address to account 'to_address' for account 'amount' from
         debit transaction-id 'txid'.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         #
         # Argument from_name is a token account name.
@@ -1258,7 +1290,7 @@ class sdk_init():
         """
         List NXS transactions for user account.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session={}".format(self.session_id)
 
@@ -1271,7 +1303,7 @@ class sdk_init():
         """
         Get staking information for user.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?session={}".format(self.session_id)
 
@@ -1284,7 +1316,7 @@ class sdk_init():
         """
         Add amount specified in "amount" to staking account.
         """
-        if(self.session_id == None): return(self.__error("Not logged in"))
+        if (self.session_id == None): return(self.__error("Not logged in"))
 
         parms = "?pin={}&session={}&amount={}".format(self.pin,
             self.session_id, amount)
@@ -1307,7 +1339,7 @@ class sdk_init():
             #endtry
         #endtry
 
-        if(text == None):
+        if (text == None):
             api = url.split("?")[0]
             api = api.split("/")
             api = api[-2] + "/" + api[-1]
@@ -1329,9 +1361,9 @@ class sdk_init():
     #enddef
 
     def __unquote_data(self, json_data):
-        if(json_data.has_key("result") == False): return(json_data)
-        if(json_data["result"] == None): return(json_data)
-        if(json_data["result"].has_key("data") == False): return(json_data)
+        if (json_data.has_key("result") == False): return(json_data)
+        if (json_data["result"] == None): return(json_data)
+        if (json_data["result"].has_key("data") == False): return(json_data)
 
         data = urllib.unquote_plus(json_data["result"]["data"])
         json_data["result"]["data"] = data.replace("%26", "&")

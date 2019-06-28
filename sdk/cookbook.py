@@ -34,7 +34,7 @@ except:
 #
 # Did command line have a port number to listen to?
 #
-cookbook_port = int(sys.argv[1]) if(len(sys.argv) == 2) else 5432
+cookbook_port = int(sys.argv[1]) if (len(sys.argv) == 2) else 5432
 
 #
 # Nexus node to query for API. A change to the SDK URL needs a call to
@@ -75,7 +75,7 @@ def bold(string):
 def hl(string):
     left = string.find("/")
     right = string.find("?")
-    if(right == -1): right = string.find("{", 2)
+    if (right == -1): right = string.find("{", 2)
     s = string[left+1:right]
     s = string.replace(s, blue(s))
     return(s)
@@ -91,7 +91,7 @@ def curl(api_command):
     
     url = "{}/{}".format(nexus_api_node, api_command)
     output = commands.getoutput('curl --silent "{}"'.format(url))
-    if(output == "" or output == None):
+    if (output == "" or output == None):
         return({"error" : "curl failed, nexus daemon may not be running"})
     #endif
     return(json.loads(output))
@@ -107,7 +107,7 @@ contexts = {}
 def sid_to_sdk(sid):
     global contexts
 
-    if(contexts.has_key(sid)): return(contexts[sid], "")
+    if (contexts.has_key(sid)): return(contexts[sid], "")
     output = ('"error": Login session {} does not exist - ' + \
         'login using users/login/user and click the SDK button').format(sid)
     return(None, show(output))
@@ -120,8 +120,8 @@ def sid_to_sdk(sid):
 # just a tad better. Used for most */list/* methods.
 #
 def format_transactions(data):
-    if(data.has_key("result") == False): return(json.dumps(data))
-    if(data["result"] == None): return('{"error": "no json returned"}')
+    if (data.has_key("result") == False): return(json.dumps(data))
+    if (data["result"] == None): return('{"error": "no json returned"}')
 
     output = '{"result": [<br><br>'
     for tx in data["result"]:
@@ -138,7 +138,7 @@ def format_transactions(data):
 #
 def no_parms(*args):
     for a in args:
-        if(a == "" or a == None): return(True)
+        if (a == "" or a == None): return(True)
     #endfor
     return(False)
 #enddef
@@ -148,7 +148,7 @@ def no_parms(*args):
 show_html = '''
 <br><table align="left" style="word-break:break-all;">
 <tr><td>{}</td></tr>
-</table><br>&nbsp;<br><hr>
+</table><br>&nbsp;<br><hr size="5">
 '''
 
 #
@@ -157,7 +157,7 @@ show_html = '''
 # This is JSON output returned from Nexus API.
 #
 def show(msg, sid="", genid=""):
-    msg = red(msg) if(msg.find('"error":') != -1) else green(msg)
+    msg = red(msg) if (msg.find('"error":') != -1) else green(msg)
     output = show_html.format(bold(msg)) + build_body_page(sid, genid)
 
     hostname = blue(socket.gethostname())
@@ -176,9 +176,9 @@ landing_page = '''
     <font face="verdana"><center>
     <br><head><a href="/" style="text-decoration:none;"><font color="black">
     <b>Nexus Interactive SDK/API Cook Book</b></a></head><br>
-    <font size="2""><br>Running on {}</font><br><br><hr>
+    <font size="2""><br>Running on {}</font><br><br><hr size="5">
     {}
-    <hr></center></font></body></html>
+    <hr size="5"></center></font></body></html>
 '''
 
 #
@@ -264,9 +264,9 @@ def do_system_get_info():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk = nexus.sdk_init("system", "get/info", "")
-        if(sdk == None): return(show(red("Could not initialize SDK")))
+        if (sdk == None): return(show(red("Could not initialize SDK")))
         output = sdk.nexus_system_get_info()
         del(sdk)
     else:
@@ -281,9 +281,9 @@ def do_system_list_peers():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk = nexus.sdk_init("system", "list/peers", "")
-        if(sdk == None): return(show(red("Could not initialize SDK")))
+        if (sdk == None): return(show(red("Could not initialize SDK")))
         output = sdk.nexus_system_list_peers()
         del(sdk)
     else:
@@ -298,9 +298,9 @@ def do_system_list_lisp_eids():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk = nexus.sdk_init("system", "lisp/lisp-eids", "")
-        if(sdk == None): return(show(red("Could not initialize SDK")))
+        if (sdk == None): return(show(red("Could not initialize SDK")))
         output = sdk.nexus_system_list_lisp_eids()
         del(sdk)
     else:
@@ -324,6 +324,7 @@ users_list_transactions = \
     '{}users/list/transactions?genesis={}&page={}&limit={}&verbose={}{}'
 users_list_notifications = \
     '{}users/list/notifications?genesis={}&page={}&limit={}{}'
+users_list_items = '{}users/list/items?genesis={}&page={}&limit={}{}'
 users_list_assets = '{}users/list/assets?genesis={}&page={}&limit={}{}'
 users_list_tokens = '{}users/list/tokens?genesis={}&page={}&limit={}{}'
 users_list_accounts = '{}users/list/accounts?genesis={}&page={}&limit={}{}'
@@ -369,7 +370,7 @@ def build_users_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "users-list-transactions"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
@@ -381,7 +382,7 @@ def build_users_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "users-list-notifications"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
@@ -390,8 +391,18 @@ def build_users_html(sid, genid, o):
     o += "</td></tr>"
 
     o += "<tr><td>"
+    h = "users-list-items"
+    if (sid != ""): h += "/{}".format(sid)
+    h = form_header.format(h)
+    genesis = form_parm.format("genesis", genid)
+    page = form_parm.format("page", "0")
+    limit = form_parm.format("limit", "100")
+    o += hl(users_list_items).format(h, genesis, page, limit, f)
+    o += "</td></tr>"
+
+    o += "<tr><td>"
     h = "users-list-assets"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
@@ -401,7 +412,7 @@ def build_users_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "users-list-tokens"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
@@ -411,7 +422,7 @@ def build_users_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "users-list-accounts"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     genesis = form_parm.format("genesis", genid)
     page = form_parm.format("page", "0")
@@ -428,7 +439,7 @@ def do_users_create_user():
     username = bottle.request.forms.get("username")
     password = bottle.request.forms.get("password")
     pin = bottle.request.forms.get("pin")
-    if(no_parms(username, password, pin)):
+    if (no_parms(username, password, pin)):
         m = red("users/create/user needs more input parameters")
         return(show(m))
     #endif
@@ -436,7 +447,7 @@ def do_users_create_user():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk = nexus.sdk_init(username, password, pin)
         output = sdk.nexus_users_create_user()
     else:
@@ -454,7 +465,7 @@ def do_users_login_user():
     username = bottle.request.forms.get("username")
     password = bottle.request.forms.get("password")
     pin = bottle.request.forms.get("pin")
-    if(no_parms(username, password, pin)):
+    if (no_parms(username, password, pin)):
         m = red("users/login/user needs more input parameters")
         return(show(m))
     #endif
@@ -462,7 +473,7 @@ def do_users_login_user():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk = nexus.sdk_init(username, password, pin)
         output = sdk.nexus_users_login_user()
         sid, genid = [sdk.session_id, sdk.genesis_id]
@@ -480,7 +491,7 @@ def do_users_login_user():
 @bottle.route('/users-logout-user', method="post")
 def do_users_logout_user():
     session = bottle.request.forms.get("session")
-    if(no_parms(session)):
+    if (no_parms(session)):
         m = red("users/logout/user needs more input parameters")
         return(show(m, session))
     #endif
@@ -488,9 +499,9 @@ def do_users_logout_user():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_users_logout_user()
         genid = sdk.genesis_id
     else:
@@ -505,7 +516,7 @@ def do_users_logout_user():
 @bottle.route('/users-lock-user', method="post")
 def do_users_lock_user():
     session = bottle.request.forms.get("session")
-    if(no_parms(session)):
+    if (no_parms(session)):
         m = red("users/lock/user needs more input parameters")
         return(show(m, session))
     #endif
@@ -513,9 +524,9 @@ def do_users_lock_user():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_users_lock_user()
         genid = sdk.genesis_id
     else:
@@ -531,7 +542,7 @@ def do_users_lock_user():
 def do_users_unlock_user():
     pin = bottle.request.forms.get("pin")
     session = bottle.request.forms.get("session")
-    if(no_parms(pin, session)):
+    if (no_parms(pin, session)):
         m = red("users/unlock/user needs more input parameters")
         return(show(m, session))
     #endif
@@ -539,9 +550,9 @@ def do_users_unlock_user():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_users_unlock_user()
         genid = sdk.genesis_id
     else:
@@ -560,7 +571,7 @@ def do_users_list_transactions(sid=""):
     page = bottle.request.forms.get("page")
     limit = bottle.request.forms.get("limit")
     verbose = bottle.request.forms.get("verbose")
-    if(no_parms(genesis, page, limit, verbose)):
+    if (no_parms(genesis, page, limit, verbose)):
         m = red("users/list/transactions needs more input parameters")
         return(show(m, sid, genesis))
     #endif
@@ -568,9 +579,9 @@ def do_users_list_transactions(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_users_list_transactions_by_genesis(page, limit,
             verbose)
     else:
@@ -588,7 +599,7 @@ def do_users_list_notifications(sid=""):
     genesis = bottle.request.forms.get("genesis")
     page = bottle.request.forms.get("page")
     limit = bottle.request.forms.get("limit")
-    if(no_parms(genesis, page, limit)):
+    if (no_parms(genesis, page, limit)):
         m = red("users/list/notifications needs more input parameters")
         return(show(m, sid, genesis))
     #endif
@@ -596,13 +607,39 @@ def do_users_list_notifications(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_users_list_notifications_by_genesis(page, limit)
     else:
         output= curl(users_list_notifications.format("", genesis, page, limit,
             ""))
+    #endif            
+    output = format_transactions(output)
+
+    return(show(output, sid, genesis))
+#enddef
+
+@bottle.route('/users-list-items', method="post")
+@bottle.route('/users-list-items/<sid>', method="post")
+def do_users_list_items(sid=""):
+    genesis = bottle.request.forms.get("genesis")
+    page = bottle.request.forms.get("page")
+    limit = bottle.request.forms.get("limit")
+    if (no_parms(genesis, page, limit)):
+        m = red("users/list/items needs more input parameters")
+        return(show(m, sid, genesis))
+    #endif
+
+    action = bottle.request.forms.get("action")
+    sdk_or_api = (action.find("SDK") != -1)
+    
+    if (sdk_or_api):
+        sdk, output = sid_to_sdk(sid)
+        if (sdk == None): return(output)
+        output = sdk.nexus_users_list_items_by_genesis(page, limit)
+    else:
+        output= curl(users_list_items.format("", genesis, page, limit, ""))
     #endif            
     output = format_transactions(output)
 
@@ -615,7 +652,7 @@ def do_users_list_assets(sid=""):
     genesis = bottle.request.forms.get("genesis")
     page = bottle.request.forms.get("page")
     limit = bottle.request.forms.get("limit")
-    if(no_parms(genesis, page, limit)):
+    if (no_parms(genesis, page, limit)):
         m = red("users/list/assets needs more input parameters")
         return(show(m, sid, genesis))
     #endif
@@ -623,13 +660,12 @@ def do_users_list_assets(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_users_list_assets_by_genesis(page, limit)
     else:
-        output= curl(users_list_notifications.format("", genesis, page, limit,
-            ""))
+        output= curl(users_list_assets.format("", genesis, page, limit, ""))
     #endif            
     output = format_transactions(output)
 
@@ -642,7 +678,7 @@ def do_users_list_tokens(sid=""):
     genesis = bottle.request.forms.get("genesis")
     page = bottle.request.forms.get("page")
     limit = bottle.request.forms.get("limit")
-    if(no_parms(genesis, page, limit)):
+    if (no_parms(genesis, page, limit)):
         m = red("users/list/tokens needs more input parameters")
         return(show(m, sid, genesis))
     #endif
@@ -650,13 +686,12 @@ def do_users_list_tokens(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_users_list_tokens_by_genesis(page, limit)
     else:
-        output= curl(users_list_notifications.format("", genesis, page, limit,
-            ""))
+        output= curl(users_list_tokens.format("", genesis, page, limit, ""))
     #endif            
     output = format_transactions(output)
 
@@ -669,7 +704,7 @@ def do_users_list_accounts(sid=""):
     genesis = bottle.request.forms.get("genesis")
     page = bottle.request.forms.get("page")
     limit = bottle.request.forms.get("limit")
-    if(no_parms(genesis, page, limit)):
+    if (no_parms(genesis, page, limit)):
         m = red("users/list/accounts needs more input parameters")
         return(show(m, sid, genesis))
     #endif
@@ -677,13 +712,12 @@ def do_users_list_accounts(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_users_list_accounts_by_genesis(page, limit)
     else:
-        output= curl(users_list_notifications.format("", genesis, page, limit,
-            ""))
+        output= curl(users_list_accounts.format("", genesis, page, limit, ""))
     #endif            
     output = format_transactions(output)
 
@@ -790,7 +824,7 @@ def do_supply_create_item():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
     data = bottle.request.forms.get("data")
-    if(no_parms(pin, session, data)):
+    if (no_parms(pin, session, data)):
         m = red("supply/create/item needs more input parameters")
         return(show(m, session))
     #endif
@@ -798,9 +832,9 @@ def do_supply_create_item():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_supply_create_item(name, data)
         genid = sdk.genesis_id
     else:
@@ -817,7 +851,7 @@ def do_supply_create_item():
 def do_supply_get_item_name():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if(no_parms(session, name)):
+    if (no_parms(session, name)):
         m = red("supply/get/item needs more input parameters")
         return(show(m, session))
     #endif
@@ -825,9 +859,9 @@ def do_supply_get_item_name():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_supply_get_item_by_name(name)
         genid = sdk.genesis_id
     else:
@@ -843,7 +877,7 @@ def do_supply_get_item_name():
 def do_supply_get_item_address():
     session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
-    if(no_parms(session, address)):
+    if (no_parms(session, address)):
         m = red("supply/get/item needs more input parameters")
         return(show(m, session))
     #endif
@@ -851,9 +885,9 @@ def do_supply_get_item_address():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_supply_get_item_by_address(address)
         genid = sdk.genesis_id
     else:
@@ -871,7 +905,7 @@ def do_supply_update_item():
     session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
     data = bottle.request.forms.get("data")
-    if(no_parms(pin, session, address, data)):
+    if (no_parms(pin, session, address, data)):
         m = red("supply/update/item needs more input parameters")
         return(show(m, session))
     #endif
@@ -879,9 +913,9 @@ def do_supply_update_item():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_supply_update_item_by_address(address, data)
         genid = sdk.genesis_id
     else:
@@ -900,7 +934,7 @@ def do_supply_transfer_item():
     session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
     dest = bottle.request.forms.get("destination")
-    if(no_parms(pin, session, address, dest)):
+    if (no_parms(pin, session, address, dest)):
         m = red("supply/transfer/item needs more input parameters")
         return(show(m, session))
     #endif
@@ -908,9 +942,9 @@ def do_supply_transfer_item():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_supply_transfer_item_by_address(address, dest)
         genid = sdk.genesis_id
     else:
@@ -928,7 +962,7 @@ def do_supply_claim_item():
     pin = bottle.request.forms.get("pin")
     session = bottle.request.forms.get("session")
     txid = bottle.request.forms.get("txid")
-    if(no_parms(pin, session, txid)):
+    if (no_parms(pin, session, txid)):
         m = red("supply/claim/item needs more input parameters")
         return(show(m, session))
     #endif
@@ -936,9 +970,9 @@ def do_supply_claim_item():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_supply_claim_item(txid)
         genid = sdk.genesis_id
     else:
@@ -954,7 +988,7 @@ def do_supply_claim_item():
 def do_supply_list_item_history_name():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if(no_parms(session, name)):
+    if (no_parms(session, name)):
         m = red("supply/list/item/history needs more input parameters")
         return(show(m, session))
     #endif
@@ -962,9 +996,9 @@ def do_supply_list_item_history_name():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_supply_list_item_history_by_name(name)
         genid = sdk.genesis_id
     else:
@@ -981,7 +1015,7 @@ def do_supply_list_item_history_name():
 def do_supply_list_item_history_address():
     session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
-    if(no_parms(session, address)):
+    if (no_parms(session, address)):
         m = red("supply/list/item/history needs more input parameters")
         return(show(m, session))
     #endif
@@ -989,9 +1023,9 @@ def do_supply_list_item_history_address():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_supply_list_item_history_by_address(address)
         genid = sdk.genesis_id
     else:
@@ -1116,7 +1150,7 @@ def do_assets_create_asset():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
     data = bottle.request.forms.get("data")
-    if(no_parms(pin, session, name, data)):
+    if (no_parms(pin, session, name, data)):
         m = red("assets/create/asset needs more input parameters")
         return(show(m, session))
     #endif
@@ -1124,9 +1158,9 @@ def do_assets_create_asset():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_assets_create_asset(name, data)
         genid = sdk.genesis_id
     else:
@@ -1145,7 +1179,7 @@ def do_assets_update_asset():
     session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
     data = bottle.request.forms.get("data")
-    if(no_parms(pin, session, address, data)):
+    if (no_parms(pin, session, address, data)):
         m = red("assets/update/asset needs more input parameters")
         return(show(m, session))
     #endif
@@ -1153,9 +1187,9 @@ def do_assets_update_asset():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_assets_update_asset_by_address(address, data)
         genid = sdk.genesis_id
     else:
@@ -1172,7 +1206,7 @@ def do_assets_update_asset():
 def do_assets_get_asset_name():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if(no_parms(session, name)):
+    if (no_parms(session, name)):
         m = red("assets/get/asset needs more input parameters")
         return(show(m, session))
     #endif
@@ -1180,9 +1214,9 @@ def do_assets_get_asset_name():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_assets_get_asset_by_name(name)
         genid = sdk.genesis_id
     else:
@@ -1198,7 +1232,7 @@ def do_assets_get_asset_name():
 def do_assets_get_asset_address():
     session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
-    if(no_parms(session, address)):
+    if (no_parms(session, address)):
         m = red("assets/get/asset needs more input parameters")
         return(show(m, session))
     #endif
@@ -1206,9 +1240,9 @@ def do_assets_get_asset_address():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_assets_get_asset_by_address(address)
         genid = sdk.genesis_id
     else:
@@ -1227,7 +1261,7 @@ def do_assets_transfer_asset():
     session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
     dest = bottle.request.forms.get("destination")
-    if(no_parms(pin, session, address, dest)):
+    if (no_parms(pin, session, address, dest)):
         m = red("assets/transfer/asset needs more input parameters")
         return(show(m, session))
     #endif
@@ -1235,9 +1269,9 @@ def do_assets_transfer_asset():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_assets_transfer_asset_by_address(address, dest)
         genid = sdk.genesis_id
     else:
@@ -1255,7 +1289,7 @@ def do_assets_claim_asset():
     pin = bottle.request.forms.get("pin")
     session = bottle.request.forms.get("session")
     txid = bottle.request.forms.get("txid")
-    if(no_parms(session, txid)):
+    if (no_parms(session, txid)):
         m = red("assets/claim/asset needs more input parameters")
         return(show(m, session))
     #endif
@@ -1263,9 +1297,9 @@ def do_assets_claim_asset():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_assets_claim_asset(txid)
         genid = sdk.genesis_id
     else:
@@ -1283,7 +1317,7 @@ def do_assets_tokenize_asset():
     session = bottle.request.forms.get("session")
     token_name = bottle.request.forms.get("token_name")
     asset_name = bottle.request.forms.get("asset_name")
-    if(no_parms(pin, session, token_name, asset_name)):
+    if (no_parms(pin, session, token_name, asset_name)):
         m = red("assets/tokenize/asset needs more input parameters")
         return(show(m, session))
     #endif
@@ -1291,9 +1325,9 @@ def do_assets_tokenize_asset():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_assets_tokenize_asset_by_name(asset_name,
             token_name)
         genid = sdk.genesis_id
@@ -1311,7 +1345,7 @@ def do_assets_tokenize_asset():
 def do_assets_list_asset_history_name():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if(no_parms(session, name)):
+    if (no_parms(session, name)):
         m = red("assets/list/asset/history needs more input parameters")
         return(show(m, session))
     #endif
@@ -1319,9 +1353,9 @@ def do_assets_list_asset_history_name():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_assets_list_asset_history_by_name(name)
         genid = sdk.genesis_id
     else:
@@ -1338,7 +1372,7 @@ def do_assets_list_asset_history_name():
 def do_assets_list_asset_history_address():
     session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
-    if(no_parms(session, address)):
+    if (no_parms(session, address)):
         m = red("assets/list/asset/history needs more input parameters")
         return(show(m, session))
     #endif
@@ -1346,9 +1380,9 @@ def do_assets_list_asset_history_address():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_assets_list_asset_history_by_address(address)
         genid = sdk.genesis_id
     else:
@@ -1491,7 +1525,7 @@ def do_tokens_create_token():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
     supply = bottle.request.forms.get("supply")
-    if(no_parms(pin, session, name, supply)):
+    if (no_parms(pin, session, name, supply)):
         m = red("tokens/create/token needs more input parameters")
         return(show(m, session))
     #endif
@@ -1499,9 +1533,9 @@ def do_tokens_create_token():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_tokens_create_token(name, supply)
         genid = sdk.genesis_id
     else:
@@ -1520,7 +1554,7 @@ def do_tokens_create_account():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
     token_name = bottle.request.forms.get("token_name")
-    if(no_parms(pin, session, name, token_name)):
+    if (no_parms(pin, session, name, token_name)):
         m = red("tokens/create/account needs more input parameters")
         return(show(m, session))
     #endif
@@ -1528,9 +1562,9 @@ def do_tokens_create_account():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_tokens_create_account(name, token_name)
         genid = sdk.genesis_id
     else:
@@ -1547,7 +1581,7 @@ def do_tokens_create_account():
 def do_tokens_get_token_name():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if(no_parms(session, name)):
+    if (no_parms(session, name)):
         m = red("tokens/get/token needs more input parameters")
         return(show(m, session))
     #endif
@@ -1555,9 +1589,9 @@ def do_tokens_get_token_name():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_tokens_get_token_by_name(name)
         genid = sdk.genesis_id
     else:
@@ -1573,7 +1607,7 @@ def do_tokens_get_token_name():
 def do_tokens_get_token_address():
     session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
-    if(no_parms(session, address)):
+    if (no_parms(session, address)):
         m = red("tokens/get/token needs more input parameters")
         return(show(m, session))
     #endif
@@ -1581,9 +1615,9 @@ def do_tokens_get_token_address():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_tokens_get_token_by_address(address)
         genid = sdk.genesis_id
     else:
@@ -1600,7 +1634,7 @@ def do_tokens_get_token_address():
 def do_tokens_get_account_name():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if(no_parms(session, name)):
+    if (no_parms(session, name)):
         m = red("tokens/get/account needs more input parameters")
         return(show(m, session))
     #endif
@@ -1608,9 +1642,9 @@ def do_tokens_get_account_name():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_tokens_get_account_by_name(name)
         genid = sdk.genesis_id
     else:
@@ -1626,7 +1660,7 @@ def do_tokens_get_account_name():
 def do_tokens_get_account_address():
     session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
-    if(no_parms(session, address)):
+    if (no_parms(session, address)):
         m = red("tokens/get/account needs more input parameters")
         return(show(m, session))
     #endif
@@ -1634,9 +1668,9 @@ def do_tokens_get_account_address():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_tokens_get_account_by_address(address)
         genid = sdk.genesis_id
     else:
@@ -1656,7 +1690,7 @@ def do_tokens_debit_token():
     amount = bottle.request.forms.get("amount")
     name = bottle.request.forms.get("name")
     name_to = bottle.request.forms.get("name_to")
-    if(no_parms(pin, session, amount, name, name_to)):
+    if (no_parms(pin, session, amount, name, name_to)):
         return(show(red("tokens/debit/token needs more input parameters"),
             session))
     #endif
@@ -1664,9 +1698,9 @@ def do_tokens_debit_token():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_tokens_debit_token_by_name(name, name_to, amount)
         genid = sdk.genesis_id
     else:
@@ -1686,7 +1720,7 @@ def do_tokens_credit_token():
     amount = bottle.request.forms.get("amount")
     name = bottle.request.forms.get("name")
     txid = bottle.request.forms.get("txid")
-    if(no_parms(pin, session, name, amount, txid)):
+    if (no_parms(pin, session, name, amount, txid)):
         m = red("tokens/credit/token needs more input parameters")
         return(show(m, session))
     #endif
@@ -1694,9 +1728,9 @@ def do_tokens_credit_token():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_tokens_credit_token_by_name(name, amount, txid)
         genid = sdk.genesis_id
     else:
@@ -1716,7 +1750,7 @@ def do_tokens_debit_account():
     amount = bottle.request.forms.get("amount")
     name = bottle.request.forms.get("name")
     name_to = bottle.request.forms.get("name_to")
-    if(no_parms(pin, session, amount, name, name_to)):
+    if (no_parms(pin, session, amount, name, name_to)):
         m = red("tokens/debit/account needs more input parameters")
         return(show(m, session))
     #endif
@@ -1724,9 +1758,9 @@ def do_tokens_debit_account():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_tokens_debit_account_by_name(name, name_to, amount)
         genid = sdk.genesis_id
     else:
@@ -1747,7 +1781,7 @@ def do_tokens_credit_account():
     amount = bottle.request.forms.get("amount")
     name = bottle.request.forms.get("name")
     name_proof = bottle.request.forms.get("name_proof")
-    if(no_parms(pin, session, txid, amount, name, name_proof)):
+    if (no_parms(pin, session, txid, amount, name, name_proof)):
         m = red("tokens/credit/account needs more input parameters")
         return(show(m, session))
     #endif
@@ -1755,9 +1789,9 @@ def do_tokens_credit_account():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_tokens_credit_account_by_name(name, amount, txid)
         genid = sdk.genesis_id
     else:
@@ -1865,7 +1899,7 @@ def build_finance_html(sid, genid, o):
 def do_finance_get_account_name():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if(no_parms(session, name)):
+    if (no_parms(session, name)):
         m = red("finance/get/account needs more input parameters")
         return(show(m, session))
     #endif
@@ -1873,9 +1907,9 @@ def do_finance_get_account_name():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_finance_get_account_by_name(name)
         genid = sdk.genesis_id
     else:
@@ -1891,7 +1925,7 @@ def do_finance_get_account_name():
 def do_finance_get_account_address():
     session = bottle.request.forms.get("session")
     address = bottle.request.forms.get("address")
-    if(no_parms(session, address)):
+    if (no_parms(session, address)):
         m = red("finance/get/account needs more input parameters")
         return(show(m, session))
     #endif
@@ -1899,9 +1933,9 @@ def do_finance_get_account_address():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_finance_get_account_by_address(address)
         genid = sdk.genesis_id
     else:
@@ -1919,7 +1953,7 @@ def do_finance_create_account():
     pin = bottle.request.forms.get("pin")
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
-    if(no_parms(pin, session, name)):
+    if (no_parms(pin, session, name)):
         m = red("finance/create/account needs more input parameters")
         return(show(m, session))
     #endif
@@ -1927,9 +1961,9 @@ def do_finance_create_account():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_finance_create_account(name)
         genid = sdk.genesis_id
     else:
@@ -1949,7 +1983,7 @@ def do_finance_debit_account():
     amount = bottle.request.forms.get("amount")
     name_from = bottle.request.forms.get("name_from")
     name_to = bottle.request.forms.get("name_to")
-    if(no_parms(pin, session, amount, name_from, name_to)):
+    if (no_parms(pin, session, amount, name_from, name_to)):
         return(show(red("finance/debit/account needs more input parameters"),
             session))
     #endif
@@ -1957,9 +1991,9 @@ def do_finance_debit_account():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_finance_debit_account_by_name(name_from, name_to,
             amount)
         genid = sdk.genesis_id
@@ -1981,7 +2015,7 @@ def do_finance_credit_account():
     amount = bottle.request.forms.get("amount")
     name_to = bottle.request.forms.get("name_to")
     name_proof = bottle.request.forms.get("name_proof")
-    if(no_parms(pin, session, txid, amount, name_to, name_proof)):
+    if (no_parms(pin, session, txid, amount, name_to, name_proof)):
         m = red("finance/credit/account needs more input parameters")
         return(show(m, session))
     #endif
@@ -1989,9 +2023,9 @@ def do_finance_credit_account():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_finance_credit_account_by_name(name_to, amount,
             txid)
         genid = sdk.genesis_id
@@ -2008,7 +2042,7 @@ def do_finance_credit_account():
 @bottle.route('/finance-list-accounts', method="post")
 def do_list_accounts():
     session = bottle.request.forms.get("session")
-    if(no_parms(session)):
+    if (no_parms(session)):
         m = red("finance/list/acccounts needs more input parameters")
         return(show(m, session))
     #endif
@@ -2016,9 +2050,9 @@ def do_list_accounts():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_finance_list_accounts()
         genid = sdk.genesis_id
     else:
@@ -2033,7 +2067,7 @@ def do_list_accounts():
 @bottle.route('/finance-get-stakeinfo', method="post")
 def do_get_stakeinfo():
     session = bottle.request.forms.get("session")
-    if(no_parms(session)):
+    if (no_parms(session)):
         m = red("finance/get/stakeinfo needs more input parameters")
         return(show(m, session))
     #endif
@@ -2041,9 +2075,9 @@ def do_get_stakeinfo():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_finance_get_stakeinfo()
         genid = sdk.genesis_id
     else:
@@ -2060,7 +2094,7 @@ def do_set_stake():
     pin = bottle.request.forms.get("pin")
     session = bottle.request.forms.get("session")
     amount = bottle.request.forms.get("amount")
-    if(no_parms(pin, session, amount)):
+    if (no_parms(pin, session, amount)):
         m = red("finance/set/stake needs more input parameters")
         return(show(m, session))
     #endif
@@ -2068,9 +2102,9 @@ def do_set_stake():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_finance_set_stake(amount)
         genid = sdk.genesis_id
     else:
@@ -2103,7 +2137,7 @@ def build_ledger_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "ledger-get-transaction"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     hsh = form_parm.format("hash", "")
     v = form_parm.format("verbose", "1")
@@ -2112,7 +2146,7 @@ def build_ledger_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "ledger-get-block-height"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     height = form_parm.format("height", "")
     v = form_parm.format("verbose", "1")
@@ -2121,7 +2155,7 @@ def build_ledger_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "ledger-get-block-hash"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     hsh = form_parm.format("hash", "")
     v = form_parm.format("verbose", "1")
@@ -2130,7 +2164,7 @@ def build_ledger_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "ledger-get-blockhash"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     height = form_parm.format("height", "")
     o += hl(ledger_get_blockhash).format(h, height, f)
@@ -2138,7 +2172,7 @@ def build_ledger_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "ledger-submit-transaction"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     d = form_parm.format("data", "")
     o += hl(ledger_submit_transaction).format(h, d, f)
@@ -2146,7 +2180,7 @@ def build_ledger_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "ledger-list-blocks-height"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     height = form_parm.format("height", "")
     l = form_parm.format("limit", "100")
@@ -2156,7 +2190,7 @@ def build_ledger_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "ledger-list-blocks-hash"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     hsh = form_parm.format("hash", "")
     l = form_parm.format("limit", "100")
@@ -2172,7 +2206,7 @@ def build_ledger_html(sid, genid, o):
 @bottle.route('/ledger-get-blockhash/<sid>', method="post")
 def do_ledger_get_blockhash(sid=""):
     height = bottle.request.forms.get("height")
-    if(no_parms(height)):
+    if (no_parms(height)):
         m = red("ledger/get/blockhash needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2180,9 +2214,9 @@ def do_ledger_get_blockhash(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_ledger_get_blockhash(height)
         genid = sdk.genesis_id
     else:
@@ -2199,7 +2233,7 @@ def do_ledger_get_blockhash(sid=""):
 def do_ledger_get_block_height(sid=""):
     height = bottle.request.forms.get("height")
     verbose = bottle.request.forms.get("verbose")
-    if(no_parms(height, verbose)):
+    if (no_parms(height, verbose)):
         m = red("ledger/get/block needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2207,9 +2241,9 @@ def do_ledger_get_block_height(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_ledger_get_block_by_height(height, verbose)
         genid = sdk.genesis_id
     else:
@@ -2226,7 +2260,7 @@ def do_ledger_get_block_height(sid=""):
 def do_ledger_get_block_hash(sid=""):
     hsh = bottle.request.forms.get("hash")
     verbose = bottle.request.forms.get("verbose")
-    if(no_parms(hsh, verbose)):
+    if (no_parms(hsh, verbose)):
         m = red("ledger/get/block needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2234,9 +2268,9 @@ def do_ledger_get_block_hash(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_ledger_get_block_by_hash(hsh, verbose)
         genid = sdk.genesis_id
     else:
@@ -2253,7 +2287,7 @@ def do_ledger_get_block_hash(sid=""):
 def do_ledger_get_transaction(sid=""):
     hsh = bottle.request.forms.get("hash")
     verbose = bottle.request.forms.get("verbose")
-    if(no_parms(hsh, verbose)):
+    if (no_parms(hsh, verbose)):
         m = red("ledger/get/transaction needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2261,9 +2295,9 @@ def do_ledger_get_transaction(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_ledger_get_transaction(hsh, verbose)
         genid = sdk.genesis_id
     else:
@@ -2279,7 +2313,7 @@ def do_ledger_get_transaction(sid=""):
 @bottle.route('/ledger-submit-transaction/<sid>', method="post")
 def do_ledger_submit_transaction(sid=""):
     data = bottle.request.forms.get("data")
-    if(no_parms(data)):
+    if (no_parms(data)):
         m = red("ledger/submit/transaction needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2287,9 +2321,9 @@ def do_ledger_submit_transaction(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_ledger_submit_transaction(data)
         genid = sdk.genesis_id
     else:
@@ -2307,7 +2341,7 @@ def do_ledger_list_blocks_height(sid=""):
     height = bottle.request.forms.get("height")
     l = bottle.request.forms.get("limit")
     verbose = bottle.request.forms.get("limit")
-    if(no_parms(height, l, verbose)):
+    if (no_parms(height, l, verbose)):
         m = red("ledger/list/blocks needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2315,9 +2349,9 @@ def do_ledger_list_blocks_height(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_ledger_list_blocks_by_height(height, l, verbose)
         genid = sdk.genesis_id
     else:
@@ -2336,7 +2370,7 @@ def do_ledger_list_blocks_hash(sid=""):
     hsh = bottle.request.forms.get("hash")
     l = bottle.request.forms.get("limit")
     verbose = bottle.request.forms.get("limit")
-    if(no_parms(hsh, l, verbose)):
+    if (no_parms(hsh, l, verbose)):
         m = red("ledger/list/blocks needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2344,9 +2378,9 @@ def do_ledger_list_blocks_hash(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_ledger_list_blocks_by_hash(hsh, l, verbose)
         genid = sdk.genesis_id
     else:
@@ -2374,7 +2408,7 @@ def build_objects_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "objects-get-schema-name"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     name = form_parm.format("name", "")
     o += hl(objects_get_schema_name).format(h, name, f)
@@ -2382,7 +2416,7 @@ def build_objects_html(sid, genid, o):
 
     o += "<tr><td>"
     h = "objects-get-schema-address"
-    if(sid != ""): h += "/{}".format(sid)
+    if (sid != ""): h += "/{}".format(sid)
     h = form_header.format(h)
     address = form_parm.format("address", "")
     o += hl(objects_get_schema_address).format(h, address, f)
@@ -2408,7 +2442,7 @@ def do_objects_create_schema():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
     j = bottle.request.forms.get("json")
-    if(no_parms(pin, session, name, j)):
+    if (no_parms(pin, session, name, j)):
         m = red("objects/create/schema needs more input parameters")
         return(show(m, session))
     #endif
@@ -2416,9 +2450,9 @@ def do_objects_create_schema():
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_objects_create_schema(name, j)
         genid = sdk.genesis_id
     else:
@@ -2435,7 +2469,7 @@ def do_objects_create_schema():
 @bottle.route('/objects-get-schema-name/<sid>', method="post")
 def do_objects_get_schema_name(sid=""):
     name = bottle.request.forms.get("name")
-    if(no_parms(name)):
+    if (no_parms(name)):
         m = red("objects/get/schema needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2443,9 +2477,9 @@ def do_objects_get_schema_name(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_objects_get_schema_by_name(name)
         genid = sdk.genesis_id
     else:
@@ -2461,7 +2495,7 @@ def do_objects_get_schema_name(sid=""):
 @bottle.route('/objects-get-schema-address/<sid>', method="post")
 def do_objects_get_schema_address(sid=""):
     address = bottle.request.forms.get("address")
-    if(no_parms(address)):
+    if (no_parms(address)):
         m = red("objects/get/schema needs more input parameters")
         return(show(m, sid))
     #endif
@@ -2469,9 +2503,9 @@ def do_objects_get_schema_address(sid=""):
     action = bottle.request.forms.get("action")
     sdk_or_api = (action.find("SDK") != -1)
     
-    if(sdk_or_api):
+    if (sdk_or_api):
         sdk, output = sid_to_sdk(sid)
-        if(sdk == None): return(output)
+        if (sdk == None): return(output)
         output = sdk.nexus_objects_get_schema_by_address(address)
         genid = sdk.genesis_id
     else:
@@ -2520,10 +2554,10 @@ def do_url(api_or_sdk):
     global nexus_api_node, nexus_sdk_node
     
     url = bottle.request.forms.get("url")
-    if(api_or_sdk == "api"):
+    if (api_or_sdk == "api"):
         nexus_api_node = url
     #endif
-    if(api_or_sdk == "sdk"):
+    if (api_or_sdk == "sdk"):
         nexus.sdk_change_url(url)
         nexus_sdk_node = url
     #endif

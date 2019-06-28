@@ -21,11 +21,16 @@ The following methods are currently supported by this API
 [`logout/user`](#logoutuser)   
 [`unlock/user`](#unlockuser)  
 [`lock/user`](#lockuser)  
-[`list/transactions`](#listtransactions)    
-[`list/notifications`](#listnotifications)    
+[`list/accounts`](#listaccounts)   
 [`list/assets`](#listassets)    
-[`list/accounts`](#listaccounts)    
-[`list/tokens`](#listtokens)    
+[`list/items`](#listitems)    
+[`list/names`](#listnames)    
+[`list/namespaces`](#listnamespaces)  
+[`list/notifications`](#listnotifications)  
+[`list/tokens`](#listtokens)  
+[`list/transactions`](#listtransactions) 
+
+ 
 
 
 -----------------------------------
@@ -150,7 +155,7 @@ in encrypted memory.
 ### Return value JSON object:
 ```
 {
-    "genesis": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+    true
 }
 ```
 
@@ -221,152 +226,6 @@ The minting/transactions parameters are optional and, if supplied, allow the sig
 }
 ```
 
-****
-
-
-# `list/transactions`
-
-This will list off all of the transactions for the requested signature chain genesis or username (either can be used). You DO NOT need to be logged in to use this command. If you are using single-user API mode and are logged in, then neither username or genesis are required. It will return transactions for the currently logged in user.
-
-**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
-
-
-### Endpoint:
-
-`/users/list/transactions`
-
-
-### Parameters:
-
-
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
-
-`username` : The username identifying the signature chain (optional if genesis is supplied).
-
-`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
-
-`limit` : The number of transactions to return for the current page. The default is 100.
-
-`verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
- - `default` : hash
- - `summary` : type, version, sequence, timestamp, operation, and confirmations.
- - `detail` : genesis, nexthash, prevhash, pubkey and signature.
-
-
-
-### Return value JSON object:
-```
-{
-    "type": "tritium base",
-    "genesis": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
-    "hash": "f92fd92b7671d8358b82633fdf147e82a95ced60b54ceb4465fb34410345534bff3e9a3224032af08e01cb3b2c1dd4f6dcbb2a600e4b8b3c1109ea11b59ae7b8",
-    "nexthash": "943aaa1f98c14852ff301c743bf25b962aaf5bc04912dd3e6fb925f1f7d8147e",
-    "prevhash": "ef2cde465647953604d7bd49a76b5dde26b55eab8de88661451164f6a8d242f4282b3af9b1893e73a635b51c062a5c8f99217384bf05abbddbf55e1a0e86ffd5",
-    "pubkey": "0338a2acd3dde1a845ac9b959797f891556747a317f6f71caea39977eb2f4d5b15d6cad37aa3a3acc61ed7306b06631a038f6fcd6b585c7fb1d55cd96acc82db7b",
-    "sequence": 6,
-    "signature": "30818402405f1b486b556912edc1b87139c822409e4be7e1aae73a92aadf4ad36f46c90d3c4190ee9bff04e6e79fe27fad4557670ea04533d1ccdb4581de252f04403e36b402401734b064192c106ff070d922349a11eec82c57942824a8b92e44fcb6f5702fa31f190946f9b3bb98815be12f98649cdf7b7204942d1437557635060fb91095c0",
-    "timestamp": 1545445264,
-    "version": 1
-    "operation": [
-            {
-                "OP": "REGISTER",
-                "address": "140e9de108b17a6c532e088cfa6ffa7f5075a10ef1daa07924ba3a27ff20edb9",
-                "type": 4,
-                "data": "0762616c616e6365ff040000000000000000057472757374ff040000000000000000057374616b65ff0400000000000000000d746f6b656e5f61646472657373050000000000000000000000000000000000000000000000000000000000000000"
-            }
-        ]
-},
-```
-
-### Return values:
-
-`type` : The description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`).
-
-`genesis` : The signature chain genesis hash.
-
-`hash` : The transaction hash.
-
-`confirmations` : The number of confirmations that this transaction obtained by the network.
-
-`nexthash` : The hash of the next transaction in the sequence.
-
-`prevhash` : the hash of the previous transaction in the sequence.
-
-`pubkey` : The public key.
-
-`signature` : The signature hash.
-
-`sequence` : The sequence number of this transaction within the signature chain.
-
-`timestamp` : The Unix timestamp of when the transaction was created.
-
-`version` : The serialization version of the transaction.
-
-`operation` : The description of the opcodes included in the transaction.
-
-****
-
-
-# `list/notifications`
-
-This will list off all of the transactions sent to a particular genesis or username. It is useful for identifying transactions that you need to accept such as credits.
-
-**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
-
-
-### Endpoint:
-
-`/users/list/notifications`
-
-
-### Parameters:
-
-`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
-
-`username` : The username identifying the signature chain (optional if genesis is supplied).
-
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) notifications.  The default value is 0 if not supplied.
-
-`limit` : The number of notifications to return for the current page.  Default is 100
-
-
-### Return value JSON object:
-```
-{
-    "genesis": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
-    "hash": "f92fd92b7671d8358b82633fdf147e82a95ced60b54ceb4465fb34410345534bff3e9a3224032af08e01cb3b2c1dd4f6dcbb2a600e4b8b3c1109ea11b59ae7b8",
-    "nexthash": "943aaa1f98c14852ff301c743bf25b962aaf5bc04912dd3e6fb925f1f7d8147e",
-    "prevhash": "ef2cde465647953604d7bd49a76b5dde26b55eab8de88661451164f6a8d242f4282b3af9b1893e73a635b51c062a5c8f99217384bf05abbddbf55e1a0e86ffd5",
-    "pubkey": "0338a2acd3dde1a845ac9b959797f891556747a317f6f71caea39977eb2f4d5b15d6cad37aa3a3acc61ed7306b06631a038f6fcd6b585c7fb1d55cd96acc82db7b",
-    "sequence": 6,
-    "signature": "30818402405f1b486b556912edc1b87139c822409e4be7e1aae73a92aadf4ad36f46c90d3c4190ee9bff04e6e79fe27fad4557670ea04533d1ccdb4581de252f04403e36b402401734b064192c106ff070d922349a11eec82c57942824a8b92e44fcb6f5702fa31f190946f9b3bb98815be12f98649cdf7b7204942d1437557635060fb91095c0",
-    "timestamp": 1545445264,
-    "version": 1
-    "operation": "Coinbase(nAmount=55)"
-},
-```
-
-### Return values:
-
-`genesis` : The signature chain genesis hash.
-
-`hash` : The transaction hash.
-
-`nexthash` : The hash of the next transaction in the sequence.
-
-`prevhash` : The hash of the previous transaction in the sequence.
-
-`pubkey` : The public key.
-
-`signature` : The signature hash.
-
-`sequence` : The sequence number of this transaction within the signature chain.
-
-`timestamp` : The Unix timestamp of when the transaction was created.
-
-`version` : The serialization version of the transaction.
-
-`operation` : The description of the opcodes included in the transaction.
 
 ****
 
@@ -419,17 +278,21 @@ This will list off all of the assets owned by a signature chain.
 ```
 ### Return values:
 
+`created` : The UNIX timestamp when the asset was created.
+
+`modified` : The UNIX timestamp when the asset was last modified.
+
 `name` : The name identifying the asset.  For privacy purposes, this is only included in the response if the caller is the owner of the asset
 
-`address` : The register address of the asset. 
+`address` : The register address of the asset.
 
 `timestamp` : The Unix timestamp of when the asset was last updated.
 
-`owner` : The genesis hash of the signature chain that owns this asset.
-
 `<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
 
+
 ****
+
 
 # `list/accounts`
 
@@ -478,17 +341,242 @@ This will list off all of the token accounts belonging to a particular signature
 ```
 ### Return values:
 
-`name` : The name identifying the account.  For privacy purposes, this is only included in the response if the caller is the owner of the account 
+`created` : The UNIX timestamp when the account was created.
+
+`modified` : The UNIX timestamp when the account was last modified.
+
+`name` : The name identifying the account.  For privacy purposes, this is only included in the response if the caller is the owner of the account
 
 `address` : The register address for the account
 
-`token_name` : The name of the token that this account can be used with.  For privacy purposes, this is only included in the response if the caller is the owner of the token 
+`token_name` : The name of the token that this account can be used with.  For privacy purposes, this is only included in the response if the caller is the owner of the token
 
-`token_address` : The register address of the token that this account can be used for.
+`token` : The register address of the token that this account can be used for.
 
 `balance` : The current balance of the token account.
 
+
 ****
+
+
+# `list/items`
+
+This will list off all of the supply chain items (append registers) owned by a signature chain.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/items`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
+### Return value JSON object:
+```
+[
+    {
+        "created": 1560982537,
+        "modified": 1560982615,
+        "name": "myitem",
+        "address": "70f49d996d53317cf2175b89efc2694b85c4ebede5fc468bedb860b3e4dada68",
+        "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+        "data": "xxxxxx"
+    }
+]
+
+```
+### Return values:
+
+`created` : The UNIX timestamp when the item was created.
+
+`modified` : The UNIX timestamp when the item was last modified.
+
+`name` : The name identifying the item.  For privacy purposes, this is only included in the response if the caller is the owner of the item
+
+`address` : The register address of the item.
+
+`owner` : The genesis hash of the owner of the item.
+
+`data` : The data stored in the item.
+
+
+****
+
+
+# `list/names`
+
+This will list off all of the names owned by the signature chain.  For privacy reasons Names are only returned for the currently logged in user (multiuser=0) or for the logged in session (multiuser=1)
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/names`
+
+
+### Parameters:
+
+`session` : For multi-user API mode (configured with multiuser=1), the session is required to identify  which signature chain should be used to return the Names for. For single-user API mode the session should not be supplied an the currently logged in users signature chain is used.
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
+
+### Return value JSON object:
+```
+[
+    {
+        "name": "asset1.ourcompany",
+        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+        "register_address": "597164ddc65ed8e4e481958d578daf0890a625a4957a987c5e966fcfff7084f3"
+    }
+    {
+        "name": "asset2.ourcompany",
+        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417",
+        "register_address": "55c559eabe469eb566f302712edf089b165001da8dfda7acdcf9347896e1fff4"
+    },
+    {
+        "name": "default",
+        "address": "97c2e9fe863e51adeee82b28bf43747291ca801e258a98453d79edb261a02e7a",
+        "register_address": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0"
+    }
+
+
+]
+```
+### Return values:
+
+`created` : The UNIX timestamp when the Name was created.
+
+`modified` : The UNIX timestamp when the Name was last modified.
+
+`name` : The name identifying the object register. 
+
+`address` : The register address of the Name.  
+
+`register_address` : The register address of the the object that this Name points to.
+
+
+****
+
+
+# `list/namespaces`
+
+This will list off all of the namespaces owned by the signature chain.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/namespaces`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+
+`limit` : The number of results to return for the current page.  Default is 100
+
+
+
+### Return value JSON object:
+```
+[
+    {
+        "name": "mynamespace1",
+        "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+    },
+    {
+        "name": "mynamespace2",
+        "address": "a74774dc075e59d03639b56da8c29736fe248888a43c6103060409dd11273417"
+    }
+
+
+]
+```
+### Return values:
+
+`created` : The UNIX timestamp when the namespace was created.
+
+`modified` : The UNIX timestamp when the namespace was last modified.
+
+`name` : The name identifying the namespace. 
+
+`address` : The register address of the namespace.  
+
+
+****
+
+
+# `list/notifications`
+
+This will list off all of the transactions sent to a particular genesis or username. It is useful for identifying transactions that you need to accept such as credits.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/notifications`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) notifications.  The default value is 0 if not supplied.
+
+`limit` : The number of notifications to return for the current page.  Default is 100
+
+
+### Return value JSON object:
+```
+[
+    {
+        "txid": "0afb32d8316c9ad97504fbf26093a86cbce03ba8137c5f63e16991e3a99aee3cbb5696f0c889a75fe61541898d350f4023edca2e2b66545f7c2ef9af254f99f0",
+        "contracts": [
+            {
+                "OP": "DEBIT",
+                "from": "6118a477d187277d167bd7965d89d228a4fd04bdc48ae83157554f074eca8e61",
+                "to": "464f3ab4a704a100e6413c2891efaba61375513b00bdc903d8a1f32500f01e36",
+                "amount": 10000
+            }
+        ]
+    },
+]
+
+```
+
+### Return values:
+
+`txid` : The transaction hash.
+
+`contracts` : The list of contracts bound to this transaction and their details with opcodes.
+
+
+****
+
 
 # `list/tokens`
 
@@ -539,7 +627,11 @@ This will list off all of the tokens that were created by a particular signature
 ```
 ### Return values:
 
-`name` : The name identifying the token.  For privacy purposes, this is only included in the response if the caller is the owner of the token 
+`created` : The UNIX timestamp when the token was created.
+
+`modified` : The UNIX timestamp when the token was last modified.
+
+`name` : The name identifying the token.  For privacy purposes, this is only included in the response if the caller is the owner of the token
 
 `address` : The register address for the account
 
@@ -550,5 +642,91 @@ This will list off all of the tokens that were created by a particular signature
 `currentsupply` : The current number of tokens that have been distributed from this token register.
 
 `digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
+
+
+****
+
+
+# `list/transactions`
+
+This will list off all of the transactions for the requested signature chain genesis or username (either can be used). You DO NOT need to be logged in to use this command. If you are using single-user API mode and are logged in, then neither username or genesis are required. It will return transactions for the currently logged in user.
+
+**NOTE** : If you use the username parameter, it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/users/list/transactions`
+
+
+### Parameters:
+
+
+`genesis` : The genesis hash identifying the signature chain (optional if username is supplied).
+
+`username` : The username identifying the signature chain (optional if genesis is supplied).
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
+
+`limit` : The number of transactions to return for the current page. The default is 100.
+
+`verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
+ - `default` : hash
+ - `summary` : type, version, sequence, timestamp, operation, and confirmations.
+ - `detail` : genesis, nexthash, prevhash, pubkey and signature.
+
+
+
+### Return value JSON object:
+```
+{
+    "txid": "222fafd56cf1fa5dc8d274d83dc49d1fcd4ecee958c62338fa865c7d43e5ed9f0abb843fdbf5b161dd1d1b9e2e64a9a1cb3a32657b8559b03ef60210257f8206",
+    "contracts": [
+        {
+            "OP": "COINBASE",
+            "genesis": "1ff463e036cbde3595fbe2de9dff15721a89e99ef3e2e9bfa7ce48ed825e9ec2",
+            "nonce": 3,
+            "amount": 76499504
+        }
+    ],
+    "type": "tritium base",
+    "version": 1,
+    "sequence": 10,
+    "timestamp": 1560196174,
+    "confirmations": 6,
+    "genesis": "1ff463e036cbde3595fbe2de9dff15721a89e99ef3e2e9bfa7ce48ed825e9ec2",
+    "nexthash": "117ac949f88a65f6466e2b332e88abb1b7548cc7a09fdf6512ef4d96b44c1b2e",
+    "prevhash": "cdfd0721fd860f52046a4752c6e67a30b11541662f89815091800f54c994455ecf20994651c38d32c0d8a3c3affc32d88977987c25af30c4c907b9666802c229",
+    "pubkey": "095afa24f8dcdf15ac8c7701d7a0429ca866b2881ad5a2e59af77d8c6ebeb04a150b5ecc23d4c60593d583022cefea32cdca51f8dd476653208c72a14150ae85567e90f90e649a67fd1a32e501ea135ee88859e2606aa8ec22f524e784c8e9e9722401512028878fa1a56606e4481641b58295d6879e665f1e180777d011e709d120b1214f647bf68713be98c0b968d86815c22a1d9a7128e780e910c8ad82c595b20504772b8c842507d4a26a9345500829a1d4b28665507e1789a526eb6be60662fb4da11e0cd50bd78e698ba0f4220b1798bc64492910dc84876a6c95ace3563e7a23da96627d7b04a1284606d029567bb26a0a412a4a8a82a09dc7062968894b11c22410d8711b90e33f4d20a5385a969d69b05118d2d17585c999e1ef35a97444c8b2da5b54c1ce556da90477c2020bb780e402daa0f4bdee92b5745433f71e4a30a42816f518e2a0da4d38fa49ce136e18aadfcef9463ad641e05b4220f54139605c5328c27fd0d5cf1329f8928094aeebbd70f116e8271e7bb280e7f4aac58115bb0064920a36fcb028f50b0b376553a6af00334899abe5be0cad14b435b377c6514680a58072691947181fa0a85b70ad15e585265e7f8bc6c22954a5bf95065815cc18771eb1a486ad6810b80c4a38f92716500220804324ff01728e3b4e87b9a34984a1456f7ab14459e4859e62961eedbb788e820b4580d12fe0266aec3a82da88c190b94d715a01793c69bf16d94bb89abc5e116f03792aa2e8306604ce559415f74948ebb3e63b8371d0e58a0d5b2798aadeb4a5dafbd44a4ca27e0a523e57a49600c826208fe4932848eb82a7c96b32bb19bb5a2e1c64ffa31756d484eddd521eae75bcf633227783d7ad0150c6198c2754c2e166e34ac00cc488573d40b82ad650e25221e414b419c66450ec266516605759e985ec1cd3f7ebc89525cf67aa2401a3cc2469e686a97f00e47484499554fa2917616e9d9c5d6f42f9d32438910fd1c00bc10a2a9234856ec6021aa69b76da10299e73540ce3175328ccb68c0b1d1878e584bd40b60af0c323c49aad7efef783d5049dae18a53794a5432f30b6c4ec6e0a43dc11f5d869f04dbe5eb963240e716ce220c75a165e6a8b5b33cb318c985e50e5d26aa9c25c2b746b4f3edcc318cae0b060a8dcc628878070b60c24f9e35a9596a0c4e1278d1a9d5b33c8e76984340cf7ec991e767c071b47d47e2ba89cb99145bcae716f402fcdb5416ab7d3b0d50b1ec4399a076faa",
+    "signature": "29381098b52dd52a0f4d2f82ec4fcab2c5044ad4f9bb299c713be43345b4c215c8125936ab3445a6bde280e5f22bbf35d588458ed5169f25f0711efc2299bc6d7885c96c4cd978149dd5a1bc3b554e9bc3b8c5cbaf1d3185202ca3778c42d1d8161eeab49c05b3733e90959e7d626e96b75adc5ba18e514f36cac68ad111e8f1a8e9a2710cd5252cc54121d0b39459ec49662531a250e64e1d2571c863c8697dc91f04551dfb3517555e91014f4a36a2763452ac1698d32cadd727b1dca320c6c0efc0a6cc63f8d8e850ec5592b0d6358b25fa0246f50a7ba89161cab487f4d6925f43a3978367300c59f1f64bac24cdb1ea6ce3d7457620c9b2c508a6619f29a91a19f816393b57503ff7059954dac507fd5ab756ee1c5b861352b9e5086fb6fe388c317e59778c79a7a1ccd2152543bf56ed58c8cfefb788ecef56c9ae84ab26f71545926d1c26b91a6bc20896b99087c3eb36720c9998cb7018c2247d321c7eadf4c6d1def93b451c4ddb94123ef8691fa83f81eddc426a5cc1afbeb1f615331a97eda571e57b8cf2b46eb25cdd19691d3b8723786e9b4476afdb7e99adc56e5d237d33311f09162c74fc24c5386458a4290a7d1b8b870fdeae68e689675b5290c9704d7f1323d1657bdc2c6be2914a7de447d7c475f8ce74487b6225958831cdbbc1887af2c8016141568bd51e039c648c6541578067b2c626fe40455791ae345d0d5702356567fcda5c24365ed6b039cd9b0286dffad2c982044ae2f0b38e76deac4b19e5bac5773e45eaa78125b13df9db726cffe8c6e266cb68520ce3febf4a66fd66225f639e095ea6bdb833529a5f2bb1c9b1c544c17dee717256b471ab703d11541d55f0f78bd60d7e671f9a22a2328b70fb034b8f6459f155a17c21ad2750ce7282257980ba571c6296"
+},
+
+```
+
+### Return values:
+
+`txid` : The transaction hash.
+
+`contracts` : The list of contracts bound to this transaction and their details with opcodes.
+
+`type` : The description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`).
+
+`version` : The serialization version of the transaction.
+
+`sequence` : The sequence number of this transaction within the signature chain.
+
+`timestamp` : The Unix timestamp of when the transaction was created.
+
+`confirmations` : The number of confirmations that this transaction obtained by the network.
+
+`genesis` : The signature chain genesis hash.
+
+`nexthash` : The hash of the next transaction in the sequence.
+
+`prevhash` : the hash of the previous transaction in the sequence.
+
+`pubkey` : The public key.
+
+`signature` : The signature hash.
 
 ****
