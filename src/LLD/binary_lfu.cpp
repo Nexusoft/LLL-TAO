@@ -64,8 +64,8 @@ namespace LLD
     , MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 512)
     , nCurrentSize(MAX_CACHE_BUCKETS * 16)
     , MUTEX()
-    , hashmap(MAX_CACHE_BUCKETS)
-    , checksums(MAX_CACHE_BUCKETS)
+    , hashmap(MAX_CACHE_BUCKETS, nullptr)
+    , checksums(MAX_CACHE_BUCKETS, 0)
     , pfirst(nullptr)
     , plast(nullptr)
     {
@@ -78,8 +78,8 @@ namespace LLD
     , MAX_CACHE_BUCKETS(nCacheSizeIn / 512)
     , nCurrentSize(MAX_CACHE_BUCKETS * 16)
     , MUTEX()
-    , hashmap(MAX_CACHE_BUCKETS)
-    , checksums(MAX_CACHE_BUCKETS)
+    , hashmap(MAX_CACHE_BUCKETS, nullptr)
+    , checksums(MAX_CACHE_BUCKETS, 0)
     , pfirst(nullptr)
     , plast(nullptr)
     {
@@ -291,14 +291,16 @@ namespace LLD
         LOCK(MUTEX);
 
         /* Check for empty slot. */
-        uint64_t nChecksum = checksums[Bucket(vKey)];
+        uint32_t nChecksumBucket = Bucket(vKey);
+        uint64_t nChecksum       = checksums[nChecksumBucket];
+
+        /* Check the checksums. */
+        if(nChecksum == Checksum(vData))
+            return;
+
+        /* Get the binary node. */
         if(nChecksum != 0)
         {
-            /* Check the checksums. */
-            if(nChecksum == Checksum(vData))
-                return;
-
-            /* Get the binary node. */
             uint32_t nBucket  = Bucket(nChecksum);
             BinaryNodeLFU* pthis = hashmap[nBucket];
 
@@ -309,28 +311,54 @@ namespace LLD
                 RemoveNode(pthis);
 
                 /* Dereference the pointers. */
-                hashmap[Bucket(pthis)]     = nullptr;
+                hashmap[nBucket]           = nullptr;
                 pthis->pprev               = nullptr;
                 pthis->pnext               = nullptr;
 
                 /* Reduce the current size. */
-                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 8);
+                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
 
                 /* Free the memory. */
                 delete pthis;
             }
+
+            checksums[nChecksumBucket] = 0;
         }
 
         /* Create a new cache node. */
-        BinaryNodeLFU* pthis = new BinaryNodeLFU(vKey, vData);
-        nChecksum = pthis->Checksum();
+        BinaryNodeLFU* pnew = new BinaryNodeLFU(vKey, vData);
+        nChecksum = pnew->Checksum();
+
+        /* Get the bucket. */
+        uint32_t nBucket    = Bucket(nChecksum);
+
+        /* Cleanup if colliding with another bucket. */
+        if(hashmap[nBucket] != nullptr)
+        {
+            /* Get copy of pointer. */
+            BinaryNodeLFU* pthis = hashmap[nBucket];
+
+            /* Remove from the linked list. */
+            RemoveNode(pthis);
+
+            /* Dereference the pointers. */
+            hashmap[nBucket]           = nullptr;
+            pthis->pprev               = nullptr;
+            pthis->pnext               = nullptr;
+
+            /* Reduce the current size. */
+            nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
+
+            /* Free the memory. */
+            delete pthis;
+        }
 
         /* Add cache node to objects map. */
-        hashmap[Bucket(nChecksum)] = pthis;
-        checksums[Bucket(vKey)]    = nChecksum;
+        hashmap[nBucket]            = pnew;
+        checksums[nChecksumBucket]  = nChecksum;
 
         /* Move to forward in double linked list. */
-        MoveForward(pthis);
+        MoveForward(pnew);
 
         /* Remove the last node if cache too large. */
         if(nCurrentSize > MAX_CACHE_SIZE)

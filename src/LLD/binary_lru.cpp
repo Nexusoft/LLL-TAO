@@ -60,8 +60,8 @@ namespace LLD
     , MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 128)
     , nCurrentSize(MAX_CACHE_BUCKETS * 16)
     , MUTEX()
-    , hashmap(MAX_CACHE_BUCKETS)
-    , checksums(MAX_CACHE_BUCKETS)
+    , hashmap(MAX_CACHE_BUCKETS, nullptr)
+    , checksums(MAX_CACHE_BUCKETS, 0)
     , pfirst(nullptr)
     , plast(nullptr)
     {
@@ -74,8 +74,8 @@ namespace LLD
     , MAX_CACHE_BUCKETS(nCacheSizeIn / 128)
     , nCurrentSize(MAX_CACHE_BUCKETS * 16)
     , MUTEX()
-    , hashmap(MAX_CACHE_BUCKETS)
-    , checksums(MAX_CACHE_BUCKETS)
+    , hashmap(MAX_CACHE_BUCKETS, nullptr)
+    , checksums(MAX_CACHE_BUCKETS, 0)
     , pfirst(nullptr)
     , plast(nullptr)
     {
