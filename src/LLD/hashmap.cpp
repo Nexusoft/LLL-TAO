@@ -26,7 +26,7 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** Default Constructor **/
+    /* Default Constructor */
     BinaryHashMap::BinaryHashMap()
     : KEY_MUTEX()
     , strBaseLocation()
@@ -36,12 +36,13 @@ namespace LLD
     , HASHMAP_TOTAL_BUCKETS(256 * 256 * 64)
     , HASHMAP_MAX_KEY_SIZE(32)
     , HASHMAP_KEY_ALLOCATION(static_cast<uint16_t>(HASHMAP_MAX_KEY_SIZE + 13))
+    , nFlags(FLAGS::APPEND)
     , RECORD_MUTEX(1024)
     {
     }
 
 
-    /** The Database Constructor. To determine file location and the Bytes per Record. **/
+    /* The Database Constructor. To determine file location and the Bytes per Record. */
     BinaryHashMap::BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn, uint64_t nBucketsIn)
     : KEY_MUTEX()
     , strBaseLocation(strBaseLocationIn)
@@ -58,7 +59,7 @@ namespace LLD
     }
 
 
-    /** Copy Constructor **/
+    /* Copy Constructor */
     BinaryHashMap::BinaryHashMap(const BinaryHashMap& map)
     : KEY_MUTEX()
     , strBaseLocation(map.strBaseLocation)
@@ -75,7 +76,7 @@ namespace LLD
     }
 
 
-    /** Copy Assignment Operator **/
+    /* Copy Assignment Operator */
     BinaryHashMap& BinaryHashMap::operator=(const BinaryHashMap& map)
     {
         strBaseLocation        = map.strBaseLocation;
