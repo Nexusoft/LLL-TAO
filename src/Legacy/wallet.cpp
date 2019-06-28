@@ -1106,7 +1106,7 @@ namespace Legacy
     /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
      *  it to the wallet when it does.
      */
-    bool Wallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::BlockState& containingBlock,
+    bool Wallet::AddToWalletIfInvolvingMe(const Transaction& tx, TAO::Ledger::BlockState& state,
                                            bool fUpdate, bool fFindBlock, bool fRescan)
     {
         uint512_t hash = tx.GetHash();
@@ -1122,15 +1122,26 @@ namespace Legacy
         if (IsMine(tx) || IsFromMe(tx))
         {
             WalletTx wtx(this, tx);
-            if (fRescan) {
+            if (fRescan || TAO::Ledger::ChainState::Synchronizing()) {
                 /* On rescan or initial download, set wtx time to transaction time instead of time tx received.
                  * These are both uint32_t timestamps to support unserialization of legacy data.
                  */
                 wtx.nTimeReceived = tx.nTime;
             }
 
-            if(!containingBlock.IsNull())
-                wtx.hashBlock = containingBlock.GetHash();
+            if (fFindBlock)
+            {
+                /* If have transaction, but need its block, read it now */
+                state.SetNull();
+
+                if (LLD::legDB->ReadBlock(tx.GetHash(), state))
+                    wtx.hashBlock = state.GetHash();
+            }
+            else if(!state.IsNull())
+            {
+                /* If have block for transaction, record the hashBlock. */
+                wtx.hashBlock = state.GetHash();
+            }
 
             /* AddToWallet preforms merge (update) for transactions already in wallet */
             return AddToWallet(wtx);
@@ -1203,11 +1214,7 @@ namespace Legacy
         uint32_t nTransactionCount = 0;
         uint32_t nScannedCount     = 0;
 
-        TAO::Ledger::BlockState block;
-        if (pstartBlock == nullptr)
-            block = TAO::Ledger::ChainState::stateGenesis;
-        else
-            block = *pstartBlock;
+        TAO::Ledger::BlockState state;
 
         runtime::timer timer;
         timer.Start();
@@ -1225,7 +1232,7 @@ namespace Legacy
             for(const auto& tx : vtx)
             {
                 /* Add to the wallet */
-                if (AddToWalletIfInvolvingMe(tx, block, fUpdate, false, true))
+                if (AddToWalletIfInvolvingMe(tx, state, fUpdate, true, true))
                     ++nTransactionCount;
 
                 /* Update the scanned count for meters. */
