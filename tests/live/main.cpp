@@ -29,18 +29,124 @@ ________________________________________________________________________________
 
 #include <Util/include/hex.h>
 
-#include <TAO/Register/types/address.h>
-
 #include <iostream>
+
+#include <TAO/Register/types/address.h>
 
 #include <list>
 
+/** Address
+ *
+ *  An object that keeps track of a register address type.
+ *
+ **/
+class Genesis : public uint256_t
+{
+public:
+
+    /** Default constructor. **/
+    Genesis()
+    : uint256_t(0)
+    {
+    }
+
+
+    /** Copy Constructor */
+    Genesis(const uint256_t& hashAddress)
+    : uint256_t(hashAddress)
+    {
+    }
+
+
+    /** Address Constructor
+     *
+     *  Build an address from a hex encoded string.
+     *
+     *  @param[in] strName The name to assign to this address.
+     *  @param[in] nType The type of the address (Name or Namespace)
+     *
+     **/
+    Genesis(const std::string& strAddress)
+    : uint256_t(strAddress)
+    {
+        /* Check for valid address types. */
+        if(!IsValid())
+            throw debug::exception(FUNCTION, "invalid type");
+    }
+
+
+    /** Assignment operator.
+     *
+     *  @param[in] addr Address to assign this to.
+     *
+     **/
+    Genesis& operator=(const Genesis& addr)
+    {
+        /* Copy each word. */
+        for(uint32_t i = 0; i < WIDTH; ++i)
+            pn[i] = addr.pn[i];
+
+        return *this;
+    }
+
+
+    /** SetType
+     *
+     *  Set the type byte into the address.
+     *
+     *  @param[in] nType The type byte for address.
+     *
+     **/
+    void SetType(uint8_t nType)
+    {
+        /* Check for testnet. */
+        if(config::fTestNet.load())
+            ++nType;
+
+        /* Mask off most significant byte (little endian). */
+        pn[WIDTH -1] = (pn[WIDTH - 1] & 0x00ffffff) + (nType << 24);
+    }
+
+
+    /** GetType
+     *
+     *  Get the type byte from the address.
+     *
+     *  @param[in] nType The type byte for address.
+     *
+     **/
+    uint8_t GetType() const
+    {
+        /* Get the type. */
+        uint8_t nType = (pn[WIDTH -1] >> 24);
+
+        /* Check for testnet. */
+        if(config::fTestNet.load())
+            --nType;
+
+        return nType;
+    }
+
+
+    /** IsValid
+     *
+     *  Check if genesis has a valid indicator byte.
+     *
+     *  @return True if type has valid header byte.
+     *
+     **/
+    bool IsValid() const
+    {
+        return GetType() == 0xa1;
+    }
+};
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    
+    config::fTestNet.store(true);
+
     uint256_t hashTest = LLC::GetRand256();
 
     debug::log(0, "Hash: ", hashTest.ToString());

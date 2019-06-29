@@ -35,6 +35,11 @@ namespace TAO
             /** Different bytes that are prepended to addresses. */
             enum
             {
+                /* These are here to prevent you from making the mistake of using these two 'genesis' enum values. */
+                RESERVED  = 0xa1,
+                RESERVED2 = 0xa2,
+
+                /* Standard register type bytes. */
                 READONLY  = 0xd0,
                 APPEND    = 0xd1,
                 RAW       = 0xd2,
@@ -119,8 +124,12 @@ namespace TAO
              *  @param[in] nType The type byte for address.
              *
              **/
-            void SetType(const uint8_t nType)
+            void SetType(uint8_t nType)
             {
+                /* Check for testnet. */
+                if(config::fTestNet.load())
+                    nType += 0x10;
+
                 /* Mask off most significant byte (little endian). */
                 pn[WIDTH -1] = (pn[WIDTH - 1] & 0x00ffffff) + (nType << 24);
             }
@@ -135,7 +144,14 @@ namespace TAO
              **/
             uint8_t GetType() const
             {
-                return (pn[WIDTH -1] >> 24);
+                /* Get type from hash. */
+                uint8_t nType = (pn[WIDTH -1] >> 24);
+
+                /* Check for testnet. */
+                if(config::fTestNet.load())
+                    nType -= 0x10;
+
+                return nType;
             }
 
 
@@ -154,6 +170,10 @@ namespace TAO
                 /* Return on valid types. */
                 switch(nType)
                 {
+                    case RESERVED:
+                    case RESERVED2:
+                        return false;
+
                     case READONLY:
                     case APPEND:
                     case RAW:
