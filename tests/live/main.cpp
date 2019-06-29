@@ -40,12 +40,13 @@ ________________________________________________________________________________
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    
     uint256_t hashTest = LLC::GetRand256();
 
     debug::log(0, "Hash: ", hashTest.ToString());
 
     TAO::Register::Address addr = hashTest;
-    
+
     addr.SetType(TAO::Register::Address::NAME);
 
     debug::log(0, "Hash: ", addr.ToString());

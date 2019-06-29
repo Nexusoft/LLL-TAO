@@ -72,7 +72,7 @@ namespace TAO
             Address(const std::string& strAddress)
             : uint256_t(strAddress)
             {
-                /* Check for valid addresses. */
+                /* Check for valid address types. */
                 if(!IsValid())
                     throw debug::exception(FUNCTION, "invalid type");
             }
@@ -89,6 +89,7 @@ namespace TAO
             Address(const std::string& strName, const uint8_t nType)
             : uint256_t(LLC::SK256(strName))
             {
+                /* Check for valid types. */
                 if(nType != NAME && nType!= NAMESPACE)
                     throw debug::exception(FUNCTION, "invalid type for names");
 
@@ -103,6 +104,7 @@ namespace TAO
              **/
             Address& operator=(const Address& addr)
             {
+                /* Copy each word. */
                 for(uint32_t i = 0; i < WIDTH; ++i)
                     pn[i] = addr.pn[i];
 
