@@ -61,7 +61,7 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-105, "Missing address");
+                throw APIException(-33, "Missing name / address");
 
             /* Get the register if we haven't already loaded it. */
             if(state.IsNull() && !LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
