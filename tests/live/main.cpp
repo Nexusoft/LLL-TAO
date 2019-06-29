@@ -29,67 +29,34 @@ ________________________________________________________________________________
 
 #include <Util/include/hex.h>
 
+#include <TAO/Register/types/address.h>
+
 #include <iostream>
 
 #include <list>
 
-template <unsigned N>
-double approxRollingAverage(double avg, double input)
-{
-    avg -= avg/N;
-    avg += input/N;
-    return avg;
-}
-
-
-
-std::list<double> listDeltaMA;
-
-double getDeltaMovingAverage(double delta)
-{
-    listDeltaMA.push_back(delta);
-    if (listDeltaMA.size() > 1440) listDeltaMA.pop_front();
-    double sum = 0;
-    for (std::list<double>::iterator p = listDeltaMA.begin(); p != listDeltaMA.end(); ++p)
-        sum += (double)*p;
-    return sum / listDeltaMA.size();
-}
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    uint256_t hashTest = LLC::GetRand256();
 
-    uint256_t hashDiff = (~uint256_t(0) >> 16);
+    debug::log(0, "Hash: ", hashTest.ToString());
 
-    std::vector<uint8_t> vBytes(16, 0);
+    TAO::Register::Address addr = hashTest;
+    
+    addr.SetType(TAO::Register::Address::NAME);
 
-    uint256_t hash;
+    debug::log(0, "Hash: ", addr.ToString());
 
-    double approx = 0;
-    double accumulator = 0;
-    double alpha = 0.00012314;
-    while(true)
-    {
-        RAND_bytes((uint8_t*)&vBytes[0], 16);
+    printf("BYTE: %x\n", addr.GetType());
 
-        hash = LLC::SK1024(vBytes);
+    debug::log(0, "Valid: ", addr.IsValid() ? "Yes" : "No");
 
-        if(hash < hashDiff)
-        {
-            uint256_t test = (~hash / (hash + 1)) + 1;
-            printf("Bits %s\n", hash.ToString().c_str());
-            printf("Test %lu\n", test.Get64());
+    TAO::Register::Address name = TAO::Register::Address("colin2", TAO::Register::Address::NAMESPACE);
 
-            uint64_t nValue = test.Get64();
-            double delta = getDeltaMovingAverage(nValue);
-
-            accumulator = (alpha * nValue) + (1.0 - alpha) * accumulator;
-
-            approx = approxRollingAverage<1440>(approx, nValue);
-            printf("Delta %f Approx %f Accumulator %f\n", delta, approx, accumulator);
-        }
-    }
+    debug::log(0, "Hash: ", name.ToString());
 
 
     return 0;

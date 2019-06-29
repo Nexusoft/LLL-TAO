@@ -215,6 +215,39 @@ namespace debug
     }
 
 
+    /** @class error
+     *
+     *  Handle exceptions with variadic template constructor for logging support.
+     *
+     **/
+    class exception : public std::runtime_error
+    {
+    public:
+
+        /** Constructor
+         *
+         *  @param[in] e The exception object to create error from.
+         *
+         **/
+        exception(const std::runtime_error& e)
+        : std::runtime_error(e)
+        {
+        }
+
+
+        /** Constructor
+         *
+         *  @param[in] args The variadic template for initialization.
+         *
+         **/
+        template<class... Args>
+        exception(Args&&... args)
+        : std::runtime_error(safe_printstr(args...))
+        {
+        }
+    };
+
+
     /** rfc1123Time
      *
      *  Special Specification for HTTP Protocol.
