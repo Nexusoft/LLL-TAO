@@ -456,7 +456,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
     {
 
         //create object
-        TAO::Register::Address hashToken  = TAO::Register::Address(TAO::Register::Address::TOKEN);
+        TAO::Register::Address hashToken  = TAO::Register::Address(TAO::Register::Address::RAW);
         TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis  = LLC::GetRand256();
 
@@ -522,7 +522,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
         LLD::Register->EraseIdentifier(11);
 
         //create object
-        TAO::Register::Address hashToken  = TAO::Register::Address(TAO::Register::Address::TOKEN);
+        TAO::Register::Address hashToken  = TAO::Register::Address(TAO::Register::Address::OBJECT);
         TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis  = LLC::GetRand256();
 
@@ -538,7 +538,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
 
             /* Generate the object register values. */
             token   << std::string("balance")    << uint8_t(TYPES::UINT64_T) << uint64_t(1000)
-                    << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(11)
+                    << std::string("token")      << uint8_t(TYPES::UINT256_T) << uint256_t(11)
                     << std::string("supply")     << uint8_t(TYPES::UINT64_T) << uint64_t(1000)
                     << std::string("digits")     << uint8_t(TYPES::UINT64_T) << uint64_t(100);
 

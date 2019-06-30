@@ -36,6 +36,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/types/address.h>
 
 namespace TAO
 {
@@ -252,7 +253,7 @@ namespace TAO
                             return false;
 
                         /* Get the Address of the Register. */
-                        uint256_t hashAddress = 0;
+                        TAO::Register::Address hashAddress;
                         contract >> hashAddress;
 
                         /* Get the Register Type. */
