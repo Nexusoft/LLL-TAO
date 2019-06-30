@@ -519,9 +519,6 @@ namespace LLP
                     return true;
                 }
 
-                /* Clear map on new block found. */
-                clear_map();
-                CoinbaseTx.SetNull();
 
                 /* Generate an Accepted response. */
                 respond(BLOCK_ACCEPTED);
@@ -576,20 +573,18 @@ namespace LLP
     bool BaseMiner::check_best_height()
     {
 
-        bool fHeightChanged = false;
+        if(nBestHeight == TAO::Ledger::ChainState::nBestHeight)
+            return false;
 
-        if(nBestHeight != TAO::Ledger::ChainState::nBestHeight)
-        {
-            clear_map();
+        /* Clear the map of blocks if a new block has been accepted. */
+        clear_map();
+        CoinbaseTx.SetNull();
 
-            nBestHeight = TAO::Ledger::ChainState::nBestHeight.load();
+        /* Set the new best height. */
+        nBestHeight = TAO::Ledger::ChainState::nBestHeight.load();
+        debug::log(2, FUNCTION, "Mining best height changed to ", nBestHeight);
 
-            debug::log(2, FUNCTION, "Mining best height changed to ", nBestHeight);
-
-            fHeightChanged = true;
-        }
-
-        return fHeightChanged;
+        return true;
     }
 
 
@@ -597,10 +592,10 @@ namespace LLP
     void BaseMiner::clear_map()
     {
         /* Delete the dynamically allocated blocks in the map. */
-        for(auto it = mapBlocks.begin(); it != mapBlocks.end(); ++it)
+        for(auto &block : mapBlocks)
         {
-            if(it->second)
-                delete it->second;
+            if(block.second)
+                delete block.second;
         }
         mapBlocks.clear();
 
