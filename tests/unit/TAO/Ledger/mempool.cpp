@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/reserved.h>
 #include <TAO/Register/include/verify.h>
-#include <TAO/Register/include/address.h>
+#include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/enum.h>
@@ -49,7 +49,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
         uint512_t hashPrevTx;
 
-        uint256_t hashToken     = TAO::Register::GetAddress();
+        TAO::Register::Address hashToken     = TAO::Register::Address(TAO::Register::Address::TOKEN);
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -80,7 +80,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
         }
 
         //set address
-        uint256_t hashAccount = TAO::Register::GetAddress();
+        TAO::Register::Address hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         {
 
 
@@ -118,7 +118,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
         }
 
         //set address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
         {
 
 
@@ -545,7 +545,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
         uint512_t hashPrevTx;
 
-        uint256_t hashToken     = TAO::Register::GetAddress();
+        TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
         {
             //create the transaction object
             TAO::Ledger::Transaction tx;
@@ -576,7 +576,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
         }
 
         //set address
-        uint256_t hashAccount = TAO::Register::GetAddress();
+        TAO::Register::Address hashAccount = TAO::Register::Address(TAO::Register::Address::OBJECT);
         {
 
 
@@ -614,7 +614,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
         }
 
         //set address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        TAO::Register::Address hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
         {
 
 
@@ -656,7 +656,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = TAO::Register::GetAddress();
+        hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
         {
 
             //set private keys
@@ -697,7 +697,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = TAO::Register::GetAddress();
+        hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
         {
 
             //set private keys
@@ -738,7 +738,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = TAO::Register::GetAddress();
+        hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
         {
 
             //set private keys
@@ -779,7 +779,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = TAO::Register::GetAddress();
+        hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
         {
 
             //set private keys
@@ -820,7 +820,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = TAO::Register::GetAddress();
+        hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
         {
 
             //set private keys
@@ -862,7 +862,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = TAO::Register::GetAddress();
+        hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
         {
 
             //set private keys
@@ -903,7 +903,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
 
 
         //set new address
-        hashAddress = TAO::Register::GetAddress();
+        hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
         {
 
             //set private keys

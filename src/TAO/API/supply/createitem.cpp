@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Register/include/address.h>
+#include <TAO/Register/types/address.h>
 
 #include <LLD/include/global.h>
 
@@ -67,7 +67,7 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
-            uint256_t hashRegister = TAO::Register::GetAddress();
+            TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::APPEND);
 
             /* name of the object, default to blank */
             std::string strName = "";
@@ -83,7 +83,7 @@ namespace TAO
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
             if(params.find("name") != params.end())
-                CreateName( user->Genesis(), params["name"].get<std::string>(), hashRegister, tx[1]); 
+                CreateName( user->Genesis(), params["name"].get<std::string>(), hashRegister, tx[1]);
 
             /* Execute the operations layer. */
             if(!tx.Build())

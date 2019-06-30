@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/create.h>
-#include <TAO/Register/include/address.h>
+#include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/types/transaction.h>
 
@@ -39,8 +39,8 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
         LLD::Register->EraseIdentifier(11);
 
         //create object
-        uint256_t hashToken = TAO::Register::GetAddress();
-        uint256_t hashAccount  = TAO::Register::GetAddress();
+        TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
+        TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
 
         {
@@ -133,8 +133,8 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
     {
 
         //create object
-        uint256_t hashToken = TAO::Register::GetAddress();
-        uint256_t hashAccount  = TAO::Register::GetAddress();
+        TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
+        TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
 
         {
@@ -253,12 +253,12 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
 
 
     //check for failed by account balance
-    uint256_t hashToken = TAO::Register::GetAddress();
+    TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
     {
 
         //create object
 
-        uint256_t hashAccount  = TAO::Register::GetAddress();
+        TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
 
         {
@@ -340,7 +340,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
     {
 
         //create object
-        uint256_t hashAccount  = TAO::Register::GetAddress();
+        TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
 
         {
@@ -398,7 +398,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
     {
 
         //create object
-        uint256_t hashAccount  = TAO::Register::GetAddress();
+        TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
 
         {
@@ -456,8 +456,8 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
     {
 
         //create object
-        uint256_t hashToken = TAO::Register::GetAddress();
-        uint256_t hashAccount  = TAO::Register::GetAddress();
+        TAO::Register::Address hashToken  = TAO::Register::Address(TAO::Register::Address::TOKEN);
+        TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
 
         {
@@ -522,8 +522,8 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
         LLD::Register->EraseIdentifier(11);
 
         //create object
-        uint256_t hashToken = TAO::Register::GetAddress();
-        uint256_t hashAccount  = TAO::Register::GetAddress();
+        TAO::Register::Address hashToken  = TAO::Register::Address(TAO::Register::Address::TOKEN);
+        TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
 
         {

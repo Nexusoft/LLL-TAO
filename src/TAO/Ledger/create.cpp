@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy.h>
 
 #include <LLC/types/bignum.h>
-#include <TAO/Register/include/address.h>
+#include <TAO/Register/types/address.h>
 #include <LLC/types/uint1024.h>
 
 #include <LLD/include/global.h>

@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/create.h>
-#include <TAO/Register/include/address.h>
+#include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/types/transaction.h>
 
@@ -37,12 +37,12 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
     {
 
         //create object
-        uint256_t hashToken     = TAO::Register::GetAddress();
-        uint256_t hashAccount   = TAO::Register::GetAddress();
+        uint256_t hashToken     = TAO::Register::Address(TAO::Register::Address::TOKEN);
+        uint256_t hashAccount   =  TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis   = LLC::GetRand256();
 
-        uint256_t hashToken2    = TAO::Register::GetAddress();
-        uint256_t hashAccount2  = TAO::Register::GetAddress();
+        uint256_t hashToken2    = TAO::Register::Address(TAO::Register::Address::TOKEN);
+        uint256_t hashAccount2  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis2  = LLC::GetRand256();
 
         //make first sigchain accounts and tokens.
@@ -582,7 +582,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
 
         //create an asset object register.
-        uint256_t hashAsset = TAO::Register::GetAddress();
+        uint256_t hashAsset = TAO::Register::Address(TAO::Register::Address::OBJECT);
         {
             Object object;
             object << std::string("id")              << uint8_t(TYPES::UINT8_T)    << uint8_t(55)

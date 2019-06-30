@@ -55,36 +55,20 @@ public:
     Genesis(const uint256_t& hashAddress)
     : uint256_t(hashAddress)
     {
-    }
-
-
-    /** Address Constructor
-     *
-     *  Build an address from a hex encoded string.
-     *
-     *  @param[in] strName The name to assign to this address.
-     *  @param[in] nType The type of the address (Name or Namespace)
-     *
-     **/
-    Genesis(const std::string& strAddress)
-    : uint256_t(strAddress)
-    {
-        /* Check for valid address types. */
-        if(!IsValid())
-            throw debug::exception(FUNCTION, "invalid type");
+        SetType();
     }
 
 
     /** Assignment operator.
      *
-     *  @param[in] addr Address to assign this to.
+     *  @param[in] gen Address to assign this to.
      *
      **/
-    Genesis& operator=(const Genesis& addr)
+    Genesis& operator=(const Genesis& gen)
     {
         /* Copy each word. */
         for(uint32_t i = 0; i < WIDTH; ++i)
-            pn[i] = addr.pn[i];
+            pn[i] = gen.pn[i];
 
         return *this;
     }
@@ -92,13 +76,16 @@ public:
 
     /** SetType
      *
-     *  Set the type byte into the address.
+     *  Set the type byte into the genesis.
      *
-     *  @param[in] nType The type byte for address.
+     *  @param[in] nType The type byte for genesis.
      *
      **/
-    void SetType(uint8_t nType)
+    void SetType()
     {
+        /* Get the type. */
+        uint8_t nType = 0xa1;
+
         /* Check for testnet. */
         if(config::fTestNet.load())
             ++nType;
@@ -110,9 +97,9 @@ public:
 
     /** GetType
      *
-     *  Get the type byte from the address.
+     *  Get the type byte from the genesis.
      *
-     *  @param[in] nType The type byte for address.
+     *  @param[in] nType The type byte for genesis.
      *
      **/
     uint8_t GetType() const
@@ -145,9 +132,14 @@ public:
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    config::fTestNet.store(true);
+    //config::fTestNet.store(true);
 
     uint256_t hashTest = LLC::GetRand256();
+
+
+    Genesis genesis = Genesis(hashTest);
+
+    debug::log(0, "Genesis ", genesis.ToString());
 
     debug::log(0, "Hash: ", hashTest.ToString());
 

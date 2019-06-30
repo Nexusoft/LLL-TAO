@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/reserved.h>
-#include <TAO/Register/include/address.h>
+#include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/include/enum.h>
@@ -45,7 +45,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
         tx.nTimestamp  = runtime::timestamp();
 
         //create object
-        uint256_t hashRegister = TAO::Register::GetAddress();
+        uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
         Object account = CreateToken(hashRegister, 1000, 100);
 
         //payload
@@ -74,7 +74,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     //rollback a state write
     {
         //create object
-        uint256_t hashRegister = TAO::Register::GetAddress();
+        uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
 
         {
@@ -187,7 +187,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     //rollback a transfer to a random genesis
     {
         //create object
-        uint256_t hashRegister = TAO::Register::GetAddress();
+        uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
 
         {
@@ -261,7 +261,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     //rollback a forced transfer to a random genesis
     {
         //create object
-        uint256_t hashRegister = TAO::Register::GetAddress();
+        uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
 
         {
@@ -337,7 +337,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     //rollback a claim
     {
         //create object
-        uint256_t hashRegister = TAO::Register::GetAddress();
+        uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
         uint256_t hashGenesis2 = TAO::Register::GetAddress();
 
@@ -610,8 +610,8 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     //rollback a debit from token
     {
         //create object
-        uint256_t hashRegister = TAO::Register::GetAddress();
-        uint256_t hashAccount  = TAO::Register::GetAddress();
+        uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
+        uint256_t hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
 
         {
@@ -717,8 +717,8 @@ TEST_CASE( "Register Rollback Tests", "[register]")
         //rollback a credit from token
         {
             //create object
-            uint256_t hashRegister = TAO::Register::GetAddress();
-            uint256_t hashAccount  = TAO::Register::GetAddress();
+            uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
+            uint256_t hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
             uint256_t hashGenesis  = TAO::Register::GetAddress();
             uint256_t hashGenesis2 = TAO::Register::GetAddress();
 
@@ -1022,7 +1022,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
 
     //create a trust register from inputs spent on coinbase
     {
-        uint256_t hashTrust    = TAO::Register::GetAddress();
+        uint256_t hashTrust    = TAO::Register::Address(TAO::Register::Address::TRUST);
         uint256_t hashGenesis  = TAO::Register::GetAddress();
 
         uint512_t hashCoinbaseTx = 0;

@@ -29,6 +29,7 @@ namespace TAO
     /* Register Layer namespace. */
     namespace Register
     {
+        class Address;
 
         /** GetNameAddress
          *
@@ -39,7 +40,7 @@ namespace TAO
          *  @param[out] hashAddress the name register address
          *
          **/
-        void GetNameAddress(const uint256_t& hashNamespace, const std::string& strName, uint256_t& hashAddress);
+        void GetNameAddress(const uint256_t& hashNamespace, const std::string& strName, Address& hashAddress);
 
 
         /** GetNameRegister

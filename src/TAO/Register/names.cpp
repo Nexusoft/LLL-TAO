@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Register/include/names.h>
+#include <TAO/Register/types/address.h>
 
 #include <Util/include/debug.h>
 
@@ -31,7 +32,7 @@ namespace TAO
     {
 
         /* Retrieve the address of the name register for a namespace/name combination. */
-        void GetNameAddress(const uint256_t& hashNamespace, const std::string& strName, uint256_t& hashAddress)
+        void GetNameAddress(const uint256_t& hashNamespace, const std::string& strName, Address& address)
         {
             /* Build vector to hold the namespace + name data for hashing */
             std::vector<uint8_t> vData;
@@ -43,15 +44,14 @@ namespace TAO
             vData.insert(vData.end(), strName.begin(), strName.end());
 
             /* Build the name register address from the SK256 hash of namespace + name. */
-            hashAddress = LLC::SK256(vData);
-
+            address = Address(vData, Address::NAME);
         }
 
 
         /* Retrieve the name register for a namespace/name combination. */
         bool GetNameRegister(const uint256_t& hashNamespace, const std::string& strName, Object& nameRegister)
         {
-            uint256_t hashAddress;
+            Address hashAddress;
 
             GetNameAddress(hashNamespace, strName, hashAddress);
 

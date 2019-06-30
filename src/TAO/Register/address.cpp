@@ -12,30 +12,198 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/include/random.h>
+#include <LLC/hash/SK.h>
 
-#include <TAO/Register/include/address.h>
-#include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/address.h>
 
-/* Global TAO namespace. */
+#include <Util/include/debug.h>
+
 namespace TAO
 {
 
-    /* Register Layer namespace. */
     namespace Register
     {
-        /* Get's a register address with properly appended enum byte. */
-        uint256_t GetAddress()
+
+        /* Default constructor. */
+        Address::Address()
+        : uint256_t(0)
         {
-            /* Get a raw register address. */
-            uint256_t hashAddress = LLC::GetRand256();
+        }
 
-            /* Set the leading byte to raw enum. */
-            uint8_t nType = 0;
 
-            /* Copy into address. */
-            std::copy((uint8_t*)&nType, (uint8_t*)&nType + 1, (uint8_t*)&hashAddress + 31);
+        /* Default constructor. */
+        Address::Address(const uint8_t nType)
+        : uint256_t(LLC::GetRand256())
+        {
+            /* Set type. */
+            SetType(nType);
 
-            return hashAddress;
+            /* Check for valid. */
+            if(!IsValid())
+                throw debug::exception(FUNCTION, "invalid type");
+        }
+
+
+        /*Build an address from a hex encoded string.*/
+        Address::Address(const std::string& strAddress)
+        : uint256_t(strAddress)
+        {
+            /* Check for valid address types. */
+            if(!IsValid())
+                throw debug::exception(FUNCTION, "invalid type");
+        }
+
+
+        /* Build an address from a name or namespace.*/
+        Address::Address(const std::string& strName, const uint8_t nType)
+        : uint256_t(LLC::SK256(strName))
+        {
+            /* Check for valid types. */
+            if(nType != NAME && nType!= NAMESPACE)
+                throw debug::exception(FUNCTION, "invalid type for names");
+
+            SetType(nType);
+        }
+
+
+        /* Build an address from a name or namespace. */
+        Address::Address(const std::vector<uint8_t>& vName, const uint8_t nType)
+        : uint256_t(LLC::SK256(vName))
+        {
+            /* Check for valid types. */
+            if(nType != NAME && nType!= NAMESPACE)
+                throw debug::exception(FUNCTION, "invalid type for names");
+
+            SetType(nType);
+        }
+
+
+        /* Assignment operator. */
+        Address& Address::operator=(const Address& addr)
+        {
+            /* Copy each word. */
+            for(uint32_t i = 0; i < WIDTH; ++i)
+                pn[i] = addr.pn[i];
+
+            return *this;
+        }
+
+
+        /* Set the type byte into the address.*/
+        void Address::SetType(uint8_t nType)
+        {
+            /* Check for testnet. */
+            if(config::fTestNet.load())
+                nType += 0x10;
+
+            /* Mask off most significant byte (little endian). */
+            pn[WIDTH -1] = (pn[WIDTH - 1] & 0x00ffffff) + (nType << 24);
+        }
+
+
+        /*  Get the type byte from the address.*/
+        uint8_t Address::GetType() const
+        {
+            /* Get type from hash. */
+            uint8_t nType = (pn[WIDTH -1] >> 24);
+
+            /* Check for testnet. */
+            if(config::fTestNet.load())
+                nType -= 0x10;
+
+            return nType;
+        }
+
+
+        /* Check if address has a valid type assoicated. */
+        bool Address::IsValid() const
+        {
+            /* Get the type. */
+            uint8_t nType = GetType();
+
+            /* Return on valid types. */
+            switch(nType)
+            {
+                case RESERVED:
+                case RESERVED2:
+                    return false;
+
+                case READONLY:
+                case APPEND:
+                case RAW:
+                case OBJECT:
+                case ACCOUNT:
+                case TOKEN:
+                case TRUST:
+                case NAME:
+                case NAMESPACE:
+                    return true;
+            }
+
+            return false;
+        }
+
+
+        /* Check if type is set to READONLY.*/
+        bool Address::IsReadonly() const
+        {
+            return GetType() == READONLY;
+        }
+
+
+        /* Check if type is set to APPEND.*/
+        bool Address::IsAppend() const
+        {
+            return GetType() == APPEND;
+        }
+
+
+        /*  Check if type is set to RAW.*/
+        bool Address::IsRaw() const
+        {
+            return GetType() == RAW;
+        }
+
+
+        /* Check if type is set to OBJECT. */
+        bool Address::IsObject() const
+        {
+            return GetType() == OBJECT;
+        }
+
+
+        /* Check if type is set to ACCOUNT. */
+        bool Address::IsAccount() const
+        {
+            return GetType() == ACCOUNT;
+        }
+
+
+        /* Check if type is set to TOKEN. */
+        bool Address::IsToken() const
+        {
+            return GetType() == TOKEN;
+        }
+
+
+        /* Check if type is set to TRUST. */
+        bool Address::IsTrust() const
+        {
+            return GetType() == TRUST;
+        }
+
+
+        /*  Check if type is set to NAME. */
+        bool Address::IsName() const
+        {
+            return GetType() == NAME;
+        }
+
+
+        /* Check if type is set to NAMESPACE. */
+        bool Address::IsNamespace() const
+        {
+            return GetType() == NAMESPACE;
         }
     }
 }

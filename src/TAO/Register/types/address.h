@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_VALUE_H
 #define NEXUS_TAO_REGISTER_INCLUDE_VALUE_H
 
-#include <LLC/types/base_uint.h>
+#include <LLC/types/uint1024.h>
 
 namespace TAO
 {
@@ -53,17 +53,11 @@ namespace TAO
 
 
             /** Default constructor. **/
-            Address()
-            : uint256_t(0)
-            {
-            }
+            Address();
 
 
-            /** Copy Constructor */
-            Address(const uint256_t& hashAddress)
-            : uint256_t(hashAddress)
-            {
-            }
+            /** Build from type and random address. */
+            Address(const uint8_t nType);
 
 
             /** Address Constructor
@@ -74,13 +68,7 @@ namespace TAO
              *  @param[in] nType The type of the address (Name or Namespace)
              *
              **/
-            Address(const std::string& strAddress)
-            : uint256_t(strAddress)
-            {
-                /* Check for valid address types. */
-                if(!IsValid())
-                    throw debug::exception(FUNCTION, "invalid type");
-            }
+            Address(const std::string& strAddress);
 
 
             /** Address Constructor
@@ -91,15 +79,18 @@ namespace TAO
              *  @param[in] nType The type of the address (Name or Namespace)
              *
              **/
-            Address(const std::string& strName, const uint8_t nType)
-            : uint256_t(LLC::SK256(strName))
-            {
-                /* Check for valid types. */
-                if(nType != NAME && nType!= NAMESPACE)
-                    throw debug::exception(FUNCTION, "invalid type for names");
+            Address(const std::string& strName, const uint8_t nType);
 
-                SetType(nType);
-            }
+
+            /** Address Constructor
+             *
+             *  Build an address from a name or namespace.
+             *
+             *  @param[in] vName The name to assign to this address.
+             *  @param[in] nType The type of the address (Name or Namespace)
+             *
+             **/
+            Address(const std::vector<uint8_t>& vName, const uint8_t nType);
 
 
             /** Assignment operator.
@@ -107,14 +98,7 @@ namespace TAO
              *  @param[in] addr Address to assign this to.
              *
              **/
-            Address& operator=(const Address& addr)
-            {
-                /* Copy each word. */
-                for(uint32_t i = 0; i < WIDTH; ++i)
-                    pn[i] = addr.pn[i];
-
-                return *this;
-            }
+            Address& operator=(const Address& addr);
 
 
             /** SetType
@@ -124,15 +108,7 @@ namespace TAO
              *  @param[in] nType The type byte for address.
              *
              **/
-            void SetType(uint8_t nType)
-            {
-                /* Check for testnet. */
-                if(config::fTestNet.load())
-                    nType += 0x10;
-
-                /* Mask off most significant byte (little endian). */
-                pn[WIDTH -1] = (pn[WIDTH - 1] & 0x00ffffff) + (nType << 24);
-            }
+            void SetType(uint8_t nType);
 
 
             /** GetType
@@ -142,17 +118,7 @@ namespace TAO
              *  @param[in] nType The type byte for address.
              *
              **/
-            uint8_t GetType() const
-            {
-                /* Get type from hash. */
-                uint8_t nType = (pn[WIDTH -1] >> 24);
-
-                /* Check for testnet. */
-                if(config::fTestNet.load())
-                    nType -= 0x10;
-
-                return nType;
-            }
+            uint8_t GetType() const;
 
 
             /** IsValid
@@ -162,32 +128,7 @@ namespace TAO
              *  @return True if type has valid header byte.
              *
              **/
-            bool IsValid() const
-            {
-                /* Get the type. */
-                uint8_t nType = GetType();
-
-                /* Return on valid types. */
-                switch(nType)
-                {
-                    case RESERVED:
-                    case RESERVED2:
-                        return false;
-
-                    case READONLY:
-                    case APPEND:
-                    case RAW:
-                    case OBJECT:
-                    case ACCOUNT:
-                    case TOKEN:
-                    case TRUST:
-                    case NAME:
-                    case NAMESPACE:
-                        return true;
-                }
-
-                return false;
-            }
+            bool IsValid() const;
 
 
             /** IsReadonly
@@ -197,10 +138,7 @@ namespace TAO
              *  @return True if using READONLY type.
              *
              **/
-            bool IsReadonly() const
-            {
-                return GetType() == READONLY;
-            }
+            bool IsReadonly() const;
 
 
             /** IsAppend
@@ -210,10 +148,7 @@ namespace TAO
              *  @return True if using APPEND type.
              *
              **/
-            bool IsAppend() const
-            {
-                return GetType() == APPEND;
-            }
+            bool IsAppend() const;
 
 
             /** IsRaw
@@ -223,10 +158,7 @@ namespace TAO
              *  @return True if using RAW type.
              *
              **/
-            bool IsRaw() const
-            {
-                return GetType() == RAW;
-            }
+            bool IsRaw() const;
 
 
             /** IsObject
@@ -236,10 +168,7 @@ namespace TAO
              *  @return True if using OBJECT type.
              *
              **/
-            bool IsObject() const
-            {
-                return GetType() == OBJECT;
-            }
+            bool IsObject() const;
 
 
             /** IsAccount
@@ -249,10 +178,7 @@ namespace TAO
              *  @return True if using ACCOUNT type.
              *
              **/
-            bool IsAccount() const
-            {
-                return GetType() == ACCOUNT;
-            }
+            bool IsAccount() const;
 
 
             /** IsToken
@@ -262,10 +188,7 @@ namespace TAO
              *  @return True if using TOKEN type.
              *
              **/
-            bool IsToken() const
-            {
-                return GetType() == TOKEN;
-            }
+            bool IsToken() const;
 
 
             /** IsTrust
@@ -275,10 +198,7 @@ namespace TAO
              *  @return True if using TRUST type.
              *
              **/
-            bool IsTrust() const
-            {
-                return GetType() == TRUST;
-            }
+            bool IsTrust() const;
 
 
             /** IsName
@@ -288,10 +208,7 @@ namespace TAO
              *  @return True if using NAME type.
              *
              **/
-            bool IsName() const
-            {
-                return GetType() == NAME;
-            }
+            bool IsName() const;
 
 
             /** IsNamespace
@@ -301,10 +218,7 @@ namespace TAO
              *  @return True if using NAMESPACE type.
              *
              **/
-            bool IsNamespace() const
-            {
-                return GetType() == NAMESPACE;
-            }
+            bool IsNamespace() const;
         };
     }
 }

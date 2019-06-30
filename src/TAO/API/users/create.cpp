@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Register/include/address.h>
+#include <TAO/Register/types/address.h>
 #include <LLC/hash/SK.h>
 
 #include <LLD/include/global.h>
@@ -77,9 +77,8 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction");
             }
 
-            /* Create trust account register  within the user sig chain namespace */
             /* Generate a random hash for this objects register address */
-            uint256_t hashRegister = TAO::Register::GetAddress();
+            TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::TRUST);
 
             /* Add a Name record for the trust account */
             CreateName(user->Genesis(), "trust", hashRegister, tx[0]);
@@ -89,7 +88,7 @@ namespace TAO
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
 
             /* Generate a random hash for this objects register address */
-            hashRegister = TAO::Register::GetAddress();
+            hashRegister = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
             /* Add a Name record for the trust account */
             CreateName(user->Genesis(), "default", hashRegister, tx[2]);

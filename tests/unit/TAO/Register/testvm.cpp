@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <TAO/Register/types/basevm.h>
 
-#include <TAO/Register/include/address.h>
+#include <TAO/Register/types/address.h>
 
 #include <openssl/rand.h>
 
@@ -91,7 +91,7 @@ TEST_CASE( "Base VM allocation tests", "[register]")
 
     {
         TAO::Register::Value value;
-        uint256_t data = TAO::Register::GetAddress();
+        uint256_t data = LLC::GetRand256();
 
         registers.allocate(data, value);
         REQUIRE(registers.available() == 480);

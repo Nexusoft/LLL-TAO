@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/include/create.h>
-#include <TAO/Register/include/address.h>
+#include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -67,7 +67,7 @@ namespace TAO
                 throw APIException(-25, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
-            uint256_t hashRegister = TAO::Register::GetAddress();
+            TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
             /* Check for format parameter. */
             std::string strFormat = "basic"; // default to basic format if no foramt is specified

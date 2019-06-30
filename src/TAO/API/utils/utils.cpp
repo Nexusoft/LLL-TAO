@@ -32,6 +32,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/names.h>
+#include <TAO/Register/types/address.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -118,7 +119,7 @@ namespace TAO
         void CreateName(const uint256_t& hashGenesis, const std::string strName,
                         const uint256_t& hashRegister, TAO::Operation::Contract& contract)
         {
-            uint256_t hashNameAddress;
+            TAO::Register::Address hashNameAddress;
 
             /* Obtain the name register address for the genesis/name combination */
             TAO::Register::GetNameAddress(hashGenesis, strName, hashNameAddress);
@@ -190,7 +191,7 @@ namespace TAO
         void UpdateName(const uint256_t& hashGenesis, const std::string strName,
                         const uint256_t& hashRegister, TAO::Operation::Contract& contract)
         {
-            uint256_t hashNameAddress;
+            TAO::Register::Address hashNameAddress;
 
             /* Obtain a new name register address for the updated genesis/name combination */
             TAO::Register::GetNameAddress(hashGenesis, strName, hashNameAddress);

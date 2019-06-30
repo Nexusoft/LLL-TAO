@@ -7,7 +7,7 @@
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
-#include <TAO/Register/include/address.h>
+#include <TAO/Register/types/address.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -31,7 +31,7 @@ TEST_CASE( "Write Primitive Tests", "[operation]")
                << std::string("token") << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(0);
 
         //write the object register for testing
-        uint256_t hash = TAO::Register::GetAddress();
+        uint256_t hash = TAO::Register::Address(TAO::Register::Address::OBJECT);
         REQUIRE(LLD::Register->WriteState(hash, object));
 
 

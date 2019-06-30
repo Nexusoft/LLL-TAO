@@ -8,7 +8,7 @@
 
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/address.h>
+#include <TAO/Register/types/address.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -22,7 +22,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
     //test account register
     {
         //object account address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
         {
             TAO::Ledger::Transaction tx;
@@ -66,7 +66,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
     //test trust register
     {
         //object register address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::TRUST);
 
         {
             TAO::Ledger::Transaction tx;
@@ -116,7 +116,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
         LLD::Register->EraseIdentifier(55);
 
         //object register address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::TOKEN);
 
         {
             TAO::Ledger::Transaction tx;
@@ -180,7 +180,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
     //check for incorrect register values
     {
         //object account address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
         {
             TAO::Ledger::Transaction tx;
@@ -201,7 +201,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
     //check for incorrect register values
     {
         //object account address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
         {
             TAO::Ledger::Transaction tx;
@@ -224,7 +224,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
     //check for incorrect register values
     {
         //object account address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
         {
             TAO::Ledger::Transaction tx;
@@ -247,7 +247,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
     //check for incorrect register values
     {
         //object account address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
         {
             TAO::Ledger::Transaction tx;
@@ -270,7 +270,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
     //check for incorrect register values
     {
         //object account address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
         {
             TAO::Ledger::Transaction tx;
@@ -293,7 +293,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
     //check for incorrect register values
     {
         //object account address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
         {
             TAO::Ledger::Transaction tx;
@@ -316,7 +316,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
     //check for incorrect register values
     {
         //object account address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
         {
             TAO::Ledger::Transaction tx;
@@ -339,7 +339,7 @@ TEST_CASE( "Register Primitive Tests", "[operation]")
     //check for incorrect register values
     {
         //object account address
-        uint256_t hashAddress = TAO::Register::GetAddress();
+        uint256_t hashAddress = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
         {
             TAO::Ledger::Transaction tx;
