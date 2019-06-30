@@ -75,7 +75,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     {
         //create object
         uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
 
         {
 
@@ -188,7 +188,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     {
         //create object
         uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
 
         {
 
@@ -262,7 +262,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     {
         //create object
         uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
 
         {
 
@@ -338,8 +338,8 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     {
         //create object
         uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
-        uint256_t hashGenesis2 = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
+        uint256_t hashGenesis2 = LLC::GetRand256();
 
         {
 
@@ -612,7 +612,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
         //create object
         uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
         uint256_t hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
 
         {
             //create the transaction object
@@ -719,8 +719,8 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             //create object
             uint256_t hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
             uint256_t hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-            uint256_t hashGenesis  = TAO::Register::GetAddress();
-            uint256_t hashGenesis2 = TAO::Register::GetAddress();
+            uint256_t hashGenesis  = LLC::GetRand256();
+            uint256_t hashGenesis2 = LLC::GetRand256();
 
             {
                 //create the transaction object
@@ -1023,7 +1023,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
     //create a trust register from inputs spent on coinbase
     {
         uint256_t hashTrust    = TAO::Register::Address(TAO::Register::Address::TRUST);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
 
         uint512_t hashCoinbaseTx = 0;
         uint512_t hashLastTrust = LLC::GetRand512();

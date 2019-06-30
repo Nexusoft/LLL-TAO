@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_REGISTER_INCLUDE_VALUE_H
-#define NEXUS_TAO_REGISTER_INCLUDE_VALUE_H
+#ifndef NEXUS_TAO_REGISTER_INCLUDE_ADDRESS_H
+#define NEXUS_TAO_REGISTER_INCLUDE_ADDRESS_H
 
 #include <LLC/types/uint1024.h>
 

@@ -41,7 +41,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
         //create object
         TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
         TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
 
         {
             //create the transaction object
@@ -135,7 +135,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
         //create object
         TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
         TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
 
         {
             //create the transaction object
@@ -259,7 +259,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
         //create object
 
         TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
 
         {
             //create the transaction object
@@ -341,7 +341,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
 
         //create object
         TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
 
         {
             //create the transaction object
@@ -399,7 +399,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
 
         //create object
         TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
 
         {
             //create the transaction object
@@ -458,7 +458,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
         //create object
         TAO::Register::Address hashToken  = TAO::Register::Address(TAO::Register::Address::TOKEN);
         TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
 
         {
             //create the transaction object
@@ -524,7 +524,7 @@ TEST_CASE( "Debit Primitive Tests", "[operation]")
         //create object
         TAO::Register::Address hashToken  = TAO::Register::Address(TAO::Register::Address::TOKEN);
         TAO::Register::Address hashAccount  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-        uint256_t hashGenesis  = TAO::Register::GetAddress();
+        uint256_t hashGenesis  = LLC::GetRand256();
 
         {
             //create the transaction object
