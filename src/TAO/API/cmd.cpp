@@ -293,11 +293,9 @@ namespace TAO
             }
 
             // output to console
-            debug::log(0, strPrint);
+            printf("%s\n", strPrint.c_str());
 
             return nRet;
-
-            return 0;
         }
     }
 }
