@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_REGISTER_INCLUDE_RESERVED_H
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/include/enum.h>
 
@@ -83,16 +84,10 @@ namespace TAO
          *  @return True if value is system reserved value.
          *
          **/
-        inline bool Reserved(const uint256_t& hashAddress)
+        inline bool Reserved(const Address& hashAddress)
         {
-            /* Get a type byte. */
-            uint8_t nType = 0;
-
-            /* Copy from genesis (using little-endian byte ordering). */
-            std::copy((uint8_t*)&hashAddress + 31, (uint8_t*)&hashAddress + 32, (uint8_t*)&nType);
-
-            /* Check reserved byte. */
-            if(nType == TAO::Ledger::GENESIS::MAINNET || nType == TAO::Ledger::GENESIS::TESTNET)
+            /* Check for valid address values. */
+            if(!hashAddress.IsValid())
                 return true;
 
             return hashAddress >= uint8_t(SYSTEM::RESERVED) && hashAddress <= uint8_t(SYSTEM::LIMIT);

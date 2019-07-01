@@ -214,14 +214,6 @@ namespace TAO
             }
 
 
-            /** Type
-             *
-             *  This extracts the leading script byte from genesis-id.
-             *
-             **/
-            uint8_t Type() const;
-
-
             /** Check
              *
              *  Determines if the transaction is a valid transaciton and passes ledger level checks.

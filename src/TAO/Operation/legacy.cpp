@@ -87,7 +87,7 @@ namespace TAO
                 return debug::error(FUNCTION, "called with incorrect OP");
 
             /* Extract the address from contract. */
-            uint256_t hashFrom = 0;
+            TAO::Register::Address hashFrom;
             contract >> hashFrom;
 
             /* Check for reserved values. */

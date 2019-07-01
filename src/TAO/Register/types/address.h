@@ -48,7 +48,9 @@ namespace TAO
                 TOKEN     = 0xd5,
                 TRUST     = 0xd6,
                 NAME      = 0xd7,
-                NAMESPACE = 0xd8
+                NAMESPACE = 0xd8,
+
+                WILDCARD  = 0xff
             };
 
 
@@ -219,6 +221,16 @@ namespace TAO
              *
              **/
             bool IsNamespace() const;
+
+
+            /** IsWildcard
+             *
+             *  Check if type is set to WILDCARD.
+             *
+             *  @return True if using WILDCARD type.
+             *
+             **/
+            bool IsWildcard() const;
         };
     }
 }

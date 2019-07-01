@@ -33,119 +33,27 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/address.h>
 
+#include <TAO/Ledger/types/genesis.h>
+
 #include <list>
 
-/** Address
- *
- *  An object that keeps track of a register address type.
- *
- **/
-class Genesis : public uint256_t
-{
-public:
 
-    /** Default constructor. **/
-    Genesis()
-    : uint256_t(0)
-    {
-    }
-
-
-    /** Copy Constructor */
-    Genesis(const uint256_t& hashAddress)
-    : uint256_t(hashAddress)
-    {
-        SetType();
-    }
-
-
-    /** Assignment operator.
-     *
-     *  @param[in] gen Address to assign this to.
-     *
-     **/
-    Genesis& operator=(const Genesis& gen)
-    {
-        /* Copy each word. */
-        for(uint32_t i = 0; i < WIDTH; ++i)
-            pn[i] = gen.pn[i];
-
-        return *this;
-    }
-
-
-    /** SetType
-     *
-     *  Set the type byte into the genesis.
-     *
-     *  @param[in] nType The type byte for genesis.
-     *
-     **/
-    void SetType()
-    {
-        /* Get the type. */
-        uint8_t nType = 0xa1;
-
-        /* Check for testnet. */
-        if(config::fTestNet.load())
-            ++nType;
-
-        /* Mask off most significant byte (little endian). */
-        pn[WIDTH -1] = (pn[WIDTH - 1] & 0x00ffffff) + (nType << 24);
-    }
-
-
-    /** GetType
-     *
-     *  Get the type byte from the genesis.
-     *
-     *  @param[in] nType The type byte for genesis.
-     *
-     **/
-    uint8_t GetType() const
-    {
-        /* Get the type. */
-        uint8_t nType = (pn[WIDTH -1] >> 24);
-
-        /* Check for testnet. */
-        if(config::fTestNet.load())
-            --nType;
-
-        return nType;
-    }
-
-
-    /** IsValid
-     *
-     *  Check if genesis has a valid indicator byte.
-     *
-     *  @return True if type has valid header byte.
-     *
-     **/
-    bool IsValid() const
-    {
-        return GetType() == 0xa1;
-    }
-};
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    //config::fTestNet.store(true);
 
     uint256_t hashTest = LLC::GetRand256();
 
 
-    Genesis genesis = Genesis(hashTest);
+    TAO::Ledger::Genesis genesis = TAO::Ledger::Genesis(hashTest);
 
     debug::log(0, "Genesis ", genesis.ToString());
 
     debug::log(0, "Hash: ", hashTest.ToString());
 
-    TAO::Register::Address addr = hashTest;
-
-    addr.SetType(TAO::Register::Address::NAME);
+    TAO::Register::Address addr = TAO::Register::Address(TAO::Register::Address::NAME);
 
     debug::log(0, "Hash: ", addr.ToString());
 

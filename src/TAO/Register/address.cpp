@@ -93,7 +93,7 @@ namespace TAO
         void Address::SetType(uint8_t nType)
         {
             /* Check for testnet. */
-            if(config::fTestNet.load())
+            if(nType != 0xff && config::fTestNet.load())
                 nType += 0x10;
 
             /* Mask off most significant byte (little endian). */
@@ -108,7 +108,7 @@ namespace TAO
             uint8_t nType = (pn[WIDTH -1] >> 24);
 
             /* Check for testnet. */
-            if(config::fTestNet.load())
+            if(nType != 0xff && config::fTestNet.load())
                 nType -= 0x10;
 
             return nType;
@@ -124,10 +124,6 @@ namespace TAO
             /* Return on valid types. */
             switch(nType)
             {
-                case RESERVED:
-                case RESERVED2:
-                    return false;
-
                 case READONLY:
                 case APPEND:
                 case RAW:
@@ -137,6 +133,7 @@ namespace TAO
                 case TRUST:
                 case NAME:
                 case NAMESPACE:
+                case WILDCARD:
                     return true;
             }
 
@@ -204,6 +201,13 @@ namespace TAO
         bool Address::IsNamespace() const
         {
             return GetType() == NAMESPACE;
+        }
+
+
+        /* Check if type is set to WILDCARD. */
+        bool Address::IsWildcard() const
+        {
+            return GetType() == WILDCARD;
         }
     }
 }

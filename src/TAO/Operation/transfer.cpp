@@ -53,7 +53,7 @@ namespace TAO
         bool Transfer::Execute(TAO::Register::State &state, const uint256_t& hashTransfer, const uint64_t nTimestamp)
         {
             /* Set the new register's owner. */
-            state.hashOwner = hashTransfer; 
+            state.hashOwner = hashTransfer;
 
             /* Set the register checksum. */
             state.nModified = nTimestamp;
@@ -85,7 +85,7 @@ namespace TAO
                 return debug::error(FUNCTION, "called with incorrect OP");
 
             /* Extract the address from contract. */
-            uint256_t hashAddress = 0;
+            TAO::Register::Address hashAddress;
             contract >> hashAddress;
 
             /* Check for reserved values. */
@@ -93,12 +93,8 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot transfer reserved address");
 
             /* Extract the address from contract. */
-            uint256_t hashTransfer = 0;
+            uint256_t hashTransfer;
             contract >> hashTransfer;
-
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashTransfer))
-                return debug::error(FUNCTION, "cannot transfer register to reserved address");
 
             /* Check the contract for conditions. */
             if(hashTransfer == ~uint256_t(0) && contract.Empty(Contract::CONDITIONS))

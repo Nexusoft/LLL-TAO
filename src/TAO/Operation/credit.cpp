@@ -125,11 +125,11 @@ namespace TAO
             contract >> nContract;
 
             /* Read the to account that contract is operating on. */
-            uint256_t hashAccount = 0;
+            TAO::Register::Address hashAccount;
             contract >> hashAccount;
 
             /* Get the proof hash. */
-            uint256_t hashProof = 0;
+            TAO::Register::Address hashProof;
             contract >> hashProof;
 
             /* Read the contract totals. */
@@ -231,7 +231,7 @@ namespace TAO
                 return debug::error(FUNCTION, "tx claim is not a debit");
 
             /* Get the hashFrom */
-            uint256_t hashFrom = 0;
+            TAO::Register::Address hashFrom;
             debit  >> hashFrom;
 
             /* Check for reserved values. */
@@ -263,7 +263,7 @@ namespace TAO
                 return debug::error(FUNCTION, "credit can't be of different identifier");
 
             /* Get the hashTo. */
-            uint256_t hashTo = 0;
+            TAO::Register::Address hashTo;
             debit  >> hashTo;
 
             /* Check for reserved values. */

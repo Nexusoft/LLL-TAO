@@ -35,6 +35,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/genesis.h>
 
 #include <Util/include/debug.h>
 
@@ -45,19 +46,6 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
-        /* This extracts the leading script byte from genesis-id. */
-        uint8_t Transaction::Type() const
-        {
-            /* Get a type byte. */
-            uint8_t nType = 0;
-
-            /* Copy from genesis (using little-endian byte ordering). */
-            std::copy((uint8_t*)&hashGenesis + 31, (uint8_t*)&hashGenesis + 32, (uint8_t*)&nType);
-
-            return nType;
-        }
-
 
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
         bool Transaction::Check() const
@@ -83,33 +71,9 @@ namespace TAO
                 return debug::error(FUNCTION, "transaction with empty signature");
 
             /* Check the genesis first byte. */
-            uint8_t nType = Type();
-            switch(nType)
-            {
-                /* Check for mainnet. */
-                case GENESIS::MAINNET:
-                {
-                    /* Check for testnet. */
-                    if(config::fTestNet.load())
-                        return debug::error(FUNCTION, "using mainnet genesis type on testnet");
-
-                    break;
-                }
-
-                /* Check for testnet. */
-                case GENESIS::TESTNET:
-                {
-                    /* Check for testnet. */
-                    if(!config::fTestNet.load())
-                        return debug::error(FUNCTION, "using testnet genesis type on mainnet");
-
-                    break;
-                }
-
-                /* Default always fails. */
-                default:
-                    return debug::error(FUNCTION, "unknown identifier type for genesis");
-            }
+            Genesis genesis = Genesis(hashGenesis);
+            if(!genesis.IsValid())
+                return debug::error(FUNCTION, "genesis using incorrect leading byte");
 
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
