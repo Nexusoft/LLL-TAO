@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/names.h>
+#include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/types/transaction.h>
 
@@ -36,7 +37,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
     {
         uint256_t hashAddress   = LLC::GetRand256();
         uint256_t hashGenesis   = LLC::GetRand256();
-        uint256_t hashNameAddress = 0;
+        TAO::Register::Address hashNameAddress = 0;
         std::string strName = "somename";
         std::string strNamespace = "somenamespace";
 
@@ -47,7 +48,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
-            
+
             TAO::Register::GetNameAddress(hashGenesis, strName, hashNameAddress);
 
             //create name object
@@ -73,7 +74,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 1;
             tx.nTimestamp  = runtime::timestamp();
-            
+
             /* Generate an address for a random sig chain genesis */
             TAO::Register::GetNameAddress(LLC::GetRand256(), strName, hashNameAddress);
 
@@ -100,7 +101,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 1;
             tx.nTimestamp  = runtime::timestamp();
-            
+
             /* Generate register address for namespace, which must be a hash of the name */
             uint256_t hashNamespace = LLC::SK256(strNamespace);
 
@@ -127,7 +128,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 2;
             tx.nTimestamp  = runtime::timestamp();
-            
+
             /* Generate register address for namespace based on a different name. */
             uint256_t hashNamespace = LLC::SK256("wrongnamespace");
 
@@ -155,9 +156,9 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.hashGenesis = hashGenesis;
             tx.nSequence   = 3;
             tx.nTimestamp  = runtime::timestamp();
-            
+
             /* full name is somename.somenamespace */
-            
+
             /* Generate register address for namespace, which must be a hash of the name */
             uint256_t hashNamespace = LLC::SK256(strNamespace);
 
@@ -187,9 +188,9 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.hashGenesis = LLC::GetRand256(); // use random genesis here so that it is not the namespace owner
             tx.nSequence   = 0;
             tx.nTimestamp  = runtime::timestamp();
-            
+
             /* full name is somename.somenamespace */
-            
+
             /* Generate register address for namespace, which must be a hash of the name */
             uint256_t hashNamespace = LLC::SK256(strNamespace);
 

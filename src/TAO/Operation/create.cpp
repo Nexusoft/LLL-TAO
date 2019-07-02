@@ -17,10 +17,11 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
 #include <TAO/Register/include/reserved.h>
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/types/address.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -31,129 +32,182 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Create::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
+        bool Create::Commit(const TAO::Register::State& state, const TAO::Register::Address& address, const uint8_t nFlags)
         {
             /* Check register types specific rules. */
-            if(state.nType == TAO::Register::REGISTER::OBJECT)
+            switch(state.nType)
             {
-                /* Create the object register. */
-                TAO::Register::Object object = TAO::Register::Object(state);
 
-                /* Parse the object register. */
-                if(!object.Parse())
-                    return debug::error(FUNCTION, "object register failed to parse");
-
-                /* Switch based on standard types. */
-                uint8_t nStandard = object.Standard();
-                switch(nStandard)
+                /* Check for object registers. */
+                case TAO::Register::REGISTER::OBJECT:
                 {
+                    /* Create the object register. */
+                    TAO::Register::Object object = TAO::Register::Object(state);
 
-                    /* Check default values for creating a standard account. */
-                    case TAO::Register::OBJECTS::ACCOUNT:
+                    /* Parse the object register. */
+                    if(!object.Parse())
+                        return debug::error(FUNCTION, "object register failed to parse");
+
+                    /* Switch based on standard types. */
+                    uint8_t nStandard = object.Standard();
+                    switch(nStandard)
                     {
-                        /* Get the identifier. */
-                        uint256_t hashIdentifier = object.get<uint256_t>("token");
 
-                        /* Check that the register doesn't exist yet. */
-                        if(hashIdentifier != 0 && !LLD::Register->HasState(hashIdentifier, nFlags))
-                            return debug::error(FUNCTION, "cannot create account without identifier");
-
-                        break;
-                    }
-
-
-                    /* Check default values for creating a standard token. */
-                    case TAO::Register::OBJECTS::TOKEN:
-                    {
-                        /* Get the identifier. */
-                        uint256_t hashIdentifier = object.get<uint256_t>("token");
-
-                        /* Check identifier to address. */
-                        if(hashIdentifier != hashAddress)
-                            return debug::error(FUNCTION, "token identifier must be token address");
-
-                        /* Check for reserved native token. */
-                        if(hashIdentifier == 0 || LLD::Register->HasState(hashIdentifier, nFlags))
-                            return debug::error(FUNCTION, "token can't use reserved identifier ", hashIdentifier.SubString());
-
-                        /* Check that the current supply and max supply are the same. */
-                        if(object.get<uint64_t>("supply") != object.get<uint64_t>("balance"))
-                            return debug::error(FUNCTION, "token current supply and balance can't mismatch");
-
-                        break;
-                    }
-
-
-                    /* Enforce hash on Name objects to ensure that a Name cannot be created for someone elses genesis ID . */
-                    case TAO::Register::OBJECTS::NAME:
-                    {
-                        /* Declare the namespace hash */
-                        uint256_t hashNamespace = 0;
-
-                        /* If the Name contains a namespace then use a hash of this to verify the register address hash */
-                        std::string strNamespace = object.get<std::string>("namespace");
-                        if(!strNamespace.empty())
+                        /* Check default values for creating a standard account. */
+                        case TAO::Register::OBJECTS::ACCOUNT:
                         {
-                            /* Namespace hash is a SK256 hash of the namespace name */
-                            hashNamespace = LLC::SK256(strNamespace);
+                            /* Check the address type to expected type. */
+                            if(!address.IsAccount())
+                                return debug::error(FUNCTION, "address type mismatch with object type");
 
-                            /* Retrieve the namespace object and check that the hashGenesis is the owner */
-                            TAO::Register::Object namespaceObject;
-                            if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
-                                return debug::error(FUNCTION, "Namespace does not exist: ", strNamespace);
+                            /* Get the identifier. */
+                            uint256_t hashIdentifier = object.get<uint256_t>("token");
 
-                            /* Check the owner is the hashGenesis */
-                            if(namespaceObject.hashOwner != state.hashOwner)
-                                return debug::error(FUNCTION, "Namespace not owned by caller: ", strNamespace );
+                            /* Check that the register doesn't exist yet. */
+                            if(hashIdentifier != 0 && !LLD::Register->HasState(hashIdentifier, nFlags))
+                                return debug::error(FUNCTION, "cannot create account without identifier");
 
+                            break;
                         }
-                        else
-                            /* Otherwise we use the owner genesis Hash */
-                            hashNamespace = state.hashOwner;
-                        
 
-                        /* Build vector to hold the genesis + name data for hashing */
-                        std::vector<uint8_t> vData((uint8_t*)&hashNamespace, (uint8_t*)&hashNamespace + 32);
 
-                        /* Insert the name of from the Name object */
-                        std::string strName = object.get<std::string>("name");
-                        vData.insert(vData.end(), strName.begin(), strName.end());
+                        /* Check default values for creating a standard token. */
+                        case TAO::Register::OBJECTS::TOKEN:
+                        {
+                            /* Check the address type to expected type. */
+                            if(!address.IsToken())
+                                return debug::error(FUNCTION, "address type mismatch with object type");
 
-                        /* Hash this in the same was as the caller would have to generate hashAddress */
-                        uint256_t hashName = LLC::SK256(vData);
+                            /* Get the identifier. */
+                            uint256_t hashIdentifier = object.get<uint256_t>("token");
 
-                        /* Fail if caller didn't user their own genesis to create name. */
-                        if(hashName != hashAddress)
-                            return debug::error(FUNCTION, "incorrect name or genesis");
+                            /* Check identifier to address. */
+                            if(hashIdentifier != address)
+                                return debug::error(FUNCTION, "token identifier must be token address");
 
-                        break;
+                            /* Check for reserved native token. */
+                            if(hashIdentifier == 0 || LLD::Register->HasState(hashIdentifier, nFlags))
+                                return debug::error(FUNCTION, "token can't use reserved identifier ", hashIdentifier.SubString());
+
+                            /* Check that the current supply and max supply are the same. */
+                            if(object.get<uint64_t>("supply") != object.get<uint64_t>("balance"))
+                                return debug::error(FUNCTION, "token current supply and balance can't mismatch");
+
+                            break;
+                        }
+
+
+                        /* Check default values for creating a standard account. */
+                        case TAO::Register::OBJECTS::TRUST:
+                        {
+                            /* Check the address type to expected type. */
+                            if(!address.IsTrust())
+                                return debug::error(FUNCTION, "address type mismatch with object type");
+
+                            break;
+                        }
+
+
+                        /* Enforce hash on Name objects to ensure that a Name cannot be created for someone elses genesis ID . */
+                        case TAO::Register::OBJECTS::NAME:
+                        {
+                            /* Check the address type to expected type. */
+                            if(!address.IsName())
+                                return debug::error(FUNCTION, "address type mismatch with object type");
+
+                            /* Build vector to hold the genesis + name data for hashing */
+                            std::vector<uint8_t> vData((uint8_t*)&state.hashOwner, (uint8_t*)&state.hashOwner + 32);
+
+                            /* Insert the name of from the Name object */
+                            std::string strName = object.get<std::string>("name");
+                            vData.insert(vData.end(), strName.begin(), strName.end());
+
+                            /* Hash this in the same was as the caller would have to generate hashAddress */
+                            TAO::Register::Address name = TAO::Register::Address(vData, TAO::Register::Address::NAME);
+
+                            /* Fail if caller didn't user their own genesis to create name. */
+                            if(name != address)
+                                return debug::error(FUNCTION, "incorrect name or genesis");
+
+                            break;
+                        }
+
+
+                        /* Enforce hash on Name objects to ensure that a Name cannot be created for someone elses genesis ID . */
+                        case TAO::Register::OBJECTS::NAMESPACE:
+                        {
+                            /* Check the address type to expected type. */
+                            if(!address.IsNamespace())
+                                return debug::error(FUNCTION, "address type mismatch with object type");
+
+                            /* Insert the name of from the Name object */
+                            std::string strNamespace = object.get<std::string>("namespace");
+
+                            /* Build vector to hold the genesis + name data for hashing */
+                            std::vector<uint8_t> vData(strNamespace.begin(), strNamespace.end());
+
+                            /* Hash this in the same was as the caller would have to generate hashAddress */
+                            TAO::Register::Address name = TAO::Register::Address(vData, TAO::Register::Address::NAMESPACE);
+
+                            /* Fail if caller didn't user their own genesis to create name. */
+                            if(name != address)
+                                return debug::error(FUNCTION, "incorrect name or genesis");
+
+                            break;
+                        }
+
+                        /* Check for non-standard types. */
+                        default:
+                        {
+                            /* Check the address type to expected type. */
+                            if(!address.IsObject())
+                                return debug::error(FUNCTION, "address type mismatch with object type");
+                        }
                     }
 
+                    break;
+                }
 
-                    /* Enforce hash on Namespace objects to ensure that the register address is a hash of the namespace name. */
-                    case TAO::Register::OBJECTS::NAMESPACE:
-                    {
-                        /* Insert the name of from the Name object */
-                        std::string strNamespace = object.get<std::string>("namespace");
 
-                        /* Hash this in the same way as the caller would have to generate hashAddress */
-                        uint256_t hashNamespace = LLC::SK256(strNamespace);
+                /* Check for readonly types. */
+                case TAO::Register::REGISTER::READONLY:
+                {
+                    /* Check the address type to expected type. */
+                    if(!address.IsReadonly())
+                        return debug::error(FUNCTION, "address type mismatch with object type");
 
-                        /* Fail if caller didn't user their own genesis to create name. */
-                        if(hashNamespace != hashAddress)
-                            return debug::error(FUNCTION, "incorrect name or genesis");
+                    break;
+                }
 
-                        break;
-                    }
+
+                /* Check for append types. */
+                case TAO::Register::REGISTER::APPEND:
+                {
+                    /* Check the address type to expected type. */
+                    if(!address.IsAppend())
+                        return debug::error(FUNCTION, "address type mismatch with object type");
+
+                    break;
+                }
+
+
+                /* Check for raw types. */
+                case TAO::Register::REGISTER::RAW:
+                {
+                    /* Check the address type to expected type. */
+                    if(!address.IsRaw())
+                        return debug::error(FUNCTION, "address type mismatch with object type");
+
+                    break;
                 }
             }
 
             /* Check that the register doesn't exist yet. */
-            if(LLD::Register->HasState(hashAddress, nFlags))
-                return debug::error(FUNCTION, "cannot allocate register of same memory address ", hashAddress.SubString());
+            if(LLD::Register->HasState(address, nFlags))
+                return debug::error(FUNCTION, "cannot allocate register of same memory address ", address.SubString());
 
             /* Attempt to write new state to disk. */
-            if(!LLD::Register->WriteState(hashAddress, state, nFlags))
+            if(!LLD::Register->WriteState(address, state, nFlags))
                 return debug::error(FUNCTION, "failed to write post-state to disk");
 
             return true;
@@ -271,15 +325,19 @@ namespace TAO
                 return debug::error(FUNCTION, "called with incorrect OP");
 
             /* Extract the address from contract. */
-            uint256_t hashAddress = 0;
-            contract >> hashAddress;
+            TAO::Register::Address address;
+            contract >> address;
+
+            /* Check for invalid address. */
+            if(!address.IsValid())
+                return debug::error(FUNCTION, "cannot create register with invalid address");
 
             /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashAddress))
+            if(TAO::Register::Reserved(address))
                 return debug::error(FUNCTION, "cannot create register with reserved address");
 
             /* Check for wildcard. */
-            if(hashAddress == ~uint256_t(0))
+            if(address == ~uint256_t(0))
                 return debug::error(FUNCTION, "cannot create register with wildcard address");
 
             /* Get the object data size. */

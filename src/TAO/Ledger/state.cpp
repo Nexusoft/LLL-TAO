@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
 
-#include <TAO/Operation/include/execute.h>
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/rollback.h>
@@ -34,6 +34,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/supply.h>
+#include <TAO/Ledger/include/prime.h>
 
 #include <Util/include/string.h>
 
@@ -50,13 +51,14 @@ namespace TAO
         /* Get the block state object. */
         bool GetLastState(BlockState &state, uint32_t nChannel)
         {
-            uint1024_t genesisHash =  ChainState::Genesis();
+            /* Get the genesis block hash. */
+            uint1024_t hashGenesis =  ChainState::Genesis();
 
-            /* Loop back 10k blocks. */
+            /* Loop back 1440 blocks. */
             for(uint_t i = 0; i < 1440; ++i)
             {
                 /* Return false on genesis. */
-                if(state.GetHash() == genesisHash)
+                if(state.GetHash() == hashGenesis)
                     return false;
 
                 /* Return true on channel found. */
@@ -101,8 +103,11 @@ namespace TAO
         , nChainTrust(0)
         , nMoneySupply(0)
         , nMint(0)
+        , nFees(0)
         , nChannelHeight(0)
+        , nChannelWeight{0, 0, 0}
         , nReleasedReserve{0, 0, 0}
+        , nFeeReserve(0)
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
@@ -123,8 +128,11 @@ namespace TAO
         , nChainTrust(0)
         , nMoneySupply(0)
         , nMint(0)
+        , nFees(0)
         , nChannelHeight(0)
+        , nChannelWeight{0, 0, 0}
         , nReleasedReserve{0, 0, 0}
+        , nFeeReserve(0)
         , hashNextBlock(0)
         , hashCheckpoint(0)
         {
@@ -217,14 +225,14 @@ namespace TAO
         /* Get the previous block state in chain. */
         BlockState BlockState::Prev() const
         {
-            BlockState state;
+            /* Check for genesis. */
             if(hashPrevBlock == 0)
-                return state;
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "called on genesis"));
 
-            if(LLD::Ledger->ReadBlock(hashPrevBlock, state))
-                return state;
-            else
-                debug::error("failed to read previous block state ", hashPrevBlock.ToString());
+            /* Read the previous block from ledger. */
+            BlockState state;
+            if(!LLD::Ledger->ReadBlock(hashPrevBlock, state))
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read previous block state ", hashPrevBlock.SubString()));
 
             return state;
         }
@@ -233,12 +241,14 @@ namespace TAO
         /* Get the next block state in chain. */
         BlockState BlockState::Next() const
         {
-            BlockState state;
+            /* Check for genesis. */
             if(hashNextBlock == 0)
-                return state;
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "called on best block"));
 
-            if(LLD::Ledger->ReadBlock(hashNextBlock, state))
-                return state;
+            /* Read next block from the ledger. */
+            BlockState state;
+            if(!LLD::Ledger->ReadBlock(hashNextBlock, state))
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read next block state ", hashNextBlock.SubString()));
 
             return state;
         }
@@ -250,17 +260,21 @@ namespace TAO
             /* Read leger DB for previous block. */
             BlockState statePrev = Prev();
             if(!statePrev)
+                return debug::error(FUNCTION, hashPrevBlock.SubString(), " block state not found");
+
+            /* Compute the Chain Weight. */
+            //debug::log(0, "Weight Limit: ", std::numeric_limits<uint64_t>::max());
+            for(uint32_t n = 0; n < 3; ++n)
             {
-                debug::log(0, "Previous ", hashPrevBlock.ToString());
-                return debug::error(FUNCTION, "previous block state not found");
+                nChannelWeight[n] = statePrev.nChannelWeight[n];
+                //debug::log(0, "Weight ", n == 0 ? "Stake" : (n == 1 ? "Prime" : "Hash "), ": ", nChannelWeight[n]);
             }
 
-            /* Compute the Chain Trust */
-            nChainTrust = statePrev.nChainTrust + GetBlockTrust();
-
-            /* Compute the Channel Height. */
+            /* Find the last block of this channel. */
             BlockState stateLast = statePrev;
             GetLastState(stateLast, GetChannel());
+
+            /* Compute the Channel Height. */
             nChannelHeight = stateLast.nChannelHeight + 1;
 
             /* Compute the Released Reserves. */
@@ -272,15 +286,15 @@ namespace TAO
                 {
                     /* Get the coinbase from the memory pool. */
                     Legacy::Transaction tx;
-                    if(!mempool.Get(vtx[0].second, tx))
-                        return debug::error(FUNCTION, "coinbase is not in the memory pool");
+                    if(!LLD::Legacy->ReadTx(vtx[0].second, tx, FLAGS::MEMPOOL))
+                        return debug::error(FUNCTION, "cannot get coinbase tx");
 
                     /* Get the size of the coinbase. */
                     uint32_t nSize = tx.vout.size();
 
                     /* Add up the Miner Rewards from Coinbase Tx Outputs. */
-                    for(int32_t nIndex = 0; nIndex < nSize - 2; ++nIndex)
-                        nCoinbaseRewards[0] += tx.vout[nIndex].nValue;
+                    for(uint32_t n = 0; n < nSize - 2; ++n)
+                        nCoinbaseRewards[0] += tx.vout[n].nValue;
 
                     /* Get the ambassador and developer coinbase. */
                     nCoinbaseRewards[1] = tx.vout[nSize - 2].nValue;
@@ -288,9 +302,25 @@ namespace TAO
                 }
                 else
                 {
-                    //TODO: handle for the coinbase in Tritium
+                    /* Get the coinbase from the memory pool. */
+                    Transaction tx;
+                    if(!LLD::Ledger->ReadTx(vtx.back().second, tx, FLAGS::MEMPOOL))
+                        return debug::error(FUNCTION, "cannot get coinbase tx");
+
+                    /* Loop through the contracts. */
+                    uint32_t nSize = tx.Size();
+                    for(uint32_t n = 0; n < nSize; ++n)
+                    {
+                        /* Get the reward. */
+                        uint64_t nValue = 0;
+                        if(!tx[n].Value(nValue))
+                            return debug::error(FUNCTION, "no value in contract");
+
+                        nCoinbaseRewards[0] += nValue;
+                    }
                 }
 
+                /* Calculate the new reserve amounts. */
                 for(int nType = 0; nType < 3; ++nType)
                 {
                     /* Calculate the Reserves from the Previous Block in Channel's reserve and new Release. */
@@ -304,6 +334,7 @@ namespace TAO
                     /* Check coinbase rewards. */
                     nReleasedReserve[nType] =  (nReserve - nCoinbaseRewards[nType]);
 
+                    /* Verbose output. */
                     debug::log(2, "Reserve Balance ", nType, " | ",
                         std::fixed, nReleasedReserve[nType] / (double)TAO::Ledger::NXS_COIN,
                         " Nexus | Released ",
@@ -314,12 +345,14 @@ namespace TAO
             /* Add the Pending Checkpoint into the Blockchain. */
             if(IsNewTimespan(statePrev))
             {
+                /* Set new checkpoint hash. */
                 hashCheckpoint = GetHash();
 
                 debug::log(1, "===== New Pending Checkpoint Hash = ", hashCheckpoint.SubString(15));
             }
             else
             {
+                /* Continue the old checkpoint through chain. */
                 hashCheckpoint = statePrev.hashCheckpoint;
 
                 debug::log(1, "===== Pending Checkpoint Hash = ", hashCheckpoint.SubString(15));
@@ -327,10 +360,6 @@ namespace TAO
 
             /* Start the database transaction. */
             LLD::TxnBegin();
-
-            /* Write the block to disk. */
-            if(!LLD::Ledger->WriteBlock(GetHash(), *this))
-                return debug::error(FUNCTION, "block state failed to write");
 
             /* Write the transactions. */
             for(const auto& proof : vtx)
@@ -341,13 +370,9 @@ namespace TAO
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
 
-                    /* Check the database. */
-                    TAO::Ledger::Transaction tx;
-                    if(LLD::Ledger->ReadTx(hash, tx))
-                        continue;
-
                     /* Check the memory pool. */
-                    if(!mempool.Get(hash, tx))
+                    TAO::Ledger::Transaction tx;
+                    if(!LLD::Ledger->ReadTx(hash, tx, FLAGS::MEMPOOL))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
@@ -363,13 +388,9 @@ namespace TAO
                     /* Get the transaction hash. */
                     uint512_t hash = proof.second;
 
-                    /* Check the database. */
-                    Legacy::Transaction tx;
-                    if(LLD::Legacy->ReadTx(hash, tx))
-                        continue;
-
                     /* Check if in memory pool. */
-                    if(!mempool.Get(hash, tx))
+                    Legacy::Transaction tx;
+                    if(!LLD::Legacy->ReadTx(hash, tx, FLAGS::MEMPOOL))
                         return debug::error(FUNCTION, "transaction is not in memory pool");
 
                     /* Write to disk. */
@@ -383,10 +404,36 @@ namespace TAO
                     return debug::error(FUNCTION, "using an unknown transaction type");
             }
 
+            /* Add new weights for this channel. */
+            nChannelWeight[nChannel] += Weight();
+
+            /* Compute the chain trust. */
+            nChainTrust = statePrev.nChainTrust + Trust();
+
+            /* Write the block to disk. */
+            if(!LLD::Ledger->WriteBlock(GetHash(), *this))
+                return debug::error(FUNCTION, "block state failed to write");
+
             /* Signal to set the best chain. */
-            if(nChainTrust > ChainState::nBestChainTrust.load())
-                if(!SetBest())
+            if(nVersion >= 7)
+            {
+                /* Set the chain trust. */
+                uint8_t nTotal = 0;
+
+                /* Check to best state. */
+                for(uint32_t n = 0; n < 3; ++n)
+                {
+                    /* Check each weight. */
+                    if(nChannelWeight[nChannel] >= ChainState::stateBest.load().nChannelWeight[n])
+                        ++nTotal;
+                }
+
+                /* Check for best chain. */
+                if(nTotal == 3 && !SetBest())
                     return debug::error(FUNCTION, "failed to set best chain");
+            }
+            else if(nChainTrust > ChainState::nBestChainTrust.load() && !SetBest())
+                return debug::error(FUNCTION, "failed to set best chain");
 
             /* Commit the transaction to database. */
             LLD::TxnCommit();
@@ -401,8 +448,8 @@ namespace TAO
         bool BlockState::SetBest()
         {
             /* Runtime calculations. */
-            runtime::timer time;
-            time.Start();
+            runtime::timer timer;
+            timer.Start();
 
             /* Get the hash. */
             uint1024_t nHash = GetHash();
@@ -455,6 +502,8 @@ namespace TAO
 
                     /* Iterate backwards to find fork. */
                     vDisconnect.push_back(fork);
+
+                    /* Iterate to previous block. */
                     fork = fork.Prev();
                     if(!fork)
                     {
@@ -477,47 +526,12 @@ namespace TAO
                         "..", nHash.SubString());
                 }
 
-                /* List of transactions to resurrect. */
-                std::vector<std::pair<uint8_t, uint512_t>> vResurrect;
-
                 /* Disconnect given blocks. */
-                std::vector<TAO::Ledger::Transaction> vTritiumResurrect;
-                std::vector<Legacy::Transaction> vLegacyResurrect;
                 for(auto& state : vDisconnect)
                 {
                     /* Output the block state if flagged. */
                     if(config::GetBoolArg("-printstate"))
                         debug::log(0, state.ToString(debug::flags::header | debug::flags::tx));
-
-                    /* Add transactions into memory pool. */
-                    if(!vConnect.empty())
-                    {
-                        for(const auto& proof : state.vtx)
-                        {
-                            if(proof.first == TYPE::TRITIUM_TX)
-                            {
-                                /* Check if in memory pool. */
-                                TAO::Ledger::Transaction tx;
-                                if(!LLD::Ledger->ReadTx(proof.second, tx))
-                                    return debug::error(FUNCTION, "transaction is not on disk");
-
-                                /* Resurrect. */
-                                if(!tx.IsCoinbase() && !tx.IsCoinstake())
-                                    vTritiumResurrect.push_back(tx);
-                            }
-                            else if(proof.first == TYPE::LEGACY_TX)
-                            {
-                                /* Check if in memory pool. */
-                                Legacy::Transaction tx;
-                                if(!LLD::Legacy->ReadTx(proof.second, tx))
-                                    return debug::error(FUNCTION, "transaction is not on disk");
-
-                                /* Resurrect */
-                                if(!tx.IsCoinBase() && !tx.IsCoinStake())
-                                    vLegacyResurrect.push_back(tx);
-                            }
-                        }
-                    }
 
                     /* Connect the block. */
                     if(!state.Disconnect())
@@ -538,27 +552,7 @@ namespace TAO
                     }
                 }
 
-
-                /* Only add transactions to memory pool if there are blocks to connect. */
-                if(!vConnect.empty())
-                {
-                    /* Resurrect the tritium transactions. */
-                    for(auto& tx : vTritiumResurrect)
-                        mempool.Accept(tx);
-
-                    /* Resurrect the legacy transactions. */
-                    for(const auto& tx : vLegacyResurrect)
-                        mempool.Accept(tx);
-                }
-
-
-                /* List of transactions to remove from pool. */
-                std::vector<uint512_t> vDelete;
-
-
                 /* Reverse the blocks to connect to connect in ascending height. */
-                //std::reverse(vConnect.begin(), vConnect.end());
-                //for(auto& state : vConnect)
                 for(auto state = vConnect.rbegin(); state != vConnect.rend(); ++state)
                 {
                     /* Output the block state if flagged. */
@@ -576,30 +570,18 @@ namespace TAO
                             state->GetHash().SubString());
                     }
 
-                    /* Remove transactions from memory pool. */
-                    for(const auto& proof : state->vtx)
-                        vDelete.push_back(proof.second);
-
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
                 }
-
-
-                /* Remove transactions from memory pool. */
-                for(const auto& hash : vDelete)
-                    mempool.Remove(hash);
-
 
                 /* Set the best chain variables. */
                 ChainState::hashBestChain      = nHash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
 
-
                 /* Write the best chain pointer. */
                 if(!LLD::Ledger->WriteBestChain(ChainState::hashBestChain.load()))
                     return debug::error(FUNCTION, "failed to write best chain");
-
 
                 /* Debug output about the best chain. */
                 debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
@@ -608,13 +590,11 @@ namespace TAO
                     " trust=", ChainState::nBestChainTrust.load(),
                     " tx=", vtx.size(),
                     " [", double(vtx.size()) / (GetBlockTime() - ChainState::stateBest.load().GetBlockTime()), " tx/s]"
-                    " [verified in ", time.ElapsedMilliseconds(), " ms]",
+                    " [verified in ", timer.ElapsedMilliseconds(), " ms]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
-
 
                 /* Set best block state. */
                 ChainState::stateBest = *this;
-
 
                 /* Broadcast the block to nodes if not synchronizing. */
                 if(!ChainState::Synchronizing())
@@ -633,26 +613,16 @@ namespace TAO
                     /* Relay the block that was just found. */
                     std::vector<LLP::CInv> vInv =
                     {
-                        LLP::CInv(ChainState::hashBestChain.load(),
-                        fLegacy ? LLP::MSG_BLOCK_LEGACY : LLP::MSG_BLOCK_TRITIUM)
+                        LLP::CInv(ChainState::hashBestChain.load(), fLegacy ? LLP::MSG_BLOCK_LEGACY : LLP::MSG_BLOCK_TRITIUM)
                     };
 
                     /* Relay the new block to all connected nodes. */
                     if(LLP::LEGACY_SERVER)
                         LLP::LEGACY_SERVER->Relay("inv", vInv);
 
-                    /* If using Tritium server then we need to include the blocks transactions in the inventory before the block*/
+                    /* If using Tritium server then we need to include the blocks transactions in the inventory before the block. */
                     if(LLP::TRITIUM_SERVER)
-                    {
-                        /* start at index 1 so that we dont' include producer, as that is sent as part of the block*/
-                        for(uint32_t i = 1; i > ChainState::stateBest.load().vtx.size(); ++i)
-                            vInv.push_back(LLP::CInv(ChainState::stateBest.load().vtx[i].second, ChainState::stateBest.load().vtx[i].first == TAO::Ledger::TYPE::LEGACY_TX ? LLP::MSG_TX_LEGACY : LLP::MSG_TX_TRITIUM));
-
-                        /* We want the block at the end of the inventory so that the transactions are requested first.
-                           Therefore we rotate the vInv so that the block at the front is moved to the back*/
-                        std::rotate(vInv.begin(), vInv.begin() +1, vInv.end());
                         LLP::TRITIUM_SERVER->Relay(LLP::DAT_INVENTORY, vInv);
-                    }
                 }
             }
 
@@ -845,7 +815,7 @@ namespace TAO
 
 
         /* USed to determine the trust of a block in the chain. */
-        uint64_t BlockState::GetBlockTrust() const
+        uint64_t BlockState::Trust() const
         {
             /** Give higher block trust if last block was of different channel **/
             BlockState prev = Prev();
@@ -853,6 +823,129 @@ namespace TAO
                 return 3;
 
             return 1;
+        }
+
+
+        /* Get the weight of this block. */
+        uint64_t BlockState::Weight() const
+        {
+            /* Switch between the weights of the channels. */
+            switch(nChannel)
+            {
+                /* Hash is the weight of the found hash. */
+                case CHANNEL::HASH:
+                {
+                    /* Get the proof hash. */
+                    uint1024_t hashProof = ProofHash();
+
+                    /* Get the total weighting. */
+                    uint64_t nWeight = ((~hashProof / (hashProof + 1)) + 1).Get64() / 10000;
+
+                    return nWeight;
+                }
+
+                /* Proof of stake channel. */
+                case CHANNEL::STAKE:
+                {
+                    /* Get the proof hash. */
+                    uint1024_t hashProof = ProofHash();
+
+                    /* Trust inforamtion variables. */
+                    uint64_t nTrust = 0;
+                    uint64_t nStake = 0;
+
+                    /* Handle for version 7 blocks. */
+                    if(nVersion >= 7)
+                    {
+                        /* Get the producer. */
+                        Transaction tx;
+                        if(!LLD::Ledger->ReadTx(vtx.back().second, tx))
+                            throw std::runtime_error(debug::safe_printstr(FUNCTION, "could not read producer"));
+
+                        /* Get trust information. */
+                        if(!tx.GetTrustInfo(nTrust, nStake))
+                            throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get trust info"));
+                    }
+
+                    /* Handle for version 5 blocks. */
+                    else if(nVersion >= 5)
+                    {
+                        /* Get the coinstake. */
+                        Legacy::Transaction tx;
+                        if(!LLD::Legacy->ReadTx(vtx[0].second, tx))
+                            throw std::runtime_error(debug::safe_printstr(FUNCTION, "could not read coinstake"));
+
+                        /* Check for genesis. */
+                        if(tx.IsTrust())
+                        {
+                            /* Temp variables */
+                            uint1024_t hashLastBlock;
+                            uint32_t   nSequence;
+                            uint32_t   nTrustScore;
+
+                            /* Extract trust from coinstake. */
+                            if(!tx.ExtractTrust(hashLastBlock, nSequence, nTrustScore))
+                                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get trust info"));
+
+                            /* Get the trust score. */
+                            nTrust = uint64_t(nTrustScore);
+                        }
+
+                        /* Get the stake amount. */
+                        nStake = uint64_t(tx.vout[0].nValue);
+                    }
+                    else
+                    {
+                        /* Get the coinstake. */
+                        Legacy::Transaction tx;
+                        if(!LLD::Legacy->ReadTx(vtx[0].second, tx))
+                            throw std::runtime_error(debug::safe_printstr(FUNCTION, "could not read coinstake"));
+
+                        /* Check for genesis. */
+                        if(tx.IsTrust())
+                        {
+
+                            /* Extract the trust key from the coinstake. */
+                            uint576_t cKey;
+                            if(!tx.TrustKey(cKey))
+                                throw std::runtime_error(debug::safe_printstr(FUNCTION, "trust key not found in script"));
+
+                            /* Get the trust key. */
+                            Legacy::TrustKey trustKey;
+                            if(!LLD::Trust->ReadTrustKey(cKey, trustKey))
+                                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read trust key"));
+
+                            /* Get trust score. */
+                            nTrust = trustKey.Age(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
+
+                        }
+
+                        /* Get the stake amount. */
+                        nStake = uint64_t(tx.vout[0].nValue);
+                    }
+
+                    /* Get the total weighting. */
+                    uint64_t nWeight = (((~hashProof / (hashProof + 1)) + 1).Get64() / 10000) * (nStake / NXS_COIN);
+
+                    /* Include trust info in weighting. */
+                    return nWeight + nTrust;
+                }
+
+                /* Prime (for now) is the weight of the prime difficulty. */
+                case CHANNEL::PRIME:
+                {
+                    /* Check for offet patterns. */
+                    if(vOffsets.empty())
+                        return nBits * 25;
+
+                    /* Get the prime difficulty. */
+                    uint64_t nWeight = SetBits(GetPrimeDifficulty(GetPrime(), vOffsets)) * 25;
+
+                    return nWeight;
+                }
+            }
+
+            return 0;
         }
 
 

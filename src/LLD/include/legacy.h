@@ -23,6 +23,7 @@ ________________________________________________________________________________
 
 #include <Legacy/types/transaction.h>
 
+#include <TAO/Ledger/include/enum.h>
 
 namespace LLD
 {
@@ -64,11 +65,12 @@ namespace LLD
          *
          *  @param[in] hashTx The txid of transaction to read.
          *  @param[in] tx The transaction object to read.
+         *  @param[in] nFlags The flags to check from
          *
          *  @return True if the transaction was successfully read, false otherwise.
          *
          **/
-        bool ReadTx(const uint512_t& hashTx, Legacy::Transaction& tx);
+        bool ReadTx(const uint512_t& hashTx, Legacy::Transaction& tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** EraseTx

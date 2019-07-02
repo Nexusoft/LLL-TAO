@@ -200,7 +200,6 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Ledger_mempool.o \
 		   build/Tests_TAO_Register_objects.o \
 		   build/Tests_TAO_Register_rollback.o \
-		   build/Tests_TAO_Register_system.o \
 		   build/Tests_TAO_Register_testvm.o \
 		   build/Tests_TAO_Operation_conditions.o \
 		   build/Tests_TAO_Operation_contract.o \
@@ -396,6 +395,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Operation_validate.o \
 		build/Operation_unstake.o \
 		build/Operation_write.o \
+		build/Register_address.o \
 		build/Register_basevm.o \
 		build/Register_build.o \
 		build/Register_create.o \
@@ -403,7 +403,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Register_object.o \
 		build/Register_rollback.o \
 		build/Register_state.o \
-		build/Register_system.o \
 		build/Register_unpack.o \
 		build/Register_verify.o \
 		build/Ledger_base_minter.o \
@@ -412,6 +411,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_checkpoints.o \
 		build/Ledger_create.o \
 		build/Ledger_difficulty.o \
+		build/Ledger_genesis.o \
 		build/Ledger_locator.o \
 		build/Ledger_mempool.o \
 		build/Ledger_prime.o \
@@ -420,6 +420,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_stake.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \
+		build/Ledger_timelocks.o \
 		build/Ledger_transaction.o \
 		build/Ledger_tritium.o \
 		build/Ledger_tritium_minter.o \

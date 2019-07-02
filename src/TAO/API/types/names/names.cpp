@@ -19,6 +19,7 @@
 
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/names.h>
+#include <TAO/Register/types/address.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -47,7 +48,7 @@ namespace TAO
             uint256_t hashNamespace = 0;
 
             /* The register address of the Name object. */
-            uint256_t hashNameAddress = 0;
+            TAO::Register::Address hashNameAddress = 0;
 
             /* The namespace string, populated if the caller has passed the name in name.namespace format */
             std::string strNamespace = "";

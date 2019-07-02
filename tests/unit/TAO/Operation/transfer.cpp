@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/create.h>
+#include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/types/transaction.h>
 
@@ -35,8 +36,8 @@ TEST_CASE( "Transfer Primitive Tests", "[operation]")
     //test a forced transfer (tokenize)
     {
         //create object
-        uint256_t hashToken = LLC::GetRand256();
-        uint256_t hashAsset  = LLC::GetRand256();
+        uint256_t hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
+        uint256_t hashAsset  = TAO::Register::Address(TAO::Register::Address::OBJECT);
         uint256_t hashGenesis  = LLC::GetRand256();
 
         // Create token first

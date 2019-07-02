@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
 #include <TAO/Register/include/reserved.h>
 
 /* Global TAO namespace. */
@@ -274,7 +274,7 @@ namespace TAO
                 return debug::error(FUNCTION, "called with incorrect OP");
 
             /* Extract the address from contract. */
-            uint256_t hashAddress = 0;
+            TAO::Register::Address hashAddress;
             contract >> hashAddress;
 
             /* Check for reserved values. */

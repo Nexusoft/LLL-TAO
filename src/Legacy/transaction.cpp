@@ -656,13 +656,13 @@ namespace Legacy
 	std::string Transaction::ToStringShort() const
     {
         std::string str;
-        std::string txtype = GetTxTypeString();
+        std::string txtype = TypeString();
 
         str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
         return str;
     }
     /*  User readable description of the transaction type. */
-    std::string Transaction::GetTxTypeString() const
+    std::string Transaction::TypeString() const
     {
         std::string txtype = "legacy ";
         if(IsCoinBase())

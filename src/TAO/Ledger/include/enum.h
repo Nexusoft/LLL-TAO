@@ -46,6 +46,20 @@ namespace TAO
         }
 
 
+        /** Type values for a genesis. These are very important for security to tell the difference from register hashes. **/
+        namespace GENESIS
+        {
+            enum
+            {
+                /** A mainnet genesis has to be pre-pended with byte 0xa1 **/
+                MAINNET     = 0xa1,
+
+                /** a testnet genesis has to be pre-pended with byte 0xa2. **/
+                TESTNET     = 0xa2,
+            };
+        }
+
+
         /** Signature types for sigchain. **/
         namespace SIGNATURE
         {
@@ -62,6 +76,26 @@ namespace TAO
 
                 /** SECP256K1 ECDSA curve. **/
                 SECP256K1   = 0x03
+            };
+        }
+
+
+        /** State values for a transaction. **/
+        namespace CHANNEL
+        {
+            enum
+            {
+                /** Proof of stake channel. **/
+                STAKE   = 0x00,
+
+                /** Prime channel. **/
+                PRIME   = 0x01,
+
+                /** Hash channel. **/
+                HASH    = 0x02,
+
+                /** Private channel. **/
+                PRIVATE = 0x03,
             };
         }
 

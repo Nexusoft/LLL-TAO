@@ -166,6 +166,18 @@ namespace TAO
             const uint512_t& Hash() const;
 
 
+            /** Value
+             *
+             *  Get the value of the contract if valid
+             *
+             *  @param[out] nValue The value to return.
+             *
+             *  @return True if there is value in the contract.
+             *
+             **/
+            bool Value(uint64_t &nValue) const;
+
+
             /** Empty
              *
              *  Detect if the stream is empty.

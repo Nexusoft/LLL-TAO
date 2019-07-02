@@ -48,7 +48,7 @@ namespace TAO
     {
 
         /* Converts the block to formatted JSON */
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
+        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
         {
             /* Decalre the response object*/
             json::json result;
@@ -82,7 +82,7 @@ namespace TAO
                 result["nextblockhash"] = block.hashNextBlock.GetHex();
 
             /* Add the transaction data if the caller has requested it*/
-            if(nTransactionVerbosity > 0)
+            if(nVerbosity > 0)
             {
                 json::json txinfo = json::json::array();
 
@@ -96,7 +96,7 @@ namespace TAO
                         if(LLD::Ledger->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json ret = TransactionToJSON(tx, block, nTransactionVerbosity);
+                            json::json ret = TransactionToJSON(tx, block, nVerbosity);
 
                             txinfo.push_back(ret);
                         }
@@ -108,7 +108,7 @@ namespace TAO
                         if(LLD::Legacy->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json ret = TransactionToJSON(tx, block, nTransactionVerbosity);
+                            json::json ret = TransactionToJSON(tx, block, nVerbosity);
 
                             txinfo.push_back(ret);
                         }
@@ -122,7 +122,7 @@ namespace TAO
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
+        json::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
         {
             /* Declare JSON object to return */
             json::json ret;
@@ -131,21 +131,21 @@ namespace TAO
             ret["txid"] = tx.GetHash().GetHex();
 
             /* Always add the contracts if level 1 and up */
-            if(nTransactionVerbosity >= 1)
-                ret["contracts"] = ContractsToJSON(0, tx, nTransactionVerbosity);
+            if(nVerbosity >= 1)
+                ret["contracts"] = ContractsToJSON(0, tx, nVerbosity);
 
             /* Basic TX info for level 2 and up */
-            if(nTransactionVerbosity >= 2)
+            if(nVerbosity >= 2)
             {
                 /* Build base transaction data. */
-                ret["type"]      = tx.GetTxTypeString();
+                ret["type"]      = tx.TypeString();
                 ret["version"]   = tx.nVersion;
                 ret["sequence"]  = tx.nSequence;
                 ret["timestamp"] = tx.nTimestamp;
                 ret["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
                 /* Genesis and hashes are verbose 3 and up. */
-                if(nTransactionVerbosity >= 3)
+                if(nVerbosity >= 3)
                 {
                     /* More sigchain level details. */
                     ret["genesis"]   = tx.hashGenesis.ToString();
@@ -162,7 +162,7 @@ namespace TAO
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nTransactionVerbosity)
+        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
         {
             /* Declare JSON object to return */
             json::json ret;
@@ -171,9 +171,9 @@ namespace TAO
             ret["txid"] = tx.GetHash().GetHex();
 
             /* Basic TX info for level 1 and up */
-            if(nTransactionVerbosity > 0)
+            if(nVerbosity > 0)
             {
-                ret["type"] = tx.GetTxTypeString();
+                ret["type"] = tx.TypeString();
                 ret["timestamp"] = tx.nTime;
                 ret["amount"] = Legacy::SatoshisToAmount(tx.GetValueOut());
                 ret["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
@@ -256,7 +256,6 @@ namespace TAO
                 /* Include the txid if the verbosity level is higher than zero. */
                 if(nVerbosity > 0)
                     ret["txid"] = contract.Hash().GetHex();
-
 
                 /* Get the contract operations. */
                 uint8_t OPERATION = 0;
@@ -514,7 +513,7 @@ namespace TAO
                         /* Resolve the name of the token/account that the debit is from */
                         std::string strFrom = Names::ResolveName(hashCaller, hashFrom);
                         if(!strFrom.empty())
-                            ret["from_name"] = strFrom; 
+                            ret["from_name"] = strFrom;
 
                         ret["to"]       = hashTo.ToString();
 
@@ -539,7 +538,7 @@ namespace TAO
                         uint8_t nStandard = object.Standard();
 
                         /* Check the object standard. */
-                        if(nStandard != TAO::Register::OBJECTS::ACCOUNT 
+                        if(nStandard != TAO::Register::OBJECTS::ACCOUNT
                         && nStandard != TAO::Register::OBJECTS::TRUST
                         && nStandard != TAO::Register::OBJECTS::TOKEN)
                             throw APIException(-15, "Object is not an account or token");
@@ -611,7 +610,7 @@ namespace TAO
                         uint8_t nStandard = account.Standard();
 
                         /* Check the object standard. */
-                        if(nStandard != TAO::Register::OBJECTS::ACCOUNT 
+                        if(nStandard != TAO::Register::OBJECTS::ACCOUNT
                         && nStandard != TAO::Register::OBJECTS::TRUST
                         && nStandard != TAO::Register::OBJECTS::TOKEN)
                             throw APIException(-15, "Object is not an account or token");
@@ -660,9 +659,9 @@ namespace TAO
 
 
         /* Converts an Object Register to formattted JSON */
-        json::json ObjectToJSON(const json::json& params, 
-                                const TAO::Register::Object& object, 
-                                const uint256_t& hashRegister, 
+        json::json ObjectToJSON(const json::json& params,
+                                const TAO::Register::Object& object,
+                                const uint256_t& hashRegister,
                                 bool fLookupName /*= true*/)
         {
             /* Declare the return JSON object */
@@ -707,7 +706,7 @@ namespace TAO
                     //ret["checksum"] = state.hashChecksum;
                     ret["data"] = data;
                 }
-                
+
             }
             else if(object.nType == TAO::Register::REGISTER::OBJECT)
             {

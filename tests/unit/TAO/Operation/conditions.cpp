@@ -24,6 +24,7 @@
 #include <LLD/include/global.h>
 
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/types/address.h>
 
 #include <cmath>
 
@@ -35,8 +36,8 @@ TEST_CASE( "Conditions Tests", "[operation]" )
 {
     using namespace TAO::Operation;
 
-    uint256_t hashFrom = LLC::GetRand256();
-    uint256_t hashTo   = LLC::GetRand256();
+    TAO::Register::Address hashFrom = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+    TAO::Register::Address hashTo   = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
     uint64_t  nAmount  = 500;
 
     TAO::Ledger::Transaction tx;
@@ -50,8 +51,9 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     contract <= (uint8_t)OP::TYPES::UINT32_T <= (uint32_t)7u <= (uint8_t) OP::MUL <= (uint8_t) OP::TYPES::UINT32_T <= (uint32_t)9u <= (uint8_t) OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= (uint32_t)63u;
 
 
-    uint256_t hash = LLC::GetRand256();
-    uint256_t hash2 = LLC::GetRand256();
+    TAO::Register::Address hash = TAO::Register::Address(TAO::Register::Address::RAW);
+    TAO::Register::Address hash2 = TAO::Register::Address(TAO::Register::Address::RAW);
+
     TAO::Register::State state;
     state.hashOwner = LLC::GetRand256();
     state.nType     = 2;
@@ -445,7 +447,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
                << std::string("balance") << uint8_t(TYPES::UINT64_T) << uint64_t(55)
                << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
-       object.hashOwner = LLC::GetRand256();
+       object.hashOwner = TAO::Register::Address(TAO::Register::Address::OBJECT);
        object.nType     = TAO::Register::REGISTER::OBJECT;
 
 

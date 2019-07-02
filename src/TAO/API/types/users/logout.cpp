@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
-
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/users.h>

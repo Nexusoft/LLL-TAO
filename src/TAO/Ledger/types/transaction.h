@@ -304,6 +304,19 @@ namespace TAO
             bool IsFirst() const;
 
 
+            /** GetTrustInfo
+             *
+             *  Gets the total trust and stake of pre-state.
+             *
+             *  @param[out] nTrust The total trust in object.
+             *  @param[out] nStake The total stake in object.
+             *
+             *  @return true if succeeded
+             *
+             **/
+            bool GetTrustInfo(uint64_t& nTrust, uint64_t& nStake) const;
+
+
             /** GetHash
              *
              *  Gets the hash of the transaction object.
@@ -373,14 +386,14 @@ namespace TAO
             std::string ToStringShort() const;
 
 
-            /** GetTxTypeString
+            /** TypeString
              *
              *  User readable description of the transaction type.
              *
              *  @return User readable description of the transaction type;
              *
              **/
-            std::string GetTxTypeString() const;
+            std::string TypeString() const;
 
         };
     }

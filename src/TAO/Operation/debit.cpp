@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
 
 #include <TAO/Ledger/include/enum.h>
 
@@ -103,7 +103,7 @@ namespace TAO
                 return debug::error(FUNCTION, "called with incorrect OP");
 
             /* Extract the address from contract. */
-            uint256_t hashFrom = 0;
+            TAO::Register::Address hashFrom;
             contract >> hashFrom;
 
             /* Check for reserved values. */
@@ -111,17 +111,16 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot debit with reserved address");
 
             /* Extract the address from contract. */
-            uint256_t hashTo = 0;
+            TAO::Register::Address hashTo;
             contract >> hashTo;
 
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashTo))
-                return debug::error(FUNCTION, "cannot transfer register to reserved address");
+                return debug::error(FUNCTION, "cannot debit to reserved address");
 
             /* Check the contract for conditions. */
             if(hashTo == ~uint256_t(0) && contract.Empty(Contract::CONDITIONS))
                 return debug::error(FUNCTION, "cannot debit to wildcard with no conditions");
-
 
             /* Check for debit to and from same account. */
             if(hashFrom == hashTo)

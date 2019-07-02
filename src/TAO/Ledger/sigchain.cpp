@@ -17,6 +17,9 @@ ________________________________________________________________________________
 #include <LLC/hash/argon2.h>
 
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/genesis.h>
+
+#include <TAO/Ledger/include/enum.h>
 
 #include <Util/include/debug.h>
 
@@ -145,8 +148,9 @@ namespace TAO
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
 
             /* Set the bytes for the key. */
-            uint256_t hashKey;
+            TAO::Ledger::Genesis hashKey;
             hashKey.SetBytes(vHash);
+            hashKey.SetType();
 
             return hashKey;
         }

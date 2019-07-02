@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <TAO/Register/types/basevm.h>
 
+#include <TAO/Register/types/address.h>
+
 #include <openssl/rand.h>
 
 #include <unit/catch2/catch.hpp>

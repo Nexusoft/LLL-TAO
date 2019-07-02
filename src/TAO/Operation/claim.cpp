@@ -18,7 +18,9 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/state.h>
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
+
+#include <TAO/Ledger/types/genesis.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -109,7 +111,7 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot claim a register with no transfer");
 
             /* Extract the address  */
-            uint256_t hashAddress = 0;
+            TAO::Register::Address hashAddress;
             claim >> hashAddress;
 
             /* Check for reserved values. */
@@ -117,12 +119,12 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot claim register with reserved address");
 
             /* Read the register transfer recipient. */
-            uint256_t hashTransfer = 0;
+            TAO::Ledger::Genesis hashTransfer;
             claim >> hashTransfer;
 
             /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashTransfer))
-                return debug::error(FUNCTION, "cannot claim register to reserved address");
+            if(hashTransfer != ~uint256_t(0) && !hashTransfer.IsValid())
+                return debug::error(FUNCTION, "cannot claim register to invalid genesis");
 
             /* Get the state byte. */
             uint8_t nState = 0; //RESERVED

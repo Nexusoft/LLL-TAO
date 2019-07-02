@@ -24,7 +24,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 
-#include <LLC/include/random.h>
 #include <LLD/include/global.h>
 
 /* Global TAO namespace. */

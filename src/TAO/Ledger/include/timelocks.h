@@ -30,7 +30,7 @@ namespace TAO
 
 
         /** The testnet current block version. **/
-        const uint32_t TESTNET_BLOCK_CURRENT_VERSION = 6;
+        const uint32_t TESTNET_BLOCK_CURRENT_VERSION = 7;
 
 
         /** Nexus Testnet Timelock
@@ -61,6 +61,7 @@ namespace TAO
             1421949600,        //--- Block Version 4 Testnet Activation:  05/10/2015 08:01:00 GMT - 6
             1536562800,        //--- Block Version 5 Testnet Activation:  09/10/2018 00:00:00 GMT - 7
             1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 GMT - 7
+            1560373338,        //--- Block Version 7 Testnet Activation:  06/12/2019 14:02:00 GMT - 7
         };
 
 
@@ -103,6 +104,43 @@ namespace TAO
             1411510800,        //--- CPU Channel Activation:              09/23/2014 16:20:00 GMT - 6
             1413914400         //--- GPU Channel Activation:              10/21/2014 12:00:00 GMT - 6
         };
+
+
+        /** Network Active
+         *
+         *  Helper function to determine if the network timelock has been met.
+         *
+         *  @param[in] nTimestamp The timestamp to check against
+         *
+         *  @return true if the network is currently active.
+         *
+         **/
+        bool NetworkActive(const uint64_t nTimestamp);
+
+
+        /** Channel Active
+         *
+         *  Helper function to determine if a timelock has been met for a channel.
+         *
+         *  @param[in] nTimestamp The timestamp to check against
+         *  @param[in] nChannel The channel to check for
+         *
+         *  @return true if the channel is currently active.
+         *
+         **/
+        bool ChannelActive(const uint64_t nTimestamp, const uint32_t nChannel);
+
+
+        /** Version Active
+         *
+         *  Helper function to determine if a give block version is active.
+         *
+         *  @param[in] nTimestamp The timestamp to check against.
+         *  @param[in] nVersion The version to check against.
+         *
+         **/
+        bool VersionActive(const uint64_t nTimestamp, const uint32_t nVersion);
+
     }
 }
 

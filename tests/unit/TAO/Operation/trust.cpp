@@ -23,6 +23,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/create.h>
+#include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/types/transaction.h>
 
@@ -33,7 +34,7 @@ TEST_CASE( "Trust Operation Tests", "[operation]")
     using namespace TAO::Register;
     using namespace TAO::Operation;
 
-    uint256_t hashTrust    = LLC::GetRand256();
+    uint256_t hashTrust    = TAO::Register::Address(TAO::Register::Address::TRUST);
     uint256_t hashGenesis  = LLC::GetRand256();
 
     uint512_t hashLastTrust;

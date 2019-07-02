@@ -168,6 +168,19 @@ namespace TAO
         /* Get the Signarture Hash of the block. Used to verify work claims. */
         uint1024_t Block::SignatureHash() const
         {
+            /* Signature hash for version 7 blocks. */
+            if(nVersion >= 7)
+            {
+                /* Create a data stream to get the hash. */
+                DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+                ss.reserve(256);
+
+                /* Serialize the data to hash into a stream. */
+                ss << nVersion << hashPrevBlock << hashMerkleRoot << nChannel << nHeight << nBits << nNonce << nTime << vOffsets;
+
+                return LLC::SK1024(ss.begin(), ss.end());
+            }
+
             return LLC::SK1024(BEGIN(nVersion), END(nTime));
         }
 
@@ -179,7 +192,7 @@ namespace TAO
             if(nVersion < 5)
                 return ProofHash();
 
-            return LLC::SK1024(BEGIN(nVersion), END(nTime));
+            return SignatureHash();
         }
 
 
@@ -223,7 +236,7 @@ namespace TAO
                 for(i = 0; i < nSize; i += 2)
                 {
                     /* get the references to the left and right leaves in the merkle tree */
-                    uint512_t &left_tx = vMerkleTree[j+i];
+                    uint512_t &left_tx  = vMerkleTree[j+i];
                     uint512_t &right_tx = vMerkleTree[j + std::min(i+1, nSize-1)];
 
                     vMerkleTree.push_back(LLC::SK512(BEGIN(left_tx),  END(left_tx),
@@ -281,7 +294,6 @@ namespace TAO
             }
             if(nChannel == 2)
             {
-
                 /* Get the hash target. */
                 LLC::CBigNum bnTarget;
                 bnTarget.SetCompact(nBits);

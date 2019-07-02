@@ -28,13 +28,14 @@ ________________________________________________________________________________
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/verify.h>
 #include <TAO/Register/include/build.h>
-#include <TAO/Register/types/state.h>
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/genesis.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
@@ -143,6 +144,19 @@ namespace TAO
             /* Check for empty signatures. */
             if(vchSig.size() == 0)
                 return debug::error(FUNCTION, "transaction with empty signature");
+
+            /* Check the genesis first byte. */
+            Genesis genesis = Genesis(hashGenesis);
+            if(!genesis.IsValid())
+                return debug::error(FUNCTION, "genesis using incorrect leading byte");
+
+            /* Run through all the contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Check for empty contracts. */
+                if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
+                    return debug::error(FUNCTION, "contract is empty");
+            }
 
             /* Switch based on signature type. */
             switch(nKeyType)
@@ -384,8 +398,8 @@ namespace TAO
         /* Determines if the transaction is a coinbase transaction. */
         bool Transaction::IsCoinbase() const
         {
-            /* Check for contracts. */
-            if(vContracts.size() == 0)
+            /* Check for single contract. */
+            if(vContracts.size() != 1)
                 return false;
 
             /* Check for empty first contract. */
@@ -403,27 +417,15 @@ namespace TAO
         /* Determines if the transaction is a coinstake (trust or genesis) transaction. */
         bool Transaction::IsCoinstake() const
         {
-            /* Check for contracts. */
-            if(vContracts.size() == 0)
-                return false;
-
-            /* Check for empty first contract. */
-            if(vContracts[0].Empty())
-                return false;
-
-            /* Check for conditions. */
-            if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
-                return false;
-
-            return (vContracts[0].Primitive() == TAO::Operation::OP::TRUST || vContracts[0].Primitive() == TAO::Operation::OP::GENESIS);
+            return (IsGenesis() || IsTrust());
         }
 
 
         /* Determines if the transaction is for a private block. */
         bool Transaction::IsPrivate() const
         {
-            /* Check for contracts. */
-            if(vContracts.size() == 0)
+            /* Check for single contract. */
+            if(vContracts.size() != 1)
                 return false;
 
             /* Check for empty first contract. */
@@ -441,8 +443,8 @@ namespace TAO
         /* Determines if the transaction is a coinstake transaction. */
         bool Transaction::IsTrust() const
         {
-            /* Check for contracts. */
-            if(vContracts.size() == 0)
+            /* Check for single contract. */
+            if(vContracts.size() != 1)
                 return false;
 
             /* Check for empty first contract. */
@@ -474,8 +476,8 @@ namespace TAO
         /* Determines if the transaction is a genesis transaction */
         bool Transaction::IsGenesis() const
         {
-            /* Check for contracts. */
-            if(vContracts.size() == 0)
+            /* Check for single contract. */
+            if(vContracts.size() != 1)
                 return false;
 
             /* Check for empty first contract. */
@@ -494,6 +496,39 @@ namespace TAO
         bool Transaction::IsFirst() const
         {
             return (nSequence == 0 && hashPrevTx == 0);
+        }
+
+
+        /*  Gets the total trust and stake of pre-state. */
+        bool Transaction::GetTrustInfo(uint64_t& nTrust, uint64_t& nStake) const
+        {
+            /* Check values. */
+            if(!IsCoinstake())
+                return debug::error(FUNCTION, "transaction is not trust");
+
+            /* Get internal contract. */
+            const TAO::Operation::Contract& contract = vContracts[0];
+
+            /* Seek to pre-state. */
+            contract.Reset();
+            contract.Seek(1, TAO::Operation::Contract::REGISTERS);
+
+            /* Get pre-state. */
+            TAO::Register::Object object;
+            contract >>= object;
+
+            /* Reset contract. */
+            contract.Reset();
+
+            /* Parse object. */
+            if(!object.Parse())
+                return debug::error(FUNCTION, "failed to parse trust object");
+
+            /* Set Values. */
+            nTrust = object.get<uint64_t>("trust");
+            nStake = object.get<uint64_t>("stake");
+
+            return true;
         }
 
 
@@ -649,13 +684,13 @@ namespace TAO
         std::string Transaction::ToStringShort() const
         {
             std::string str;
-            std::string txtype = GetTxTypeString();
+            std::string txtype = TypeString();
             str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
             return str;
         }
 
         /*  User readable description of the transaction type. */
-        std::string Transaction::GetTxTypeString() const
+        std::string Transaction::TypeString() const
         {
             std::string txtype = "tritium ";
             if(IsCoinbase())
