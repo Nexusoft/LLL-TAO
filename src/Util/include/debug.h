@@ -92,6 +92,14 @@ namespace debug
     void Shutdown();
 
 
+    /** LogStartup
+     *
+     *  Log startup information.
+     *
+     **/
+    void LogStartup();
+
+
     /** print_args
      *
      *  Overload for varadaic templates.

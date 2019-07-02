@@ -64,7 +64,7 @@ int main(int argc, char** argv)
     config::CacheArgs();
 
 
-    /* Log system startup now, after branching to API/RPC where appropriate */
+    /* Initalize the debug logger. */
     debug::Initialize();
 
 
@@ -96,6 +96,10 @@ int main(int argc, char** argv)
             return nRet;
         }
     }
+
+    /* Log the startup information now. */
+    debug::LogStartup();
+    
 
     /* Initialize LLD. */
     LLD::Initialize();

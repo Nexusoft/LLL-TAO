@@ -78,7 +78,7 @@ namespace debug
         if(!filesystem::exists(strLogFolder))
         {
             filesystem::create_directory(strLogFolder);
-            log(0, FUNCTION, "created debug folder directory");
+            printf("created debug folder directory\n");
         }
 
 
@@ -93,7 +93,22 @@ namespace debug
         /* Get the debug logging configuration parameters (or default if none specified) */
         nLogFiles  = config::GetArg("-logfiles", 20);
         nLogSizeMB = config::GetArg("-logsizeMB", 5);
+    }
 
+
+    /*  Close the debug log file. */
+    void Shutdown()
+    {
+        LOCK(DEBUG_MUTEX);
+
+        if(ssFile.is_open())
+            ssFile.close();
+    }
+
+
+    /*  Log startup information. */
+    void LogStartup()
+    {
         /* Log the Operating System. */
         log(0, "Startup time ", convert::DateTimeStrFormat(runtime::timestamp()));
         log(0, version::CLIENT_VERSION_BUILD_STRING);
@@ -178,16 +193,6 @@ namespace debug
         log(0, "Command line parameters: ", cmdLineParms);
         log(0, "");
         log(0, "");
-    }
-
-
-    /*  Close the debug log file. */
-    void Shutdown()
-    {
-        LOCK(DEBUG_MUTEX);
-
-        if(ssFile.is_open())
-            ssFile.close();
     }
 
 

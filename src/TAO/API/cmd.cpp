@@ -168,7 +168,7 @@ namespace TAO
                 strPrint = ret["result"].dump(4);
 
             /* Dump response to console. */
-            debug::log(0, strPrint);
+            printf("%s\n", strPrint.c_str());
 
             return 0;
         }
@@ -304,7 +304,7 @@ namespace TAO
             }
 
             // output to console
-            debug::log(0, strPrint);
+            printf("%s\n", strPrint.c_str());
 
             return nRet;
         }
