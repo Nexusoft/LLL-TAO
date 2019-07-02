@@ -32,7 +32,6 @@ namespace TAO
     {
 
 
-
         /* Retrieve the address of the name register for a namespace/name combination. */
         void GetNameAddress(const uint256_t& hashNamespace, const std::string& strName, uint256_t& address)
         {

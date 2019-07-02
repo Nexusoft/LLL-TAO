@@ -405,7 +405,8 @@ namespace TAO
             }
 
             /* Add new weights for this channel. */
-            nChannelWeight[nChannel] += Weight();
+            if(!IsPrivate())
+                nChannelWeight[nChannel] += Weight();
 
             /* Compute the chain trust. */
             nChainTrust = statePrev.nChainTrust + Trust();
@@ -415,7 +416,7 @@ namespace TAO
                 return debug::error(FUNCTION, "block state failed to write");
 
             /* Signal to set the best chain. */
-            if(nVersion >= 7)
+            if(nVersion >= 7 && !IsPrivate())
             {
                 /* Set the chain trust. */
                 uint8_t nTotal = 0;

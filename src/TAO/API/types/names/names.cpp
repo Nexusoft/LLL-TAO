@@ -40,6 +40,7 @@ namespace TAO
                                                    const std::string& strFullName,
                                                    const uint256_t& hashRegister)
         {
+
             /* Declare the contract for the response */
             TAO::Operation::Contract contract;
 
@@ -48,7 +49,7 @@ namespace TAO
             uint256_t hashNamespace = 0;
 
             /* The register address of the Name object. */
-            TAO::Register::Address hashNameAddress = 0;
+            TAO::Register::Address hashNameAddress;
 
             /* The namespace string, populated if the caller has passed the name in name.namespace format */
             std::string strNamespace = "";
@@ -66,7 +67,7 @@ namespace TAO
                 strNamespace = strFullName.substr(nPos+1);
 
                 /* Namespace hash is a SK256 hash of the namespace name */
-                hashNamespace = LLC::SK256(strNamespace);
+                hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
                 /* Namespace object to retrieve*/
                 TAO::Register::Object namespaceObject;
@@ -187,7 +188,7 @@ namespace TAO
                 strName = strName.substr(0, nNamespacePos);
 
                 /* Namespace hash is a SK256 hash of the namespace name */
-                hashNamespace = LLC::SK256(strNamespace);
+                hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
             }
 
             else if(nUserspacePos != std::string::npos)

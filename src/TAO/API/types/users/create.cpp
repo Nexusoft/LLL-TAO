@@ -85,7 +85,7 @@ namespace TAO
             tx[0] = Names::CreateName(user->Genesis(), "trust", hashRegister);
 
             /* Set up tx operation to create the trust account register at the same time as sig chain genesis. */
-            tx[1] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister
+            tx[1] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
 
             /* Generate a random hash for this objects register address */
