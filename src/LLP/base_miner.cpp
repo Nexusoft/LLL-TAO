@@ -158,57 +158,54 @@ namespace LLP
             case EVENT_GENERIC:
             {
                 /* On generic events, return if no workers subscribed. */
-                if(nSubscribed.load() == 0)
+                uint16_t count = nSubscribed.load();
+                if(count == 0)
                     return;
 
                 /* Check for a new round. */
-                bool fNewRound = false;
                 {
-                  LOCK(MUTEX);
-                  fNewRound = check_best_height();
+                    LOCK(MUTEX);
+                    if(check_best_height())
+                        return;
                 }
 
-                /* Push new message to workers on new round. */
-                if(!fNewRound)
+                /* Alert workers of new round. */
+                respond(NEW_ROUND);
+
+                uint1024_t hashBlock;
+                std::vector<uint8_t> vData;
+                TAO::Ledger::Block *pBlock = nullptr;
+
+                for(uint16_t i = 0; i < count; ++i)
                 {
-                    /* Alert workers of new round. */
-                    respond(NEW_ROUND);
-
-                    uint1024_t hashBlock;
-                    std::vector<uint8_t> vData;
-                    TAO::Ledger::Block *pBlock = nullptr;
-
-                    for(uint16_t i = 0; i < nSubscribed.load(); ++i)
                     {
+                        LOCK(MUTEX);
+
+                        /* Create a new block */
+                        pBlock = new_block();
+
+                        /* Handle if the block failed to be created. */
+                        if(!pBlock)
                         {
-                            LOCK(MUTEX);
-
-                            /* Get a new block for the subscriber */
-                            pBlock = new_block();
-
-                            /* Handle if block cfeation failed. */
-                            if(!pBlock)
-                            {
-                                debug::log(2, FUNCTION, "Failed to create block.");
-                                return;
-                            }
-
-                            /* Serialize the block vData */
-                            vData = pBlock->Serialize();
-
-                            /* Get the block hash for display purposes */
-                            hashBlock = pBlock->GetHash();
+                            debug::log(2, FUNCTION, "Failed to create block.");
+                            return;
                         }
 
-                        /* Create and send a packet response */
-                        respond(BLOCK_DATA, vData);
+                        /* Store the new block in the memory map of recent blocks being worked on. */
+                        mapBlocks[pBlock->hashMerkleRoot] = pBlock;
 
+                        /* Serialize the block vData */
+                        vData = pBlock->Serialize();
 
-                        debug::log(2, FUNCTION, "Sent Block ",
-                            hashBlock.SubString(), " to Worker.");
+                        /* Get the block hash for display purposes */
+                        hashBlock = pBlock->GetHash();
                     }
 
+                    /* Create and send a packet response */
+                    respond(BLOCK_DATA, vData);
 
+                    /* Debug output. */
+                    debug::log(2, FUNCTION, "Sent Block ", hashBlock.SubString(), " to Worker.");
                 }
                 return;
             }
@@ -216,7 +213,7 @@ namespace LLP
             /* On Connect Event, Assign the Proper Daemon Handle. */
             case EVENT_CONNECT:
             {
-                /* Debut output. */
+                /* Debug output. */
                 debug::log(2, FUNCTION, "New Connection from ", GetAddress().ToStringIP());
                 return;
             }
@@ -308,66 +305,66 @@ namespace LLP
 
             case SET_COINBASE:
             {
+                /* The maximum coinbase reward for a block. */
                 uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
 
-                /** Deserialize the Coinbase Transaction. **/
-
-                /** Bytes 1 - 8 is the Pool Fee for that Round. **/
+                /* Bytes 1 - 8 is the Pool Fee for that Round. */
                 uint64_t nPoolFee  = convert::bytes2uint64(PACKET.DATA, 1);
 
+                /* The map of outputs for this coinbase transaction. */
                 std::map<std::string, uint64_t> vOutputs;
 
-                /** First byte of Serialization Packet is the Number of Records. **/
-                uint32_t nSize = PACKET.DATA[0], nIterator = 9;
+                /* First byte of Serialization Packet is the Number of Records. */
+                uint32_t nIterator = 9;
+                uint8_t nSize = PACKET.DATA[0];
 
-                /** Loop through every Record. **/
-                for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                /* Loop through every Record. */
+                for(uint8_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
-                    /** De-Serialize the Address String and uint64 nValue. **/
+                    /* Get the length. */
                     uint32_t nLength = PACKET.DATA[nIterator];
 
-                    std::string strAddress = convert::bytes2string(std::vector<uint8_t>(PACKET.DATA.begin() + nIterator + 1, PACKET.DATA.begin() + nIterator + 1 + nLength));
-                    uint64_t nValue = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.begin() + nIterator + 1 + nLength, PACKET.DATA.begin() + nIterator + 1 + nLength + 8));
+                    /* Get the string address for coinbase output. */
+                    std::string strAddress = convert::bytes2string(
+                        std::vector<uint8_t>(PACKET.DATA.begin() + nIterator + 1,
+                                             PACKET.DATA.begin() + nIterator + 1 + nLength));
+
+                    /* Get the value for the coinbase output. */
+                    uint64_t nValue = convert::bytes2uint64(
+                        std::vector<uint8_t>(PACKET.DATA.begin() + nIterator + 1 + nLength,
+                                             PACKET.DATA.begin() + nIterator + 1 + nLength + 8));
 
                     /* Validate the address */
                     Legacy::NexusAddress address(strAddress);
                     if(!address.IsValid())
                     {
+                        /* Disconnect immediately if an invalid address is provided. */
                         respond(COINBASE_FAIL);
-                        debug::log(2, "Invalid Address in Coinbase Tx: ", strAddress) ;
-                        return false; //disconnect immediately if an invalid address is provided
+                        return debug::error(FUNCTION, "Invalid Address in Coinbase Tx: ", strAddress);
                     }
-                    /** Add the Transaction as an Output. **/
+
+                    /* Add the transaction as an output. */
                     vOutputs[strAddress] = nValue;
 
-                    /** Increment the Iterator. **/
+                    /* Increment the iterator. */
                     nIterator += (nLength + 9);
                 }
 
-                Legacy::Coinbase pCoinbase(vOutputs, nMaxValue, nPoolFee);
+                /* Update the coinbase transaction. */
+                CoinbaseTx = Legacy::Coinbase(vOutputs, nMaxValue, nPoolFee);
 
-                if(!pCoinbase.IsValid())
+                /* Check the consistency of the coibase transaction. */
+                if(!CoinbaseTx.IsValid())
                 {
+                    CoinbaseTx.Print();
+                    CoinbaseTx.SetNull();
                     respond(COINBASE_FAIL);
-                    debug::log(2, "Invalid Coinbase Tx") ;
+                    return debug::error(FUNCTION, "Invalid Coinbase Tx");
                 }
-                else
-                {
-                    {
-                        LOCK(MUTEX);
 
-                        /* Set the global coinbase, null the base block, and
-                           then call check_best_height which in turn will generate
-                           a new base block using the new coinbase. */
-                        CoinbaseTx = pCoinbase;
-
-                        check_best_height();
-
-                    }
-
-                    respond(COINBASE_SET);
-                    debug::log(2, "Coinbase Set") ;
-                }
+                /* Send a coinbase set message. */
+                respond(COINBASE_SET);
+                debug::log(2, "Coinbase Set");
 
                 return true;
             }
@@ -376,10 +373,7 @@ namespace LLP
             case CLEAR_MAP:
             {
                 LOCK(MUTEX);
-
                 clear_map();
-                CoinbaseTx.SetNull();
-
                 return true;
             }
 
@@ -423,12 +417,20 @@ namespace LLP
 
             case GET_REWARD:
             {
-                uint64_t nCoinbaseReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
+                /* Check for the best block height. */
+                {
+                    LOCK(MUTEX);
+                    check_best_height();
+                }
 
-                respond(BLOCK_REWARD, convert::uint2bytes64(nCoinbaseReward));
+                /* Get the mining reward amount for the channel currently set. */
+                uint64_t nReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
 
-                debug::log(2, "***** Mining LLP: Sent Coinbase Reward of ", nCoinbaseReward);
+                /* Respond with BLOCK_REWARD message. */
+                respond(BLOCK_REWARD, convert::uint2bytes64(nReward));
 
+                /* Debug output. */
+                debug::log(2, FUNCTION, "Sent Coinbase Reward of ", nReward);
                 return true;
             }
 
@@ -441,8 +443,8 @@ namespace LLP
                 if(nSubscribed == 0 || nChannel.load() == 0)
                     return false;
 
+                /* Debug output. */
                 debug::log(2, FUNCTION, "Subscribed to ", nSubscribed, " Blocks");
-
                 return true;
             }
 
@@ -487,11 +489,11 @@ namespace LLP
             /* Submit a block using the merkle root as the key. */
             case SUBMIT_BLOCK:
             {
-                uint512_t hashMerkleRoot;
+                uint512_t hashMerkle;
                 uint64_t nonce = 0;
 
                 /* Get the merkle root. */
-                hashMerkleRoot.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
+                hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
 
                 /* Get the nonce */
                 nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
@@ -499,29 +501,25 @@ namespace LLP
                 LOCK(MUTEX);
 
                 /* Make sure the block was created by this mining server. */
-                if(!find_block(hashMerkleRoot))
+                if(!find_block(hashMerkle))
                 {
                     respond(BLOCK_REJECTED);
                     return true;
                 }
 
                 /* Make sure there is no inconsistencies in signing block. */
-                if(!sign_block(nonce, hashMerkleRoot))
+                if(!sign_block(nonce, hashMerkle))
                 {
                     respond(BLOCK_REJECTED);
                     return true;
                 }
 
                 /* Make sure there is no inconsistencies in validating block. */
-                if(!validate_block(hashMerkleRoot))
+                if(!validate_block(hashMerkle))
                 {
                     respond(BLOCK_REJECTED);
                     return true;
                 }
-
-                /* Clear map on new block found. */
-                clear_map();
-                CoinbaseTx.SetNull();
 
                 /* Generate an Accepted response. */
                 respond(BLOCK_ACCEPTED);
@@ -575,21 +573,18 @@ namespace LLP
      *  the block map if the height is outdated. */
     bool BaseMiner::check_best_height()
     {
-
-        bool fHeightChanged = false;
-
         if(nBestHeight != TAO::Ledger::ChainState::nBestHeight)
         {
+            /* Clear map on new block found. */
             clear_map();
 
             nBestHeight = TAO::Ledger::ChainState::nBestHeight.load();
 
             debug::log(2, FUNCTION, "Mining best height changed to ", nBestHeight);
 
-            fHeightChanged = true;
+            return true;
         }
-
-        return fHeightChanged;
+        return false;
     }
 
 
@@ -603,6 +598,9 @@ namespace LLP
                 delete it->second;
         }
         mapBlocks.clear();
+
+        /* Reset the coinbase transaction. */
+        CoinbaseTx.SetNull();
 
         /* Set the block iterator back to zero so we can iterate new blocks next round. */
         nBlockIterator = 0;

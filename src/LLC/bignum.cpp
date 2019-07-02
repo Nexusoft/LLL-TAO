@@ -157,25 +157,25 @@ namespace LLC
         setuint64(n);
     }
 
-    CBigNum::CBigNum(uint256_t n)
+    CBigNum::CBigNum(const uint256_t& n)
     {
         allocate();
         setuint256(n);
     }
 
-    CBigNum::CBigNum(uint512_t n)
+    CBigNum::CBigNum(const uint512_t& n)
     {
         allocate();
         setuint512(n);
     }
 
-    CBigNum::CBigNum(uint576_t n)
+    CBigNum::CBigNum(const uint576_t& n)
     {
         allocate();
         setuint576(n);
     }
 
-    CBigNum::CBigNum(uint1024_t n)
+    CBigNum::CBigNum(const uint1024_t& n)
     {
         allocate();
         setuint1024(n);
@@ -285,7 +285,7 @@ namespace LLC
         return n;
     }
 
-    void CBigNum::setuint256(uint256_t n)
+    void CBigNum::setuint256(const uint256_t& n)
     {
         uint8_t pch[sizeof(n) + 6];
         uint8_t* p = pch + 4;
@@ -330,7 +330,7 @@ namespace LLC
     }
 
 
-    void CBigNum::setuint512(uint512_t n)
+    void CBigNum::setuint512(const uint512_t& n)
     {
         uint8_t pch[sizeof(n) + 6];
         uint8_t* p = pch + 4;
@@ -375,7 +375,7 @@ namespace LLC
     }
 
 
-    void CBigNum::setuint576(uint576_t n)
+    void CBigNum::setuint576(const uint576_t& n)
     {
         uint8_t pch[sizeof(n) + 6];
         uint8_t* p = pch + 4;
@@ -420,7 +420,7 @@ namespace LLC
     }
 
 
-    void CBigNum::setuint1024(uint1024_t n)
+    void CBigNum::setuint1024(const uint1024_t& n)
     {
         uint8_t pch[sizeof(n) + 6];
         uint8_t* p = pch + 4;
