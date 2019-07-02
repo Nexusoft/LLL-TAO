@@ -433,13 +433,19 @@ namespace TAO
                         ++nGreater;
                 }
 
-                /* Handle two channels having greater weight. */
-                if(nGreater > 1 && !SetBest())
-                    return debug::error(FUNCTION, "failed to set best chain");
-
                 /* Handle single channel having higher weight. */
-                if(nEquals == 2 && nGreater == 1 && !SetBest())
-                    return debug::error(FUNCTION, "failed to set best chain");
+                if((nEquals == 2 && nGreater == 1) || nGreater > 1)
+                {
+                    /* Log the weights. */
+                    debug::log(2, FUNCTION, "WEIGHTS[", nGreater, "]",
+                        " Prime ", nChannelWeight[1].ToString(),
+                        " Hash ",  nChannelWeight[2].ToString(),
+                        " Stake ", nChannelWeight[0].ToString());
+
+                    /* Set the best chain. */
+                    if(!SetBest())
+                        return debug::error(FUNCTION, "failed to set best chain");
+                }
             }
             else if(nChainTrust > ChainState::nBestChainTrust.load() && !SetBest())
                 return debug::error(FUNCTION, "failed to set best chain");
