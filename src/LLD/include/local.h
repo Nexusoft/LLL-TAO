@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <LLD/templates/sector.h>
-#include <LLD/cache/binary_lfu.h>
+#include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
 
 
@@ -40,7 +40,7 @@ namespace LLD
    *  Database class for storing local wallet transactions.
    *
    **/
-    class LocalDB : public SectorDatabase<BinaryHashMap, BinaryLFU>
+    class LocalDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
 
     public:
