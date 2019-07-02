@@ -25,19 +25,6 @@ namespace TAO
     namespace Ledger
     {
 
-        /** GetLastTrust
-         *
-         *  Find the last trust block of given key.
-         *
-         *  @param[in] trustKey The trust key to search for
-         *  @param[out] state The trust key block found.
-         *
-         *  @return True if the trust block was found, false otherwise.
-         *
-         **/
-        bool GetLastTrust(const TrustKey& trustKey, TAO::Ledger::BlockState& state);
-
-
         /** FindGenesis
          *
          *  Find the genesis block of given trust key.
