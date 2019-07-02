@@ -115,15 +115,40 @@ namespace TAO
                             if(!address.IsName())
                                 return debug::error(FUNCTION, "address type mismatch with object type");
 
+                            /* Declare the namespace hash */
+                            uint256_t hashNamespace = 0;
+
+                            /* If the Name contains a namespace then use a hash of this to verify the register address hash */
+                            std::string strNamespace = object.get<std::string>("namespace");
+                            if(!strNamespace.empty())
+                            {
+                                /* Namespace hash is a SK256 hash of the namespace name */
+                                hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
+
+                                /* Retrieve the namespace object and check that the hashGenesis is the owner */
+                                TAO::Register::Object namespaceObject;
+                                if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
+                                    return debug::error(FUNCTION, "Namespace does not exist: ", strNamespace);
+
+                                /* Check the owner is the hashGenesis */
+                                if(namespaceObject.hashOwner != state.hashOwner)
+                                    return debug::error(FUNCTION, "Namespace not owned by caller: ", strNamespace );
+
+                            }
+                            else
+                                /* Otherwise we use the owner genesis Hash */
+                                hashNamespace = state.hashOwner;
+
+
                             /* Build vector to hold the genesis + name data for hashing */
-                            std::vector<uint8_t> vData((uint8_t*)&state.hashOwner, (uint8_t*)&state.hashOwner + 32);
+                            std::vector<uint8_t> vData((uint8_t*)&hashNamespace, (uint8_t*)&hashNamespace + 32);
 
                             /* Insert the name of from the Name object */
                             std::string strName = object.get<std::string>("name");
                             vData.insert(vData.end(), strName.begin(), strName.end());
 
                             /* Hash this in the same was as the caller would have to generate hashAddress */
-                            TAO::Register::Address name = TAO::Register::Address(vData, TAO::Register::Address::NAME);
+                            uint256_t name = TAO::Register::Address(vData, TAO::Register::Address::NAME);
 
                             /* Fail if caller didn't user their own genesis to create name. */
                             if(name != address)
@@ -143,15 +168,12 @@ namespace TAO
                             /* Insert the name of from the Name object */
                             std::string strNamespace = object.get<std::string>("namespace");
 
-                            /* Build vector to hold the genesis + name data for hashing */
-                            std::vector<uint8_t> vData(strNamespace.begin(), strNamespace.end());
-
                             /* Hash this in the same was as the caller would have to generate hashAddress */
-                            TAO::Register::Address name = TAO::Register::Address(vData, TAO::Register::Address::NAMESPACE);
+                            TAO::Register::Address name = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
                             /* Fail if caller didn't user their own genesis to create name. */
                             if(name != address)
-                                return debug::error(FUNCTION, "incorrect name or genesis");
+                                return debug::error(FUNCTION, "namespace address mismatch");
 
                             break;
                         }

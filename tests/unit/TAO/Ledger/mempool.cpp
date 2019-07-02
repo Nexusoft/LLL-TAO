@@ -41,7 +41,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
     /* Need to clear mempool in case other unit tests have added transactions.  This allows us to test the sequencing without
        having our tests affected by other transactions outside of this test. */
     std::vector<uint512_t> vExistingHashes;
-    REQUIRE(TAO::Ledger::mempool.List(vExistingHashes));
+    TAO::Ledger::mempool.List(vExistingHashes);
 
     /* Iterate existing mempool tx list and remove them all */
     for(auto& hash : vExistingHashes)

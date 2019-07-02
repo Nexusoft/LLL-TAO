@@ -35,9 +35,10 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
 
     /* Test creating a name  */
     {
-        uint256_t hashAddress   = LLC::GetRand256();
+        uint256_t hashAddress   = TAO::Register::Address(TAO::Register::Address::NAME);
         uint256_t hashGenesis   = LLC::GetRand256();
-        TAO::Register::Address hashNameAddress = 0;
+
+        uint256_t hashNameAddress = 0;
         std::string strName = "somename";
         std::string strNamespace = "somenamespace";
 
@@ -91,7 +92,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             REQUIRE(tx.Verify());
 
             /* commit to disk.  This should fail as the register address of the name is not based on the tx.hashGenesis */
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
         /* Test successfully creating a namespace in user local namespace */
@@ -103,7 +104,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.nTimestamp  = runtime::timestamp();
 
             /* Generate register address for namespace, which must be a hash of the name */
-            uint256_t hashNamespace = LLC::SK256(strNamespace);
+            uint256_t hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
             //create name object
             Object namespaceObject = CreateNamespace(strNamespace);
@@ -130,7 +131,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.nTimestamp  = runtime::timestamp();
 
             /* Generate register address for namespace based on a different name. */
-            uint256_t hashNamespace = LLC::SK256("wrongnamespace");
+            uint256_t hashNamespace = TAO::Register::Address("wrongnamespace", TAO::Register::Address::NAMESPACE);
 
             //create name object
             Object namespaceObject = CreateNamespace(strNamespace);
@@ -145,7 +146,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             REQUIRE(tx.Verify());
 
             /* commit to disk.  This should fail as the register address of the namespace is not based on the namespace name */
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
 
 
@@ -160,7 +161,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             /* full name is somename.somenamespace */
 
             /* Generate register address for namespace, which must be a hash of the name */
-            uint256_t hashNamespace = LLC::SK256(strNamespace);
+            uint256_t hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
             /* Generate  */
             TAO::Register::GetNameAddress(hashNamespace, strName, hashNameAddress);
@@ -192,7 +193,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             /* full name is somename.somenamespace */
 
             /* Generate register address for namespace, which must be a hash of the name */
-            uint256_t hashNamespace = LLC::SK256(strNamespace);
+            uint256_t hashNamespace  = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
             /* Generate  */
             TAO::Register::GetNameAddress(hashNamespace, strName, hashNameAddress);
@@ -210,7 +211,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             REQUIRE(tx.Verify());
 
             /* commit to disk.  This should fail as the sig chain is not the owner of the namespace */
-            REQUIRE(!Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
         }
     }
 
