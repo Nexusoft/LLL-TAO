@@ -37,8 +37,8 @@ TEST_CASE( "Test Tokens API - create token", "[tokens/create/token]")
     json::json error;
 
     /* Generate random token name */
-    std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
-    
+    std::string strToken = "TOKEN" + std::to_string(LLC::GetRand());
+
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
@@ -121,7 +121,7 @@ TEST_CASE( "Test Tokens API - debit token", "[tokens/debit/token]")
 
     /* Generate random token name */
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
-    
+
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
@@ -251,7 +251,7 @@ TEST_CASE( "Test Tokens API - debit token", "[tokens/debit/token]")
      }
 
     /* Create an account to send to */
-    std::string strAccountAddress; 
+    std::string strAccountAddress;
     {
         /* Build the parameters to pass to the API */
         params.clear();
@@ -320,7 +320,7 @@ TEST_CASE( "Test Tokens API - credit token", "[tokens/credit/token]")
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
 
     std::string strTXID;
-    
+
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
@@ -422,7 +422,7 @@ TEST_CASE( "Test Tokens API - get token", "[tokens/get/token]")
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
     std::string strTokenAddress;
     std::string strTXID;
-    
+
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
@@ -559,7 +559,7 @@ TEST_CASE( "Test Tokens API - create account", "[tokens/create/account]")
     /* Generate random token name */
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
     std::string strTokenAddress;
-    
+
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
@@ -683,12 +683,12 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
 
     /* Generate random token name */
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
-    uint256_t hashToken = LLC::GetRand256();
+    uint256_t hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
-    uint256_t hashAccount = LLC::GetRand256() ;
+    uint256_t hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
     uint512_t hashDebitTx;
-    
+
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
@@ -753,7 +753,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         REQUIRE(Execute(tx[1], TAO::Ledger::FLAGS::BLOCK));
     }
 
-    
+
 
     /* Test fail with missing amount */
     {
@@ -876,7 +876,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         REQUIRE(ret["error"]["code"].get<int32_t>() == -69);
     }
 
-    
+
 
     /* Debit the token and credit the account so that we have some funds to debit */
     {
@@ -976,13 +976,13 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
     json::json error;
 
     /* Generate random token name */
-    std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
-    uint256_t hashToken = LLC::GetRand256();
-    std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
-    uint256_t hashAccount = LLC::GetRand256() ;
+    std::string strToken = "TOKEN" + std::to_string(LLC::GetRand());
+    uint256_t hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
+    std::string strAccount = "ACCOUNT" + std::to_string(LLC::GetRand());
+    uint256_t hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
     std::string strTXID;
-    
+
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
@@ -1077,7 +1077,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
         strTXID = tx.GetHash().GetHex();
     }
 
-    
+
     /* Test fail with missing txid */
     {
         /* Build the parameters to pass to the API */
@@ -1119,7 +1119,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
 
         /* Invoke the API */
         ret = APICall("tokens/credit/account", params);
-        
+
         /* Check the result */
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
@@ -1138,12 +1138,12 @@ TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
 
     /* Generate random token name */
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
-    uint256_t hashToken = LLC::GetRand256();
+    uint256_t hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
-    uint256_t hashAccount = LLC::GetRand256() ;
+    uint256_t hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
     std::string strTXID;
-    
+
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
@@ -1262,7 +1262,7 @@ TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
         REQUIRE(result.find("token_name") != result.end());
         REQUIRE(result.find("token") != result.end());
         REQUIRE(result.find("balance") != result.end());
-        
+
     }
 
     /* Test successful get by address  */
@@ -1288,7 +1288,7 @@ TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
         REQUIRE(result.find("token_name") != result.end());
         REQUIRE(result.find("token") != result.end());
         REQUIRE(result.find("balance") != result.end());
-        
+
     }
 
 }

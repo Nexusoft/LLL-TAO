@@ -71,13 +71,16 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
-            TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
+            uint256_t hashRegister = 0;
 
             /* name of the object, default to blank */
             std::string strName = "";
 
             if(params["type"].get<std::string>() == "account")
             {
+                /* Create the proper register format. */
+                hashRegister = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+
                 std::string strTokenIdentifier = "";
 
                 /* Check for token name/address parameter. */
@@ -108,6 +111,9 @@ namespace TAO
             }
             else if(params["type"].get<std::string>() == "token")
             {
+                /* Create the proper register format. */
+                hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
+
                 /* Check for supply parameter. */
                 if(params.find("supply") == params.end())
                     throw APIException(-119, "Missing supply");
