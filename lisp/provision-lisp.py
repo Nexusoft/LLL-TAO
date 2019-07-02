@@ -47,10 +47,10 @@ def allocate_eids():
 #
 def get_rloc(device):
     addr = commands.getoutput('ip route | egrep "link src "'.format(device))
-    if(addr == ""): 
+    if (addr == ""): 
         addr = commands.getoutput('ip route | egrep "link  src "'.format( \
             device))
-        if(addr == ""): return(None)
+        if (addr == ""): return(None)
     #endif
     addr = addr.split()[-1]
     return(addr)
@@ -66,16 +66,16 @@ def get_eids(lisp_config):
 
     iid = eid4 = eid6 = None
     for line in lines:
-        if(iid == None and line.find("instance-id = ") != -1):
+        if (iid == None and line.find("instance-id = ") != -1):
             iid = line.split(" = ")[-1]
         #endif
-        if(line.find("eid-prefix = ") != -1):
+        if (line.find("eid-prefix = ") != -1):
             addr = line.split(" = ")[-1]
             addr = addr.split("/")[0]
-            if(eid4 == None and addr.count(".") == 3): eid4 = addr
-            if(eid6 == None and addr.find(":") != -1): eid6 = addr
+            if (eid4 == None and addr.count(".") == 3): eid4 = addr
+            if (eid6 == None and addr.find(":") != -1): eid6 = addr
         #endif
-        if(iid != None and eid4 != None and eid6 != None): break
+        if (iid != None and eid4 != None and eid6 != None): break
     #endfor
     return(iid, eid4, eid6)
 #enddef
@@ -87,13 +87,13 @@ def get_eids(lisp_config):
 #
 def get_parms():
     parm_len = len(sys.argv)
-    if(parm_len == 1): return(None, None, None)
+    if (parm_len == 1): return(None, None, None)
 
     device = sys.argv[1]
-    if(parm_len == 2): return(device, None, None)
+    if (parm_len == 2): return(device, None, None)
 
     eid4 = sys.argv[2]
-    if(parm_len == 3): return(device, None, None)
+    if (parm_len == 3): return(device, None, None)
 
     eid6 = sys.argv[3]
     return(device, eid4, eid6)
@@ -105,14 +105,14 @@ def get_parms():
 # Get command-line parameters.
 #
 device, eid4, eid6 = get_parms()
-if(device == None): exit(1)
+if (device == None): exit(1)
 
 #
 # Check to see if file lisp.config exists. If not, provision new EIDs.
 # Otherwise, grab EIDs from file.
 #
 lisp_config = "./lisp.config"
-if(os.path.exists(lisp_config) == False): lisp_config += ".xtr"
+if (os.path.exists(lisp_config) == False): lisp_config += ".xtr"
 f = open(lisp_config, "r"); lisp_config = f.read(); f.close()
 
 #
@@ -121,9 +121,9 @@ f = open(lisp_config, "r"); lisp_config = f.read(); f.close()
 #
 provision = lisp_config.find("<iid>") != -1
 
-if(provision):
+if (provision):
     iid = "200"
-    if(eid4 == None): eid4, eid6 = allocate_eids()
+    if (eid4 == None): eid4, eid6 = allocate_eids()
     rloc = get_rloc(device)
 
     print "Provisioning lisp.config file with EIDs [{}]{} & [{}]{}".format(iid,
@@ -136,7 +136,7 @@ if(provision):
     f = open("./lisp.config", "w"); f.write(lisp_config); f.close()
 else:
     iid, eid4, eid6 = get_eids(lisp_config)
-    if(iid == None):
+    if (iid == None):
         print "lisp.config file corrupt, remove it and rerun script"
         exit(1)
     #endif
