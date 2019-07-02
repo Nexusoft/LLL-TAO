@@ -193,6 +193,8 @@ ifdef UNIT_TESTS
 		   build/Tests_LLC_aes.o \
 		   build/Tests_TAO_API_assets.o \
 		   build/Tests_TAO_API_finance.o \
+		   build/Tests_TAO_API_names.o \
+		   build/Tests_TAO_API_supply.o \
 		   build/Tests_TAO_API_tokens.o \
 		   build/Tests_TAO_API_users.o \
 		   build/Tests_TAO_API_util.o \
