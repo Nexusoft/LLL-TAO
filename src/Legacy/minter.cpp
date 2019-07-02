@@ -217,13 +217,13 @@ namespace Legacy
         /* Attempt to use the trust key cached in the wallet */
         std::vector<uint8_t> vchTrustKey = pStakingWallet->GetTrustKey();
 
-        if (!vchTrustKey.empty())
+        if(!vchTrustKey.empty())
         {
             uint576_t cKey;
             cKey.SetBytes(vchTrustKey);
 
             /* Read the key cached in wallet from the trustDB */
-            if (!LLD::trustDB->ReadTrustKey(cKey, trustKey))
+            if(!LLD::trustDB->ReadTrustKey(cKey, trustKey))
             {
                 /* Cached wallet trust key not found in trust db, reset it */
                 trustKey.SetNull();
@@ -246,34 +246,40 @@ namespace Legacy
             if(LLD::trustDB->BatchRead("trust", vKeys, -1))
             {
                 /* Search through the trust keys. */
-                for (const auto& trustKeyCheck : vKeys)
+                for(const auto& trustKeyCheck : vKeys)
                 {
                     /* Check whether trust key is part of current wallet */
                     NexusAddress address;
                     address.SetPubKey(trustKeyCheck.vchPubKey);
 
-                    if (pStakingWallet->HaveKey(address))
+                    if(pStakingWallet->HaveKey(address))
                     {
-                        /* Trust key belongs to current wallet. Verify this is the one to use. */
-                        TAO::Ledger::BlockState blockStateCheck = TAO::Ledger::ChainState::stateBest.load();
+                        /* Trust key is in wallet, check version of most recent block */
+                        debug::log(2, FUNCTION, "Checking trustKey ", address.ToString());
 
-                        /* Check for keys that are expired version 4. */
-                        if (TAO::Ledger::GetLastTrust(trustKeyCheck, blockStateCheck) && blockStateCheck.nVersion < 5)
+                        TAO::Ledger::BlockState state;
+                        if(LLD::legDB->ReadBlock(trustKeyCheck.hashLastBlock, state))
                         {
-                            /* Expired pre-v5 Trust Key. Do not use. */
-                            debug::log(2, FUNCTION, "Found expired version 4 trust key in wallet. Not using.");
-                            continue;
+                            debug::log(2, FUNCTION, "Checking last stake height=", state.nHeight, " version=", state.nVersion);
+
+                            if(state.nVersion >= 5)
+                            {
+                                /* Set the trust key if found. */
+                                trustKey = trustKeyCheck;
+
+                                /* Store trust key */
+                                pStakingWallet->SetTrustKey(trustKey.vchPubKey);
+
+                                debug::log(0, FUNCTION, "Found Trust Key matching current wallet");
+                                break;
+                            }
+                            else
+                            {
+                                /* Expired pre-v5 Trust Key. Do not use. */
+                                debug::log(2, FUNCTION, "Found expired version 4 Trust key. Not using.");
+                            }
                         }
-
-                        /* Set the trust key if found. */
-                        trustKey = trustKeyCheck;
-
-                        /* Store trust key */
-                        pStakingWallet->SetTrustKey(trustKey.vchPubKey);
-
-                        debug::log(0, FUNCTION, "Found Trust Key matching current wallet");
                     }
-
                 }
             }
         }
@@ -362,12 +368,12 @@ namespace Legacy
             candidateBlock.vtx[0].vin[0].prevout.hash = trustKey.GetHash();
 
             /* Get the last stake block for this trust key. */
-            TAO::Ledger::BlockState prevBlockState = TAO::Ledger::ChainState::stateBest.load();
-            if (!TAO::Ledger::GetLastTrust(trustKey, prevBlockState))
-                return debug::error(FUNCTION, "Failed to get last trust for trust key");
+            TAO::Ledger::BlockState statePrev = TAO::Ledger::ChainState::stateBest.load();
+            if(LLD::legDB->ReadBlock(trustKey.hashLastBlock, statePrev))
+                return debug::error(FUNCTION, "Failed to get last stake for trust key");
 
             /* Enforce the minimum staking transaction interval. (current height is candidate height - 1) */
-            uint32_t nCurrentInterval = candidateBlock.nHeight - 1 - prevBlockState.nHeight;
+            uint32_t nCurrentInterval = candidateBlock.nHeight - 1 - statePrev.nHeight;
             if (nCurrentInterval < nMinimumInterval)
             {
                 /* Below minimum interval for generating stake blocks. Increase sleep time until can continue normally. */
@@ -389,7 +395,7 @@ namespace Legacy
             uint32_t nPrevScore = 0;
 
             /* Handle if previous block was a genesis. */
-            if (prevBlockState.vtx[0].first != TAO::Ledger::TYPE::LEGACY_TX)
+            if (statePrev.vtx[0].first != TAO::Ledger::TYPE::LEGACY_TX)
             {
                 debug::error(FUNCTION, "Trust key for Legacy Stake Minter does not have Legacy transaction in Genesis coinstake.");
 
@@ -397,12 +403,12 @@ namespace Legacy
             }
 
             /* Retrieve the previous coinstake transaction */
-            uint512_t prevCoinstakeTxHash = prevBlockState.vtx[0].second;
-            Transaction prevCoinstakeTx;
-            if (!LLD::legacyDB->ReadTx(prevCoinstakeTxHash, prevCoinstakeTx))
+            uint512_t prevHash = statePrev.vtx[0].second;
+            Transaction txPrev;
+            if (!LLD::legacyDB->ReadTx(prevHash, txPrev))
                 return debug::error(FUNCTION, "Failed to read previous coinstake for trust key");
 
-            if (prevCoinstakeTx.IsGenesis())
+            if (txPrev.IsGenesis())
             {
                 nSequence   = 1;
                 nPrevScore  = 0;
@@ -412,7 +418,7 @@ namespace Legacy
                 /* Extract the trust from the previous block. */
                 uint1024_t hashDummy;
 
-                if(!prevCoinstakeTx.ExtractTrust(hashDummy, nSequence, nPrevScore))
+                if(!txPrev.ExtractTrust(hashDummy, nSequence, nPrevScore))
                     return debug::error("Failed to extract trust from previous block");
 
                 /* Increment sequence number for next trust transaction. */
@@ -420,7 +426,7 @@ namespace Legacy
             }
 
             /* Calculate time since the last trust block for this trust key (block age = age of previous trust block). */
-            uint32_t nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - prevBlockState.GetBlockTime();
+            uint32_t nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - statePrev.GetBlockTime();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
             if (nBlockAge <= nMaxBlockAge)
@@ -445,7 +451,7 @@ namespace Legacy
 
             /* Serialize previous trust block hash, new sequence, and new trust score into vin. */
             DataStream scriptPub(candidateBlock.vtx[0].vin[0].scriptSig, SER_NETWORK, LLP::PROTOCOL_VERSION);
-            scriptPub << prevBlockState.GetHash() << nSequence << nScore;
+            scriptPub << statePrev.GetHash() << nSequence << nScore;
 
             /* Set the script sig (Script doesn't support serializing all types needed) */
             candidateBlock.vtx[0].vin[0].scriptSig.clear();
