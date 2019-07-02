@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <Legacy/types/txout.h>
 
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/trustkey.h>
+
 #include <Util/templates/serialize.h>
 
 
@@ -444,11 +446,12 @@ namespace Legacy
 		 *  Check the calculated trust score meets published one.
 		 *
 		 *  @param[in] state The block state to check from.
+		 *  @param[in] trustKey Trust key to check against
 		 *
 		 *  @return true if the trust score was satisfied.
 		 *
 		 **/
-		bool CheckTrust(const TAO::Ledger::BlockState& state) const;
+		bool CheckTrust(const TAO::Ledger::BlockState& state, const TAO::Ledger::TrustKey& trustKey) const;
 
 
 	protected:
