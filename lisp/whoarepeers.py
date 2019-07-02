@@ -14,7 +14,7 @@ lig = ('python -O /lispers.net/lisp-lig.pyo "[200]{}" to node1.nexusoft.io' + \
   "| egrep rloc-name")
 
 peers = commands.getoutput(peerinfo)
-if(peers == ""):
+if (peers == ""):
     print "No peers"
     exit(0)
 #endif
@@ -26,7 +26,7 @@ for peer in peers:
     pp = (p + " ...").ljust(25)
     print "Found peer {}".format(pp),
 
-    if(pp[0:4] == "240." or pp[0:2] == "fe"):
+    if (pp[0:4] == "240." or pp[0:2] == "fe"):
         out = commands.getoutput(lig.format(p))
         out = out.split()
         print out[-1]
