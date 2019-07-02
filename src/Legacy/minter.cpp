@@ -369,7 +369,7 @@ namespace Legacy
 
             /* Get the last stake block for this trust key. */
             TAO::Ledger::BlockState statePrev = TAO::Ledger::ChainState::stateBest.load();
-            if(LLD::legDB->ReadBlock(trustKey.hashLastBlock, statePrev))
+            if(!LLD::legDB->ReadBlock(trustKey.hashLastBlock, statePrev))
                 return debug::error(FUNCTION, "Failed to get last stake for trust key");
 
             /* Enforce the minimum staking transaction interval. (current height is candidate height - 1) */
