@@ -365,7 +365,7 @@ namespace TAO
                 return debug::error(FUNCTION, "block's timestamp too early");
 
             /* Check that Block is Descendant of Hardened Checkpoints. */
-            if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
+            if(!IsDescendant(statePrev))
                 return debug::error(FUNCTION, "not descendant of last checkpoint");
 
             /* Check the block proof of work rewards. */
@@ -477,7 +477,7 @@ namespace TAO
 
                 /* Get last trust hash. */
                 uint512_t hashLastTrust = 0;
-                producer[0]>> hashLastTrust;
+                producer[0] >> hashLastTrust;
 
                 uint64_t nClaimedTrust = 0;
                 producer[0] >> nClaimedTrust;
