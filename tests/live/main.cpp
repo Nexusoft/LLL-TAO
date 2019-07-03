@@ -198,17 +198,17 @@ public:
 
         while(nTemp > std::numeric_limits<uint64_t>::max())
         {
-            uint128_t nDiff = nTemp;
+            //uint128_t nDiff = nTemp;
             nTemp    /= 10;
 
-            uint64_t nRound = static_cast<uint64_t>(nDiff - (nTemp * 10));
+            //uint64_t nRound = static_cast<uint64_t>(nDiff - (nTemp * 10));
             //debug::log(0, "Rounding ", nRound);
 
-            if(nRound >= 5)
-            {
-                debug::log(0, "Rounding ", nRound);
-                nTemp += 1;
-            }
+            //if(nRound >= 5)
+            //{
+                //debug::log(0, "Rounding ", nRound);
+            //    nTemp += 1;
+            //}
 
             nFigures /= 10;
         }
@@ -273,12 +273,12 @@ public:
 
         while(nTemp > std::numeric_limits<uint64_t>::max())
         {
-            uint128_t nDiff = nTemp;
+            //uint128_t nDiff = nTemp;
 
-            uint64_t nRound = (nDiff - nTemp);
+            //uint64_t nRound = (nDiff - nTemp);
             nTemp    /= 10;
 
-            debug::log(0, "Rounding ", nRound);
+            //debug::log(0, "Rounding ", nRound);
             ret.nFigures /= 10;
         }
 
@@ -390,6 +390,15 @@ public:
                 //debug::log(0, fact);
             }
 
+            if(power.nFigures < 100)
+                return *this;
+
+            if(base.nFigures < 100)
+                return *this;
+
+            if(nFigures < 100)
+                return *this;
+
 
             if(i == 1)
                 power = 1;
@@ -397,6 +406,9 @@ public:
                 power = base;
             else
                 power *= base;
+
+            if(fact == 0)
+                return *this;
 
             // / fact;
 
@@ -462,7 +474,7 @@ public:
 
     uint64_t get_uint(uint32_t nTotalFigures = FIGURES)
     {
-        uint192_t nRet = nValue;
+        uint64_t nRet = nValue;
         for(int i = 0; i < (FIGURES - nTotalFigures); i++)
         {
             //debug::log(0, i, " UINT ", uint64_t(nRet));
@@ -470,13 +482,13 @@ public:
             nRet /= 10;
         }
 
-        return nRet.Get64();
+        return nRet;
     }
 
 
     void print() const
     {
-        printf("%.16f FIGURES %llu\n", get(), nFigures);
+        printf("%.16f FIGURES %lu\n", get(), nFigures);
     }
 
 
@@ -493,7 +505,7 @@ public:
 #include <TAO/Ledger/include/supply.h>
 
 
-const precision_t<15> decays[3][3] =
+const precision_t<8> decays[3][3] =
 {
     {25.0, 0.00000110, 0.500},
     {5.00, 0.00000055, 0.500},
@@ -503,10 +515,13 @@ const precision_t<15> decays[3][3] =
 
 uint64_t Subsidy(const uint32_t nMinutes, const uint32_t nType, bool fPrint = false)
 {
-    precision_t<15> exponent = decays[nType][1] * nMinutes;
+    precision_t<8> exponent = decays[nType][1] * nMinutes;
     exponent.exp(fPrint);
 
-    precision_t<15> ret = decays[nType][0] / exponent;
+    if(exponent == 0)
+        return 500000;
+
+    precision_t<8> ret = decays[nType][0] / exponent;
     ret += decays[nType][2];
 
     if(fPrint)
@@ -528,27 +543,36 @@ int main(int argc, char** argv)
     debug::log(0, "Chain Age ", GetChainAge(time(NULL)));
 
     uint32_t nFails = 0;
-    uint32_t nTotals = 10000000;
-    for(int i = 2141874; i < nTotals; i++)
+    uint32_t nTotals = 100000000;
+
+    runtime::timer timer;
+    timer.Start();
+    for(int i = 5000000; i < nTotals; i++)
     {
-        if(i % 10000 == 0)
-            printf("%u\n", i);
+        if(i % 100000 == 0)
+        {
+            uint32_t nMS = timer.ElapsedMilliseconds();
+
+            debug::log(0, i, " Time ", nMS, " ", 100000000 / (nMS == 0 ? 1 : nMS), " per second");
+            timer.Reset();
+        }
 
         //debug::log(0, i);
-        if(GetSubsidy(i, 0) != Subsidy(i, 0))
+        //if(GetSubsidy(i, 0) != Subsidy(i, 0))
         {
-            debug::log(0, "MINUTE ", i);
-            debug::log(0, GetSubsidy(i, 0));
-            debug::log(0, Subsidy(i, 0, true));
-            printf("------------------------------\n");
+            Subsidy(i, 0, false);
+            //debug::log(0, "MINUTE ", i);
+            //debug::log(0, GetSubsidy(i, 0));
+            //debug::log(0, Subsidy(i, 0, false));
+            //printf("------------------------------\n");
 
             ++nFails;
 
-            return 0;
+            //return 0;
         }
 
-        assert(GetSubsidy(i, 1) == Subsidy(i, 1));
-        assert(GetSubsidy(i, 2) == Subsidy(i, 2));
+        //assert(GetSubsidy(i, 1) == Subsidy(i, 1));
+        //assert(GetSubsidy(i, 2) == Subsidy(i, 2));
     }
 
     debug::log(0, "FAILURES: ", nFails, " ", nFails * 100.0 / nTotals, " %");
@@ -590,63 +614,6 @@ int main(int argc, char** argv)
     debug::log(0, "value4 = ", value4);
 
     return 0;
-
-    using namespace TAO::Register;
-
-    Object object;
-    object << std::string("byte") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::UINT8_T) << uint8_t(55)
-           << std::string("test") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::STRING) << std::string("this string")
-           << std::string("bytes") << uint8_t(TYPES::MUTABLE) << uint8_t(TYPES::BYTES) << std::vector<uint8_t>(10, 0xff)
-           << std::string("balance") << uint8_t(TYPES::UINT64_T) << uint64_t(55)
-           << std::string("identifier") << uint8_t(TYPES::STRING) << std::string("NXS");
-
-
-    //unit tests
-    uint8_t nTest;
-    object.Read("byte", nTest);
-
-    debug::log(0, "TEST ", uint32_t(nTest));
-
-    object.Write("byte", uint8_t(98));
-
-    uint8_t nTest2;
-    object.Read("byte", nTest2);
-
-    debug::log(0, "TEST2 ", uint32_t(nTest2));
-
-    std::string strTest;
-    object.Read("test", strTest);
-
-    debug::log(0, "STRING ", strTest);
-
-    object.Write("test", std::string("fail"));
-    object.Write("test", "fail");
-
-    object.Write("test", std::string("THIS string"));
-
-    std::string strGet;
-    object.Read("test", strGet);
-
-    debug::log(0, strGet);
-
-    std::vector<uint8_t> vBytes;
-    object.Read("bytes", vBytes);
-
-    debug::log(0, "DATA ", HexStr(vBytes.begin(), vBytes.end()));
-
-    vBytes[0] = 0x00;
-    object.Write("bytes", vBytes);
-
-    object.Read("bytes", vBytes);
-
-    debug::log(0, "DATA ", HexStr(vBytes.begin(), vBytes.end()));
-
-
-
-    std::string identifier;
-    object.Read("identifier", identifier);
-
-    debug::log(0, "Token Type ", identifier);
 
     return 0;
 }

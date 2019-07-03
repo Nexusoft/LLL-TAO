@@ -18,7 +18,6 @@ ________________________________________________________________________________
 #include <LLC/types/base_uint.h>
 
 
-
 /** 192-bit integer */
 class uint192_t : public base_uint<192>
 {
@@ -29,13 +28,13 @@ public:
     {
     }
 
-    uint192_t(const  base_uint<192>& b)
+    uint192_t(const base_uint<192>& b)
     {
         for (int i = 0; i < WIDTH; ++i)
             pn[i] = b.pn[i];
     }
 
-    uint192_t& operator=(const  base_uint<192>& b)
+    uint192_t& operator=(const base_uint<192>& b)
     {
         for (int i = 0; i < WIDTH; ++i)
             pn[i] = b.pn[i];
