@@ -323,7 +323,11 @@ namespace LLD
             if(!IndexBlock(state.nHeight, state.GetHash()))
                 return false;
 
-            state = state.Next();
+            /* Move onto the next block if there is one */
+            if(state.hashNextBlock != 0)
+                state = state.Next();
+            else
+                break;
         }
 
         uint32_t nElapsed = timer.Elapsed();

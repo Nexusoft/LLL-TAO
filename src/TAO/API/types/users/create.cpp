@@ -48,6 +48,13 @@ namespace TAO
             /* Check for username parameter. */
             if(params.find("username") == params.end())
                 throw APIException(-127, "Missing username");
+            
+            /* Extract the username and check for allowed characters / length */
+            std::string strUsername = params["username"].get<std::string>();
+            
+            /* Don't allow : and . */
+            if(strUsername.find(":") != strUsername.npos || strUsername.find(".") != strUsername.npos)
+                throw APIException(-160, "Username contains invalid characters");
 
             /* Check for password parameter. */
             if(params.find("password") == params.end())
@@ -58,7 +65,7 @@ namespace TAO
                 throw APIException(-129, "Missing PIN");
 
             /* Generate the signature chain. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername.c_str(), params["password"].get<std::string>().c_str());
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = user->Genesis();

@@ -40,6 +40,9 @@ namespace TAO
                                                    const std::string& strFullName,
                                                    const uint256_t& hashRegister)
         {
+            /* Don't allow : in name */
+            if(strFullName.find(":") != strFullName.npos)
+                throw APIException(-161, "Name contains invalid characters");
 
             /* Declare the contract for the response */
             TAO::Operation::Contract contract;
