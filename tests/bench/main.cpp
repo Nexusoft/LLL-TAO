@@ -38,12 +38,9 @@ TEST_CASE("Arguments Tests", "[args]")
     }
 
     /* Create the database instances. */
-    LLD::Register = new LLD::Register(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-    LLD::Local = new LLD::Local(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-    LLD::Ledger = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Initialize();
 
+    /* Shutdown the database instances. */
+    LLD::Shutdown();
 
-    /* Initialize the Legacy Database. */
-    LLD::Trust  = new LLD::Trust(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-    LLD::Legacy = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 }

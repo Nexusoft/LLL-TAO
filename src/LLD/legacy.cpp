@@ -11,20 +11,20 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/legacy.h>
+#include <LLD/types/legacy.h>
 
 
 namespace LLD
 {
 
-    /** The Database Constructor. To determine file location and the Bytes per Record. **/
+    /* The Database Constructor. To determine file location and the Bytes per Record. */
     LegacyDB::LegacyDB(uint8_t nFlags, uint64_t nBuckets, uint32_t nCacheIn)
     : SectorDatabase(std::string("legacy"), nFlags, nBuckets, nCacheIn)
     {
     }
 
 
-    /** Default Destructor **/
+    /* Default Destructor */
     LegacyDB::~LegacyDB()
     {
     }

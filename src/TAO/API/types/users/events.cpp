@@ -12,7 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/include/global.h>
-#include <LLD/include/ledger.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>

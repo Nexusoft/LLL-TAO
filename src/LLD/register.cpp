@@ -11,12 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/register.h>
+#include <LLD/types/register.h>
 
 namespace LLD
 {
 
-    /** The Database Constructor. To determine file location and the Bytes per Record. **/
+    /* The Database Constructor. To determine file location and the Bytes per Record. */
     RegisterDB::RegisterDB(uint8_t nFlags)
     : SectorDatabase("registers", nFlags)
     , MEMORY_MUTEX()
@@ -26,7 +26,7 @@ namespace LLD
     }
 
 
-    /** Default Destructor **/
+    /* Default Destructor */
     RegisterDB::~RegisterDB()
     {
     }

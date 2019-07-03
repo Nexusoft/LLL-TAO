@@ -14,7 +14,6 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 
-#include <LLD/include/legacy.h>
 #include <LLD/include/global.h>
 
 #include <LLP/include/version.h>

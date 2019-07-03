@@ -12,7 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #include <Legacy/types/merkle.h>
-#include <LLD/include/legacy.h>
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/include/constants.h>

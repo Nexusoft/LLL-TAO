@@ -14,12 +14,12 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/include/contract.h>
+#include <LLD/types/contract.h>
 
 
 namespace LLD
 {
-    /** The Database Constructor.  **/
+    /* The Database Constructor.  */
     ContractDB::ContractDB(uint8_t nFlags)
     : SectorDatabase("contracts", nFlags)
     , MEMORY_MUTEX()
@@ -28,7 +28,7 @@ namespace LLD
     }
 
 
-    /** Default Destructor **/
+    /* Default Destructor */
     ContractDB::~ContractDB()
     {
     }

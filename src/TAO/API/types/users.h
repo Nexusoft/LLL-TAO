@@ -319,6 +319,19 @@ namespace TAO
             json::json Create(const json::json& params, bool fHelp);
 
 
+            /** Update
+             *
+             *  Update a user account credentials.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Update(const json::json& params, bool fHelp);
+
+
             /** Recovery
              *
              *  Create a user recovery passphrase.
