@@ -280,6 +280,8 @@ Error Codes
 | -157 | Field not mutable in asset (field) |
 | -158 | Value longer than maximum length (field) |
 | -159 | Values must be passed in as strings |
+| -160 | Username contains invalid characters |
+| -161 | Name contains invalid characters |
 
 
 
