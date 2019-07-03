@@ -99,6 +99,38 @@ TEST_CASE( "Test Names API - create namespace", "[names/create/namespace]")
         REQUIRE(ret["error"]["code"].get<int32_t>() == -88);
     }
 
+    /* fail with invalid chars in name name */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = SESSION1;
+        params["pin"] = PIN;
+        params["name"] = "not.allowed";
+
+        /* Invoke the API */
+        ret = APICall("names/create/namespace", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -162);
+    }
+
+    /* fail with invalid chars in name name */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = SESSION1;
+        params["pin"] = PIN;
+        params["name"] = "not:allowed";
+
+        /* Invoke the API */
+        ret = APICall("names/create/namespace", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -162);
+    }
+
     /* success case */
     {
         /* Build the parameters to pass to the API */
@@ -626,6 +658,23 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         REQUIRE(ret["error"]["code"].get<int32_t>() == -89);
     }
 
+    /* fail with invalid chars in name */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = SESSION1;
+        params["pin"] = PIN;
+        params["name"] = "not:allowed";
+        params["register_address"] = hashRegisterAddress.GetHex();
+
+        /* Invoke the API */
+        ret = APICall("names/create/name", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -161);
+    }
+
     /* fail with invalid namespace  */
     {
         /* Build the parameters to pass to the API */
@@ -747,6 +796,7 @@ TEST_CASE( "Test Names API - get name", "[names/get/name]")
         REQUIRE(ret.find("error") != ret.end());
         REQUIRE(ret["error"]["code"].get<int32_t>() == -101);
     }
+    
 
     /* fail with invalid register_address */
     {

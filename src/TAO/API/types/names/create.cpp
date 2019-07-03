@@ -156,6 +156,11 @@ namespace TAO
             /* Get the namespace name */
             std::string strNamespace = params["name"].get<std::string>();
 
+            /* Don't allow : and . */
+            if(strNamespace.find(":") != strNamespace.npos || strNamespace.find(".") != strNamespace.npos)
+                throw APIException(-162, "Namespace contains invalid characters");
+
+
             /* Generate register address for namespace, which must be a hash of the name */
             uint256_t hashRegister = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 

@@ -282,6 +282,7 @@ Error Codes
 | -159 | Values must be passed in as strings |
 | -160 | Username contains invalid characters |
 | -161 | Name contains invalid characters |
+| -162 | Name contains invalid characters |
 
 
 

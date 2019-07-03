@@ -65,7 +65,7 @@ namespace TAO
                 throw APIException(-129, "Missing PIN");
 
             /* Generate the signature chain. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername.c_str(), params["password"].get<std::string>().c_str());
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = user->Genesis();
