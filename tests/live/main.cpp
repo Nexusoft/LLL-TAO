@@ -34,15 +34,16 @@ ________________________________________________________________________________
 #include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/types/genesis.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <list>
-
 
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+
 
     uint256_t hashTest = LLC::GetRand256();
 
