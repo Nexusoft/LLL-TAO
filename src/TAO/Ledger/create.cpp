@@ -309,9 +309,11 @@ namespace TAO
                         /* Check for interval. */
                         if(statePrev.nChannelHeight % ABMASSADOR_PAYOUT_THRESHOLD == 0)
                         {
+                            debug::log(0, "Checking....");
+
                             /* Get the total in reserves. */
                             int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
-                            if(nBalance < 0)
+                            if(nBalance > 0)
                             {
                                 /* Loop through the embassy sigchains. */
                                 for(auto it = AMBASSADOR.begin(); it != AMBASSADOR.end(); ++it)
@@ -326,12 +328,11 @@ namespace TAO
                                     /* The total to be credited. */
                                     uint64_t nCredit = (nBalance * it->second.second) / 1000;
                                     block.producer[nContract] << nCredit;
+                                    block.producer[nContract] << uint64_t(0);
                                 }
                             }
                         }
                     }
-                    else
-                        return debug::error(FUNCTION, "failed to get last state");
                 }
                 else if(nChannel == 3)
                 {

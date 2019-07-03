@@ -459,6 +459,8 @@ namespace TAO
                         if(fValidate)
                             return debug::error(FUNCTION, "OP::COINBASE: cannot use OP::VALIDATE with coinbase");
 
+                        //TODO: write a genesis level event for AMBASSADOR and DEVELOPERS
+
                         /* Seek to end. */
                         contract.Seek(48);
 

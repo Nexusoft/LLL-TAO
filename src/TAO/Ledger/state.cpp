@@ -323,18 +323,15 @@ namespace TAO
                     {
                         /* Get the total in reserves. */
                         int64_t nBalance = stateLast.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
-                        if(nBalance < 0)
+                        if(nBalance > 0)
                         {
                             /* Loop through the embassy sigchains. */
                             uint32_t nContract = tx.Size() - 3;
                             for(auto it = AMBASSADOR.begin(); it != AMBASSADOR.end(); ++it)
                             {
-                                /* Check for negative balance (paranoid check). */
-                                if(nBalance < 0)
-                                    return false;
 
                                 /* Seek to Genesis */
-                                tx[nContract].Seek(1);
+                                tx[nContract].Seek(1, Operation::Contract::OPERATIONS, STREAM::BEGIN);
 
                                 /* Get the genesis.. */
                                 Genesis genesis;
@@ -372,8 +369,7 @@ namespace TAO
                     for(uint32_t n = 0; n < nSize; ++n)
                     {
                         /* Seek to Genesis */
-                        tx[n].Reset();
-                        tx[n].Seek(1);
+                        tx[n].Seek(1, Operation::Contract::OPERATIONS, STREAM::BEGIN);
 
                         /* Get the genesis.. */
                         Genesis genesis;
