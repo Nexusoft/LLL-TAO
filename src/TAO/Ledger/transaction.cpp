@@ -410,19 +410,22 @@ namespace TAO
         /* Determines if the transaction is a coinbase transaction. */
         bool Transaction::IsCoinbase() const
         {
-            /* Check for single contract. */
-            if(vContracts.size() != 1)
-                return false;
+            /* Check all contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Check for empty first contract. */
+                if(contract.Empty())
+                    return false;
 
-            /* Check for empty first contract. */
-            if(vContracts[0].Empty())
-                return false;
+                /* Check for conditions. */
+                if(!contract.Empty(TAO::Operation::Contract::CONDITIONS))
+                    return false;
 
-            /* Check for conditions. */
-            if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
-                return false;
+                if(contract.Primitive() != TAO::Operation::OP::COINBASE)
+                    return false;
+            }
 
-            return (vContracts[0].Primitive() == TAO::Operation::OP::COINBASE);
+            return true;
         }
 
 

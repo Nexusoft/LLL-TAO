@@ -28,9 +28,11 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/supply.h>
@@ -272,7 +274,7 @@ namespace TAO
 
             /* Find the last block of this channel. */
             BlockState stateLast = statePrev;
-            GetLastState(stateLast, GetChannel());
+            GetLastState(stateLast, nChannel);
 
             /* Compute the Channel Height. */
             nChannelHeight = stateLast.nChannelHeight + 1;
@@ -282,12 +284,16 @@ namespace TAO
             {
                 /* Calculate the coinbase rewards from the coinbase transaction. */
                 uint64_t nCoinbaseRewards[3] = { 0, 0, 0 };
-                if(vtx[0].first == TYPE::LEGACY_TX)
+                if(nVersion < 7) //legacy blocks
                 {
                     /* Get the coinbase from the memory pool. */
                     Legacy::Transaction tx;
                     if(!LLD::Legacy->ReadTx(vtx[0].second, tx, FLAGS::MEMPOOL))
                         return debug::error(FUNCTION, "cannot get coinbase tx");
+
+                    /* Double check for coinbase. */
+                    if(!tx.IsCoinBase())
+                        return debug::error(FUNCTION, "first tx must be coinbase");
 
                     /* Get the size of the coinbase. */
                     uint32_t nSize = tx.vout.size();
@@ -307,27 +313,94 @@ namespace TAO
                     if(!LLD::Ledger->ReadTx(vtx.back().second, tx, FLAGS::MEMPOOL))
                         return debug::error(FUNCTION, "cannot get coinbase tx");
 
+                    /* Check for coinbase. */
+                    if(!tx.IsCoinbase())
+                        return debug::error(FUNCTION, "last tx must be producer");
+
+                    /* Check for interval. */
+                    bool fAmbassador = false;
+                    if(stateLast.nChannelHeight % ABMASSADOR_PAYOUT_THRESHOLD == 0)
+                    {
+                        /* Get the total in reserves. */
+                        int64_t nBalance = stateLast.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
+                        if(nBalance < 0)
+                        {
+                            /* Loop through the embassy sigchains. */
+                            uint32_t nContract = tx.Size() - 3;
+                            for(auto it = AMBASSADOR.begin(); it != AMBASSADOR.end(); ++it)
+                            {
+                                /* Check for negative balance (paranoid check). */
+                                if(nBalance < 0)
+                                    return false;
+
+                                /* Seek to Genesis */
+                                tx[nContract].Seek(1);
+
+                                /* Get the genesis.. */
+                                Genesis genesis;
+                                tx[nContract] >> genesis;
+                                if(!genesis.IsValid())
+                                    return debug::error(FUNCTION, "invalid ambassador genesis-id ", genesis.SubString());
+
+                                /* Check for match. */
+                                if(genesis != it->first)
+                                    return debug::error(FUNCTION, "ambassador genesis mismatch ", genesis.SubString());
+
+                                /* The total to be credited. */
+                                uint64_t nCredit = (nBalance * it->second.second) / 1000;
+
+                                /* Check the value */
+                                uint64_t nValue = 0;
+                                tx[nContract] >> nValue;
+                                if(nValue != nCredit)
+                                    return debug::error(FUNCTION, "invalid ambassador rewards=", nValue, " expected=", nCredit);
+
+                                /* Iterate contract. */
+                                ++nContract;
+
+                                /* Update coinbase rewards. */
+                                nCoinbaseRewards[1] += nValue;
+                            }
+                        }
+
+                        /* Set that ambassador is active for this block. */
+                        fAmbassador = true;
+                    }
+
                     /* Loop through the contracts. */
-                    uint32_t nSize = tx.Size();
+                    uint32_t nSize = tx.Size() - (fAmbassador ? 3 : 0);
                     for(uint32_t n = 0; n < nSize; ++n)
                     {
+                        /* Seek to Genesis */
+                        tx[n].Seek(1);
+
+                        /* Get the genesis.. */
+                        Genesis genesis;
+                        tx[n] >> genesis;
+                        if(!genesis.IsValid())
+                            return debug::error(FUNCTION, "invalid ambassador genesis-id ", genesis.SubString());
+
                         /* Get the reward. */
                         uint64_t nValue = 0;
-                        if(!tx[n].Value(nValue))
-                            return debug::error(FUNCTION, "no value in contract");
+                        tx[n] >> nValue;
 
+                        /* Update the coinbase rewards. */
                         nCoinbaseRewards[0] += nValue;
                     }
+
+                    /* Check the coinbase rewards. */
+                    uint64_t nExpected = GetCoinbaseReward(statePrev, nChannel, 0);
+                    if(nCoinbaseRewards[0] != nExpected)
+                        return debug::error(FUNCTION, "miner reward=", nCoinbaseRewards[0], " expected=", nExpected);
                 }
 
                 /* Calculate the new reserve amounts. */
                 for(int nType = 0; nType < 3; ++nType)
                 {
                     /* Calculate the Reserves from the Previous Block in Channel's reserve and new Release. */
-                    uint64_t nReserve  = stateLast.nReleasedReserve[nType] +
-                        GetReleasedReserve(*this, GetChannel(), nType);
+                    uint64_t nReserve  = stateLast.nReleasedReserve[nType] + GetReleasedReserve(*this, GetChannel(), nType);
 
-                    /* Block Version 3 Check. Disable Reserves from going below 0. */
+                    /* Disable Reserves from going below 0. */
                     if(nVersion != 2 && nCoinbaseRewards[nType] >= nReserve)
                         return debug::error(FUNCTION, "out of reserve limits");
 

@@ -55,6 +55,10 @@ namespace TAO
                 }
             }
         };
+
+
+        /** Ambassador payout threshold. **/
+        const uint16_t ABMASSADOR_PAYOUT_THRESHOLD = 5;
     }
 }
 

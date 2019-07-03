@@ -404,18 +404,9 @@ namespace TAO
 
                     nReward += nValue;
                 }
-
-                /* Check that the Mining Reward Matches the Coinbase Calculations. */
-                if(nReward != GetCoinbaseReward(statePrev, GetChannel(), 0))
-                    return debug::error(FUNCTION, "miner reward mismatch ", nReward, " : ",
-                         GetCoinbaseReward(statePrev, GetChannel(), 0));
             }
             else if(IsProofOfStake())
             {
-                /* Check that the Coinbase / CoinstakeTimstamp is after Previous Block. */
-                if(producer.nTimestamp < statePrev.GetBlockTime())
-                    return debug::error(FUNCTION, "coinstake transaction too early");
-
                 /* Check the proof of stake. */
                 if(!CheckStake())
                     return debug::error(FUNCTION, "proof of stake is invalid");
@@ -432,6 +423,10 @@ namespace TAO
             /* Default catch. */
             else
                 return debug::error(FUNCTION, "unknown block type");
+
+            /* Check that producer isn't before previous block time. */
+            if(producer.nTimestamp <= statePrev.GetBlockTime())
+                return debug::error(FUNCTION, "coinstake transaction too early");
 
             /* Process the block state. */
             TAO::Ledger::BlockState state(*this);

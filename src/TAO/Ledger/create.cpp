@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -300,6 +301,35 @@ namespace TAO
 
                     /* The extra nonce to coinbase. */
                     block.producer[0] << nExtraNonce;
+
+                    /* Get the last state block for channel. */
+                    TAO::Ledger::BlockState statePrev = stateBest;
+                    if(GetLastState(statePrev, nChannel))
+                    {
+                        /* Check for interval. */
+                        if(statePrev.nChannelHeight % ABMASSADOR_PAYOUT_THRESHOLD == 0)
+                        {
+                            /* Get the total in reserves. */
+                            int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
+                            if(nBalance < 0)
+                            {
+                                /* Loop through the embassy sigchains. */
+                                for(auto it = AMBASSADOR.begin(); it != AMBASSADOR.end(); ++it)
+                                {
+                                    /* Make sure to push to end. */
+                                    uint32_t nContract = block.producer.Size();
+
+                                    /* Create coinbase transaction. */
+                                    block.producer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
+                                    block.producer[nContract] << it->first;
+
+                                    /* The total to be credited. */
+                                    uint64_t nCredit = (nBalance * it->second.second) / 1000;
+                                    block.producer[0] << nCredit;
+                                }
+                            }
+                        }
+                    }
                 }
                 else if(nChannel == 3)
                 {
