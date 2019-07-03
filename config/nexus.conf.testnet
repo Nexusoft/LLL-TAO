@@ -1,0 +1,31 @@
+#
+# This is an example nexus.conf for a Tritium Testnet. Tailor it to your deployment. Do not change
+# the nexus command line. Any options, put here.
+#
+# This configuration file is for the 'merging' branch.
+#
+
+#this value can be any integer value, to make it simple to create new testnets on the fly.
+testnet=1
+
+#this will launch the process into the background
+daemon=1
+
+#this allows you to control how much data is outputed to the console
+verbose=2
+
+#OPTIONAL: seed node to force connect to
+#connect=myseed.dns.com
+
+#OPTIONAL: enable mining server (for a remote miner to connect to)
+#mining=1
+
+#OPTIONAL: enable staking (to generate blocks inside the process)
+#stake=1
+
+#OPTIONAL: for private testnets and private networks (used for DEMO's)
+#private=1
+#generate=password
+
+#OPTIONAL: if your application requires multiple users
+#multiuser=1

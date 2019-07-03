@@ -41,6 +41,10 @@ namespace config
             if(i == std::string::npos)
                 continue;
 
+            size_t l = line.find('#');
+            if(l != std::string::npos)
+                continue;
+
             std::string strKey = std::string("-") + std::string(line, 0, i);
             std::string strVal = std::string(line, i + 1, line.size() - i - 1);
 
