@@ -21,7 +21,7 @@ namespace LLP
     /* Perform any necessary processing to initialize the underlying network
      * resources such as sockets, etc.
      */
-    bool Initialize()
+    bool NetworkInitialize()
     {
 
     #ifdef WIN32
@@ -69,7 +69,7 @@ namespace LLP
 
 
     /* Perform any necessary processing to shutdown and release underlying network resources.*/
-    bool Shutdown()
+    bool NetworkShutdown()
     {
 
     #ifdef WIN32

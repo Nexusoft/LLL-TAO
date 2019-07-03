@@ -83,7 +83,7 @@ namespace LLP
         /* build out base address vector */
         for(const auto &trust_addr : vTrustAddr)
         {
-            BaseAddress base_addr = static_cast<BaseAddress>(trust_addr);
+            BaseAddress base_addr(trust_addr);
             vBaseAddr.push_back(base_addr);
         }
     }
@@ -331,8 +331,8 @@ namespace LLP
 
         nPort = port;
 
-        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
-            it->second.SetPort(port);
+        for(auto &addr : mapTrustAddress)
+            addr.second.SetPort(port);
     }
 
 
@@ -457,15 +457,15 @@ namespace LLP
     void AddressManager::get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t flags)
     {
         vInfo.clear();
-        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
+        for(const auto &addr : mapTrustAddress)
         {
             /* If the address is on the ban list, skip it. */
-            if(mapBanned.find(it->first) != mapBanned.end())
+            if(mapBanned.find(addr.first) != mapBanned.end())
                 continue;
 
             /* If the address matches the flag, add it to the vector. */
-            if(it->second.nState & flags)
-                vInfo.push_back(it->second);
+            if(addr.second.nState & flags)
+                vInfo.push_back(addr.second);
         }
     }
 
@@ -474,14 +474,14 @@ namespace LLP
     uint32_t AddressManager::count(const uint8_t flags)
     {
         uint32_t c = 0;
-        for(auto it = mapTrustAddress.begin(); it != mapTrustAddress.end(); ++it)
+        for(const auto &it : mapTrustAddress)
         {
             /* If the address is on the ban list, skip it. */
-            if(mapBanned.find(it->first) != mapBanned.end())
+            if(mapBanned.find(it.first) != mapBanned.end())
                 continue;
 
             /* If the address matches the flag, increment the count */
-            if(it->second.nState & flags)
+            if(it.second.nState & flags)
                 ++c;
         }
         return c;

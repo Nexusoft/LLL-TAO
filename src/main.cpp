@@ -64,13 +64,12 @@ int main(int argc, char** argv)
     config::CacheArgs();
 
 
-    /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
-    if(!LLP::Initialize())
-    {
-        printf("ERROR: Failed initializing network resources");
+    /* Log system startup now, after branching to API/RPC where appropriate */
+    debug::Initialize();
 
-        return 0;
-    }
+
+    /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
+    LLP::Initialize();
 
 
     /* Handle Commandline switch */
@@ -98,9 +97,8 @@ int main(int argc, char** argv)
         }
     }
 
-
-    /* Log system startup now, after branching to API/RPC where appropriate */
-    debug::Initialize();
+    /* Initialize LLD. */
+    LLD::Initialize();
 
 
     /** Run the process as Daemon RPC/LLP Server if Flagged. **/
@@ -158,9 +156,6 @@ int main(int argc, char** argv)
     bool fFailed = config::fShutdown.load();
     if(!fFailed)
     {
-        /* Initialize LLD. */
-        LLD::Initialize();
-
         /** Load the Wallet Database. **/
         bool fFirstRun;
         if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
@@ -306,34 +301,6 @@ int main(int argc, char** argv)
 
     /* Shutdown metrics. */
     timer.Reset();
-
-
-    /* Shutdown the time server and its subsystems. */
-    LLP::ShutdownServer<LLP::TimeNode>(LLP::TIME_SERVER);
-
-
-    /* Shutdown the tritium server and its subsystems. */
-    LLP::ShutdownServer<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
-
-
-    /* Shutdown the legacy server and its subsystems. */
-    LLP::ShutdownServer<LLP::LegacyNode>(LLP::LEGACY_SERVER);
-
-
-    /* Shutdown the core API server and its subsystems. */
-    LLP::ShutdownServer<LLP::APINode>(LLP::API_SERVER);
-
-
-    /* Shutdown the RPC server and its subsystems. */
-    LLP::ShutdownServer<LLP::RPCNode>(LLP::RPC_SERVER);
-
-
-    /* Shutdown the legacy mining server and its subsystems. */
-    LLP::ShutdownServer<LLP::LegacyMiner>(LLP::LEGACY_MINING_SERVER);
-
-
-    /* Shutdown the tritium mining server and its subsystems. */
-    LLP::ShutdownServer<LLP::TritiumMiner>(LLP::TRITIUM_MINING_SERVER);
 
 
     /* Shutdown the API. */

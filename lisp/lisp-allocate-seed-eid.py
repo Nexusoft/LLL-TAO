@@ -61,17 +61,17 @@ for i in range(5):
             continue
         #endtry    
         print addr
-        if(addr == v4 or addr == v6):
+        if (addr == v4 or addr == v6):
             print "Found duplicate"
             v4 = None
             break
         #endif
     #endfor
-    if(v4 != None): break
+    if (v4 != None): break
 #endfor
 print ""
 
-if(v4 == None):
+if (v4 == None):
     print "Retry limit exceeded, run script again"
     exit(1)
 #endif

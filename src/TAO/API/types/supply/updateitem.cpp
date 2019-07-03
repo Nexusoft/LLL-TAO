@@ -52,6 +52,9 @@ namespace TAO
             if(params.find("data") == params.end())
                 throw APIException(-18, "Missing data");
 
+            if(!params["data"].is_string())
+                throw APIException(-19, "Data must be a string");
+
             /* Get the account. */
             memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
             if(!user)
@@ -92,7 +95,16 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-105, "Missing address");
+                throw APIException(-33, "Missing name / address");
+
+            /* Check the address */
+            TAO::Register::State state;
+            if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-117, "Item not found");
+
+            /* Ensure that it is an append register */
+            if(state.nType != TAO::Register::REGISTER::APPEND)
+                throw APIException(-117, "Item not found");
 
             /* Declare the register stream for the update. */
             DataStream ssData(SER_REGISTER, 1);

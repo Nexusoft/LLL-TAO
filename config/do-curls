@@ -16,7 +16,7 @@ cn "accounts/notifications?genesis=$GENID&page=0&limit=3&verbose=0"
 cn "assets/create?pin=1234&session=$SES&data=dino-data&name=dino-asset"
 cn "assets/get?pin=1234&name=dino-asset"
 cn "assets/transfer?pin=1234>&session=$SES>&username=<new-user>&name=dino-asset"
-cn "assets/tokenize?"
+cn "assets/tokenize/asset?asset_name=dino-asset&token_name=dino-token"
 cn "assets/history?name=dino-asset"
     
 cn "tokens/create?pin=1234&session=$SES&type=token&identifier=1&supply=1000&name=dino-token"

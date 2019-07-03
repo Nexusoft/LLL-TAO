@@ -1043,13 +1043,102 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
 
         /* Invoke the API */
         ret = APICall("assets/claim/asset", params);
-         REQUIRE(ret.find("result") != ret.end());
+        REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
 
         /* Check all of the fields */
         REQUIRE(result.find("txid") != result.end());
         
 
+    }
+
+}
+
+TEST_CASE( "Test Assets API - list asset history", "[assets/list/asset/history]")
+{
+    /* Declare variables shared across test cases */
+    json::json params;
+    json::json ret;
+    json::json result;
+    json::json error;
+
+    /* Ensure user is created and logged in for testing */
+    InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
+    InitializeUser(USERNAME2, PASSWORD, PIN, GENESIS2, SESSION2);
+
+    /* fail with missing name / address */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = SESSION2;
+
+        /* Invoke the API */
+        ret = APICall("assets/list/asset/history", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -33);
+    }
+
+    /* fail with invalid name  */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = SESSION2;
+        params["name"] = "not an asset";
+
+        /* Invoke the API */
+        ret = APICall("assets/list/asset/history", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -101);
+    }
+
+    /* fail with invalid name  */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = SESSION2;
+        params["address"] = LLC::GetRand256().GetHex();
+
+        /* Invoke the API */
+        ret = APICall("assets/list/asset/history", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -106);
+    }
+
+    /* success case by address */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = SESSION2;
+        params["address"] = hashJSONAsset.GetHex();
+
+        /* Invoke the API */
+        ret = APICall("assets/list/asset/history", params);
+
+        /* Check response  */
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+
+        /* history should be an array */
+        REQUIRE(result.is_array());
+
+        /* Check all of the fields */
+        for( const auto& entry : result)
+        {
+            REQUIRE(entry.find("type") != entry.end());
+            std::string strType = entry["type"].get<std::string>();
+            REQUIRE((strType == "CREATE" || strType == "MODIFY" || strType == "TRANSFER" || strType == "CLAIM"));
+            REQUIRE(entry.find("owner") != entry.end());
+            REQUIRE(entry.find("modified") != entry.end());
+            REQUIRE(entry.find("checksum") != entry.end());
+            REQUIRE(entry.find("address") != entry.end());
+        }
+        
     }
 
 }
