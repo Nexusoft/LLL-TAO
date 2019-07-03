@@ -33,6 +33,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/stake.h>
+#include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/genesis.h>
@@ -256,6 +257,17 @@ namespace TAO
             /* Check for first. */
             if(IsFirst())
             {
+                /* Check for ambassador sigchains. */
+                if(AMBASSADOR.find(hashGenesis) != AMBASSADOR.end())
+                {
+                    /* Debug logging. */
+                    debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
+
+                    /* Check that the hashes match. */
+                    if(AMBASSADOR.at(hashGenesis).first != PrevHash())
+                        return debug::error(FUNCTION, "AMBASSADOR sigchain using invalid credentials");
+                }
+
                 /* Write specific transaction flags. */
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
