@@ -364,7 +364,6 @@ namespace TAO
             /* Write the transactions. */
             for(const auto& proof : vtx)
             {
-                /* Only work on tritium transactions for now. */
                 if(proof.first == TYPE::TRITIUM_TX)
                 {
                     /* Get the transaction hash. */
@@ -419,19 +418,34 @@ namespace TAO
             if(nVersion >= 7 && !IsPrivate())
             {
                 /* Set the chain trust. */
-                uint8_t nTotal = 0;
+                uint8_t nEquals  = 0;
+                uint8_t nGreater = 0;
 
                 /* Check to best state. */
                 for(uint32_t n = 0; n < 3; ++n)
                 {
                     /* Check each weight. */
-                    if(nChannelWeight[nChannel] >= ChainState::stateBest.load().nChannelWeight[n])
-                        ++nTotal;
+                    if(nChannelWeight[nChannel] == ChainState::stateBest.load().nChannelWeight[n])
+                        ++nEquals;
+
+                    /* Check each weight. */
+                    if(nChannelWeight[nChannel] > ChainState::stateBest.load().nChannelWeight[n])
+                        ++nGreater;
                 }
 
-                /* Check for best chain. */
-                if(nTotal == 3 && !SetBest())
-                    return debug::error(FUNCTION, "failed to set best chain");
+                /* Handle single channel having higher weight. */
+                if((nEquals == 2 && nGreater == 1) || nGreater > 1)
+                {
+                    /* Log the weights. */
+                    debug::log(2, FUNCTION, "WEIGHTS [", nGreater, "]",
+                        " Prime ", nChannelWeight[1].ToString(),
+                        " Hash ",  nChannelWeight[2].ToString(),
+                        " Stake ", nChannelWeight[0].ToString());
+
+                    /* Set the best chain. */
+                    if(!SetBest())
+                        return debug::error(FUNCTION, "failed to set best chain");
+                }
             }
             else if(nChainTrust > ChainState::nBestChainTrust.load() && !SetBest())
                 return debug::error(FUNCTION, "failed to set best chain");

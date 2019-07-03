@@ -80,8 +80,8 @@ namespace TAO
             uint32_t nChannelHeight;
 
 
-            /** The height of this channel. */
-            uint64_t nChannelWeight[3];
+            /** The weight of this channel. */
+            uint128_t nChannelWeight[3];
 
 
             /** The reserves that are released. */
