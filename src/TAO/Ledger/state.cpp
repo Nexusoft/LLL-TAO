@@ -228,11 +228,11 @@ namespace TAO
         BlockState BlockState::Prev() const
         {
             /* Check for genesis. */
+            BlockState state;
             if(hashPrevBlock == 0)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "called on genesis"));
+                return state;
 
             /* Read the previous block from ledger. */
-            BlockState state;
             if(!LLD::Ledger->ReadBlock(hashPrevBlock, state))
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read previous block state ", hashPrevBlock.SubString()));
 
@@ -244,11 +244,11 @@ namespace TAO
         BlockState BlockState::Next() const
         {
             /* Check for genesis. */
+            BlockState state;
             if(hashNextBlock == 0)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "called on best block"));
+                return state;
 
             /* Read next block from the ledger. */
-            BlockState state;
             if(!LLD::Ledger->ReadBlock(hashNextBlock, state))
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read next block state ", hashNextBlock.SubString()));
 
@@ -372,6 +372,7 @@ namespace TAO
                     for(uint32_t n = 0; n < nSize; ++n)
                     {
                         /* Seek to Genesis */
+                        tx[n].Reset();
                         tx[n].Seek(1);
 
                         /* Get the genesis.. */

@@ -68,7 +68,7 @@ namespace TAO
 
 
             /* Special testnet rule. */
-            if(config::fTestNet.load())
+            //if(config::fTestNet.load())
                 return (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60) && (runtime::unifiedtimestamp() - nLastTime < 30);
 
             /* Check if block has been created within 60 minutes. */

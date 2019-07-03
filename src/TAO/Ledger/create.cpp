@@ -325,11 +325,13 @@ namespace TAO
 
                                     /* The total to be credited. */
                                     uint64_t nCredit = (nBalance * it->second.second) / 1000;
-                                    block.producer[0] << nCredit;
+                                    block.producer[nContract] << nCredit;
                                 }
                             }
                         }
                     }
+                    else
+                        return debug::error(FUNCTION, "failed to get last state");
                 }
                 else if(nChannel == 3)
                 {

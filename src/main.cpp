@@ -212,7 +212,7 @@ int main(int argc, char** argv)
             0,
             0,
             60,
-            config::GetBoolArg("-listen", true),
+            true,
             false,
             false);
 

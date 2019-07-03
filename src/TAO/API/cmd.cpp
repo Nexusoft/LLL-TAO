@@ -111,7 +111,7 @@ namespace TAO
             /* Make the connection to the API server. */
             LLP::APINode apiNode;
 
-            LLP::BaseAddress addr("127.0.0.1", 8080);
+            LLP::BaseAddress addr("127.0.0.1", config::GetArg("-apiport", 8080));
 
             if(!apiNode.Connect(addr))
             {

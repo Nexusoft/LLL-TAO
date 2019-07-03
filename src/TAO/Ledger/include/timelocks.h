@@ -26,7 +26,7 @@ namespace TAO
     {
 
         /** The network current block version. **/
-        const uint32_t NETWORK_BLOCK_CURRENT_VERSION = 6;
+        const uint32_t NETWORK_BLOCK_CURRENT_VERSION = 7;
 
 
         /** The testnet current block version. **/
@@ -77,6 +77,7 @@ namespace TAO
             1438369200,        //--- Block Version 4 Activation:          07/31/2015 12:00:00 GMT - 7
             1536977460,        //--- Block Version 5 Activation:          09/14/2018 19:11:00 GMT - 7
             1538791860,        //--- Block Version 6 Activation:          10/05/2018 19:11:00 GMT - 7
+            1560373338,        //--- Block Version 7 Activation:          09/23/2019 16:20:00 GMT - 7
         };
 
 
