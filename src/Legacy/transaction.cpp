@@ -1030,7 +1030,7 @@ namespace Legacy
 
                 TAO::Ledger::BlockState statePrev;
 
-                if(LLD::legDB->ReadBlock(hashLastBlock, statePrev))
+                if(!LLD::legDB->ReadBlock(hashLastBlock, statePrev))
                     return debug::error(FUNCTION, "failed to read previous stake block");
 
                 trustKey.hashLastBlock = hashLastBlock;
