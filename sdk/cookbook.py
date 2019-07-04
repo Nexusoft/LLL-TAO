@@ -1401,7 +1401,7 @@ def do_assets_list_asset_history_address():
 # build_accounts_html
 #
 tokens_create_token = \
-    '{}tokens/create/token?pin={}&session={}&name={}&supply={}{}'
+    '{}tokens/create/token?pin={}&session={}&name={}&supply={}&digits={}{}'
 tokens_create_account = \
     '{}tokens/create/account?pin={}&session={}&name={}&token_name={}{}'
 tokens_get_token_name = '{}tokens/get/token?session={}&name={}{}'
@@ -1443,7 +1443,8 @@ def build_tokens_html(sid, genid, o):
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
     supply = form_parm.format("supply", "")
-    o += hl(tokens_create_token).format(h, pin, session, name, supply, f)
+    d = form_parm.format("digits", "2")
+    o += hl(tokens_create_token).format(h, pin, session, name, supply, d, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1480,7 +1481,7 @@ def build_tokens_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += hl(tokens_get_account_address).format(h, session, name, f)
+    o += hl(tokens_get_account_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1525,7 +1526,8 @@ def do_tokens_create_token():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
     supply = bottle.request.forms.get("supply")
-    if (no_parms(pin, session, name, supply)):
+    digits = bottle.request.forms.get("digits")
+    if (no_parms(pin, session, name, supply, digits)):
         m = red("tokens/create/token needs more input parameters")
         return(show(m, session))
     #endif
@@ -1536,11 +1538,11 @@ def do_tokens_create_token():
     if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
-        output = sdk.nexus_tokens_create_token(name, supply)
+        output = sdk.nexus_tokens_create_token(name, supply, digits)
         genid = sdk.genesis_id
     else:
         output = curl(tokens_create_token.format("", pin, session, name,
-            supply, ""))
+            supply, digits, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
