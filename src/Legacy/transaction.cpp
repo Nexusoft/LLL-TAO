@@ -979,10 +979,10 @@ namespace Legacy
     }
 
     /* Mark the inputs in a transaction as unspent. */
-    bool Transaction::Disconnect() const
+    bool Transaction::Disconnect(const TAO::Ledger::BlockState& state) const
     {
         /* Coinbase has no inputs. */
-        if (!IsCoinBase())
+        if(!IsCoinBase())
         {
             /* Get the number of inputs to the transaction. */
             uint32_t nInSize = static_cast<uint32_t>(vin.size());
@@ -996,6 +996,55 @@ namespace Legacy
             }
         }
 
+        if(IsCoinStake())
+        {
+            /* On disconnecting a coinstake, revert the trust key to its prior state */
+
+            /* Get the trust key. */
+            std::vector<uint8_t> vTrustKey;
+            if(!TrustKey(vTrustKey))
+                return debug::error(FUNCTION, "can't extract trust key.");
+
+            /* Check for trust key. */
+            uint576_t cKey;
+            cKey.SetBytes(vTrustKey);
+
+            TAO::Ledger::TrustKey trustKey;
+
+            if(LLD::trustDB->ReadTrustKey(cKey, trustKey)) //no need to revert if trust key not in database, so skip on read fail
+            {
+                if(state.GetHash() == trustKey.hashGenesisBlock)
+                {
+                    /* Disconnecting the Genesis transaction. Remove the trust key from the trust db */
+                    LLD::trustDB->EraseTrustKey(cKey);
+                    return true;
+                }
+
+                uint1024_t hashLastBlock;
+                uint32_t nSequence;
+                uint32_t nTrustScore;
+
+                /* Disconnecting Trust transaction. Retrieve the previous stake block and use it to revert trust key */
+                if(!ExtractTrust(hashLastBlock, nSequence, nTrustScore))
+                    return debug::error(FUNCTION, "failed to extract coinstake trust values from script");
+
+                TAO::Ledger::BlockState statePrev;
+
+                if(LLD::legDB->ReadBlock(hashLastBlock, statePrev))
+                    return debug::error(FUNCTION, "failed to read previous stake block");
+
+                trustKey.hashLastBlock = hashLastBlock;
+
+                uint64_t nBlockTime = statePrev.GetBlockTime();
+                trustKey.nLastBlockTime = nBlockTime;
+
+                trustKey.nStakeRate = trustKey.StakeRate(statePrev, nBlockTime);
+
+                /* Write the reverted trust key. */
+                LLD::trustDB->WriteTrustKey(cKey, trustKey);
+            }
+        }
+
         return true;
     }
 
@@ -1005,16 +1054,24 @@ namespace Legacy
     {
         /* Version 5 - last trust block. */
         uint1024_t hashLastBlock;
-        uint32_t   nSequence;
-        uint32_t   nTrustScore;
+        uint32_t nSequence;
+        uint32_t nTrustScore;
 
         /* Extract values from coinstake vin. */
         if(!ExtractTrust(hashLastBlock, nSequence, nTrustScore))
             return debug::error(FUNCTION, "failed to extract values from script");
 
         /* Validate claimed last trust block is actual last trust block for key */
-        if(hashLastBlock != trustKey.hashLastBlock)
-            return debug::error(FUNCTION, "published last stake block does not match actual last stake block");
+        if(!TAO::Ledger::ChainState::Synchronizing() && hashLastBlock != trustKey.hashLastBlock)
+        {
+            /* Can't reject transaction or older versions will fork. Add if do activation (return from debug::error).
+             * Until then, just log the error message.
+             */
+            debug::log(2, FUNCTION, "trust key hashLastBlock ", trustKey.hashLastBlock.ToString());
+            debug::log(2, FUNCTION, "scriptsig hashLastBlock ", hashLastBlock.ToString());
+
+            debug::error(FUNCTION, "published last stake block does not match actual last stake block");
+        }
 
         /* Check that the last trust block is in the block database. */
         TAO::Ledger::BlockState stateLast;

@@ -681,7 +681,7 @@ namespace TAO
                         return debug::error(FUNCTION, "transaction is not on disk");
 
                     /* Disconnect the inputs. */
-                    if(!tx.Disconnect())
+                    if(!tx.Disconnect(*this))
                         return debug::error(FUNCTION, "failed to connect inputs");
 
                     /* Wallets need to refund inputs when disonnecting coinstake */

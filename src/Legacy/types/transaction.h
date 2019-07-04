@@ -435,10 +435,12 @@ namespace Legacy
 		 *
 		 *  Mark the inputs in a transaction as unspent.
 		 *
+		 *  @param[in] state The block state that is disconnecting
+		 *
 		 *  @return true if the inputs were disconnected
 		 *
 		 **/
-		bool Disconnect() const;
+		bool Disconnect(const TAO::Ledger::BlockState& state) const;
 
 
 		/** Check Trust
