@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/append.h>
 #include <TAO/Operation/include/claim.h>
+#include <TAO/Operation/include/coinbase.h>
 #include <TAO/Operation/include/create.h>
 #include <TAO/Operation/include/credit.h>
 #include <TAO/Operation/include/debit.h>
@@ -459,10 +460,20 @@ namespace TAO
                         if(fValidate)
                             return debug::error(FUNCTION, "OP::COINBASE: cannot use OP::VALIDATE with coinbase");
 
-                        //TODO: write a genesis level event for AMBASSADOR and DEVELOPERS
+                        /* Check for valid coinbase. */
+                        if(!Coinbase::Verify(contract))
+                            return false;
+
+                        /* Get the genesis. */
+                        uint256_t hashGenesis;
+                        contract >> hashGenesis;
 
                         /* Seek to end. */
-                        contract.Seek(48);
+                        contract.Seek(16);
+
+                        /* Commit to disk. */
+                        if(contract.Caller() != hashGenesis && !Coinbase::Commit(hashGenesis, contract.Hash(), nFlags))
+                            return false;
 
                         break;
                     }

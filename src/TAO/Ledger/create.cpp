@@ -309,8 +309,6 @@ namespace TAO
                         /* Check for interval. */
                         if(statePrev.nChannelHeight % ABMASSADOR_PAYOUT_THRESHOLD == 0)
                         {
-                            debug::log(0, "Checking....");
-
                             /* Get the total in reserves. */
                             int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
                             if(nBalance > 0)

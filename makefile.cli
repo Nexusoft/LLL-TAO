@@ -383,6 +383,7 @@ OBJS+=  build/LLC_base_uint.o \
         build/API_cmd.o \
 		build/Operation_append.o \
 		build/Operation_claim.o \
+		build/Operation_coinbase.o \
 		build/Operation_condition.o \
 		build/Operation_contract.o \
 		build/Operation_create.o \
