@@ -320,7 +320,7 @@ namespace TAO
                     /* Check for interval. */
                     bool fAmbassador = false;
                     if(stateLast.nChannelHeight %
-                        (config::fTestNet.load() ? AMBASSADOR_PAYOUT_THRESHOLD_TESTNET : AMBASSADOR_PAYOUT_THRESHOLD == 0))
+                        (config::fTestNet.load() ? AMBASSADOR_PAYOUT_THRESHOLD_TESTNET : AMBASSADOR_PAYOUT_THRESHOLD) == 0)
                     {
                         /* Get the total in reserves. */
                         int64_t nBalance = stateLast.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve

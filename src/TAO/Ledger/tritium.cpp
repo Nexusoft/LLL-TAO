@@ -409,7 +409,7 @@ namespace TAO
 
             /* Check that producer isn't before previous block time. */
             if(producer.nTimestamp <= statePrev.GetBlockTime())
-                return debug::error(FUNCTION, "coinstake transaction too early");
+                return debug::error(FUNCTION, "producer can't be before previous block");
 
             /* Process the block state. */
             TAO::Ledger::BlockState state(*this);
