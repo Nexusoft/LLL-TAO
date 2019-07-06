@@ -307,14 +307,15 @@ namespace TAO
                     if(GetLastState(statePrev, nChannel))
                     {
                         /* Check for interval. */
-                        if(statePrev.nChannelHeight % ABMASSADOR_PAYOUT_THRESHOLD == 0)
+                        if(statePrev.nChannelHeight % AMBASSADOR_PAYOUT_THRESHOLD == 0)
                         {
                             /* Get the total in reserves. */
                             int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
                             if(nBalance > 0)
                             {
                                 /* Loop through the embassy sigchains. */
-                                for(auto it = AMBASSADOR.begin(); it != AMBASSADOR.end(); ++it)
+                                for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
+                                         it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
                                 {
                                     /* Make sure to push to end. */
                                     uint32_t nContract = block.producer.Size();

@@ -319,15 +319,17 @@ namespace TAO
 
                     /* Check for interval. */
                     bool fAmbassador = false;
-                    if(stateLast.nChannelHeight % ABMASSADOR_PAYOUT_THRESHOLD == 0)
+                    if(stateLast.nChannelHeight %
+                        (config::fTestNet.load() ? AMBASSADOR_PAYOUT_THRESHOLD_TESTNET : AMBASSADOR_PAYOUT_THRESHOLD == 0))
                     {
                         /* Get the total in reserves. */
                         int64_t nBalance = stateLast.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
                         if(nBalance > 0)
                         {
                             /* Loop through the embassy sigchains. */
-                            uint32_t nContract = tx.Size() - 3;
-                            for(auto it = AMBASSADOR.begin(); it != AMBASSADOR.end(); ++it)
+                            uint32_t nContract = tx.Size() - (config::fTestNet ? 1 : 3);
+                            for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
+                                     it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
                             {
 
                                 /* Seek to Genesis */
@@ -365,7 +367,7 @@ namespace TAO
                     }
 
                     /* Loop through the contracts. */
-                    uint32_t nSize = tx.Size() - (fAmbassador ? 3 : 0);
+                    uint32_t nSize = tx.Size() - (fAmbassador ? (config::fTestNet ? 1 : 3) : 0);
                     for(uint32_t n = 0; n < nSize; ++n)
                     {
                         /* Seek to Genesis */

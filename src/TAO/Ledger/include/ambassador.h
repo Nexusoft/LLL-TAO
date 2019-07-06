@@ -58,7 +58,25 @@ namespace TAO
 
 
         /** Ambassador payout threshold. **/
-        const uint16_t ABMASSADOR_PAYOUT_THRESHOLD = 5;
+        const uint16_t AMBASSADOR_PAYOUT_THRESHOLD = 100;
+
+
+        /** Ambassador Sigchain for Testnet **/
+        const std::map<uint256_t, std::pair<uint256_t, uint32_t>> AMBASSADOR_TESTNET =
+        {
+            /* United States. */
+            {
+                uint256_t("a2cfad9f505f8166203df2685ee7cb8582be9ae017dcafa4ca4530cd5b4f1dca"),
+                {
+                    uint256_t("cbad41aa9ffe345559b091e5edb8c4f199fe044e7d52dd3ec917a857a4bcab95"), //password authentication
+                    1000 //100%
+                }
+            }
+        };
+
+        /** Ambassador payout threshold. **/
+        const uint16_t AMBASSADOR_PAYOUT_THRESHOLD_TESTNET = 5;
+
     }
 }
 

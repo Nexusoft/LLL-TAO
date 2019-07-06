@@ -36,6 +36,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/sigchain.h>
 
+#include <TAO/Ledger/include/ambassador.h>
+
 #include <list>
 
 
@@ -43,7 +45,6 @@ ________________________________________________________________________________
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-
 
     uint256_t hashTest = LLC::GetRand256();
 

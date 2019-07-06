@@ -258,7 +258,7 @@ namespace TAO
             if(IsFirst())
             {
                 /* Check for ambassador sigchains. */
-                if(AMBASSADOR.find(hashGenesis) != AMBASSADOR.end())
+                if(!config::fTestNet.load() && AMBASSADOR.find(hashGenesis) != AMBASSADOR.end())
                 {
                     /* Debug logging. */
                     debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
@@ -266,6 +266,18 @@ namespace TAO
                     /* Check that the hashes match. */
                     if(AMBASSADOR.at(hashGenesis).first != PrevHash())
                         return debug::error(FUNCTION, "AMBASSADOR sigchain using invalid credentials");
+                }
+
+
+                /* Check for ambassador sigchains. */
+                if(config::fTestNet.load() && AMBASSADOR_TESTNET.find(hashGenesis) != AMBASSADOR_TESTNET.end())
+                {
+                    /* Debug logging. */
+                    debug::log(1, FUNCTION, "Processing TESTNET AMBASSADOR sigchain ", hashGenesis.SubString());
+
+                    /* Check that the hashes match. */
+                    if(AMBASSADOR_TESTNET.at(hashGenesis).first != PrevHash())
+                        return debug::error(FUNCTION, "TESTNET AMBASSADOR sigchain using invalid credentials");
                 }
 
                 /* Write specific transaction flags. */
