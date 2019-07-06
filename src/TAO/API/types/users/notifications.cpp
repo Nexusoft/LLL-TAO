@@ -232,8 +232,9 @@ namespace TAO
 
                 /* Get contract JSON data. */
                 json::json obj = ContractToJSON(hashCaller, contract.second, 1);
-                obj["txid"]   = contract.second.Hash().ToString();
-                obj["output"] = contract.first;
+                obj["txid"]      = contract.second.Hash().ToString();
+                obj["time"]      = contract.second.Timestamp();
+                obj["output"]    = contract.first;
 
                 /* Add to return object. */
                 ret.push_back(obj);
