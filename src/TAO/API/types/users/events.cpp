@@ -121,7 +121,7 @@ namespace TAO
             }
 
             /* Loop the events processing thread until shutdown. */
-            while(!fShutdown.load() && config::GetBoolArg("-events"))
+            while(!fShutdown.load())
             {
                 /* Wait for the events processing thread to be woken up (such as a login) */
                 std::unique_lock<std::mutex> lk(EVENTS_MUTEX);
@@ -165,8 +165,8 @@ namespace TAO
                         throw APIException(-63, "Could not retrieve default NXS account to credit");
 
                     /* Get the list of outstanding contracts. */
-                    std::vector<TAO::Ledger::Transaction> vTransactions;
-                    GetOutstanding(hashGenesis, vTransactions);
+                    std::vector<std::pair<uint32_t, TAO::Operation::Contract>> vContracts;
+                    GetOutstanding(hashGenesis, vContracts);
 
                     /* The transaction hash. */
                     uint512_t hashTx;
@@ -185,136 +185,111 @@ namespace TAO
                         throw APIException(-17, "Failed to create transaction");
 
                     /* Loop through each contract in the notification queue. */
-                    for(const auto& txin : vTransactions)
+                    for(const auto& contract : vContracts)
                     {
                         /* Set the transaction hash. */
-                        hashTx = txin.GetHash();
+                        hashTx = contract.second.Hash();
 
                         /* Get the maturity for this transaction. */
                         bool fMature = LLD::Ledger->ReadMature(hashTx);
 
-                        /* Track the number of contracts built. */
-                        uint32_t nContracts = txin.Size();
+                        /* Reset the contract operation stream. */
+                        contract.second.Reset();
 
-                        for(uint32_t nIn = 0; nIn < nContracts; ++nIn)
+                        /* Get the opcode. */
+                        uint8_t OPERATION;
+                        contract.second >> OPERATION;
+
+                        /* Check the opcodes for debit, coinbase or transfers. */
+                        switch (OPERATION)
                         {
-                            /* Reset the contract operation stream. */
-                            txin[nIn].Reset();
-
-                            /* Get the opcode. */
-                            uint8_t OPERATION;
-                            txin[nIn] >> OPERATION;
-
-                            /* Check the opcodes for debit, coinbase or transfers. */
-                            switch (OPERATION)
+                            /* Check for Debits. */
+                            case Operation::OP::DEBIT:
                             {
-                                /* Check for Debits. */
-                                case Operation::OP::DEBIT:
-                                {
-                                    /* Set to and from hashes and amount. */
-                                    txin[nIn] >> hashFrom;
-                                    txin[nIn] >> hashTo;
-                                    txin[nIn] >> nAmount;
+                                /* Set to and from hashes and amount. */
+                                contract.second >> hashFrom;
+                                contract.second >> hashTo;
+                                contract.second >> nAmount;
 
-                                    /* Check the register object. */
-                                    TAO::Register::Object object;
-                                    if(!LLD::Register->ReadState(hashTo, object))
-                                        throw APIException(-104, "Object not found ");
+                                /* Submit the payload object. */
+                                txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
+                                txout[nOut] << hashTx << contract.first;
+                                txout[nOut] << hashTo << hashFrom;
+                                txout[nOut] << nAmount;
 
-                                    /* Check for ownership. */
-                                    if(object.hashOwner != hashGenesis)
-                                        continue;
+                                /* Increment the contract ID. */
+                                ++nOut;
 
-                                    /* Submit the payload object. */
-                                    txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
-                                    txout[nOut] << hashTx << nIn;
-                                    txout[nOut] << hashTo << hashFrom;
-                                    txout[nOut] << nAmount;
+                                /* Log debug message. */
+                                debug::log(0, FUNCTION, "Matching DEBIT with CREDIT");
 
-                                    /* Increment the contract ID. */
-                                    ++nOut;
-
-                                    /* Log debug message. */
-                                    debug::log(0, FUNCTION, "Matching DEBIT with CREDIT");
-
-                                    break;
-                                }
-
-                                /* Check for Coinbases. */
-                                case Operation::OP::COINBASE:
-                                {
-                                    /* Check that the coinbase is mature and ready to be credited. */
-                                    if(!fMature)
-                                    {
-                                        debug::error(FUNCTION, "Immature coinbase.");
-                                        continue;
-                                    }
-
-                                    /* Set the genesis hash and the amount. */
-                                    txin[nIn] >> hashFrom;
-
-                                    /* Check that the coinbase was mined by the current active user. */
-                                    if(hashFrom != hashGenesis)
-                                        continue;
-
-                                    /* Get the amount from the coinbase transaction. */
-                                    txin[nIn] >> nAmount;
-
-                                    /* Get the address that this name register is pointing to. */
-                                    hashTo = account.get<uint256_t>("address");
-
-                                    /* Submit the payload object. */
-                                    txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
-                                    txout[nOut] << hashTx << nIn;
-                                    txout[nOut] << hashTo << hashFrom;
-                                    txout[nOut] << nAmount;
-
-                                    /* Increment the contract ID. */
-                                    ++nOut;
-
-                                    /* Log debug message. */
-                                    debug::log(0, FUNCTION, "Matching COINBASE with CREDIT");
-
-                                    break;
-                                }
-
-                                /* Check for Transfers. */
-                                case Operation::OP::TRANSFER:
-                                {
-                                    /* Get the address of the asset being transfered from the transaction. */
-                                    txin[nIn] >> hashFrom;
-
-                                    /* Get the genesis hash (recipient) of the transfer. */
-                                    txin[nIn] >> hashTo;
-
-                                    /* Check for the proper genesis. */
-                                    if(hashTo != hashGenesis)
-                                        continue;
-
-                                    /* Read the force transfer flag */
-                                    uint8_t nType = 0;
-                                    txin[nIn] >> nType;
-
-                                    /* Ensure this wasn't a forced transfer (which requires no Claim) */
-                                    if(nType == TAO::Operation::TRANSFER::FORCE)
-                                        continue;
-
-                                    /* Submit the payload object. */
-                                    txout[nOut] << uint8_t(TAO::Operation::OP::CLAIM);
-                                    txout[nOut] << hashTx << nIn;
-                                    txout[nOut] << hashFrom;
-
-                                    /* Increment the contract ID. */
-                                    ++nOut;
-
-                                    /* Log debug message. */
-                                    debug::log(0, FUNCTION, "Matching TRANSFER with CLAIM");
-
-                                    break;
-                                }
-                                default:
-                                    break;
+                                break;
                             }
+
+                            /* Check for Coinbases. */
+                            case Operation::OP::COINBASE:
+                            {
+                                /* Check that the coinbase is mature and ready to be credited. */
+                                if(!fMature)
+                                {
+                                    debug::error(FUNCTION, "Immature coinbase.");
+                                    continue;
+                                }
+
+                                /* Set the genesis hash and the amount. */
+                                contract.second >> hashFrom;
+                                contract.second >> nAmount;
+
+                                /* Get the address that this name register is pointing to. */
+                                hashTo = account.get<uint256_t>("address");
+
+                                /* Submit the payload object. */
+                                txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
+                                txout[nOut] << hashTx << contract.first;
+                                txout[nOut] << hashTo << hashFrom;
+                                txout[nOut] << nAmount;
+
+                                /* Increment the contract ID. */
+                                ++nOut;
+
+                                /* Log debug message. */
+                                debug::log(0, FUNCTION, "Matching COINBASE with CREDIT");
+
+                                break;
+                            }
+
+                            /* Check for Transfers. */
+                            case Operation::OP::TRANSFER:
+                            {
+                                /* Get the address of the asset being transfered from the transaction. */
+                                contract.second >> hashFrom;
+
+                                /* Get the genesis hash (recipient) of the transfer. */
+                                contract.second >> hashTo;
+
+                                /* Read the force transfer flag */
+                                uint8_t nType = 0;
+                                contract.second >> nType;
+
+                                /* Ensure this wasn't a forced transfer (which requires no Claim) */
+                                if(nType == TAO::Operation::TRANSFER::FORCE)
+                                    continue;
+
+                                /* Submit the payload object. */
+                                txout[nOut] << uint8_t(TAO::Operation::OP::CLAIM);
+                                txout[nOut] << hashTx << contract.first;
+                                txout[nOut] << hashFrom;
+
+                                /* Increment the contract ID. */
+                                ++nOut;
+
+                                /* Log debug message. */
+                                debug::log(0, FUNCTION, "Matching TRANSFER with CLAIM");
+
+                                break;
+                            }
+                            default:
+                                break;
                         }
                     }
 

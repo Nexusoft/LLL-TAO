@@ -253,10 +253,6 @@ namespace TAO
             try
             {
 
-                /* Include the txid if the verbosity level is higher than zero. */
-                if(nVerbosity > 0)
-                    ret["txid"] = contract.Hash().GetHex();
-
                 /* Get the contract operations. */
                 uint8_t OPERATION = 0;
                 contract >> OPERATION;
