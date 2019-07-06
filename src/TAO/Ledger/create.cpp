@@ -307,7 +307,8 @@ namespace TAO
                     if(GetLastState(statePrev, nChannel))
                     {
                         /* Check for interval. */
-                        if(statePrev.nChannelHeight % AMBASSADOR_PAYOUT_THRESHOLD == 0)
+                        if(statePrev.nChannelHeight %
+                            (config::fTestNet.load() ? AMBASSADOR_PAYOUT_THRESHOLD_TESTNET : AMBASSADOR_PAYOUT_THRESHOLD == 0))
                         {
                             /* Get the total in reserves. */
                             int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve

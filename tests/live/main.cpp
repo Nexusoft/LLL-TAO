@@ -45,9 +45,7 @@ ________________________________________________________________________________
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-
     uint256_t hashTest = LLC::GetRand256();
-
 
     TAO::Ledger::Genesis genesis = TAO::Ledger::Genesis(hashTest);
 
