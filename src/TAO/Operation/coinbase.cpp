@@ -32,6 +32,8 @@ namespace TAO
             /* Check to contract caller. */
             if(nFlags & TAO::Ledger::FLAGS::BLOCK)
             {
+                debug::log(0, "Commiting event for sigchain ", hashAddress.ToString());
+                
                 /* Write the event to the database. */
                 if(!LLD::Ledger->WriteEvent(hashAddress, hashTx))
                     return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase");

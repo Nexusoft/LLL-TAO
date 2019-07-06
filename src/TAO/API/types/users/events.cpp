@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/types/users.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -52,6 +53,73 @@ namespace TAO
         /*  Background thread to handle/suppress sigchain notifications. */
         void Users::EventsThread()
         {
+            /* Auto-login feature if configured. */
+            try
+            {
+                if(config::GetBoolArg("-autologin") && !config::fMultiuser.load())
+                {
+                    /* Check for username and password. */
+                    if(config::GetArg("-username", "") != ""
+                    && config::GetArg("-password", "") != ""
+                    && config::GetArg("-pin", "")      != "")
+                    {
+                        /* Create the sigchain. */
+                        memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
+                            new TAO::Ledger::SignatureChain(config::GetArg("-username", "").c_str(), config::GetArg("-password", "").c_str());
+
+                        /* Get the genesis ID. */
+                        uint256_t hashGenesis = user->Genesis();
+
+                        /* Check for duplicates in ledger db. */
+                        TAO::Ledger::Transaction txPrev;
+
+                        /* Get the last transaction. */
+                        uint512_t hashLast;
+                        if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            user.free();
+                            throw APIException(-138, "No previous transaction found");
+                        }
+
+                        /* Get previous transaction */
+                        if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            user.free();
+                            throw APIException(-138, "No previous transaction found");
+                        }
+
+                        /* Genesis Transaction. */
+                        TAO::Ledger::Transaction tx;
+                        tx.NextHash(user->Generate(txPrev.nSequence + 1, config::GetArg("-pin", "").c_str(), false), txPrev.nNextType);
+
+                        /* Check for consistency. */
+                        if(txPrev.hashNext != tx.hashNext)
+                        {
+                            user.free();
+                            throw APIException(-139, "Invalid credentials");
+                        }
+
+                        /* Setup the account. */
+                        {
+                            LOCK(MUTEX);
+                            mapSessions.emplace(0, std::move(user));
+                        }
+
+                        /* Extract the PIN. */
+                        if(!pActivePIN.IsNull())
+                            pActivePIN.free();
+
+                        /* Set account to unlocked. */
+                        pActivePIN = new TAO::Ledger::PinUnlock(
+                            config::GetArg("-pin", "").c_str(), TAO::Ledger::PinUnlock::UnlockActions::ALL);
+                    }
+                }
+            }
+            catch(const APIException& e)
+            {
+                debug::error(FUNCTION, e.what());
+            }
+
             /* Loop the events processing thread until shutdown. */
             while(!fShutdown.load())
             {
