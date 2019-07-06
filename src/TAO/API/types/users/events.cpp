@@ -121,7 +121,7 @@ namespace TAO
             }
 
             /* Loop the events processing thread until shutdown. */
-            while(!fShutdown.load())
+            while(!fShutdown.load() && config::GetBoolArg("-events"))
             {
                 /* Wait for the events processing thread to be woken up (such as a login) */
                 std::unique_lock<std::mutex> lk(EVENTS_MUTEX);
@@ -133,7 +133,6 @@ namespace TAO
 
                 try
                 {
-
                     /* Ensure that the user is logged, in, wallet unlocked, and able to transact. */
                     if(!LoggedIn() || Locked() || !CanTransact())
                         continue;
@@ -324,7 +323,7 @@ namespace TAO
                     {
                         /* Execute the operations layer. */
                         if(!txout.Build())
-                            throw APIException(-30, "Operations failed to execute");
+                            throw APIException(-30, "Failed to build register pre-states");
 
                         /* Sign the transaction. */
                         if(!txout.Sign(users->GetKey(txout.nSequence, strPIN, users->GetSession(params))))

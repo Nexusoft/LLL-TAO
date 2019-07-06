@@ -49,7 +49,6 @@ namespace TAO
         {
             /* Get the last transaction. */
             uint512_t hashLast = 0;
-
             if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 /* Get the coinbase transactions. */
@@ -192,6 +191,7 @@ namespace TAO
 
             /* Get notifications for personal genesis indexes. */
             TAO::Ledger::Transaction tx;
+
             uint32_t nSequence = 0;
             while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
             {
@@ -247,6 +247,10 @@ namespace TAO
                     /* Check for coinbase opcode */
                     if(TAO::Register::Unpack(tx[nContract], Operation::OP::COINBASE))
                     {
+                        /* Get the proof to check coinbase. */
+                        uint256_t hashProof;
+                        tx[nContract] >> hashProof;
+
                         /* Check if proofs are spent. */
                         if(LLD::Ledger->HasProof(hashGenesis, hashLast, nContract, TAO::Ledger::FLAGS::MEMPOOL))
                             continue;

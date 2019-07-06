@@ -310,6 +310,8 @@ namespace TAO
                         if(statePrev.nChannelHeight %
                             (config::fTestNet.load() ? AMBASSADOR_PAYOUT_THRESHOLD_TESTNET : AMBASSADOR_PAYOUT_THRESHOLD) == 0)
                         {
+                            debug::log(0, "GENERATING AMBASSADOR");
+                            
                             /* Get the total in reserves. */
                             int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
                             if(nBalance > 0)

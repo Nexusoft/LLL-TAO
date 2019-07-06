@@ -327,7 +327,7 @@ namespace TAO
                         if(nBalance > 0)
                         {
                             /* Loop through the embassy sigchains. */
-                            uint32_t nContract = tx.Size() - (config::fTestNet ? 1 : 3);
+                            uint32_t nContract = tx.Size() - (config::fTestNet ? AMBASSADOR_TESTNET.size() : AMBASSADOR.size());
                             for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
                                      it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
                             {
@@ -357,6 +357,8 @@ namespace TAO
                                 /* Iterate contract. */
                                 ++nContract;
 
+                                debug::log(0, "AMBASSADOR GENESIS ", genesis.ToString());
+
                                 /* Update coinbase rewards. */
                                 nCoinbaseRewards[1] += nValue;
                             }
@@ -367,7 +369,7 @@ namespace TAO
                     }
 
                     /* Loop through the contracts. */
-                    uint32_t nSize = tx.Size() - (fAmbassador ? (config::fTestNet ? 1 : 3) : 0);
+                    uint32_t nSize = tx.Size() - (fAmbassador ? (config::fTestNet ? AMBASSADOR_TESTNET.size() : AMBASSADOR.size()) : 0);
                     for(uint32_t n = 0; n < nSize; ++n)
                     {
                         /* Seek to Genesis */
