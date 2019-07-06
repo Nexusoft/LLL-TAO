@@ -507,7 +507,7 @@ namespace TAO
                 if((nEquals == 2 && nGreater == 1) || nGreater > 1)
                 {
                     /* Log the weights. */
-                    debug::log(2, FUNCTION, "WEIGHTS [", nGreater, "]",
+                    debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
                         " Prime ", nChannelWeight[1].ToString(),
                         " Hash ",  nChannelWeight[2].ToString(),
                         " Stake ", nChannelWeight[0].ToString());

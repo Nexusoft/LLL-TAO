@@ -32,7 +32,8 @@ namespace TAO
             /* Check to contract caller. */
             if(nFlags & TAO::Ledger::FLAGS::BLOCK)
             {
-                if(LLD::Ledger->WriteEvent(hashAddress, hashTx))
+                /* Write the event to the database. */
+                if(!LLD::Ledger->WriteEvent(hashAddress, hashTx))
                     return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase");
             }
 

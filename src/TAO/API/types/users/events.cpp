@@ -149,15 +149,20 @@ namespace TAO
                                     txin[nIn] >> hashTo;
                                     txin[nIn] >> nAmount;
 
+                                    /* Check the register object. */
+                                    TAO::Register::Object object;
+                                    if(!LLD::Register->ReadState(hashTo, object))
+                                        throw APIException(-104, "Object not found ");
+
+                                    /* Check for ownership. */
+                                    if(object.hashOwner != hashGenesis)
+                                        continue;
+
                                     /* Submit the payload object. */
                                     txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
                                     txout[nOut] << hashTx << nIn;
                                     txout[nOut] << hashTo << hashFrom;
                                     txout[nOut] << nAmount;
-
-                                    TAO::Register::Object object;
-                                    if(!LLD::Register->ReadState(hashTo, object))
-                                        throw APIException(-104, "Object not found ");
 
                                     /* Increment the contract ID. */
                                     ++nOut;
@@ -183,7 +188,7 @@ namespace TAO
 
                                     /* Check that the coinbase was mined by the current active user. */
                                     if(hashFrom != hashGenesis)
-                                        throw APIException(-62, "Coinbase transaction mined by different user.");
+                                        continue;
 
                                     /* Get the amount from the coinbase transaction. */
                                     txin[nIn] >> nAmount;
@@ -214,6 +219,10 @@ namespace TAO
 
                                     /* Get the genesis hash (recipient) of the transfer. */
                                     txin[nIn] >> hashTo;
+
+                                    /* Check for the proper genesis. */
+                                    if(hashTo != hashGenesis)
+                                        continue;
 
                                     /* Read the force transfer flag */
                                     uint8_t nType = 0;

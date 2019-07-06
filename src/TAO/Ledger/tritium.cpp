@@ -387,25 +387,8 @@ namespace TAO
             if(!IsDescendant(statePrev))
                 return debug::error(FUNCTION, "not descendant of last checkpoint");
 
-            /* Check the block proof of work rewards. */
-            if(IsProofOfWork())
-            {
-                /* Tally up rewards. */
-                uint64_t nReward = 0;
-
-                /* Loop through the contracts. */
-                uint32_t nSize = producer.Size();
-                for(uint32_t n = 0; n < nSize; ++n)
-                {
-                    /* Get the reward. */
-                    uint64_t nValue = 0;
-                    if(!producer[n].Value(nValue))
-                        return debug::error(FUNCTION, "no value in contract");
-
-                    nReward += nValue;
-                }
-            }
-            else if(IsProofOfStake())
+            /* Check proof of stake requirements. */
+            if(IsProofOfStake())
             {
                 /* Check the proof of stake. */
                 if(!CheckStake())
@@ -421,7 +404,7 @@ namespace TAO
             }
 
             /* Default catch. */
-            else
+            else if(!IsProofOfWork())
                 return debug::error(FUNCTION, "unknown block type");
 
             /* Check that producer isn't before previous block time. */
