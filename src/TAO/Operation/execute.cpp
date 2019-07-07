@@ -893,6 +893,10 @@ namespace TAO
                     /* Debit tokens from an account you own. */
                     case OP::FEE:
                     {
+                        /* Make sure there are no conditions. */
+                        if(!contract.Empty(Contract::CONDITIONS))
+                            return debug::error(FUNCTION, "OP::FEE: conditions not allowed on fees");
+
                         /* Verify the operation rules. */
                         if(!Fee::Verify(contract))
                             return false;
