@@ -314,7 +314,7 @@ namespace TAO
                         return debug::error(FUNCTION, "cannot get coinbase tx");
 
                     /* Check for coinbase. */
-                    if(!tx.IsCoinbase())
+                    if(!tx.IsCoinBase())
                         return debug::error(FUNCTION, "last tx must be producer");
 
                     /* Check for interval. */

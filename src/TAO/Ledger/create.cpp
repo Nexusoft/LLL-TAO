@@ -126,7 +126,7 @@ namespace TAO
                     continue;
 
                 /* Don't add transactions that are coinbase or coinstake. */
-                if(tx.IsCoinbase() || tx.IsCoinstake())
+                if(tx.IsCoinBase() || tx.IsCoinStake())
                     continue;
 
                 /* Check for timestamp violations. */
@@ -311,7 +311,7 @@ namespace TAO
                             (config::fTestNet.load() ? AMBASSADOR_PAYOUT_THRESHOLD_TESTNET : AMBASSADOR_PAYOUT_THRESHOLD) == 0)
                         {
                             debug::log(0, "GENERATING AMBASSADOR");
-                            
+
                             /* Get the total in reserves. */
                             int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
                             if(nBalance > 0)

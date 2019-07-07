@@ -223,24 +223,24 @@ namespace TAO
             bool Disconnect();
 
 
-            /** IsCoinbase
+            /** IsCoinBase
              *
              *  Determines if the transaction is a coinbase transaction.
              *
              *  @return true if transaction is a coinbase.
              *
              **/
-            bool IsCoinbase() const;
+            bool IsCoinBase() const;
 
 
-            /** IsCoinstake
+            /** IsCoinStake
              *
              *  Determines if the transaction is a coinstake (trust or genesis) transaction.
              *
              *  @return true if transaction is a coinstake.
              *
              **/
-            bool IsCoinstake() const;
+            bool IsCoinStake() const;
 
 
             /** IsHead

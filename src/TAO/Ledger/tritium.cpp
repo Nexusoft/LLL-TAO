@@ -179,7 +179,7 @@ namespace TAO
             if(IsProofOfStake())
             {
                 /* Check the producer transaction. */
-                if(!(producer.IsCoinstake()))
+                if(!(producer.IsCoinStake()))
                     return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
 
                 /* Check for nonce of zero values. */
@@ -199,7 +199,7 @@ namespace TAO
             else if(IsProofOfWork())
             {
                 /* Check the producer transaction. */
-                if(!producer.IsCoinbase())
+                if(!producer.IsCoinBase())
                     return debug::error(FUNCTION, "producer transaction has to be coinbase for proof of work");
 
                 /* Check the Proof of Work Claims. */
@@ -272,7 +272,7 @@ namespace TAO
                         return debug::error(FUNCTION, "missing tx ", vtx[i].second.SubString());
 
                     /* Check for coinbase / coinstake. */
-                    if(tx.IsCoinbase() || tx.IsCoinstake())
+                    if(tx.IsCoinBase() || tx.IsCoinStake())
                         return debug::error(FUNCTION, "more than one coinbase / coinstake");
 
                     /* Check the transaction for validity. */

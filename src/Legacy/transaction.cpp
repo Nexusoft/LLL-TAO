@@ -988,6 +988,49 @@ namespace Legacy
                     if(nVersion < 2)
                         return debug::error(FUNCTION, "tritium transactions not available until version 2");
 
+                    /* Get the previous transaction. */
+                    TAO::Ledger::Transaction txPrev;
+                    inputs.at(prevout.hash).second.SetPos(0);
+                    inputs.at(prevout.hash).second >> txPrev;
+
+                    /* Check the inputs range. */
+                    if(prevout.n >= txPrev.Size())
+                        return debug::error(FUNCTION, "prevout is out of range");
+
+                    /* Check maturity before spend. */
+                    if(txPrev.IsCoinBase() || txPrev.IsCoinStake())
+                        return debug::error(FUNCTION, "cannot spend producer from UTXO");
+
+                    /* Check the transaction timestamp. */
+                    if(txPrev.nTimestamp > nTime)
+                        return debug::error(FUNCTION, "transaction timestamp earlier than input transaction");
+
+                    /* Check for overflow input values. */
+                    const TxOut txout = GetOutputFor(vin[i], inputs);
+                    nValueIn += txout.nValue;
+                    if(!MoneyRange(txout.nValue) || !MoneyRange(nValueIn))
+                        return debug::error(FUNCTION, "txin values out of range");
+
+                    /* Check for double spends. */
+                    if(LLD::Legacy->IsSpent(prevout.hash, prevout.n))
+                        return debug::error(FUNCTION, "prev tx ", prevout.hash.SubString(), " is already spent");
+
+                    /* Check the ECDSA signatures. (...When not syncronizing) */
+                    if(!TAO::Ledger::ChainState::Synchronizing())
+                    {
+                        /* Check that hashes match. */
+                        if(prevout.hash != txPrev.GetHash())
+                            return debug::error(FUNCTION, "prevout.hash mismatch");
+
+                        /* Verify the scripts. */
+                        if(!VerifyScript(vin[i].scriptSig, txout.scriptPubKey, *this, i, 0))
+                            return debug::error(FUNCTION, "invalid script");
+                    }
+
+                    /* Commit to disk if flagged. */
+                    if((nFlags == FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
+                        return debug::error(FUNCTION, "failed to write spend");
+
                     break;
                 }
 

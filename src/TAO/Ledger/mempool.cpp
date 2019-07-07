@@ -128,11 +128,11 @@ namespace TAO
             //TODO: add mapConflcts map to soft-ban conflicting blocks
 
             /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsCoinbase())
+            if(tx.IsCoinBase())
                 return debug::error(FUNCTION, "coinbase ", hashTx.SubString(), " not accepted in pool");
 
             /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsCoinstake())
+            if(tx.IsCoinStake())
                 return debug::error(FUNCTION, "coinstake ", hashTx.SubString(), " not accepted in pool");
 
             /* Check for duplicate coinbase or coinstake. */

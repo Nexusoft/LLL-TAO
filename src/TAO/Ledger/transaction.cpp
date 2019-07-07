@@ -420,7 +420,7 @@ namespace TAO
 
 
         /* Determines if the transaction is a coinbase transaction. */
-        bool Transaction::IsCoinbase() const
+        bool Transaction::IsCoinBase() const
         {
             /* Check all contracts. */
             for(const auto& contract : vContracts)
@@ -442,7 +442,7 @@ namespace TAO
 
 
         /* Determines if the transaction is a coinstake (trust or genesis) transaction. */
-        bool Transaction::IsCoinstake() const
+        bool Transaction::IsCoinStake() const
         {
             return (IsGenesis() || IsTrust());
         }
@@ -530,7 +530,7 @@ namespace TAO
         bool Transaction::GetTrustInfo(uint64_t& nTrust, uint64_t& nStake) const
         {
             /* Check values. */
-            if(!IsCoinstake())
+            if(!IsCoinStake())
                 return debug::error(FUNCTION, "transaction is not trust");
 
             /* Get internal contract. */
@@ -720,7 +720,7 @@ namespace TAO
         std::string Transaction::TypeString() const
         {
             std::string txtype = "tritium ";
-            if(IsCoinbase())
+            if(IsCoinBase())
                 txtype += "base";
             else if(IsFirst())
                 txtype += "first";
