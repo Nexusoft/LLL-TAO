@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/legacy.h>
+#include <TAO/Operation/include/fee.h>
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
@@ -28,10 +28,10 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Legacy::Commit(const TAO::Register::State& state, const uint256_t& hashAddress, const uint8_t nFlags)
+        bool Fee::Commit(const TAO::Register::Object& account, const uint256_t& hashAddress, const uint8_t nFlags)
         {
             /* Attempt to commit new state to disk. */
-            if(!LLD::Register->WriteState(hashAddress, state, nFlags))
+            if(!LLD::Register->WriteState(hashAddress, account, nFlags))
                 return debug::error(FUNCTION, "failed to write post-state to disk");
 
             return true;
@@ -39,7 +39,7 @@ namespace TAO
 
 
         /* Authorizes funds from an account to an account */
-        bool Legacy::Execute(TAO::Register::Object &account, const uint64_t nAmount, const uint64_t nTimestamp)
+        bool Fee::Execute(TAO::Register::Object &account, const uint64_t nAmount, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
             if(!account.Parse())
@@ -51,7 +51,7 @@ namespace TAO
 
             /* Check that type is native token. */
             if(account.get<uint256_t>("token") != 0)
-                return debug::error(FUNCTION, "cannot transfer to UTXO with non-native token");
+                return debug::error(FUNCTION, "cannot pay fees with non-native token");
 
             /* Check the account balance. */
             if(nAmount > account.get<uint64_t>("balance"))
@@ -74,7 +74,7 @@ namespace TAO
 
 
         /* Verify debit validation rules and caller. */
-        bool Legacy::Verify(const Contract& contract)
+        bool Fee::Verify(const Contract& contract)
         {
             /* Rewind back on byte. */
             contract.Rewind(1, Contract::OPERATIONS);
@@ -87,7 +87,7 @@ namespace TAO
             contract >> OP;
 
             /* Check operation byte. */
-            if(OP != OP::LEGACY)
+            if(OP != OP::FEE)
                 return debug::error(FUNCTION, "called with incorrect OP");
 
             /* Extract the address from contract. */
