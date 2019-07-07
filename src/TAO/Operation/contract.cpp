@@ -95,7 +95,7 @@ namespace TAO
 
 
         /*  Get the fees for contract. */
-        const int32_t& Contract::Fees() const
+        const int64_t& Contract::Fees() const
         {
             return nFees;
         }

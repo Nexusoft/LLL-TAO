@@ -39,7 +39,7 @@ namespace TAO
 
 
         /* Authorizes funds from an account to an account */
-        bool Fee::Execute(TAO::Register::Object &account, const uint64_t nAmount, const uint64_t nTimestamp)
+        bool Fee::Execute(TAO::Register::Object &account, const uint64_t nFees, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */
             if(!account.Parse())
@@ -54,11 +54,11 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot pay fees with non-native token");
 
             /* Check the account balance. */
-            if(nAmount > account.get<uint64_t>("balance"))
+            if(nFees > account.get<uint64_t>("balance"))
                 return debug::error(FUNCTION, "account doesn't have sufficient balance");
 
             /* Write the new balance to object register. */
-            if(!account.Write("balance", account.get<uint64_t>("balance") - nAmount))
+            if(!account.Write("balance", account.get<uint64_t>("balance") - nFees))
                 return debug::error(FUNCTION, "balance could not be written to object register");
 
             /* Update the register's checksum. */
@@ -97,6 +97,10 @@ namespace TAO
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashFrom))
                 return debug::error(FUNCTION, "cannot transfer reserved address");
+
+            /* Extract the fee totals. */
+            uint64_t nFees = 0;
+            contract >> nFees;
 
             /* Get the state byte. */
             uint8_t nState = 0; //RESERVED

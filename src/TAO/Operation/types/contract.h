@@ -58,7 +58,7 @@ namespace TAO
 
 
             /** MEMORY ONLY: the required fees (signed for showing fee debits or credits). **/
-            int32_t nFees;
+            int64_t nFees;
 
 
         public:
@@ -125,7 +125,7 @@ namespace TAO
              *  @return The total fees.
              *
              **/
-            const int32_t& Fees() const;
+            const int64_t& Fees() const;
 
 
             /** Timestamp
@@ -305,9 +305,9 @@ namespace TAO
             }
 
 
-            /** Operator Overload <=
+            /** Operator Overload >=
              *
-             *  Serializes data into ssCondition
+             *  Serializes data from ssCondition
              *
              *  @param[in] obj The object to serialize into ledger data
              *
@@ -341,7 +341,7 @@ namespace TAO
 
             /** Operator Overload >>=
              *
-             *  Serializes data into ssRegister
+             *  Serializes data from ssRegister
              *
              *  @param[in] obj The object to serialize into ledger data
              *

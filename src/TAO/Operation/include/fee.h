@@ -67,14 +67,14 @@ namespace TAO
              *  Authorizes funds from an account to an account
              *
              *  @param[out] account The object register to debit from.
-             *  @param[in] nAmount The amount to debit from object.
+             *  @param[in] nFees The amount to debit from object.
              *  @param[in] nTimestamp The timestamp to update register to.
              *
              *  @return true if successful.
              *
              **/
             bool Execute(TAO::Register::Object &account,
-                const uint64_t nAmount, const uint64_t nTimestamp);
+                const uint64_t nFees, const uint64_t nTimestamp);
 
 
             /** Verify
