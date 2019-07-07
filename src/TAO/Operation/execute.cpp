@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/create.h>
 #include <TAO/Operation/include/credit.h>
 #include <TAO/Operation/include/debit.h>
+#include <TAO/Operation/include/fee.h>
 #include <TAO/Operation/include/genesis.h>
 #include <TAO/Operation/include/legacy.h>
 #include <TAO/Operation/include/stake.h>
@@ -883,6 +884,61 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Credit::Commit(object, debit, hashAddress, hashProof, hashTx, nContract, nAmount, nFlags))
+                            return false;
+
+                        break;
+                    }
+
+
+                    /* Debit tokens from an account you own. */
+                    case OP::FEE:
+                    {
+                        /* Verify the operation rules. */
+                        if(!Fee::Verify(contract))
+                            return false;
+
+                        /* Get the register address. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
+
+                        /* Get the fee amount. */
+                        uint64_t  nFees = 0;
+                        contract >> nFees;
+
+                        /* Deserialize the pre-state byte from the contract. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check for pre-state. */
+                        if(nState != TAO::Register::STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::FEE: register pre-state doesn't exist");
+
+                        /* Read the register from database. */
+                        TAO::Register::Object object;
+                        contract >>= object;
+
+                        /* Calculate the new operation. */
+                        if(!Fee::Execute(object, nFees, contract.Timestamp()))
+                            return false;
+
+                        /* Deserialize the pre-state byte from contract. */
+                        nState = 0;
+                        contract >>= nState;
+
+                        /* Check for pre-state. */
+                        if(nState != TAO::Register::STATES::POSTSTATE)
+                            return debug::error(FUNCTION, "OP::FEE: register post-state doesn't exist");
+
+                        /* Deserialize the checksum from contract. */
+                        uint64_t nChecksum = 0;
+                        contract >>= nChecksum;
+
+                        /* Check the post-state to register state. */
+                        if(nChecksum != object.GetHash())
+                            return debug::error(FUNCTION, "OP::FEE: invalid register post-state");
+
+                        /* Commit the register to disk. */
+                        if(!Fee::Commit(object, hashAddress, nFlags))
                             return false;
 
                         break;
