@@ -923,14 +923,10 @@ namespace Legacy
             /* Check maturity before spend. */
             if(txPrev.IsCoinBase() || txPrev.IsCoinStake())
             {
+                /* Read the previous block state. */
                 TAO::Ledger::BlockState statePrev;
                 if(!LLD::Ledger->ReadBlock(txPrev.GetHash(), statePrev))
-                {
-                    /* On failure to read, attempt to retrieve the prev state via an index repair */
-                    statePrev = state;
-                    if(!LLD::Ledger->RepairIndex(txPrev.GetHash(), statePrev))
-                        return debug::error(FUNCTION, "failed to read previous tx block");
-                }
+                    return debug::error(FUNCTION, "failed to read previous tx block");
 
                 /* Check the maturity. */
                 if((state.nHeight - statePrev.nHeight) < (config::fTestNet.load() ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
@@ -1150,8 +1146,7 @@ namespace Legacy
             "score=", nScore, ", ",
             "prev=", nScorePrev, ", ",
             "timespan=", nTimespan, ", ",
-            "change=", (int32_t)(nScore - nScorePrev), ")"
-      );
+            "change=", (int32_t)(nScore - nScorePrev), ")" );
 
         /* Check that published score in this block is equivilent to calculated score. */
         if(nTrustScore != nScore)
@@ -1164,15 +1159,15 @@ namespace Legacy
     /* Get the corresponding output from input. */
     const TxOut& Transaction::GetOutputFor(const TxIn& input, const std::map<uint512_t, Transaction>& inputs) const
     {
+        /* Find the input in the map. */
         auto mi = inputs.find(input.prevout.hash);
-
         if(mi == inputs.end())
-            throw std::runtime_error("Legacy::Transaction::GetOutputFor() : prevout.hash not found");
+            throw debug::exception(FUNCTION, "prevout.hash not found");
 
+        /* Read the previous transaction. */
         const Transaction& txPrev = (*mi).second;
-
         if(input.prevout.n >= txPrev.vout.size())
-            throw std::runtime_error("Legacy::Transaction::GetOutputFor() : prevout.n out of range");
+            throw debug::exception(FUNCTION, "prevout.n out of range");
 
         return txPrev.vout[input.prevout.n];
 

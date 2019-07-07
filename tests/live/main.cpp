@@ -35,16 +35,32 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <TAO/Ledger/include/ambassador.h>
 
-#include <list>
+#include <Legacy/types/address.h>
+#include <Legacy/types/transaction.h>
 
+#include <list>
+#include <variant>
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    TAO::Register::Address address = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+    debug::log(0, address.ToString());
+
+    Legacy::NexusAddress legacy;
+    legacy.SetHash256(address);
+    if(!legacy.IsValid())
+        return debug::error("Invalid address");
+
+    debug::log(0, legacy.GetHash256().ToString());
+
+    return 0;
+
     uint256_t hashTest = LLC::GetRand256();
 
     TAO::Ledger::Genesis genesis = TAO::Ledger::Genesis(hashTest);
