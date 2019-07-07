@@ -29,10 +29,8 @@ namespace TAO
         : ssOperation()
         , ssCondition()
         , ssRegister()
-        , hashCaller(0)
-        , nTimestamp(0)
-        , hashTx(0)
-        , nOutput(0)
+        , ptx(nullptr)
+        , nFees(0)
         {
         }
 
@@ -42,10 +40,8 @@ namespace TAO
         : ssOperation(contract.ssOperation)
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
-        , hashCaller(contract.hashCaller)
-        , nTimestamp(contract.nTimestamp)
-        , hashTx(contract.hashTx)
-        , nOutput(contract.nOutput)
+        , ptx(contract.ptx)
+        , nFees(contract.nFees)
         {
         }
 
@@ -55,10 +51,8 @@ namespace TAO
         : ssOperation(contract.ssOperation)
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
-        , hashCaller(contract.hashCaller)
-        , nTimestamp(contract.nTimestamp)
-        , hashTx(contract.hashTx)
-        , nOutput(contract.nOutput)
+        , ptx(contract.ptx)
+        , nFees(contract.nFees)
         {
         }
 
@@ -72,23 +66,19 @@ namespace TAO
             ssRegister  = contract.ssRegister;
 
             /* Set the transaction reference. */
-            hashCaller  = contract.hashCaller;
-            nTimestamp  = contract.nTimestamp;
-            hashTx      = contract.hashTx;
-            nOutput     = contract.nOutput;
+            ptx         = contract.ptx;
 
+            /* Set the fees. */
+            nFees       = contract.nFees;
 
             return *this;
         }
 
 
         /* Bind the contract to a transaction. */
-        void Contract::Bind(const TAO::Ledger::Transaction& tx, uint32_t nContract) const
+        void Contract::Bind(const TAO::Ledger::Transaction* tx) const
         {
-            hashCaller = tx.hashGenesis;
-            nTimestamp = tx.nTimestamp;
-            hashTx     = tx.GetHash();
-            nOutput    = nContract;
+            ptx = const_cast<TAO::Ledger::Transaction*>(tx);
         }
 
 
@@ -97,37 +87,51 @@ namespace TAO
         {
             /* Sanity checks. */
             if(ssOperation.size() == 0)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "cannot get primitive when empty"));
+                throw debug::exception(FUNCTION, "cannot get primitive when empty");
 
             /* Return first byte. */
             return ssOperation.get(0);
         }
 
 
-        uint32_t Contract::Output() const
+        /*  Get the fees for contract. */
+        const int32_t& Contract::Fees() const
         {
-            return nOutput;
+            return nFees;
         }
 
 
         /* Get this contract's execution time. */
         const uint64_t& Contract::Timestamp() const
         {
-            return nTimestamp;
+            /* Check for nullptr. */
+            if(!ptx)
+                throw debug::exception(FUNCTION, "timestamp access for nullptr");
+
+            return ptx->nTimestamp;
         }
 
 
         /* Get this contract's caller */
         const uint256_t& Contract::Caller() const
         {
-            return hashCaller;
+            /* Check for nullptr. */
+            if(!ptx)
+                throw debug::exception(FUNCTION, "caller access for nullptr");
+
+            return ptx->hashGenesis;
         }
 
 
         /* Get the hash of calling tx */
-        const uint512_t& Contract::Hash() const
+        const uint512_t Contract::Hash() const
         {
-            return hashTx;
+            /* Check for nullptr. */
+            if(!ptx)
+                throw debug::exception(FUNCTION, "hash access for nullptr");
+
+            //TODO: optimize with keeping txid cached
+            return ptx->GetHash();
         }
 
 

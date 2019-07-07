@@ -96,7 +96,7 @@ namespace TAO
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
 
             /* Bind this transaction. */
-            vContracts[n].Bind(*this, n);
+            vContracts[n].Bind(this);
 
             return vContracts[n];
         }
@@ -110,7 +110,7 @@ namespace TAO
                 vContracts.resize(n + 1);
 
             /* Bind this transaction. */
-            vContracts[n].Bind(*this, n);
+            vContracts[n].Bind(this);
 
             return vContracts[n];
         }
@@ -209,7 +209,7 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(*this, nContract);
+                contract.Bind(this);
 
                 /* Verify the register pre-states. */
                 if(!TAO::Register::Verify(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL))
@@ -234,7 +234,7 @@ namespace TAO
             for(auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(*this, nContract);
+                contract.Bind(this);
 
                 /* Calculate the pre-states and post-states. */
                 if(!TAO::Register::Build(contract, mapStates))
@@ -367,7 +367,7 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(*this, nContract);
+                contract.Bind(this);
 
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags))

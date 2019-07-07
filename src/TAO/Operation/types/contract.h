@@ -53,20 +53,13 @@ namespace TAO
             TAO::Register::Stream  ssRegister;
 
 
-            /** MEMORY ONLY: the calling public-id. **/
-            mutable uint256_t hashCaller;
+            /** MEMORY ONLY: The transaction pointer bound to. **/
+            mutable TAO::Ledger::Transaction* ptx;
 
 
-            /** MEMORY ONLY: the calling timestamp. **/
-            mutable uint64_t nTimestamp;
+            /** MEMORY ONLY: the required fees (signed for showing fee debits or credits). **/
+            int32_t nFees;
 
-
-            /** MEMORY ONLY: the calling txid. **/
-            mutable uint512_t hashTx;
-
-
-            /** MEMORY ONLY: the contract-id. **/
-            mutable uint32_t nOutput;
 
         public:
 
@@ -110,10 +103,9 @@ namespace TAO
              *  Bind the contract to a transaction.
              *
              *  @param[in] tx The transaction to bind the contract to.
-             *  @param[in] nContract The contract ID referenced by the transaction.
              *
              **/
-            void Bind(const TAO::Ledger::Transaction& tx, uint32_t nContract) const;
+            void Bind(const TAO::Ledger::Transaction* tx) const;
 
 
             /** Primitive
@@ -126,14 +118,14 @@ namespace TAO
             uint8_t Primitive() const;
 
 
-            /** Output
+            /** Fees
              *
-             *  Get the output (contract ID).
+             *  Get the fees for contract.
              *
-             *  @return The contract ID.
+             *  @return The total fees.
              *
              **/
-            uint32_t Output() const;
+            const int32_t& Fees() const;
 
 
             /** Timestamp
@@ -163,7 +155,7 @@ namespace TAO
              *  @return Returns the txid of calling tx
              *
              **/
-            const uint512_t& Hash() const;
+            const uint512_t Hash() const;
 
 
             /** Value
