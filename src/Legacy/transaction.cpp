@@ -788,9 +788,13 @@ namespace Legacy
         /* Read all of the inputs. */
         for(uint32_t i = (uint32_t)IsCoinStake(); i < nSize; ++i)
         {
-            /* Check for Tritium version transactions. */
-            if(nVersion >= 2)
+            /* Check for Tritium version transactions.
+             * Becomes ACTIVE 2 hours after time-lock.
+             */
+            if(TAO::Ledger::VersionActive(nTime + 7200, 7))
             {
+
+                //legacy txid has leading byte of 0x
 
             }
 
@@ -984,9 +988,11 @@ namespace Legacy
                 /* Handle for tritium transaction. */
                 case TAO::Ledger::TRITIUM:
                 {
-                    /* Check for valid version. */
-                    if(nVersion < 2)
-                        return debug::error(FUNCTION, "tritium transactions not available until version 2");
+                    /* Check for Tritium version transactions.
+                     * Becomes ACTIVE 2 hours after time-lock.
+                     */
+                    if(!TAO::Ledger::VersionActive(nTime + 7200, 7))
+                        return debug::error(FUNCTION, "tritium transactions not available until version 7");
 
                     /* Get the previous transaction. */
                     TAO::Ledger::Transaction txPrev;
@@ -1271,10 +1277,6 @@ namespace Legacy
             /* Handle for tritium transaction. */
             case TAO::Ledger::TRITIUM:
             {
-                /* Check version. */
-                if(nVersion < 2)
-                    throw debug::exception(FUNCTION, "tritium transactions not accepted until version 2");
-
                 /* Get the tritium transaction. */
                 TAO::Ledger::Transaction txPrev;
                 (*mi).second.second.SetPos(0);
