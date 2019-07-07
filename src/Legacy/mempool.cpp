@@ -89,7 +89,7 @@ namespace TAO
                         " already spent ", nTxHash.SubString(10));
 
             /* Check the inputs for spends. */
-            std::map<uint512_t, Legacy::Transaction> inputs;
+            std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
 
             /* Fetch the inputs. */
             if(!tx.FetchInputs(inputs))

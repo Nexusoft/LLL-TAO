@@ -40,6 +40,7 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+#include <Util/templates/datastream.h>
 
 #include <map>
 #include <utility>
@@ -331,7 +332,7 @@ namespace Legacy
             uint32_t nTxSigOps = 0;
             uint64_t nTxFees = 0;
             uint64_t nMinFee = tx.GetMinFee(nBlockSize, false, Legacy::GMF_BLOCK);
-            std::map<uint512_t, Transaction> mapInputs;
+            std::map<uint512_t, std::pair<uint8_t, DataStream> > mapInputs;
 
             /* Check block size limits */
             if((nBlockSize + nTxSize) >= TAO::Ledger::MAX_BLOCK_SIZE_GEN)

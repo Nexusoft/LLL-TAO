@@ -795,7 +795,7 @@ namespace TAO
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
 
                     /* Fetch the inputs. */
-                    std::map<uint512_t, Legacy::Transaction> inputs;
+                    std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
                     if(!tx.FetchInputs(inputs))
                         return debug::error(FUNCTION, "failed to fetch the inputs");
 
