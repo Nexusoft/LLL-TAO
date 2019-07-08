@@ -120,10 +120,6 @@ namespace TAO
             uint256_t hashTransfer;
             claim >> hashTransfer;
 
-            /* Check for reserved values. */
-            if(hashTransfer != ~uint256_t(0))
-                return debug::error(FUNCTION, "cannot claim register to invalid genesis");
-
             /* Get the state byte. */
             uint8_t nState = 0; //RESERVED
             claim >>= nState;
