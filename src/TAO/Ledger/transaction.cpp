@@ -563,7 +563,13 @@ namespace TAO
             DataStream ss(SER_GETHASH, nVersion);
             ss << *this;
 
-            return LLC::SK512(ss.begin(), ss.end());
+            /* Get the hash. */
+            uint512_t hash = LLC::SK512(ss.begin(), ss.end());
+
+            /* Type of 0xff designates tritium tx. */
+            hash.SetType(0xff);
+
+            return hash;
         }
 
 

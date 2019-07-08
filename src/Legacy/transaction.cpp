@@ -71,7 +71,15 @@ namespace Legacy
 	    DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
 	    ss.reserve(10000);
 	    ss << *this;
-	    return LLC::SK512(ss.begin(), ss.end());
+
+        /* Get the hash. */
+	    uint512_t hash = LLC::SK512(ss.begin(), ss.end());
+
+        /* Type of 0xfe designates legacy tx. */
+        if(TAO::Ledger::VersionActive(nTime + 7200, 7))
+            hash.SetType(0xfe);
+
+        return hash;
 	}
 
 
