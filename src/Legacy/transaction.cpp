@@ -77,7 +77,7 @@ namespace Legacy
 
         /* Type of 0xfe designates legacy tx. */
         if(TAO::Ledger::VersionActive(nTime, 7))
-            hash.SetType(0xfe);
+            hash.SetType(TAO::Ledger::LEGACY_TX);
 
         return hash;
 	}
@@ -801,8 +801,69 @@ namespace Legacy
              */
             if(TAO::Ledger::VersionActive(nTime + 7200, 7))
             {
+                /* Skip inputs that are already found. */
+                OutPoint prevout = vin[i].prevout;
+                if(inputs.count(prevout.hash))
+                    continue;
 
-                //legacy txid has leading byte of 0x
+                /* Get the type of transaction. */
+                const uint8_t nType = prevout.hash.GetType();
+
+                /* Switch based on type. */
+                switch(nType)
+                {
+                    case TAO::Ledger::TRITIUM:
+                    {
+                        /* Read the previous transaction. */
+                        TAO::Ledger::Transaction txPrev;
+                        if(!LLD::Ledger->ReadTx(prevout.hash, txPrev))
+                            return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not found");
+
+                        /* Check for existing indexes. */
+                        if(!txPrev.IsConfirmed())
+                            return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not confirmed");
+
+                        /* Check that it is valid. */
+                        if(prevout.n >= txPrev.Size())
+                            return debug::error(FUNCTION, "prevout ", prevout.n, " is out of range ", txPrev.Size());
+
+                        /* Check for Legacy. */
+                        if(txPrev[prevout.n].Primitive() != TAO::Operation::OP::LEGACY)
+                            return debug::error(FUNCTION, "can't spend from UTXO with no OP::LEGACY");
+
+                        /* Add to the inputs. */
+                        inputs.emplace(prevout.hash, std::make_pair(uint8_t(TAO::Ledger::TRITIUM), DataStream(SER_LLD, LLD::DATABASE_VERSION)));
+                        inputs.at(prevout.hash).second << txPrev;
+
+                        break;
+                    }
+
+                    case TAO::Ledger::LEGACY:
+                    {
+                        /* Read the previous transaction. */
+                        Transaction txPrev;
+                        if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
+                            return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not found");
+
+                        /* Check for existing indexes. */
+                        if(!LLD::Ledger->HasIndex(prevout.hash))
+                            return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not connected");
+
+                        /* Check that it is valid. */
+                        if(prevout.n >= txPrev.vout.size())
+                            return debug::error(FUNCTION, "prevout ", prevout.n, " is out of range ", txPrev.vout.size());
+
+                        /* Add to the inputs. */
+                        inputs.emplace(prevout.hash, std::make_pair(uint8_t(TAO::Ledger::LEGACY), DataStream(SER_LLD, LLD::DATABASE_VERSION)));
+                        inputs.at(prevout.hash).second << txPrev;
+
+                        break;
+                    }
+
+                    default:
+                        return debug::error(FUNCTION, "invalid txid type");
+                }
+
 
             }
 

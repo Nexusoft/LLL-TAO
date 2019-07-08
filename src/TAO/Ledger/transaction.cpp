@@ -567,7 +567,7 @@ namespace TAO
             uint512_t hash = LLC::SK512(ss.begin(), ss.end());
 
             /* Type of 0xff designates tritium tx. */
-            hash.SetType(0xff);
+            hash.SetType(TAO::Ledger::TRITIUM_TX);
 
             return hash;
         }
