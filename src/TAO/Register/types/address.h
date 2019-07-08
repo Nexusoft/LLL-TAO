@@ -103,26 +103,6 @@ namespace TAO
             Address& operator=(const Address& addr);
 
 
-            /** SetType
-             *
-             *  Set the type byte into the address.
-             *
-             *  @param[in] nType The type byte for address.
-             *
-             **/
-            void SetType(uint8_t nType);
-
-
-            /** GetType
-             *
-             *  Get the type byte from the address.
-             *
-             *  @param[in] nType The type byte for address.
-             *
-             **/
-            uint8_t GetType() const;
-
-
             /** IsValid
              *
              *  Check if address has a valid type assoicated.

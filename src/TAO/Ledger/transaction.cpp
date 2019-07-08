@@ -36,7 +36,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/genesis.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
@@ -147,8 +146,7 @@ namespace TAO
                 return debug::error(FUNCTION, "transaction with empty signature");
 
             /* Check the genesis first byte. */
-            Genesis genesis = Genesis(hashGenesis);
-            if(!genesis.IsValid())
+            if(hashGenesis.GetType() != (config::fTestNet.load() ? 0xa2 : 0xa1))
                 return debug::error(FUNCTION, "genesis using incorrect leading byte");
 
             /* Run through all the contracts. */

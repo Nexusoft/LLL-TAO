@@ -62,6 +62,10 @@ namespace TAO
             if(nType != NAME && nType!= NAMESPACE)
                 throw debug::exception(FUNCTION, "invalid type for names");
 
+            /* Check for testnet. */
+            //if(nType != 0xff && config::fTestNet.load())
+            //    nType += 0x10;
+
             SetType(nType);
         }
 
@@ -86,32 +90,6 @@ namespace TAO
                 pn[i] = addr.pn[i];
 
             return *this;
-        }
-
-
-        /* Set the type byte into the address.*/
-        void Address::SetType(uint8_t nType)
-        {
-            /* Check for testnet. */
-            //if(nType != 0xff && config::fTestNet.load())
-            //    nType += 0x10;
-
-            /* Mask off most significant byte (little endian). */
-            pn[WIDTH -1] = (pn[WIDTH - 1] & 0x00ffffff) + (nType << 24);
-        }
-
-
-        /*  Get the type byte from the address.*/
-        uint8_t Address::GetType() const
-        {
-            /* Get type from hash. */
-            uint8_t nType = (pn[WIDTH -1] >> 24);
-
-            /* Check for testnet. */
-            //if(nType != 0xff && config::fTestNet.load())
-            //    nType -= 0x10;
-
-            return nType;
         }
 
 

@@ -49,26 +49,6 @@ namespace TAO
             Genesis& operator=(const Genesis& gen);
 
 
-            /** SetType
-             *
-             *  Set the type byte into the genesis.
-             *
-             *  @param[in] nType The type byte for genesis.
-             *
-             **/
-            void SetType();
-
-
-            /** GetType
-             *
-             *  Get the type byte from the genesis.
-             *
-             *  @param[in] nType The type byte for genesis.
-             *
-             **/
-            uint8_t GetType() const;
-
-
             /** IsValid
              *
              *  Check if genesis has a valid indicator byte.

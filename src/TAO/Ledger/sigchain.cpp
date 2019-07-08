@@ -148,9 +148,9 @@ namespace TAO
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
 
             /* Set the bytes for the key. */
-            TAO::Ledger::Genesis hashKey;
+            uint256_t hashKey;
             hashKey.SetBytes(vHash);
-            hashKey.SetType();
+            hashKey.SetType(config::fTestNet.load() ? 0xa2 : 0xa1);
 
             return hashKey;
         }

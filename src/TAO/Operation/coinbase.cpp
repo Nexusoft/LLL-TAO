@@ -16,8 +16,6 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/coinbase.h>
 #include <TAO/Operation/include/enum.h>
 
-#include <TAO/Ledger/types/genesis.h>
-
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -33,7 +31,7 @@ namespace TAO
             if(nFlags & TAO::Ledger::FLAGS::BLOCK)
             {
                 debug::log(0, "Commiting event for sigchain ", hashAddress.ToString());
-                
+
                 /* Write the event to the database. */
                 if(!LLD::Ledger->WriteEvent(hashAddress, hashTx))
                     return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase");
@@ -58,11 +56,11 @@ namespace TAO
                 return debug::error(FUNCTION, "called with incorrect OP");
 
             /* Extract the address from contract. */
-            TAO::Ledger::Genesis genesis;
-            contract >> genesis;
+            uint256_t hashGenesis;
+            contract >> hashGenesis;
 
             /* Check for valid genesis. */
-            if(!genesis.IsValid())
+            if(hashGenesis.GetType() != (config::fTestNet.load() ? 0xa2 : 0xa1))
                 return debug::error(FUNCTION, "invalid genesis for coinbase");
 
             /* Seek read position to first position. */

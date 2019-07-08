@@ -262,10 +262,15 @@ namespace LLP
                         continue;
 
                     /* Disconnect if there was a polling error */
-                    if((POLLFDS.at(nIndex).revents & POLLERR)
-                    || (POLLFDS.at(nIndex).revents & POLLNVAL)
-                    //|| (POLLFDS.at(nIndex).revents & POLLRDHUP)
-                    || (POLLFDS.at(nIndex).revents & POLLHUP))
+                    if((POLLFDS.at(nIndex).revents & POLLERR))
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
+                        continue;
+                    }
+
+                    /* Disconnect if pollin signaled with no data (This happens on Linux). */
+                    if((POLLFDS.at(nIndex).revents & POLLIN)
+                    && connection->Available() == 0)
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
                         continue;

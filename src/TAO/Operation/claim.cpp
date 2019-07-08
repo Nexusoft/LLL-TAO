@@ -20,8 +20,6 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/reserved.h>
 
-#include <TAO/Ledger/types/genesis.h>
-
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -119,11 +117,11 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot claim register with reserved address");
 
             /* Read the register transfer recipient. */
-            TAO::Ledger::Genesis hashTransfer;
+            uint256_t hashTransfer;
             claim >> hashTransfer;
 
             /* Check for reserved values. */
-            if(hashTransfer != ~uint256_t(0) && !hashTransfer.IsValid())
+            if(hashTransfer != ~uint256_t(0))
                 return debug::error(FUNCTION, "cannot claim register to invalid genesis");
 
             /* Get the state byte. */

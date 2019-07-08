@@ -35,7 +35,7 @@ namespace TAO
         : uint256_t(hashAddress)
         {
             if(fSet)
-                SetType();
+                SetType(config::fTestNet.load() ? 0xa2 : 0xa1);
         }
 
 
@@ -50,39 +50,10 @@ namespace TAO
         }
 
 
-        /* Set the type byte into the genesis.*/
-        void Genesis::SetType()
-        {
-            /* Get the type. */
-            uint8_t nType = 0xa1;
-
-            /* Check for testnet. */
-            if(config::fTestNet.load())
-                ++nType;
-
-            /* Mask off most significant byte (little endian). */
-            pn[WIDTH -1] = (pn[WIDTH - 1] & 0x00ffffff) + (nType << 24);
-        }
-
-
-        /* Get the type byte from the genesis.*/
-        uint8_t Genesis::GetType() const
-        {
-            /* Get the type. */
-            uint8_t nType = (pn[WIDTH -1] >> 24);
-
-            /* Check for testnet. */
-            if(config::fTestNet.load())
-                --nType;
-
-            return nType;
-        }
-
-
         /* Check if genesis has a valid indicator byte.*/
         bool Genesis::IsValid() const
         {
-            return GetType() == 0xa1;
+            return GetType() == (config::fTestNet.load() ? 0xa2 : 0xa1);
         }
     }
 }
