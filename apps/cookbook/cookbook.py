@@ -23,8 +23,12 @@ import bottle
 import sys
 import json
 import socket
+import os
 
 try:
+    sdk_dir = os.getcwd().split("/")[0:-2]
+    sdk_dir = "/".join(sdk_dir) + "/sdk"
+    sys.path.append(sdk_dir)
     import nexus_sdk as nexus
 except:
     print "Need to place nexus_sdk.py in this directory"
@@ -34,7 +38,7 @@ except:
 #
 # Did command line have a port number to listen to?
 #
-cookbook_port = int(sys.argv[1]) if (len(sys.argv) == 2) else 5432
+cookbook_port = int(sys.argv[1]) if (len(sys.argv) == 2) else 1111
 
 #
 # Nexus node to query for API. A change to the SDK URL needs a call to
