@@ -18,17 +18,8 @@ can be used later to convert to USD for tuition assistance.
 
 This application uses the 'accounts' and 'tokens' API via the python SDK.
 
-The application can be started by:
-
-    python edu.py [<port>]
-
-Where <port> defaults to 2345. You can point your browser to:
-
-    http://localhost:2345
-
-to get access to the user interface. You can create accounts for each user
-type (Student, Teacher, University) to get started. Test taking is simulated
-but can be retaken until you pass.
+You can create accounts for each user type (Student, Teacher, University) to
+get started. Test taking is simulated but can be retaken until you pass.
 
 -------------------------------------------------------------------------------
 
