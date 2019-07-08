@@ -199,7 +199,7 @@ namespace LLC
          *  @param[in] n number to construct bignum with
          *
          **/
-        explicit CBigNum(uint256_t n);
+        explicit CBigNum(const uint256_t& n);
 
 
         /** CBigNum
@@ -209,7 +209,7 @@ namespace LLC
          *  @param[in] n number to construct bignum with
          *
          **/
-        explicit CBigNum(uint512_t n);
+        explicit CBigNum(const uint512_t& n);
 
 
         /** CBigNum
@@ -219,7 +219,7 @@ namespace LLC
          *  @param[in] n number to construct bignum with
          *
          **/
-        explicit CBigNum(uint576_t n);
+        explicit CBigNum(const uint576_t& n);
 
 
         /** CBigNum
@@ -229,7 +229,7 @@ namespace LLC
          *  @param[in] n number to construct bignum with
          *
          **/
-        explicit CBigNum(uint1024_t n);
+        explicit CBigNum(const uint1024_t& n);
 
 
         /** CBigNum
@@ -348,7 +348,7 @@ namespace LLC
          *
          *
          **/
-        void setuint256(uint256_t n);
+        void setuint256(const uint256_t& n);
 
 
         /** setuint512
@@ -357,7 +357,7 @@ namespace LLC
          *
          *
          **/
-        void setuint512(uint512_t n);
+        void setuint512(const uint512_t& n);
 
 
         /** setuint576
@@ -366,7 +366,7 @@ namespace LLC
          *
          *
          **/
-        void setuint576(uint576_t n);
+        void setuint576(const uint576_t& n);
 
 
         /** setuint1024
@@ -375,7 +375,7 @@ namespace LLC
          *
          *
          **/
-        void setuint1024(uint1024_t n);
+        void setuint1024(const uint1024_t& n);
 
 
         /** setvch
@@ -555,19 +555,14 @@ namespace LLC
         friend const CBigNum operator%(const CBigNum& a, const CBigNum& b);
 
 
-        /* templated serialization function prototypes */
-        uint64_t GetSerializeSize(uint32_t nSerType=0,
-                                  uint32_t nVersion=LLP::PROTOCOL_VERSION) const;
+        /* Templated serialization function prototypes. */
+        uint64_t GetSerializeSize(uint32_t nSerType = 0, uint32_t nVersion = LLP::PROTOCOL_VERSION) const;
 
         template<typename Stream>
-        void Serialize(Stream& s,
-                       uint32_t nSerType=0,
-                       uint32_t nVersion=LLP::PROTOCOL_VERSION) const;
+        void Serialize(Stream& s, uint32_t nSerType = 0, uint32_t nVersion = LLP::PROTOCOL_VERSION) const;
 
         template<typename Stream>
-        void Unserialize(Stream& s,
-                         uint32_t nSerType=0,
-                         uint32_t nVersion=LLP::PROTOCOL_VERSION);
+        void Unserialize(Stream& s, uint32_t nSerType = 0, uint32_t nVersion = LLP::PROTOCOL_VERSION);
 
     private:
 
