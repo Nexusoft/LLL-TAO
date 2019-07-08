@@ -272,6 +272,14 @@ namespace LLP
                     strReason = "Errors";
                     break;
 
+                case DISCONNECT_POLL_ERROR:
+                    strReason = "Poll Error";
+                    break;
+
+                case DISCONNECT_POLL_EMPTY:
+                    strReason = "Unavailable";
+                    break;
+
                 case DISCONNECT_DDOS:
                     strReason = "DDOS";
                     break;
