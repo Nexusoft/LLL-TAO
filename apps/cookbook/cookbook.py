@@ -47,6 +47,12 @@ cookbook_port = int(sys.argv[1]) if (len(sys.argv) == 2) else 1111
 nexus_api_node = "http://localhost:8080"
 nexus_sdk_node = "http://localhost:8080"
 
+#
+# Keep track of last username logged in.
+#
+nexus_api_last_username = None
+nexus_sdk_last_username = None
+
 #------------------------------------------------------------------------------
 
 def green(string):
@@ -165,7 +171,9 @@ def show(msg, sid="", genid=""):
     output = show_html.format(bold(msg)) + build_body_page(sid, genid)
 
     hostname = blue(socket.gethostname())
-    return(landing_page.format(hostname, output))
+    sdk = blue(nexus_sdk_last_username)
+    api = blue(nexus_api_last_username)
+    return(landing_page.format(hostname, sdk, api, output))
 #enddef
 
 #
@@ -180,8 +188,12 @@ landing_page = '''
     <font face="verdana"><center>
     <br><head><a href="/" style="text-decoration:none;"><font color="black">
     <b>Nexus Interactive SDK/API Cook Book</b></a></head><br>
-    <font size="2""><br>Running on {}</font><br><br><hr size="5">
+
+    <font size="2""><br>Running on {}, last logged in SDK/API user {}/{}</font>
+    <br><br><hr size="5">
+
     {}
+    
     <hr size="5"></center></font></body></html>
 '''
 
@@ -465,6 +477,7 @@ def do_users_create_user():
 @bottle.route('/users-login-user', method="post")
 def do_users_login_user():
     global contexts
+    global nexus_api_last_username, nexus_sdk_last_username
     
     username = bottle.request.forms.get("username")
     password = bottle.request.forms.get("password")
@@ -482,10 +495,16 @@ def do_users_login_user():
         output = sdk.nexus_users_login_user()
         sid, genid = [sdk.session_id, sdk.genesis_id]
         contexts[sid] = sdk
+        if (output.has_key("error") == False):
+            nexus_sdk_last_username = username
+        #endif
     else:
         output = curl(users_login_user.format("", username, password, pin, ""))
         sid = output["result"]["session"] if output.has_key("result") else ""
         genid = output["result"]["genesis"] if output.has_key("result") else ""
+        if (output.has_key("error") == False):
+            nexus_api_last_username = username
+        #endif
     #endif
     output = json.dumps(output)
 
@@ -2552,7 +2571,9 @@ def build_body_page(sid="", genid=""):
 def do_landing():
     output = build_body_page()
     hostname = blue(socket.gethostname())
-    return(landing_page.format(hostname, output))
+    sdk = blue(nexus_sdk_last_username)
+    api = blue(nexus_api_last_username)
+    return(landing_page.format(hostname, sdk, api, output))
 #enddef
 
 @bottle.route('/url/<api_or_sdk>', method="post")
@@ -2570,7 +2591,9 @@ def do_url(api_or_sdk):
 
     output = build_body_page()
     hostname = blue(socket.gethostname())
-    return(landing_page.format(hostname, output))
+    sdk = blue(nexus_sdk_last_username)
+    api = blue(nexus_api_last_username)
+    return(landing_page.format(hostname, sdk, api, output))
 #enddef
 
 #------------------------------------------------------------------------------
