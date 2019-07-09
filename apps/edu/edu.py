@@ -451,11 +451,13 @@ def show_students(sid):
     for score in scores:
         user, module, tok, sc = score.split("-")
         sc = float(sc)
+        address = None
         for student in students:
             if (student.find(user) == -1): continue
             address = student.split("-")[-1]
             break
         #endfor
+        if (address == None): continue
 
         pf = "?" if sc == None else green("pass") if sc >= 70 else red("fail")
         if (pf != "?"): pf += "&nbsp;&nbsp;({}%)".format(sc)
