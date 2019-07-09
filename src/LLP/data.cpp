@@ -269,6 +269,15 @@ namespace LLP
                         continue;
                     }
 
+#ifdef WIN32
+                    /* Disconnect if the socket was disconnected by peer (need for Windows) */
+                    if((POLLFDS.at(nIndex).revents & POLLHUP))
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_PEER);
+                        continue;
+                    }
+#endif
+
                     /* Disconnect if pollin signaled with no data (This happens on Linux). */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
                     && connection->Available() == 0)

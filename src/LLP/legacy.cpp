@@ -268,6 +268,10 @@ namespace LLP
                     strReason = "Timeout";
                     break;
 
+                case DISCONNECT_PEER:
+                    strReason = "Peer disconnected";
+                    break;
+
                 case DISCONNECT_ERRORS:
                     strReason = "Errors";
                     break;
@@ -286,6 +290,10 @@ namespace LLP
 
                 case DISCONNECT_FORCE:
                     strReason = "Forced";
+                    break;
+
+                default:
+                    strReason = "Other";
                     break;
             }
 

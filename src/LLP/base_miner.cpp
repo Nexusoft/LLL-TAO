@@ -232,19 +232,35 @@ namespace LLP
                 switch(reason)
                 {
                     case DISCONNECT_TIMEOUT:
-                        strReason = "DISCONNECT_TIMEOUT";
+                        strReason = "Timeout";
                         break;
+
+                    case DISCONNECT_PEER:
+                        strReason = "Peer disconnected";
+                        break;
+
                     case DISCONNECT_ERRORS:
-                        strReason = "DISCONNECT_ERRORS";
+                        strReason = "Errors";
                         break;
+
+                    case DISCONNECT_POLL_ERROR:
+                        strReason = "Poll Error";
+                        break;
+
+                    case DISCONNECT_POLL_EMPTY:
+                        strReason = "Unavailable";
+                        break;
+
                     case DISCONNECT_DDOS:
-                        strReason = "DISCONNECT_DDOS";
+                        strReason = "DDOS";
                         break;
+
                     case DISCONNECT_FORCE:
-                        strReason = "DISCONNECT_FORCE";
+                        strReason = "Forced";
                         break;
+
                     default:
-                        strReason = "UNKNOWN";
+                        strReason = "Other";
                         break;
                 }
                 debug::log(2, FUNCTION, "Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
