@@ -364,7 +364,7 @@ def watermark_document(filename, username, genid, readers):
 #
 wm_page = '''
     <html>
-    <title>Nexus Document Watermak Application</title>
+    <title>Nexus Document Watermark Application</title>
     <body bgcolor="gray">
     <div style="margin:20px;background-color:#F5F5F5;padding:15px;
          border-radius:20px;border:5px solid #666666;">
@@ -379,7 +379,7 @@ wm_page = '''
 '''
 wm_page_logged_in = '''
     <html>
-    <title>Nexus Document Watermak Application</title>
+    <title>Nexus Document Watermark Application</title>
     <body bgcolor="gray">
     <div style="margin:20px;background-color:#F5F5F5;padding:15px;
          border-radius:20px;border:5px solid #666666;">
