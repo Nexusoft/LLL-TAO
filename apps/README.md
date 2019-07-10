@@ -76,7 +76,7 @@ tokens in USD and in Award Tokens. Bring up edu by typing:
 
 -------------------------------------------------------------------------------
 
-watermark - default lisents on port 5555
+watermark - default listens on port 5555
 
 Watermark is an application that allows you to load in documents so they
 can be watermarked. Watermarked documents can only be read by genesis-IDs
