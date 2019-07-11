@@ -320,17 +320,12 @@ int main(int argc, char** argv)
 
     /** Run the process as Daemon RPC/LLP Server if Flagged. **/
     if (config::fDaemon)
-    {
         Daemonize();
-    }
 
 
     /* Create directories if they don't exist yet. */
-    if(!filesystem::exists(config::GetDataDir(false)) &&
-        filesystem::create_directory(config::GetDataDir(false)))
-    {
-        debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir(false));
-    }
+    if(!filesystem::exists(config::GetDataDir()) && filesystem::create_directory(config::GetDataDir()))
+        debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
 
 
     /* Get the port for Legacy Server. */

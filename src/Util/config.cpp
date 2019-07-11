@@ -35,13 +35,14 @@ namespace config
             return; /* No nexus.conf file is OK */
 
         std::string line;
-
-        while(!streamConfig.eof())
+        while(std::getline(streamConfig, line))
         {
-            std::getline(streamConfig, line);
-
             size_t i = line.find('=');
             if(i == std::string::npos)
+                continue;
+
+            size_t l = line.find('#');
+            if(l != std::string::npos)
                 continue;
 
             std::string strKey = std::string("-") + std::string(line, 0, i);
