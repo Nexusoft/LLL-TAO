@@ -53,9 +53,6 @@ namespace LLP
     /* Mutex to protect checking more than one block at a time. */
     std::mutex PROCESSING_MUTEX;
 
-    /* Mutex to protect the legacy orphans map. */
-    std::mutex ORPHAN_MUTEX;
-
     /* Mutex to protect connected sessions. */
     std::mutex SESSIONS_MUTEX;
 
@@ -807,6 +804,8 @@ namespace LLP
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
     {
+        LOCK(PROCESSING_MUTEX);
+
         /* Check block for validitiy. */
         if(!block.Check())
             return true;
@@ -817,8 +816,6 @@ namespace LLP
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
-            LOCK(ORPHAN_MUTEX);
-
             /* Fast sync block requests. */
             if(!TAO::Ledger::ChainState::Synchronizing())
             {
@@ -847,13 +844,8 @@ namespace LLP
                 pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
             }
 
-            /* Increment the consecutive orphans. */
-            if(pnode)
-                ++pnode->nConsecutiveOrphans;
-
             /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(pnode
-            && pnode->nConsecutiveOrphans >= 500)
+            if(pnode && pnode->nConsecutiveOrphans >= 500)
             {
                 debug::log(0, FUNCTION, "node reached orphan limit... closing");
 
@@ -866,17 +858,23 @@ namespace LLP
 
             /* Skip if already in orphan queue. */
             if(!mapLegacyOrphans.count(block.hashPrevBlock))
+            {
+                /* Add to the map of orphans. */
                 mapLegacyOrphans[block.hashPrevBlock] = block;
 
-            /* Debug output. */
-            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
+                /* Increment the consecutive orphans. */
+                if(pnode)
+                    ++pnode->nConsecutiveOrphans;
+
+                /* Debug output. */
+                debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
+            }
 
             return true;
         }
 
 
         /* Check if valid in the chain. */
-        LOCK(PROCESSING_MUTEX);
         if(!block.Accept())
         {
             /* Increment the consecutive failures. */
@@ -934,21 +932,19 @@ namespace LLP
                 pnode->nConsecutiveOrphans = 0;
         }
 
-        /* Process orphan if found. */
-        uint1024_t nOrphanHash;
-        std::unique_lock<std::mutex> lock(ORPHAN_MUTEX);
+
+        /* Check for orphans to process. */
         while(mapLegacyOrphans.count(hash))
         {
             Legacy::LegacyBlock& orphan = mapLegacyOrphans[hash];
 
-            nOrphanHash = orphan.GetHash();
-            debug::log(0, FUNCTION, "processing ORPHAN prev=", nOrphanHash.ToString().substr(0, 20), " size=", mapLegacyOrphans.size());
+            debug::log(0, FUNCTION, "processing ORPHAN prev=", orphan.GetHash().ToString().substr(0, 20), " size=", mapLegacyOrphans.size());
 
             uint1024_t hashOrphan = hash;
             if(!orphan.Accept())
                 return true;
 
-            hash = nOrphanHash;
+            hash = orphan.GetHash();
             mapLegacyOrphans.erase(hashOrphan);
         }
 
