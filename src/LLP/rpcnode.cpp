@@ -13,11 +13,15 @@ ________________________________________________________________________________
 
 
 #include <LLP/types/rpcnode.h>
+#include <LLP/templates/events.h>
+
 #include <TAO/API/include/rpc.h>
+#include <TAO/API/types/exception.h>
+
 #include <Util/include/config.h>
 #include <Util/include/base64.h>
 #include <Util/include/string.h>
-#include <TAO/API/types/exception.h>
+
 #include <new> //std::bad_alloc
 
 // using alias to simplify using APIException liberally without having to reference the TAO:API namespace
@@ -39,8 +43,61 @@ namespace LLP
     /* Custom Events for Core API */
     void RPCNode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
-        //no events for now
-        //TODO: see if at all possible to call from down in inheritance heirarchy
+        /* Log connect event */
+        if(EVENT == EVENT_CONNECT)
+        {
+            debug::log(3, NODE, fOUTGOING ? "Outgoing" : "Incoming",
+                       " RPC Connected at timestamp ",   runtime::unifiedtimestamp());
+
+            return;
+        }
+
+
+        /* Log disconnect event */
+        if(EVENT == EVENT_DISCONNECT)
+        {
+            std::string strReason = "";
+            switch(LENGTH)
+            {
+                case DISCONNECT_TIMEOUT:
+                    strReason = "Timeout";
+                    break;
+
+                case DISCONNECT_PEER:
+                    strReason = "Peer disconnected";
+                    break;
+
+                case DISCONNECT_ERRORS:
+                    strReason = "Errors";
+                    break;
+
+                case DISCONNECT_POLL_ERROR:
+                    strReason = "Poll Error";
+                    break;
+
+                case DISCONNECT_POLL_EMPTY:
+                    strReason = "Unavailable";
+                    break;
+
+                case DISCONNECT_DDOS:
+                    strReason = "DDOS";
+                    break;
+
+                case DISCONNECT_FORCE:
+                    strReason = "Forced";
+                    break;
+
+                default:
+                    strReason = "Other";
+                    break;
+            }
+
+            /* Debug output for node disconnect. */
+            debug::log(3, NODE, fOUTGOING ? "Outgoing" : "Incoming",
+                " RPC Disconnected (", strReason, ") at timestamp ", runtime::unifiedtimestamp());
+
+            return;
+        }
     }
 
 
