@@ -223,8 +223,8 @@ namespace LLP
             /* Unreliabilitiy re-requesting (max time since getblocks) */
             if(TAO::Ledger::ChainState::Synchronizing()
             && addrFastSync == GetAddress()
-            && nLastTimeReceived.load() + 30 < nTimestamp
-            && nLastGetBlocks.load() + 30 < nTimestamp)
+            && nLastTimeReceived.load() + 15 < nTimestamp
+            && nLastGetBlocks.load() + 15 < nTimestamp)
             {
                 debug::log(0, NODE, "fast sync event timeout");
 
