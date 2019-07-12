@@ -51,7 +51,7 @@ namespace LLD
 
 
         /** Keychain stream object. **/
-        TemplateLRU<uint32_t, std::fstream*> *fileCache;
+        TemplateLRU<uint16_t, std::fstream*> *fileCache;
 
 
         /** Keychain index stream. **/
@@ -59,7 +59,7 @@ namespace LLD
 
 
         /** Total elements in hashmap for quick inserts. **/
-        std::vector<uint32_t> hashmap;
+        std::vector<uint16_t> hashmap;
 
 
         /** The Maximum buckets allowed in the hashmap. */

@@ -190,21 +190,6 @@ namespace LLD
     /*  Move the node in double linked list to front. */
     void BinaryLFU::MoveForward(BinaryNodeLFU* pthis)
     {
-        /* Don't move to front if already in the front. */
-        if(pthis == pfirst)
-            return;
-
-        /* Move last pointer if moving from back. */
-        if(pthis == plast)
-        {
-            if(plast->pprev)
-                plast = plast->pprev;
-
-            plast->pnext = nullptr;
-        }
-        else
-            RemoveNode(pthis);
-
         /* Set last if not set. */
         if(!plast)
         {
@@ -221,6 +206,19 @@ namespace LLD
             pfirst->pnext = plast;
 
             return;
+        }
+
+        /* Don't move to front if already in the front. */
+        if(pthis == pfirst)
+            return;
+
+        /* Move last pointer if moving from back. */
+        if(pthis == plast)
+        {
+            if(plast->pprev)
+                plast = plast->pprev;
+
+            plast->pnext = nullptr;
         }
 
         /* Bump frequency. */
