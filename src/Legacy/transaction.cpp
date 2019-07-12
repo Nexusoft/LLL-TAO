@@ -39,8 +39,7 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    //TODO: this may be needed elsewhere.
-    //keep here for now.
+    /* Old legacy outdated threshold, currently a placeholder. */
     const int64_t LOCKTIME_THRESHOLD = 500000000;
 
 
@@ -111,18 +110,18 @@ namespace Legacy
 	bool Transaction::IsNewerThan(const Transaction& old) const
 	{
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
-		if(nInSize != old.vin.size())
+		if(nSize != old.vin.size())
 			return false;
 
-		for(uint32_t i = 0; i < nInSize; ++i)
+		for(uint32_t i = 0; i < nSize; ++i)
 			if(vin[i].prevout != old.vin[i].prevout)
 				return false;
 
 		bool fNewer = false;
 		uint32_t nLowest = std::numeric_limits<uint32_t>::max();
-		for(uint32_t i = 0; i < nInSize; ++i)
+		for(uint32_t i = 0; i < nSize; ++i)
 		{
 			if(vin[i].nSequence != old.vin[i].nSequence)
 			{
@@ -166,10 +165,10 @@ namespace Legacy
 	bool Transaction::IsCoinStake() const
 	{
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
 		/* Must have more than one Input. */
-		if(nInSize <= 1)
+		if(nSize <= 1)
 			return false;
 
 		/* First Input Script Signature must Contain Fibanacci Byte Series. */
@@ -177,7 +176,7 @@ namespace Legacy
 			return false;
 
 		/* All Remaining Previous Inputs must not be Empty. */
-		for(uint32_t nIndex = 1; nIndex < nInSize; ++nIndex)
+		for(uint32_t nIndex = 1; nIndex < nSize; ++nIndex)
 			if(vin[nIndex].prevout.IsNull())
 				return false;
 
@@ -338,10 +337,10 @@ namespace Legacy
             return false;
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
         /* Check the coin age of each Input. */
-        for(uint32_t nIndex = 1; nIndex < nInSize; ++nIndex)
+        for(uint32_t nIndex = 1; nIndex < nSize; ++nIndex)
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
@@ -355,7 +354,7 @@ namespace Legacy
             nAge += nCoinAge;
         }
 
-        nAge /= (nInSize - 1);
+        nAge /= (nSize - 1);
 
         return true;
     }
@@ -403,10 +402,10 @@ namespace Legacy
         }
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
         /** Check the coin age of each Input. **/
-        for(uint32_t nIndex = 1; nIndex < nInSize; ++nIndex)
+        for(uint32_t nIndex = 1; nIndex < nSize; ++nIndex)
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
@@ -455,7 +454,7 @@ namespace Legacy
             nStakeReward += ((nValue * nStakeRate * nCoinAge) / TAO::Ledger::ONE_YEAR);
         }
 
-        nAverageAge /= (nInSize - 1);
+        nAverageAge /= (nSize - 1);
 
         return true;
     }
@@ -468,9 +467,9 @@ namespace Legacy
             return true; // Coinbases don't use vin normally
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
-        for(uint32_t i = (uint32_t) IsCoinStake(); i < nInSize; ++i)
+        for(uint32_t i = (uint32_t) IsCoinStake(); i < nSize; ++i)
         {
             const TxOut& prev = GetOutputFor(vin[i], mapInputs);
 
@@ -552,9 +551,9 @@ namespace Legacy
         uint32_t nSigOps = 0;
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
-        for(uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
+        for(uint32_t i = (uint32_t)IsCoinStake(); i < nSize; ++i)
         {
             const TxOut& prevout = GetOutputFor(vin[i], mapInputs);
             nSigOps += prevout.scriptPubKey.GetSigOpCount(vin[i].scriptSig);
@@ -588,9 +587,9 @@ namespace Legacy
         uint64_t nResult = 0;
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
-        for(uint32_t i = (uint32_t) IsCoinStake(); i < nInSize; ++i)
+        for(uint32_t i = (uint32_t) IsCoinStake(); i < nSize; ++i)
         {
             nResult += GetOutputFor(vin[i], mapInputs).nValue;
         }
@@ -672,6 +671,8 @@ namespace Legacy
         str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
         return str;
     }
+
+
     /*  User readable description of the transaction type. */
     std::string Transaction::TypeString() const
     {
@@ -838,6 +839,7 @@ namespace Legacy
                         break;
                     }
 
+                    default:
                     case TAO::Ledger::LEGACY:
                     {
                         /* Read the previous transaction. */
@@ -859,9 +861,6 @@ namespace Legacy
 
                         break;
                     }
-
-                    default:
-                        return debug::error(FUNCTION, "invalid txid type");
                 }
 
 
@@ -992,8 +991,8 @@ namespace Legacy
         uint64_t nValueIn = 0;
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
-        for(uint32_t i = (uint32_t)fIsCoinStake; i < nInSize; ++i)
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
+        for(uint32_t i = (uint32_t)fIsCoinStake; i < nSize; ++i)
         {
             /* Check the inputs map to tx inputs. */
             OutPoint prevout = vin[i].prevout;
@@ -1144,10 +1143,10 @@ namespace Legacy
         if(!IsCoinBase())
         {
             /* Get the number of inputs to the transaction. */
-            uint32_t nInSize = static_cast<uint32_t>(vin.size());
+            uint32_t nSize = static_cast<uint32_t>(vin.size());
 
             /* Read all of the inputs. */
-            for(uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
+            for(uint32_t i = (uint32_t)IsCoinStake(); i < nSize; ++i)
             {
                 /* Erase the spends. */
                 if(!LLD::Legacy->EraseSpend(vin[i].prevout.hash, vin[i].prevout.n))
