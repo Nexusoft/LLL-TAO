@@ -165,7 +165,6 @@ namespace LLD
         if(plast && pthis == plast)
         {
             plast = plast->pprev;
-
             if(plast)
                 plast->pnext = nullptr;
         }
@@ -174,7 +173,6 @@ namespace LLD
         if(pfirst && pthis == pfirst)
         {
             pfirst = pfirst->pnext;
-
             if(pfirst)
                 pfirst->pprev = nullptr;
         }
@@ -192,12 +190,20 @@ namespace LLD
     /*  Move the node in double linked list to front. */
     void BinaryLFU::MoveForward(BinaryNodeLFU* pthis)
     {
-        /* Bump frequency. */
-        ++pthis->nFrequency;
-
         /* Don't move to front if already in the front. */
         if(pthis == pfirst)
             return;
+
+        /* Move last pointer if moving from back. */
+        if(pthis == plast)
+        {
+            if(plast->pprev)
+                plast = plast->pprev;
+
+            plast->pnext = nullptr;
+        }
+        else
+            RemoveNode(pthis);
 
         /* Set last if not set. */
         if(!plast)
@@ -216,6 +222,9 @@ namespace LLD
 
             return;
         }
+
+        /* Bump frequency. */
+        ++pthis->nFrequency;
 
         /* Check for previous. */
         if(!pthis->pprev)
@@ -291,14 +300,16 @@ namespace LLD
         LOCK(MUTEX);
 
         /* Check for empty slot. */
-        uint64_t nChecksum = checksums[Bucket(vKey)];
+        uint32_t nChecksumBucket = Bucket(vKey);
+        uint64_t nChecksum       = checksums[nChecksumBucket];
+
+        /* Check the checksums. */
+        if(nChecksum == Checksum(vData))
+            return;
+
+        /* Get the binary node. */
         if(nChecksum != 0)
         {
-            /* Check the checksums. */
-            if(nChecksum == Checksum(vData))
-                return;
-
-            /* Get the binary node. */
             uint32_t nBucket  = Bucket(nChecksum);
             BinaryNodeLFU* pthis = hashmap[nBucket];
 
@@ -309,28 +320,54 @@ namespace LLD
                 RemoveNode(pthis);
 
                 /* Dereference the pointers. */
-                hashmap[Bucket(pthis)]     = nullptr;
+                hashmap[nBucket]           = nullptr;
                 pthis->pprev               = nullptr;
                 pthis->pnext               = nullptr;
 
                 /* Reduce the current size. */
-                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 8);
+                nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
 
                 /* Free the memory. */
                 delete pthis;
             }
+
+            checksums[nChecksumBucket] = 0;
         }
 
         /* Create a new cache node. */
-        BinaryNodeLFU* pthis = new BinaryNodeLFU(vKey, vData);
-        nChecksum = pthis->Checksum();
+        BinaryNodeLFU* pnew = new BinaryNodeLFU(vKey, vData);
+        nChecksum = pnew->Checksum();
+
+        /* Get the bucket. */
+        uint32_t nBucket    = Bucket(nChecksum);
+
+        /* Cleanup if colliding with another bucket. */
+        if(hashmap[nBucket] != nullptr)
+        {
+            /* Get copy of pointer. */
+            BinaryNodeLFU* pthis = hashmap[nBucket];
+
+            /* Remove from the linked list. */
+            RemoveNode(pthis);
+
+            /* Dereference the pointers. */
+            hashmap[nBucket]           = nullptr;
+            pthis->pprev               = nullptr;
+            pthis->pnext               = nullptr;
+
+            /* Reduce the current size. */
+            nCurrentSize -= static_cast<uint32_t>(pthis->vData.size() + 48);
+
+            /* Free the memory. */
+            delete pthis;
+        }
 
         /* Add cache node to objects map. */
-        hashmap[Bucket(nChecksum)] = pthis;
-        checksums[Bucket(vKey)]    = nChecksum;
+        hashmap[nBucket]            = pnew;
+        checksums[nChecksumBucket]  = nChecksum;
 
         /* Move to forward in double linked list. */
-        MoveForward(pthis);
+        MoveForward(pnew);
 
         /* Remove the last node if cache too large. */
         if(nCurrentSize > MAX_CACHE_SIZE)

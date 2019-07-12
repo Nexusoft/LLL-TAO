@@ -19,8 +19,11 @@ namespace LLD
 {
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
-    LegacyDB::LegacyDB(uint8_t nFlags, uint64_t nBuckets, uint32_t nCacheIn)
-    : SectorDatabase(std::string("legacy"), nFlags, nBuckets, nCacheIn)
+    LegacyDB::LegacyDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
+    : SectorDatabase(std::string("legacy")
+    , nFlagsIn
+    , nBucketsIn
+    , nCacheIn)
     {
     }
 

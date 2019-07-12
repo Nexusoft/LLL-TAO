@@ -20,8 +20,12 @@ ________________________________________________________________________________
 namespace LLD
 {
     /** The Database Constructor.  **/
-    ContractDB::ContractDB(uint8_t nFlags)
-    : SectorDatabase("contracts", nFlags)
+    ContractDB::ContractDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
+    : SectorDatabase("contracts"
+    , nFlagsIn
+    , nBucketsIn
+    , nCacheIn)
+    
     , MEMORY_MUTEX()
     , mapContracts()
     {
