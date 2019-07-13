@@ -190,6 +190,7 @@ HEADERS= $(wildcard *.h)
 #Run Unit Tests
 ifdef UNIT_TESTS
 	OBJS = build/Tests_main.o \
+		   build/Tests_Legacy_utxo.o \
 		   build/Tests_LLC_aes.o \
 		   build/Tests_TAO_API_assets.o \
 		   build/Tests_TAO_API_finance.o \
@@ -612,6 +613,9 @@ build/Legacy_%.o: ./src/Legacy/%.cpp $(HEADERS)
 build/Tests_%.o: ./tests/unit/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
+build/Tests_Legacy_%.o: ./tests/unit/Legacy/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
 build/Tests_LLC_%.o: ./tests/unit/LLC/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
@@ -917,6 +921,13 @@ build/Legacy_%.o: src/Legacy/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/Tests_%.o: tests/unit/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Tests_Legacy_%.o: tests/unit/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1305,6 +1316,13 @@ build/Legacy_%.o: src/Legacy/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/Tests_%.o: tests/unit/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Tests_Legacy_%.o: tests/unit/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
