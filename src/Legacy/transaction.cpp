@@ -795,73 +795,61 @@ namespace Legacy
         uint32_t nSize = static_cast<uint32_t>(vin.size());
         for(uint32_t i = (uint32_t)IsCoinStake(); i < nSize; ++i)
         {
-            /* Flag to detect if input is legacy UTXO. */
-            bool fLegacy = true;
+            /* Skip inputs that are already found. */
+            OutPoint prevout = vin[i].prevout;
+            if(inputs.count(prevout.hash))
+                continue;
 
             /* Check for Tritium version transactions.
              * Becomes ACTIVE 2 hours after time-lock.
              */
             if(TAO::Ledger::VersionActive(nTime + 7200, 7))
             {
-                /* Skip inputs that are already found. */
-                OutPoint prevout = vin[i].prevout;
-                if(inputs.count(prevout.hash))
-                    continue;
-
                 /* Get the type of transaction. */
                 if(prevout.hash.GetType() == TAO::Ledger::TRITIUM)
                 {
                     /* Read the previous transaction. */
                     TAO::Ledger::Transaction txPrev;
-                    if(!LLD::Ledger->ReadTx(prevout.hash, txPrev))
-                        break; //we can't rely soley on the type byte, so we must revert to legacy if not found in ledger.
+                    if(LLD::Ledger->ReadTx(prevout.hash, txPrev))
+                    {   //we can't rely soley on the type byte, so we must revert to legacy if not found in ledger.}
 
-                    /* Check for existing indexes. */
-                    if(!txPrev.IsConfirmed())
-                        return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not confirmed");
+                        /* Check for existing indexes. */
+                        if(!txPrev.IsConfirmed())
+                            return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not confirmed");
 
-                    /* Check that it is valid. */
-                    if(prevout.n >= txPrev.Size())
-                        return debug::error(FUNCTION, "prevout ", prevout.n, " is out of range ", txPrev.Size());
+                        /* Check that it is valid. */
+                        if(prevout.n >= txPrev.Size())
+                            return debug::error(FUNCTION, "prevout ", prevout.n, " is out of range ", txPrev.Size());
 
-                    /* Check for Legacy. */
-                    if(txPrev[prevout.n].Primitive() != TAO::Operation::OP::LEGACY)
-                        return debug::error(FUNCTION, "can't spend from UTXO with no OP::LEGACY");
+                        /* Check for Legacy. */
+                        if(txPrev[prevout.n].Primitive() != TAO::Operation::OP::LEGACY)
+                            return debug::error(FUNCTION, "can't spend from UTXO with no OP::LEGACY");
 
-                    /* Add to the inputs. */
-                    inputs.emplace(prevout.hash, std::make_pair(uint8_t(TAO::Ledger::TRITIUM), DataStream(SER_LLD, LLD::DATABASE_VERSION)));
-                    inputs.at(prevout.hash).second << txPrev;
+                        /* Add to the inputs. */
+                        inputs.emplace(prevout.hash, std::make_pair(uint8_t(TAO::Ledger::TRITIUM), DataStream(SER_LLD, LLD::DATABASE_VERSION)));
+                        inputs.at(prevout.hash).second << txPrev;
 
-                    /* Set the legacy flag to false. */
-                    fLegacy = false;
+                        continue;
+                    }
                 }
             }
 
-            /* Regular legacy versions. */
-            if(fLegacy)
-            {
-                /* Skip inputs that are already found. */
-                OutPoint prevout = vin[i].prevout;
-                if(inputs.count(prevout.hash))
-                    continue;
+            /* Read the previous transaction. */
+            Transaction txPrev;
+            if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
+                return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not found");
 
-                /* Read the previous transaction. */
-                Transaction txPrev;
-                if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
-                    return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not found");
+            /* Check for existing indexes. */
+            if(!LLD::Ledger->HasIndex(prevout.hash))
+                return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not connected");
 
-                /* Check for existing indexes. */
-                if(!LLD::Ledger->HasIndex(prevout.hash))
-                    return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not connected");
+            /* Check that it is valid. */
+            if(prevout.n >= txPrev.vout.size())
+                return debug::error(FUNCTION, "prevout ", prevout.n, " is out of range ", txPrev.vout.size());
 
-                /* Check that it is valid. */
-                if(prevout.n >= txPrev.vout.size())
-                    return debug::error(FUNCTION, "prevout ", prevout.n, " is out of range ", txPrev.vout.size());
-
-                /* Add to the inputs. */
-                inputs.emplace(prevout.hash, std::make_pair(uint8_t(TAO::Ledger::LEGACY), DataStream(SER_LLD, LLD::DATABASE_VERSION)));
-                inputs.at(prevout.hash).second << txPrev;
-            }
+            /* Add to the inputs. */
+            inputs.emplace(prevout.hash, std::make_pair(uint8_t(TAO::Ledger::LEGACY), DataStream(SER_LLD, LLD::DATABASE_VERSION)));
+            inputs.at(prevout.hash).second << txPrev;
         }
 
         return true;
