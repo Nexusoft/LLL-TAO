@@ -12,11 +12,21 @@
 ____________________________________________________________________________________________*/
 
 #include <Legacy/include/create.h>
+
+#include <Legacy/types/coinbase.h>
+
 #include <unit/catch2/catch.hpp>
 
 TEST_CASE("UTXO Unit Tests", "[UTXO]")
 {
+    //reserve key from temp wallet
+    Legacy::ReserveKey* pReserveKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+
+    //dummy coinbase
+    Legacy::Coinbase coinbase;
+
+    //make the coinbase tx
     Legacy::Transaction tx;
-    //REQUIRE(Legacy::CreateCoinbase(coinbaseKey, nullptr, 1, 0, 7, tx));
+    REQUIRE(Legacy::CreateCoinbase(*pReserveKey, coinbase, 1, 0, 7, tx));
 
 }

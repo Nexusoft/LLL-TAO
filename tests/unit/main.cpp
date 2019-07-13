@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
 #include <unit/catch2/catch.hpp>
 
+#include <Legacy/wallet/wallet.h>
+
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
@@ -49,16 +51,20 @@ TEST_CASE("Arguments Tests", "[args]")
         REQUIRE_FALSE(filesystem::exists(strPath));
     }
 
-    /* Create the database instances. */
+    //create LLD instances
     LLD::Contract = new LLD::ContractDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
     LLD::Register = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
     LLD::Local    = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
     LLD::Ledger   = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-
-
-    /* Initialize the Legacy Database. */
     LLD::Trust    = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
     LLD::Legacy   = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+
+
+    //load wallet
+    bool fFirstRun;
+    REQUIRE(Legacy::Wallet::InitializeWallet(Legacy::WalletDB::DEFAULT_WALLET_DB));
+    REQUIRE(Legacy::Wallet::GetInstance().LoadWallet(fFirstRun) == Legacy::DB_LOAD_OK);
+
 
     //initialize chain state
     REQUIRE(TAO::Ledger::ChainState::Initialize());
