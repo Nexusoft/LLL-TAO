@@ -793,8 +793,6 @@ namespace Legacy
 
         /* Get the number of inputs to the transaction. */
         uint32_t nSize = static_cast<uint32_t>(vin.size());
-
-        /* Read all of the inputs. */
         for(uint32_t i = (uint32_t)IsCoinStake(); i < nSize; ++i)
         {
             /* Flag to detect if input is legacy UTXO. */
