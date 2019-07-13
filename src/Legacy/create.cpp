@@ -205,7 +205,7 @@ namespace Legacy
 
 
         /* Make coinbase counter mod 13 of height. */
-        int nCoinbaseCounter = TAO::Ledger::ChainState::stateBest.load().nHeight % 13;
+        uint32_t nCoinbaseCounter = TAO::Ledger::ChainState::stateBest.load().nHeight % 13;
 
         /* Create the ambassador and developer outputs for Coinbase transaction */
         coinbaseTx.vout.resize(coinbaseTx.vout.size() + 2);

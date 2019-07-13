@@ -15,6 +15,10 @@ ________________________________________________________________________________
 
 #include <Legacy/types/coinbase.h>
 
+#include <Legacy/include/enum.h>
+
+#include <TAO/Ledger/include/chainstate.h>
+
 #include <unit/catch2/catch.hpp>
 
 TEST_CASE("UTXO Unit Tests", "[UTXO]")
@@ -28,5 +32,18 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
     //make the coinbase tx
     Legacy::Transaction tx;
     REQUIRE(Legacy::CreateCoinbase(*pReserveKey, coinbase, 1, 0, 7, tx));
+
+    //add the data into input script
+    tx.vin[0].scriptSig << uint32_t(555);
+
+    //get inputs
+    std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
+    REQUIRE(tx.FetchInputs(inputs));
+
+    //get best
+    TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
+
+    //conect tx
+    REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
 
 }
