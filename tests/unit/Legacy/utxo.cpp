@@ -11,10 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Legacy/types/transaction.h>
+#include <Legacy/include/create.h>
 #include <unit/catch2/catch.hpp>
 
 TEST_CASE("UTXO Unit Tests", "[UTXO]")
 {
     Legacy::Transaction tx;
+    //REQUIRE(Legacy::CreateCoinbase(coinbaseKey, nullptr, 1, 0, 7, tx));
+
 }

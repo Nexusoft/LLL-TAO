@@ -277,7 +277,6 @@ namespace Legacy
 
                         debug::log(0, FUNCTION, "Found Trust Key matching current wallet");
                     }
-
                 }
             }
         }
@@ -316,10 +315,10 @@ namespace Legacy
         /* Create the block to work on */
         block = LegacyBlock();
 
-        ReserveKey dummyReserveKey(pStakingWallet); //Reserve key not used by CreateLegacyBlock for nChannel=0
+        ReserveKey dummyReserveKey(pStakingWallet); //Reserve key not used by CreateBlock for nChannel=0
         Coinbase dummyCoinbase; // Coinbase not used for staking
 
-        if(!CreateLegacyBlock(dummyReserveKey, dummyCoinbase, 0, 0, block))
+        if(!CreateBlock(dummyReserveKey, dummyCoinbase, 0, 0, block))
             return debug::error(FUNCTION, "Unable to create candidate block");
 
         if(!trustKey.IsNull())
@@ -364,12 +363,12 @@ namespace Legacy
             block.vtx[0].vin[0].prevout.hash = trustKey.GetHash();
 
             /* Get the last stake block for this trust key. */
-            TAO::Ledger::BlockState prevTrustBlockState = TAO::Ledger::ChainState::stateBest.load();
-            if(!GetLastTrust(trustKey, prevTrustBlockState))
+            TAO::Ledger::BlockState statePrevTrust = TAO::Ledger::ChainState::stateBest.load();
+            if(!GetLastTrust(trustKey, statePrevTrust))
                 return debug::error(FUNCTION, "Failed to get last trust for trust key");
 
             /* Enforce the minimum staking transaction interval. (current height is candidate height - 1) */
-            uint32_t nCurrentInterval = (block.nHeight - 1) - prevTrustBlockState.nHeight;
+            uint32_t nCurrentInterval = (block.nHeight - 1) - statePrevTrust.nHeight;
             if(nCurrentInterval < nMinimumInterval)
             {
                 /* Below minimum interval for generating stake blocks. Increase sleep time until can continue normally. */
@@ -391,7 +390,7 @@ namespace Legacy
             uint32_t nPrevScore = 0;
 
             /* Validate that previous trust block was a legacy coinstake */
-            if(prevTrustBlockState.vtx[0].first != TAO::Ledger::TYPE::LEGACY_TX)
+            if(statePrevTrust.vtx[0].first != TAO::Ledger::TYPE::LEGACY_TX)
             {
                 debug::error(FUNCTION, "Trust key for Legacy Stake Minter does not have Legacy transaction in Genesis coinstake.");
 
@@ -399,7 +398,7 @@ namespace Legacy
             }
 
             /* Retrieve the previous coinstake transaction */
-            uint512_t prevCoinstakeTxHash = prevTrustBlockState.vtx[0].second;
+            uint512_t prevCoinstakeTxHash = statePrevTrust.vtx[0].second;
             Transaction prevCoinstakeTx;
             if(!LLD::Legacy->ReadTx(prevCoinstakeTxHash, prevCoinstakeTx))
                 return debug::error(FUNCTION, "Failed to read previous coinstake for trust key");
@@ -423,7 +422,7 @@ namespace Legacy
             }
 
             /* Calculate time since the last trust block for this trust key (block age = age of previous trust block). */
-            uint32_t nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - prevTrustBlockState.GetBlockTime();
+            uint32_t nBlockAge = TAO::Ledger::ChainState::stateBest.load().GetBlockTime() - statePrevTrust.GetBlockTime();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
             if(nBlockAge <= nMaxBlockAge)
@@ -448,7 +447,7 @@ namespace Legacy
 
             /* Serialize previous trust block hash, new sequence, and new trust score into vin. */
             DataStream scriptPub(block.vtx[0].vin[0].scriptSig, SER_NETWORK, LLP::PROTOCOL_VERSION);
-            scriptPub << prevTrustBlockState.GetHash() << nSequence << nScore;
+            scriptPub << statePrevTrust.GetHash() << nSequence << nScore;
 
             /* Set the script sig (Script doesn't support serializing all types needed) */
             block.vtx[0].vin[0].scriptSig.clear();
