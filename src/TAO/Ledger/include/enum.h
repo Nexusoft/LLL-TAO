@@ -26,8 +26,8 @@ namespace TAO
         /** Enumeration for transaction types. **/
         enum
         {
-            TRITIUM = 0x00,
-            LEGACY  = 0x01
+            TRITIUM = 0x01,
+            LEGACY  = 0x02
         };
 
 

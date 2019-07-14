@@ -289,5 +289,31 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
                 REQUIRE(account.get<uint256_t>("token") == 0);
             }
         }
+
+
+        {
+            //legacy get key
+            std::vector<uint8_t> vKey;
+            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            Legacy::NexusAddress address(vKey);
+
+            //add the data into input script
+            Legacy::TxIn in;
+            in.prevout.hash = hashTx;
+            in.prevout.n    = 0;
+
+            Legacy::Transaction tx;
+            tx.vin.push_back(in);
+
+            Legacy::TxOut out;
+            out.scriptPubKey.SetNexusAddress(address);
+
+            //get inputs
+            std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
+            REQUIRE(tx.FetchInputs(inputs));
+
+            //conect tx
+            //REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+        }
     }
 }

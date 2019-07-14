@@ -76,7 +76,7 @@ namespace Legacy
 
         /* Type of 0xfe designates legacy tx. */
         if(TAO::Ledger::VersionActive(nTime, 7))
-            hash.SetType(TAO::Ledger::LEGACY_TX);
+            hash.SetType(TAO::Ledger::LEGACY);
 
         return hash;
 	}
