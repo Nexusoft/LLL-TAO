@@ -49,7 +49,7 @@ namespace Legacy
 		 **/
 		OutPoint()
 		{
-				SetNull();
+			SetNull();
 		}
 
 
@@ -61,8 +61,8 @@ namespace Legacy
 		 **/
 		OutPoint(uint512_t hashIn, uint32_t nIn)
 		{
-				hash = hashIn;
-				n = nIn;
+			hash = hashIn;
+			n = nIn;
 		}
 
 

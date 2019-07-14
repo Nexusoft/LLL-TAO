@@ -1019,9 +1019,11 @@ namespace Legacy
 
 
     /* Adds a wallet transaction to the wallet. */
-    bool Wallet::AddToWallet(const WalletTx& wtxIn)
+    bool Wallet::AddToWallet(const WalletTx& wtxIn, uint512_t hash)
     {
-        uint512_t hash = wtxIn.GetHash();
+        /* Check for explicet declaration of hashes. */
+        if(hash == 0)
+            hash = wtxIn.GetHash();
 
         /* Use the returned tx, not wtxIn, in case insert returned an existing transaction */
         std::pair<TransactionMap::iterator, bool> ret;
@@ -1073,7 +1075,7 @@ namespace Legacy
         }
 
         /* debug print */
-        debug::log(0, FUNCTION, wtxIn.GetHash().SubString(10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+        debug::log(0, FUNCTION, hash.SubString(10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
         /* Write to disk */
         if(fInsertedNew || fUpdated)
@@ -1180,7 +1182,7 @@ namespace Legacy
                 wtx.hashBlock = state.GetHash();
 
             /* AddToWallet preforms merge (update) for transactions already in wallet */
-            return AddToWallet(wtx);
+            return AddToWallet(wtx, hash);
         }
 
         return false;
@@ -1353,7 +1355,7 @@ namespace Legacy
                 if(wtx.CheckTransaction())
                     wtx.RelayWalletTransaction();
                 else
-                    debug::log(0, FUNCTION, "CheckTransaction failed for transaction ", wtx.GetHash().ToString());
+                    debug::log(0, FUNCTION, "CheckTransaction failed");
             }
         }
     }
@@ -1384,7 +1386,7 @@ namespace Legacy
                      */
                     if(!prevTx.IsSpent(txin.prevout.n) && IsMine(prevTx.vout[txin.prevout.n]))
                     {
-                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " NXS ", prevTx.GetHash().SubString());
+                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " NXS ", (*mi).first.SubString());
 
                         prevTx.MarkSpent(txin.prevout.n);
                         prevTx.WriteToDisk();
@@ -1401,6 +1403,7 @@ namespace Legacy
         nMismatchFound = 0;
         nBalanceInQuestion = 0;
 
+        //TODO: this needs to not rely on the GetHash function for wtx. ALWAYS rely on the map index
         std::vector<WalletTx> vTransactionsInWallet;
         std::vector<WalletTx> vRepairedTx;
 
@@ -1776,7 +1779,8 @@ namespace Legacy
              * When fee increased, it is possible that selected inputs do not cover it, so repeat the process to
              * assure we have enough value in. It also has to re-do the change calculation and output.
              */
-            while(true) {
+            while(true)
+            {
                 /* Reset transaction contents */
                 wtxNew.vin.clear();
                 wtxNew.vout.clear();
@@ -1789,7 +1793,7 @@ namespace Legacy
                     wtxNew.vout.push_back(TxOut(s.second, s.first));
 
                 /* This set will hold txouts (UTXOs) to use as input for this transaction as transaction/vout index pairs */
-                std::set<std::pair<const WalletTx*,uint32_t> > setSelectedCoins;
+                std::map<uint512_t, std::pair<const WalletTx*,uint32_t> > mapSelectedCoins;
 
                 /* Initialize total value of all inputs */
                 int64_t nValueIn = 0;
@@ -1800,12 +1804,12 @@ namespace Legacy
                 if(wtxNew.strFromAccount == "")
                 {
                     /* No value for strFromAccount, so use default for SelectCoins */
-                    fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, setSelectedCoins, nValueIn, "*", nMinDepth);
+                    fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, mapSelectedCoins, nValueIn, "*", nMinDepth);
                 }
                 else
                 {
                     /* RPC server calls do use strFromAccount, so pass this value forward */
-                    fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, setSelectedCoins, nValueIn, wtxNew.strFromAccount, nMinDepth);
+                    fSelectCoinsSuccessful = SelectCoins(nTotalValue, wtxNew.nTime, mapSelectedCoins, nValueIn, wtxNew.strFromAccount, nMinDepth);
                 }
 
                 if(!fSelectCoinsSuccessful)
@@ -1852,12 +1856,10 @@ namespace Legacy
                         changeKey.ReturnKey();
 
                         /* For avatar mode, return change to the last address retrieved by iterating the input set */
-                        for(const auto& item : setSelectedCoins)
+                        for(const auto& item : mapSelectedCoins)
                         {
-                            const WalletTx& selectedTransaction = *(item.first);
-
                             /* When done, this will contain scriptPubKey of last transaction in the set */
-                            scriptChange = selectedTransaction.vout[item.second].scriptPubKey;
+                            scriptChange = item.second.first->vout[item.second.second].scriptPubKey;
                         }
                     }
 
@@ -1872,13 +1874,13 @@ namespace Legacy
                 }
 
                 /* Fill vin with selected inputs */
-                for(const auto coin : setSelectedCoins)
-                    wtxNew.vin.push_back(TxIn(coin.first->GetHash(), coin.second));
+                for(const auto& coin : mapSelectedCoins)
+                    wtxNew.vin.push_back(TxIn(coin.first, coin.second.second));
 
                 /* Sign inputs to unlock previously unspent outputs */
                 uint32_t nIn = 0;
-                for(const auto coin : setSelectedCoins)
-                    if(!SignSignature(*this, *(coin.first), wtxNew, nIn++))
+                for(const auto& coin : mapSelectedCoins)
+                    if(!SignSignature(*this, (*coin.second.first), wtxNew, nIn++))
                         return false;
 
                 /* Limit tx size to 20% of max block size */
@@ -2096,16 +2098,16 @@ namespace Legacy
 
 
     /* Selects the unspent transaction outputs to use as inputs when creating a transaction that sends balance from this wallet. */
-    bool Wallet::SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const WalletTx*, uint32_t> >& setCoinsRet,
+    bool Wallet::SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::map<uint512_t, std::pair<const WalletTx*, uint32_t> >& mapCoinsRet,
                               int64_t& nValueRet, const std::string& strAccount, uint32_t nMinDepth)
     {
         /* Call detailed select up to 3 times if it fails, using the returns from the first successful call.
          * This allows it to attempt multiple input sets if it doesn't find a workable one on the first try.
          * (example, it chooses an input set with total value exceeding maximum allowed value)
          */
-        return (SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, setCoinsRet, nValueRet, strAccount) ||
-                SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, setCoinsRet, nValueRet, strAccount) ||
-                SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, setCoinsRet, nValueRet, strAccount));
+        return (SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, mapCoinsRet, nValueRet, strAccount) ||
+                SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, mapCoinsRet, nValueRet, strAccount) ||
+                SelectCoinsMinConf(nTargetValue, nSpendTime, nMinDepth, nMinDepth, mapCoinsRet, nValueRet, strAccount));
     }
 
 
@@ -2113,11 +2115,11 @@ namespace Legacy
      * balance from this wallet while requiring a minimum confirmation depth to be included in result.
      */
     bool Wallet::SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const uint32_t nConfMine, const uint32_t nConfTheirs,
-                                std::set<std::pair<const WalletTx*, uint32_t> >& setCoinsRet, int64_t& nValueRet, const std::string& strAccount)
+                                std::map<uint512_t, std::pair<const WalletTx*, uint32_t> >& mapCoinsRet, int64_t& nValueRet, const std::string& strAccount)
     {
         /* cs_wallet should already be locked when this is called (CreateTransaction) */
-        setCoinsRet.clear();
-        std::vector<const WalletTx*> vCoins;
+        mapCoinsRet.clear();
+        std::vector<uint512_t> vCoins;
 
         nValueRet = 0;
 
@@ -2127,14 +2129,17 @@ namespace Legacy
         /* Build a set of wallet transactions from all transaction in the wallet map */
         vCoins.reserve(mapWallet.size());
         for(const auto& item : mapWallet)
-            vCoins.push_back(&item.second);
+            vCoins.push_back(item.first);
 
         /* Randomly order the transactions as potential inputs */
         std::random_shuffle(vCoins.begin(), vCoins.end(), LLC::GetRandInt);
 
         /* Loop through all transactions, finding and adding available unspent balance to the list of outputs until reach nTargetValue */
-        for(const WalletTx* walletTx : vCoins)
+        for(const uint512_t& hash : vCoins)
         {
+            /* Get the transaction. */
+            const WalletTx* walletTx = &mapWallet[hash];
+
             /* Can't spend transaction from after spend time */
             if(walletTx->nTime > nSpendTime)
                 continue;
@@ -2174,14 +2179,14 @@ namespace Legacy
                         if(strEntry == strAccount)
                         {
                             /* Account label for transaction address matches request, include in result */
-                            setCoinsRet.insert(std::make_pair(walletTx, i));
+                            mapCoinsRet[hash] = std::make_pair(walletTx, i);
                             nValueRet += walletTx->vout[i].nValue;
                         }
                     }
                     else if(strAccount == "default")
                     {
                         /* Not in address book (no label), include if default requested */
-                        setCoinsRet.insert(std::make_pair(walletTx, i));
+                        mapCoinsRet[hash] = std::make_pair(walletTx, i);
                         nValueRet += walletTx->vout[i].nValue;
                     }
                 }
@@ -2190,7 +2195,7 @@ namespace Legacy
                 else
                 {
                     /* Add transaction with selected vout index to result set */
-                    setCoinsRet.insert(std::make_pair(walletTx, i));
+                    mapCoinsRet[hash] = std::make_pair(walletTx, i);
 
                     /* Accumulate total value available to spend in result set */
                     nValueRet += walletTx->vout[i].nValue;
@@ -2211,8 +2216,8 @@ namespace Legacy
         if(config::GetBoolArg("-printselectcoin", false))
         {
             debug::log(0, FUNCTION, "Coins selected: ");
-            for(const auto& item : setCoinsRet)
-                item.first->print();
+            for(const auto& item : mapCoinsRet)
+                item.second.first->print();
 
             debug::log(0, FUNCTION, "Total ", FormatMoney(nValueRet));
         }

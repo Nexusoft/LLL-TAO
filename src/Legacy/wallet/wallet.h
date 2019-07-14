@@ -62,7 +62,6 @@ namespace Legacy
 
     class Output;
     class ReserveKey;
-    class WalletTx;
 
 
     /** Nexus: Setting to unlock wallet for block minting only **/
@@ -698,11 +697,12 @@ namespace Legacy
          *  in the wallet, the new one is merged into it.
          *
          *  @param[in] wtxIn The wallet transaction to add
+         *  @param[in] hash The wallet txid
          *
          *  @return true if transaction found
          *
          **/
-        bool AddToWallet(const WalletTx& wtxIn);
+        bool AddToWallet(const WalletTx& wtxIn, uint512_t hash = 0);
 
 
         /** AddToWalletIfInvolvingMe
@@ -1182,7 +1182,7 @@ namespace Legacy
          *  @return true if result set was successfully populated
          *
          **/
-        bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::set<std::pair<const WalletTx*, uint32_t> >& setCoinsRet,
+        bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::map<uint512_t, std::pair<const WalletTx*, uint32_t> >& mapCoinsRet,
                         int64_t& nValueRet, const std::string& strAccount = "*", const uint32_t nMinDepth = 1);
 
 
@@ -1200,7 +1200,7 @@ namespace Legacy
          *
          *  @param[in] nConfTheirs Require this number of confirmations if transaction with unspent output was received from elsewhere
          *
-         *  @param[in,out] setCoinsRet Set of selected unspent txouts as pairs consisting of transaction and vout index
+         *  @param[in,out] mapCoinsRet Map of selected unspent txouts as pairs consisting of transaction and vout index
          *
          *  @param[out] nValueRet Total value of selected unspent txouts in the result set
          *
@@ -1210,7 +1210,7 @@ namespace Legacy
          *
          **/
         bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const uint32_t nConfMine, const uint32_t nConfTheirs,
-                                std::set<std::pair<const WalletTx*, uint32_t> >& setCoinsRet,
+                                std::map<uint512_t, std::pair<const WalletTx*, uint32_t> >& mapCoinsRet,
                                 int64_t& nValueRet, const std::string& strAccount = "*");
 
     };

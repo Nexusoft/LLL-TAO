@@ -170,8 +170,13 @@ namespace Legacy
         assert(nIn < txTo.vin.size());
         TxIn& txin = txTo.vin[nIn];
 
+        //TODO: get rid of asserts and replace with throws or return error
         assert(txin.prevout.n < txFrom.vout.size());
-        assert(txin.prevout.hash == txFrom.GetHash());
+
+        /* Check for matching hash if not tritium transaction. */
+        if(txin.prevout.hash.GetType() != TAO::Ledger::TRITIUM && txin.prevout.hash != txFrom.GetHash())
+            return false;
+
         const TxOut& txout = txFrom.vout[txin.prevout.n];
 
         // Leave out the signature from the hash, since a signature can't sign itself.

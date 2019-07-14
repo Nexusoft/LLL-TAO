@@ -758,7 +758,7 @@ namespace Legacy
             return debug::error(FUNCTION, "size limits failed");
 
         /* Determine if Transaction is CoinStake or CoinBase. */
-        bool fIsCoinBase = IsCoinBase();
+        bool fIsCoinBase  = IsCoinBase();
         bool fIsCoinStake = IsCoinStake();
 
         /* Check for negative or overflow output values */
@@ -839,7 +839,7 @@ namespace Legacy
 
                         /* Check for existing indexes. */
                         if(!txPrev.IsConfirmed())
-                            return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not confirmed");
+                            return debug::error(FUNCTION, "tritium tx ", prevout.hash.ToString().substr(0, 20), " not confirmed");
 
                         /* Check that it is valid. */
                         if(prevout.n >= txPrev.Size())
@@ -861,7 +861,7 @@ namespace Legacy
             /* Read the previous transaction. */
             Transaction txPrev;
             if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
-                return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not found");
+                return debug::error(FUNCTION, "legacy tx ", prevout.hash.ToString().substr(0, 20), " not found");
 
             /* Check for existing indexes. */
             if(!LLD::Ledger->HasIndex(prevout.hash))
