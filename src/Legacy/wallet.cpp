@@ -754,6 +754,8 @@ namespace Legacy
         {
             const WalletTx& walletTx = item.second;
 
+            walletTx.print();
+
             /* Skip any transaction that isn't final, isn't completely confirmed, or has a future timestamp */
             if(!walletTx.IsFinal() || !walletTx.IsConfirmed() || walletTx.nTime > runtime::unifiedtimestamp())
                 continue;

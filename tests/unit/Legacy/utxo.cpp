@@ -23,27 +23,34 @@ ________________________________________________________________________________
 
 TEST_CASE("UTXO Unit Tests", "[UTXO]")
 {
-    //reserve key from temp wallet
-    Legacy::ReserveKey* pReserveKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+    {
+        //reserve key from temp wallet
+        Legacy::ReserveKey* pReserveKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
 
-    //dummy coinbase
-    Legacy::Coinbase coinbase;
+        //dummy coinbase
+        Legacy::Coinbase coinbase;
 
-    //make the coinbase tx
-    Legacy::Transaction tx;
-    REQUIRE(Legacy::CreateCoinbase(*pReserveKey, coinbase, 1, 0, 7, tx));
+        //make the coinbase tx
+        Legacy::Transaction tx;
+        REQUIRE(Legacy::CreateCoinbase(*pReserveKey, coinbase, 1, 0, 7, tx));
 
-    //add the data into input script
-    tx.vin[0].scriptSig << uint32_t(555);
+        //add the data into input script
+        tx.vin[0].scriptSig << uint32_t(555);
 
-    //get inputs
-    std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
-    REQUIRE(tx.FetchInputs(inputs));
+        //get inputs
+        std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
+        REQUIRE(tx.FetchInputs(inputs));
 
-    //get best
-    TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
+        //get best
+        TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
 
-    //conect tx
-    REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+        //conect tx
+        REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
 
+        //add to wallet
+        Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true);
+
+        //check balance
+        REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1000000);
+    }
 }

@@ -33,14 +33,14 @@ namespace Legacy
             return 0;
 
         // Find the block it claims to be in
-        TAO::Ledger::BlockState blockState;
-        if(!LLD::Ledger->ReadBlock(hashBlock, blockState))
+        TAO::Ledger::BlockState state;
+        if(!LLD::Ledger->ReadBlock(hashBlock, state))
             return 0;
 
-        if(!blockState.IsInMainChain())
+        if(!state.IsInMainChain())
             return 0;
 
-        return TAO::Ledger::ChainState::nBestHeight.load() - blockState.nHeight + 1;
+        return TAO::Ledger::ChainState::nBestHeight.load() - state.nHeight + 1;
 
     }
 
