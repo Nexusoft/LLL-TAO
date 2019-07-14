@@ -19,6 +19,12 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/stream.h>
 
+/* Forward declarations. */
+namespace Legacy
+{
+    class TxOut;
+}
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -168,6 +174,18 @@ namespace TAO
              *
              **/
             bool Value(uint64_t &nValue) const;
+
+
+            /** Legacy
+             *
+             *  Get the legacy converted output of the contract if valid
+             *
+             *  @param[out] txout The legacy output.
+             *
+             *  @return True if there is value in the contract.
+             *
+             **/
+            bool Legacy(Legacy::TxOut& txout) const;
 
 
             /** Empty

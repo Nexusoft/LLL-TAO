@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/types/txout.h>
+
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
@@ -89,8 +91,29 @@ namespace TAO
             if(ssOperation.size() == 0)
                 throw debug::exception(FUNCTION, "cannot get primitive when empty");
 
+            /* Get the operation code.*/
+            uint8_t nOP = ssOperation.get(0);
+
+            /* Switch for validate or condition. */
+            switch(nOP)
+            {
+                /* Check for condition. */
+                case OP::CONDITION:
+                {
+                    /* Get next op. */
+                    return ssOperation.get(1);
+                }
+
+                /* Check for validate. */
+                case OP::VALIDATE:
+                {
+                    /* Skip over on validate. */
+                    return ssOperation.get(69);
+                }
+            }
+
             /* Return first byte. */
-            return ssOperation.get(0);
+            return nOP;
         }
 
 
@@ -217,6 +240,38 @@ namespace TAO
             ssOperation.seek(0, STREAM::BEGIN);
 
             return (nValue > 0);
+        }
+
+
+        /* Get the legacy converted output of the contract if valid */
+        bool Contract::Legacy(Legacy::TxOut& txout) const
+        {
+            /* Reset the contract. */
+            ssOperation.seek(0, STREAM::BEGIN);
+
+            /* Get the OP. */
+            uint8_t OP = 0;
+            ssOperation >> OP;
+
+            /* Check for LEGACY. */
+            if(OP != OP::LEGACY)
+                return false;
+
+            /* Skip over address. */
+            ssOperation.seek(32, STREAM::CURSOR);
+
+            /* Get the value. */
+            uint64_t nValue = 0;
+            ssOperation >> nValue;
+
+            /* Get the script. */
+            Legacy::Script scriptPubKey;
+            ssOperation >> scriptPubKey;
+
+            /* Get legacy converted output.*/
+            txout = Legacy::TxOut(int64_t(nValue), scriptPubKey);
+
+            return true;
         }
 
 

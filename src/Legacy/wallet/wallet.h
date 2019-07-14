@@ -46,6 +46,7 @@ namespace TAO
     {
         /* forward declarations */
         class BlockState;
+        class Transaction;
     }
 }
 
@@ -714,7 +715,7 @@ namespace Legacy
          *
          *  @param[in] tx The transaction to check
          *
-         *  @param[in] containingBlock The block containing the transaction
+         *  @param[in] state The block containing the transaction
          *
          *  @param[in] fUpdate Flag indicating whether or not to update transaction already in wallet
          *
@@ -726,9 +727,30 @@ namespace Legacy
          * @return true if the transactions was added/updated
          *
          */
-        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::BlockState& containingBlock,
+        bool AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::BlockState& state,
                                       bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
 
+
+        /** AddToWalletIfInvolvingMe
+         *
+         *  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
+         *  it to the wallet when it does.
+         *
+         *  pblock is optional, but should be provided if the transaction is known to be in a block.
+         *  If fUpdate is true, existing transactions will be updated.
+         *
+         *  @param[in] txIn The tritium transaction to check
+         *  @param[in] state The block containing the transaction
+         *  @param[in] fUpdate Flag indicating whether or not to update transaction already in wallet
+         *  @param[in] fFindBlock No longer used
+         *  @param[in] fRescan Set true if processing as part of wallet rescan
+         *                     This will set WalletTx time to tx time if it is added (otherwise uses current timestamp)
+         *
+         * @return true if the transactions was added/updated
+         *
+         */
+        bool AddToWalletIfInvolvingMe(const TAO::Ledger::Transaction& txIn, const TAO::Ledger::BlockState& state,
+                                    bool fUpdate = false, bool fFindBlock = false, bool fRescan = false);
 
         /** EraseFromWallet
          *
@@ -821,6 +843,19 @@ namespace Legacy
          *
          **/
         bool IsMine(const Transaction& tx);
+
+
+        /** IsMine
+         *
+         *  Checks whether a transaction contains any outputs belonging to this
+         *  wallet.
+         *
+         *  @param[in] tx The transaction to check
+         *
+         *  @return true if this wallet receives balance via this transaction
+         *
+         **/
+        bool IsMine(const TAO::Ledger::Transaction& tx);
 
 
         /** IsMine

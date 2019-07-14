@@ -84,6 +84,11 @@ namespace Legacy
 			SetNull();
 		}
 
+
+		/** Copy Constructor (From Tritium). **/
+		Transaction(const TAO::Ledger::Transaction& tx);
+
+
 		/** Default destructor. **/
 		virtual ~Transaction() {}
 

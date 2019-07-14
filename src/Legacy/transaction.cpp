@@ -32,6 +32,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/runtime.h>
 #include <Util/templates/datastream.h>
@@ -41,6 +42,29 @@ namespace Legacy
 
     /* Old legacy outdated threshold, currently a placeholder. */
     const int64_t LOCKTIME_THRESHOLD = 500000000;
+
+
+    /** Copy Constructor (From Tritium). **/
+    Transaction::Transaction(const TAO::Ledger::Transaction& tx)
+    : nVersion(tx.nVersion)
+    , nTime(tx.nTimestamp)
+    , vin()
+    , vout()
+    , nLockTime(0)
+    {
+        SetNull();
+
+        /* Loop through the contracts. */
+        for(uint32_t n = 0; n < tx.Size(); ++n)
+        {
+            /* Get legacy converted output.*/
+            TxOut txout;
+            tx[n].Legacy(txout); //a failure here will result in a null output
+
+            /* Add the output. */
+            vout.push_back(txout);
+        }
+    }
 
 
 	/* Sets the transaciton object to a null state. */
@@ -1313,30 +1337,12 @@ namespace Legacy
                 if(input.prevout.n >= txPrev.Size())
                     throw debug::exception(FUNCTION, "prevout.n out of range");
 
-                /* Get the contract from transaction. */
-                const TAO::Operation::Contract& contract = txPrev[input.prevout.n];
+                /* Get legacy converted output.*/
+                TxOut txout;
+                if(!txPrev[input.prevout.n].Legacy(txout))
+                    throw debug::exception(FUNCTION, "invalid tritium operation");
 
-                /* Get the OP. */
-                uint8_t OP = 0;
-                contract >> OP;
-
-                /* Check for LEGACY. */
-                if(OP != TAO::Operation::OP::LEGACY)
-                    throw debug::exception(FUNCTION, "prev.tx is not OP::LEGACY");
-
-                /* Skip over address. */
-                contract.Seek(32);
-
-                /* Get the value. */
-                uint64_t nValue = 0;
-                contract >> nValue;
-
-                /* Get the script. */
-                Script scriptPubKey;
-                contract >> scriptPubKey;
-
-                /* Return legacy converted output.*/
-                return TxOut(int64_t(nValue), scriptPubKey);
+                return txout;
             }
 
             /* Fail for default. */

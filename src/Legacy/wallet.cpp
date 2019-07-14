@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/money.h>
@@ -1107,7 +1108,7 @@ namespace Legacy
     /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
      *  it to the wallet when it does.
      */
-    bool Wallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::BlockState& containingBlock,
+    bool Wallet::AddToWalletIfInvolvingMe(const Transaction& tx, const TAO::Ledger::BlockState& state,
                                            bool fUpdate, bool fFindBlock, bool fRescan)
     {
         uint512_t hash = tx.GetHash();
@@ -1123,21 +1124,64 @@ namespace Legacy
         if(IsMine(tx) || IsFromMe(tx))
         {
             WalletTx wtx(this, tx);
-            if(fRescan) {
+            if(fRescan)
+            {
                 /* On rescan or initial download, set wtx time to transaction time instead of time tx received.
                  * These are both uint32_t timestamps to support unserialization of legacy data.
                  */
                 wtx.nTimeReceived = tx.nTime;
             }
 
-            if(!containingBlock.IsNull())
-                wtx.hashBlock = containingBlock.GetHash();
+            if(!state.IsNull())
+                wtx.hashBlock = state.GetHash();
 
             /* AddToWallet preforms merge (update) for transactions already in wallet */
             return AddToWallet(wtx);
         }
         else
             WalletUpdateSpent(tx);
+
+        return false;
+    }
+
+
+    /*  Checks whether a transaction has inputs or outputs belonging to this wallet, and adds
+     *  it to the wallet when it does.
+     */
+    bool Wallet::AddToWalletIfInvolvingMe(const TAO::Ledger::Transaction& txIn, const TAO::Ledger::BlockState& state,
+                                           bool fUpdate, bool fFindBlock, bool fRescan)
+    {
+        uint512_t hash = txIn.GetHash();
+
+        /* Check to see if transaction hash in this wallet */
+        bool fExisted = mapWallet.count(hash);
+
+        /* When transaction already in wallet, return unless update is specifically requested */
+        if(fExisted && !fUpdate)
+            return false;
+
+        /* Check if transaction has outputs (IsMine) or inputs (IsFromMe) belonging to this wallet */
+        if(IsMine(txIn))
+        {
+            /* Build a semi-legacy tx from tritium contracts. */
+            Transaction tx(txIn);
+            WalletTx wtx(this, tx);
+
+            /* Set the times. */
+            if(fRescan)
+            {
+                /* On rescan or initial download, set wtx time to transaction time instead of time tx received.
+                 * These are both uint32_t timestamps to support unserialization of legacy data.
+                 */
+                wtx.nTimeReceived = tx.nTime;
+            }
+
+            if(!state.IsNull())
+                wtx.hashBlock = state.GetHash();
+
+            /* AddToWallet preforms merge (update) for transactions already in wallet */
+            return AddToWallet(wtx);
+        }
 
         return false;
     }
@@ -1375,7 +1419,7 @@ namespace Legacy
             Legacy::Transaction txTemp;
 
             /* Check all the outputs to make sure the flags are all set properly. */
-            for(uint32_t n=0; n < walletTx.vout.size(); n++)
+            for(uint32_t n=0; n < walletTx.vout.size(); ++n)
             {
                 if (!IsMine(walletTx.vout[n]))
                     continue;
@@ -1435,6 +1479,26 @@ namespace Legacy
     {
         for(const TxOut& txout : tx.vout)
         {
+            if(IsMine(txout))
+                return true;
+        }
+
+        return false;
+    }
+
+
+    /* Checks whether a transaction contains any outputs belonging to this wallet. */
+    bool Wallet::IsMine(const TAO::Ledger::Transaction& tx)
+    {
+        /* Loop through the contracts. */
+        for(uint32_t n = 0; n < tx.Size(); ++n)
+        {
+            /* Get legacy converted output.*/
+            TxOut txout;
+            if(!tx[n].Legacy(txout))
+                continue;
+
+            /* Check if is ours. */
             if(IsMine(txout))
                 return true;
         }
