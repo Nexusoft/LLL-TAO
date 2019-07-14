@@ -234,6 +234,13 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             //add to tx
             tx[0] << script;
 
+            //add ezxtra junk contracts
+            Object account = CreateAccount(0);
+            tx[1] << uint8_t(OP::CREATE) << hashAccount + 1 << uint8_t(REGISTER::OBJECT) << account.GetState();
+            tx[2] << uint8_t(OP::CREATE) << hashAccount + 2 << uint8_t(REGISTER::OBJECT) << account.GetState();
+            tx[3] << uint8_t(OP::CREATE) << hashAccount + 3 << uint8_t(REGISTER::OBJECT) << account.GetState();
+
+
             //generate the prestates and poststates
             REQUIRE(tx.Build());
 
