@@ -726,9 +726,6 @@ namespace TAO
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
 
-                        /* Seek to the end. */
-                        contract.Seek(32);
-
                         /* Get the transfer amount. */
                         uint64_t nAmount = 0;
                         contract >> nAmount;

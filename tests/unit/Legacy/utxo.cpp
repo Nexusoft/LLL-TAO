@@ -82,7 +82,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
     //create a trust register from inputs spent on coinbase
     {
-        uint256_t hashTrust    = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+        uint256_t hashAccount    = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         uint256_t hashGenesis  = TAO::Ledger::Genesis(LLC::GetRand256(), true);
 
         uint512_t hashCoinbaseTx = 0;
@@ -121,7 +121,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             Object account = CreateAccount(0);
 
             //payload
-            tx[0] << uint8_t(OP::CREATE) << hashTrust << uint8_t(REGISTER::OBJECT) << account.GetState();
+            tx[0] << uint8_t(OP::CREATE) << hashAccount << uint8_t(REGISTER::OBJECT) << account.GetState();
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -135,7 +135,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             //check trust account initial values
             {
                 Object trust;
-                REQUIRE(LLD::Register->ReadState(hashTrust, trust));
+                REQUIRE(LLD::Register->ReadState(hashAccount, trust));
 
                 //parse register
                 REQUIRE(trust.Parse());
@@ -156,7 +156,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::CREDIT) << hashCoinbaseTx << uint32_t(0) << hashTrust << hashGenesis << uint64_t(5000);
+            tx[0] << uint8_t(OP::CREDIT) << hashCoinbaseTx << uint32_t(0) << hashAccount << hashGenesis << uint64_t(5000);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -170,7 +170,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             //check register values
             {
                 Object trust;
-                REQUIRE(LLD::Register->ReadState(hashTrust, trust));
+                REQUIRE(LLD::Register->ReadState(hashAccount, trust));
 
                 //parse register
                 REQUIRE(trust.Parse());
@@ -178,6 +178,71 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
                 //check balance (claimed Coinbase amount added to balance)
                 REQUIRE(trust.get<uint64_t>("balance") == 5000);
                 REQUIRE(trust.get<uint256_t>("token") == 0);
+            }
+        }
+
+
+        //test failures of legacy OP
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 2;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx[0] << uint8_t(OP::LEGACY) << hashAccount << uint64_t(1000);
+
+            //generate the prestates and poststates
+            REQUIRE_FALSE(tx.Build());
+
+            //verify the prestates and poststates
+            REQUIRE_FALSE(tx.Verify());
+        }
+
+
+        //test success for legacy opeation
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 2;
+            tx.nTimestamp  = runtime::timestamp();
+
+            //payload
+            tx[0] << uint8_t(OP::LEGACY) << hashAccount << uint64_t(1000);
+
+            //legacy get key
+            std::vector<uint8_t> vKey;
+            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            Legacy::NexusAddress address(vKey);
+
+            //legacy payload
+            Legacy::Script script;
+            script.SetNexusAddress(address);
+
+            //add to tx
+            tx[0] << script;
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //verify the prestates and poststates
+            REQUIRE(tx.Verify());
+
+            //commit to disk
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+            //check register values
+            {
+                Object account;
+                REQUIRE(LLD::Register->ReadState(hashAccount, account));
+
+                //parse register
+                REQUIRE(account.Parse());
+
+                //check balance (claimed Coinbase amount added to balance)
+                REQUIRE(account.get<uint64_t>("balance") == 4000);
             }
         }
     }
