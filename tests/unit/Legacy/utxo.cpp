@@ -312,6 +312,9 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
             REQUIRE(tx.FetchInputs(inputs));
 
+            //get best
+            TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
+            
             //conect tx
             //REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
         }

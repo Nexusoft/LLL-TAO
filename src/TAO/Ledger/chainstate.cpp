@@ -53,6 +53,8 @@ namespace TAO
         /* Flag to tell if initial blocks are downloading. */
         bool ChainState::Synchronizing()
         {
+            #ifndef UNIT_TESTS
+
             /* Check for null best state. */
             if(stateBest.load().IsNull())
                 return true;
@@ -66,13 +68,17 @@ namespace TAO
                 nLastTime = static_cast<uint32_t>(runtime::unifiedtimestamp());
             }
 
-
             /* Special testnet rule. */
-            //if(config::fTestNet.load())
+            if(config::fTestNet.load())
                 return (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60) && (runtime::unifiedtimestamp() - nLastTime < 30);
 
             /* Check if block has been created within 60 minutes. */
             return (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 60 * 60);
+
+            /* On unit tests, always keep Synchronizing off. */
+            #else
+            return false;
+            #endif
         }
 
 
