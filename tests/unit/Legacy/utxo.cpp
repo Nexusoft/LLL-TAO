@@ -198,6 +198,9 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
             //verify the prestates and poststates
             REQUIRE_FALSE(tx.Verify());
+
+            //add to wallet
+            REQUIRE_THROWS(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
         }
 
 
@@ -235,6 +238,9 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
+            //add to wallet
+            REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+
             //write to disk
             hashTx = tx.GetHash();
             REQUIRE(LLD::Ledger->WriteTx(hashTx, tx));
@@ -250,6 +256,9 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
                 //check balance (claimed Coinbase amount added to balance)
                 REQUIRE(account.get<uint64_t>("balance") == 4000);
             }
+
+            //check wallet balance
+            REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1001000);
         }
 
         //try to spend an OP::LEGACY
@@ -314,7 +323,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
             //get best
             TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
-            
+
             //conect tx
             //REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
         }

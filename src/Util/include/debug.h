@@ -46,7 +46,6 @@ ________________________________________________________________________________
 #define ANSI_COLOR_FUNCTION "\u001b[1m"
 
 #define VALUE(data) data
-//#define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
 
 #define NODE ANSI_COLOR_FUNCTION "Node" ANSI_COLOR_RESET " : ", "\u001b[1m", GetAddress().ToStringIP(), ANSI_COLOR_RESET, " "
 

@@ -246,19 +246,12 @@ namespace TAO
         /* Get the legacy converted output of the contract if valid */
         bool Contract::Legacy(Legacy::TxOut& txout) const
         {
-            /* Reset the contract. */
-            ssOperation.seek(0, STREAM::BEGIN);
-
-            /* Get the OP. */
-            uint8_t OP = 0;
-            ssOperation >> OP;
-
             /* Check for LEGACY. */
-            if(OP != OP::LEGACY)
+            if(Primitive() != OP::LEGACY)
                 return false;
 
             /* Skip over address. */
-            ssOperation.seek(32, STREAM::CURSOR);
+            ssOperation.seek(33, STREAM::BEGIN);
 
             /* Get the value. */
             uint64_t nValue = 0;
@@ -270,6 +263,9 @@ namespace TAO
 
             /* Get legacy converted output.*/
             txout = Legacy::TxOut(int64_t(nValue), scriptPubKey);
+
+            /* Reset before return. */
+            ssOperation.seek(0, STREAM::BEGIN);
 
             return true;
         }
