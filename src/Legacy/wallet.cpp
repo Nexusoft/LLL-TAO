@@ -1632,8 +1632,12 @@ namespace Legacy
     /* Returns the credit amount for this wallet represented by a transaction output. */
     int64_t Wallet::GetCredit(const TxOut& txout)
     {
+        /* Check for null (tritium tx outputs will be null if not applicable to legacy). */
+        if(txout.IsNull())
+            return 0;
+
         if(!MoneyRange(txout.nValue))
-            throw std::runtime_error("Wallet::GetCredit() : value out of range");
+            throw debug::exception(FUNCTION, "value out of range ", txout.nValue);
 
         return (IsMine(txout) ? txout.nValue : 0);
     }
@@ -1642,8 +1646,12 @@ namespace Legacy
     /* Returns the change amount for this wallet represented by a transaction output. */
     int64_t Wallet::GetChange(const TxOut& txout)
     {
+        /* Check for null (tritium tx outputs will be null if not applicable to legacy). */
+        if(txout.IsNull())
+            return 0;
+
         if(!MoneyRange(txout.nValue))
-            throw std::runtime_error("Wallet::GetChange() : value out of range");
+            throw debug::exception(FUNCTION, "value out of range ", txout.nValue);
 
         return (IsChange(txout) ? txout.nValue : 0);
     }

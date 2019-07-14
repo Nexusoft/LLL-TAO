@@ -67,11 +67,8 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
         REQUIRE(tx.FetchInputs(inputs));
 
-        //get best
-        TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
-
         //conect tx
-        REQUIRE(tx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+        REQUIRE(tx.Connect(inputs, TAO::Ledger::ChainState::stateGenesis, Legacy::FLAGS::BLOCK));
 
         //write to disk
         REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
@@ -256,7 +253,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Ledger->WriteTx(hashTx, tx));
 
             //index block
-            REQUIRE(LLD::Ledger->IndexBlock(hashTx, TAO::Ledger::ChainState::stateBest.load().GetHash()));
+            REQUIRE(LLD::Ledger->IndexBlock(hashTx, TAO::Ledger::ChainState::stateGenesis.GetHash()));
 
             //add to wallet
             REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
@@ -348,7 +345,14 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(wtx.FetchInputs(inputs));
 
             //conect tx
-            //REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+
+            //add to wallet
+            REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(wtx, state, true));
+
+
+            //check wallet balance
+            REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1890000);
         }
     }
 }
