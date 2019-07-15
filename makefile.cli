@@ -221,12 +221,10 @@ ifdef UNIT_TESTS
 else ifdef BENCHMARKS
 	OBJS = build/Benchmarks_main.o \
 		   build/Benchmarks_validate.o \
-		   build/Benchmarks_register.o \
 		   build/Benchmarks_object.o \
 		   build/Benchmarks_binary_lru.o \
 		   build/Benchmarks_binary_key.o \
-		   build/Benchmarks_template_lru.o \
-		   build/Benchmarks_sigchain.o
+		   build/Benchmarks_template_lru.o
 
 #Live tests for prototyping new code
 else ifdef LIVE_TESTS

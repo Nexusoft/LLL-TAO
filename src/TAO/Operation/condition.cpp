@@ -35,7 +35,10 @@ namespace TAO
         , nLimits(nLimitsIn)
         , contract(contractIn)
         , caller(callerIn)
+        , vEvaluate()
         {
+            /* Push base group, which is what contains final return value. */
+            vEvaluate.push(std::make_pair(false, OP::RESERVED));
         }
 
 
@@ -45,6 +48,7 @@ namespace TAO
         , nLimits(in.nLimits)
         , contract(in.contract)
         , caller(in.caller)
+        , vEvaluate(in.vEvaluate)
         {
         }
 
@@ -52,6 +56,10 @@ namespace TAO
         /* Reset the validation script for re-executing. */
         void Condition::Reset()
         {
+            /* Reset the evaluation stack. */
+            vEvaluate.top().first  = false;
+            vEvaluate.top().second = OP::RESERVED;
+
             contract.Reset();
             nLimits = 2048;
 
@@ -62,12 +70,6 @@ namespace TAO
         /* Execute the validation script. */
         bool Condition::Execute()
         {
-            /* Build the stack for nested grouping. */
-            std::stack<std::pair<bool, uint8_t>> vEvaluate;
-
-            /* Push base group, which is what contains final return value. */
-            vEvaluate.push(std::make_pair(false, OP::RESERVED));
-
             /* Loop through the operation validation code. */
             contract.Reset(Contract::CONDITIONS);
             while(!contract.End(Contract::CONDITIONS))

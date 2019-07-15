@@ -22,6 +22,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 
+#include <stack>
+
 namespace TAO
 {
 
@@ -46,6 +48,10 @@ namespace TAO
 
             /** Reference of the contract that is calling validation. **/
             const Contract& caller;
+
+
+            /** Build the stack for nested grouping. **/
+            std::stack<std::pair<bool, uint8_t>> vEvaluate;
 
 
         public:

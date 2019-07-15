@@ -30,6 +30,8 @@
 #include <Legacy/types/transaction.h>
 #include <Legacy/include/evaluate.h>
 
+#include <TAO/Register/types/address.h>
+
 
 TEST_CASE( "Validation Script Benchmarks", "[operation]")
 {
@@ -37,21 +39,21 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
 
     debug::log(0, "===== Begin Validation Script Benchmarks =====");
 
-    //random data for tx script
+    //random data for caller script
     TAO::Register::Address hashFrom = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
     TAO::Register::Address hashTo   = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
     uint64_t  nAmount  = 500;
 
-    //tx object for validation script
     TAO::Ledger::Transaction tx;
     tx.nTimestamp  = 989798;
     tx.hashGenesis = LLC::GetRand256();
     tx[0] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount;
 
+    const Contract& caller = tx[0];
     {
-        //Operation stream
-        Stream ssOperation;
-        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(7) << uint8_t(OP::ADD) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(9) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(16);
+        //Operation Contract
+        Contract contract = Contract();
+        contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(7) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(9) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(16);
 
         //Total Operations
         uint32_t nOps = 5;
@@ -60,7 +62,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
         runtime::timer bench;
         bench.Reset();
         {
-            Condition script = Condition(ssOperation, tx);
+            Condition script = Condition(contract, caller);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -74,9 +76,9 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
     }
 
     {
-        //Operation stream
-        Stream ssOperation;
-        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(7) << uint8_t(OP::MUL) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(9) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(63);
+        //Operation Contract
+        Contract contract = Contract();
+        contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(7) <= uint8_t(OP::MUL) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(9) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(63);
 
         //Total Operations
         uint32_t nOps = 5;
@@ -85,7 +87,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
         runtime::timer bench;
         bench.Reset();
         {
-            Condition script = Condition(ssOperation, tx);
+            Condition script = Condition(contract, caller);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -100,9 +102,9 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
 
 
     {
-        //Operation stream
-        Stream ssOperation;
-        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(7) << uint8_t(OP::EXP) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(9) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(40353607);
+        //Operation Contract
+        Contract contract = Contract();
+        contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(7) <= uint8_t(OP::EXP) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(9) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(40353607);
 
         //Total Operations
         uint32_t nOps = 5;
@@ -111,7 +113,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
         runtime::timer bench;
         bench.Reset();
         {
-            Condition script = Condition(ssOperation, tx);
+            Condition script = Condition(contract, caller);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -126,9 +128,9 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
 
 
     {
-        //Operation stream
-        Stream ssOperation;
-        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(99) << uint8_t(OP::SUB) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(66) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(33);
+        //Operation Contract
+        Contract contract = Contract();
+        contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(99) <= uint8_t(OP::SUB) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(66) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(33);
 
         //Total Operations
         uint32_t nOps = 5;
@@ -137,7 +139,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
         runtime::timer bench;
         bench.Reset();
         {
-            Condition script = Condition(ssOperation, tx);
+            Condition script = Condition(contract, caller);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -152,9 +154,9 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
 
 
     {
-        //Operation stream
-        Stream ssOperation;
-        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(99) << uint8_t(OP::INC) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(100);
+        //Operation Contract
+        Contract contract = Contract();
+        contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(99) <= uint8_t(OP::INC) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(100);
 
         //Total Operations
         uint32_t nOps = 4;
@@ -163,7 +165,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
         runtime::timer bench;
         bench.Reset();
         {
-            Condition script = Condition(ssOperation, tx);
+            Condition script = Condition(contract, caller);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -178,9 +180,9 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
 
 
     {
-        //Operation stream
-        Stream ssOperation;
-        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(99) << uint8_t(OP::DEC) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(98);
+        //Operation Contract
+        Contract contract = Contract();
+        contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(99) <= uint8_t(OP::DEC) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(98);
 
         //Total Operations
         uint32_t nOps = 4;
@@ -189,7 +191,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
         runtime::timer bench;
         bench.Reset();
         {
-            Condition script = Condition(ssOperation, tx);
+            Condition script = Condition(contract, caller);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -204,9 +206,9 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
 
 
     {
-        //Operation stream
-        Stream ssOperation;
-        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(99) << uint8_t(OP::DIV) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(3) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(33);
+        //Operation Contract
+        Contract contract = Contract();
+        contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(99) <= uint8_t(OP::DIV) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(3) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(33);
 
         //Total Operations
         uint32_t nOps = 5;
@@ -215,7 +217,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
         runtime::timer bench;
         bench.Reset();
         {
-            Condition script = Condition(ssOperation, tx);
+            Condition script = Condition(contract, caller);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -230,9 +232,9 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
 
 
     {
-        //Operation stream
-        Stream ssOperation;
-        ssOperation << uint8_t(OP::TYPES::UINT32_T) << uint32_t(100) << uint8_t(OP::MOD) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(3) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::UINT32_T) << uint32_t(1);
+        //Operation Contract
+        Contract contract = Contract();
+        contract <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(100) <= uint8_t(OP::MOD) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(3) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT32_T) <= uint32_t(1);
 
         //Total Operations
         uint32_t nOps = 5;
@@ -241,7 +243,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
         runtime::timer bench;
         bench.Reset();
         {
-            Condition script = Condition(ssOperation, tx);
+            Condition script = Condition(contract, caller);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -257,9 +259,9 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
 
 
     {
-        //Operation stream
-        Stream ssOperation;
-        ssOperation << uint8_t(OP::TYPES::STRING) << std::string("This is data to parse") << uint8_t(OP::SUBDATA) << uint16_t(5) << uint16_t(7) << uint8_t(OP::EQUALS) << uint8_t(OP::TYPES::STRING) << std::string("is data");
+        //Operation Contract
+        Contract contract = Contract();
+        contract <= uint8_t(OP::TYPES::STRING) <= std::string("This is data to parse") <= uint8_t(OP::SUBDATA) <= uint16_t(5) <= uint16_t(7) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::STRING) <= std::string("is data");
 
         //Total Operations
         uint32_t nOps = 4;
@@ -268,7 +270,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
         runtime::timer bench;
         bench.Reset();
         {
-            Condition script = Condition(ssOperation, tx);
+            Condition script = Condition(contract, caller);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
@@ -283,9 +285,9 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
 
 
     {
-        //Operation stream
-        Stream ssOperation;
-        ssOperation << uint8_t(OP::GLOBAL::UNIFIED) << uint8_t(OP::EQUALS) << uint8_t(OP::GLOBAL::UNIFIED);
+        //Operation Contract
+        Contract contract = Contract();
+        contract <= uint8_t(OP::GLOBAL::UNIFIED) <= uint8_t(OP::EQUALS) <= uint8_t(OP::GLOBAL::UNIFIED);
 
         //Total Operations
         uint32_t nOps = 3;
@@ -294,7 +296,7 @@ TEST_CASE( "Validation Script Benchmarks", "[operation]")
         runtime::timer bench;
         bench.Reset();
         {
-            Condition script = Condition(ssOperation, tx);
+            Condition script = Condition(contract, caller);
             for(int i = 0; i < 1000000; i++)
             {
                 REQUIRE(script.Execute());
