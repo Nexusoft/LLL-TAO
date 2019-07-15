@@ -265,6 +265,8 @@ namespace Legacy
                 return false;
         }
 
+        //TODO: we need to add UTXO to Tritium script as Standard here
+
         for(const auto& txout : vout)
             if(!Legacy::IsStandard(txout.scriptPubKey))
                 return false;
