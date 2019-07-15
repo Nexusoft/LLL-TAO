@@ -2017,7 +2017,7 @@ namespace Legacy
                 if(nBytes >= TAO::Ledger::MAX_BLOCK_SIZE_GEN / 5)
                     break;
 
-                block.vtx[0].vin.push_back(TxIn(walletTx.GetHash(), i));
+                block.vtx[0].vin.push_back(TxIn(hash, i));
                 vInputs.push_back(walletTx);
 
                 /** Add the input value to the Coinstake output. **/
