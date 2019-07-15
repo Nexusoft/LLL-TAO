@@ -238,6 +238,43 @@ namespace TAO
             if(TAO::Register::Reserved(hashFrom))
                 return debug::error(FUNCTION, "cannot credit register with reserved address");
 
+            /* Get the hashTo. */
+            TAO::Register::Address hashTo;
+            debit  >> hashTo;
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashTo))
+                return debug::error(FUNCTION, "cannot credit register with reserved address");
+
+            /* Check for wildcard from (which is a flag for credit from UTXO). */
+            if(hashFrom == ~uint256_t(0))
+            {
+                /* Check the proof as being the caller. */
+                if(hashProof != hashFrom)
+                    return debug::error(FUNCTION, "proof must equal from for credit");
+
+                /* Check the proof as being the caller. */
+                if(hashTo != hashAccount)
+                    return debug::error(FUNCTION, "must have same address as UTXO to");
+
+                /* Get the debit amount. */
+                uint64_t nDebit = 0;
+                debit >> nDebit;
+
+                /* Check the debit amount. */
+                if(nDebit != nCredit)
+                    return debug::error(FUNCTION, "debit and credit value mismatch");
+
+                /* Seek read position to first position. */
+                contract.Rewind(72, Contract::OPERATIONS);
+                contract.Reset(Contract::REGISTERS);
+
+                /* Seek read position to first position. */
+                debit.Reset(Contract::OPERATIONS | Contract::REGISTERS);
+
+                return true;
+            }
+
             /* Get the byte from pre-state. */
             nState = 0;
             debit >>= nState;
@@ -261,14 +298,6 @@ namespace TAO
             /* Check token identifiers. */
             if(accountFrom.get<uint256_t>("token") != account.get<uint256_t>("token"))
                 return debug::error(FUNCTION, "credit can't be of different identifier");
-
-            /* Get the hashTo. */
-            TAO::Register::Address hashTo;
-            debit  >> hashTo;
-
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashTo))
-                return debug::error(FUNCTION, "cannot credit register with reserved address");
 
             /* Handle one-to-one debit to credit or return to self. */
             if(hashTo == hashAccount    //regular debit to credit

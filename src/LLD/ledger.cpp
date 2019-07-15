@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/ledger.h>
+#include <LLD/include/global.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -34,7 +34,7 @@ namespace LLD
     , nFlagsIn
     , nBucketsIn
     , nCacheIn)
-    
+
     , MEMORY_MUTEX()
     , mapProofs()
     , mapClaims()
@@ -77,49 +77,90 @@ namespace LLD
     /* Reads a contract from the ledger DB. */
     TAO::Operation::Contract LedgerDB::ReadContract(const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
     {
-        /* Get the transaction. */
-        TAO::Ledger::Transaction tx;
-        if(!ReadTx(hashTx, tx, nFlags))
-            throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read contract"));
-
-        /* Get const reference for read-only access. */
-        const TAO::Ledger::Transaction& ref = tx;
-
-        /* Check that the previous transaction is indexed. */
-        if(!tx.IsConfirmed())
-            throw std::runtime_error(debug::safe_printstr(FUNCTION, "previous transaction not confirmed"));
-
-        /* Check flags. */
-        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+        /* Check for Tritium transaction. */
+        if(hashTx.GetType() == TAO::Ledger::TRITIUM)
         {
-            /* Check for coinbase transactions. */
-            uint8_t nOP = 0;
-            ref[nContract] >> nOP;
+            /* Get the transaction. */
+            TAO::Ledger::Transaction tx;
+            if(!ReadTx(hashTx, tx, nFlags))
+                throw debug::exception(FUNCTION, "failed to read contract");
 
-            /* Check for COINBASE. */
-            if(nOP == TAO::Operation::OP::COINBASE)
+            /* Get const reference for read-only access. */
+            const TAO::Ledger::Transaction& ref = tx;
+
+            /* Check that the previous transaction is indexed. */
+            if(!tx.IsConfirmed())
+                throw debug::exception(FUNCTION, "previous transaction not confirmed");
+
+            /* Check flags. */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
             {
-                /* Check for block. */
-                TAO::Ledger::BlockState state;
-                if(!ReadBlock(hashTx, state))
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "coinbase isn't included in block"));
+                /* Check for coinbase transactions. */
+                uint8_t nOP = 0;
+                ref[nContract] >> nOP;
 
-                /* Check for overflows. */
-                if(TAO::Ledger::ChainState::stateBest.load().nHeight < state.nHeight)
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "maturity overflow"));
+                /* Check for COINBASE. */
+                if(nOP == TAO::Operation::OP::COINBASE)
+                {
+                    /* Check for block. */
+                    TAO::Ledger::BlockState state;
+                    if(!ReadBlock(hashTx, state))
+                        throw debug::exception(FUNCTION, "coinbase isn't included in block");
 
-                /* Check the intervals. */
-                if((TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight) <
-                    (config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
-                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "coinbase is immature"));
+                    /* Check for overflows. */
+                    if(TAO::Ledger::ChainState::stateBest.load().nHeight < state.nHeight)
+                        throw debug::exception(FUNCTION, "maturity overflow");
+
+                    /* Check the intervals. */
+                    if((TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight) <
+                        (config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
+                        throw debug::exception(FUNCTION, "coinbase is immature");
+                }
+
+                /* Reset the contract. */
+                ref[nContract].Reset();
             }
 
-            /* Reset the contract. */
-            ref[nContract].Reset();
+            /* Get the contract. */
+            return ref[nContract];
         }
 
-        /* Get the contract. */
-        return ref[nContract];
+        /* Check for Legacy transaction. */
+        else if(hashTx.GetType() == TAO::Ledger::LEGACY)
+        {
+            /* Get the transaction. */
+            Legacy::Transaction tx;
+            if(!LLD::Legacy->ReadTx(hashTx, tx, nFlags))
+                throw debug::exception(FUNCTION, "failed to get legacy transaction");
+
+            /* Check boundaries. */
+            if(nContract >= tx.vout.size())
+                throw debug::exception(FUNCTION, "contract output out of bounds");
+
+            /* Check if indexed. */
+            if(!HasIndex(hashTx))
+                throw debug::exception(FUNCTION, "legacy transaction not indexed");
+
+            /* Check script size. */
+            if(tx.vout[nContract].scriptPubKey.size() != 34)
+                throw debug::exception(FUNCTION, "invalid script size ", tx.vout[nContract].scriptPubKey.size());
+
+            /* Get the script output. */
+            uint256_t hashAccount;
+            std::copy((uint8_t*)&tx.vout[nContract].scriptPubKey[1], (uint8_t*)&tx.vout[nContract].scriptPubKey[1] + 32, (uint8_t*)&hashAccount);
+
+            /* Check for OP::RETURN. */
+            if(tx.vout[nContract].scriptPubKey[33] != Legacy::OP_RETURN)
+                throw debug::exception(FUNCTION, "last OP has to be OP_RETURN");
+
+            /* Create Contract. */
+            TAO::Operation::Contract contract;
+            contract << uint8_t(TAO::Operation::OP::DEBIT) << ~uint256_t(0) << hashAccount << uint64_t(tx.vout[nContract].nValue);
+
+            return contract;
+        }
+        else
+            throw debug::exception(FUNCTION, "invalid txid type");
     }
 
 

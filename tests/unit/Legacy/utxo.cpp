@@ -512,5 +512,95 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             //check wallet balance
             REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1850000);
         }
+
+
+        //Add balance to trust account by crediting from Coinbase tx
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 2;
+            tx.nTimestamp  = runtime::timestamp();
+
+            uint32_t nOut = 0;
+            {
+                Legacy::Transaction tx;
+                REQUIRE(LLD::Legacy->ReadTx(hashTx, tx));
+
+                for(; nOut < tx.vout.size(); ++nOut)
+                    if(tx.vout[nOut].nValue == 20000)
+                        break;
+            }
+
+            //payload
+            tx[0] << uint8_t(OP::CREDIT) << hashTx << nOut << hashAccount << ~uint256_t(0) << uint64_t(20000);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //verify the prestates and poststates
+            REQUIRE(tx.Verify());
+
+            //commit to disk
+            REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+            //check register values
+            {
+                Object trust;
+                REQUIRE(LLD::Register->ReadState(hashAccount, trust));
+
+                //parse register
+                REQUIRE(trust.Parse());
+
+                //check balance (claimed Coinbase amount added to balance)
+                REQUIRE(trust.get<uint64_t>("balance") == 120000);
+                REQUIRE(trust.get<uint256_t>("token") == 0);
+            }
+        }
+
+
+        //try tou double spend
+        {
+            //create the transaction object
+            TAO::Ledger::Transaction tx;
+            tx.hashGenesis = hashGenesis;
+            tx.nSequence   = 2;
+            tx.nTimestamp  = runtime::timestamp();
+
+            uint32_t nOut = 0;
+            {
+                Legacy::Transaction tx;
+                REQUIRE(LLD::Legacy->ReadTx(hashTx, tx));
+
+                for(; nOut < tx.vout.size(); ++nOut)
+                    if(tx.vout[nOut].nValue == 20000)
+                        break;
+            }
+
+            //payload
+            tx[0] << uint8_t(OP::CREDIT) << hashTx << nOut << hashAccount << ~uint256_t(0) << uint64_t(20000);
+
+            //generate the prestates and poststates
+            REQUIRE(tx.Build());
+
+            //verify the prestates and poststates
+            REQUIRE(tx.Verify());
+
+            //commit to disk
+            REQUIRE_FALSE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
+
+            //check register values
+            {
+                Object trust;
+                REQUIRE(LLD::Register->ReadState(hashAccount, trust));
+
+                //parse register
+                REQUIRE(trust.Parse());
+
+                //check balance (claimed Coinbase amount added to balance)
+                REQUIRE(trust.get<uint64_t>("balance") == 120000);
+                REQUIRE(trust.get<uint256_t>("token") == 0);
+            }
+        }
     }
 }
