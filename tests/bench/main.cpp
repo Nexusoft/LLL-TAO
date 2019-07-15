@@ -33,15 +33,19 @@ TEST_CASE("Arguments Tests", "[args]")
     //test the filesystem remove and also clear from previous unit tests
     if(filesystem::exists(strPath))
     {
-        //REQUIRE(filesystem::remove_directories(strPath));
-        //REQUIRE_FALSE(filesystem::exists(strPath));
+        REQUIRE(filesystem::remove_directories(strPath));
+        REQUIRE_FALSE(filesystem::exists(strPath));
     }
 
     //create LLD instances
     LLD::Contract = new LLD::ContractDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
     LLD::Register = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
     LLD::Local    = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-    LLD::Ledger   = new LLD::LedgerDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Ledger   = new LLD::LedgerDB(
+        LLD::FLAGS::CREATE | LLD::FLAGS::WRITE,
+        256 * 256 * 16,
+        4 * 1024 * 1024);
+
     LLD::Trust    = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
     LLD::Legacy   = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 

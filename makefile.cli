@@ -224,7 +224,8 @@ else ifdef BENCHMARKS
 		   build/Benchmarks_object.o \
 		   build/Benchmarks_binary_lru.o \
 		   build/Benchmarks_binary_key.o \
-		   build/Benchmarks_template_lru.o
+		   build/Benchmarks_template_lru.o \
+		   build/Benchmarks_ledger.o \
 
 #Live tests for prototyping new code
 else ifdef LIVE_TESTS

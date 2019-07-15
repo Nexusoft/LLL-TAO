@@ -561,7 +561,7 @@ namespace LLD
     /* Writes a block state object to disk. */
     bool LedgerDB::WriteBlock(const uint1024_t& hashBlock, const TAO::Ledger::BlockState& state)
     {
-        return Write(hashBlock, state);
+        return Write(hashBlock, state, "block");
     }
 
 
