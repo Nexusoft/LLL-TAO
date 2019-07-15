@@ -15,11 +15,12 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_SCRIPT_H
 #define NEXUS_LEGACY_TYPES_SCRIPT_H
 
+#include <LLC/types/bignum.h>
+#include <LLC/include/eckey.h>
+
 #include <Legacy/types/address.h>
 #include <Legacy/include/enum.h>
 
-#include <LLC/types/bignum.h>
-#include <LLC/include/eckey.h>
 #include <Util/include/base58.h>
 
 #include <string>
@@ -275,6 +276,16 @@ namespace Legacy
          *
          **/
         void SetNexusAddress(const NexusAddress& address);
+
+
+        /** SetRegisterAddress
+         *
+         *  Set the register address into script
+         *
+         *  @param[in] address The register address you input
+         *
+         **/
+        void SetRegisterAddress(const uint256_t& address);
 
 
         /** SetNexusAddress

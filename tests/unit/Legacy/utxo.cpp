@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <Legacy/include/create.h>
 
 #include <Legacy/types/coinbase.h>
+#include <Legacy/include/signature.h>
 
 #include <Legacy/include/enum.h>
 
@@ -395,11 +396,121 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             //conect tx
             REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
 
+            //write to disk
+            REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
+
+            //index to block
+            REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
+
             //add to wallet
             REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(wtx, state, true));
 
             //check wallet balance
             REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1880000);
+        }
+
+
+        //set best
+        ++state.nHeight;
+        state.hashNextBlock = LLC::GetRand1024();
+
+        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
+
+        REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
+
+        hashTx = 0;
+        {
+            //create a transaction
+            Legacy::Script scriptPubKey;
+            scriptPubKey.SetRegisterAddress(hashAccount);
+
+            //create sending vectorsss
+            std::vector< std::pair<Legacy::Script, int64_t> > vecSend;
+            vecSend.push_back(make_pair(scriptPubKey, 20000));
+
+            //create the transaction
+            Legacy::WalletTx wtx;
+
+            //for change
+            Legacy::ReserveKey changeKey(Legacy::Wallet::GetInstance());
+
+            //create transaction
+            int64_t nFees;
+            REQUIRE(Legacy::Wallet::GetInstance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
+
+            //get inputs
+            std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
+            REQUIRE(wtx.FetchInputs(inputs));
+
+            //conect tx
+            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+
+            //write to disk
+            REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
+
+            //index to block
+            REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
+
+            //add to wallet
+            REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(wtx, state, true));
+
+            //check wallet balance
+            REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1850000);
+
+            //set the hash to spend
+            hashTx = wtx.GetHash();
+        }
+
+
+        //set best
+        ++state.nHeight;
+        state.hashNextBlock = LLC::GetRand1024();
+
+        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
+
+        REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
+
+
+        //try to spend the legacy to tritium transaction INTENDED FAILURE
+        {
+            //legacy get key
+            std::vector<uint8_t> vKey;
+            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            Legacy::NexusAddress address(vKey);
+
+            //create a transaction
+            Legacy::Script scriptPubKey;
+            scriptPubKey.SetNexusAddress(address);
+
+            //create the transaction
+            Legacy::WalletTx wtx;
+
+            uint32_t nOut = 0;
+            {
+                Legacy::Transaction tx;
+                REQUIRE(LLD::Legacy->ReadTx(hashTx, tx));
+
+                for(; nOut < tx.vout.size(); ++nOut)
+                    if(tx.vout[nOut].nValue == 20000)
+                        break;
+
+                wtx.vin.push_back(Legacy::TxIn(hashTx, nOut));
+                REQUIRE_FALSE(Legacy::SignSignature(Legacy::Wallet::GetInstance(), tx, wtx, 0));
+            }
+
+            wtx.vout.push_back(Legacy::TxOut(10000, scriptPubKey));
+
+            //get inputs
+            std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
+            REQUIRE(wtx.FetchInputs(inputs));
+
+            //conect tx
+            REQUIRE_FALSE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+
+            //check wallet balance
+            REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1850000);
         }
     }
 }
