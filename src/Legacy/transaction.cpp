@@ -1110,7 +1110,7 @@ namespace Legacy
                 return debug::error(FUNCTION, GetHash().SubString(), " stake reward ", vout[0].nValue / 1000, " mismatch ", (nStakeReward + nValueIn) / 1000);
         }
         else if(nValueIn < GetValueOut())
-            return debug::error(FUNCTION, GetHash().SubString(), "value in < value out");
+            return debug::error(FUNCTION, GetHash().SubString(), " value in ", nValueIn, " < value out ", GetValueOut());
 
         /* Calculate the mint if connected with a block. */
         if(nFlags == FLAGS::BLOCK)

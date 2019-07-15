@@ -42,13 +42,6 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
     using namespace TAO::Register;
     using namespace TAO::Operation;
 
-
-    //create a tritium transaction
-    TAO::Ledger::BlockState state;
-    state.nHeight = 150;
-
-    REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
-
     {
         //reserve key from temp wallet
         Legacy::ReserveKey* pReserveKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
@@ -72,7 +65,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
         //write to disk
         REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
-        REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), state.GetHash()));
+        REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
 
         //add to wallet
         Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true);
@@ -104,7 +97,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //write index
-            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), state.GetHash()));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
 
             //set the hash
             hashCoinbaseTx = tx.GetHash();
@@ -339,6 +332,61 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
             //get best
             TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
+            state.hashNextBlock = LLC::GetRand1024();
+
+            REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
+
+            //get inputs
+            std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
+            REQUIRE(wtx.FetchInputs(inputs));
+
+            //conect tx
+            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+
+            //write to disk
+            REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
+            REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
+
+            //add to wallet
+            REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(wtx, state, true));
+
+            //check wallet balance
+            REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1890000);
+        }
+
+        //set best
+        TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
+        ++state.nHeight;
+        state.hashNextBlock = LLC::GetRand1024();
+
+        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
+
+        REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
+
+        {
+            //legacy get key
+            std::vector<uint8_t> vKey;
+            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            Legacy::NexusAddress address(vKey);
+
+            //create a transaction
+            Legacy::Script scriptPubKey;
+            scriptPubKey.SetNexusAddress(address);
+
+            //create sending vectorsss
+            std::vector< std::pair<Legacy::Script, int64_t> > vecSend;
+            vecSend.push_back(make_pair(scriptPubKey, 1500000));
+
+            //create the transaction
+            Legacy::WalletTx wtx;
+
+            //for change
+            Legacy::ReserveKey changeKey(Legacy::Wallet::GetInstance());
+
+            //create transaction
+            int64_t nFees;
+            REQUIRE(Legacy::Wallet::GetInstance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
 
             //get inputs
             std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
@@ -350,9 +398,8 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             //add to wallet
             REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(wtx, state, true));
 
-
             //check wallet balance
-            REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1890000);
+            REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1880000);
         }
     }
 }

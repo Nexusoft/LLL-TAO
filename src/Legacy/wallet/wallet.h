@@ -1182,7 +1182,7 @@ namespace Legacy
          *  @return true if result set was successfully populated
          *
          **/
-        bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::map<uint512_t, std::pair<const WalletTx*, uint32_t> >& mapCoinsRet,
+        bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
                         int64_t& nValueRet, const std::string& strAccount = "*", const uint32_t nMinDepth = 1);
 
 
@@ -1210,7 +1210,7 @@ namespace Legacy
          *
          **/
         bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const uint32_t nConfMine, const uint32_t nConfTheirs,
-                                std::map<uint512_t, std::pair<const WalletTx*, uint32_t> >& mapCoinsRet,
+                                std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
                                 int64_t& nValueRet, const std::string& strAccount = "*");
 
     };

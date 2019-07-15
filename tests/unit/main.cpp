@@ -72,6 +72,7 @@ TEST_CASE("Arguments Tests", "[args]")
     //create best chain.
     TAO::Ledger::BlockState state;
     state.nHeight = 200;
+    state.nBits   = 555;
 
     //write best to disk
     LLD::Ledger->WriteBlock(state.GetHash(), state);
@@ -79,6 +80,9 @@ TEST_CASE("Arguments Tests", "[args]")
     //set best block
     TAO::Ledger::ChainState::stateBest.store(state);
     TAO::Ledger::ChainState::nBestHeight.store(200);
+
+    //check best
+    REQUIRE_FALSE(TAO::Ledger::ChainState::stateBest.load().IsNull());
 
 
     /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
