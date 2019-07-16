@@ -98,7 +98,7 @@ namespace TAO
         }
 
 
-        /* Get the Coinbase Rewards based on the Reserve Balances to keep the Coinbase rewards under the Reserve Production Rates. */
+        /* Get the Coinbase Rewards based on the Reserve Balances to keep the Coinbase rewards under the Reserve Production Rates.*/
         uint64_t GetCoinbaseReward(const BlockState& state, const uint32_t nChannel, const uint8_t nType)
         {
             /* Get Last Block Index [1st block back in Channel]. **/
@@ -123,7 +123,7 @@ namespace TAO
             if(state.nVersion >= 3)
             {
 
-                /* For Block Version 3: Release 3 Minute Reward decayed at Channel Height when Reserves are above 20 Minute Supply. */
+                /* For Block Version 3: Release 3 Minute Reward decayed at Channel Height when Reserves above 20 Minute Supply. */
                 if(first.nReleasedReserve[nType] > GetFractionalSubsidy(first.nChannelHeight, nType, 20.0))
                     return GetFractionalSubsidy(first.nChannelHeight, nType, 3.0);
 

@@ -23,8 +23,12 @@ import bottle
 import sys
 import json
 import socket
+import os
 
 try:
+    sdk_dir = os.getcwd().split("/")[0:-2]
+    sdk_dir = "/".join(sdk_dir) + "/sdk"
+    sys.path.append(sdk_dir)
     import nexus_sdk as nexus
 except:
     print "Need to place nexus_sdk.py in this directory"
@@ -34,7 +38,7 @@ except:
 #
 # Did command line have a port number to listen to?
 #
-cookbook_port = int(sys.argv[1]) if (len(sys.argv) == 2) else 5432
+cookbook_port = int(sys.argv[1]) if (len(sys.argv) == 2) else 1111
 
 #
 # Nexus node to query for API. A change to the SDK URL needs a call to
@@ -42,6 +46,12 @@ cookbook_port = int(sys.argv[1]) if (len(sys.argv) == 2) else 5432
 #
 nexus_api_node = "http://localhost:8080"
 nexus_sdk_node = "http://localhost:8080"
+
+#
+# Keep track of last username logged in.
+#
+nexus_api_last_username = None
+nexus_sdk_last_username = None
 
 #------------------------------------------------------------------------------
 
@@ -161,7 +171,9 @@ def show(msg, sid="", genid=""):
     output = show_html.format(bold(msg)) + build_body_page(sid, genid)
 
     hostname = blue(socket.gethostname())
-    return(landing_page.format(hostname, output))
+    sdk = blue(nexus_sdk_last_username)
+    api = blue(nexus_api_last_username)
+    return(landing_page.format(hostname, sdk, api, output))
 #enddef
 
 #
@@ -176,8 +188,12 @@ landing_page = '''
     <font face="verdana"><center>
     <br><head><a href="/" style="text-decoration:none;"><font color="black">
     <b>Nexus Interactive SDK/API Cook Book</b></a></head><br>
-    <font size="2""><br>Running on {}</font><br><br><hr size="5">
+
+    <font size="2""><br>Running on {}, last logged in SDK/API user {}/{}</font>
+    <br><br><hr size="5">
+
     {}
+    
     <hr size="5"></center></font></body></html>
 '''
 
@@ -461,6 +477,7 @@ def do_users_create_user():
 @bottle.route('/users-login-user', method="post")
 def do_users_login_user():
     global contexts
+    global nexus_api_last_username, nexus_sdk_last_username
     
     username = bottle.request.forms.get("username")
     password = bottle.request.forms.get("password")
@@ -478,10 +495,16 @@ def do_users_login_user():
         output = sdk.nexus_users_login_user()
         sid, genid = [sdk.session_id, sdk.genesis_id]
         contexts[sid] = sdk
+        if (output.has_key("error") == False):
+            nexus_sdk_last_username = username
+        #endif
     else:
         output = curl(users_login_user.format("", username, password, pin, ""))
         sid = output["result"]["session"] if output.has_key("result") else ""
         genid = output["result"]["genesis"] if output.has_key("result") else ""
+        if (output.has_key("error") == False):
+            nexus_api_last_username = username
+        #endif
     #endif
     output = json.dumps(output)
 
@@ -1401,7 +1424,7 @@ def do_assets_list_asset_history_address():
 # build_accounts_html
 #
 tokens_create_token = \
-    '{}tokens/create/token?pin={}&session={}&name={}&supply={}{}'
+    '{}tokens/create/token?pin={}&session={}&name={}&supply={}&digits={}{}'
 tokens_create_account = \
     '{}tokens/create/account?pin={}&session={}&name={}&token_name={}{}'
 tokens_get_token_name = '{}tokens/get/token?session={}&name={}{}'
@@ -1443,7 +1466,8 @@ def build_tokens_html(sid, genid, o):
     session = form_parm.format("session", sid)
     name = form_parm.format("name", "")
     supply = form_parm.format("supply", "")
-    o += hl(tokens_create_token).format(h, pin, session, name, supply, f)
+    d = form_parm.format("digits", "2")
+    o += hl(tokens_create_token).format(h, pin, session, name, supply, d, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1480,7 +1504,7 @@ def build_tokens_html(sid, genid, o):
     h = form_header.format(h)
     session = form_parm.format("session", sid)
     address = form_parm.format("address", "")
-    o += hl(tokens_get_account_address).format(h, session, name, f)
+    o += hl(tokens_get_account_address).format(h, session, address, f)
     o += "</td></tr>"
 
     o += "<tr><td>"
@@ -1525,7 +1549,8 @@ def do_tokens_create_token():
     session = bottle.request.forms.get("session")
     name = bottle.request.forms.get("name")
     supply = bottle.request.forms.get("supply")
-    if (no_parms(pin, session, name, supply)):
+    digits = bottle.request.forms.get("digits")
+    if (no_parms(pin, session, name, supply, digits)):
         m = red("tokens/create/token needs more input parameters")
         return(show(m, session))
     #endif
@@ -1536,11 +1561,11 @@ def do_tokens_create_token():
     if (sdk_or_api):
         sdk, output = sid_to_sdk(session)
         if (sdk == None): return(output)
-        output = sdk.nexus_tokens_create_token(name, supply)
+        output = sdk.nexus_tokens_create_token(name, supply, digits)
         genid = sdk.genesis_id
     else:
         output = curl(tokens_create_token.format("", pin, session, name,
-            supply, ""))
+            supply, digits, ""))
         genid = ""
     #endif            
     output = json.dumps(output)
@@ -2546,7 +2571,9 @@ def build_body_page(sid="", genid=""):
 def do_landing():
     output = build_body_page()
     hostname = blue(socket.gethostname())
-    return(landing_page.format(hostname, output))
+    sdk = blue(nexus_sdk_last_username)
+    api = blue(nexus_api_last_username)
+    return(landing_page.format(hostname, sdk, api, output))
 #enddef
 
 @bottle.route('/url/<api_or_sdk>', method="post")
@@ -2564,7 +2591,9 @@ def do_url(api_or_sdk):
 
     output = build_body_page()
     hostname = blue(socket.gethostname())
-    return(landing_page.format(hostname, output))
+    sdk = blue(nexus_sdk_last_username)
+    api = blue(nexus_api_last_username)
+    return(landing_page.format(hostname, sdk, api, output))
 #enddef
 
 #------------------------------------------------------------------------------

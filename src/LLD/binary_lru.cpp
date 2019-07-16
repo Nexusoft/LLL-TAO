@@ -357,7 +357,10 @@ namespace LLD
 
             /* Set the new links. */
             plast = plast->pprev;
-            plast->pnext = nullptr;
+
+            /* Check for nullptr. */
+            if(plast)
+                plast->pnext = nullptr;
 
             /* Clear the pointers. */
             hashmap[Bucket(pnode)]   = nullptr;

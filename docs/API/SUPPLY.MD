@@ -121,6 +121,50 @@ Additionally the API supports passing a field name in the URL after the asset na
 
 ***
 
+
+# `update/item`
+
+This is the generic endpoint for updating the data value in an item.  The API supports an alternative endpoint that can include the item name (if known) or register address in the URI.  For example `/supply/update/item/myitem` will resolve to `supply/update/item?name=myitem`.
+
+
+### Endpoint:
+
+`/supply/update/item`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the supply should be created with. For single-user API mode the session should not be supplied.
+
+`name` : The name identifying the supply to update. This is optional if the address is provided.  The name should be in username:name format.  However, if the item was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+
+`address` : The register address of the supply to update. This is optional if the name is provided.
+
+`data` : The new value of the data field in this item
+
+
+
+
+### Return value JSON object:
+```
+{
+    "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
+    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
+}
+```
+
+### Return values:
+
+`txid` : The ID (hash) of the transaction that includes the item update.
+
+`address` : The register address for this item.
+
+
+****
+
+
 # `transfer/item`
 
 This will transfer ownership of an item.  This is a generic endpoint requiring the item name or address to be passed as parameters. The API supports an alternative endpoint that can include the item name (if known) or register address in the URI.  For example `/supply/transfer/item/myitem` will resolve to `supply/transfer/item?name=myitem`.  
@@ -203,48 +247,6 @@ Items that have been transferred need to be claimed by the recipient before the 
 
 ****
 
-
-# `update/item`
-
-This is the generic endpoint for updating the data value in an item.  The API supports an alternative endpoint that can include the item name (if known) or register address in the URI.  For example `/supply/update/item/myitem` will resolve to `supply/update/item?name=myitem`.
-
-
-### Endpoint:
-
-`/supply/update/item`
-
-
-### Parameters:
-
-`pin` : The PIN for this signature chain.
-
-`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the supply should be created with. For single-user API mode the session should not be supplied.
-
-`name` : The name identifying the supply to update. This is optional if the address is provided.  The name should be in username:name format.  However, if the item was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
-
-`address` : The register address of the supply to update. This is optional if the name is provided.
-
-`data` : The new value of the data field in this item
-
-
-
-
-### Return value JSON object:
-```
-{
-    "txid": "27ef3f31499b6f55482088ba38b7ec7cb02bd4383645d3fd43745ef7fa3db3d1"
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9"
-}
-```
-
-### Return values:
-
-`txid` : The ID (hash) of the transaction that includes the item update.
-
-`address` : The register address for this item.
-
-
-****
 
 # `list/item/history`
 
