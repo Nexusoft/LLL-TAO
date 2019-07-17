@@ -23,29 +23,45 @@ ________________________________________________________________________________
 #undef SetPort
 #endif
 
+/* Mainnet */
 #ifndef MAINNET_PORT
 #define MAINNET_PORT 9323
 #endif
 
-#ifndef TESTNET_PORT
-#define TESTNET_PORT 8323
+#ifndef TRITIUM_MAINNET_PORT
+#define TRITIUM_MAINNET_PORT 9888
 #endif
 
-#ifndef MAINNET_CORE_LLP_PORT
-#define MAINNET_CORE_LLP_PORT 9324
+#ifndef CORE_LLP_PORT
+#define CORE_LLP_PORT 9324
 #endif
 
-#ifndef TESTNET_CORE_LLP_PORT
-#define TESTNET_CORE_LLP_PORT 8329
+#ifndef MAINNET_API_PORT
+#define MAINNET_API_PORT 9336
 #endif
 
 #ifndef MAINNET_MINING_LLP_PORT
 #define MAINNET_MINING_LLP_PORT 9325
 #endif
 
+
+/* Testnet */
+#ifndef TESTNET_PORT
+#define TESTNET_PORT 8323
+#endif
+
+#ifndef TRITIUM_TESTNET_PORT
+#define TRITIUM_TESTNET_PORT 8888
+#endif
+
+#ifndef TESTNET_API_PORT
+#define TESTNET_API_PORT 8336
+#endif
+
 #ifndef TESTNET_MINING_LLP_PORT
 #define TESTNET_MINING_LLP_PORT 8325
 #endif
+
 
 namespace LLP
 {
@@ -60,7 +76,7 @@ namespace LLP
      **/
     inline uint16_t GetCorePort(const bool testnet = config::fTestNet)
     {
-        return testnet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT;
+        return CORE_LLP_PORT;
     }
 
 

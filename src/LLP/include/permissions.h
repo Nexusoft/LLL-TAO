@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_INCLUDE_PERMISSIONS_H
 #define NEXUS_LLP_INCLUDE_PERMISSIONS_H
 
+#include <LLP/include/port.h>
+
 #include <Util/include/args.h>
 #include <Util/include/string.h>
 #include <string>
@@ -35,15 +37,37 @@ inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
     if(vAddress.size() != 4)
         return debug::error("Address size not at least 4 bytes.");
 
+    /* Determine whether or not the current port is open by default, or closed requiring an llpallowip whitelist.
+     * Ports open by default can also use a whitelist, and will no longer be treated as open for other addresses */
+    bool fOpen = false;
+    if(config::fTestNet)
+    {
+        /* Testnet ports open only for testnet */
+        if(nPort == (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)))
+            fOpen = true;
+
+        else if(nPort == (TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)))
+            fOpen = true;
+
+        else if(nPort == CORE_LLP_PORT)
+            fOpen = true; //Time server always uses same port for both testnet and mainnet
+    }
+    else
+    {
+        /* Mainnet ports open only for mainnet */
+        if(nPort == TRITIUM_MAINNET_PORT || nPort == MAINNET_PORT || nPort == CORE_LLP_PORT)
+            fOpen = true;
+    }
+
     /* Check against the llpallowip list from config / commandline parameters. */
 
-    /* If no llpallowip whitelist has been defined for this port then we assume they are allowed */
-    if( config::mapIPFilters[nPort].size() == 0 )
+    /* If no llpallowip whitelist defined for a default open port then we assume permission */
+    if(config::mapIPFilters[nPort].size() == 0 && fOpen)
         return true;
 
+    /* All other cases require a whitelist entry to have permission */
     for(const auto& strIPFilter : config::mapIPFilters[nPort])
     {
-
         /* Split the components of the IP so that we can check for wildcard ranges. */
         std::vector<std::string> vCheck = Split(strIPFilter, '.');
 

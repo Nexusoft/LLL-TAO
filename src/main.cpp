@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/types/legacy_miner.h>
 #include <LLP/types/tritium_miner.h>
 #include <LLP/include/lisp.h>
+#include <LLP/include/port.h>
 
 #include <LLD/include/global.h>
 
@@ -82,7 +83,7 @@ namespace LLP
         return new Server<ProtocolType>(
 
             /* The port this server listens on. */
-            static_cast<uint16_t>(config::GetArg(std::string("-miningport"), config::fTestNet ? 8325 : 9325)),
+            static_cast<uint16_t>(config::GetArg(std::string("-miningport"), config::fTestNet ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT)),
 
             /* The total data I/O threads. */
             static_cast<uint16_t>(config::GetArg(std::string("-miningthreads"), 4)),
@@ -329,13 +330,13 @@ int main(int argc, char** argv)
 
 
     /* Get the port for Legacy Server. */
-    port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? 8323 : 9323));
+    port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? TESTNET_PORT : MAINNET_PORT));
 
     /* Initialize the Legacy Server. */
     LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(port);
 
     /* Get the port for the Core API Server. */
-    port = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet? 8336 : 9336));
+    port = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet? TESTNET_API_PORT : MAINNET_API_PORT));
 
     /* Set up RPC server */
     RPC_SERVER = new LLP::Server<LLP::RPCNode>(
@@ -416,7 +417,7 @@ int main(int argc, char** argv)
 
         /** Startup the time server. **/
         LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
-            9324,
+            CORE_LLP_PORT,
             10,
             30,
             false,
