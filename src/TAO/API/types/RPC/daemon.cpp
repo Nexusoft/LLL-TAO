@@ -66,28 +66,28 @@ namespace TAO
             {
                 LLP::LEGACY_SERVER->DisconnectAll();
 
-                uint16_t port = static_cast<uint16_t>(config::GetArg(
+                uint16_t nPort = static_cast<uint16_t>(config::GetArg(
                     "-port", config::fTestNet.load() ? LEGACY_TESTNET_PORT : LEGACY_MAINNET_PORT));
 
                 for(const auto& node : config::mapMultiArgs["-connect"])
-                    LLP::LEGACY_SERVER->AddConnection(node, port);
+                    LLP::LEGACY_SERVER->AddConnection(node, nPort);
 
                 for(const auto& node : config::mapMultiArgs["-addnode"])
-                    LLP::LEGACY_SERVER->AddNode(node, port);
+                    LLP::LEGACY_SERVER->AddNode(node, nPort);
             }
 
             if(LLP::TRITIUM_SERVER)
             {
                 LLP::TRITIUM_SERVER->DisconnectAll();
 
-                uint16_t port = static_cast<uint16_t>(config::GetArg(
+                uint16_t nPort = static_cast<uint16_t>(config::GetArg(
                     "-port", config::fTestNet.load() ? TRITIUM_TESTNET_PORT : TRITIUM_MAINNET_PORT));
 
                 for(const auto& node : config::mapMultiArgs["-connect"])
-                    LLP::TRITIUM_SERVER->AddConnection(node, port);
+                    LLP::TRITIUM_SERVER->AddConnection(node, nPort);
 
                 for(const auto& node : config::mapMultiArgs["-addnode"])
-                    LLP::TRITIUM_SERVER->AddNode(node, port);
+                    LLP::TRITIUM_SERVER->AddNode(node, nPort);
 
             }
 
