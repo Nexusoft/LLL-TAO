@@ -12,10 +12,13 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/rpc.h>
-#include <Util/include/json.h>
-#include <LLP/include/inv.h>
-#include <LLP/include/hosts.h>
+
 #include <LLP/include/global.h>
+#include <LLP/include/hosts.h>
+#include <LLP/include/inv.h>
+#include <LLP/include/port.h>
+
+#include <Util/include/json.h>
 #include <Util/include/signals.h>
 
 /* Global TAO namespace. */
@@ -64,7 +67,7 @@ namespace TAO
                 LLP::LEGACY_SERVER->DisconnectAll();
 
                 uint16_t port = static_cast<uint16_t>(config::GetArg(
-                    "-port", config::fTestNet.load() ? 8323 : 9323));
+                    "-port", config::fTestNet.load() ? LEGACY_TESTNET_PORT : LEGACY_MAINNET_PORT));
 
                 for(const auto& node : config::mapMultiArgs["-connect"])
                     LLP::LEGACY_SERVER->AddConnection(node, port);
@@ -78,7 +81,7 @@ namespace TAO
                 LLP::TRITIUM_SERVER->DisconnectAll();
 
                 uint16_t port = static_cast<uint16_t>(config::GetArg(
-                    "-port", config::fTestNet.load() ? 8888 : 9888));
+                    "-port", config::fTestNet.load() ? TRITIUM_TESTNET_PORT : TRITIUM_MAINNET_PORT));
 
                 for(const auto& node : config::mapMultiArgs["-connect"])
                     LLP::TRITIUM_SERVER->AddConnection(node, port);
