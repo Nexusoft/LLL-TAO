@@ -24,20 +24,24 @@ ________________________________________________________________________________
 #endif
 
 /* Mainnet */
-#ifndef MAINNET_PORT
-#define MAINNET_PORT 9323
+#ifndef LEGACY_MAINNET_PORT
+#define LEGACY_MAINNET_PORT 9323
 #endif
 
 #ifndef TRITIUM_MAINNET_PORT
 #define TRITIUM_MAINNET_PORT 9888
 #endif
 
-#ifndef CORE_LLP_PORT
-#define CORE_LLP_PORT 9324
+#ifndef MAINNET_CORE_LLP_PORT
+#define MAINNET_CORE_LLP_PORT 9324
 #endif
 
 #ifndef MAINNET_API_PORT
-#define MAINNET_API_PORT 9336
+#define MAINNET_API_PORT 8080
+#endif
+
+#ifndef MAINNET_RPC_PORT
+#define MAINNET_RPC_PORT 9336
 #endif
 
 #ifndef MAINNET_MINING_LLP_PORT
@@ -46,16 +50,24 @@ ________________________________________________________________________________
 
 
 /* Testnet */
-#ifndef TESTNET_PORT
-#define TESTNET_PORT 8323
+#ifndef LEGACY_TESTNET_PORT
+#define LEGACY_TESTNET_PORT 8323
 #endif
 
 #ifndef TRITIUM_TESTNET_PORT
 #define TRITIUM_TESTNET_PORT 8888
 #endif
 
+#ifndef TESTNET_CORE_LLP_PORT
+#define TESTNET_CORE_LLP_PORT 8329
+#endif
+
 #ifndef TESTNET_API_PORT
-#define TESTNET_API_PORT 8336
+#define TESTNET_API_PORT 8080
+#endif
+
+#ifndef TESTNET_RPC_PORT
+#define TESTNET_RPC_PORT 8336
 #endif
 
 #ifndef TESTNET_MINING_LLP_PORT
@@ -69,14 +81,14 @@ namespace LLP
      *
      *  Get the Main Core LLP Port for Nexus.
      *
-     *  @param[in] testnet Flag for if port is a testnet port
+     *  @param[in] fTestnet Flag for if port is a testnet port
      *
      *  @return Returns a 16-bit port number for core mainnet or testnet.
      *
      **/
-    inline uint16_t GetCorePort(const bool testnet = config::fTestNet)
+    inline uint16_t GetCorePort(const bool fTestnet = config::fTestNet)
     {
-        return CORE_LLP_PORT;
+        return static_cast<uint16_t>(fTestnet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT);
     }
 
 
@@ -84,29 +96,29 @@ namespace LLP
      *
      *  Get the Main Mining LLP Port for Nexus.
      *
-     *  @param[in] testnet Flag for if port is a testnet port
+     *  @param[in] fTestnet Flag for if port is a testnet port
      *
      *  @return Returns a 16-bit port number for mining mainnet or testnet.
      *
      **/
-    inline uint16_t GetMiningPort(const bool testnet = config::fTestNet)
+    inline uint16_t GetMiningPort(const bool fTestnet = config::fTestNet)
     {
-        return testnet ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT;
+        return static_cast<uint16_t>(fTestnet ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT);
     }
 
 
     /** GetDefaultPort
      *
-     *  Get the Main Message LLP Port for Nexus.
+     *  Get the Main Message LLP Port for Nexus Legacy.
      *
-     *  @param[in] testnet Flag for if port is a testnet port
+     *  @param[in] fTestnet Flag for if port is a testnet port
      *
-     *  @return Returns a 16-bit port number for mining mainnet or testnet.
+     *  @return Returns a 16-bit port number for Nexus Legacy mainnet or testnet.
      *
      **/
-    inline uint16_t GetDefaultPort(const bool testnet = config::fTestNet)
+    inline uint16_t GetDefaultPort(const bool fTestnet = config::fTestNet)
     {
-        return testnet ? TESTNET_PORT : MAINNET_PORT;
+        return static_cast<uint16_t>(config::GetArg(std::string("-port"), fTestnet ? LEGACY_TESTNET_PORT : LEGACY_MAINNET_PORT));
     }
 
 }

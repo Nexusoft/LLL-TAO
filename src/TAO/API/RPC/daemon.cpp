@@ -12,10 +12,13 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/rpc.h>
-#include <Util/include/json.h>
-#include <LLP/include/inv.h>
-#include <LLP/include/hosts.h>
+
 #include <LLP/include/global.h>
+#include <LLP/include/hosts.h>
+#include <LLP/include/inv.h>
+#include <LLP/include/port.h>
+
+#include <Util/include/json.h>
 #include <Util/include/signals.h>
 
 /* Global TAO namespace. */
@@ -66,28 +69,28 @@ namespace TAO
             {
                 LLP::LEGACY_SERVER->DisconnectAll();
 
-                uint16_t port = static_cast<uint16_t>(config::GetArg(
-                    "-port", config::fTestNet ? 8323 : 9323));
+                uint16_t nPort = static_cast<uint16_t>(config::GetArg(
+                    "-port", config::fTestNet ? LEGACY_TESTNET_PORT : LEGACY_MAINNET_PORT));
 
                 for(const auto& node : config::mapMultiArgs["-connect"])
-                    LLP::LEGACY_SERVER->AddConnection(node, port);
+                    LLP::LEGACY_SERVER->AddConnection(node, nPort);
 
                 for(const auto& node : config::mapMultiArgs["-addnode"])
-                    LLP::LEGACY_SERVER->AddNode(node, port);
+                    LLP::LEGACY_SERVER->AddNode(node, nPort);
             }
 
             if(LLP::TRITIUM_SERVER)
             {
                 LLP::TRITIUM_SERVER->DisconnectAll();
 
-                uint16_t port = static_cast<uint16_t>(config::GetArg(
-                    "-port", config::fTestNet ? 8888 : 9888));
+                uint16_t nPort = static_cast<uint16_t>(config::GetArg(
+                    "-port", config::fTestNet ? TRITIUM_TESTNET_PORT : TRITIUM_MAINNET_PORT));
 
                 for(const auto& node : config::mapMultiArgs["-connect"])
-                    LLP::TRITIUM_SERVER->AddConnection(node, port);
+                    LLP::TRITIUM_SERVER->AddConnection(node, nPort);
 
                 for(const auto& node : config::mapMultiArgs["-addnode"])
-                    LLP::TRITIUM_SERVER->AddNode(node, port);
+                    LLP::TRITIUM_SERVER->AddNode(node, nPort);
 
             }
 

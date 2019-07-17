@@ -150,13 +150,13 @@ namespace LLP
      *
      **/
     template <class ProtocolType>
-    Server<ProtocolType>* CreateTAOServer(uint16_t port)
+    Server<ProtocolType>* CreateTAOServer(uint16_t nPort)
     {
         /* Create the new server object. */
         return new Server<ProtocolType>(
 
             /* The port this server listens on. */
-            port,
+            nPort,
 
             /* The total data I/O threads. */
             static_cast<uint16_t>(config::GetArg(std::string("-threads"), 8)),
@@ -270,7 +270,7 @@ int main(int argc, char** argv)
     LLP::Server<LLP::LegacyMiner>*  LEGACY_MINING_SERVER = nullptr;
     LLP::Server<LLP::TritiumMiner>* TRITIUM_MINING_SERVER = nullptr;
 
-    uint16_t port = 0;
+    uint16_t nPort = 0;
 
     /* Setup the timer timer. */
     runtime::timer timer;
@@ -330,17 +330,17 @@ int main(int argc, char** argv)
 
 
     /* Get the port for Legacy Server. */
-    port = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? TESTNET_PORT : MAINNET_PORT));
+    nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? LEGACY_TESTNET_PORT : LEGACY_MAINNET_PORT));
 
     /* Initialize the Legacy Server. */
-    LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(port);
+    LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(nPort);
 
     /* Get the port for the Core API Server. */
-    port = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet? TESTNET_API_PORT : MAINNET_API_PORT));
+    nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
 
     /* Set up RPC server */
     RPC_SERVER = new LLP::Server<LLP::RPCNode>(
-        port,
+        nPort,
         static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4)),
         30,
         false,
@@ -415,9 +415,11 @@ int main(int argc, char** argv)
             Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
 
 
+        nPort = static_cast<uint16_t>(config::fTestNet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT);
+
         /** Startup the time server. **/
         LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
-            CORE_LLP_PORT,
+            nPort,
             10,
             30,
             false,

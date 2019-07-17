@@ -43,13 +43,17 @@ inline bool CheckPermissions(std::string strAddress, uint32_t nPort)
     if(config::fTestNet)
     {
         /* Testnet ports open only for testnet */
-        if(nPort == config::GetArg(std::string("-port"), TESTNET_PORT) || nPort == CORE_LLP_PORT)
-            fOpen = true; //Time server always uses same port for both testnet and mainnet
+        if(nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), TRITIUM_TESTNET_PORT))
+            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), LEGACY_TESTNET_PORT))
+            || nPort == static_cast<uint16_t>(TESTNET_CORE_LLP_PORT))
+            fOpen = true;
     }
     else
     {
         /* Mainnet ports open only for mainnet */
-        if(nPort == config::GetArg(std::string("-port"), MAINNET_PORT) || nPort == CORE_LLP_PORT)
+        if(nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), TRITIUM_MAINNET_PORT))
+            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), LEGACY_MAINNET_PORT))
+            || nPort == static_cast<uint16_t>(MAINNET_CORE_LLP_PORT))
             fOpen = true;
     }
 
