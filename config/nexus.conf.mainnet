@@ -1,0 +1,24 @@
+#
+# This is an example nexus.conf for the Legacy Mainnet. Tailor it to your deployment. Do not change
+# the nexus command line. Any options, put here.
+#
+# This configuration file is for the 'merging' branch.
+#
+
+#this will launch the process into the background
+daemon=1
+
+#this will trigger the software to run on the Legacy Main Network
+beta=1
+
+#OPTIONAL: seed node to force connect to
+#connect=node1.nexusoft.io
+
+#OPTIONAL: enable mining server (for a remote miner to connect to)
+#mining=1
+
+#OPTIONAL: enable staking (to generate blocks inside the process)
+#stake=1
+
+#OPTIONAL: if your application requires multiple users
+#multiuser=1

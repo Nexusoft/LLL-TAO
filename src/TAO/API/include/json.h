@@ -84,7 +84,7 @@ namespace TAO
          *
          *  Converts a serialized contract stream to formattted JSON
          *
-         * @param[in] hashCaller Genesis hash of the callers sig chain (0 if not logged in) 
+         * @param[in] hashCaller Genesis hash of the callers sig chain (0 if not logged in)
          * @param[in] contract The contract to de-serialize
          *  @param[in] nVerbosity The verbose output level.
          *
@@ -106,8 +106,8 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json ObjectToJSON(const json::json& params, 
-                                const TAO::Register::Object& object, 
+        json::json ObjectToJSON(const json::json& params,
+                                const TAO::Register::Object& object,
                                 const uint256_t& hashRegister,
                                 bool fLookupName = true);
 

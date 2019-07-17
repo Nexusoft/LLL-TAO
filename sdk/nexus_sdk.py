@@ -936,7 +936,6 @@ class sdk_init():
         return(json_data)
     #enddef
 
-
     def nexus_tokens_create_token(self, token_name, supply, digits=2):
         """
         Create a token by name with with an initial reserve supply of 

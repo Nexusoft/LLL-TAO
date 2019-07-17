@@ -324,8 +324,15 @@ namespace TAO
                 if(nTotal - (nPage * nLimit) > nLimit)
                     break;
 
+                /* Read the block state from the the ledger DB using the transaction hash index */
+                TAO::Ledger::BlockState blockState;
+                LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
+
+                /* Get the transaction JSON. */
+                json::json obj = TAO::API::TransactionToJSON(tx, blockState, 1);
+
                 /* Add the transactions to the JSON object. */
-                ret.push_back(ContractsToJSON(hashCaller, tx, 1));
+                ret.push_back(obj);
 
                 /* Increment the total number of notifications. */
                 ++nTotal;

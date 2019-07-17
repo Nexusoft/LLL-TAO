@@ -29,10 +29,8 @@ alias tail-nexus        'tail -f /root/.TAO//debug.log'
 # a restful HTTP/JSON interface.    
 #
 alias curl-nexus         '/nexus/curl-nexus'
-alias getinfo            'nexus-rpc getinfo'
-alias getpeerinfo        'nexus-rpc getpeerinfo'
-alias getconnectioncount 'nexus-rpc getconnectioncount'
-alias getpeercount       'getconnectioncount'
+alias getinfo            'curl-nexus system/get/info'
+alias getpeerinfo        'curl-nexus system/list/peers'
 alias height             'getinfo | egrep blocks'
     
 #

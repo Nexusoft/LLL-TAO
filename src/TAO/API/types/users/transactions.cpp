@@ -118,9 +118,6 @@ namespace TAO
                 /* Get the transaction JSON. */
                 json::json obj = TAO::API::TransactionToJSON(tx, blockState, nVerbose);
 
-                /* Add the operations to transaction json. */
-                obj["contracts"]     = ContractsToJSON(hashCaller, tx);
-
                 ret.push_back(obj);
             }
 

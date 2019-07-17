@@ -41,6 +41,12 @@ RUN apt-get update && apt-get -yq install \
     build-essential libdb++-dev libssl1.0-dev
 
 #
+# Install Nexus application dependencies.
+#
+RUN apt-get update && apt-get -yq install \
+    python-qrtools
+
+#
 # Install LISP release in /lispers.net directory.
 #
 RUN mkdir /lispers.net; cd /lispers.net; curl --insecure -L $LISP_URL | gzip -dc | tar -xf -
