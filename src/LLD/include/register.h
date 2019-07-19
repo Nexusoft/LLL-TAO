@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <LLD/templates/sector.h>
-#include <LLD/cache/binary_lfu.h>
+#include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
 
 #include <TAO/Register/types/state.h>
@@ -33,7 +33,7 @@ namespace LLD
      *  The database class for the Register Layer.
      *
      **/
-    class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLFU>
+    class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
         std::mutex MEMORY_MUTEX;
 
