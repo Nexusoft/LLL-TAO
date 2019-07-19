@@ -32,7 +32,6 @@ namespace TAO
         , ssCondition()
         , ssRegister()
         , ptx(nullptr)
-        , nFees(0)
         {
         }
 
@@ -43,7 +42,6 @@ namespace TAO
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
         , ptx(contract.ptx)
-        , nFees(contract.nFees)
         {
         }
 
@@ -54,7 +52,6 @@ namespace TAO
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
         , ptx(contract.ptx)
-        , nFees(contract.nFees)
         {
         }
 
@@ -70,9 +67,6 @@ namespace TAO
             /* Set the transaction reference. */
             ptx         = contract.ptx;
 
-            /* Set the fees. */
-            nFees       = contract.nFees;
-
             return *this;
         }
 
@@ -81,6 +75,16 @@ namespace TAO
         void Contract::Bind(const TAO::Ledger::Transaction* tx) const
         {
             ptx = const_cast<TAO::Ledger::Transaction*>(tx);
+        }
+
+
+        /* Add fees to the contract. */
+        void Contract::AddFee(const int64_t nFee) const
+        {
+            if(ptx == nullptr)
+                throw debug::exception(FUNCTION, "add fee access for nullptr");
+
+            ptx->nFees += nFee;
         }
 
 
@@ -114,13 +118,6 @@ namespace TAO
 
             /* Return first byte. */
             return nOP;
-        }
-
-
-        /*  Get the fees for contract. */
-        const int64_t& Contract::Fees() const
-        {
-            return nFees;
         }
 
 

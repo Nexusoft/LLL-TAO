@@ -63,10 +63,6 @@ namespace TAO
             mutable TAO::Ledger::Transaction* ptx;
 
 
-            /** MEMORY ONLY: the required fees (signed for showing fee debits or credits). **/
-            int64_t nFees;
-
-
         public:
 
             /** Enumeration to handle setting aspects of the contract. */
@@ -114,6 +110,16 @@ namespace TAO
             void Bind(const TAO::Ledger::Transaction* tx) const;
 
 
+            /** AddFee
+             *
+             *  Add fees to the contract.
+             *
+             *  @param[in] nFee The total fee to add to the contract.
+             *
+             **/
+            void AddFee(const int64_t nFee) const;
+
+
             /** Primitive
              *
              *  Get the primitive operation.
@@ -122,16 +128,6 @@ namespace TAO
              *
              **/
             uint8_t Primitive() const;
-
-
-            /** Fees
-             *
-             *  Get the fees for contract.
-             *
-             *  @return The total fees.
-             *
-             **/
-            const int64_t& Fees() const;
 
 
             /** Timestamp

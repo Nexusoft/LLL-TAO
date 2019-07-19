@@ -63,6 +63,7 @@ namespace TAO
         , nNextType(0)
         , vchPubKey()
         , vchSig()
+        , nFees(0)
         {
         }
 

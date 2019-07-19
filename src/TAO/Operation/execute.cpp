@@ -941,6 +941,9 @@ namespace TAO
                         if(nChecksum != object.GetHash())
                             return debug::error(FUNCTION, "OP::FEE: invalid register post-state");
 
+                        /* Set the fee credit to the contract. */
+                        contract.AddFee(nFees);
+
                         /* Commit the register to disk. */
                         if(!Fee::Commit(object, hashAddress, nFlags))
                             return false;
