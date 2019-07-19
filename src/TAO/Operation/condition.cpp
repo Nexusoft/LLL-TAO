@@ -32,10 +32,10 @@ namespace TAO
 
         Condition::Condition(const Contract& contractIn, const Contract& callerIn, int32_t nLimitsIn)
         : TAO::Register::BaseVM() //512 bytes of register memory.
-        , nLimits(nLimitsIn)
         , contract(contractIn)
         , caller(callerIn)
         , vEvaluate()
+        , nLimits(nLimitsIn)
         {
             /* Push base group, which is what contains final return value. */
             vEvaluate.push(std::make_pair(false, OP::RESERVED));
@@ -45,10 +45,10 @@ namespace TAO
         /** Copy constructor. **/
         Condition::Condition(const Condition& in)
         : TAO::Register::BaseVM(in)
-        , nLimits(in.nLimits)
         , contract(in.contract)
         , caller(in.caller)
         , vEvaluate(in.vEvaluate)
+        , nLimits(in.nLimits)
         {
         }
 
@@ -1492,19 +1492,13 @@ namespace TAO
                     {
                         /* If no applicable instruction found, rewind and return. */
                         contract.Rewind(1, Contract::CONDITIONS);
-                        if(nLimits < 0)
-                            debug::error(FUNCTION, "out of computational limits ", nLimits);
 
-                        return (nLimits >= 0);
+                        return true;
                     }
                 }
             }
 
-            /* Log if computational limits expired. */
-            if(nLimits < 0)
-                debug::error(FUNCTION, "out of computational limits ", nLimits);
-
-            return (nLimits >= 0);
+            return true;
         }
     }
 }

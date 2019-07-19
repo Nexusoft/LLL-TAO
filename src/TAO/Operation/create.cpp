@@ -23,6 +23,8 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/types/address.h>
 
+#include <TAO/Ledger/include/constants.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -32,12 +34,14 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Create::Commit(const TAO::Register::State& state, const TAO::Register::Address& address, const uint8_t nFlags)
+        bool Create::Commit(const TAO::Register::State& state, const TAO::Register::Address& address, uint64_t& nFees, const uint8_t nFlags)
         {
+            /* Set fees to zero. */
+            nFees = 0;
+
             /* Check register types specific rules. */
             switch(state.nType)
             {
-
                 /* Check for object registers. */
                 case TAO::Register::REGISTER::OBJECT:
                 {
@@ -93,6 +97,9 @@ namespace TAO
                             if(object.get<uint64_t>("supply") != object.get<uint64_t>("balance"))
                                 return debug::error(FUNCTION, "token current supply and balance can't mismatch");
 
+                            /* Set the fees for the token. */
+                            nFees = 10000 * TAO::Ledger::NXS_COIN; //10k NXS per token
+
                             break;
                         }
 
@@ -126,13 +133,16 @@ namespace TAO
                                 hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
                                 /* Retrieve the namespace object and check that the hashGenesis is the owner */
-                                TAO::Register::Object namespaceObject;
-                                if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
+                                TAO::Register::Object objectNamespace;
+                                if(!TAO::Register::GetNamespaceRegister(strNamespace, objectNamespace))
                                     return debug::error(FUNCTION, "Namespace does not exist: ", strNamespace);
 
                                 /* Check the owner is the hashGenesis */
-                                if(namespaceObject.hashOwner != state.hashOwner)
+                                if(objectNamespace.hashOwner != state.hashOwner)
                                     return debug::error(FUNCTION, "Namespace not owned by caller: ", strNamespace );
+
+                                /* Set the fees for the namespace. */
+                                nFees = 100 * TAO::Ledger::NXS_COIN; //100 NXS per name in a namespace
 
                             }
                             else
@@ -174,6 +184,9 @@ namespace TAO
                             /* Fail if caller didn't user their own genesis to create name. */
                             if(name != address)
                                 return debug::error(FUNCTION, "namespace address mismatch");
+
+                            /* Set the fees for the namespace. */
+                            nFees = 1000 * TAO::Ledger::NXS_COIN; //1000 NXS per namespace
 
                             break;
                         }

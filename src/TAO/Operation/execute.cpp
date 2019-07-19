@@ -266,6 +266,10 @@ namespace TAO
                         std::vector<uint8_t> vchData;
                         contract >> vchData;
 
+                        /* Check for maximum register size. */
+                        if(vchData.size() > 1024)
+                            return debug::error(FUNCTION, "OP::CREATE: register size out of bounds ", vchData.size());
+
                         /* Create the register object. */
                         TAO::Register::State state;
                         state.nVersion   = 1;
@@ -292,9 +296,15 @@ namespace TAO
                         if(nChecksum != state.GetHash())
                             return debug::error(FUNCTION, "OP::CREATE: invalid register post-state");
 
+                        /* Check for the fees. */
+                        uint64_t nFees = 0;
+
                         /* Commit the register to disk. */
-                        if(!Create::Commit(state, hashAddress, nFlags))
+                        if(!Create::Commit(state, hashAddress, nFees, nFlags))
                             return false;
+
+                        /* Set the fee credit to the contract. */
+                        contract.AddFee(nFees);
 
                         break;
                     }
@@ -941,12 +951,12 @@ namespace TAO
                         if(nChecksum != object.GetHash())
                             return debug::error(FUNCTION, "OP::FEE: invalid register post-state");
 
-                        /* Set the fee credit to the contract. */
-                        contract.AddFee(nFees);
-
                         /* Commit the register to disk. */
                         if(!Fee::Commit(object, hashAddress, nFlags))
                             return false;
+
+                        /* Set the fee credit to the contract. */
+                        contract.AddFee(nFees);
 
                         break;
                     }

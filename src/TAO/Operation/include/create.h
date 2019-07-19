@@ -52,12 +52,14 @@ namespace TAO
              *
              *  @param[in] state The state to commit.
              *  @param[in] address The register address to commit.
+             *  @param[in] nFees The fees required to create register.
              *  @param[in] nFlags Flags to the LLD instance.
              *
              *  @return true if successful.
              *
              **/
-            bool Commit(const TAO::Register::State& state, const TAO::Register::Address& address, const uint8_t nFlags);
+            bool Commit(const TAO::Register::State& state,
+                const TAO::Register::Address& address, uint64_t& nFees, const uint8_t nFlags);
 
 
             /** Execute

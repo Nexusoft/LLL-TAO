@@ -38,9 +38,6 @@ namespace TAO
         class Condition : public TAO::Register::BaseVM
         {
 
-            /** Computational limits for validation script. **/
-            int32_t nLimits;
-
 
             /** Reference of the contract being execute. **/
             const Contract& contract;
@@ -55,6 +52,11 @@ namespace TAO
 
 
         public:
+
+
+            /** Computational limits for validation script. **/
+            int32_t nLimits;
+            
 
             /** Default constructor. **/
             Condition(const Contract& contractIn, const Contract& callerIn, int32_t nLimitsIn = 2048);

@@ -199,6 +199,7 @@ namespace debug
         char buffer[64];
         time_t now;
         time(&now);
+        
         struct tm* now_gmt = gmtime(&now);
         std::string locale(setlocale(LC_TIME, nullptr));
         setlocale(LC_TIME, "C"); // we want posix (aka "C") weekday/month strings
