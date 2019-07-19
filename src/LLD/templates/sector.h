@@ -47,7 +47,7 @@ namespace LLD
 
 
     /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
-    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 4; //32 MB Max Disk Buffer
+    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 32; //32 MB Max Disk Buffer
 
 
     /** SectorDatabase
@@ -791,8 +791,7 @@ namespace LLD
 
             /* Serialize the Value */
             DataStream ssData(SER_LLD, DATABASE_VERSION);
-            ssData << strType;
-            ssData << value;
+            ssData << strType << value;
 
             /* Check for transaction. */
             {
@@ -800,6 +799,8 @@ namespace LLD
 
                 if(pTransaction)
                 {
+                    debug::log(0, "TRANSACTION!!!!");
+
                     /* Serialize the key. */
                     DataStream ssJournal(SER_LLD, DATABASE_VERSION);
                     ssJournal << std::string("write") << ssKey.Bytes() << ssData.Bytes();

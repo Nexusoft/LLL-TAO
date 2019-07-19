@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <Util/include/mutex.h>
 #include <Util/include/debug.h>
 
+#include <Util/include/hex.h>
+
 namespace LLD
 {
     /*  Node to hold the binary data of the double linked list. */
@@ -28,10 +30,10 @@ namespace LLD
         BinaryNode* pnext;
 
         /** Store the key as 64-bit hash, since we have checksum to verify against too. **/
-        uint64_t hashKey;
+        const uint64_t hashKey;
 
         /** The data in the binary node. **/
-        std::vector<uint8_t> vData;
+        const std::vector<uint8_t> vData;
 
         /** Default constructor **/
         BinaryNode(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vDataIn);
@@ -39,6 +41,7 @@ namespace LLD
         /** Checksum. **/
         uint64_t Checksum() const
         {
+            //PrintHex(vData.begin(), vData.end());
             return XXH64(&vData[0], vData.size(), 0);
         }
     };
@@ -49,7 +52,7 @@ namespace LLD
     : pprev(nullptr)
     , pnext(nullptr)
     , hashKey(XXH64(&vKey[0], vKey.size(), 0))
-    , vData(vDataIn)
+    , vData(vDataIn.begin(), vDataIn.end())
     {
     }
 
@@ -57,7 +60,7 @@ namespace LLD
     /** Base Constructor.  **/
     BinaryLRU::BinaryLRU()
     : MAX_CACHE_SIZE(1024 * 1024)
-    , MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 128)
+    , MAX_CACHE_BUCKETS(MAX_CACHE_SIZE / 32)
     , nCurrentSize(MAX_CACHE_BUCKETS * 16)
     , MUTEX()
     , hashmap(MAX_CACHE_BUCKETS)
@@ -71,11 +74,11 @@ namespace LLD
     /** Cache Size Constructor **/
     BinaryLRU::BinaryLRU(uint32_t nCacheSizeIn)
     : MAX_CACHE_SIZE(nCacheSizeIn)
-    , MAX_CACHE_BUCKETS(nCacheSizeIn / 128)
+    , MAX_CACHE_BUCKETS(nCacheSizeIn / 32)
     , nCurrentSize(MAX_CACHE_BUCKETS * 16)
     , MUTEX()
-    , hashmap(MAX_CACHE_BUCKETS)
-    , checksums(MAX_CACHE_BUCKETS)
+    , hashmap(MAX_CACHE_BUCKETS, nullptr)
+    , checksums(MAX_CACHE_BUCKETS, 0)
     , pfirst(nullptr)
     , plast(nullptr)
     {
@@ -104,9 +107,9 @@ namespace LLD
     {
         /* Get an xxHash. */
         uint64_t nChecksum = pnode->Checksum();
-        uint64_t nBucket   = XXH64((uint8_t*)&nChecksum, 8, 0);
+        //uint64_t nBucket   = XXH64((uint8_t*)&nChecksum, 8, 0);
 
-        return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
+        return static_cast<uint32_t>(nChecksum % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
     }
 
 
@@ -124,9 +127,9 @@ namespace LLD
     uint32_t BinaryLRU::Bucket(const uint64_t nChecksum) const
     {
         /* Get an xxHash. */
-        uint64_t nBucket = XXH64((uint8_t*)&nChecksum, 8, 0);
+        //uint64_t nBucket = XXH64((uint8_t*)&nChecksum, 8, 0);
 
-        return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
+        return static_cast<uint32_t>(nChecksum % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
     }
 
 
@@ -236,7 +239,7 @@ namespace LLD
         /* Check for data. */
         const uint64_t& nChecksum = checksums[nChecksumBucket];
         if(nChecksum == 0)
-            return false;
+            return false;//debug::error("checksum of 0");
 
         /* Get the binary node. */
         BinaryNode* pthis = hashmap[Bucket(nChecksum)];
@@ -247,7 +250,7 @@ namespace LLD
             /* Set checksum to zero if record not found. */
             checksums[nChecksumBucket] = 0;
 
-            return false;
+            return false;//debug::error("null ptr");
         }
 
         /* Check the data is expected. */
@@ -255,14 +258,18 @@ namespace LLD
             return false;
 
         /* Check the keys are correct. */
-        if(pthis->hashKey != XXH64(&vKey[0], vKey.size(), 0))
-            return false;
+        //uint64_t hash = XXH64(&vKey[0], vKey.size(), 0);
+        //if(pthis->hashKey != hash)
+        //    return debug::error("key ", nChecksum, " mismatch ", hash, " ", pthis->hashKey);
 
         /* Get the data. */
         vData = pthis->vData;
 
         /* Move to front of double linked list. */
         MoveToFront(pthis);
+
+        //static uint32_t nDisk = 0;
+        //debug::log(0, "From MEMORY ", ++nDisk);
 
         return true;
     }
@@ -277,6 +284,10 @@ namespace LLD
         uint32_t nChecksumBucket = Bucket(vKey);
         uint64_t nChecksum       = checksums[nChecksumBucket];
 
+        //debug::log(0, "PUT ", nChecksum, " BUCKET ", nChecksumBucket);
+
+        //runtime::sleep(1000);
+
         /* Check the checksums. */
         if(nChecksum == Checksum(vData))
             return;
@@ -284,6 +295,9 @@ namespace LLD
         /* Get the binary node. */
         if(nChecksum != 0)
         {
+            static uint32_t nTotal = 0;
+            debug::log(0, "Collision... ", ++nTotal);
+
             uint32_t nBucket  = Bucket(nChecksum);
             BinaryNode* pthis = hashmap[nBucket];
 
@@ -314,6 +328,8 @@ namespace LLD
 
         /* Get the bucket. */
         uint32_t nBucket    = Bucket(nChecksum);
+
+        //debug::log(0, "PUT NEW ", nChecksumBucket, " BUCKET ", nBucket);
 
         /* Cleanup if colliding with another bucket. */
         if(hashmap[nBucket] != nullptr)
@@ -346,6 +362,9 @@ namespace LLD
         /* Remove the last node if cache too large. */
         while(nCurrentSize > MAX_CACHE_SIZE)
         {
+            static uint32_t nTotal = 0;
+            debug::log(0, "Deleted... ", ++nTotal);
+
             /* Get last pointer. */
             BinaryNode* pnode = plast;
             if(!pnode)
@@ -364,6 +383,8 @@ namespace LLD
 
             /* Set the checksums. */
             uint32_t nBucket = static_cast<uint32_t>(pnode->hashKey % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
+
+            //debug::log(0, "DELETING NEW ", nBucket, " BUCKET ", Bucket(pnode));
             checksums[nBucket] = 0;
 
             /* Reset the memory linking. */

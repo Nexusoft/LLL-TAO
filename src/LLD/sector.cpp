@@ -160,6 +160,9 @@ namespace LLD
             {
                 LOCK(SECTOR_MUTEX);
 
+                static uint32_t nDisk = 0;
+                debug::log(0, "From DISK ", ++nDisk);
+
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
                 if(!fileCache->Get(cKey.nSectorFile, pstream))
@@ -367,7 +370,6 @@ namespace LLD
                     return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes written");
 
                 pstream->flush();
-
             }
 
             /* Get current size */
@@ -397,8 +399,9 @@ namespace LLD
     template<class KeychainType, class CacheType>
     bool SectorDatabase<KeychainType, CacheType>::Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData)
     {
+
         /* Write the data into the memory cache. */
-        cachePool->Put(vKey, vData, !(nFlags & FLAGS::FORCE));
+        cachePool->Put(vKey, vData, false);
 
         /* Handle force write mode. */
         if(nFlags & FLAGS::FORCE)
@@ -433,10 +436,6 @@ namespace LLD
         /* Wait for initialization. */
         while(!fInitialized)
             runtime::sleep(100);
-
-        /* Check if writing is enabled. */
-        if(!(nFlags & FLAGS::WRITE) && !(nFlags & FLAGS::APPEND))
-            return;
 
         /* No cache write on force mode. */
         if(nFlags & FLAGS::FORCE)
@@ -479,11 +478,83 @@ namespace LLD
                 stream.close();
             }
 
+            /* Find the file stream for LRU cache. */
+            std::fstream* pstream;
+            if(!fileCache->Get(nCurrentFile, pstream))
+            {
+                /* Set the new stream pointer. */
+                pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                if(!pstream->is_open())
+                {
+                    delete pstream;
+                    continue;
+                }
+
+                /* If file not found add to LRU cache. */
+                fileCache->Put(nCurrentFile, pstream);
+            }
+
+            /* If it is a New Sector, Assign a Binary Position. */
+            pstream->seekp(nCurrentFileSize, std::ios::beg);
+
             /* Iterate through buffer to queue disk writes. */
             for(const auto& vObj : vIndexes)
             {
-                /* Force write data. */
-                Force(vObj.first, vObj.second);
+                {
+                    LOCK(SECTOR_MUTEX);
+
+                    /* Create new file if above current file size. */
+                    if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
+                    {
+                        debug::log(4, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
+
+                        ++nCurrentFile;
+                        nCurrentFileSize = 0;
+
+                        std::ofstream stream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary);
+                        stream.close();
+                    }
+
+                    /* Find the file stream for LRU cache. */
+                    std::fstream* pstream;
+                    if(!fileCache->Get(nCurrentFile, pstream))
+                    {
+                        /* Set the new stream pointer. */
+                        pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
+                        if(!pstream->is_open())
+                        {
+                            delete pstream;
+                            continue;
+                        }
+
+                        /* If file not found add to LRU cache. */
+                        fileCache->Put(nCurrentFile, pstream);
+                    }
+
+                    /* If it is a New Sector, Assign a Binary Position. */
+                    pstream->seekp(nCurrentFileSize, std::ios::beg);
+
+                    /* Write the size of record. */
+                    WriteCompactSize(*pstream, vObj.second.size());
+
+                    /* Write the data record. */
+                    if(!pstream->write((char*) &vObj.second[0], vObj.second.size()))
+                        continue;
+                }
+
+                /* Get current size */
+                uint64_t nSize = vObj.second.size() + GetSizeOfCompactSize(vObj.second.size());
+
+                /* Create a new Sector Key. */
+                SectorKey key(STATE::READY, vObj.first, static_cast<uint16_t>(nCurrentFile),
+                                nCurrentFileSize, static_cast<uint32_t>(nSize));
+
+                /* Increment the current filesize */
+                nCurrentFileSize += static_cast<uint32_t>(nSize);
+
+                /* Assign the Key to Keychain. */
+                if(!pSectorKeys->Put(key))
+                    continue;
 
                 /* Set no longer reserved in cache pool. */
                 cachePool->Reserve(vObj.first, false);
@@ -491,6 +562,9 @@ namespace LLD
                 /* Iterate bytes written for meter. */
                 nBytesWrote += static_cast<uint32_t>(vObj.first.size() + vObj.second.size());
             }
+
+            /* Flush data from buffer to disk. */
+            pstream->flush();
 
             /* Notify the condition. */
             CONDITION.notify_all();

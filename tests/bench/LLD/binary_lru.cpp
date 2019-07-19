@@ -11,7 +11,7 @@
 #include <unit/catch2/catch.hpp>
 
 
-TEST_CASE( "Binary LRU Benchmarks", "[LLD]")
+TEST_CASE( "Binary LRU Benchmarks", "[LRU]")
 {
     debug::log(0, "===== Begin Binary LRU Benchmarks =====");
 
@@ -49,7 +49,7 @@ TEST_CASE( "Binary LRU Benchmarks", "[LLD]")
 
             std::vector<uint8_t> vBytes;
 
-            cache->Get(ssKey.Bytes(), vBytes);
+            REQUIRE(cache->Get(ssKey.Bytes(), vBytes));
         }
 
         uint64_t nTime = timer.ElapsedMicroseconds();

@@ -43,8 +43,8 @@ TEST_CASE("Arguments Tests", "[args]")
     LLD::Local    = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
     LLD::Ledger   = new LLD::LedgerDB(
         LLD::FLAGS::CREATE | LLD::FLAGS::WRITE,
-        256 * 256 * 16,
-        4 * 1024 * 1024);
+        256 * 256 * 32,
+        64 * 1024 * 1024);
 
     LLD::Trust    = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
     LLD::Legacy   = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);

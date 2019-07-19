@@ -16,19 +16,20 @@ TEST_CASE( "LLD Benchamrks", "[LLD]")
     debug::log(0, "===== Begin Ledger Random Read / Write Benchmarks =====");
 
     //benchmarks
-    uint256_t hash = LLC::GetRand256();
     {
         runtime::timer timer;
         timer.Start();
 
         TAO::Ledger::BlockState state;
-        for(int i = 0; i < 5000; i++)
+        for(int i = 0; i < 100000; i++)
         {
-            LLD::Ledger->WriteBlock(uint1024_t(i), state);
+            state.nHeight = i;
+            state.hashMerkleRoot = LLC::GetRand512();
+            REQUIRE(LLD::Ledger->WriteBlock(uint1024_t(i), state));
         }
 
-        uint64_t nTime = timer.ElapsedMicroseconds();
-        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Put::", ANSI_COLOR_RESET, "5k records in ", nTime, " microseconds (", (5000000000) / nTime, ") per/s");
+        uint64_t nTime = timer.ElapsedMilliseconds();
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Write::", ANSI_COLOR_RESET, "100k records in ", nTime, " ms (", (100000000) / nTime, ") per/s");
     }
 
 
@@ -37,13 +38,14 @@ TEST_CASE( "LLD Benchamrks", "[LLD]")
         timer.Start();
 
         TAO::Ledger::BlockState state;
-        for(int i = 0; i < 5000; i++)
+        for(int i = 0; i < 100000; i++)
         {
-            LLD::Ledger->ReadBlock(uint1024_t(i), state);
+            if(!LLD::Ledger->ReadBlock(uint1024_t(i), state))
+                continue; //debug::error("Failed to read ", i);
         }
 
-        uint64_t nTime = timer.ElapsedMicroseconds();
-        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Get::", ANSI_COLOR_RESET, "5k records in ", nTime, " microseconds (", (5000000000) / nTime, ") per/s");
+        uint64_t nTime = timer.ElapsedMilliseconds();
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Read::", ANSI_COLOR_RESET, "100k records in ", nTime, " ms (", (100000000) / nTime, ") per/s");
     }
 
 
@@ -58,10 +60,10 @@ TEST_CASE( "LLD Benchamrks", "[LLD]")
         timer.Start();
 
         std::vector<TAO::Ledger::BlockState> vStates;
-        LLD::Ledger->BatchRead("block", vStates, 1000);
+        LLD::Ledger->BatchRead("block", vStates, 100000);
 
-        uint64_t nTime = timer.ElapsedMicroseconds();
-        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Get::", ANSI_COLOR_RESET, vStates.size(), " records in ", nTime, " microseconds (", (vStates.size() * 1000000) / nTime, ") per/s");
+        uint64_t nTime = timer.ElapsedMilliseconds();
+        debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Get::", ANSI_COLOR_RESET, vStates.size(), " records in ", nTime, " ms (", (vStates.size() * 1000) / nTime, ") per/s");
     }
 
 
