@@ -60,8 +60,8 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     state << hash2;
 
 
-    REQUIRE(LLD::Register->Write(hash, state));
-    REQUIRE(LLD::Register->Write(hashFrom, state));
+    REQUIRE(LLD::Register->WriteState(hash, state));
+    REQUIRE(LLD::Register->WriteState(hashFrom, state));
 
     std::string strName = "colasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfin!!!";
     uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
@@ -625,7 +625,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     }
 
     contract.Clear();
-    contract <= (uint8_t)OP::LEDGER::HEIGHT <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT64_T <= (uint64_t)23030;
+    contract <= (uint8_t)OP::LEDGER::HEIGHT <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT32_T <= (uint32_t)23030;
     {
         Condition script = Condition(contract, caller);
         REQUIRE(script.Execute());

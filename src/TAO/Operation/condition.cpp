@@ -30,7 +30,7 @@ namespace TAO
     namespace Operation
     {
 
-        Condition::Condition(const Contract& contractIn, const Contract& callerIn, int32_t nLimitsIn)
+        Condition::Condition(const Contract& contractIn, const Contract& callerIn, const int64_t nLimitsIn)
         : TAO::Register::BaseVM() //512 bytes of register memory.
         , contract(contractIn)
         , caller(callerIn)
@@ -87,6 +87,13 @@ namespace TAO
                     {
                         /* When grouping, add another group layer. */
                         vEvaluate.push(std::make_pair(false, OP::RESERVED));
+
+                        /* Check for overflows. */
+                        if(nLimits - 128 > nLimits)
+                            throw debug::exception("OP::GROUP limits value overflow");
+
+                        /* Reduce the limits to prevent operation exhuastive attacks. */
+                        nLimits -= 128;
 
                         break;
                     }
@@ -244,7 +251,7 @@ namespace TAO
             /* Grab the first value */
             TAO::Register::Value vLeft;
             if(!GetValue(vLeft))
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get l-value"));
+                throw debug::exception(FUNCTION, "failed to get l-value");
 
             /* Grab the next operation. */
             uint8_t OPERATION = 0;
@@ -259,7 +266,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) == 0);
@@ -278,7 +285,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) < 0);
@@ -297,7 +304,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) > 0);
@@ -316,7 +323,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) <= 0);
@@ -335,7 +342,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) >= 0);
@@ -354,7 +361,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) != 0);
@@ -373,7 +380,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = contains(vLeft, vRight);
@@ -419,21 +426,25 @@ namespace TAO
                         /* Get the add from r-value. */
                         TAO::Register::Value vAdd;
                         if(!GetValue(vAdd))
-                            throw std::runtime_error(debug::safe_printstr("OP::ADD failed to get r-value"));
+                            throw debug::exception("OP::ADD failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vAdd.size() > 1 || vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::ADD computation greater than 64-bits"));
+                            throw debug::exception("OP::ADD computation greater than 64-bits");
 
                         /* Check for overflows. */
                         if(at(vRet) + at(vAdd) < at(vRet))
-                            throw std::runtime_error(debug::safe_printstr("OP::ADD 64-bit value overflow"));
+                            throw debug::exception("OP::ADD 64-bit value overflow");
 
                         /* Compute the return value. */
                         at(vRet) += at(vAdd);
 
                         /* Deallocate r-value from memory. */
                         deallocate(vAdd);
+
+                        /* Check for overflows. */
+                        if(nLimits - 64 > nLimits)
+                            throw debug::exception("OP::ADD limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 64;
@@ -448,21 +459,25 @@ namespace TAO
                         /* Get the sub from r-value. */
                         TAO::Register::Value vSub;
                         if(!GetValue(vSub))
-                            throw std::runtime_error(debug::safe_printstr("OP::SUB failed to get r-value"));
+                            throw debug::exception("OP::SUB failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vSub.size() > 1 || vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::SUB computation greater than 64-bits"));
+                            throw debug::exception("OP::SUB computation greater than 64-bits");
 
                         /* Check for overflows. */
                         if(at(vRet) - at(vSub) > at(vRet))
-                            throw std::runtime_error(debug::safe_printstr("OP::SUB 64-bit value overflow"));
+                            throw debug::exception("OP::SUB 64-bit value overflow");
 
                         /* Compute the return value. */
                         at(vRet) -= at(vSub);
 
                         /* Deallocate r-value from memory. */
                         deallocate(vSub);
+
+                        /* Check for overflows. */
+                        if(nLimits - 64 > nLimits)
+                            throw debug::exception("OP::SUB limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 64;
@@ -476,11 +491,15 @@ namespace TAO
                     {
                         /* Check computational bounds. */
                         if(vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::INC computation greater than 64-bits"));
+                            throw debug::exception("OP::INC computation greater than 64-bits");
 
                         /* Compute the return value. */
                         if(++at(vRet) == 0)
-                            throw std::runtime_error(debug::safe_printstr("OP::INC 64-bit value overflow"));
+                            throw debug::exception("OP::INC 64-bit value overflow");
+
+                        /* Check for overflows. */
+                        if(nLimits - 64 > nLimits)
+                            throw debug::exception("OP::INC limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 64;
@@ -494,11 +513,15 @@ namespace TAO
                     {
                         /* Check computational bounds. */
                         if(vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::DEC computation greater than 64-bits"));
+                            throw debug::exception("OP::DEC computation greater than 64-bits");
 
                         /* Compute the return value. */
                         if(--at(vRet) == std::numeric_limits<uint64_t>::max())
-                            throw std::runtime_error(debug::safe_printstr("OP::DEC 64-bit value overflow"));
+                            throw debug::exception("OP::DEC 64-bit value overflow");
+
+                        /* Check for overflows. */
+                        if(nLimits - 64 > nLimits)
+                            throw debug::exception("OP::DEC limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 64;
@@ -513,21 +536,25 @@ namespace TAO
                         /* Get the divisor from r-value. */
                         TAO::Register::Value vDiv;
                         if(!GetValue(vDiv))
-                            throw std::runtime_error(debug::safe_printstr("OP::DIV failed to get r-value"));
+                            throw debug::exception("OP::DIV failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vDiv.size() > 1 || vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::DIV computation greater than 64-bits"));
+                            throw debug::exception("OP::DIV computation greater than 64-bits");
 
                         /* Check for exceptions. */
                         if(at(vDiv) == 0)
-                            throw std::runtime_error(debug::safe_printstr("OP::DIV cannot divide by zero"));
+                            throw debug::exception("OP::DIV cannot divide by zero");
 
                         /* Compute the return value. */
                         at(vRet) /= at(vDiv);
 
                         /* Deallocate r-value from memory. */
                         deallocate(vDiv);
+
+                        /* Check for overflows. */
+                        if(nLimits - 128 > nLimits)
+                            throw debug::exception("OP::DIV limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 128;
@@ -542,21 +569,25 @@ namespace TAO
                         /* Get the multiplier from r-value. */
                         TAO::Register::Value vMul;
                         if(!GetValue(vMul))
-                            throw std::runtime_error(debug::safe_printstr("OP::MUL failed to get r-value"));
+                            throw debug::exception("OP::MUL failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vMul.size() > 1 || vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::MUL computation greater than 64-bits"));
+                            throw debug::exception("OP::MUL computation greater than 64-bits");
 
                         /* Check for value overflows. */
                         if(at(vMul) != 0 && at(vRet) > std::numeric_limits<uint64_t>::max() / at(vMul))
-                            throw std::runtime_error(debug::safe_printstr("OP::MUL 64-bit value overflow"));
+                            throw debug::exception("OP::MUL 64-bit value overflow");
 
                         /* Compute the return value. */
                         at(vRet) *= at(vMul);
 
                         /* Deallocate r-value from memory. */
                         deallocate(vMul);
+
+                        /* Check for overflows. */
+                        if(nLimits - 128 > nLimits)
+                            throw debug::exception("OP::MUL limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 128;
@@ -571,11 +602,11 @@ namespace TAO
                         /* Get the exponent from r-value. */
                         TAO::Register::Value vExp;
                         if(!GetValue(vExp))
-                            throw std::runtime_error(debug::safe_printstr("OP::EXP failed to get r-value"));
+                            throw debug::exception("OP::EXP failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vExp.size() > 1 || vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::EXP computation greater than 64-bits"));
+                            throw debug::exception("OP::EXP computation greater than 64-bits");
 
                         /* Catch for a power of 0. */
                         if(at(vExp) == 0)
@@ -587,7 +618,7 @@ namespace TAO
                         {
                             /* Check for value overflows. */
                             if(nBase != 0 && at(vRet) > std::numeric_limits<uint64_t>::max() / nBase)
-                                throw std::runtime_error(debug::safe_printstr("OP::EXP 64-bit value overflow"));
+                                throw debug::exception("OP::EXP 64-bit value overflow");
 
                             /* Assign the return value. */
                             at(vRet) *= nBase;
@@ -595,6 +626,10 @@ namespace TAO
 
                         /* Deallocate r-value from memory. */
                         deallocate(vExp);
+
+                        /* Check for overflows. */
+                        if(nLimits - 256 > nLimits)
+                            throw debug::exception("OP::EXP limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 256;
@@ -609,21 +644,25 @@ namespace TAO
                         /* Get the modulus from r-value. */
                         TAO::Register::Value vMod;
                         if(!GetValue(vMod))
-                            throw std::runtime_error(debug::safe_printstr("OP::MOD failed to get r-value"));
+                            throw debug::exception("OP::MOD failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vMod.size() > 1 || vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::MOD computation greater than 64-bits"));
+                            throw debug::exception("OP::MOD computation greater than 64-bits");
 
                         /* Check for exceptions. */
                         if(at(vMod) == 0)
-                            throw std::runtime_error(debug::safe_printstr("OP::MOD cannot divide by zero"));
+                            throw debug::exception("OP::MOD cannot divide by zero");
 
                         /* Compute the return value. */
                         at(vRet) %= at(vMod);
 
                         /* Deallocate r-value from memory. */
                         deallocate(vMod);
+
+                        /* Check for overflows. */
+                        if(nLimits - 128 > nLimits)
+                            throw debug::exception("OP::MOD limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 128;
@@ -651,6 +690,10 @@ namespace TAO
                         std::vector<uint8_t> vAlloc(vData.begin() + nBegin, vData.begin() + nBegin + nSize);
                         allocate(vAlloc, vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - vData.size() > nLimits)
+                            throw debug::exception("OP::SUBDATA limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= vData.size();
 
@@ -664,7 +707,7 @@ namespace TAO
                         /* Get the add from r-value. */
                         TAO::Register::Value vCat;
                         if(!GetValue(vCat))
-                            throw std::runtime_error(debug::safe_printstr("OP::CAT failed to get r-value"));
+                            throw debug::exception("OP::CAT failed to get r-value");
 
                         /* Extract the string. */
                         std::vector<uint8_t> vAlloc;
@@ -677,6 +720,13 @@ namespace TAO
 
                         /* Allocate concatenated data. */
                         allocate(vAlloc, vRet);
+
+                        /* Check for overflows. */
+                        if(nLimits - vCat.size() > nLimits)
+                            throw debug::exception("OP::CAT limits value overflow");
+
+                        /* Adjust the limits. */
+                        nLimits -= vCat.size();
 
                         break;
                     }
@@ -693,8 +743,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - sizeof(n) > nLimits)
+                            throw debug::exception("OP::TYPES::UINT8_T limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 1;
+                        nLimits -= sizeof(n);
 
                         break;
                     }
@@ -710,8 +764,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - sizeof(n) > nLimits)
+                            throw debug::exception("OP::TYPES::UINT16_T limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 2;
+                        nLimits -= sizeof(n);
 
                         break;
                     }
@@ -727,8 +785,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - sizeof(n) > nLimits)
+                            throw debug::exception("OP::TYPES::UINT32_T limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 4;
+                        nLimits -= sizeof(n);
 
                         break;
                     }
@@ -744,8 +806,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - sizeof(n) > nLimits)
+                            throw debug::exception("OP::TYPES::UINT64_T limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 8;
+                        nLimits -= sizeof(n);
 
                         break;
                     }
@@ -761,8 +827,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - sizeof(n) > nLimits)
+                            throw debug::exception("OP::TYPES::UINT256_T limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 32;
+                        nLimits -= sizeof(n);
 
                         break;
 
@@ -779,8 +849,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - sizeof(n) > nLimits)
+                            throw debug::exception("OP::TYPES::UINT512_T limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 64;
+                        nLimits -= sizeof(n);
 
                         break;
                     }
@@ -796,8 +870,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - sizeof(n) > nLimits)
+                            throw debug::exception("OP::TYPES::UINT1024_T limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
+                        nLimits -= sizeof(n);
 
                         break;
                     }
@@ -812,10 +890,14 @@ namespace TAO
 
                         /* Check for empty string. */
                         if(str.empty())
-                            throw std::runtime_error(debug::safe_printstr("OP::TYPES::STRING string is empty"));
+                            throw debug::exception("OP::TYPES::STRING string is empty");
 
                         /* Set the register value. */
                         allocate(str, vRet);
+
+                        /* Check for overflows. */
+                        if(nLimits - str.size() > nLimits)
+                            throw debug::exception("OP::TYPES::STRING limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= str.size();
@@ -833,10 +915,14 @@ namespace TAO
 
                         /* Check for empty string. */
                         if(vData.empty())
-                            throw std::runtime_error(debug::safe_printstr("OP::TYPES::BYTES vector is empty"));
+                            throw debug::exception("OP::TYPES::BYTES vector is empty");
 
                         /* Set the register value. */
                         allocate(vData, vRet);
+
+                        /* Check for overflows. */
+                        if(nLimits - vData.size() > nLimits)
+                            throw debug::exception("OP::TYPES::BYTES limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= vData.size();
@@ -854,8 +940,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - 32 > nLimits)
+                            throw debug::exception("OP::GLOBAL::UNIFIED limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 8;
+                        nLimits -= 32;
 
                         break;
                     }
@@ -878,8 +968,15 @@ namespace TAO
                                 deallocate(hashRegister, vRet);
 
                                 /* Read the register states. */
-                                if(!LLD::Register->Read(hashRegister, state))
+                                if(!LLD::Register->ReadState(hashRegister, state))
                                     return false;
+
+                                /* Check for overflows. */
+                                if(nLimits - 5004 > nLimits)
+                                    throw debug::exception("OP::REGISTER::MODIFIED limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= 5004;
 
                                 break;
                             }
@@ -899,15 +996,19 @@ namespace TAO
                                 /* Reset the contract. */
                                 caller.Reset(Contract::REGISTERS);
 
+                                /* Check for overflows. */
+                                if(nLimits - 8 > nLimits)
+                                    throw debug::exception("OP::CALLER::PRESTATE::MODIFIED limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= 8;
+
                                 break;
                             }
                         }
 
                         /* Set the register value. */
                         allocate(state.nModified, vRet);
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 40;
 
                         break;
                     }
@@ -930,8 +1031,15 @@ namespace TAO
                                 deallocate(hashRegister, vRet);
 
                                 /* Read the register states. */
-                                if(!LLD::Register->Read(hashRegister, state))
+                                if(!LLD::Register->ReadState(hashRegister, state))
                                     return false;
+
+                                /* Check for overflows. */
+                                if(nLimits - 5004 > nLimits)
+                                    throw debug::exception("OP::REGISTER::CREATED limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= 5004;
 
                                 break;
                             }
@@ -951,15 +1059,19 @@ namespace TAO
                                 /* Reset the contract. */
                                 caller.Reset(Contract::REGISTERS);
 
+                                /* Check for overflows. */
+                                if(nLimits - 8 > nLimits)
+                                    throw debug::exception("OP::CALLER::PRESTATE::CREATED limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= 8;
+
                                 break;
                             }
                         }
 
                         /* Set the register value. */
                         allocate(state.nCreated, vRet);
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 40;
 
                         break;
                     }
@@ -982,8 +1094,15 @@ namespace TAO
                                 deallocate(hashRegister, vRet);
 
                                 /* Read the register states. */
-                                if(!LLD::Register->Read(hashRegister, state))
+                                if(!LLD::Register->ReadState(hashRegister, state))
                                     return false;
+
+                                /* Check for overflows. */
+                                if(nLimits - 4128 > nLimits)
+                                    throw debug::exception("OP::REGISTER::OWNER limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= 4128;
 
                                 break;
                             }
@@ -1003,15 +1122,19 @@ namespace TAO
                                 /* Reset the contract. */
                                 caller.Reset(Contract::REGISTERS);
 
+                                /* Check for overflows. */
+                                if(nLimits - 32 > nLimits)
+                                    throw debug::exception("OP::CALLER::PRESTATE::OWNER limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= 32;
+
                                 break;
                             }
                         }
 
                         /* Set the register value. */
                         allocate(state.hashOwner, vRet);
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 64;
 
                         break;
                     }
@@ -1034,8 +1157,15 @@ namespace TAO
                                 deallocate(hashRegister, vRet);
 
                                 /* Read the register states. */
-                                if(!LLD::Register->Read(hashRegister, state))
+                                if(!LLD::Register->ReadState(hashRegister, state))
                                     return false;
+
+                                /* Check for overflows. */
+                                if(nLimits - 4097 > nLimits)
+                                    throw debug::exception("OP::REGISTER::TYPE limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= 4097;
 
                                 break;
                             }
@@ -1055,15 +1185,19 @@ namespace TAO
                                 /* Reset the contract. */
                                 caller.Reset(Contract::REGISTERS);
 
+                                /* Check for overflows. */
+                                if(nLimits - 1 > nLimits)
+                                    throw debug::exception("OP::CALLER::PRESTATE::TYPE limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= 1;
+
                                 break;
                             }
                         }
 
                         /* Push the type onto the return value. */
-                        allocate((uint64_t)state.nType, vRet);
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 33;
+                        allocate(state.nType, vRet);
 
                         break;
                     }
@@ -1086,8 +1220,16 @@ namespace TAO
                                 deallocate(hashRegister, vRet);
 
                                 /* Read the register states. */
-                                if(!LLD::Register->Read(hashRegister, state))
+                                if(!LLD::Register->ReadState(hashRegister, state))
                                     return false;
+
+                                /* Check for overflows. */
+                                uint32_t nCost = 4096 + state.GetState().size();
+                                if(nLimits - nCost > nLimits)
+                                    throw debug::exception("OP::REGISTER::STATE limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= nCost;
 
                                 break;
                             }
@@ -1107,15 +1249,20 @@ namespace TAO
                                 /* Reset the contract. */
                                 caller.Reset(Contract::REGISTERS);
 
+                                /* Check for overflows. */
+                                uint32_t nCost = state.GetState().size();
+                                if(nLimits - nCost > nLimits)
+                                    throw debug::exception("OP::CALLER::PRESTATE::STATE limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= nCost;
+
                                 break;
                             }
                         }
 
                         /* Allocate to the registers. */
                         allocate(state.GetState(), vRet);
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
 
                         break;
                     }
@@ -1140,6 +1287,14 @@ namespace TAO
                                 /* Read the register states. */
                                 if(!LLD::Register->ReadState(hashRegister, object))
                                     return false;
+
+                                /* Check for overflows. */
+                                uint32_t nCost = 4096;
+                                if(nLimits - nCost > nLimits)
+                                    throw debug::exception("OP::REGISTER::VALUE limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= nCost;
 
                                 break;
                             }
@@ -1194,6 +1349,14 @@ namespace TAO
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
+                                /* Check for overflows. */
+                                uint32_t nCost = sizeof(nValue);
+                                if(nLimits - nCost > nLimits)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT8_T limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= nCost;
+
                                 break;
                             }
 
@@ -1208,6 +1371,14 @@ namespace TAO
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
+
+                                /* Check for overflows. */
+                                uint32_t nCost = sizeof(nValue);
+                                if(nLimits - nCost > nLimits)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT16_T limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= nCost;
 
                                 break;
                             }
@@ -1224,6 +1395,14 @@ namespace TAO
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
+                                /* Check for overflows. */
+                                uint32_t nCost = sizeof(nValue);
+                                if(nLimits - nCost > nLimits)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT32_T limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= nCost;
+
                                 break;
                             }
 
@@ -1238,6 +1417,14 @@ namespace TAO
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
+
+                                /* Check for overflows. */
+                                uint32_t nCost = sizeof(nValue);
+                                if(nLimits - nCost > nLimits)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT64_T limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= nCost;
 
                                 break;
                             }
@@ -1254,6 +1441,14 @@ namespace TAO
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
+                                /* Check for overflows. */
+                                uint32_t nCost = sizeof(nValue);
+                                if(nLimits - nCost > nLimits)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT256_T limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= nCost;
+
                                 break;
                             }
 
@@ -1268,6 +1463,14 @@ namespace TAO
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
+
+                                /* Check for overflows. */
+                                uint32_t nCost = sizeof(nValue);
+                                if(nLimits - nCost > nLimits)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT512_T limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= nCost;
 
                                 break;
                             }
@@ -1284,6 +1487,14 @@ namespace TAO
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
+                                /* Check for overflows. */
+                                uint32_t nCost = sizeof(nValue);
+                                if(nLimits - nCost > nLimits)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT1024_T limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= nCost;
+
                                 break;
                             }
 
@@ -1298,6 +1509,14 @@ namespace TAO
 
                                 /* Allocate the value. */
                                 allocate(strData, vRet);
+
+                                /* Check for overflows. */
+                                uint32_t nCost = strData.size();
+                                if(nLimits - nCost > nLimits)
+                                    throw debug::exception("OP::REGISTER::VALUE::STRING limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= nCost;
 
                                 break;
                             }
@@ -1314,15 +1533,20 @@ namespace TAO
                                 /* Allocate the value. */
                                 allocate(vData, vRet);
 
+                                /* Check for overflows. */
+                                uint32_t nCost = vData.size();
+                                if(nLimits - nCost > nLimits)
+                                    throw debug::exception("OP::REGISTER::VALUE::BYTES limits value overflow");
+
+                                /* Reduce the limits to prevent operation exhuastive attacks. */
+                                nLimits -= nCost;
+
                                 break;
                             }
 
                             default:
                                 return false;
                         }
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
 
                         break;
                     }
@@ -1334,8 +1558,12 @@ namespace TAO
                         /* Allocate to the registers. */
                         allocate(caller.Caller(), vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - 32 > nLimits)
+                            throw debug::exception("OP::CALLER::GENESIS limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
+                        nLimits -= 32;
 
                         break;
                     }
@@ -1347,8 +1575,12 @@ namespace TAO
                         /* Allocate to the registers. */
                         allocate(caller.Timestamp(), vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - 8 > nLimits)
+                            throw debug::exception("OP::CALLER::TIMESTAMP limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 1;
+                        nLimits -= 8;
 
                         break;
                     }
@@ -1360,8 +1592,12 @@ namespace TAO
                         /* Allocate to the registers. */
                         allocate(contract.Caller(), vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - 32 > nLimits)
+                            throw debug::exception("OP::THIS::GENESIS limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
+                        nLimits -= 32;
 
                         break;
                     }
@@ -1373,8 +1609,12 @@ namespace TAO
                         /* Allocate to the registers. */
                         allocate(contract.Timestamp(), vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - 8 > nLimits)
+                            throw debug::exception("OP::THIS::TIMESTAMP limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 1;
+                        nLimits -= 8;
 
                         break;
                     }
@@ -1388,7 +1628,7 @@ namespace TAO
 
                         /* Check for empty operations. */
                         if(vBytes.empty())
-                            throw std::runtime_error(debug::safe_printstr("OP::CALLER::OPERATIONS caller has empty operations"));
+                            throw debug::exception("OP::CALLER::OPERATIONS caller has empty operations");
 
                         /* Check for condition or validate. */
                         uint8_t nOffset = 0;
@@ -1415,13 +1655,18 @@ namespace TAO
 
                         /* Check that offset is within memory range. */
                         if(vBytes.size() <= nOffset)
-                            throw std::runtime_error(debug::safe_printstr("OP::CALLER::OPERATIONS offset is not within size"));
+                            throw debug::exception("OP::CALLER::OPERATIONS offset is not within size");
 
                         /* Allocate to the registers. */
                         allocate(vBytes, vRet, nOffset);
 
+                        /* Check for overflows. */
+                        uint32_t nCost = vBytes.size();
+                        if(nLimits - nCost > nLimits)
+                            throw debug::exception("OP::CALLER::OPERATIONS limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= vBytes.size();
+                        nLimits -= nCost;
 
                         break;
                     }
@@ -1431,10 +1676,14 @@ namespace TAO
                     case OP::LEDGER::HEIGHT:
                     {
                         /* Allocate to the registers. */
-                        allocate((uint64_t)TAO::Ledger::ChainState::stateBest.load().nHeight, vRet);
+                        allocate(TAO::Ledger::ChainState::stateBest.load().nHeight, vRet);
+
+                        /* Check for overflows. */
+                        if(nLimits - 4 > nLimits)
+                            throw debug::exception("OP::LEDGER::HEIGHT limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 8;
+                        nLimits -= 4;
 
                         break;
                     }
@@ -1444,7 +1693,11 @@ namespace TAO
                     case OP::LEDGER::SUPPLY:
                     {
                         /* Allocate to the registers. */
-                        allocate((uint64_t)TAO::Ledger::ChainState::stateBest.load().nMoneySupply, vRet);
+                        allocate(uint64_t(TAO::Ledger::ChainState::stateBest.load().nMoneySupply), vRet);
+
+                        /* Check for overflows. */
+                        if(nLimits - 8 > nLimits)
+                            throw debug::exception("OP::LEDGER::SUPPLY limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 8;
@@ -1453,10 +1706,15 @@ namespace TAO
                     }
 
 
+                    /* Get the best block timestamp. */
                     case OP::LEDGER::TIMESTAMP:
                     {
                         /* Allocate to the registers. */
-                        allocate((uint64_t)TAO::Ledger::ChainState::stateBest.load().nTime, vRet);
+                        allocate(uint64_t(TAO::Ledger::ChainState::stateBest.load().nTime), vRet);
+
+                        /* Check for overflows. */
+                        if(nLimits - 8 > nLimits)
+                            throw debug::exception("OP::LEDGER::TIMESTAMP limits value overflow");
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 8;
@@ -1470,7 +1728,7 @@ namespace TAO
                     {
                         /* Check for hash input availability. */
                         if(vRet.null())
-                            throw std::runtime_error("OP::CRYPTO::SK256: can't hash with no input");
+                            throw debug::exception("OP::CRYPTO::SK256: can't hash with no input");
 
                         /* Compute the return hash. */
                         uint256_t hash = LLC::SK256((uint8_t*)begin(vRet), (uint8_t*)end(vRet));
@@ -1481,8 +1739,12 @@ namespace TAO
                         /* Copy new hash into return value. */
                         allocate(hash, vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - 2048 > nLimits)
+                            throw debug::exception("OP::CRYPTO::SK256 limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 512;
+                        nLimits -= 2048;
 
                         break;
                     }
@@ -1493,7 +1755,7 @@ namespace TAO
                     {
                         /* Check for hash input availability. */
                         if(vRet.null())
-                            throw std::runtime_error("OP::CRYPTO::SK512: can't hash with no input");
+                            throw debug::exception("OP::CRYPTO::SK512: can't hash with no input");
 
                         /* Compute the return hash. */
                         uint512_t hash = LLC::SK512((uint8_t*)begin(vRet), (uint8_t*)end(vRet));
@@ -1504,8 +1766,12 @@ namespace TAO
                         /* Copy new hash into return value. */
                         allocate(hash, vRet);
 
+                        /* Check for overflows. */
+                        if(nLimits - 2048 > nLimits)
+                            throw debug::exception("OP::CRYPTO::SK512 limits value overflow");
+
                         /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 1024;
+                        nLimits -= 2048;
 
                         break;
                     }

@@ -303,8 +303,8 @@ namespace TAO
                         if(!Create::Commit(state, hashAddress, nFees, nFlags))
                             return false;
 
-                        /* Set the fee credit to the contract. */
-                        contract.AddFee(nFees);
+                        /* Set the fee cost to the contract. */
+                        contract.AddFee(-nFees);
 
                         break;
                     }
@@ -422,6 +422,10 @@ namespace TAO
                             }
                             else if(!conditions.Execute())
                                 return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
+
+                            /* Assess the fees for the computation limits. */
+                            if(conditions.nLimits < 0)
+                                contract.AddFee(conditions.nLimits);
                         }
 
                         /* Get the state byte. */
@@ -858,6 +862,10 @@ namespace TAO
                             }
                             else if(!conditions.Execute())
                                 return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+
+                            /* Assess the fees for the computation limits. */
+                            if(conditions.nLimits < 0)
+                                contract.AddFee(conditions.nLimits);
                         }
 
                         /* Deserialize the pre-state byte from the contract. */

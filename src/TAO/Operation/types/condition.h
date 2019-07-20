@@ -55,11 +55,11 @@ namespace TAO
 
 
             /** Computational limits for validation script. **/
-            int32_t nLimits;
-            
+            int64_t nLimits;
+
 
             /** Default constructor. **/
-            Condition(const Contract& contractIn, const Contract& callerIn, int32_t nLimitsIn = 2048);
+            Condition(const Contract& contractIn, const Contract& callerIn, const int64_t nLimitsIn = 2048);
 
 
             /** Copy constructor. **/
