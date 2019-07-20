@@ -402,7 +402,6 @@ namespace TAO
          **/
         bool Condition::GetValue(TAO::Register::Value& vRet)
         {
-
             /* Iterate until end of stream. */
             while(!contract.End(Contract::CONDITIONS))
             {
@@ -659,6 +658,30 @@ namespace TAO
                     }
 
 
+                    /* Parse out subdata from bytes. */
+                    case OP::CAT:
+                    {
+                        /* Get the add from r-value. */
+                        TAO::Register::Value vCat;
+                        if(!GetValue(vCat))
+                            throw std::runtime_error(debug::safe_printstr("OP::CAT failed to get r-value"));
+
+                        /* Extract the string. */
+                        std::vector<uint8_t> vAlloc;
+                        vAlloc.insert(vAlloc.end(), (uint8_t*)begin(vRet), (uint8_t*)end(vRet));
+                        vAlloc.insert(vAlloc.end(), (uint8_t*)begin(vCat), (uint8_t*)end(vCat));
+
+                        /* Deallocate values. */
+                        deallocate(vCat);
+                        deallocate(vRet);
+
+                        /* Allocate concatenated data. */
+                        allocate(vAlloc, vRet);
+
+                        break;
+                    }
+
+
 
                     /* Extract an uint8_t from the stream. */
                     case OP::TYPES::UINT8_T:
@@ -668,7 +691,7 @@ namespace TAO
                         contract >= n;
 
                         /* Set the register value. */
-                        allocate((uint64_t)n, vRet);
+                        allocate(n, vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 1;
@@ -685,7 +708,7 @@ namespace TAO
                         contract >= n;
 
                         /* Set the register value. */
-                        allocate((uint64_t)n, vRet);
+                        allocate(n, vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 2;
@@ -702,7 +725,7 @@ namespace TAO
                         contract >= n;
 
                         /* Set the register value. */
-                        allocate((uint64_t)n, vRet);
+                        allocate(n, vRet);
 
                         /* Reduce the limits to prevent operation exhuastive attacks. */
                         nLimits -= 4;
@@ -1115,7 +1138,7 @@ namespace TAO
                                 deallocate(hashRegister, vRet);
 
                                 /* Read the register states. */
-                                if(!LLD::Register->Read(hashRegister, object))
+                                if(!LLD::Register->ReadState(hashRegister, object))
                                     return false;
 
                                 break;

@@ -587,6 +587,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
         {
             Object object;
             object << std::string("id")              << uint8_t(TYPES::UINT8_T)    << uint8_t(55)
+                   << std::string("value")           << uint8_t(TYPES::UINT64_T)   << uint64_t(200)
                    << std::string("description")     << uint8_t(TYPES::STRING)     << std::string("this is a string to test long forms");
 
            {
@@ -595,9 +596,6 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
                tx.hashGenesis = hashGenesis;
                tx.nSequence   = 0;
                tx.nTimestamp  = runtime::timestamp();
-
-               //create object
-               Object token = CreateToken(hashToken, 1000, 100);
 
                //payload
                tx[0] << uint8_t(OP::CREATE) << hashAsset << uint8_t(REGISTER::OBJECT) << object.GetState();
@@ -634,7 +632,11 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
             //conditions
             tx[0] <= uint8_t(OP::GROUP);
-            tx[0] <= uint8_t(OP::CALLER::OPERATIONS) <= uint8_t(OP::CONTAINS) <= uint8_t(OP::TYPES::BYTES) <= compare.Bytes();
+            tx[0] <= uint8_t(OP::CALLER::OPERATIONS) <= uint8_t(OP::CONTAINS);
+            tx[0] <= uint8_t(OP::TYPES::UINT8_T) <= uint8_t(OP::DEBIT);
+            tx[0] <= uint8_t(OP::CAT) <= uint8_t(OP::TYPES::UINT256_T) <= uint256_t(0);
+            tx[0] <= uint8_t(OP::CAT) <= uint8_t(OP::TYPES::UINT256_T) <= hashAccount;
+            tx[0] <= uint8_t(OP::CAT) <= uint8_t(OP::TYPES::UINT256_T) <= hashAsset <= uint8_t(OP::REGISTER::VALUE) <= std::string("value");
             tx[0] <= uint8_t(OP::AND);
             tx[0] <= uint8_t(OP::CALLER::PRESTATE::VALUE) <= std::string("token");
             tx[0] <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashToken2;
@@ -720,7 +722,6 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
-
         }
 
 

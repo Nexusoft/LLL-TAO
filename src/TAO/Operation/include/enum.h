@@ -118,6 +118,7 @@ namespace TAO
                 EXP         = 0x97,
 
                 SUBDATA     = 0x98,
+                CAT         = 0x99,
 
 
                 //RESERVED to 0x2f

@@ -333,6 +333,32 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     }
 
 
+    /////CAT
+    contract.Clear();
+    contract <= (uint8_t)OP::TYPES::STRING <= std::string("is there an ") <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string("atomic bear out ");
+    contract <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string("there?") <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::STRING;
+    contract <= std::string("is there an atomic bear out there?");
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE(script.Execute());
+    }
+
+
+    /////CAT
+    contract.Clear();
+    contract <= (uint8_t)OP::TYPES::STRING <= std::string("I will") <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string(" combine ");
+    contract <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string("together");
+    contract <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string(" many words");
+    contract <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string(" to make sure they ");
+    contract <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string("concatenate");
+    contract <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::STRING;
+    contract <= std::string("I will combine together many words to make sure they concatenate");
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE(script.Execute());
+    }
+
+
 
 
     /////CONTAINS
@@ -454,7 +480,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
        std::string strObject = "register-vanity";
 
        uint256_t hashObject = LLC::SK256(std::vector<uint8_t>(strObject.begin(), strObject.end()));
-       REQUIRE(LLD::Register->Write(hashObject, object));
+       REQUIRE(LLD::Register->WriteState(hashObject, object));
 
 
       contract.Clear();
