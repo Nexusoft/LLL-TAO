@@ -373,6 +373,10 @@ namespace TAO
                     return false;
             }
 
+            //NOTE: @paulscreen, this is a bool argument right now until you add fees into API commands.
+            //you will need to calculate the required fees before adding them in an extra contract for OP::FEE
+            //ordering doesn't matter, once this is done, remove GetBoolArg to enforce fees on runtime.
+
             /* Check that the fees match. */
             if(config::GetBoolArg("-fees", false) && nCost > nFees)
                 return debug::error(FUNCTION, "not enough fees supplied ", nFees);
