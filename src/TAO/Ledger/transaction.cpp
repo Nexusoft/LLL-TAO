@@ -362,7 +362,6 @@ namespace TAO
             }
 
             /* Run through all the contracts. */
-            uint32_t nContract = 0;
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
@@ -371,10 +370,11 @@ namespace TAO
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags))
                     return false;
-
-                /* Increment the contract id. */
-                ++nContract;
             }
+
+            /* Check that the fees match. */
+            if(config::GetBoolArg("-fees", false) && nFees != 0)
+                return debug::error(FUNCTION, "not enough fees supplied ", nFees);
 
             return true;
         }
