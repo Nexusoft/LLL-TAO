@@ -279,6 +279,14 @@ namespace TAO
             /* Compute the Channel Height. */
             nChannelHeight = stateLast.nChannelHeight + 1;
 
+            /* Check if fees are available. */
+            uint64_t nPayout = 0;
+            if(stateLast.nFeeReserve > 1000 * NXS_COIN)
+                nPayout = (vtx.size() - 1) * 1000; //NOTE: 1000 viz paid as a constant per transaction.
+
+            /* Carry over the fee reserves from last block. */
+            nFeeReserve = stateLast.nFeeReserve - nPayout;
+
             /* Compute the Released Reserves. */
             if(IsProofOfWork())
             {
@@ -379,7 +387,7 @@ namespace TAO
                         Genesis genesis;
                         tx[n] >> genesis;
                         if(!genesis.IsValid())
-                            return debug::error(FUNCTION, "invalid ambassador genesis-id ", genesis.SubString());
+                            return debug::error(FUNCTION, "invalid coinbase genesis-id ", genesis.SubString());
 
                         /* Get the reward. */
                         uint64_t nValue = 0;
@@ -413,6 +421,10 @@ namespace TAO
                         std::fixed, nReleasedReserve[nType] / (double)TAO::Ledger::NXS_COIN,
                         " Nexus | Released ",
                         std::fixed, (nReserve - stateLast.nReleasedReserve[nType]) / (double)TAO::Ledger::NXS_COIN);
+
+                    /* Update the mint values. */
+                    if(nVersion >= 7)
+                        nMint += nCoinbaseRewards[nType];
                 }
             }
 
@@ -722,6 +734,9 @@ namespace TAO
         /** Connect a block state into chain. **/
         bool BlockState::Connect()
         {
+            /* Reset the transaction fees. */
+            nFees = 0;
+
             /* Check through all the transactions. */
             for(const auto& proof : vtx)
             {
@@ -744,6 +759,9 @@ namespace TAO
                     if(!tx.Connect())
                         return debug::error(FUNCTION, "failed to connect transaction");
 
+                    /* Accumulate the fees. */
+                    nFees += tx.nFees;
+
                     /* Check for first. */
                     if(!tx.IsFirst())
                     {
@@ -755,6 +773,8 @@ namespace TAO
                         /* Check that the last transaction is correct. */
                         if(tx.hashPrevTx != hashLast)
                         {
+                            //NOTE: this debugging crap that will be removed in production
+
                             /* Make sure the transaction is on disk. */
                             TAO::Ledger::Transaction tx2;
                             if(!LLD::Ledger->ReadTx(hashLast, tx2))
@@ -819,6 +839,9 @@ namespace TAO
 
             /* Update the money supply. */
             nMoneySupply = (prev.IsNull() ? 0 : prev.nMoneySupply) + nMint;
+
+            /* Update the fee reserves. */
+            nFeeReserve += nFees;
 
             /* Log how much was generated / destroyed. */
             debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN);
