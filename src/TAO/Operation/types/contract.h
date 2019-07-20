@@ -117,7 +117,17 @@ namespace TAO
              *  @param[in] nFee The total fee to add to the contract.
              *
              **/
-            void AddFee(const int64_t nFee) const;
+            void AddFee(const uint64_t nFee) const;
+
+
+            /** AddCost
+             *
+             *  Add costs to the contract.
+             *
+             *  @param[in] nFee The total cost to add to the contract.
+             *
+             **/
+            void AddCost(const uint64_t nCost) const;
 
 
             /** Primitive

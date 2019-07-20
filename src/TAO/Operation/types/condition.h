@@ -30,6 +30,10 @@ namespace TAO
     namespace Operation
     {
 
+        /** The 'free' limit for conditions. **/
+        const uint64_t CONDITION_LIMIT_FREE = 2048;
+
+
         /** Validate
          *
          *  An object to handle the executing of validation scripts.
@@ -55,11 +59,11 @@ namespace TAO
 
 
             /** Computational limits for validation script. **/
-            int64_t nLimits;
+            uint64_t nCost;
 
 
             /** Default constructor. **/
-            Condition(const Contract& contractIn, const Contract& callerIn, const int64_t nLimitsIn = 2048);
+            Condition(const Contract& contractIn, const Contract& callerIn, const int64_t nCostIn = 0);
 
 
             /** Copy constructor. **/

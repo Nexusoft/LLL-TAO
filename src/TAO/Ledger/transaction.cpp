@@ -64,6 +64,7 @@ namespace TAO
         , vchPubKey()
         , vchSig()
         , nFees(0)
+        , nCost(0)
         {
         }
 
@@ -373,7 +374,7 @@ namespace TAO
             }
 
             /* Check that the fees match. */
-            if(config::GetBoolArg("-fees", false) && nFees != 0)
+            if(config::GetBoolArg("-fees", false) && nCost > nFees)
                 return debug::error(FUNCTION, "not enough fees supplied ", nFees);
 
             return true;

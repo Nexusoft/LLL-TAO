@@ -79,12 +79,22 @@ namespace TAO
 
 
         /* Add fees to the contract. */
-        void Contract::AddFee(const int64_t nFee) const
+        void Contract::AddFee(const uint64_t nFee) const
         {
             if(ptx == nullptr)
                 throw debug::exception(FUNCTION, "add fee access for nullptr");
 
             ptx->nFees += nFee;
+        }
+
+
+        /* Add costs to the contract. */
+        void Contract::AddCost(const uint64_t nCost) const
+        {
+            if(ptx == nullptr)
+                throw debug::exception(FUNCTION, "add fee access for nullptr");
+
+            ptx->nCost += nCost;
         }
 
 

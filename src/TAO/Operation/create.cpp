@@ -34,10 +34,10 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Create::Commit(const TAO::Register::State& state, const TAO::Register::Address& address, uint64_t& nFees, const uint8_t nFlags)
+        bool Create::Commit(const TAO::Register::State& state, const TAO::Register::Address& address, uint64_t& nCost, const uint8_t nFlags)
         {
-            /* Set fees to zero. */
-            nFees = 0;
+            /* Set cost to zero. */
+            nCost = 0;
 
             /* Check register types specific rules. */
             switch(state.nType)
@@ -98,7 +98,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "token current supply and balance can't mismatch");
 
                             /* Set the fees for the token. */
-                            nFees = 10000 * TAO::Ledger::NXS_COIN; //10k NXS per token
+                            nCost = 10000 * TAO::Ledger::NXS_COIN; //10k NXS per token
 
                             break;
                         }
@@ -142,7 +142,7 @@ namespace TAO
                                     return debug::error(FUNCTION, "Namespace not owned by caller: ", strNamespace );
 
                                 /* Set the fees for the namespace. */
-                                nFees = 100 * TAO::Ledger::NXS_COIN; //100 NXS per name in a namespace
+                                nCost = 100 * TAO::Ledger::NXS_COIN; //100 NXS per name in a namespace
 
                             }
                             else
@@ -186,7 +186,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "namespace address mismatch");
 
                             /* Set the fees for the namespace. */
-                            nFees = 1000 * TAO::Ledger::NXS_COIN; //1000 NXS per namespace
+                            nCost = 1000 * TAO::Ledger::NXS_COIN; //1000 NXS per namespace
 
                             break;
                         }

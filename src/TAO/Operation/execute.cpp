@@ -297,14 +297,14 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::CREATE: invalid register post-state");
 
                         /* Check for the fees. */
-                        uint64_t nFees = 0;
+                        uint64_t nCost = 0;
 
                         /* Commit the register to disk. */
-                        if(!Create::Commit(state, hashAddress, nFees, nFlags))
+                        if(!Create::Commit(state, hashAddress, nCost, nFlags))
                             return false;
 
                         /* Set the fee cost to the contract. */
-                        contract.AddFee(-nFees);
+                        contract.AddCost(nCost);
 
                         break;
                     }
@@ -424,8 +424,8 @@ namespace TAO
                                 return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
 
                             /* Assess the fees for the computation limits. */
-                            if(conditions.nLimits < 0)
-                                contract.AddFee(conditions.nLimits);
+                            if(conditions.nCost > CONDITION_LIMIT_FREE)
+                                contract.AddCost(conditions.nCost - CONDITION_LIMIT_FREE);
                         }
 
                         /* Get the state byte. */
@@ -864,8 +864,8 @@ namespace TAO
                                 return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
 
                             /* Assess the fees for the computation limits. */
-                            if(conditions.nLimits < 0)
-                                contract.AddFee(conditions.nLimits);
+                            if(conditions.nCost > CONDITION_LIMIT_FREE)
+                                contract.AddCost(conditions.nCost - CONDITION_LIMIT_FREE);
                         }
 
                         /* Deserialize the pre-state byte from the contract. */

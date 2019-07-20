@@ -92,8 +92,12 @@ namespace TAO
             std::vector<uint8_t> vchSig;
 
 
-            /** MEMORY ONLY: the required fees (signed for showing fee debits or credits). **/
-            int64_t nFees;
+            /** MEMORY ONLY: the fees accumulated in this transaction. **/
+            uint64_t nFees;
+
+
+            /** MEMORY ONLY: the overall cost of this transaction. **/
+            uint64_t nCost;
 
 
             //serialization macros

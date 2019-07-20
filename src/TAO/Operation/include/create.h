@@ -59,7 +59,7 @@ namespace TAO
              *
              **/
             bool Commit(const TAO::Register::State& state,
-                const TAO::Register::Address& address, uint64_t& nFees, const uint8_t nFlags);
+                const TAO::Register::Address& address, uint64_t& nCost, const uint8_t nFlags);
 
 
             /** Execute
