@@ -122,7 +122,10 @@ namespace TAO
                 BLOCK       = 0x01,
 
                 /* Write data into memory on mempool. */
-                MEMPOOL     = 0x02
+                MEMPOOL     = 0x02,
+
+                /* Don't write data when calculating fees. */
+                FEES        = 0x03
             };
         }
     }

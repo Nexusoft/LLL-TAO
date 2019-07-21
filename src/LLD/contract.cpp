@@ -25,7 +25,7 @@ namespace LLD
     , nFlagsIn
     , nBucketsIn
     , nCacheIn)
-    
+
     , MEMORY_MUTEX()
     , mapContracts()
     {

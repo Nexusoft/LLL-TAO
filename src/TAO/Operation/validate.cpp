@@ -130,6 +130,10 @@ namespace TAO
             if(!conditions.Execute())
                 return debug::error(FUNCTION, "OP::VALIDATE: conditions not satisfied");
 
+            /* Assess the fees for the computation limits. */
+            if(conditions.nCost > CONDITION_LIMIT_FREE)
+                contract.AddCost(conditions.nCost - CONDITION_LIMIT_FREE);
+
             return true;
         }
     }
