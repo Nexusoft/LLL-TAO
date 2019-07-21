@@ -205,7 +205,6 @@ namespace TAO
             std::map<uint256_t, TAO::Register::State> mapStates;
 
             /* Run through all the contracts. */
-            uint32_t nContract = 0;
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
@@ -214,9 +213,6 @@ namespace TAO
                 /* Verify the register pre-states. */
                 if(!TAO::Register::Verify(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
-
-                /* Increment the contract id. */
-                ++nContract;
             }
 
             return true;
@@ -230,7 +226,6 @@ namespace TAO
             std::map<uint256_t, TAO::Register::State> mapStates;
 
             /* Run through all the contracts. */
-            uint32_t nContract = 0;
             for(auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
@@ -239,9 +234,6 @@ namespace TAO
                 /* Calculate the pre-states and post-states. */
                 if(!TAO::Register::Build(contract, mapStates))
                     return false;
-
-                /* Increment the contract id. */
-                ++nContract;
             }
 
             return true;
