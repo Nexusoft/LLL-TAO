@@ -165,7 +165,6 @@ namespace LLD
         if(plast && pthis == plast)
         {
             plast = plast->pprev;
-
             if(plast)
                 plast->pnext = nullptr;
         }
@@ -174,7 +173,6 @@ namespace LLD
         if(pfirst && pthis == pfirst)
         {
             pfirst = pfirst->pnext;
-
             if(pfirst)
                 pfirst->pprev = nullptr;
         }
@@ -192,13 +190,6 @@ namespace LLD
     /*  Move the node in double linked list to front. */
     void BinaryLFU::MoveForward(BinaryNodeLFU* pthis)
     {
-        /* Bump frequency. */
-        ++pthis->nFrequency;
-
-        /* Don't move to front if already in the front. */
-        if(pthis == pfirst)
-            return;
-
         /* Set last if not set. */
         if(!plast)
         {
@@ -216,6 +207,22 @@ namespace LLD
 
             return;
         }
+
+        /* Don't move to front if already in the front. */
+        if(pthis == pfirst)
+            return;
+
+        /* Move last pointer if moving from back. */
+        if(pthis == plast)
+        {
+            if(plast->pprev)
+                plast = plast->pprev;
+
+            plast->pnext = nullptr;
+        }
+
+        /* Bump frequency. */
+        ++pthis->nFrequency;
 
         /* Check for previous. */
         if(!pthis->pprev)

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/types/contract.h>
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/types/address.h>
 
 /* Global TAO namespace. */
 namespace TAO

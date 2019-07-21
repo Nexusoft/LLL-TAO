@@ -38,24 +38,27 @@ namespace Legacy
         /** The transactions of the block. **/
         std::vector<Transaction> vtx;
 
-
         IMPLEMENT_SERIALIZE
         (
             READWRITE(nVersion);
-	        READWRITE(hashPrevBlock);
-		    READWRITE(hashMerkleRoot);
-		    READWRITE(nChannel);
+            READWRITE(hashPrevBlock);
+            READWRITE(hashMerkleRoot);
+            READWRITE(nChannel);
             READWRITE(nHeight);
             READWRITE(nBits);
             READWRITE(nNonce);
             READWRITE(nTime);
 
-  			// ConnectBlock depends on vtx following header to generate CDiskTxPos
-  			if (!(nSerType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
-  			{
-  				READWRITE(vtx);
-  				READWRITE(vchBlockSig);
-  			}
+            // ConnectBlock depends on vtx following header to generate CDiskTxPos
+            if(!(nSerType & (SER_GETHASH | SER_BLOCKHEADERONLY)))
+            {
+                READWRITE(vtx);
+                READWRITE(vchBlockSig);
+            }
+
+            /* Offsets are serialized to disk. */
+            if(nSerType & SER_LLD)
+                READWRITE(vOffsets);
         )
 
 

@@ -46,7 +46,6 @@ ________________________________________________________________________________
 #define ANSI_COLOR_FUNCTION "\u001b[1m"
 
 #define VALUE(data) data
-//#define FUNCTION ANSI_COLOR_FUNCTION "%s" ANSI_COLOR_RESET " : "
 
 #define NODE ANSI_COLOR_FUNCTION "Node" ANSI_COLOR_RESET " : ", "\u001b[1m", GetAddress().ToStringIP(), ANSI_COLOR_RESET, " "
 
@@ -229,6 +228,39 @@ namespace debug
 
         return true;
     }
+
+
+    /** @class error
+     *
+     *  Handle exceptions with variadic template constructor for logging support.
+     *
+     **/
+    class exception : public std::runtime_error
+    {
+    public:
+
+        /** Constructor
+         *
+         *  @param[in] e The exception object to create error from.
+         *
+         **/
+        exception(const std::runtime_error& e)
+        : std::runtime_error(e)
+        {
+        }
+
+
+        /** Constructor
+         *
+         *  @param[in] args The variadic template for initialization.
+         *
+         **/
+        template<class... Args>
+        exception(Args&&... args)
+        : std::runtime_error(safe_printstr(args...))
+        {
+        }
+    };
 
 
     /** rfc1123Time

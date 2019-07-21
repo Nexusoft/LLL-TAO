@@ -24,7 +24,7 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /** CreateLegacyBlock
+    /** CreateBlock
      *
      *  Construct a new legacy block.
      *
@@ -43,10 +43,10 @@ namespace Legacy
      *  @return true if block successfully created
      *
      **/
-    bool CreateLegacyBlock(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel, const uint32_t nID, LegacyBlock& newBlock);
+    bool CreateBlock(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel, const uint32_t nID, LegacyBlock& newBlock);
 
 
-    /** CreateCoinstakeTransaction
+    /** CreateCoinstake
      *
      *  Create the Coinstake transaction for a legacy block.
      *
@@ -57,10 +57,10 @@ namespace Legacy
      *  @return true if transaction successfully created
      *
      **/
-    bool CreateCoinstakeTransaction(Transaction& coinstakeTx);
+    bool CreateCoinstake(Transaction& coinstakeTx);
 
 
-    /** CreateCoinbaseTransaction
+    /** CreateCoinbase
      *
      *  Create the Coinbase transaction for a legacy block.
      *
@@ -79,7 +79,7 @@ namespace Legacy
      *  @return true if transaction successfully created
      *
      **/
-    bool CreateCoinbaseTransaction(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel,
+    bool CreateCoinbase(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel,
                                    const uint32_t nID, const uint32_t nNewBlockVersion, Transaction& coinbaseTx);
 
 

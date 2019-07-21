@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
+#include <TAO/Register/types/address.h>
 #include <LLC/hash/SK.h>
 
 #include <LLD/include/global.h>
@@ -49,6 +49,13 @@ namespace TAO
             if(params.find("username") == params.end())
                 throw APIException(-127, "Missing username");
 
+            /* Extract the username and check for allowed characters / length */
+            std::string strUsername = params["username"].get<std::string>();
+
+            /* Don't allow : and . */
+            if(strUsername.find(":") != strUsername.npos || strUsername.find(".") != strUsername.npos)
+                throw APIException(-160, "Username contains invalid characters");
+
             /* Check for password parameter. */
             if(params.find("password") == params.end())
                 throw APIException(-128, "Missing password");
@@ -58,7 +65,7 @@ namespace TAO
                 throw APIException(-129, "Missing PIN");
 
             /* Generate the signature chain. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(params["username"].get<std::string>().c_str(), params["password"].get<std::string>().c_str());
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername.c_str(), params["password"].get<std::string>().c_str());
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = user->Genesis();
@@ -78,19 +85,18 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction");
             }
 
-            /* Create trust account register  within the user sig chain namespace */
             /* Generate a random hash for this objects register address */
-            uint256_t hashRegister = LLC::GetRand256();
+            TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::TRUST);
 
             /* Add a Name record for the trust account */
             tx[0] = Names::CreateName(user->Genesis(), "trust", hashRegister);
 
             /* Set up tx operation to create the trust account register at the same time as sig chain genesis. */
-            tx[1] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister
+            tx[1] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
 
             /* Generate a random hash for this objects register address */
-            hashRegister = LLC::GetRand256();
+            hashRegister = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
             /* Add a Name record for the trust account */
             tx[2] = Names::CreateName(user->Genesis(), "default", hashRegister);
@@ -117,7 +123,8 @@ namespace TAO
             user.free();
 
             /* Execute the operations layer. */
-            TAO::Ledger::mempool.Accept(tx);
+            if(!TAO::Ledger::mempool.Accept(tx))
+                throw APIException(-32, "Failed to accept");
 
 
             /* Build a JSON response object. */

@@ -138,7 +138,7 @@ namespace TAO
             if(nVerbosity >= 2)
             {
                 /* Build base transaction data. */
-                ret["type"]      = tx.GetTxTypeString();
+                ret["type"]      = tx.TypeString();
                 ret["version"]   = tx.nVersion;
                 ret["sequence"]  = tx.nSequence;
                 ret["timestamp"] = tx.nTimestamp;
@@ -173,7 +173,7 @@ namespace TAO
             /* Basic TX info for level 1 and up */
             if(nVerbosity > 0)
             {
-                ret["type"] = tx.GetTxTypeString();
+                ret["type"] = tx.TypeString();
                 ret["timestamp"] = tx.nTime;
                 ret["amount"] = Legacy::SatoshisToAmount(tx.GetValueOut());
                 ret["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;

@@ -16,9 +16,10 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/claim.h>
 #include <TAO/Operation/include/enum.h>
 
-#include <TAO/Register/types/state.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
+#include <TAO/Register/types/state.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -109,7 +110,7 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot claim a register with no transfer");
 
             /* Extract the address  */
-            uint256_t hashAddress = 0;
+            TAO::Register::Address hashAddress;
             claim >> hashAddress;
 
             /* Check for reserved values. */
@@ -117,12 +118,8 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot claim register with reserved address");
 
             /* Read the register transfer recipient. */
-            uint256_t hashTransfer = 0;
+            uint256_t hashTransfer;
             claim >> hashTransfer;
-
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashTransfer))
-                return debug::error(FUNCTION, "cannot claim register to reserved address");
 
             /* Get the state byte. */
             uint8_t nState = 0; //RESERVED
@@ -139,7 +136,7 @@ namespace TAO
             /* Check the addresses match. */
             if(state.hashOwner != contract.Caller() //claim to self
             && hashTransfer    != contract.Caller() //calim to transfer
-            && hashTransfer    != ~uint256_t(0))   //claim to wildcard (anyone)
+            && hashTransfer    != TAO::Register::WILDCARD_ADDRESS)   //claim to wildcard (anyone)
                 return debug::error(FUNCTION, "claim public-id mismatch with transfer address");
 
             /* Check that pre-state is valid. */

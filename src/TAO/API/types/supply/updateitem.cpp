@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
-
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
@@ -52,6 +50,7 @@ namespace TAO
             if(params.find("data") == params.end())
                 throw APIException(-18, "Missing data");
 
+            /* Check that the data is a string */
             if(!params["data"].is_string())
                 throw APIException(-19, "Data must be a string");
 

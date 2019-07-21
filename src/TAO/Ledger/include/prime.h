@@ -45,12 +45,12 @@ namespace TAO
          *  V is the whole number, or Cluster Size, X is a proportion
          *  of Fermat Remainder from last Composite Number [0 - 1]
          *
-         *  @param[in] bnPrime The prime to check.
+         *  @param[in] hashPrime The prime to check.
          *
          *  @return The double value of prime difficulty.
          *
          **/
-        double GetPrimeDifficulty(const uint1024_t& bnPrime);
+        double GetPrimeDifficulty(const uint1024_t& hashPrime, const std::vector<uint8_t>& vOffsets);
 
 
         /** GetPrimeBits
@@ -62,55 +62,55 @@ namespace TAO
          *  @return uint32_t representation of prime difficulty.
          *
          **/
-        uint32_t GetPrimeBits(const uint1024_t& bnPrime);
+        uint32_t GetPrimeBits(const uint1024_t& hashPrime);
 
 
         /** GetFractionalDifficulty
          *
          *  Breaks the remainder of last composite in Prime Cluster into an integer.
          *
-         *  @param[in] composite The composite number to get remainder of
+         *  @param[in] hashComposite The composite number to get remainder of
          *
          *  @return The fractional proportion
          *
          **/
-        uint32_t GetFractionalDifficulty(const uint1024_t& bnComposite);
+        uint32_t GetFractionalDifficulty(const uint1024_t& hashComposite);
 
 
         /** PrimeCheck
          *
          *  Determines if given number is Prime.
          *
-         *	@param[in] bnTest The number to test for primality
+         *	@param[in] hashTest The number to test for primality
          *
          *  @return True if number passes prime tests.
          *
          **/
-        bool PrimeCheck(const uint1024_t& bnTest);
+        bool PrimeCheck(const uint1024_t& hashTest);
 
 
         /** FermatTest
          *
          *  Used after Miller-Rabin and Divisor tests to verify primality.
          *
-         *  @param[in] bnPrime The prime to check
+         *  @param[in] hashTest The prime to check
          *
          *  @return The remainder of the fermat test.
          *
          **/
-        uint1024_t FermatTest(const uint1024_t& nPrime);
+        uint1024_t FermatTest(const uint1024_t& hashTest);
 
 
         /** MillerRabin
          *
          *  Wrapper for is_prime from OpenSSL
          *
-         *  @param[in] bnPrime The prime to test
+         *  @param[in] hashTest The prime to test
          *
          *  @return True if bnPrime is prime
          *
          **/
-        bool Miller_Rabin(const uint1024_t& nPrime);
+        bool Miller_Rabin(const uint1024_t& hashTest);
 
 
         /** SmallDivisors
@@ -118,12 +118,12 @@ namespace TAO
          *  Determine if the number passes small divisor test up to the first
          *  eleven primes.
          *
-         *  @param[in] nPrime The prime to test.
+         *  @param[in] hashTest The prime to test.
          *
          *  @return Returns True if nPrime passes small divisor tests, false otherwise.
          *
          **/
-        bool SmallDivisors(const uint1024_t& nPrime);
+        bool SmallDivisors(const uint1024_t& hashTest);
     }
 }
 

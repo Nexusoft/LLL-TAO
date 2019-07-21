@@ -28,17 +28,43 @@ ________________________________________________________________________________
 #include <Legacy/types/script.h>
 #include <Legacy/types/trustkey.h>
 
+#include <TAO/Operation/include/enum.h>
+
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/runtime.h>
+#include <Util/templates/datastream.h>
 
 namespace Legacy
 {
 
-    //TODO: this may be needed elsewhere.
-    //keep here for now.
+    /* Old legacy outdated threshold, currently a placeholder. */
     const int64_t LOCKTIME_THRESHOLD = 500000000;
+
+
+    /** Copy Constructor (From Tritium). **/
+    Transaction::Transaction(const TAO::Ledger::Transaction& tx)
+    : nVersion(tx.nVersion)
+    , nTime(tx.nTimestamp)
+    , vin()
+    , vout()
+    , nLockTime(0)
+    {
+        SetNull();
+
+        /* Loop through the contracts. */
+        for(uint32_t n = 0; n < tx.Size(); ++n)
+        {
+            /* Get legacy converted output.*/
+            TxOut txout;
+            tx[n].Legacy(txout); //a failure here will result in a null output
+
+            /* Add the output. */
+            vout.push_back(txout);
+        }
+    }
 
 
 	/* Sets the transaciton object to a null state. */
@@ -68,7 +94,15 @@ namespace Legacy
 	    DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
 	    ss.reserve(10000);
 	    ss << *this;
-	    return LLC::SK512(ss.begin(), ss.end());
+
+        /* Get the hash. */
+	    uint512_t hash = LLC::SK512(ss.begin(), ss.end());
+
+        /* Type of 0xfe designates legacy tx. */
+        if(TAO::Ledger::VersionActive(nTime, 7))
+            hash.SetType(TAO::Ledger::LEGACY);
+
+        return hash;
 	}
 
 
@@ -100,18 +134,18 @@ namespace Legacy
 	bool Transaction::IsNewerThan(const Transaction& old) const
 	{
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
-		if(nInSize != old.vin.size())
+		if(nSize != old.vin.size())
 			return false;
 
-		for(uint32_t i = 0; i < nInSize; ++i)
+		for(uint32_t i = 0; i < nSize; ++i)
 			if(vin[i].prevout != old.vin[i].prevout)
 				return false;
 
 		bool fNewer = false;
 		uint32_t nLowest = std::numeric_limits<uint32_t>::max();
-		for(uint32_t i = 0; i < nInSize; ++i)
+		for(uint32_t i = 0; i < nSize; ++i)
 		{
 			if(vin[i].nSequence != old.vin[i].nSequence)
 			{
@@ -155,10 +189,10 @@ namespace Legacy
 	bool Transaction::IsCoinStake() const
 	{
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
 		/* Must have more than one Input. */
-		if(nInSize <= 1)
+		if(nSize <= 1)
 			return false;
 
 		/* First Input Script Signature must Contain Fibanacci Byte Series. */
@@ -166,7 +200,7 @@ namespace Legacy
 			return false;
 
 		/* All Remaining Previous Inputs must not be Empty. */
-		for(uint32_t nIndex = 1; nIndex < nInSize; ++nIndex)
+		for(uint32_t nIndex = 1; nIndex < nSize; ++nIndex)
 			if(vin[nIndex].prevout.IsNull())
 				return false;
 
@@ -230,6 +264,8 @@ namespace Legacy
             if(!txin.scriptSig.IsPushOnly())
                 return false;
         }
+
+        //TODO: we need to add UTXO to Tritium script as Standard here
 
         for(const auto& txout : vout)
             if(!Legacy::IsStandard(txout.scriptPubKey))
@@ -327,10 +363,10 @@ namespace Legacy
             return false;
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
         /* Check the coin age of each Input. */
-        for(uint32_t nIndex = 1; nIndex < nInSize; ++nIndex)
+        for(uint32_t nIndex = 1; nIndex < nSize; ++nIndex)
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
@@ -344,7 +380,7 @@ namespace Legacy
             nAge += nCoinAge;
         }
 
-        nAge /= (nInSize - 1);
+        nAge /= (nSize - 1);
 
         return true;
     }
@@ -392,10 +428,10 @@ namespace Legacy
         }
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
         /** Check the coin age of each Input. **/
-        for(uint32_t nIndex = 1; nIndex < nInSize; ++nIndex)
+        for(uint32_t nIndex = 1; nIndex < nSize; ++nIndex)
         {
             /* Calculate the Age and Value of given output. */
             TAO::Ledger::BlockState statePrev;
@@ -444,27 +480,27 @@ namespace Legacy
             nStakeReward += ((nValue * nStakeRate * nCoinAge) / TAO::Ledger::ONE_YEAR);
         }
 
-        nAverageAge /= (nInSize - 1);
+        nAverageAge /= (nSize - 1);
 
         return true;
     }
 
 
 	/* Check for standard transaction types */
-	bool Transaction::AreInputsStandard(const std::map<uint512_t, Transaction>& mapInputs) const
+	bool Transaction::AreInputsStandard(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& mapInputs) const
     {
         if(IsCoinBase())
-            return true; // Coinbases don't use vin normally
+            return true; // Coinbases don't use vin
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
-
-        for(uint32_t i = (uint32_t) IsCoinStake(); i < nInSize; ++i)
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
+        for(uint32_t i = (uint32_t) IsCoinStake(); i < nSize; ++i)
         {
             const TxOut& prev = GetOutputFor(vin[i], mapInputs);
 
             std::vector< std::vector<uint8_t> > vSolutions;
             TransactionType whichType;
+
             // get the scriptPubKey corresponding to this input:
             const Script& prevScript = prev.scriptPubKey;
             if(!Solver(prevScript, whichType, vSolutions))
@@ -533,7 +569,7 @@ namespace Legacy
 
 
 	/* Count ECDSA signature operations in pay-to-script-hash inputs. */
-	uint32_t Transaction::TotalSigOps(const std::map<uint512_t, Transaction>& mapInputs) const
+	uint32_t Transaction::TotalSigOps(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& mapInputs) const
     {
         if(IsCoinBase())
             return 0;
@@ -541,9 +577,9 @@ namespace Legacy
         uint32_t nSigOps = 0;
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
-        for(uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
+        for(uint32_t i = (uint32_t)IsCoinStake(); i < nSize; ++i)
         {
             const TxOut& prevout = GetOutputFor(vin[i], mapInputs);
             nSigOps += prevout.scriptPubKey.GetSigOpCount(vin[i].scriptSig);
@@ -569,7 +605,7 @@ namespace Legacy
 
 
 	/* Amount of Coins coming in to this transaction */
-	uint64_t Transaction::GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const
+	uint64_t Transaction::GetValueIn(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& mapInputs) const
     {
         if(IsCoinBase())
             return 0;
@@ -577,9 +613,9 @@ namespace Legacy
         uint64_t nResult = 0;
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
 
-        for(uint32_t i = (uint32_t) IsCoinStake(); i < nInSize; ++i)
+        for(uint32_t i = (uint32_t) IsCoinStake(); i < nSize; ++i)
         {
             nResult += GetOutputFor(vin[i], mapInputs).nValue;
         }
@@ -656,13 +692,15 @@ namespace Legacy
 	std::string Transaction::ToStringShort() const
     {
         std::string str;
-        std::string txtype = GetTxTypeString();
+        std::string txtype = TypeString();
 
         str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
         return str;
     }
+
+
     /*  User readable description of the transaction type. */
-    std::string Transaction::GetTxTypeString() const
+    std::string Transaction::TypeString() const
     {
         std::string txtype = "legacy ";
         if(IsCoinBase())
@@ -722,7 +760,7 @@ namespace Legacy
             return debug::error(FUNCTION, "size limits failed");
 
         /* Determine if Transaction is CoinStake or CoinBase. */
-        bool fIsCoinBase = IsCoinBase();
+        bool fIsCoinBase  = IsCoinBase();
         bool fIsCoinStake = IsCoinStake();
 
         /* Check for negative or overflow output values */
@@ -773,27 +811,59 @@ namespace Legacy
 
 
     /* Get the inputs for a transaction. */
-    bool Transaction::FetchInputs(std::map<uint512_t, Transaction>& inputs) const
+    bool Transaction::FetchInputs(std::map<uint512_t, std::pair<uint8_t, DataStream> >& inputs) const
     {
         /* Coinbase has no inputs. */
         if(IsCoinBase())
             return true;
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
-
-        /* Read all of the inputs. */
-        for(uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
+        for(uint32_t i = (uint32_t)IsCoinStake(); i < nSize; ++i)
         {
             /* Skip inputs that are already found. */
             OutPoint prevout = vin[i].prevout;
             if(inputs.count(prevout.hash))
                 continue;
 
+            /* Check for Tritium version transactions.
+             * Becomes ACTIVE 2 hours after time-lock.
+             */
+            if(TAO::Ledger::VersionActive(nTime + 7200, 7))
+            {
+                /* Get the type of transaction. */
+                if(prevout.hash.GetType() == TAO::Ledger::TRITIUM)
+                {
+                    /* Read the previous transaction. */
+                    TAO::Ledger::Transaction txPrev;
+                    if(LLD::Ledger->ReadTx(prevout.hash, txPrev))
+                    {   //we can't rely soley on the type byte, so we must revert to legacy if not found in ledger.}
+
+                        /* Check for existing indexes. */
+                        if(!txPrev.IsConfirmed())
+                            return debug::error(FUNCTION, "tritium tx ", prevout.hash.ToString().substr(0, 20), " not confirmed");
+
+                        /* Check that it is valid. */
+                        if(prevout.n >= txPrev.Size())
+                            return debug::error(FUNCTION, "prevout ", prevout.n, " is out of range ", txPrev.Size());
+
+                        /* Check for Legacy. */
+                        if(txPrev[prevout.n].Primitive() != TAO::Operation::OP::LEGACY)
+                            return debug::error(FUNCTION, "can't spend from UTXO with no OP::LEGACY");
+
+                        /* Add to the inputs. */
+                        inputs.emplace(prevout.hash, std::make_pair(uint8_t(TAO::Ledger::TRITIUM), DataStream(SER_LLD, LLD::DATABASE_VERSION)));
+                        inputs.at(prevout.hash).second << txPrev;
+
+                        continue;
+                    }
+                }
+            }
+
             /* Read the previous transaction. */
             Transaction txPrev;
             if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
-                return debug::error(FUNCTION, "tx ", prevout.hash.ToString().substr(0, 20), " not found");
+                return debug::error(FUNCTION, "legacy tx ", prevout.hash.ToString().substr(0, 20), " not found");
 
             /* Check for existing indexes. */
             if(!LLD::Ledger->HasIndex(prevout.hash))
@@ -804,7 +874,8 @@ namespace Legacy
                 return debug::error(FUNCTION, "prevout ", prevout.n, " is out of range ", txPrev.vout.size());
 
             /* Add to the inputs. */
-            inputs[prevout.hash] = txPrev;
+            inputs.emplace(prevout.hash, std::make_pair(uint8_t(TAO::Ledger::LEGACY), DataStream(SER_LLD, LLD::DATABASE_VERSION)));
+            inputs.at(prevout.hash).second << txPrev;
         }
 
         return true;
@@ -812,7 +883,7 @@ namespace Legacy
 
 
     /* Mark the inputs in a transaction as spent. */
-    bool Transaction::Connect(const std::map<uint512_t, Transaction>& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags) const
+    bool Transaction::Connect(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags) const
     {
         /* Determine if Transaction is CoinStake or CoinBase. */
         bool fIsCoinBase = IsCoinBase();
@@ -905,59 +976,126 @@ namespace Legacy
         uint64_t nValueIn = 0;
 
         /* Get the number of inputs to the transaction. */
-        uint32_t nInSize = static_cast<uint32_t>(vin.size());
-
-        for(uint32_t i = (uint32_t)fIsCoinStake; i < nInSize; ++i)
+        uint32_t nSize = static_cast<uint32_t>(vin.size());
+        for(uint32_t i = (uint32_t)fIsCoinStake; i < nSize; ++i)
         {
             /* Check the inputs map to tx inputs. */
             OutPoint prevout = vin[i].prevout;
             assert(inputs.count(prevout.hash) > 0);
 
-            /* Get the previous transaction. */
-            Transaction txPrev = inputs.at(prevout.hash);
+            /* Get the type of transaction. */
+            uint8_t nType = inputs.at(prevout.hash).first;
 
-            /* Check the inputs range. */
-            if(prevout.n >= txPrev.vout.size())
-                return debug::error(FUNCTION, "prevout is out of range");
-
-            /* Check maturity before spend. */
-            if(txPrev.IsCoinBase() || txPrev.IsCoinStake())
+            /* Switch based on type. */
+            switch(nType)
             {
-                TAO::Ledger::BlockState statePrev;
-                if(!LLD::Ledger->ReadBlock(txPrev.GetHash(), statePrev))
+                /* Handle for legacy transaction. */
+                case TAO::Ledger::LEGACY:
                 {
-                    /* On failure to read, attempt to retrieve the prev state via an index repair */
-                    statePrev = state;
-                    if(!LLD::Ledger->RepairIndex(txPrev.GetHash(), statePrev))
-                        return debug::error(FUNCTION, "failed to read previous tx block");
+                    /* Get the previous transaction. */
+                    Transaction txPrev;
+                    inputs.at(prevout.hash).second.SetPos(0);
+                    inputs.at(prevout.hash).second >> txPrev;
+
+                    /* Check the inputs range. */
+                    if(prevout.n >= txPrev.vout.size())
+                        return debug::error(FUNCTION, "prevout is out of range");
+
+                    /* Check maturity before spend. */
+                    if(txPrev.IsCoinBase() || txPrev.IsCoinStake())
+                    {
+                        /* Read the previous block state. */
+                        TAO::Ledger::BlockState statePrev;
+                        if(!LLD::Ledger->ReadBlock(txPrev.GetHash(), statePrev))
+                            return debug::error(FUNCTION, "failed to read previous tx block");
+
+                        /* Check the maturity. */
+                        if((state.nHeight - statePrev.nHeight) < (config::fTestNet.load() ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
+                            return debug::error(FUNCTION, "tried to spend immature balance ", (state.nHeight - statePrev.nHeight));
+                    }
+
+                    /* Check the transaction timestamp. */
+                    if(txPrev.nTime > nTime)
+                        return debug::error(FUNCTION, "transaction timestamp earlier than input transaction");
+
+                    /* Check for overflow input values. */
+                    nValueIn += txPrev.vout[prevout.n].nValue;
+                    if(!MoneyRange(txPrev.vout[prevout.n].nValue) || !MoneyRange(nValueIn))
+                        return debug::error(FUNCTION, "txin values out of range");
+
+                    /* Check for double spends. */
+                    if(LLD::Legacy->IsSpent(prevout.hash, prevout.n))
+                        return debug::error(FUNCTION, "prev tx ", prevout.hash.SubString(), " is already spent");
+
+                    /* Check the ECDSA signatures. (...When not syncronizing) */
+                    if(!TAO::Ledger::ChainState::Synchronizing() && !VerifySignature(txPrev, *this, i, 0))
+                        return debug::error(FUNCTION, "signature is invalid");
+
+                    /* Commit to disk if flagged. */
+                    if((nFlags == FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
+                        return debug::error(FUNCTION, "failed to write spend");
+
+                    break;
                 }
 
-                /* Check the maturity. */
-                if((state.nHeight - statePrev.nHeight) < (config::fTestNet.load() ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
-                    return debug::error(FUNCTION, "tried to spend immature balance ", (state.nHeight - statePrev.nHeight));
+                /* Handle for tritium transaction. */
+                case TAO::Ledger::TRITIUM:
+                {
+                    /* Check for Tritium version transactions.
+                     * Becomes ACTIVE 2 hours after time-lock.
+                     */
+                    if(!TAO::Ledger::VersionActive(nTime + 7200, 7))
+                        return debug::error(FUNCTION, "tritium transactions not available until version 7");
+
+                    /* Get the previous transaction. */
+                    TAO::Ledger::Transaction txPrev;
+                    inputs.at(prevout.hash).second.SetPos(0);
+                    inputs.at(prevout.hash).second >> txPrev;
+
+                    /* Check the inputs range. */
+                    if(prevout.n >= txPrev.Size())
+                        return debug::error(FUNCTION, "prevout is out of range");
+
+                    /* Check maturity before spend. */
+                    if(txPrev.IsCoinBase() || txPrev.IsCoinStake())
+                        return debug::error(FUNCTION, "cannot spend producer from UTXO");
+
+                    /* Check the transaction timestamp. */
+                    if(txPrev.nTimestamp > nTime)
+                        return debug::error(FUNCTION, "transaction timestamp earlier than input transaction");
+
+                    /* Check for overflow input values. */
+                    const TxOut txout = GetOutputFor(vin[i], inputs);
+                    nValueIn += txout.nValue;
+                    if(!MoneyRange(txout.nValue) || !MoneyRange(nValueIn))
+                        return debug::error(FUNCTION, "txin values out of range");
+
+                    /* Check for double spends. */
+                    if(LLD::Legacy->IsSpent(prevout.hash, prevout.n))
+                        return debug::error(FUNCTION, "prev tx ", prevout.hash.SubString(), " is already spent");
+
+                    /* Check the ECDSA signatures. (...When not syncronizing) */
+                    if(!TAO::Ledger::ChainState::Synchronizing())
+                    {
+                        /* Check that hashes match. */
+                        if(prevout.hash != txPrev.GetHash())
+                            return debug::error(FUNCTION, "prevout.hash mismatch");
+
+                        /* Verify the scripts. */
+                        if(!VerifyScript(vin[i].scriptSig, txout.scriptPubKey, *this, i, 0))
+                            return debug::error(FUNCTION, "invalid script");
+                    }
+
+                    /* Commit to disk if flagged. */
+                    if((nFlags == FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
+                        return debug::error(FUNCTION, "failed to write spend");
+
+                    break;
+                }
+
+                default:
+                    return debug::error(FUNCTION, "unknown transaction type");
             }
-
-            /* Check the transaction timestamp. */
-            if(txPrev.nTime > nTime)
-                return debug::error(FUNCTION, "transaction timestamp earlier than input transaction");
-
-            /* Check for overflow input values. */
-            nValueIn += txPrev.vout[prevout.n].nValue;
-            if(!MoneyRange(txPrev.vout[prevout.n].nValue) || !MoneyRange(nValueIn))
-                return debug::error(FUNCTION, "txin values out of range");
-
-            /* Check for double spends. */
-            if(LLD::Legacy->IsSpent(prevout.hash, prevout.n))
-                return debug::error(FUNCTION, "prev tx ", prevout.hash.SubString(), " is already spent");
-
-            /* Check the ECDSA signatures. (...When not syncronizing) */
-            if(!TAO::Ledger::ChainState::Synchronizing() && !VerifySignature(txPrev, *this, i, 0))
-                return debug::error(FUNCTION, "signature is invalid");
-
-            /* Commit to disk if flagged. */
-            if((nFlags == FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
-                return debug::error(FUNCTION, "failed to write spend");
-
         }
 
         /* Check the coinstake transaction. */
@@ -974,7 +1112,7 @@ namespace Legacy
                 return debug::error(FUNCTION, GetHash().SubString(), " stake reward ", vout[0].nValue / 1000, " mismatch ", (nStakeReward + nValueIn) / 1000);
         }
         else if(nValueIn < GetValueOut())
-            return debug::error(FUNCTION, GetHash().SubString(), "value in < value out");
+            return debug::error(FUNCTION, GetHash().SubString(), " value in ", nValueIn, " < value out ", GetValueOut());
 
         /* Calculate the mint if connected with a block. */
         if(nFlags == FLAGS::BLOCK)
@@ -990,10 +1128,10 @@ namespace Legacy
         if(!IsCoinBase())
         {
             /* Get the number of inputs to the transaction. */
-            uint32_t nInSize = static_cast<uint32_t>(vin.size());
+            uint32_t nSize = static_cast<uint32_t>(vin.size());
 
             /* Read all of the inputs. */
-            for(uint32_t i = (uint32_t)IsCoinStake(); i < nInSize; ++i)
+            for(uint32_t i = (uint32_t)IsCoinStake(); i < nSize; ++i)
             {
                 /* Erase the spends. */
                 if(!LLD::Legacy->EraseSpend(vin[i].prevout.hash, vin[i].prevout.n))
@@ -1150,8 +1288,7 @@ namespace Legacy
             "score=", nScore, ", ",
             "prev=", nScorePrev, ", ",
             "timespan=", nTimespan, ", ",
-            "change=", (int32_t)(nScore - nScorePrev), ")"
-      );
+            "change=", (int32_t)(nScore - nScorePrev), ")" );
 
         /* Check that published score in this block is equivilent to calculated score. */
         if(nTrustScore != nScore)
@@ -1162,19 +1299,59 @@ namespace Legacy
 
 
     /* Get the corresponding output from input. */
-    const TxOut& Transaction::GetOutputFor(const TxIn& input, const std::map<uint512_t, Transaction>& inputs) const
+    const TxOut Transaction::GetOutputFor(const TxIn& input, const std::map<uint512_t, std::pair<uint8_t, DataStream> >& inputs) const
     {
+        /* Find the input in the map. */
         auto mi = inputs.find(input.prevout.hash);
-
         if(mi == inputs.end())
-            throw std::runtime_error("Legacy::Transaction::GetOutputFor() : prevout.hash not found");
+            throw debug::exception(FUNCTION, "prevout.hash not found");
 
-        const Transaction& txPrev = (*mi).second;
+        /* Get the type. */
+        uint8_t nType = (*mi).second.first;
 
-        if(input.prevout.n >= txPrev.vout.size())
-            throw std::runtime_error("Legacy::Transaction::GetOutputFor() : prevout.n out of range");
+        /* Switch based on type. */
+        switch(nType)
+        {
+            /* Handle for legacy transaction. */
+            case TAO::Ledger::LEGACY:
+            {
+                /* Read the previous transaction. */
+                Transaction txPrev;
+                (*mi).second.second.SetPos(0);
+                (*mi).second.second >> txPrev;
 
-        return txPrev.vout[input.prevout.n];
+                /* Check ranges. */
+                if(input.prevout.n >= txPrev.vout.size())
+                    throw debug::exception(FUNCTION, "prevout.n out of range");
 
+                return txPrev.vout[input.prevout.n];
+            }
+
+            /* Handle for tritium transaction. */
+            case TAO::Ledger::TRITIUM:
+            {
+                /* Get the tritium transaction. */
+                TAO::Ledger::Transaction txPrev;
+                (*mi).second.second.SetPos(0);
+                (*mi).second.second >> txPrev;
+
+                /* Check ranges. */
+                if(input.prevout.n >= txPrev.Size())
+                    throw debug::exception(FUNCTION, "prevout.n out of range");
+
+                /* Get legacy converted output.*/
+                TxOut txout;
+                if(!txPrev[input.prevout.n].Legacy(txout))
+                    throw debug::exception(FUNCTION, "invalid tritium operation");
+
+                return txout;
+            }
+
+            /* Fail for default. */
+            default:
+                throw debug::exception(FUNCTION, "unkown transaction type");
+        }
+
+        return TxOut();
     }
 }

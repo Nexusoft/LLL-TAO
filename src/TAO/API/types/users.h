@@ -472,10 +472,11 @@ namespace TAO
                *  Gets the currently outstanding transactions that have not been matched with a credit or claim.
                *
                *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-               *  @param[out] vTransactions The array of outstanding contracts.
+               *  @param[out] vContracts The array of outstanding contracts.
                *
                **/
-              bool GetOutstanding(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions);
+              bool GetOutstanding(const uint256_t& hashGenesis,
+                    std::vector<std::pair<uint32_t, TAO::Operation::Contract>> &vContracts);
 
 
           private:
@@ -487,10 +488,11 @@ namespace TAO
                *
                *  @param[in] hashGenesis The genesis hash for the sig chain owner.
                *  @param[in] hashLast The hash of the last transaction to iterate.
-               *  @param[out] vTransactions The array of outstanding transactions.
+               *  @param[out] vContracts The array of outstanding contracts.
                *
                **/
-              bool get_events(const uint256_t& hashGenesis, uint512_t hashLast, std::vector<TAO::Ledger::Transaction> &vTransactions);
+              bool get_events(const uint256_t& hashGenesis,
+                    uint512_t hashLast, std::vector<std::pair<uint32_t, TAO::Operation::Contract>> &vContracts);
 
 
               /** get_coinbases
@@ -499,10 +501,11 @@ namespace TAO
                *
                *  @param[in] hashGenesis The genesis hash for the sig chain owner.
                *  @param[in] hashLast The hash of the last transaction to iterate.
-               *  @param[out] vTransactions The array of outstanding coinbase transactions.
+               *  @param[out] vContracts The array of outstanding contracts.
                *
                **/
-              bool get_coinbases(const uint256_t& hashGenesis, uint512_t hashLast, std::vector<TAO::Ledger::Transaction> &vTransactions);
+              bool get_coinbases(const uint256_t& hashGenesis,
+                    uint512_t hashLast, std::vector<std::pair<uint32_t, TAO::Operation::Contract>> &vContracts);
 
 
         };

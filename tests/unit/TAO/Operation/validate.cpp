@@ -21,8 +21,11 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/create.h>
+#include <TAO/Register/include/constants.h>
+#include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/genesis.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -36,13 +39,13 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
     {
 
         //create object
-        uint256_t hashToken     = LLC::GetRand256();
-        uint256_t hashAccount   = LLC::GetRand256();
-        uint256_t hashGenesis   = LLC::GetRand256();
+        uint256_t hashToken     = TAO::Register::Address(TAO::Register::Address::TOKEN);
+        uint256_t hashAccount   = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+        uint256_t hashGenesis   = TAO::Ledger::Genesis(LLC::GetRand256(), true);
 
-        uint256_t hashToken2    = LLC::GetRand256();
-        uint256_t hashAccount2  = LLC::GetRand256();
-        uint256_t hashGenesis2  = LLC::GetRand256();
+        uint256_t hashToken2    = TAO::Register::Address(TAO::Register::Address::TOKEN);
+        uint256_t hashAccount2  = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+        uint256_t hashGenesis2  = TAO::Ledger::Genesis(LLC::GetRand256(), true);
 
         //make first sigchain accounts and tokens.
         {
@@ -151,7 +154,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken << ~uint256_t(0) << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << TAO::Register::WILDCARD_ADDRESS << uint64_t(500);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -181,7 +184,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken << ~uint256_t(0) << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << TAO::Register::WILDCARD_ADDRESS << uint64_t(500);
             tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashGenesis;
 
             //generate the prestates and poststates
@@ -301,7 +304,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::DEBIT) << hashToken << ~uint256_t(0) << uint64_t(500);
+            tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::DEBIT) << hashToken << TAO::Register::WILDCARD_ADDRESS << uint64_t(500);
 
 
             //build condition requirement
@@ -581,10 +584,11 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
 
         //create an asset object register.
-        uint256_t hashAsset = LLC::GetRand256();
+        uint256_t hashAsset = TAO::Register::Address(TAO::Register::Address::OBJECT);
         {
             Object object;
             object << std::string("id")              << uint8_t(TYPES::UINT8_T)    << uint8_t(55)
+                   << std::string("value")           << uint8_t(TYPES::UINT64_T)   << uint64_t(200)
                    << std::string("description")     << uint8_t(TYPES::STRING)     << std::string("this is a string to test long forms");
 
            {
@@ -593,9 +597,6 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
                tx.hashGenesis = hashGenesis;
                tx.nSequence   = 0;
                tx.nTimestamp  = runtime::timestamp();
-
-               //create object
-               Object token = CreateToken(hashToken, 1000, 100);
 
                //payload
                tx[0] << uint8_t(OP::CREATE) << hashAsset << uint8_t(REGISTER::OBJECT) << object.GetState();
@@ -623,7 +624,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::TRANSFER) << hashAsset << ~uint256_t(0) << uint8_t(TRANSFER::CLAIM);
+            tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::TRANSFER) << hashAsset << TAO::Register::WILDCARD_ADDRESS << uint8_t(TRANSFER::CLAIM);
 
 
             //build condition requirement
@@ -632,7 +633,11 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
             //conditions
             tx[0] <= uint8_t(OP::GROUP);
-            tx[0] <= uint8_t(OP::CALLER::OPERATIONS) <= uint8_t(OP::CONTAINS) <= uint8_t(OP::TYPES::BYTES) <= compare.Bytes();
+            tx[0] <= uint8_t(OP::CALLER::OPERATIONS) <= uint8_t(OP::CONTAINS);
+            tx[0] <= uint8_t(OP::TYPES::UINT8_T) <= uint8_t(OP::DEBIT);
+            tx[0] <= uint8_t(OP::CAT) <= uint8_t(OP::TYPES::UINT256_T) <= uint256_t(0);
+            tx[0] <= uint8_t(OP::CAT) <= uint8_t(OP::TYPES::UINT256_T) <= hashAccount;
+            tx[0] <= uint8_t(OP::CAT) <= uint8_t(OP::TYPES::UINT256_T) <= hashAsset <= uint8_t(OP::REGISTER::VALUE) <= std::string("value");
             tx[0] <= uint8_t(OP::AND);
             tx[0] <= uint8_t(OP::CALLER::PRESTATE::VALUE) <= std::string("token");
             tx[0] <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashToken2;
@@ -718,7 +723,6 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
-
         }
 
 

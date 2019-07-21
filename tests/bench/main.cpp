@@ -37,10 +37,16 @@ TEST_CASE("Arguments Tests", "[args]")
         REQUIRE_FALSE(filesystem::exists(strPath));
     }
 
-    /* Create the database instances. */
-    LLD::Initialize();
+    //create LLD instances
+    LLD::Contract = new LLD::ContractDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Register = new LLD::RegisterDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Local    = new LLD::LocalDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Ledger   = new LLD::LedgerDB(
+        LLD::FLAGS::CREATE | LLD::FLAGS::WRITE,
+        256 * 256 * 16,
+        4 * 1024 * 1024);
 
-    /* Shutdown the database instances. */
-    LLD::Shutdown();
+    LLD::Trust    = new LLD::TrustDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
+    LLD::Legacy   = new LLD::LegacyDB(LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
 
 }

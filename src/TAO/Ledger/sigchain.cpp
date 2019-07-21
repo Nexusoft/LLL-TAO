@@ -17,6 +17,9 @@ ________________________________________________________________________________
 #include <LLC/hash/argon2.h>
 
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/genesis.h>
+
+#include <TAO/Ledger/include/enum.h>
 
 #include <Util/include/debug.h>
 
@@ -147,6 +150,7 @@ namespace TAO
             /* Set the bytes for the key. */
             uint256_t hashKey;
             hashKey.SetBytes(vHash);
+            hashKey.SetType(config::fTestNet.load() ? 0xa2 : 0xa1);
 
             return hashKey;
         }

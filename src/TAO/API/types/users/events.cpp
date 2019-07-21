@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/types/users.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -51,6 +52,73 @@ namespace TAO
         /*  Background thread to handle/suppress sigchain notifications. */
         void Users::EventsThread()
         {
+            /* Auto-login feature if configured. */
+            try
+            {
+                if(config::GetBoolArg("-autologin") && !config::fMultiuser.load())
+                {
+                    /* Check for username and password. */
+                    if(config::GetArg("-username", "") != ""
+                    && config::GetArg("-password", "") != ""
+                    && config::GetArg("-pin", "")      != "")
+                    {
+                        /* Create the sigchain. */
+                        memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
+                            new TAO::Ledger::SignatureChain(config::GetArg("-username", "").c_str(), config::GetArg("-password", "").c_str());
+
+                        /* Get the genesis ID. */
+                        uint256_t hashGenesis = user->Genesis();
+
+                        /* Check for duplicates in ledger db. */
+                        TAO::Ledger::Transaction txPrev;
+
+                        /* Get the last transaction. */
+                        uint512_t hashLast;
+                        if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            user.free();
+                            throw APIException(-138, "No previous transaction found");
+                        }
+
+                        /* Get previous transaction */
+                        if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            user.free();
+                            throw APIException(-138, "No previous transaction found");
+                        }
+
+                        /* Genesis Transaction. */
+                        TAO::Ledger::Transaction tx;
+                        tx.NextHash(user->Generate(txPrev.nSequence + 1, config::GetArg("-pin", "").c_str(), false), txPrev.nNextType);
+
+                        /* Check for consistency. */
+                        if(txPrev.hashNext != tx.hashNext)
+                        {
+                            user.free();
+                            throw APIException(-139, "Invalid credentials");
+                        }
+
+                        /* Setup the account. */
+                        {
+                            LOCK(MUTEX);
+                            mapSessions.emplace(0, std::move(user));
+                        }
+
+                        /* Extract the PIN. */
+                        if(!pActivePIN.IsNull())
+                            pActivePIN.free();
+
+                        /* Set account to unlocked. */
+                        pActivePIN = new TAO::Ledger::PinUnlock(
+                            config::GetArg("-pin", "").c_str(), TAO::Ledger::PinUnlock::UnlockActions::ALL);
+                    }
+                }
+            }
+            catch(const APIException& e)
+            {
+                debug::error(FUNCTION, e.what());
+            }
+
             /* Loop the events processing thread until shutdown. */
             while(!fShutdown.load())
             {
@@ -64,7 +132,6 @@ namespace TAO
 
                 try
                 {
-
                     /* Ensure that the user is logged, in, wallet unlocked, and able to transact. */
                     if(!LoggedIn() || Locked() || !CanTransact())
                         continue;
@@ -97,8 +164,8 @@ namespace TAO
                         throw APIException(-63, "Could not retrieve default NXS account to credit");
 
                     /* Get the list of outstanding contracts. */
-                    std::vector<TAO::Ledger::Transaction> vTransactions;
-                    GetOutstanding(hashGenesis, vTransactions);
+                    std::vector<std::pair<uint32_t, TAO::Operation::Contract>> vContracts;
+                    GetOutstanding(hashGenesis, vContracts);
 
                     /* The transaction hash. */
                     uint512_t hashTx;
@@ -117,127 +184,111 @@ namespace TAO
                         throw APIException(-17, "Failed to create transaction");
 
                     /* Loop through each contract in the notification queue. */
-                    for(const auto& txin : vTransactions)
+                    for(const auto& contract : vContracts)
                     {
                         /* Set the transaction hash. */
-                        hashTx = txin.GetHash();
+                        hashTx = contract.second.Hash();
 
                         /* Get the maturity for this transaction. */
                         bool fMature = LLD::Ledger->ReadMature(hashTx);
 
-                        /* Track the number of contracts built. */
-                        uint32_t nContracts = txin.Size();
+                        /* Reset the contract operation stream. */
+                        contract.second.Reset();
 
-                        for(uint32_t nIn = 0; nIn < nContracts; ++nIn)
+                        /* Get the opcode. */
+                        uint8_t OPERATION;
+                        contract.second >> OPERATION;
+
+                        /* Check the opcodes for debit, coinbase or transfers. */
+                        switch (OPERATION)
                         {
-                            /* Reset the contract operation stream. */
-                            txin[nIn].Reset();
-
-                            /* Get the opcode. */
-                            uint8_t OPERATION;
-                            txin[nIn] >> OPERATION;
-
-                            /* Check the opcodes for debit, coinbase or transfers. */
-                            switch (OPERATION)
+                            /* Check for Debits. */
+                            case Operation::OP::DEBIT:
                             {
-                                /* Check for Debits. */
-                                case Operation::OP::DEBIT:
-                                {
-                                    /* Set to and from hashes and amount. */
-                                    txin[nIn] >> hashFrom;
-                                    txin[nIn] >> hashTo;
-                                    txin[nIn] >> nAmount;
+                                /* Set to and from hashes and amount. */
+                                contract.second >> hashFrom;
+                                contract.second >> hashTo;
+                                contract.second >> nAmount;
 
-                                    /* Submit the payload object. */
-                                    txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
-                                    txout[nOut] << hashTx << nIn;
-                                    txout[nOut] << hashTo << hashFrom;
-                                    txout[nOut] << nAmount;
+                                /* Submit the payload object. */
+                                txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
+                                txout[nOut] << hashTx << contract.first;
+                                txout[nOut] << hashTo << hashFrom;
+                                txout[nOut] << nAmount;
 
-                                    TAO::Register::Object object;
-                                    if(!LLD::Register->ReadState(hashTo, object))
-                                        throw APIException(-104, "Object not found ");
+                                /* Increment the contract ID. */
+                                ++nOut;
 
-                                    /* Increment the contract ID. */
-                                    ++nOut;
+                                /* Log debug message. */
+                                debug::log(0, FUNCTION, "Matching DEBIT with CREDIT");
 
-                                    /* Log debug message. */
-                                    debug::log(0, FUNCTION, "Matching DEBIT with CREDIT");
-
-                                    break;
-                                }
-
-                                /* Check for Coinbases. */
-                                case Operation::OP::COINBASE:
-                                {
-                                    /* Check that the coinbase is mature and ready to be credited. */
-                                    if(!fMature)
-                                    {
-                                        debug::error(FUNCTION, "Immature coinbase.");
-                                        continue;
-                                    }
-
-                                    /* Set the genesis hash and the amount. */
-                                    txin[nIn] >> hashFrom;
-
-                                    /* Check that the coinbase was mined by the current active user. */
-                                    if(hashFrom != hashGenesis)
-                                        throw APIException(-62, "Coinbase transaction mined by different user.");
-
-                                    /* Get the amount from the coinbase transaction. */
-                                    txin[nIn] >> nAmount;
-
-                                    /* Get the address that this name register is pointing to. */
-                                    hashTo = account.get<uint256_t>("address");
-
-                                    /* Submit the payload object. */
-                                    txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
-                                    txout[nOut] << hashTx << nIn;
-                                    txout[nOut] << hashTo << hashFrom;
-                                    txout[nOut] << nAmount;
-
-                                    /* Increment the contract ID. */
-                                    ++nOut;
-
-                                    /* Log debug message. */
-                                    debug::log(0, FUNCTION, "Matching COINBASE with CREDIT");
-
-                                    break;
-                                }
-
-                                /* Check for Transfers. */
-                                case Operation::OP::TRANSFER:
-                                {
-                                    /* Get the address of the asset being transfered from the transaction. */
-                                    txin[nIn] >> hashFrom;
-
-                                    /* Get the genesis hash (recipient) of the transfer. */
-                                    txin[nIn] >> hashTo;
-
-                                    /* Read the force transfer flag */
-                                    uint8_t nType = 0;
-                                    txin[nIn] >> nType;
-
-                                    /* Ensure this wasn't a forced transfer (which requires no Claim) */
-                                    if(nType == TAO::Operation::TRANSFER::FORCE)
-                                        continue;
-
-                                    /* Submit the payload object. */
-                                    txout[nOut] << uint8_t(TAO::Operation::OP::CLAIM);
-                                    txout[nOut] << hashTx << nIn;
-                                    txout[nOut] << hashFrom;
-
-                                    /* Increment the contract ID. */
-                                    ++nOut;
-
-                                    /* Log debug message. */
-                                    debug::log(0, FUNCTION, "Matching TRANSFER with CLAIM");
-
-                                    break;
-                                }
-                                default:
-                                    break;
+                                break;
                             }
+
+                            /* Check for Coinbases. */
+                            case Operation::OP::COINBASE:
+                            {
+                                /* Check that the coinbase is mature and ready to be credited. */
+                                if(!fMature)
+                                {
+                                    debug::error(FUNCTION, "Immature coinbase.");
+                                    continue;
+                                }
+
+                                /* Set the genesis hash and the amount. */
+                                contract.second >> hashFrom;
+                                contract.second >> nAmount;
+
+                                /* Get the address that this name register is pointing to. */
+                                hashTo = account.get<uint256_t>("address");
+
+                                /* Submit the payload object. */
+                                txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
+                                txout[nOut] << hashTx << contract.first;
+                                txout[nOut] << hashTo << hashFrom;
+                                txout[nOut] << nAmount;
+
+                                /* Increment the contract ID. */
+                                ++nOut;
+
+                                /* Log debug message. */
+                                debug::log(0, FUNCTION, "Matching COINBASE with CREDIT");
+
+                                break;
+                            }
+
+                            /* Check for Transfers. */
+                            case Operation::OP::TRANSFER:
+                            {
+                                /* Get the address of the asset being transfered from the transaction. */
+                                contract.second >> hashFrom;
+
+                                /* Get the genesis hash (recipient) of the transfer. */
+                                contract.second >> hashTo;
+
+                                /* Read the force transfer flag */
+                                uint8_t nType = 0;
+                                contract.second >> nType;
+
+                                /* Ensure this wasn't a forced transfer (which requires no Claim) */
+                                if(nType == TAO::Operation::TRANSFER::FORCE)
+                                    continue;
+
+                                /* Submit the payload object. */
+                                txout[nOut] << uint8_t(TAO::Operation::OP::CLAIM);
+                                txout[nOut] << hashTx << contract.first;
+                                txout[nOut] << hashFrom;
+
+                                /* Increment the contract ID. */
+                                ++nOut;
+
+                                /* Log debug message. */
+                                debug::log(0, FUNCTION, "Matching TRANSFER with CLAIM");
+
+                                break;
+                            }
+                            default:
+                                break;
                         }
                     }
 
@@ -246,7 +297,7 @@ namespace TAO
                     {
                         /* Execute the operations layer. */
                         if(!txout.Build())
-                            throw APIException(-30, "Operations failed to execute");
+                            throw APIException(-30, "Failed to build register pre-states");
 
                         /* Sign the transaction. */
                         if(!txout.Sign(users->GetKey(txout.nSequence, strPIN, users->GetSession(params))))

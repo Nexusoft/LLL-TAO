@@ -15,6 +15,11 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_REGISTER_INCLUDE_RESERVED_H
 #define NEXUS_TAO_REGISTER_INCLUDE_RESERVED_H
 
+#include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/address.h>
+
+#include <TAO/Ledger/include/enum.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -67,6 +72,25 @@ namespace TAO
         inline bool Reserved(const std::string& strValue)
         {
             return std::find(RESERVED.begin(), RESERVED.end(), strValue) != RESERVED.end();
+        }
+
+
+        /** Reserved
+         *
+         *  System reserved values for system registers.
+         *
+         *  @param[in] hashAddress The register address to check.
+         *
+         *  @return True if value is system reserved value.
+         *
+         **/
+        inline bool Reserved(const Address& hashAddress)
+        {
+            /* Check for valid address values. */
+            if(!hashAddress.IsValid())
+                return true;
+
+            return hashAddress >= uint8_t(SYSTEM::RESERVED) && hashAddress <= uint8_t(SYSTEM::LIMIT);
         }
 
 

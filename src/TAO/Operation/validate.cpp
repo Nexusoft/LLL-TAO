@@ -13,11 +13,14 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Operation/include/validate.h>
+#include <TAO/Operation/include/constants.h>
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/validate.h>
 
 #include <TAO/Operation/types/condition.h>
 #include <TAO/Operation/types/contract.h>
+
+#include <TAO/Register/include/constants.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -84,7 +87,7 @@ namespace TAO
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate on forced transfer");
 
                     /* Check that transfer is wildcard. */
-                    if(hashTransfer != ~uint256_t(0))
+                    if(hashTransfer != TAO::Register::WILDCARD_ADDRESS)
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
 
                     /* Check for condition. */
@@ -110,7 +113,7 @@ namespace TAO
                     condition >> nAmount;
 
                     /* Check that transfer is wildcard. */
-                    if(hashTo != ~uint256_t(0))
+                    if(hashTo != TAO::Register::WILDCARD_ADDRESS)
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
 
                     /* Check for condition. */
@@ -129,6 +132,10 @@ namespace TAO
             Condition conditions = Condition(condition, contract);
             if(!conditions.Execute())
                 return debug::error(FUNCTION, "OP::VALIDATE: conditions not satisfied");
+
+            /* Assess the fees for the computation limits. */
+            if(conditions.nCost > CONDITION_LIMIT_FREE)
+                contract.AddCost(conditions.nCost - CONDITION_LIMIT_FREE);
 
             return true;
         }

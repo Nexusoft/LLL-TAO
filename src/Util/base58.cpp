@@ -231,7 +231,7 @@ namespace encoding
     /* Set arbitrary data from a std::string */
     std::string CBase58Data::ToString() const
     {
-        std::vector<unsigned char> vch(1, nVersion);
+        std::vector<uint8_t> vch(1, nVersion);
         vch.insert(vch.end(), vchData.begin(), vchData.end());
         return EncodeBase58Check(vch);
     }

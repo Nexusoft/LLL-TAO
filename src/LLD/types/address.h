@@ -35,7 +35,8 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        AddressDB(uint16_t port, uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE);
+        AddressDB(const uint16_t nPort, const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
+            const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
 
 
         /** Default Destructor **/

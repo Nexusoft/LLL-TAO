@@ -173,10 +173,10 @@ namespace LLC
 	 *
 	 *  @param[in] str The string to hash
 	 *
-	 *  @return uint256_t skein/keccak hash of the string 
+	 *  @return uint256_t skein/keccak hash of the string
 	 *
 	 **/
-	
+
 	inline uint256_t SK256(const std::string& str)
 	{
 		return SK256(str.begin(), str.end());

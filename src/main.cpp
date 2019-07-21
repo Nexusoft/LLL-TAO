@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 
 #include <LLP/include/global.h>
+#include <LLP/include/port.h>
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/legacy_miner.h>
@@ -125,7 +126,7 @@ int main(int argc, char** argv)
     if(!config::GetBoolArg(std::string("-beta")))
     {
         /* Get the port for Tritium Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (8888 + (config::GetArg("-testnet", 0) - 1)) : 9888));
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
 
         /* Initialize the Tritium Server. */
         LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort);
@@ -133,15 +134,17 @@ int main(int argc, char** argv)
     else
     {
         /* Get the port for Legacy Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (8323 + (config::GetArg("-testnet", 0) - 1)) : 9323));
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : LEGACY_MAINNET_PORT));
 
         /* Initialize the Legacy Server. */
         LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(nPort);
     }
 
+    nPort = static_cast<uint16_t>(config::fTestNet.load() ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT);
+
     /** Startup the time server. **/
     LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
-        9324,
+        nPort,
         10,
         30,
         false,
@@ -200,7 +203,7 @@ int main(int argc, char** argv)
         TAO::API::Initialize();
 
         /* Get the port for the Core API Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), 8080));
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
 
         /* Create the Core API Server. */
         LLP::API_SERVER = new LLP::Server<LLP::APINode>(
@@ -211,13 +214,13 @@ int main(int argc, char** argv)
             0,
             0,
             60,
-            config::GetBoolArg("-listen", true),
+            true,
             false,
             false);
 
 
         /* Get the port for the Core API Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet? 8336 : 9336));
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
 
         /* Set up RPC server */
         LLP::RPC_SERVER = new LLP::Server<LLP::RPCNode>(

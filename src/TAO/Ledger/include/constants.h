@@ -143,6 +143,10 @@ namespace TAO
         const uint64_t NXS_COIN = 1000000;
 
 
+        /** Integral value for one NXS coin (1 * 10 ^ NXS_DIGITS). **/
+        const uint64_t NXS_CENT = 10000;
+
+
         /** The stake threshold weight multiplier. **/
         const uint64_t MAX_STAKE_WEIGHT = 1000 * NXS_COIN;
     }

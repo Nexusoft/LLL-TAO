@@ -11,7 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
 #include <LLD/include/global.h>
@@ -22,6 +21,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -153,7 +153,7 @@ namespace TAO
                 contract >> nAmount;
 
                 /* Check for wildcard. */
-                if(hashTo == ~uint256_t(0))
+                if(hashTo == TAO::Register::WILDCARD_ADDRESS)
                 {
                     /* if we passed these checks then insert the credit contract into the tx */
                     tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccountTo << hashFrom << nAmount;

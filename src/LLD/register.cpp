@@ -16,9 +16,13 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /* The Database Constructor. To determine file location and the Bytes per Record. */
-    RegisterDB::RegisterDB(uint8_t nFlags)
-    : SectorDatabase("registers", nFlags)
+    /** The Database Constructor. To determine file location and the Bytes per Record. **/
+    RegisterDB::RegisterDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
+    : SectorDatabase("registers"
+    , nFlagsIn
+    , nBucketsIn
+    , nCacheIn)
+
     , MEMORY_MUTEX()
     , mapStates()
     , mapIdentifiers()

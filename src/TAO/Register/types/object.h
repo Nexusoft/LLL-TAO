@@ -70,7 +70,7 @@ namespace TAO
                 //checksum hash not serialized on gethash
                 if(!(nSerType & SER_GETHASH))
                     READWRITE(hashChecksum);
-          )
+            )
 
 
             /** Standard
@@ -87,6 +87,14 @@ namespace TAO
              *
              **/
             uint8_t Base() const;
+
+
+            /** Cost
+             *
+             *  Get the cost to create this object register.
+             *
+             **/
+            uint64_t Cost() const;
 
 
             /** Parse

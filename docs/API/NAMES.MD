@@ -33,7 +33,9 @@ The following methods are currently supported by this API
 
 # `create/namespace`
 
-This will create a new namespace.  The API supports an alternative endpoint that can include the new namespace name in the URL.  For example `/names/create/namespace/mynamespace` will resolve to `names/create/namespace?name=mynamespace`.   
+This will create a new namespace.  The API supports an alternative endpoint that can include the new namespace name in the URL.  For example `/names/create/namespace/mynamespace` will resolve to `names/create/namespace?name=mynamespace`.  
+
+**NOTE** : Namespace names must not contain either colon `:` or full stop `.` characters
 
 
 ### Endpoint:
@@ -250,6 +252,8 @@ The return value is a JSON array of objects for each entry in the namespaces his
 # `create/name`
 
 This will create a new name.  The API supports an alternative endpoint that can include the new name in the URL.  For example `/names/create/name/myname` will resolve to `names/create/name?name=myname`.   
+
+**NOTE** : Names must not contain either colon `:` characters.
 
 
 ### Endpoint:

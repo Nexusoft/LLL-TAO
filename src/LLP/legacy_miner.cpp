@@ -91,7 +91,7 @@ namespace LLP
            and is less than 1024 bits */
         while(true)
         {
-            if(!Legacy::CreateLegacyBlock(*pMiningKey, CoinbaseTx, nChannel.load(), ++nBlockIterator, *pBlock))
+            if(!Legacy::CreateBlock(*pMiningKey, CoinbaseTx, nChannel.load(), ++nBlockIterator, *pBlock))
                 debug::error(FUNCTION, "Failed to create a new Legacy Block.");
 
             /* Get the proof hash. */

@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy.h>
 
 #include <LLC/types/bignum.h>
-#include <LLC/include/random.h>
+#include <TAO/Register/types/address.h>
 #include <LLC/types/uint1024.h>
 
 #include <LLD/include/global.h>
@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -125,7 +126,7 @@ namespace TAO
                     continue;
 
                 /* Don't add transactions that are coinbase or coinstake. */
-                if(tx.IsCoinbase() || tx.IsCoinstake())
+                if(tx.IsCoinBase() || tx.IsCoinStake())
                     continue;
 
                 /* Check for timestamp violations. */
@@ -300,6 +301,40 @@ namespace TAO
 
                     /* The extra nonce to coinbase. */
                     block.producer[0] << nExtraNonce;
+
+                    /* Get the last state block for channel. */
+                    TAO::Ledger::BlockState statePrev = stateBest;
+                    if(GetLastState(statePrev, nChannel))
+                    {
+                        /* Check for interval. */
+                        if(statePrev.nChannelHeight %
+                            (config::fTestNet.load() ? AMBASSADOR_PAYOUT_THRESHOLD_TESTNET : AMBASSADOR_PAYOUT_THRESHOLD) == 0)
+                        {
+                            debug::log(0, "GENERATING AMBASSADOR");
+
+                            /* Get the total in reserves. */
+                            int64_t nBalance = statePrev.nReleasedReserve[1] - (33 * NXS_COIN); //leave 33 coins in the reserve
+                            if(nBalance > 0)
+                            {
+                                /* Loop through the embassy sigchains. */
+                                for(auto it =  (config::fTestNet.load() ? AMBASSADOR_TESTNET.begin() : AMBASSADOR.begin());
+                                         it != (config::fTestNet.load() ? AMBASSADOR_TESTNET.end()   : AMBASSADOR.end()); ++it)
+                                {
+                                    /* Make sure to push to end. */
+                                    uint32_t nContract = block.producer.Size();
+
+                                    /* Create coinbase transaction. */
+                                    block.producer[nContract] << uint8_t(TAO::Operation::OP::COINBASE);
+                                    block.producer[nContract] << it->first;
+
+                                    /* The total to be credited. */
+                                    uint64_t nCredit = (nBalance * it->second.second) / 1000;
+                                    block.producer[nContract] << nCredit;
+                                    block.producer[nContract] << uint64_t(0);
+                                }
+                            }
+                        }
+                    }
                 }
                 else if(nChannel == 3)
                 {
@@ -363,12 +398,16 @@ namespace TAO
         /*  Creates the genesis block. */
         bool CreateGenesis()
         {
-            uint1024_t genesisHash = TAO::Ledger::ChainState::Genesis();
+            /* Get the genesis hash. */
+            uint1024_t hashGenesis = TAO::Ledger::ChainState::Genesis();
 
-            if(!LLD::Ledger->ReadBlock(genesisHash, ChainState::stateGenesis))
+            /* Check for genesis from disk. */
+            if(!LLD::Ledger->ReadBlock(hashGenesis, ChainState::stateGenesis))
             {
                 /* Build the first transaction for genesis. */
                 const char* pszTimestamp = "Silver Doctors [2-19-2014] BANKER CLEAN-UP: WE ARE AT THE PRECIPICE OF SOMETHING BIG";
+
+                /* Main coinbase genesis. */
                 Legacy::Transaction genesis;
                 genesis.nTime = 1409456199;
                 genesis.vin.resize(1);
@@ -402,28 +441,24 @@ namespace TAO
                 /* Check that the genesis hash is correct. */
                 LLC::CBigNum target;
                 target.SetCompact(block.nBits);
-                if(block.GetHash() != genesisHash)
+                if(block.GetHash() != hashGenesis)
                     return debug::error(FUNCTION, "genesis hash does not match");
-
-                /* Check that the block passes basic validation. */
-                if(!block.Check())
-                    return debug::error(FUNCTION, "genesis block check failed");
 
                 /* Set the proper chain state variables. */
                 ChainState::stateGenesis = BlockState(block);
                 ChainState::stateGenesis.nChannelHeight = 1;
-                ChainState::stateGenesis.hashCheckpoint = genesisHash;
+                ChainState::stateGenesis.hashCheckpoint = hashGenesis;
 
                 /* Set the best block. */
                 ChainState::stateBest = ChainState::stateGenesis;
 
                 /* Write the block to disk. */
-                if(!LLD::Ledger->WriteBlock(genesisHash, ChainState::stateGenesis))
+                if(!LLD::Ledger->WriteBlock(hashGenesis, ChainState::stateGenesis))
                     return debug::error(FUNCTION, "genesis didn't commit to disk");
 
                 /* Write the best chain to the database. */
-                ChainState::hashBestChain = genesisHash;
-                if(!LLD::Ledger->WriteBestChain(genesisHash))
+                ChainState::hashBestChain = hashGenesis;
+                if(!LLD::Ledger->WriteBestChain(hashGenesis))
                     return debug::error(FUNCTION, "couldn't write best chain.");
             }
 

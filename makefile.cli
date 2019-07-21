@@ -190,9 +190,11 @@ HEADERS= $(wildcard *.h)
 #Run Unit Tests
 ifdef UNIT_TESTS
 	OBJS = build/Tests_main.o \
+		   build/Tests_Legacy_utxo.o \
 		   build/Tests_LLC_aes.o \
 		   build/Tests_TAO_API_assets.o \
 		   build/Tests_TAO_API_finance.o \
+		   build/Tests_TAO_API_names.o \
 		   build/Tests_TAO_API_supply.o \
 		   build/Tests_TAO_API_tokens.o \
 		   build/Tests_TAO_API_users.o \
@@ -201,7 +203,6 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Ledger_mempool.o \
 		   build/Tests_TAO_Register_objects.o \
 		   build/Tests_TAO_Register_rollback.o \
-		   build/Tests_TAO_Register_system.o \
 		   build/Tests_TAO_Register_testvm.o \
 		   build/Tests_TAO_Operation_conditions.o \
 		   build/Tests_TAO_Operation_contract.o \
@@ -220,12 +221,11 @@ ifdef UNIT_TESTS
 else ifdef BENCHMARKS
 	OBJS = build/Benchmarks_main.o \
 		   build/Benchmarks_validate.o \
-		   build/Benchmarks_register.o \
 		   build/Benchmarks_object.o \
 		   build/Benchmarks_binary_lru.o \
 		   build/Benchmarks_binary_key.o \
 		   build/Benchmarks_template_lru.o \
-		   build/Benchmarks_sigchain.o
+		   build/Benchmarks_ledger.o \
 
 #Live tests for prototyping new code
 else ifdef LIVE_TESTS
@@ -384,12 +384,15 @@ OBJS+=  build/LLC_base_uint.o \
         build/API_cmd.o \
 		build/Operation_append.o \
 		build/Operation_claim.o \
+		build/Operation_coinbase.o \
 		build/Operation_condition.o \
 		build/Operation_contract.o \
+		build/Operation_cost.o \
 		build/Operation_create.o \
 		build/Operation_credit.o \
 		build/Operation_debit.o \
         build/Operation_execute.o \
+		build/Operation_fee.o \
 		build/Operation_genesis.o \
 		build/Operation_legacy.o \
 		build/Operation_stake.o \
@@ -398,6 +401,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Operation_validate.o \
 		build/Operation_unstake.o \
 		build/Operation_write.o \
+		build/Register_address.o \
 		build/Register_basevm.o \
 		build/Register_build.o \
 		build/Register_create.o \
@@ -405,7 +409,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Register_object.o \
 		build/Register_rollback.o \
 		build/Register_state.o \
-		build/Register_system.o \
 		build/Register_unpack.o \
 		build/Register_verify.o \
 		build/Ledger_base_minter.o \
@@ -414,6 +417,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_checkpoints.o \
 		build/Ledger_create.o \
 		build/Ledger_difficulty.o \
+		build/Ledger_genesis.o \
 		build/Ledger_locator.o \
 		build/Ledger_mempool.o \
 		build/Ledger_prime.o \
@@ -422,6 +426,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_stake.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \
+		build/Ledger_timelocks.o \
 		build/Ledger_transaction.o \
 		build/Ledger_tritium.o \
 		build/Ledger_tritium_minter.o \
@@ -607,6 +612,9 @@ build/Legacy_%.o: ./src/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Tests_%.o: ./tests/unit/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/Tests_Legacy_%.o: ./tests/unit/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Tests_LLC_%.o: ./tests/unit/LLC/%.cpp $(HEADERS)
@@ -914,6 +922,13 @@ build/Legacy_%.o: src/Legacy/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/Tests_%.o: tests/unit/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Tests_Legacy_%.o: tests/unit/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1302,6 +1317,13 @@ build/Legacy_%.o: src/Legacy/%.cpp
 	rm -f $(@:%.o=%.d)
 
 build/Tests_%.o: tests/unit/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Tests_Legacy_%.o: tests/unit/Legacy/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

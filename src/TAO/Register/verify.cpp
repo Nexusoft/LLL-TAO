@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/create.h>
 #include <TAO/Operation/include/credit.h>
 #include <TAO/Operation/include/debit.h>
+#include <TAO/Operation/include/fee.h>
 #include <TAO/Operation/include/genesis.h>
 #include <TAO/Operation/include/legacy.h>
 #include <TAO/Operation/include/stake.h>
@@ -647,6 +648,58 @@ namespace TAO
                         break;
                     }
 
+
+                    /* Create unspendable fee that debits from the account and makes this unspendable. */
+                    case TAO::Operation::OP::FEE:
+                    {
+                        /* Get fee account address. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
+
+                        /* Get the transfer amount. */
+                        uint64_t nFees = 0;
+                        contract >> nFees;
+
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::FEE: register state not in pre-state");
+
+                        /* Verify the register's prestate. */
+                        State prestate;
+                        contract >>= prestate;
+
+                        /* Check temporary memory states first. */
+                        Object object;
+                        if(mapStates.find(hashAddress) != mapStates.end())
+                            object = TAO::Register::Object(mapStates[hashAddress]);
+
+                        /* Read the register from database. */
+                        else if(!LLD::Register->ReadState(hashAddress, object, nFlags))
+                            return debug::error(FUNCTION, "OP::FEE: failed to read pre-state");
+
+                        /* Check that the checksums match. */
+                        if(prestate != object)
+                            return debug::error(FUNCTION, "OP::FEE: pre-state verification failed");
+
+                        /* Check contract account */
+                        if(contract.Caller() != prestate.hashOwner)
+                            return debug::error(FUNCTION, "OP::FEE: not authorized ", contract.Caller().SubString());
+
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Fee::Execute(object, nFees, contract.Timestamp()))
+                            return false;
+
+                        /* Write the state to memory map. */
+                        mapStates[hashAddress] = TAO::Register::State(object);
+
+                        break;
+                    }
+
+
                     /* Authorize is enabled in private mode only. */
                     case TAO::Operation::OP::AUTHORIZE:
                     {
@@ -672,9 +725,6 @@ namespace TAO
                         /* Get last trust block. */
                         uint256_t hashAddress = 0;
                         contract >> hashAddress;
-
-                        /* Seek to the end. */
-                        contract.Seek(32);
 
                         /* Get the transfer amount. */
                         uint64_t nAmount = 0;

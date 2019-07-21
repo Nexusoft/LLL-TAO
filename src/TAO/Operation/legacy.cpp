@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -48,6 +48,10 @@ namespace TAO
             /* Check for standard types. */
             if(account.Base() != TAO::Register::OBJECTS::ACCOUNT)
                 return debug::error(FUNCTION, "cannot debit from non-standard object register");
+
+            /* Check that type is native token. */
+            if(account.get<uint256_t>("token") != 0)
+                return debug::error(FUNCTION, "cannot transfer to UTXO with non-native token");
 
             /* Check the account balance. */
             if(nAmount > account.get<uint64_t>("balance"))
@@ -87,7 +91,7 @@ namespace TAO
                 return debug::error(FUNCTION, "called with incorrect OP");
 
             /* Extract the address from contract. */
-            uint256_t hashFrom = 0;
+            TAO::Register::Address hashFrom;
             contract >> hashFrom;
 
             /* Check for reserved values. */

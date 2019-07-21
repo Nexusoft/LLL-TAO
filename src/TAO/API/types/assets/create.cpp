@@ -11,7 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
 #include <TAO/API/include/global.h>
@@ -23,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/include/create.h>
+#include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -70,7 +70,7 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
-            uint256_t hashRegister = LLC::GetRand256();
+            uint256_t hashRegister = 0;
 
             /* Check for format parameter. */
             std::string strFormat = "basic"; // default to basic format if no foramt is specified
@@ -80,6 +80,9 @@ namespace TAO
             // parse the incoming asset definition based on the specified format
             if(strFormat == "raw")
             {
+                /* Set the proper asset type. */
+                hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
+
                 /* If format = raw then use a raw state register rather than an object */
                 if(params.find("data") == params.end())
                     throw APIException(-18, "Missing data");
@@ -100,6 +103,9 @@ namespace TAO
             }
             else if(strFormat == "basic")
             {
+                /* Set the proper asset type. */
+                hashRegister = TAO::Register::Address(TAO::Register::Address::OBJECT);
+
                 /* declare the object register to hold the asset data*/
                 TAO::Register::Object asset = TAO::Register::CreateAsset();
 
@@ -140,6 +146,9 @@ namespace TAO
             }
             else if(strFormat == "JSON")
             {
+                /* Set the proper asset type. */
+                hashRegister = TAO::Register::Address(TAO::Register::Address::OBJECT);
+
                 /* If format = JSON then grab the asset definition from the json field */
                 if(params.find("json") == params.end())
                     throw APIException(-21, "Missing json parameter.");
@@ -190,8 +199,8 @@ namespace TAO
                         {
                             fBytesInvalid = true;
                         }
-                        
-                        
+
+
                     }
                     /* Declare the max length variable */
                     size_t nMaxLength = 0;
@@ -281,7 +290,7 @@ namespace TAO
                     {
                         throw APIException(-154, "Invalid field type " + strType);
                     }
-                    
+
 
                     /* Increment total fields. */
                     ++nFieldCount;

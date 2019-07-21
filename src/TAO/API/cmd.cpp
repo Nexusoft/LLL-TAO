@@ -12,17 +12,19 @@
 ____________________________________________________________________________________________*/
 
 
-#include <LLP/types/apinode.h>
-#include <LLP/types/rpcnode.h>
-#include <LLP/include/base_address.h>
 #include <TAO/API/include/cmd.h>
 
-#include <Util/include/debug.h>
-#include <Util/include/runtime.h>
+#include <LLP/types/apinode.h>
+#include <LLP/include/base_address.h>
+#include <LLP/include/port.h>
+#include <LLP/types/rpcnode.h>
 
-#include <Util/include/json.h>
-#include <Util/include/config.h>
+#include <Util/include/args.h>
 #include <Util/include/base64.h>
+#include <Util/include/config.h>
+#include <Util/include/debug.h>
+#include <Util/include/json.h>
+#include <Util/include/runtime.h>
 
 
 /* Global TAO namespace. */
@@ -111,7 +113,10 @@ namespace TAO
             /* Make the connection to the API server. */
             LLP::APINode apiNode;
 
-            LLP::BaseAddress addr("127.0.0.1", 8080);
+            std::string strAddr = config::GetArg("-apiconnect", "127.0.0.1");
+            uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
+
+            LLP::BaseAddress addr(strAddr, nPort);
 
             if(!apiNode.Connect(addr))
             {
@@ -234,9 +239,9 @@ namespace TAO
             LLP::RPCNode rpcNode;
 
             std::string strAddr = config::GetArg("-rpcconnect", "127.0.0.1");
-            uint16_t port = config::GetArg("-rpcport",config::fTestNet.load() ? 8336 : 9336);
+            uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
 
-            LLP::BaseAddress addr(strAddr, port);
+            LLP::BaseAddress addr(strAddr, nPort);
 
             if(!rpcNode.Connect(addr))
             {

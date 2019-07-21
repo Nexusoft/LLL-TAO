@@ -13,13 +13,17 @@ ________________________________________________________________________________
 
 #include <LLD/types/legacy.h>
 
+#include <TAO/Ledger/types/mempool.h>
 
 namespace LLD
 {
 
-    /* The Database Constructor. To determine file location and the Bytes per Record. */
-    LegacyDB::LegacyDB(uint8_t nFlags, uint64_t nBuckets, uint32_t nCacheIn)
-    : SectorDatabase(std::string("legacy"), nFlags, nBuckets, nCacheIn)
+    /** The Database Constructor. To determine file location and the Bytes per Record. **/
+    LegacyDB::LegacyDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
+    : SectorDatabase(std::string("legacy")
+    , nFlagsIn
+    , nBucketsIn
+    , nCacheIn)
     {
     }
 
@@ -38,8 +42,16 @@ namespace LLD
 
 
     /* Reads a transaction from the legacy DB. */
-    bool LegacyDB::ReadTx(const uint512_t& hashTx, Legacy::Transaction& tx)
+    bool LegacyDB::ReadTx(const uint512_t& hashTx, Legacy::Transaction& tx, const uint8_t nFlags)
     {
+        /* Special check for memory pool. */
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            /* Get the transaction. */
+            if(TAO::Ledger::mempool.Get(hashTx, tx))
+                return true;
+        }
+
         return Read(std::make_pair(std::string("tx"), hashTx), tx);
     }
 
@@ -47,6 +59,7 @@ namespace LLD
     /* Erases a transaction from the ledger DB. */
     bool LegacyDB::EraseTx(const uint512_t& hashTx)
     {
+        //TODO: this is never used. Might consdier removing since transactions are never erased
         return Erase(std::make_pair(std::string("tx"), hashTx));
     }
 

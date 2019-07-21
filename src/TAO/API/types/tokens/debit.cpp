@@ -11,7 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
 #include <LLD/include/global.h>
@@ -94,7 +93,6 @@ namespace TAO
                 hashFrom.SetHex(params["address"].get<std::string>());
             else
                 throw APIException(-33, "Missing name / address");
-
 
             /* Get the token / account object. */
             TAO::Register::Object object;

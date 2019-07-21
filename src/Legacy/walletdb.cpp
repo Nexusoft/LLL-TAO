@@ -368,11 +368,11 @@ namespace Legacy
         std::vector<uint512_t> vWalletRemove;
 
         /* Flush thread shouldn't be running while we load, but ensure it doesn't try to flush during load if it is.
-         * This will atomically set flag to true if it is currently false as expected, otherwise it returns false and wait loop executes. 
+         * This will atomically set flag to true if it is currently false as expected, otherwise it returns false and wait loop executes.
          *
          * Although the primary purpose is to suspend flush thread operations, this flag also acts as a "soft lock" token for any method
          * that performs database operations requiring multiple steps. BerkeleyDB locks during each individual database call, but not
-         * across calls that use cursors or db transactions. Holding this flag forces other multi-step operations to wait 
+         * across calls that use cursors or db transactions. Holding this flag forces other multi-step operations to wait
          * for it to become available.
          *
          * compare_exchange_weak expects us to pass references that match the atomic type, not literals, so we have to define them.
@@ -475,9 +475,9 @@ namespace Legacy
                     vWalletRemove.push_back(hash);
 
                 }
-                else if(wtx.GetHash() != hash)
+                else if(hash.GetType() != TAO::Ledger::TRITIUM && wtx.GetHash() != hash)
                 {
-                    debug::error(FUNCTION, "Error in ", strWalletFile, 
+                    debug::error(FUNCTION, "Error in ", strWalletFile,
                                  ", hash mismatch. Removing Transaction from wallet map. Run the rescan command to restore.");
 
                     /* Add mismatched transaction to list of transactions to remove from database */
@@ -847,9 +847,9 @@ namespace Legacy
             if(nLastFlushed != nLastSeen && (runtime::unifiedtimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
             {
 
-                /* If fDbInProgress currently false, atomically set it to true and performs flush. 
-                 * Otherwise, value has changed since the check above. Skip flush this iteration. 
-                 * Use strong compare here instead of weak to avoid possible spurious fail that would require an unnecessary loop iteration. 
+                /* If fDbInProgress currently false, atomically set it to true and performs flush.
+                 * Otherwise, value has changed since the check above. Skip flush this iteration.
+                 * Use strong compare here instead of weak to avoid possible spurious fail that would require an unnecessary loop iteration.
                  */
                 bool expectedValue = false;
                 bool desiredValue = true;

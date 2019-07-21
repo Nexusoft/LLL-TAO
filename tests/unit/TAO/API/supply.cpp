@@ -50,7 +50,35 @@ TEST_CASE( "Test Supply API - create item", "[supply/create/item]")
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
 
-    /* NOTE: Most of the failure cases are covered by the basic format test case above, so won't be repeated here */
+    /*  fail with missing pin (only relevant for multiuser)*/
+    if(config::fMultiuser.load())
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["session"] = SESSION1;
+
+        /* Invoke the API */
+        ret = APICall("supply/create/item", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -129);
+    }
+
+    /* fail with missing session (only relevant for multiuser)*/
+    if(config::fMultiuser.load())
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+
+        /* Invoke the API */
+        ret = APICall("supply/create/item", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -12);
+    }
 
     /* fail with missing data */
     {
@@ -90,7 +118,7 @@ TEST_CASE( "Test Supply API - create item", "[supply/create/item]")
         params["session"] = SESSION1;
         params["pin"] = PIN;
         params["name"] = strItem;
-        
+
         params["data"] = "theitemdata";
 
         /* Invoke the API */
@@ -358,7 +386,7 @@ TEST_CASE( "Test Assets API - transfer item", "[supply/transfer/item]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["destination"] = LLC::GetRand256().GetHex(); 
+        params["destination"] = LLC::GetRand256().GetHex();
 
         /* Invoke the API */
         ret = APICall("supply/transfer/item", params);
@@ -374,7 +402,7 @@ TEST_CASE( "Test Assets API - transfer item", "[supply/transfer/item]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["username"] = "not a user"; 
+        params["username"] = "not a user";
 
         /* Invoke the API */
         ret = APICall("supply/transfer/item", params);
@@ -390,7 +418,7 @@ TEST_CASE( "Test Assets API - transfer item", "[supply/transfer/item]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["destination"] = GENESIS2.GetHex(); 
+        params["destination"] = GENESIS2.GetHex();
 
         /* Invoke the API */
         ret = APICall("supply/transfer/item", params);
@@ -450,7 +478,7 @@ TEST_CASE( "Test Assets API - transfer item", "[supply/transfer/item]")
 
         /* Check all of the fields */
         REQUIRE(result.find("txid") != result.end());
-        
+
         /* Grab the transfer txid so that we can use it for a claim */
         hashItemTransfer.SetHex(result["txid"].get<std::string>());
 
@@ -503,7 +531,7 @@ TEST_CASE( "Test Assets API - claim item", "[supply/claim/item]")
 
     /* Success case */
     {
-        hashItem = LLC::GetRand256();
+        hashItem = TAO::Register::Address(TAO::Register::Address::APPEND);
 
         {
             TAO::Ledger::Transaction tx;
@@ -552,7 +580,7 @@ TEST_CASE( "Test Assets API - claim item", "[supply/claim/item]")
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
-            
+
 
             hashItemTransfer = tx.GetHash();
         }
@@ -570,7 +598,7 @@ TEST_CASE( "Test Assets API - claim item", "[supply/claim/item]")
 
         /* Check all of the fields */
         REQUIRE(result.find("txid") != result.end());
-        
+
 
     }
 
@@ -679,7 +707,7 @@ TEST_CASE( "Test Assets API - list item history", "[supply/list/item/history]")
 
             /* Check the data at each point */
             std::string strData = entry["data"].get<std::string>();
-            
+
             if(strType == "CREATE" || strType == "TRANSFER" || strType == "CLAIM")
             {
                 REQUIRE(strData == "itemdata");
@@ -689,7 +717,7 @@ TEST_CASE( "Test Assets API - list item history", "[supply/list/item/history]")
                 REQUIRE(strData == "newitemdata");
             }
         }
-        
+
     }
 
 }

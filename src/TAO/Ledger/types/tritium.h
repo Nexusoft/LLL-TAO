@@ -94,6 +94,7 @@ namespace TAO
 
                 READWRITE(producer);
                 READWRITE(ssSystem);
+                READWRITE(vOffsets);
                 READWRITE(vtx);
           )
 
