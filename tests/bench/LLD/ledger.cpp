@@ -58,7 +58,7 @@ TEST_CASE( "LLD Benchamrks", "[LLD]")
         timer.Start();
 
         std::vector<TAO::Ledger::BlockState> vStates;
-        LLD::Ledger->BatchRead("block", vStates, 1000);
+        LLD::Ledger->BatchRead("block", vStates, 5000);
 
         uint64_t nTime = timer.ElapsedMicroseconds();
         debug::log(0, ANSI_COLOR_BRIGHT_CYAN, "Get::", ANSI_COLOR_RESET, vStates.size(), " records in ", nTime, " microseconds (", (vStates.size() * 1000000) / nTime, ") per/s");
