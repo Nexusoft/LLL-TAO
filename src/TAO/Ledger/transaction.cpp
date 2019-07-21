@@ -236,6 +236,19 @@ namespace TAO
                 TAO::Operation::Cost(contract, nCost);
             }
 
+            /* Check for frequency throttling. */
+            if(!IsFirst())
+            {
+                /* Make sure the previous transaction is on disk or mempool. */
+                TAO::Ledger::Transaction txPrev;
+                if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw debug::exception(FUNCTION, "couldn't read previous transaction");
+
+                /* Check the timestamps. */
+                if(nTimestamp - txPrev.nTimestamp > 60)
+                    nRet += 10 * NXS_CENT; //0.1 NXS per transaction above threshold.
+            }
+
             return nRet;
         }
 
@@ -312,6 +325,10 @@ namespace TAO
                 TAO::Ledger::Transaction txPrev;
                 if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
                     return debug::error(FUNCTION, "prev transaction not on disk");
+
+                /* Check the timestamps. */
+                if(nTimestamp - txPrev.nTimestamp > 60)
+                    nCost += 10 * NXS_CENT; //0.1 NXS per transaction above threshold
 
                 /* Double check sequence numbers here. */
                 if(txPrev.nSequence + 1 != nSequence)
