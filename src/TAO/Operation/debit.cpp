@@ -16,8 +16,9 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/debit.h>
 #include <TAO/Operation/include/enum.h>
 
-#include <TAO/Register/types/object.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/reserved.h>
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/enum.h>
 
@@ -34,7 +35,7 @@ namespace TAO
                            const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
-            if((nFlags & TAO::Ledger::FLAGS::BLOCK) && hashTo != ~uint256_t(0))
+            if((nFlags & TAO::Ledger::FLAGS::BLOCK) && hashTo != TAO::Register::WILDCARD_ADDRESS)
             {
                 /* Read the owner of register. */
                 TAO::Register::State state;
@@ -119,7 +120,7 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot debit to reserved address");
 
             /* Check the contract for conditions. */
-            if(hashTo == ~uint256_t(0) && contract.Empty(Contract::CONDITIONS))
+            if(hashTo == TAO::Register::WILDCARD_ADDRESS && contract.Empty(Contract::CONDITIONS))
                 return debug::error(FUNCTION, "cannot debit to wildcard with no conditions");
 
             /* Check for debit to and from same account. */

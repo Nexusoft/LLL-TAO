@@ -17,9 +17,10 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
-#include <TAO/Register/types/object.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/reserved.h>
+#include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -34,7 +35,7 @@ namespace TAO
                               const uint256_t& hashAddress, const uint256_t& hashTransfer, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
-            if((nFlags & TAO::Ledger::FLAGS::BLOCK) && hashTransfer != ~uint256_t(0))
+            if((nFlags & TAO::Ledger::FLAGS::BLOCK) && hashTransfer != TAO::Register::WILDCARD_ADDRESS)
             {
                 /* Write the transfer event. */
                 if(!LLD::Ledger->WriteEvent(hashTransfer, hashTx))
@@ -97,7 +98,7 @@ namespace TAO
             contract >> hashTransfer;
 
             /* Check the contract for conditions. */
-            if(hashTransfer == ~uint256_t(0) && contract.Empty(Contract::CONDITIONS))
+            if(hashTransfer == TAO::Register::WILDCARD_ADDRESS && contract.Empty(Contract::CONDITIONS))
                 return debug::error(FUNCTION, "cannot transfer to wildcard with no conditions");
 
             /* Get the state byte. */

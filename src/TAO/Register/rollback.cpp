@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/types/state.h>
@@ -204,7 +205,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to rollback to pre-state");
 
                         /* Write the event to the ledger database. */
-                        if(hashTransfer != ~uint256_t(0) && !LLD::Ledger->EraseEvent(hashTransfer))
+                        if(hashTransfer != WILDCARD_ADDRESS && !LLD::Ledger->EraseEvent(hashTransfer))
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to rollback event");
 
                         break;
@@ -408,7 +409,7 @@ namespace TAO
                             return debug::error(FUNCTION, "failed to read register to");
 
                         /* Write the event to the ledger database. */
-                        if(hashTo != ~uint256_t(0) && !LLD::Ledger->EraseEvent(stateTo.hashOwner))
+                        if(hashTo != WILDCARD_ADDRESS && !LLD::Ledger->EraseEvent(stateTo.hashOwner))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to rollback event");
 
                         break;

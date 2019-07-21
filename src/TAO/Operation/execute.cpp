@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/append.h>
 #include <TAO/Operation/include/claim.h>
 #include <TAO/Operation/include/coinbase.h>
+#include <TAO/Operation/include/constants.h>
 #include <TAO/Operation/include/create.h>
 #include <TAO/Operation/include/credit.h>
 #include <TAO/Operation/include/debit.h>
@@ -37,6 +38,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/condition.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/types/address.h>
 
@@ -217,6 +219,10 @@ namespace TAO
                         if(!Append::Execute(state, vchData, contract.Timestamp()))
                             return false;
 
+                        /* Check for maximum register size. */
+                        if(state.GetState().size() > TAO::Register::MAX_REGISTER_SIZE)
+                            return debug::error(FUNCTION, "OP::APPEND: register size out of bounds ", vchData.size());
+
                         /* Deserialize the pre-state byte from contract. */
                         nState = 0;
                         contract >>= nState;
@@ -267,7 +273,7 @@ namespace TAO
                         contract >> vchData;
 
                         /* Check for maximum register size. */
-                        if(vchData.size() > 1024)
+                        if(vchData.size() > TAO::Register::MAX_REGISTER_SIZE)
                             return debug::error(FUNCTION, "OP::CREATE: register size out of bounds ", vchData.size());
 
                         /* Create the register object. */

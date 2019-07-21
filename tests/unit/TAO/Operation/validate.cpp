@@ -21,6 +21,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/create.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/types/address.h>
 
 #include <TAO/Ledger/types/transaction.h>
@@ -153,7 +154,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken << ~uint256_t(0) << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << TAO::Register::WILDCARD_ADDRESS << uint64_t(500);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -183,7 +184,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken << ~uint256_t(0) << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << TAO::Register::WILDCARD_ADDRESS << uint64_t(500);
             tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashGenesis;
 
             //generate the prestates and poststates
@@ -303,7 +304,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::DEBIT) << hashToken << ~uint256_t(0) << uint64_t(500);
+            tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::DEBIT) << hashToken << TAO::Register::WILDCARD_ADDRESS << uint64_t(500);
 
 
             //build condition requirement
@@ -623,7 +624,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::TRANSFER) << hashAsset << ~uint256_t(0) << uint8_t(TRANSFER::CLAIM);
+            tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::TRANSFER) << hashAsset << TAO::Register::WILDCARD_ADDRESS << uint8_t(TRANSFER::CLAIM);
 
 
             //build condition requirement

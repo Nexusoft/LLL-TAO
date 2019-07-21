@@ -27,6 +27,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/rollback.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/reserved.h>
 #include <TAO/Register/types/address.h>
@@ -533,7 +534,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             }
 
             //payload
-            tx[0] << uint8_t(OP::CREDIT) << hashTx << nOut << hashAccount << ~uint256_t(0) << uint64_t(20000);
+            tx[0] << uint8_t(OP::CREDIT) << hashTx << nOut << hashAccount << TAO::Register::WILDCARD_ADDRESS << uint64_t(20000);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -578,7 +579,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             }
 
             //payload
-            tx[0] << uint8_t(OP::CREDIT) << hashTx << nOut << hashAccount << ~uint256_t(0) << uint64_t(20000);
+            tx[0] << uint8_t(OP::CREDIT) << hashTx << nOut << hashAccount << TAO::Register::WILDCARD_ADDRESS << uint64_t(20000);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());

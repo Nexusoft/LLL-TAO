@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/constants.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -155,7 +156,7 @@ namespace LLD
 
             /* Create Contract. */
             TAO::Operation::Contract contract;
-            contract << uint8_t(TAO::Operation::OP::DEBIT) << ~uint256_t(0) << hashAccount << uint64_t(tx.vout[nContract].nValue);
+            contract << uint8_t(TAO::Operation::OP::DEBIT) << TAO::Register::WILDCARD_ADDRESS << hashAccount << uint64_t(tx.vout[nContract].nValue);
 
             return contract;
         }

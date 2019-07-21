@@ -30,10 +30,6 @@ namespace TAO
     namespace Operation
     {
 
-        /** The 'free' limit for conditions. **/
-        const uint64_t CONDITION_LIMIT_FREE = 2048;
-
-
         /** Validate
          *
          *  An object to handle the executing of validation scripts.

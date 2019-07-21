@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/reserved.h>
 #include <TAO/Register/include/reserved.h>
@@ -247,7 +248,7 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot credit register with reserved address");
 
             /* Check for wildcard from (which is a flag for credit from UTXO). */
-            if(hashFrom == ~uint256_t(0))
+            if(hashFrom == TAO::Register::WILDCARD_ADDRESS)
             {
                 /* Check the proof as being the caller. */
                 if(hashProof != hashFrom)
@@ -301,7 +302,7 @@ namespace TAO
 
             /* Handle one-to-one debit to credit or return to self. */
             if(hashTo == hashAccount    //regular debit to credit
-            || hashTo == ~uint256_t(0)  //wildcard address (anyone can credit)
+            || hashTo == TAO::Register::WILDCARD_ADDRESS  //wildcard address (anyone can credit)
             || hashFrom == hashAccount) //return to self
             {
                 /* Check the proof as being the caller. */

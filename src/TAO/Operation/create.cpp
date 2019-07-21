@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/create.h>
 #include <TAO/Operation/include/enum.h>
 
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/reserved.h>
 #include <TAO/Register/include/reserved.h>
@@ -372,7 +373,7 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot create register with reserved address");
 
             /* Check for wildcard. */
-            if(address == ~uint256_t(0))
+            if(address == TAO::Register::WILDCARD_ADDRESS)
                 return debug::error(FUNCTION, "cannot create register with wildcard address");
 
             /* Get the object data size. */

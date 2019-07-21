@@ -16,9 +16,10 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/claim.h>
 #include <TAO/Operation/include/enum.h>
 
-#include <TAO/Register/types/state.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/reserved.h>
+#include <TAO/Register/types/state.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -135,7 +136,7 @@ namespace TAO
             /* Check the addresses match. */
             if(state.hashOwner != contract.Caller() //claim to self
             && hashTransfer    != contract.Caller() //calim to transfer
-            && hashTransfer    != ~uint256_t(0))   //claim to wildcard (anyone)
+            && hashTransfer    != TAO::Register::WILDCARD_ADDRESS)   //claim to wildcard (anyone)
                 return debug::error(FUNCTION, "claim public-id mismatch with transfer address");
 
             /* Check that pre-state is valid. */

@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/object.h>
 
@@ -109,7 +110,7 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction.");
 
             /* Transation payload. */
-            tx[0] << uint8_t(TAO::Operation::OP::CONDITION) << uint8_t(TAO::Operation::OP::DEBIT) << hashFrom << ~uint256_t(0) << nAmount;
+            tx[0] << uint8_t(TAO::Operation::OP::CONDITION) << uint8_t(TAO::Operation::OP::DEBIT) << hashFrom << TAO::Register::WILDCARD_ADDRESS << nAmount;
 
             /* Conditional Requirement. */
             TAO::Operation::Stream compare;
