@@ -199,6 +199,16 @@ namespace TAO
             bool Verify() const;
 
 
+            /** Cost
+             *
+             *  Get the total cost of this transaction.
+             *
+             *  @return the cost of this transaction (in viz).
+             *
+             **/
+            uint64_t Cost();
+
+
             /** Build
              *
              *  Build the transaction contracts.

@@ -22,6 +22,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
+#include <TAO/Operation/include/cost.h>
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/enum.h>
 
@@ -216,6 +217,26 @@ namespace TAO
             }
 
             return true;
+        }
+
+
+        /* Get the total cost of this transaction. */
+        uint64_t Transaction::Cost()
+        {
+            /* Get the cost value. */
+            uint64_t nRet = 0;
+
+            /* Run through all the contracts. */
+            for(auto& contract : vContracts)
+            {
+                /* Bind the contract to this transaction. */
+                contract.Bind(this);
+
+                /* Calculate the pre-states and post-states. */
+                TAO::Operation::Cost(contract, nCost);
+            }
+
+            return nRet;
         }
 
 
