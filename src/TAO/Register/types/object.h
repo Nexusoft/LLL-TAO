@@ -89,6 +89,14 @@ namespace TAO
             uint8_t Base() const;
 
 
+            /** Cost
+             *
+             *  Get the cost to create this object register.
+             *
+             **/
+            uint64_t Cost() const;
+
+
             /** Parse
              *
              *  Parses out the data members of an object register.

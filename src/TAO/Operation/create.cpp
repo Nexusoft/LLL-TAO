@@ -53,6 +53,9 @@ namespace TAO
                     if(!object.Parse())
                         return debug::error(FUNCTION, "object register failed to parse");
 
+                    /* Get the cost. */
+                    nCost = object.Cost();
+
                     /* Switch based on standard types. */
                     uint8_t nStandard = object.Standard();
                     switch(nStandard)
@@ -98,9 +101,6 @@ namespace TAO
                             if(object.get<uint64_t>("supply") != object.get<uint64_t>("balance"))
                                 return debug::error(FUNCTION, "token current supply and balance can't mismatch");
 
-                            /* Set the fees for the token. */
-                            nCost = 10000 * TAO::Ledger::NXS_COIN; //10k NXS per token
-
                             break;
                         }
 
@@ -141,10 +141,6 @@ namespace TAO
                                 /* Check the owner is the hashGenesis */
                                 if(objectNamespace.hashOwner != state.hashOwner)
                                     return debug::error(FUNCTION, "Namespace not owned by caller: ", strNamespace );
-
-                                /* Set the fees for the namespace. */
-                                nCost = 100 * TAO::Ledger::NXS_COIN; //100 NXS per name in a namespace
-
                             }
                             else
                                 /* Otherwise we use the owner genesis Hash */
@@ -185,9 +181,6 @@ namespace TAO
                             /* Fail if caller didn't user their own genesis to create name. */
                             if(name != address)
                                 return debug::error(FUNCTION, "namespace address mismatch");
-
-                            /* Set the fees for the namespace. */
-                            nCost = 1000 * TAO::Ledger::NXS_COIN; //1000 NXS per namespace
 
                             break;
                         }
