@@ -164,7 +164,7 @@ namespace TAO
                         throw APIException(-63, "Could not retrieve default NXS account to credit");
 
                     /* Get the list of outstanding contracts. */
-                    std::vector<std::pair<uint32_t, TAO::Operation::Contract>> vContracts;
+                    std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> vContracts;
                     GetOutstanding(hashGenesis, vContracts);
 
                     /* The transaction hash. */
@@ -186,18 +186,21 @@ namespace TAO
                     /* Loop through each contract in the notification queue. */
                     for(const auto& contract : vContracts)
                     {
+                        /* Get a reference to the contract */
+                        const TAO::Operation::Contract& refContract = (*contract.first)[contract.second]; 
+
                         /* Set the transaction hash. */
-                        hashTx = contract.second.Hash();
+                        hashTx = refContract.Hash();
 
                         /* Get the maturity for this transaction. */
                         bool fMature = LLD::Ledger->ReadMature(hashTx);
 
                         /* Reset the contract operation stream. */
-                        contract.second.Reset();
+                        refContract.Reset();
 
                         /* Get the opcode. */
                         uint8_t OPERATION;
-                        contract.second >> OPERATION;
+                        refContract >> OPERATION;
 
                         /* Check the opcodes for debit, coinbase or transfers. */
                         switch (OPERATION)
@@ -206,13 +209,13 @@ namespace TAO
                             case Operation::OP::DEBIT:
                             {
                                 /* Set to and from hashes and amount. */
-                                contract.second >> hashFrom;
-                                contract.second >> hashTo;
-                                contract.second >> nAmount;
+                                refContract >> hashFrom;
+                                refContract >> hashTo;
+                                refContract >> nAmount;
 
                                 /* Submit the payload object. */
                                 txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
-                                txout[nOut] << hashTx << contract.first;
+                                txout[nOut] << hashTx << contract.second;
                                 txout[nOut] << hashTo << hashFrom;
                                 txout[nOut] << nAmount;
 
@@ -236,15 +239,15 @@ namespace TAO
                                 }
 
                                 /* Set the genesis hash and the amount. */
-                                contract.second >> hashFrom;
-                                contract.second >> nAmount;
+                                refContract >> hashFrom;
+                                refContract >> nAmount;
 
                                 /* Get the address that this name register is pointing to. */
                                 hashTo = account.get<uint256_t>("address");
 
                                 /* Submit the payload object. */
                                 txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
-                                txout[nOut] << hashTx << contract.first;
+                                txout[nOut] << hashTx << contract.second;
                                 txout[nOut] << hashTo << hashFrom;
                                 txout[nOut] << nAmount;
 
@@ -261,14 +264,14 @@ namespace TAO
                             case Operation::OP::TRANSFER:
                             {
                                 /* Get the address of the asset being transfered from the transaction. */
-                                contract.second >> hashFrom;
+                                refContract >> hashFrom;
 
                                 /* Get the genesis hash (recipient) of the transfer. */
-                                contract.second >> hashTo;
+                                refContract >> hashTo;
 
                                 /* Read the force transfer flag */
                                 uint8_t nType = 0;
-                                contract.second >> nType;
+                                refContract >> nType;
 
                                 /* Ensure this wasn't a forced transfer (which requires no Claim) */
                                 if(nType == TAO::Operation::TRANSFER::FORCE)
@@ -276,7 +279,7 @@ namespace TAO
 
                                 /* Submit the payload object. */
                                 txout[nOut] << uint8_t(TAO::Operation::OP::CLAIM);
-                                txout[nOut] << hashTx << contract.first;
+                                txout[nOut] << hashTx << contract.second;
                                 txout[nOut] << hashFrom;
 
                                 /* Increment the contract ID. */

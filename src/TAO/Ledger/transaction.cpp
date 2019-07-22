@@ -233,7 +233,7 @@ namespace TAO
                 contract.Bind(this);
 
                 /* Calculate the pre-states and post-states. */
-                TAO::Operation::Cost(contract, nCost);
+                TAO::Operation::Cost(contract, nRet);
             }
 
             /* Check for frequency throttling. */

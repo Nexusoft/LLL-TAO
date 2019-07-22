@@ -476,7 +476,7 @@ namespace TAO
                *
                **/
               bool GetOutstanding(const uint256_t& hashGenesis,
-                    std::vector<std::pair<uint32_t, TAO::Operation::Contract>> &vContracts);
+                    std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
 
 
           private:
@@ -492,7 +492,7 @@ namespace TAO
                *
                **/
               bool get_events(const uint256_t& hashGenesis,
-                    uint512_t hashLast, std::vector<std::pair<uint32_t, TAO::Operation::Contract>> &vContracts);
+                    uint512_t hashLast, std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
 
 
               /** get_coinbases
@@ -505,7 +505,7 @@ namespace TAO
                *
                **/
               bool get_coinbases(const uint256_t& hashGenesis,
-                    uint512_t hashLast, std::vector<std::pair<uint32_t, TAO::Operation::Contract>> &vContracts);
+                    uint512_t hashLast, std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
 
 
         };
