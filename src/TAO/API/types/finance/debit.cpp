@@ -133,6 +133,30 @@ namespace TAO
             /* Submit the payload object. */
             tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
 
+            /* Add the conditional statements. */
+
+            //TODO: @paulscreen this below is a simple conditional statement for reversing a transaction after expiration
+            //do some testing on it and add this conditional statement to debits and transfers and set an "expires" field for these
+            //API calls
+
+            //return to self if claim is 1 hour after transaction was broadcast
+            //tx[0] <= uint8_t(OP::GROUP);
+            //tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= user->Genesis();
+            //tx[0] <= uint8_t(OP::AND);
+            //tx[0] <= uint8_t(OP::THIS::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(3600);
+            //tx[0] <= uint8_t(OP::LESSTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
+            //tx[0] <= uint8_t(OP::UNGROUP);
+
+            //tx[0] <= uint8_t(OP::OR);
+
+            //claim transaction if time is 1 hour before transaction broadcast
+            //tx[0] <= uint8_t(OP::GROUP);
+            //tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::NOTEQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= user->Genesis();
+            //tx[0] <= uint8_t(OP::AND);
+            //tx[0] <= uint8_t(OP::THIS::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(3600);
+            //tx[0] <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
+            //tx[0] <= uint8_t(OP::UNGROUP);
+
             /* Execute the operations layer. */
             if(!tx.Build())
                 throw APIException(-44, "Transaction failed to build");
