@@ -27,9 +27,9 @@ ________________________________________________________________________________
 
 typedef unsigned int uint128_t __attribute__((mode(TI)));
 
-template<uint32_t FIGURES>
 class precision_t
 {
+    uint32_t FIGURES;
 public:
     uint64_t nFigures;
     uint64_t nValue;
@@ -47,14 +47,16 @@ public:
 
 
     precision_t()
-    : nFigures(get_figures())
+    : FIGURES(8)
+    , nFigures(get_figures())
     , nValue(0)
     {
     }
 
 
     precision_t(double value)
-    : nFigures(get_figures())
+    : FIGURES(8)
+    , nFigures(get_figures())
     , nValue(value * nFigures)
     {
     }
@@ -62,7 +64,7 @@ public:
 
     precision_t& operator=(double value)
     {
-        nValue = static_cast<uint192_t>(value * nFigures);
+        nValue = static_cast<uint64_t>(value * nFigures);
 
         return *this;
     }
@@ -198,18 +200,7 @@ public:
 
         while(nTemp > std::numeric_limits<uint64_t>::max())
         {
-            //uint128_t nDiff = nTemp;
             nTemp    /= 10;
-
-            //uint64_t nRound = static_cast<uint64_t>(nDiff - (nTemp * 10));
-            //debug::log(0, "Rounding ", nRound);
-
-            //if(nRound >= 5)
-            //{
-                //debug::log(0, "Rounding ", nRound);
-            //    nTemp += 1;
-            //}
-
             nFigures /= 10;
         }
 
@@ -296,35 +287,6 @@ public:
         return ret;
     }
 
-/*
-
-    // should be much more precise with large b
-    inline double fastPrecisePow(double a, double b) {
-      // calculate approximation with fraction of the exponent
-      int e = (int) b;
-      union {
-        double d;
-        int x[2];
-      } u = { a };
-      u.x[1] = (int)((b - e) * (u.x[1] - 1072632447) + 1072632447);
-      u.x[0] = 0;
-
-      // exponentiation by squaring with the exponent's integer part
-      // double r = u.d makes everything much slower, not sure why
-      double r = 1.0;
-      while (e) {
-        if (e & 1) {
-          r *= a;
-        }
-        a *= a;
-        e >>= 1;
-      }
-
-      return r * u.d;
-    }
-
-*/
-
 
     precision_t operator^(const precision_t& value) const
     {
@@ -343,144 +305,22 @@ public:
     }
 
 
-    /*
-    Function exp_by_squaring(x, n)
-  if n < 0  then return exp_by_squaring(1 / x, -n);
-  else if n = 0  then return  1;
-  else if n = 1  then return  x ;
-  else if n is even  then return exp_by_squaring(x * x,  n / 2);
-  else if n is odd  then return x * exp_by_squaring(x * x, (n - 1) / 2);
-  */
-
-    precision_t& exp(bool fPrint = false)
-    {
-        uint128_t fact = 1;
-
-        const precision_t base  = *this;
-        precision_t power  = base;
-
-        precision_t temp;
-
-        if(fPrint)
-        {
-            printf("BASE: ");
-            base.print();
-        }
-        //precision_t temp;
-
-
-        //double dBase = get();
-
-        *this = 0;
-        for(uint32_t i = 1; i <= 40; ++i)
-        {
-            //double dTemp = pow(dBase, (i - 1)) / fact;
-
-            if(fPrint)
-            {
-                printf("POWER: ");
-                power.print();
-
-                printf("BASE: ");
-                base.print();
-
-                printf("SUM: ");
-                print();
-
-                //debug::log(0, fact);
-            }
-
-            if(power.nFigures < 100)
-                return *this;
-
-            if(base.nFigures < 100)
-                return *this;
-
-            if(nFigures < 100)
-                return *this;
-
-
-            if(i == 1)
-                power = 1;
-            else if(i == 2)
-                power = base;
-            else
-                power *= base;
-
-            if(fact == 0)
-                return *this;
-
-            // / fact;
-
-            //if(fPrint)
-            //    temp.print();
-
-            precision_t temp = (power / fact);
-
-            if(fPrint)
-                temp.print();
-
-            if(temp == 0)
-            {
-                if(fPrint)
-                    printf("Taylor out at %u\n", i);
-                break;
-            }
-
-
-
-            //nSum += power(x, i - 1) / nFactorial;
-            *this += temp;
-
-            //if(fact > std::numeric_limits<uint64_t>::max() / i)
-            //    debug::error("factorial overflow");
-
-            fact *= i;
-        }
-
-        return *this;
-    }
-
-
-    /*
-    precision_t e()
-    {
-        precision_t fact = 1;
-
-        precision_t ret = 0;
-        precision_t one = 1;
-        for(int i = 1; i <= 1000; ++i)
-        {
-            ret += one / fact;
-            //nSum += power(x, i - 1) / nFactorial;
-
-            fact *= i;
-        }
-
-        return ret;
-    }
-    */
-
-
     double get() const
     {
         return nValue / static_cast<double>(nFigures);
     }
+
 
     uint192_t getint() const
     {
         return nValue;
     }
 
-    uint64_t get_uint(uint32_t nTotalFigures = FIGURES)
+    uint64_t get_uint(uint32_t nTotalFigures)
     {
         uint64_t nRet = nValue;
         for(int i = 0; i < (FIGURES - nTotalFigures); i++)
-        {
-            //debug::log(0, i, " UINT ", uint64_t(nRet));
-
             nRet /= 10;
-        }
 
         return nRet;
     }
@@ -502,10 +342,53 @@ public:
 };
 
 
+precision_t exp(const precision_t& base)
+{
+    uint128_t fact = 1;
+
+    precision_t power  = base;
+
+    precision_t ret = 0;
+    for(uint32_t i = 1; i <= 40; ++i)
+    {
+
+        if(power.nFigures < 100)
+            return ret;
+
+        if(base.nFigures < 100)
+            return ret;
+
+        if(ret.nFigures < 100)
+            return ret;
+
+
+        if(i == 1)
+            power = 1;
+        else if(i == 2)
+            power = base;
+        else
+            power *= base;
+
+        if(fact == 0)
+            return ret;
+
+        precision_t temp = (power / fact);
+        if(temp == 0)
+            break;
+
+        ret += temp;
+
+        fact *= i;
+    }
+
+    return ret;
+}
+
+
 #include <TAO/Ledger/include/supply.h>
 
 
-const precision_t<8> decays[3][3] =
+const precision_t decays[3][3] =
 {
     {25.0, 0.00000110, 0.500},
     {5.00, 0.00000055, 0.500},
@@ -515,17 +398,12 @@ const precision_t<8> decays[3][3] =
 
 uint64_t Subsidy(const uint32_t nMinutes, const uint32_t nType, bool fPrint = false)
 {
-    precision_t<8> exponent = decays[nType][1] * nMinutes;
-    exponent.exp(fPrint);
-
+    precision_t exponent = exp(decays[nType][1] * nMinutes);
     if(exponent == 0)
         return 500000;
 
-    precision_t<8> ret = decays[nType][0] / exponent;
+    precision_t ret = decays[nType][0] / exponent;
     ret += decays[nType][2];
-
-    if(fPrint)
-        ret.print();
 
     return ret.get_uint(6);
 }
@@ -586,27 +464,25 @@ int main(int argc, char** argv)
 
     debug::log(0, "------------------------------");
 
-    precision_t<9> base = 5;
+    precision_t base = 5;
 
     debug::log(0, "base = ", base);
 
-    precision_t<9> expo = base^3.222;
+    precision_t expo = base^3.222;
 
     debug::log(0, "expo = ", expo);
 
-    precision_t<12> exponent = 3;
-    exponent.exp();
-
+    precision_t exponent = exp(3);
     debug::log(0, "exponent = ", exponent);
 
 
-    precision_t<6> value = 100.333;
-    precision_t<6> value2 = 0.333;
+    precision_t value = 100.333;
+    precision_t value2 = 0.333;
 
 
 
-    precision_t<6> value3 = value / value2;
-    precision_t<6> value4 = value * value2;
+    precision_t value3 = value / value2;
+    precision_t value4 = value * value2;
 
     debug::log(0, "value  = ", value);
     debug::log(0, "value2 = ", value2);
