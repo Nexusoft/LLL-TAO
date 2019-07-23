@@ -871,21 +871,6 @@ namespace LLP
                 /* Inventory requests. */
                 std::vector<CInv> vInv = { CInv(block.hashPrevBlock, LLP::MSG_BLOCK_LEGACY) };
 
-                /* Check for orphans. */
-                uint1024_t hashOrphan = block.hashPrevBlock;
-                while(mapLegacyOrphans.count(hashOrphan))
-                {
-                    /* Loop back to next previous. */
-                    hashOrphan = mapLegacyOrphans[hashOrphan].hashPrevBlock;
-
-                    /* Push to inventory. */
-                    vInv.insert(vInv.begin(), CInv(hashOrphan, LLP::MSG_BLOCK_LEGACY));;
-                }
-
-                /* Return if recursive orphans. */
-                if(vInv.size() == 2)
-                    return true;
-
                 /* Get batch of inventory. */
                 pnode->PushMessage("getdata", vInv);
 
