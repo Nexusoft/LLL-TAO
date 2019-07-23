@@ -24,17 +24,44 @@ ________________________________________________________________________________
 
 #include <LLC/types/bignum.h>
 
+/** Define GCC compiler synthesized 128-bit uint. **/
+typedef __attribute__((mode(TI))) uint32_t uint128_t;
 
-typedef unsigned int uint128_t __attribute__((mode(TI)));
 
 class precision_t
 {
     uint32_t FIGURES;
 public:
+
+    /* The number of significant decimal figures. */
     uint64_t nFigures;
+
+    /* The value of the floating point number represented as an integer. */
     uint64_t nValue;
 
 
+    /** Default constructor **/
+    precision_t()
+    : FIGURES(8)
+    , nFigures(get_figures())
+    , nValue(0)
+    {
+    }
+
+    /** Default constructor (double) **/
+    precision_t(double value)
+    : FIGURES(8)
+    , nFigures(get_figures())
+    , nValue(value * nFigures)
+    {
+    }
+
+
+    /** get_figures
+     *
+     *  Get the figures represented as a multiple of base 10 (largest base-10 digit).
+     *
+     **/
     uint64_t get_figures()
     {
         uint64_t nTemp = 10;
@@ -45,23 +72,7 @@ public:
     }
 
 
-
-    precision_t()
-    : FIGURES(8)
-    , nFigures(get_figures())
-    , nValue(0)
-    {
-    }
-
-
-    precision_t(double value)
-    : FIGURES(8)
-    , nFigures(get_figures())
-    , nValue(value * nFigures)
-    {
-    }
-
-
+    /** Assignment operator (double) **/
     precision_t& operator=(double value)
     {
         nValue = static_cast<uint64_t>(value * nFigures);
@@ -70,6 +81,7 @@ public:
     }
 
 
+    /** Assignment operator (uint32_t) **/
     precision_t& operator=(uint32_t value)
     {
         nValue = value * nFigures;
@@ -78,6 +90,7 @@ public:
     }
 
 
+    /** Assignment operator (int32_t) **/
     precision_t& operator=(int32_t value)
     {
         nValue = value * nFigures;
@@ -86,6 +99,7 @@ public:
     }
 
 
+    /** Comparison equivalence operator **/
     bool operator==(int32_t value) const
     {
         uint64_t compare = static_cast<uint64_t>(value) * nFigures;
@@ -94,6 +108,7 @@ public:
     }
 
 
+    /** Comparison equivalence operator **/
     bool operator==(uint32_t value) const
     {
         uint64_t compare = static_cast<uint64_t>(value) * nFigures;
@@ -102,6 +117,7 @@ public:
     }
 
 
+    /** Comparison less-than operator **/
     bool operator<(int32_t value) const
     {
         uint64_t compare = static_cast<uint64_t>(value) * nFigures;
@@ -110,6 +126,7 @@ public:
     }
 
 
+    /** Comparison greater-than operator **/
     bool operator>(int32_t value) const
     {
         uint64_t compare = static_cast<uint64_t>(value) * nFigures;
@@ -118,6 +135,7 @@ public:
     }
 
 
+    /** Addition assignment operator **/
     precision_t& operator+=(const precision_t& value)
     {
         if(value.nFigures < nFigures)
@@ -144,6 +162,7 @@ public:
     }
 
 
+    /** Subtraction assignment operator **/
     precision_t& operator-=(const precision_t& value)
     {
         if(value.nFigures < nFigures)
@@ -170,6 +189,7 @@ public:
     }
 
 
+    /** Subtraction operator **/
     precision_t operator-(const int32_t& value)
     {
         precision_t ret = *this - (value * nFigures);
@@ -178,6 +198,7 @@ public:
     }
 
 
+    /** Division assignment operator **/
     precision_t& operator/=(const precision_t& value)
     {
         uint128_t nTemp = nValue;
@@ -191,6 +212,16 @@ public:
     }
 
 
+    /** Division assignment operator **/
+    precision_t& operator/=(const uint128_t& value)
+    {
+        nValue /= value;
+
+        return *this;
+    }
+
+
+    /** Multiplication assignment operator **/
     precision_t& operator*=(const precision_t& value)
     {
         uint128_t nTemp = nValue;
@@ -210,15 +241,7 @@ public:
     }
 
 
-
-    precision_t& operator/=(const uint128_t& value)
-    {
-        nValue /= value;
-
-        return *this;
-    }
-
-
+    /** Multiplication assignment operator **/
     precision_t& operator*=(const uint64_t& value)
     {
         nValue *= value;
@@ -227,32 +250,7 @@ public:
     }
 
 
-    precision_t operator/(const precision_t& value) const
-    {
-        precision_t ret = *this;
-
-        uint128_t nTemp = nValue;
-
-        nTemp     *= value.nFigures;
-        nTemp     /= value.nValue;
-
-        ret.nValue = static_cast<uint64_t>(nTemp);
-
-        return ret;
-    }
-
-
-
-    precision_t operator/(const uint128_t& value) const
-    {
-        precision_t ret = *this;
-
-        ret.nValue /= value;
-
-        return ret;
-    }
-
-
+    /** Multiplication operator **/
     precision_t operator*(const precision_t& value) const
     {
         precision_t ret = *this;
@@ -278,6 +276,8 @@ public:
         return ret;
     }
 
+
+    /** Multiplication operator **/
     precision_t operator*(const uint32_t& value) const
     {
         precision_t ret = *this;
@@ -288,6 +288,34 @@ public:
     }
 
 
+    /** Division operator **/
+    precision_t operator/(const precision_t& value) const
+    {
+        precision_t ret = *this;
+
+        uint128_t nTemp = nValue;
+
+        nTemp     *= value.nFigures;
+        nTemp     /= value.nValue;
+
+        ret.nValue = static_cast<uint64_t>(nTemp);
+
+        return ret;
+    }
+
+
+    /** Division operator **/
+    precision_t operator/(const uint128_t& value) const
+    {
+        precision_t ret = *this;
+
+        ret.nValue /= value;
+
+        return ret;
+    }
+
+
+    /** power operator **/
     precision_t operator^(const precision_t& value) const
     {
         precision_t ret = *this;
@@ -307,6 +335,7 @@ public:
 
     double get() const
     {
+        /* TODO: this can lose precision. */
         return nValue / static_cast<double>(nFigures);
     }
 
@@ -326,16 +355,21 @@ public:
     }
 
 
+    /** print
+     *
+     *  Print the precision_t class
+     *
+     **/
     void print() const
     {
-        printf("%.16f FIGURES %lu\n", get(), nFigures);
+        //printf("%.16f FIGURES %lu\n", get(), nFigures);
+        debug::log(0, std::setprecision(16), get(), " FIGURES ", nFigures);
     }
 
 
+    /** steam output operator **/
     friend std::ostream &operator<<(std::ostream &o, const precision_t &value)
     {
-        //uint32_t nFigures = std::min(12u, FIGURES);
-        //o << std::fixed << std::setprecision(nFigures) << value.get();
         o << std::fixed << std::setprecision(12) << value.get();
         return o;
     }
@@ -416,33 +450,36 @@ int main(int argc, char** argv)
 {
     using namespace TAO::Ledger;
 
-//2.7182818284590452353602874713527
+    //2.7182818284590452353602874713527
 
     debug::log(0, "Chain Age ", GetChainAge(time(NULL)));
 
     uint32_t nFails = 0;
     uint32_t nTotals = 100000000;
+    uint32_t nInterval = 100000;
 
     runtime::timer timer;
     timer.Start();
-    for(int i = 5000000; i < nTotals; i++)
+
+    for(int32_t i = 0; i < nTotals; ++i)
     {
-        if(i % 100000 == 0)
+        if(i % nInterval == 0)
         {
             uint32_t nMS = timer.ElapsedMilliseconds();
 
-            debug::log(0, i, " Time ", nMS, " ", 100000000 / (nMS == 0 ? 1 : nMS), " per second");
+            debug::log(0, i, " Time ", nMS, " ms ", nInterval * 1000 / (nMS == 0 ? 1 : nMS), " per second");
             timer.Reset();
         }
 
         //debug::log(0, i);
-        //if(GetSubsidy(i, 0) != Subsidy(i, 0))
+        if(GetSubsidy(i, 2) != Subsidy(i, 2))
         {
-            Subsidy(i, 0, false);
+            //Subsidy(i, 1, false);
             //debug::log(0, "MINUTE ", i);
             //debug::log(0, GetSubsidy(i, 0));
             //debug::log(0, Subsidy(i, 0, false));
             //printf("------------------------------\n");
+
 
             ++nFails;
 
@@ -488,8 +525,6 @@ int main(int argc, char** argv)
     debug::log(0, "value2 = ", value2);
     debug::log(0, "value3 = ", value3);
     debug::log(0, "value4 = ", value4);
-
-    return 0;
 
     return 0;
 }
