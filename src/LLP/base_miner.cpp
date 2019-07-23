@@ -515,7 +515,12 @@ namespace LLP
                 /* Make sure there is no inconsistencies in validating block. */
                 if(!validate_block(hashMerkleRoot))
                 {
+                    /* Set best height to 0 to force miners to request new blocks, since we know that the current block 
+                       will fail to be submitted */
+                    nBestHeight = 0;
+
                     respond(BLOCK_REJECTED);
+                
                     return true;
                 }
 
