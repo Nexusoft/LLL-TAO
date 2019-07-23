@@ -370,10 +370,10 @@ namespace TAO
                                 /* Update coinbase rewards. */
                                 nCoinbaseRewards[1] += nValue;
                             }
-                        }
 
-                        /* Set that ambassador is active for this block. */
-                        fAmbassador = true;
+                            /* Set that ambassador is active for this block. */
+                            fAmbassador = true;
+                        }
                     }
 
                     /* Loop through the contracts. */
