@@ -903,6 +903,25 @@ namespace TAO
             {
                 json::json entry;
                 entry["account"] = std::string("");
+
+                /* For coinbase / coinstake transactions we need to extract the address from the first TxOut in vout */
+                if(wtx.vout.size() == 0)
+                    throw APIException(-8, "Invalid coinbase/coinstake transaction");
+
+                const Legacy::TxOut& txout = wtx.vout[0];
+                Legacy::NexusAddress address;
+                std::vector<uint8_t> vchPubKey;
+
+                /* Get the Nexus address from the txout public key */
+                if (!ExtractAddress(txout.scriptPubKey, address))
+                {
+                    debug::log(0, FUNCTION, "Unknown transaction type found, txid ", wtx.GetHash().ToString());
+
+                    address = " unknown ";
+                }
+
+                entry["address"] = address.ToString();
+                
                 if(nGeneratedImmature)
                 {
                     entry["category"] = wtx.GetDepthInMainChain() ? "immature" : "orphan";
