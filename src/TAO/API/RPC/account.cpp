@@ -1125,21 +1125,35 @@ namespace TAO
 
                 entry["address"] = address.ToString();
 
+                /* The amount to output */
+                int64_t nAmount = nGeneratedImmature > 0 ? nGeneratedImmature : nGeneratedMature;
+
+                /* Substract the input amount for stake transactions as the generated amount includes the stake amount */
+                if (wtx.IsGenesis() || wtx.IsCoinStake())
+                {
+                    std::map<uint512_t, Legacy::Transaction> mapInputs;
+                    wtx.FetchInputs(mapInputs);
+
+                    nAmount -= wtx.GetValueIn(mapInputs);
+                }
+
                 if (nGeneratedImmature)
                 {
                     entry["category"] = wtx.GetDepthInMainChain() ? "immature" : "orphan";
-                    entry["amount"] = Legacy::SatoshisToAmount(nGeneratedImmature);
                 }
-                else if (wtx.IsCoinStake())
+                else if(wtx.IsGenesis() || wtx.IsCoinStake())
                 {
-                    entry["category"] = "stake";
-                    entry["amount"] = Legacy::SatoshisToAmount(nGeneratedMature);
+                    entry["category"] = wtx.IsGenesis() ? "genesis" : "stake";
                 }
                 else
                 {
                     entry["category"] = "generate";
-                    entry["amount"] = Legacy::SatoshisToAmount(nGeneratedMature);
                 }
+
+                /* Add the amount */
+                entry["amount"] = Legacy::SatoshisToAmount(nAmount);
+
+
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
                 ret.push_back(entry);
