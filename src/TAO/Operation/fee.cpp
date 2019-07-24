@@ -123,7 +123,7 @@ namespace TAO
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 
             /* Seek read position to first position. */
-            contract.Rewind(32, Contract::OPERATIONS);
+            contract.Rewind(40, Contract::OPERATIONS);
 
             /* Reset the register streams. */
             contract.Reset(Contract::REGISTERS);
