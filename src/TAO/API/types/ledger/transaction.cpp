@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/ledger.h>
+#include <TAO/API/include/global.h>
 
 #include <LLD/include/global.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -67,6 +68,9 @@ namespace TAO
             if(params.find("format") != params.end() && params["format"].get<std::string>() == "raw")
                 strFormat = "raw";
 
+            /* Get the callers genesis hash so that we can use it to include name data in the response */
+            uint512_t hashCaller = users->GetCallersGenesis(params);
+
             /* Declare the tritium and legacy transaction objects ready to attempt to load them from disk*/
             TAO::Ledger::Transaction txTritium;
             Legacy::Transaction txLegacy;
@@ -88,7 +92,7 @@ namespace TAO
             if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::Ledger->ReadTx(hash, txTritium))
             {
                 if(strFormat == "JSON")
-                    ret = TAO::API::TransactionToJSON (txTritium, blockState, nVerbose);
+                    ret = TAO::API::TransactionToJSON (hashCaller, txTritium, blockState, nVerbose);
                 else
                 {
                     DataStream ssTx(SER_NETWORK, LLP::PROTOCOL_VERSION);

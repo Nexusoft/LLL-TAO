@@ -283,6 +283,8 @@ Error Codes
 | -160 | Username contains invalid characters |
 | -161 | Name contains invalid characters |
 | -162 | Name contains invalid characters |
+| -163 | Could not retrieve default NXS account to debit fees |
+| -164 | Account 'default' is not a NXS account |
 
 
 

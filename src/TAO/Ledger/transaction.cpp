@@ -226,6 +226,10 @@ namespace TAO
             /* Get the cost value. */
             uint64_t nRet = 0;
 
+            /* There are no transaction costs in private mode */
+            if(config::GetBoolArg("-private", false))
+                return 0;
+
             /* Run through all the contracts. */
             for(auto& contract : vContracts)
             {
@@ -245,7 +249,7 @@ namespace TAO
                     throw debug::exception(FUNCTION, "couldn't read previous transaction");
 
                 /* Check the timestamps. */
-                if(nTimestamp - txPrev.nTimestamp > 60)
+                if(nTimestamp - txPrev.nTimestamp < 60)
                     nRet += 10 * NXS_CENT; //0.1 NXS per transaction above threshold.
             }
 
@@ -327,7 +331,7 @@ namespace TAO
                     return debug::error(FUNCTION, "prev transaction not on disk");
 
                 /* Check the timestamps. */
-                if(nTimestamp - txPrev.nTimestamp > 60)
+                if(nTimestamp - txPrev.nTimestamp < 60)
                     nCost += 10 * NXS_CENT; //0.1 NXS per transaction above threshold
 
                 /* Double check sequence numbers here. */
@@ -392,6 +396,10 @@ namespace TAO
                 }
             }
 
+            /* Check that the fees match. NOTE: There are no fees required in private mode*/
+            if(!config::GetBoolArg("-private", false) && nCost > nFees)
+                return debug::error(FUNCTION, "not enough fees supplied ", nFees);
+
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
             {
@@ -402,14 +410,6 @@ namespace TAO
                 if(!TAO::Operation::Execute(contract, nFlags))
                     return false;
             }
-
-            //NOTE: @paulscreen, this is a bool argument right now until you add fees into API commands.
-            //you will need to calculate the required fees before adding them in an extra contract for OP::FEE
-            //ordering doesn't matter, once this is done, remove GetBoolArg to enforce fees on runtime.
-
-            /* Check that the fees match. */
-            if(config::GetBoolArg("-fees", false) && nCost > nFees)
-                return debug::error(FUNCTION, "not enough fees supplied ", nFees);
 
             return true;
         }

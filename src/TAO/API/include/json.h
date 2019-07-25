@@ -42,6 +42,7 @@ namespace TAO
          *
          *  Converts the transaction to formatted JSON
          *
+         *  @param[in] hashCaller Genesis hash of the callers sig chain (0 if not logged in)
          *  @param[in] tx The transaction to convert to JSON
          *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
          *  @param[in] nVerbosity determines the amount of transaction data to include in the response
@@ -49,7 +50,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity);
+        json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity);
 
 
         /** TransactionToJSON

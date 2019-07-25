@@ -24,10 +24,13 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/names.h>
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
+
+#include <LLD/include/global.h>
 
 #include <Util/templates/datastream.h>
 
@@ -58,7 +61,7 @@ namespace TAO
                 throw APIException(-10, "Invalid session ID");
 
             /* Lock the signature chain. */
-            LOCK(user->CREATE_MUTEX);
+            LOCK(users->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
@@ -90,6 +93,9 @@ namespace TAO
 
             /* Create the Name object contract */
             tx[0] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), hashRegister);
+
+            /* Add the fee */
+            AddFee(tx);
 
             /* Execute the operations layer. */
             if(!tx.Build())
@@ -138,7 +144,7 @@ namespace TAO
                 throw APIException(-10, "Invalid session ID");
 
             /* Lock the signature chain. */
-            LOCK(user->CREATE_MUTEX);
+            LOCK(users->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
@@ -166,7 +172,9 @@ namespace TAO
 
             /* check that the namespace object doesn't already exist*/
             TAO::Register::Object namespaceObject;
-            if(TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
+            
+            /* Read the Name Object */
+            if(LLD::Register->ReadState(hashRegister, namespaceObject, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-90, "Namespace already exists");
 
             /* Create the new namespace object */
@@ -174,7 +182,10 @@ namespace TAO
 
             /* Submit the payload object. */
             tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << namespaceObject.GetState();
-
+            
+            /* Add the fee */
+            AddFee(tx);
+            
             /* Execute the operations layer. */
             if(!tx.Build())
                 throw APIException(-30, "Operations failed to execute");

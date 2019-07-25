@@ -46,6 +46,7 @@ namespace TAO
         , CONDITION()
         , fEvent(false)
         , fShutdown(false)
+        , CREATE_MUTEX()
         {
             Initialize();
 

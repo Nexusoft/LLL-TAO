@@ -90,6 +90,10 @@ namespace TAO
             ~Users();
 
 
+            /** Public mutex for creating transactions on signature chain. **/
+            std::mutex CREATE_MUTEX;
+
+
             /** Initialize.
              *
              *  Sets the function pointers for this API.

@@ -314,5 +314,59 @@ namespace TAO
             return true;
         }
 
-    }
-}
+
+        /* Calculates the required fee for the transaction and adds the OP::FEE contract to the transaction if necessary.
+        *  The method will lookup the "default" NXS account and use this account to pay the fees.  An exception will be thrown
+        *  If there are insufficient funds to pay the fee. */
+        bool AddFee(TAO::Ledger::Transaction& tx)
+        {
+            uint64_t nCost = tx.Cost();
+            if(nCost > 0)
+            {
+                TAO::Register::Object defaultNameRegister;
+
+                if(!TAO::Register::GetNameRegister(tx.hashGenesis, std::string("default"), defaultNameRegister))
+                    throw TAO::API::APIException(-163, "Could not retrieve default NXS account to debit fees.");
+
+                /* Get the address of the default account */
+                uint256_t hashFeeAccount = defaultNameRegister.get<uint256_t>("address");
+
+                /* Retrieve the account */
+                TAO::Register::Object object;
+                if(!LLD::Register->ReadState(hashFeeAccount, object))
+                    throw TAO::API::APIException(-13, "Account not found");
+
+                /* Parse the object register. */
+                if(!object.Parse())
+                    throw TAO::API::APIException(-14, "Object failed to parse");
+
+                /* Get the object standard. */
+                uint8_t nStandard = object.Standard();
+
+                /* Check the object standard. */
+                if(nStandard != TAO::Register::OBJECTS::ACCOUNT)
+                    throw TAO::API::APIException(-65, "Object is not an account");
+
+                /* Check the account is a NXS account */
+                if(object.get<uint256_t>("token") != 0)
+                    throw TAO::API::APIException(-164, "Account 'default' is not a NXS account.");
+                
+                /* Get the account balance */
+                uint64_t nCurrentBalance = object.get<uint64_t>("balance");
+
+                /* Check that there is enough balance to pay the fee */
+                if(nCurrentBalance < nCost)
+                    throw TAO::API::APIException(-69, "Insufficient funds");
+
+                /* Add the fee contract */
+                uint32_t nContractPos = tx.Size();
+                tx[nContractPos] << uint8_t(TAO::Operation::OP::FEE) << hashFeeAccount << nCost; 
+
+                return true;
+            }
+
+            return false;
+        }
+
+    } // End API namespace
+} // End TAO namespace

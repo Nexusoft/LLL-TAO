@@ -105,6 +105,9 @@ namespace TAO
             tx[3] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateAccount(0).GetState();
 
+            /* Add the fee */
+            AddFee(tx);
+            
             /* Calculate the prestates and poststates. */
             if(!tx.Build())
             {

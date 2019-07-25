@@ -96,7 +96,7 @@ namespace TAO
                         if(LLD::Ledger->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json ret = TransactionToJSON(tx, block, nVerbosity);
+                            json::json ret = TransactionToJSON(0, tx, block, nVerbosity);
 
                             txinfo.push_back(ret);
                         }
@@ -122,7 +122,7 @@ namespace TAO
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
+        json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
         {
             /* Declare JSON object to return */
             json::json ret;
@@ -132,7 +132,7 @@ namespace TAO
 
             /* Always add the contracts if level 1 and up */
             if(nVerbosity >= 1)
-                ret["contracts"] = ContractsToJSON(0, tx, nVerbosity);
+                ret["contracts"] = ContractsToJSON(hashCaller, tx, nVerbosity);
 
             /* Basic TX info for level 2 and up */
             if(nVerbosity >= 2)
@@ -657,6 +657,12 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]      = "FEE";
                         ret["account"] = hashAccount.ToString();
+
+                        /* Resolve the name of the account that the credit is to */
+                        std::string strAccount = Names::ResolveName(hashCaller, hashAccount);
+                        if(!strAccount.empty())
+                            ret["account_name"] = strAccount;
+
                         ret["amount"]  = (double) nFee / TAO::Ledger::NXS_COIN;
 
                         break;

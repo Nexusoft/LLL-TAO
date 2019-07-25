@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <Util/include/json.h>
 
 #include <TAO/Register/types/object.h>
+#include <TAO/Ledger/types/transaction.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -65,7 +66,18 @@ namespace TAO
         bool ListRegisters(const uint256_t& hashGenesis, std::vector<uint256_t>& vRegisters);
 
 
-        
+        /** AddFee
+        *
+        *  Calculates the required fee for the transaction and adds the OP::FEE contract to the transaction if necessary.
+        *  The method will lookup the "default" NXS account and use this account to pay the fees.  An exception will be thrown
+        *  If there are insufficient funds to pay the fee.
+        *
+        *  @param[in] tx The transaction to add the fee to
+        *
+        *  @return true if the fee was successfully added, otherwise false
+        *
+        **/
+        bool AddFee(TAO::Ledger::Transaction& tx);
 
 
     }

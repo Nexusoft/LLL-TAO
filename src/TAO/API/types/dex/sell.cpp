@@ -89,7 +89,7 @@ namespace TAO
                 throw APIException(-10, "Invalid session ID");
 
             /* Lock the signature chain. */
-            LOCK(user->CREATE_MUTEX);
+            LOCK(users->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
@@ -131,6 +131,9 @@ namespace TAO
             tx[0] <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
             tx[0] <= uint8_t(TAO::Operation::OP::EQUALS);
             tx[0] <= uint8_t(TAO::Operation::OP::THIS::GENESIS);
+
+            /* Add the fee */
+            AddFee(tx);
 
             /* Execute the operations layer. */
             if(!tx.Build())

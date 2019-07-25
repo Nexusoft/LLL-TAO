@@ -61,7 +61,7 @@ namespace TAO
                 throw APIException(-46, "Missing amount.");
 
             /* Lock the signature chain. */
-            LOCK(user->CREATE_MUTEX);
+            LOCK(users->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
@@ -117,6 +117,9 @@ namespace TAO
             }
             else
                 throw APIException(-78, "Stake not changed");
+
+            /* Add the fee */
+            AddFee(tx);
 
             /* Execute the operations layer. */
             if(!tx.Build())

@@ -264,7 +264,7 @@ namespace LLP
             return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
         /* Lock the sigchain that is being mined. */
-        LOCK(pSigChain->CREATE_MUTEX);
+        LOCK(TAO::API::users->CREATE_MUTEX);
 
         /* Process the block and relay to network if it gets accepted into main chain. */
         if(!TritiumNode::Process(*pBlock, nullptr))
