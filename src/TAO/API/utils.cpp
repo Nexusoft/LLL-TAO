@@ -368,5 +368,67 @@ namespace TAO
             return false;
         }
 
+        /* Returns a type string for the register type */  
+        std::string RegisterType(uint8_t nType)
+        {
+            std::string strRegisterType = "UNKNOWN";
+
+            switch(nType)
+            {
+                case TAO::Register::REGISTER::RESERVED : 
+                    strRegisterType = "RESERVED";
+                    break;
+                case TAO::Register::REGISTER::READONLY :
+                    strRegisterType = "READONLY";
+                    break;
+                case TAO::Register::REGISTER::APPEND :
+                    strRegisterType = "APPEND";
+                    break;
+                case TAO::Register::REGISTER::RAW : 
+                    strRegisterType = "RAW";
+                    break;
+                case TAO::Register::REGISTER::OBJECT :
+                    strRegisterType = "OBJECT";
+                    break;
+                case TAO::Register::REGISTER::SYSTEM :
+                    strRegisterType = "SYSTEM";
+
+            }
+
+            return strRegisterType;
+        }
+
+
+        /* Returns a type string for the register object type */
+        std::string ObjectType(uint8_t nType)
+        {
+            std::string strObjectType = "UNKNOWN";
+
+            switch(nType)
+            {
+                case TAO::Register::OBJECTS::NONSTANDARD :
+                    strObjectType = "REGISTER";
+                    break;
+                case TAO::Register::OBJECTS::ACCOUNT :
+                    strObjectType = "ACCOUNT";
+                    break;
+                case TAO::Register::OBJECTS::NAME :
+                    strObjectType = "NAME";
+                    break;
+                case TAO::Register::OBJECTS::NAMESPACE : 
+                    strObjectType = "NAMESPACE";
+                    break;
+                case TAO::Register::OBJECTS::TOKEN :
+                    strObjectType = "TOKEN";
+                    break;
+                case TAO::Register::OBJECTS::TRUST :
+                    strObjectType = "TRUST";
+
+            }
+
+            return strObjectType;
+        }
+
+
     } // End API namespace
 } // End TAO namespace

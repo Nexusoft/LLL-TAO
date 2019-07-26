@@ -30,6 +30,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/create.h>
 
 #include <Util/include/args.h>
 #include <Util/include/convert.h>
@@ -130,10 +131,6 @@ namespace TAO
             /* Always add the transaction hash */
             ret["txid"] = tx.GetHash().GetHex();
 
-            /* Always add the contracts if level 1 and up */
-            if(nVerbosity >= 1)
-                ret["contracts"] = ContractsToJSON(hashCaller, tx, nVerbosity);
-
             /* Basic TX info for level 2 and up */
             if(nVerbosity >= 2)
             {
@@ -157,6 +154,10 @@ namespace TAO
                     ret["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                 }
             }
+
+            /* Always add the contracts if level 1 and up */
+            if(nVerbosity >= 1)
+                ret["contracts"] = ContractsToJSON(hashCaller, tx, nVerbosity);
 
             return ret;
         }
@@ -318,7 +319,28 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]      = "CREATE";
                         ret["address"] = hashAddress.ToString();
-                        ret["type"]    = nType;
+                        ret["type"]    = RegisterType(nType);
+                        
+                        /* If this is a register object then decode the object type */
+                        if(nType == TAO::Register::REGISTER::OBJECT)
+                        {
+                            /* Create the register object. */
+                            TAO::Register::Object state;
+                            state.nVersion   = 1;
+                            state.nType      = nType;
+                            state.hashOwner  = contract.Caller();
+
+                            /* Calculate the new operation. */
+                            if(!TAO::Operation::Create::Execute(state, vchData, contract.Timestamp()))
+                                throw APIException(-110, "Contract execution failed");
+
+                            /* parse object so that the data fields can be accessed */
+                            if(!state.Parse())
+                                throw APIException(-36, "Failed to parse object register");
+
+                            ret["object_type"] = ObjectType(state.Standard());
+                        }
+
                         ret["data"]    = HexStr(vchData.begin(), vchData.end());
 
                         break;

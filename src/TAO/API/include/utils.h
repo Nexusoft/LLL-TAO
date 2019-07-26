@@ -80,5 +80,29 @@ namespace TAO
         bool AddFee(TAO::Ledger::Transaction& tx);
 
 
+        /** RegisterType
+        *
+        *  Returns a type string for the register type
+        *
+        *  @param[in] nType The register type enum
+        *
+        *  @return A string representation of the register type
+        *
+        **/  
+        std::string RegisterType(uint8_t nType);
+
+
+        /** ObjectType
+        *
+        *  Returns a type string for the register object type
+        *
+        *  @param[in] nType The object type enum
+        *
+        *  @return A string representation of the object register type
+        *
+        **/
+        std::string ObjectType(uint8_t nType);
+
+
     }
 }
