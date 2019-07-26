@@ -248,7 +248,7 @@ namespace TAO
 
                 /* Check the timestamps. */
                 if(nTimestamp - txPrev.nTimestamp < 60)
-                    nRet += 10 * NXS_CENT; //0.1 NXS per transaction above threshold.
+                    nRet += TAO::Ledger::THRESHOLD_FEE; //0.1 NXS per transaction above threshold.
             }
 
             return nRet;
@@ -821,7 +821,7 @@ namespace TAO
             {
                 /* Check the timestamps. */
                 if(nTimestamp - txPrev.nTimestamp < 60)
-                    nCost += 10 * NXS_CENT; //0.1 NXS per transaction above threshold
+                    nCost += TAO::Ledger::THRESHOLD_FEE; //0.1 NXS per transaction above threshold
             }
 
             return nCost;
