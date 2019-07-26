@@ -58,6 +58,8 @@ namespace TAO
             /** Contract register stream. **/
             TAO::Register::Stream  ssRegister;
 
+            /* MEMORY ONLY: The cached cost of this contract */
+            mutable uint64_t nCost;
 
             /** MEMORY ONLY: The transaction pointer bound to. **/
             mutable TAO::Ledger::Transaction* ptx;
@@ -110,24 +112,24 @@ namespace TAO
             void Bind(const TAO::Ledger::Transaction* tx) const;
 
 
-            /** AddFee
-             *
-             *  Add fees to the contract.
-             *
-             *  @param[in] nFee The total fee to add to the contract.
-             *
-             **/
-            void AddFee(const uint64_t nFee) const;
-
-
             /** AddCost
              *
-             *  Add costs to the contract.
+             *  Adds the costs to the contract.
              *
              *  @param[in] nFee The total cost to add to the contract.
              *
              **/
             void AddCost(const uint64_t nCost) const;
+
+
+            /** Cost
+             *
+             *  Get the cost of this contract.
+             *
+             *  @return The cost of this contract.
+             *
+             **/
+            uint64_t Cost() const;
 
 
             /** Primitive

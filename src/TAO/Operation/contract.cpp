@@ -31,6 +31,7 @@ namespace TAO
         : ssOperation()
         , ssCondition()
         , ssRegister()
+        , nCost()
         , ptx(nullptr)
         {
         }
@@ -41,6 +42,7 @@ namespace TAO
         : ssOperation(contract.ssOperation)
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
+        , nCost(contract.nCost)
         , ptx(contract.ptx)
         {
         }
@@ -51,6 +53,7 @@ namespace TAO
         : ssOperation(contract.ssOperation)
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
+        , nCost(contract.nCost)
         , ptx(contract.ptx)
         {
         }
@@ -64,6 +67,9 @@ namespace TAO
             ssCondition = contract.ssCondition;
             ssRegister  = contract.ssRegister;
 
+            /* set the cached cost */
+            nCost = contract.nCost;
+            
             /* Set the transaction reference. */
             ptx         = contract.ptx;
 
@@ -78,23 +84,17 @@ namespace TAO
         }
 
 
-        /* Add fees to the contract. */
-        void Contract::AddFee(const uint64_t nFee) const
-        {
-            if(ptx == nullptr)
-                throw debug::exception(FUNCTION, "add fee access for nullptr");
-
-            ptx->nFees += nFee;
-        }
-
-
         /* Add costs to the contract. */
         void Contract::AddCost(const uint64_t nCost) const
         {
-            if(ptx == nullptr)
-                throw debug::exception(FUNCTION, "add fee access for nullptr");
+            this->nCost += nCost;
+        }
 
-            ptx->nCost += nCost;
+
+        /* Get the cost of this contract. */
+        uint64_t Contract::Cost() const
+        {
+            return nCost;
         }
 
 
@@ -206,7 +206,7 @@ namespace TAO
             /* Switch for validate or condition. */
             switch(nOP)
             {
-                /* Check for condition. */
+                /* Check for debit. */
                 case OP::DEBIT:
                 {
                     /* Skip over from and to. */
@@ -218,7 +218,7 @@ namespace TAO
                     break;
                 }
 
-                /* Check for condition. */
+                /* Check for credit. */
                 case OP::CREDIT:
                 {
                     /* Skip over unrelated data. */
@@ -230,10 +230,22 @@ namespace TAO
                     break;
                 }
 
-                /* Check for validate. */
+                /* Check for coinbase. */
                 case OP::COINBASE:
                 {
                     /* Skip over genesis. */
+                    ssOperation.seek(32);
+
+                    /* Get value. */
+                    ssOperation >> nValue;
+
+                    break;
+                }
+
+                /* Check for fee. */
+                case OP::FEE:
+                {
+                    /* Skip over fee account . */
                     ssOperation.seek(32);
 
                     /* Get value. */

@@ -64,8 +64,6 @@ namespace TAO
         , nNextType(0)
         , vchPubKey()
         , vchSig()
-        , nFees(0)
-        , nCost(0)
         {
         }
 
@@ -240,8 +238,8 @@ namespace TAO
                 TAO::Operation::Cost(contract, nRet);
             }
 
-            /* Check for frequency throttling. */
-            if(!IsFirst())
+            /* Check for frequency throttling. NOTE: Not applicable to coinbase/stake transactions*/
+            if(!IsFirst() && !IsCoinBase() && !IsCoinStake())
             {
                 /* Make sure the previous transaction is on disk or mempool. */
                 TAO::Ledger::Transaction txPrev;
@@ -324,15 +322,11 @@ namespace TAO
                 }
             }
             else
-            {
+            {   
                 /* Make sure the previous transaction is on disk or mempool. */
                 TAO::Ledger::Transaction txPrev;
                 if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
                     return debug::error(FUNCTION, "prev transaction not on disk");
-
-                /* Check the timestamps. */
-                if(nTimestamp - txPrev.nTimestamp < 60)
-                    nCost += 10 * NXS_CENT; //0.1 NXS per transaction above threshold
 
                 /* Double check sequence numbers here. */
                 if(txPrev.nSequence + 1 != nSequence)
@@ -394,11 +388,18 @@ namespace TAO
                     if(!LLD::Ledger->WriteTx(hash, *this))
                         return debug::error(FUNCTION, "failed to write valid next pointer");
                 }
-            }
 
-            /* Check that the fees match. NOTE: There are no fees required in private mode*/
-            if(!config::GetBoolArg("-private", false) && nCost > nFees)
-                return debug::error(FUNCTION, "not enough fees supplied ", nFees);
+                /* The fee applied to this transaction */
+                uint64_t nFees = Fees();
+
+                /* The total cost of this transaction.  We use the cached cost for this as the individual contract costs would
+                   have already been calculated prior to connect, so no need to */
+                uint64_t nCost = CachedCost(txPrev);
+
+                /* Check that the fees match. NOTE: There are no fees required in private mode */
+                if(!config::GetBoolArg("-private", false) && nCost > nFees)
+                    return debug::error(FUNCTION, "not enough fees supplied ", nFees);
+            }     
 
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
@@ -772,6 +773,58 @@ namespace TAO
                 txtype += "user";
 
             return txtype;
+        }
+
+        /* Calculates and returns the total fee included in this transaction */
+        uint64_t Transaction::Fees() const
+        {
+            /* The calculated fee */
+            uint64_t nFee = 0;
+
+            /* Thevalue of the contract */
+            uint64_t nContractValue = 0;
+
+            /* Iterate through all contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Bind the contract to this transaction. */
+                contract.Bind(this);
+
+                if(contract.Primitive() == TAO::Operation::OP::FEE)
+                {
+                    contract.Value(nContractValue);
+                    nFee += nContractValue;
+                }
+            }
+
+            return nFee;
+        }
+
+
+        /* Calculates the cost of this transaction from the contracts within it */
+        uint64_t Transaction::CachedCost(const TAO::Ledger::Transaction& txPrev) const
+        {
+            /* The calculated cost */
+            uint64_t nCost = 0;
+
+            /* Iterate through all contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Bind the contract to this transaction. */
+                contract.Bind(this);
+
+                nCost += contract.Cost();
+            }
+
+            /* Check for frequency throttling. NOTE: Not applicable to coinbase/stake transactions*/
+            if(!IsFirst() && !IsCoinBase() && !IsCoinStake())
+            {
+                /* Check the timestamps. */
+                if(nTimestamp - txPrev.nTimestamp < 60)
+                    nCost += 10 * NXS_CENT; //0.1 NXS per transaction above threshold
+            }
+
+            return nCost;
         }
     }
 }

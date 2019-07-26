@@ -760,7 +760,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect transaction");
 
                     /* Accumulate the fees. */
-                    nFees += tx.nFees;
+                    nFees += tx.Fees();
 
                     /* Check for first. */
                     if(!tx.IsFirst())
