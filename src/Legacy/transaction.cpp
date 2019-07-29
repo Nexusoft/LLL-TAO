@@ -1118,6 +1118,27 @@ namespace Legacy
         if(nFlags == FLAGS::BLOCK)
             state.nMint += (int32_t)(GetValueOut() - nValueIn);
 
+        /* UTXO to Sig Chain support - If we are connected with a block then check the outputs to see if any of them
+           are to a register address.  If they are then write an event for the account holder */
+        if(nFlags == FLAGS::BLOCK)
+        {
+            for(const auto txout : vout )
+            {
+                uint256_t hashTo;
+                if( ExtractRegister( txout.scriptPubKey, hashTo))
+                {
+                    /* Read the owner of register. */
+                    TAO::Register::State state;
+                    if(!LLD::Register->ReadState(hashTo, state, nFlags))
+                        return debug::error(FUNCTION, "failed to read register to");
+
+                    /* Commit an event for receiving sigchain in the legay DB. */
+                    if(!LLD::Legacy->WriteEvent(state.hashOwner, GetHash()))
+                        return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
+                }
+            }
+        }
+
         return true;
     }
 
@@ -1136,6 +1157,23 @@ namespace Legacy
                 /* Erase the spends. */
                 if(!LLD::Legacy->EraseSpend(vin[i].prevout.hash, vin[i].prevout.n))
                     return debug::error(FUNCTION, "failed to erase spends.");
+            }
+
+            /* Remove events for any UTXO to sig chain sends */
+            for(const auto txout : vout )
+            {
+                uint256_t hashTo;
+                if( ExtractRegister( txout.scriptPubKey, hashTo))
+                {
+                    /* Read the owner of register. */
+                    TAO::Register::State state;
+                    if(!LLD::Register->ReadState(hashTo, state))
+                        return debug::error(FUNCTION, "failed to read register to");
+
+                    /* Commit an event for receiving sigchain in the legay DB. */
+                    if(!LLD::Legacy->EraseEvent(state.hashOwner))
+                        return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
+                }
             }
         }
 
