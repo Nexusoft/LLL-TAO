@@ -657,7 +657,9 @@ namespace Legacy
         for(const MerkleTx& tx : vtxPrev)
         {
             /* Also relay any tx in vtxPrev that we don't have in our database, yet */
-            if(!(tx.IsCoinBase() || tx.IsCoinStake()))
+            /* NOTE we skip any that have no vin, as these are the pseudo legacy transactions that are created 
+               to support the sig chain to UTXO transactions (OP::LEGACY) */
+            if(!(tx.IsCoinBase() || tx.IsCoinStake() || tx.vin.size() == 0))
             {
                 uint512_t hash = tx.GetHash();
                 if(!LLD::Legacy->HasTx(hash))
