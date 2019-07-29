@@ -23,6 +23,7 @@ ________________________________________________________________________________
 
 #include <Legacy/types/transaction.h>
 
+#include <TAO/Ledger/include/enum.h>
 
 namespace LLD
 {
@@ -38,7 +39,8 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LegacyDB(uint8_t nFlags = FLAGS::CREATE | FLAGS::WRITE, uint64_t nBuckets = 256 * 256 * 128, uint32_t nCacheIn = 1024 * 1024 * 32);
+        LegacyDB(const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
+            const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
 
 
         /** Default Destructor **/
@@ -64,11 +66,12 @@ namespace LLD
          *
          *  @param[in] hashTx The txid of transaction to read.
          *  @param[in] tx The transaction object to read.
+         *  @param[in] nFlags The flags to check from
          *
          *  @return True if the transaction was successfully read, false otherwise.
          *
          **/
-        bool ReadTx(const uint512_t& hashTx, Legacy::Transaction& tx);
+        bool ReadTx(const uint512_t& hashTx, Legacy::Transaction& tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** EraseTx

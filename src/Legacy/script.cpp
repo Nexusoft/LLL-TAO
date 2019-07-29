@@ -304,6 +304,16 @@ namespace Legacy
     }
 
 
+    /* Set the register address into script */
+    void Script::SetRegisterAddress(const uint256_t& address)
+    {
+        this->clear();
+
+        /* This script is unspendable by UTXO. */
+        *this << address << OP_RETURN;
+    }
+
+
     /* Set the nexus address from public key */
     void Script::SetNexusAddress(const std::vector<uint8_t>& vchPubKey)
     {

@@ -18,7 +18,7 @@ namespace version
 {
 
     /* Major version X (X.y.z | X > 0). */
-    const uint32_t CLIENT_MAJOR = 3;
+    const uint32_t CLIENT_MAJOR = 4;
 
 
     /* Minor version Y (x.Y.z | x > 0). */

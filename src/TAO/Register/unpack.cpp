@@ -108,6 +108,7 @@ namespace TAO
                     /* Create a new register. */
                     case TAO::Operation::OP::DEBIT:
                     case TAO::Operation::OP::TRANSFER:
+                    case TAO::Operation::OP::COINBASE:
                     {
                         /* Extract the address from the contract. */
                         contract >> hashAddress;

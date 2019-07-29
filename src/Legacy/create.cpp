@@ -40,6 +40,7 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+#include <Util/templates/datastream.h>
 
 #include <map>
 #include <utility>
@@ -49,8 +50,7 @@ namespace Legacy
 {
 
     /** Constructs a new legacy block **/
-    bool CreateLegacyBlock(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel,
-                           const uint32_t nID, LegacyBlock& newBlock)
+    bool CreateBlock(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel, const uint32_t nID, LegacyBlock& newBlock)
     {
         newBlock.SetNull();
 
@@ -79,7 +79,7 @@ namespace Legacy
         if(nChannel == 0)
         {
             /* Create the Coinstake transaction for Proof of Stake Channel. */
-            if(!CreateCoinstakeTransaction(txNew))
+            if(!CreateCoinstake(txNew))
                 return debug::error(FUNCTION, "Error creating coinstake transaction");
 
             /* Add coinstake to block. */
@@ -91,7 +91,7 @@ namespace Legacy
         else
         {
             /* Create the Coinbase transaction for Prime/Hash Channels. */
-            if(!CreateCoinbaseTransaction(coinbaseKey, coinbaseRecipients, nChannel, nID, newBlock.nVersion, txNew))
+            if(!CreateCoinbase(coinbaseKey, coinbaseRecipients, nChannel, nID, newBlock.nVersion, txNew))
                 return debug::error(FUNCTION, "Error creating coinbase transaction");
 
             /* Add coinbase to block. */
@@ -121,7 +121,7 @@ namespace Legacy
 
 
     /* Create the coinstake transaction for a legacy block. */
-    bool CreateCoinstakeTransaction(Transaction& coinstakeTx)
+    bool CreateCoinstake(Transaction& coinstakeTx)
     {
         /* Initialize vin */
         coinstakeTx.vin.resize(1);
@@ -150,9 +150,8 @@ namespace Legacy
 
 
     /* Create the Coinbase transaction for a legacy block. */
-    bool CreateCoinbaseTransaction(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients,
-                                   const uint32_t nChannel, const uint32_t nID, const uint32_t nNewBlockVersion,
-                                   Transaction& coinbaseTx)
+    bool CreateCoinbase(Legacy::ReserveKey& coinbaseKey, const Legacy::Coinbase& coinbaseRecipients, const uint32_t nChannel,
+                                   const uint32_t nID, const uint32_t nNewBlockVersion, Transaction& coinbaseTx)
     {
         /* Previous block state is current best state on chain */
         TAO::Ledger::BlockState prevBlockState = TAO::Ledger::ChainState::stateBest.load();
@@ -337,7 +336,7 @@ namespace Legacy
             uint32_t nTxSigOps = 0;
             uint64_t nTxFees = 0;
             uint64_t nMinFee = tx.GetMinFee(nBlockSize, false, Legacy::GMF_BLOCK);
-            std::map<uint512_t, Transaction> mapInputs;
+            std::map<uint512_t, std::pair<uint8_t, DataStream> > mapInputs;
 
             /* Check block size limits */
             if((nBlockSize + nTxSize) >= TAO::Ledger::MAX_BLOCK_SIZE_GEN)

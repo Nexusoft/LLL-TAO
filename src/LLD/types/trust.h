@@ -38,7 +38,8 @@ namespace LLD
     public:
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        TrustDB(uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE);
+        TrustDB(const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
+            const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
 
 
         /** Default Destructor **/

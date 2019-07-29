@@ -19,6 +19,12 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/stream.h>
 
+/* Forward declarations. */
+namespace Legacy
+{
+    class TxOut;
+}
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -53,20 +59,9 @@ namespace TAO
             TAO::Register::Stream  ssRegister;
 
 
-            /** MEMORY ONLY: the calling public-id. **/
-            mutable uint256_t hashCaller;
+            /** MEMORY ONLY: The transaction pointer bound to. **/
+            mutable TAO::Ledger::Transaction* ptx;
 
-
-            /** MEMORY ONLY: the calling timestamp. **/
-            mutable uint64_t nTimestamp;
-
-
-            /** MEMORY ONLY: the calling txid. **/
-            mutable uint512_t hashTx;
-
-
-            /** MEMORY ONLY: the contract-id. **/
-            mutable uint32_t nOutput;
 
         public:
 
@@ -110,10 +105,29 @@ namespace TAO
              *  Bind the contract to a transaction.
              *
              *  @param[in] tx The transaction to bind the contract to.
-             *  @param[in] nContract The contract ID referenced by the transaction.
              *
              **/
-            void Bind(const TAO::Ledger::Transaction& tx, uint32_t nContract) const;
+            void Bind(const TAO::Ledger::Transaction* tx) const;
+
+
+            /** AddFee
+             *
+             *  Add fees to the contract.
+             *
+             *  @param[in] nFee The total fee to add to the contract.
+             *
+             **/
+            void AddFee(const uint64_t nFee) const;
+
+
+            /** AddCost
+             *
+             *  Add costs to the contract.
+             *
+             *  @param[in] nFee The total cost to add to the contract.
+             *
+             **/
+            void AddCost(const uint64_t nCost) const;
 
 
             /** Primitive
@@ -124,16 +138,6 @@ namespace TAO
              *
              **/
             uint8_t Primitive() const;
-
-
-            /** Output
-             *
-             *  Get the output (contract ID).
-             *
-             *  @return The contract ID.
-             *
-             **/
-            uint32_t Output() const;
 
 
             /** Timestamp
@@ -163,7 +167,31 @@ namespace TAO
              *  @return Returns the txid of calling tx
              *
              **/
-            const uint512_t& Hash() const;
+            const uint512_t Hash() const;
+
+
+            /** Value
+             *
+             *  Get the value of the contract if valid
+             *
+             *  @param[out] nValue The value to return.
+             *
+             *  @return True if there is value in the contract.
+             *
+             **/
+            bool Value(uint64_t &nValue) const;
+
+
+            /** Legacy
+             *
+             *  Get the legacy converted output of the contract if valid
+             *
+             *  @param[out] txout The legacy output.
+             *
+             *  @return True if there is value in the contract.
+             *
+             **/
+            bool Legacy(Legacy::TxOut& txout) const;
 
 
             /** Empty
@@ -301,9 +329,9 @@ namespace TAO
             }
 
 
-            /** Operator Overload <=
+            /** Operator Overload >=
              *
-             *  Serializes data into ssCondition
+             *  Serializes data from ssCondition
              *
              *  @param[in] obj The object to serialize into ledger data
              *
@@ -337,7 +365,7 @@ namespace TAO
 
             /** Operator Overload >>=
              *
-             *  Serializes data into ssRegister
+             *  Serializes data from ssRegister
              *
              *  @param[in] obj The object to serialize into ledger data
              *

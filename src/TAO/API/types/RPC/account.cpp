@@ -903,21 +903,53 @@ namespace TAO
             {
                 json::json entry;
                 entry["account"] = std::string("");
-                if(nGeneratedImmature)
+
+                /* For coinbase / coinstake transactions we need to extract the address from the first TxOut in vout */
+                if(wtx.vout.size() == 0)
+                    throw APIException(-8, "Invalid coinbase/coinstake transaction");
+
+                const Legacy::TxOut& txout = wtx.vout[0];
+                Legacy::NexusAddress address;
+                std::vector<uint8_t> vchPubKey;
+
+                /* Get the Nexus address from the txout public key */
+                if (!ExtractAddress(txout.scriptPubKey, address))
+                {
+                    debug::log(0, FUNCTION, "Unknown transaction type found, txid ", wtx.GetHash().ToString());
+
+                    address = " unknown ";
+                }
+
+                entry["address"] = address.ToString();
+                
+                /* The amount to output */
+                int64_t nAmount = nGeneratedImmature > 0 ? nGeneratedImmature : nGeneratedMature;
+
+                /* Substract the input amount for stake transactions as the generated amount includes the stake amount */
+                if (wtx.IsGenesis() || wtx.IsCoinStake())
+                {
+                    std::map<uint512_t, std::pair<uint8_t, DataStream>> mapInputs;
+                    wtx.FetchInputs(mapInputs);
+
+                    nAmount -= wtx.GetValueIn(mapInputs);
+                }
+
+                if (nGeneratedImmature)
                 {
                     entry["category"] = wtx.GetDepthInMainChain() ? "immature" : "orphan";
-                    entry["amount"] = Legacy::SatoshisToAmount(nGeneratedImmature);
                 }
-                else if(wtx.IsCoinStake())
+                else if(wtx.IsGenesis() || wtx.IsCoinStake())
                 {
-                    entry["category"] = "stake";
-                    entry["amount"] = Legacy::SatoshisToAmount(nGeneratedMature);
+                    entry["category"] = wtx.IsGenesis() ? "genesis" : "stake";
                 }
                 else
                 {
                     entry["category"] = "generate";
-                    entry["amount"] = Legacy::SatoshisToAmount(nGeneratedMature);
                 }
+
+                /* Add the amount */
+                entry["amount"] = Legacy::SatoshisToAmount(nAmount);
+
                 if(fLong)
                     WalletTxToJSON(wtx, entry);
                 ret.push_back(entry);

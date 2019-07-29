@@ -34,7 +34,7 @@ namespace Legacy
 
 
 	/* Determine if the object is in a null state. */
-	bool TxOut::IsNull()
+	bool TxOut::IsNull() const
 	{
 		return (nValue == -1);
 	}

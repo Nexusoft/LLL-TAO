@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/trust.h>
+#include <LLD/types/trust.h>
 
 #include <Legacy/types/trustkey.h>
 
@@ -20,13 +20,16 @@ namespace LLD
 {
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
-    TrustDB::TrustDB(uint8_t nFlagsIn)
-    : SectorDatabase(std::string("trust"), nFlagsIn, 256 * 256 * 8)
+    TrustDB::TrustDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
+    : SectorDatabase(std::string("trust")
+    , nFlagsIn
+    , nBucketsIn
+    , nCacheIn)
     {
     }
 
 
-    /** Default Destructor **/
+    /* Default Destructor */
     TrustDB::~TrustDB()
     {
     }

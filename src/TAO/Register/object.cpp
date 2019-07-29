@@ -14,6 +14,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/object.h>
 
+#include <TAO/Ledger/include/constants.h>
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -64,7 +66,7 @@ namespace TAO
 
             /* Search object register for key types. */
             if(mapData.size() == 1
-            && Check("namespace", TYPES::STRING, false )) 
+            && Check("namespace", TYPES::STRING, false ))
             {
                 /* If it only contains one field called namespace then it must be a namespace */
                 /* Set the return value. */
@@ -125,6 +127,40 @@ namespace TAO
             }
 
             return nType;
+        }
+
+
+        /* Get the cost to create this object register.*/
+        uint64_t Object::Cost() const
+        {
+            /* Check the map for empty. */
+            if(mapData.empty())
+                throw debug::exception(FUNCTION, "cannot get cost when object isn't parsed");
+
+            /* Switch based on standard types. */
+            uint8_t nStandard = Standard();
+            switch(nStandard)
+            {
+                /* Tokens cost 10k NXS */
+                case TAO::Register::OBJECTS::TOKEN:
+                    return 10000 * TAO::Ledger::NXS_COIN;
+
+                /* Names cost 100 NXS in a namespace. */
+                case TAO::Register::OBJECTS::NAME:
+                {
+                    std::string strNamespace = get<std::string>("namespace");
+                    if(!strNamespace.empty())
+                        return 100 * TAO::Ledger::NXS_COIN;
+
+                    break;
+                }
+
+                /* Namespaces cost 1000 NXS. */
+                case TAO::Register::OBJECTS::NAMESPACE:
+                    return 1000 * TAO::Ledger::NXS_COIN;
+            }
+
+            return 0;
         }
 
 

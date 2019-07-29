@@ -30,21 +30,25 @@ namespace TAO
     namespace Operation
     {
 
-        Condition::Condition(const Contract& contractIn, const Contract& callerIn, int32_t nLimitsIn)
+        Condition::Condition(const Contract& contractIn, const Contract& callerIn, const int64_t nCostIn)
         : TAO::Register::BaseVM() //512 bytes of register memory.
-        , nLimits(nLimitsIn)
         , contract(contractIn)
         , caller(callerIn)
+        , vEvaluate()
+        , nCost(nCostIn)
         {
+            /* Push base group, which is what contains final return value. */
+            vEvaluate.push(std::make_pair(false, OP::RESERVED));
         }
 
 
         /** Copy constructor. **/
         Condition::Condition(const Condition& in)
         : TAO::Register::BaseVM(in)
-        , nLimits(in.nLimits)
         , contract(in.contract)
         , caller(in.caller)
+        , vEvaluate(in.vEvaluate)
+        , nCost(in.nCost)
         {
         }
 
@@ -52,8 +56,12 @@ namespace TAO
         /* Reset the validation script for re-executing. */
         void Condition::Reset()
         {
+            /* Reset the evaluation stack. */
+            vEvaluate.top().first  = false;
+            vEvaluate.top().second = OP::RESERVED;
+
             contract.Reset();
-            nLimits = 2048;
+            nCost = 0;
 
             reset();
         }
@@ -62,12 +70,6 @@ namespace TAO
         /* Execute the validation script. */
         bool Condition::Execute()
         {
-            /* Build the stack for nested grouping. */
-            std::stack<std::pair<bool, uint8_t>> vEvaluate;
-
-            /* Push base group, which is what contains final return value. */
-            vEvaluate.push(std::make_pair(false, OP::RESERVED));
-
             /* Loop through the operation validation code. */
             contract.Reset(Contract::CONDITIONS);
             while(!contract.End(Contract::CONDITIONS))
@@ -85,6 +87,13 @@ namespace TAO
                     {
                         /* When grouping, add another group layer. */
                         vEvaluate.push(std::make_pair(false, OP::RESERVED));
+
+                        /* Check for overflows. */
+                        if(nCost + 128 < nCost)
+                            throw debug::exception("OP::GROUP costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 128;
 
                         break;
                     }
@@ -242,7 +251,7 @@ namespace TAO
             /* Grab the first value */
             TAO::Register::Value vLeft;
             if(!GetValue(vLeft))
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get l-value"));
+                throw debug::exception(FUNCTION, "failed to get l-value");
 
             /* Grab the next operation. */
             uint8_t OPERATION = 0;
@@ -257,7 +266,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) == 0);
@@ -276,7 +285,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) < 0);
@@ -295,7 +304,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) > 0);
@@ -314,7 +323,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) <= 0);
@@ -333,7 +342,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) >= 0);
@@ -352,7 +361,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = (compare(vLeft, vRight) != 0);
@@ -371,7 +380,7 @@ namespace TAO
                     /* Grab the second value. */
                     TAO::Register::Value vRight;
                     if(!GetValue(vRight))
-                        throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get r-value"));
+                        throw debug::exception(FUNCTION, "failed to get r-value");
 
                     /* Compare both values to one another. */
                     fRet = contains(vLeft, vRight);
@@ -400,7 +409,6 @@ namespace TAO
          **/
         bool Condition::GetValue(TAO::Register::Value& vRet)
         {
-
             /* Iterate until end of stream. */
             while(!contract.End(Contract::CONDITIONS))
             {
@@ -418,15 +426,15 @@ namespace TAO
                         /* Get the add from r-value. */
                         TAO::Register::Value vAdd;
                         if(!GetValue(vAdd))
-                            throw std::runtime_error(debug::safe_printstr("OP::ADD failed to get r-value"));
+                            throw debug::exception("OP::ADD failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vAdd.size() > 1 || vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::ADD computation greater than 64-bits"));
+                            throw debug::exception("OP::ADD computation greater than 64-bits");
 
                         /* Check for overflows. */
                         if(at(vRet) + at(vAdd) < at(vRet))
-                            throw std::runtime_error(debug::safe_printstr("OP::ADD 64-bit value overflow"));
+                            throw debug::exception("OP::ADD 64-bit value overflow");
 
                         /* Compute the return value. */
                         at(vRet) += at(vAdd);
@@ -434,8 +442,12 @@ namespace TAO
                         /* Deallocate r-value from memory. */
                         deallocate(vAdd);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 64;
+                        /* Check for overflows. */
+                        if(nCost + 64 < nCost)
+                            throw debug::exception("OP::ADD costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 64;
 
                         break;
                     }
@@ -447,15 +459,15 @@ namespace TAO
                         /* Get the sub from r-value. */
                         TAO::Register::Value vSub;
                         if(!GetValue(vSub))
-                            throw std::runtime_error(debug::safe_printstr("OP::SUB failed to get r-value"));
+                            throw debug::exception("OP::SUB failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vSub.size() > 1 || vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::SUB computation greater than 64-bits"));
+                            throw debug::exception("OP::SUB computation greater than 64-bits");
 
                         /* Check for overflows. */
                         if(at(vRet) - at(vSub) > at(vRet))
-                            throw std::runtime_error(debug::safe_printstr("OP::SUB 64-bit value overflow"));
+                            throw debug::exception("OP::SUB 64-bit value overflow");
 
                         /* Compute the return value. */
                         at(vRet) -= at(vSub);
@@ -463,8 +475,12 @@ namespace TAO
                         /* Deallocate r-value from memory. */
                         deallocate(vSub);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 64;
+                        /* Check for overflows. */
+                        if(nCost + 64 < nCost)
+                            throw debug::exception("OP::SUB costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 64;
 
                         break;
                     }
@@ -475,14 +491,18 @@ namespace TAO
                     {
                         /* Check computational bounds. */
                         if(vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::INC computation greater than 64-bits"));
+                            throw debug::exception("OP::INC computation greater than 64-bits");
 
                         /* Compute the return value. */
                         if(++at(vRet) == 0)
-                            throw std::runtime_error(debug::safe_printstr("OP::INC 64-bit value overflow"));
+                            throw debug::exception("OP::INC 64-bit value overflow");
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 64;
+                        /* Check for overflows. */
+                        if(nCost + 64 < nCost)
+                            throw debug::exception("OP::INC costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 64;
 
                         break;
                     }
@@ -493,14 +513,18 @@ namespace TAO
                     {
                         /* Check computational bounds. */
                         if(vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::DEC computation greater than 64-bits"));
+                            throw debug::exception("OP::DEC computation greater than 64-bits");
 
                         /* Compute the return value. */
                         if(--at(vRet) == std::numeric_limits<uint64_t>::max())
-                            throw std::runtime_error(debug::safe_printstr("OP::DEC 64-bit value overflow"));
+                            throw debug::exception("OP::DEC 64-bit value overflow");
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 64;
+                        /* Check for overflows. */
+                        if(nCost + 64 < nCost)
+                            throw debug::exception("OP::DEC costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 64;
 
                         break;
                     }
@@ -512,15 +536,15 @@ namespace TAO
                         /* Get the divisor from r-value. */
                         TAO::Register::Value vDiv;
                         if(!GetValue(vDiv))
-                            throw std::runtime_error(debug::safe_printstr("OP::DIV failed to get r-value"));
+                            throw debug::exception("OP::DIV failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vDiv.size() > 1 || vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::DIV computation greater than 64-bits"));
+                            throw debug::exception("OP::DIV computation greater than 64-bits");
 
                         /* Check for exceptions. */
                         if(at(vDiv) == 0)
-                            throw std::runtime_error(debug::safe_printstr("OP::DIV cannot divide by zero"));
+                            throw debug::exception("OP::DIV cannot divide by zero");
 
                         /* Compute the return value. */
                         at(vRet) /= at(vDiv);
@@ -528,8 +552,12 @@ namespace TAO
                         /* Deallocate r-value from memory. */
                         deallocate(vDiv);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
+                        /* Check for overflows. */
+                        if(nCost + 128 < nCost)
+                            throw debug::exception("OP::DIV costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 128;
 
                         break;
                     }
@@ -541,15 +569,15 @@ namespace TAO
                         /* Get the multiplier from r-value. */
                         TAO::Register::Value vMul;
                         if(!GetValue(vMul))
-                            throw std::runtime_error(debug::safe_printstr("OP::MUL failed to get r-value"));
+                            throw debug::exception("OP::MUL failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vMul.size() > 1 || vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::MUL computation greater than 64-bits"));
+                            throw debug::exception("OP::MUL computation greater than 64-bits");
 
                         /* Check for value overflows. */
                         if(at(vMul) != 0 && at(vRet) > std::numeric_limits<uint64_t>::max() / at(vMul))
-                            throw std::runtime_error(debug::safe_printstr("OP::MUL 64-bit value overflow"));
+                            throw debug::exception("OP::MUL 64-bit value overflow");
 
                         /* Compute the return value. */
                         at(vRet) *= at(vMul);
@@ -557,8 +585,12 @@ namespace TAO
                         /* Deallocate r-value from memory. */
                         deallocate(vMul);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
+                        /* Check for overflows. */
+                        if(nCost + 128 < nCost)
+                            throw debug::exception("OP::MUL costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 128;
 
                         break;
                     }
@@ -570,11 +602,11 @@ namespace TAO
                         /* Get the exponent from r-value. */
                         TAO::Register::Value vExp;
                         if(!GetValue(vExp))
-                            throw std::runtime_error(debug::safe_printstr("OP::EXP failed to get r-value"));
+                            throw debug::exception("OP::EXP failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vExp.size() > 1 || vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::EXP computation greater than 64-bits"));
+                            throw debug::exception("OP::EXP computation greater than 64-bits");
 
                         /* Catch for a power of 0. */
                         if(at(vExp) == 0)
@@ -586,7 +618,7 @@ namespace TAO
                         {
                             /* Check for value overflows. */
                             if(nBase != 0 && at(vRet) > std::numeric_limits<uint64_t>::max() / nBase)
-                                throw std::runtime_error(debug::safe_printstr("OP::EXP 64-bit value overflow"));
+                                throw debug::exception("OP::EXP 64-bit value overflow");
 
                             /* Assign the return value. */
                             at(vRet) *= nBase;
@@ -595,8 +627,12 @@ namespace TAO
                         /* Deallocate r-value from memory. */
                         deallocate(vExp);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 256;
+                        /* Check for overflows. */
+                        if(nCost + 256 < nCost)
+                            throw debug::exception("OP::EXP costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 256;
 
                         break;
                     }
@@ -608,15 +644,15 @@ namespace TAO
                         /* Get the modulus from r-value. */
                         TAO::Register::Value vMod;
                         if(!GetValue(vMod))
-                            throw std::runtime_error(debug::safe_printstr("OP::MOD failed to get r-value"));
+                            throw debug::exception("OP::MOD failed to get r-value");
 
                         /* Check computational bounds. */
                         if(vMod.size() > 1 || vRet.size() > 1)
-                            throw std::runtime_error(debug::safe_printstr("OP::MOD computation greater than 64-bits"));
+                            throw debug::exception("OP::MOD computation greater than 64-bits");
 
                         /* Check for exceptions. */
                         if(at(vMod) == 0)
-                            throw std::runtime_error(debug::safe_printstr("OP::MOD cannot divide by zero"));
+                            throw debug::exception("OP::MOD cannot divide by zero");
 
                         /* Compute the return value. */
                         at(vRet) %= at(vMod);
@@ -624,8 +660,12 @@ namespace TAO
                         /* Deallocate r-value from memory. */
                         deallocate(vMod);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
+                        /* Check for overflows. */
+                        if(nCost + 128 < nCost)
+                            throw debug::exception("OP::MOD costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 128;
 
                         break;
                     }
@@ -650,8 +690,43 @@ namespace TAO
                         std::vector<uint8_t> vAlloc(vData.begin() + nBegin, vData.begin() + nBegin + nSize);
                         allocate(vAlloc, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= vData.size();
+                        /* Check for overflows. */
+                        if(nCost + vData.size() < nCost)
+                            throw debug::exception("OP::SUBDATA costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += vData.size();
+
+                        break;
+                    }
+
+
+                    /* Parse out subdata from bytes. */
+                    case OP::CAT:
+                    {
+                        /* Get the add from r-value. */
+                        TAO::Register::Value vCat;
+                        if(!GetValue(vCat))
+                            throw debug::exception("OP::CAT failed to get r-value");
+
+                        /* Extract the string. */
+                        std::vector<uint8_t> vAlloc;
+                        vAlloc.insert(vAlloc.end(), (uint8_t*)begin(vRet), (uint8_t*)end(vRet));
+                        vAlloc.insert(vAlloc.end(), (uint8_t*)begin(vCat), (uint8_t*)end(vCat));
+
+                        /* Deallocate values. */
+                        deallocate(vCat);
+                        deallocate(vRet);
+
+                        /* Allocate concatenated data. */
+                        allocate(vAlloc, vRet);
+
+                        /* Check for overflows. */
+                        if(nCost + vCat.size() < nCost)
+                            throw debug::exception("OP::CAT costs value overflow");
+
+                        /* Adjust the costs. */
+                        nCost += vCat.size();
 
                         break;
                     }
@@ -666,10 +741,14 @@ namespace TAO
                         contract >= n;
 
                         /* Set the register value. */
-                        allocate((uint64_t)n, vRet);
+                        allocate(n, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 1;
+                        /* Check for overflows. */
+                        if(nCost + 1 < nCost)
+                            throw debug::exception("OP::TYPES::UINT8_T costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 1;
 
                         break;
                     }
@@ -683,10 +762,14 @@ namespace TAO
                         contract >= n;
 
                         /* Set the register value. */
-                        allocate((uint64_t)n, vRet);
+                        allocate(n, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 2;
+                        /* Check for overflows. */
+                        if(nCost + 2 < nCost)
+                            throw debug::exception("OP::TYPES::UINT16_T costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 2;
 
                         break;
                     }
@@ -700,10 +783,14 @@ namespace TAO
                         contract >= n;
 
                         /* Set the register value. */
-                        allocate((uint64_t)n, vRet);
+                        allocate(n, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 4;
+                        /* Check for overflows. */
+                        if(nCost + 4 < nCost)
+                            throw debug::exception("OP::TYPES::UINT32_T costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 4;
 
                         break;
                     }
@@ -719,8 +806,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 8;
+                        /* Check for overflows. */
+                        if(nCost + 8 < nCost)
+                            throw debug::exception("OP::TYPES::UINT64_T costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 8;
 
                         break;
                     }
@@ -736,8 +827,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 32;
+                        /* Check for overflows. */
+                        if(nCost + 32 < nCost)
+                            throw debug::exception("OP::TYPES::UINT256_T costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 32;
 
                         break;
 
@@ -754,8 +849,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 64;
+                        /* Check for overflows. */
+                        if(nCost + 64 < nCost)
+                            throw debug::exception("OP::TYPES::UINT512_T costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 64;
 
                         break;
                     }
@@ -771,8 +870,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
+                        /* Check for overflows. */
+                        if(nCost + 128 < nCost)
+                            throw debug::exception("OP::TYPES::UINT1024_T costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 128;
 
                         break;
                     }
@@ -787,13 +890,18 @@ namespace TAO
 
                         /* Check for empty string. */
                         if(str.empty())
-                            throw std::runtime_error(debug::safe_printstr("OP::TYPES::STRING string is empty"));
+                            throw debug::exception("OP::TYPES::STRING string is empty");
 
                         /* Set the register value. */
                         allocate(str, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= str.size();
+                        /* Check for overflows. */
+                        uint32_t nSize = str.size();
+                        if(nCost + nSize < nCost)
+                            throw debug::exception("OP::TYPES::STRING costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += nSize;
 
                         break;
                     }
@@ -808,13 +916,18 @@ namespace TAO
 
                         /* Check for empty string. */
                         if(vData.empty())
-                            throw std::runtime_error(debug::safe_printstr("OP::TYPES::BYTES vector is empty"));
+                            throw debug::exception("OP::TYPES::BYTES vector is empty");
 
                         /* Set the register value. */
                         allocate(vData, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= vData.size();
+                        /* Check for overflows. */
+                        uint32_t nSize = vData.size();
+                        if(nCost + nSize < nCost)
+                            throw debug::exception("OP::TYPES::BYTES costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += nSize;
 
                         break;
                     }
@@ -829,8 +942,12 @@ namespace TAO
                         /* Set the register value. */
                         allocate(n, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 8;
+                        /* Check for overflows. */
+                        if(nCost + 32 < nCost)
+                            throw debug::exception("OP::GLOBAL::UNIFIED costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 32;
 
                         break;
                     }
@@ -853,8 +970,15 @@ namespace TAO
                                 deallocate(hashRegister, vRet);
 
                                 /* Read the register states. */
-                                if(!LLD::Register->Read(hashRegister, state))
+                                if(!LLD::Register->ReadState(hashRegister, state))
                                     return false;
+
+                                /* Check for overflows. */
+                                if(nCost + 5004 < nCost)
+                                    throw debug::exception("OP::REGISTER::MODIFIED costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 5004;
 
                                 break;
                             }
@@ -874,15 +998,19 @@ namespace TAO
                                 /* Reset the contract. */
                                 caller.Reset(Contract::REGISTERS);
 
+                                /* Check for overflows. */
+                                if(nCost + 8 < nCost)
+                                    throw debug::exception("OP::CALLER::PRESTATE::MODIFIED costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 8;
+
                                 break;
                             }
                         }
 
                         /* Set the register value. */
                         allocate(state.nModified, vRet);
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 40;
 
                         break;
                     }
@@ -905,8 +1033,15 @@ namespace TAO
                                 deallocate(hashRegister, vRet);
 
                                 /* Read the register states. */
-                                if(!LLD::Register->Read(hashRegister, state))
+                                if(!LLD::Register->ReadState(hashRegister, state))
                                     return false;
+
+                                /* Check for overflows. */
+                                if(nCost + 5004 < nCost)
+                                    throw debug::exception("OP::REGISTER::CREATED costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 5004;
 
                                 break;
                             }
@@ -926,15 +1061,19 @@ namespace TAO
                                 /* Reset the contract. */
                                 caller.Reset(Contract::REGISTERS);
 
+                                /* Check for overflows. */
+                                if(nCost + 8 < nCost)
+                                    throw debug::exception("OP::CALLER::PRESTATE::CREATED costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 8;
+
                                 break;
                             }
                         }
 
                         /* Set the register value. */
                         allocate(state.nCreated, vRet);
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 40;
 
                         break;
                     }
@@ -957,8 +1096,15 @@ namespace TAO
                                 deallocate(hashRegister, vRet);
 
                                 /* Read the register states. */
-                                if(!LLD::Register->Read(hashRegister, state))
+                                if(!LLD::Register->ReadState(hashRegister, state))
                                     return false;
+
+                                /* Check for overflows. */
+                                if(nCost + 4128 < nCost)
+                                    throw debug::exception("OP::REGISTER::OWNER costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 4128;
 
                                 break;
                             }
@@ -978,15 +1124,19 @@ namespace TAO
                                 /* Reset the contract. */
                                 caller.Reset(Contract::REGISTERS);
 
+                                /* Check for overflows. */
+                                if(nCost + 32 < nCost)
+                                    throw debug::exception("OP::CALLER::PRESTATE::OWNER costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 32;
+
                                 break;
                             }
                         }
 
                         /* Set the register value. */
                         allocate(state.hashOwner, vRet);
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 64;
 
                         break;
                     }
@@ -1009,8 +1159,15 @@ namespace TAO
                                 deallocate(hashRegister, vRet);
 
                                 /* Read the register states. */
-                                if(!LLD::Register->Read(hashRegister, state))
+                                if(!LLD::Register->ReadState(hashRegister, state))
                                     return false;
+
+                                /* Check for overflows. */
+                                if(nCost + 4097 < nCost)
+                                    throw debug::exception("OP::REGISTER::TYPE costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 4097;
 
                                 break;
                             }
@@ -1030,15 +1187,19 @@ namespace TAO
                                 /* Reset the contract. */
                                 caller.Reset(Contract::REGISTERS);
 
+                                /* Check for overflows. */
+                                if(nCost + 1 < nCost)
+                                    throw debug::exception("OP::CALLER::PRESTATE::TYPE costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 1;
+
                                 break;
                             }
                         }
 
                         /* Push the type onto the return value. */
-                        allocate((uint64_t)state.nType, vRet);
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 33;
+                        allocate(state.nType, vRet);
 
                         break;
                     }
@@ -1061,8 +1222,16 @@ namespace TAO
                                 deallocate(hashRegister, vRet);
 
                                 /* Read the register states. */
-                                if(!LLD::Register->Read(hashRegister, state))
+                                if(!LLD::Register->ReadState(hashRegister, state))
                                     return false;
+
+                                /* Check for overflows. */
+                                uint32_t nSize = 4096 + state.GetState().size();
+                                if(nCost + nSize < nCost)
+                                    throw debug::exception("OP::REGISTER::STATE costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += nSize;
 
                                 break;
                             }
@@ -1082,15 +1251,20 @@ namespace TAO
                                 /* Reset the contract. */
                                 caller.Reset(Contract::REGISTERS);
 
+                                /* Check for overflows. */
+                                uint32_t nSize = state.GetState().size();
+                                if(nCost + nSize < nCost)
+                                    throw debug::exception("OP::CALLER::PRESTATE::STATE costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += nCost;
+
                                 break;
                             }
                         }
 
                         /* Allocate to the registers. */
                         allocate(state.GetState(), vRet);
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
 
                         break;
                     }
@@ -1113,8 +1287,15 @@ namespace TAO
                                 deallocate(hashRegister, vRet);
 
                                 /* Read the register states. */
-                                if(!LLD::Register->Read(hashRegister, object))
+                                if(!LLD::Register->ReadState(hashRegister, object))
                                     return false;
+
+                                /* Check for overflows. */
+                                if(nCost + 4096 < nCost)
+                                    throw debug::exception("OP::REGISTER::VALUE costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 4096;
 
                                 break;
                             }
@@ -1169,6 +1350,13 @@ namespace TAO
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
+                                /* Check for overflows. */
+                                if(nCost + 1 < nCost)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT8_T costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 1;
+
                                 break;
                             }
 
@@ -1183,6 +1371,13 @@ namespace TAO
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
+
+                                /* Check for overflows. */
+                                if(nCost + 2 < nCost)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT16_T costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 2;
 
                                 break;
                             }
@@ -1199,6 +1394,13 @@ namespace TAO
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
+                                /* Check for overflows. */
+                                if(nCost + 4 < nCost)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT32_T costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 4;
+
                                 break;
                             }
 
@@ -1213,6 +1415,13 @@ namespace TAO
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
+
+                                /* Check for overflows. */
+                                if(nCost + 8 < nCost)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT64_T costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 8;
 
                                 break;
                             }
@@ -1229,6 +1438,13 @@ namespace TAO
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
+                                /* Check for overflows. */
+                                if(nCost + 32 < nCost)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT256_T costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 32;
+
                                 break;
                             }
 
@@ -1243,6 +1459,13 @@ namespace TAO
 
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
+
+                                /* Check for overflows. */
+                                if(nCost + 64 < nCost)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT512_T costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 64;
 
                                 break;
                             }
@@ -1259,6 +1482,13 @@ namespace TAO
                                 /* Allocate the value. */
                                 allocate(nValue, vRet);
 
+                                /* Check for overflows. */
+                                if(nCost + 128 < nCost)
+                                    throw debug::exception("OP::REGISTER::VALUE::UINT1024_T costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 128;
+
                                 break;
                             }
 
@@ -1273,6 +1503,14 @@ namespace TAO
 
                                 /* Allocate the value. */
                                 allocate(strData, vRet);
+
+                                /* Check for overflows. */
+                                uint32_t nSize = strData.size();
+                                if(nCost + nSize < nCost)
+                                    throw debug::exception("OP::REGISTER::VALUE::STRING costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += nSize;
 
                                 break;
                             }
@@ -1289,15 +1527,20 @@ namespace TAO
                                 /* Allocate the value. */
                                 allocate(vData, vRet);
 
+                                /* Check for overflows. */
+                                uint32_t nSize = vData.size();
+                                if(nCost + nSize < nCost)
+                                    throw debug::exception("OP::REGISTER::VALUE::BYTES costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += nSize;
+
                                 break;
                             }
 
                             default:
                                 return false;
                         }
-
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
 
                         break;
                     }
@@ -1309,8 +1552,12 @@ namespace TAO
                         /* Allocate to the registers. */
                         allocate(caller.Caller(), vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
+                        /* Check for overflows. */
+                        if(nCost + 32 < nCost)
+                            throw debug::exception("OP::CALLER::GENESIS costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 32;
 
                         break;
                     }
@@ -1322,8 +1569,12 @@ namespace TAO
                         /* Allocate to the registers. */
                         allocate(caller.Timestamp(), vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 1;
+                        /* Check for overflows. */
+                        if(nCost + 8 < nCost)
+                            throw debug::exception("OP::CALLER::TIMESTAMP costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 8;
 
                         break;
                     }
@@ -1335,8 +1586,12 @@ namespace TAO
                         /* Allocate to the registers. */
                         allocate(contract.Caller(), vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 128;
+                        /* Check for overflows. */
+                        if(nCost + 32 < nCost)
+                            throw debug::exception("OP::THIS::GENESIS costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 32;
 
                         break;
                     }
@@ -1348,8 +1603,12 @@ namespace TAO
                         /* Allocate to the registers. */
                         allocate(contract.Timestamp(), vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 1;
+                        /* Check for overflows. */
+                        if(nCost + 8 < nCost)
+                            throw debug::exception("OP::THIS::TIMESTAMP costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 8;
 
                         break;
                     }
@@ -1363,7 +1622,7 @@ namespace TAO
 
                         /* Check for empty operations. */
                         if(vBytes.empty())
-                            throw std::runtime_error(debug::safe_printstr("OP::CALLER::OPERATIONS caller has empty operations"));
+                            throw debug::exception("OP::CALLER::OPERATIONS caller has empty operations");
 
                         /* Check for condition or validate. */
                         uint8_t nOffset = 0;
@@ -1390,13 +1649,18 @@ namespace TAO
 
                         /* Check that offset is within memory range. */
                         if(vBytes.size() <= nOffset)
-                            throw std::runtime_error(debug::safe_printstr("OP::CALLER::OPERATIONS offset is not within size"));
+                            throw debug::exception("OP::CALLER::OPERATIONS offset is not within size");
 
                         /* Allocate to the registers. */
                         allocate(vBytes, vRet, nOffset);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= vBytes.size();
+                        /* Check for overflows. */
+                        uint32_t nSize = vBytes.size();
+                        if(nCost + nSize < nCost)
+                            throw debug::exception("OP::CALLER::OPERATIONS costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += nCost;
 
                         break;
                     }
@@ -1406,10 +1670,14 @@ namespace TAO
                     case OP::LEDGER::HEIGHT:
                     {
                         /* Allocate to the registers. */
-                        allocate((uint64_t)TAO::Ledger::ChainState::stateBest.load().nHeight, vRet);
+                        allocate(TAO::Ledger::ChainState::stateBest.load().nHeight, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 8;
+                        /* Check for overflows. */
+                        if(nCost + 4 < nCost)
+                            throw debug::exception("OP::LEDGER::HEIGHT costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 4;
 
                         break;
                     }
@@ -1419,22 +1687,31 @@ namespace TAO
                     case OP::LEDGER::SUPPLY:
                     {
                         /* Allocate to the registers. */
-                        allocate((uint64_t)TAO::Ledger::ChainState::stateBest.load().nMoneySupply, vRet);
+                        allocate(uint64_t(TAO::Ledger::ChainState::stateBest.load().nMoneySupply), vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 8;
+                        /* Check for overflows. */
+                        if(nCost + 8 < nCost)
+                            throw debug::exception("OP::LEDGER::SUPPLY costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 8;
 
                         break;
                     }
 
 
+                    /* Get the best block timestamp. */
                     case OP::LEDGER::TIMESTAMP:
                     {
                         /* Allocate to the registers. */
-                        allocate((uint64_t)TAO::Ledger::ChainState::stateBest.load().nTime, vRet);
+                        allocate(uint64_t(TAO::Ledger::ChainState::stateBest.load().nTime), vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 8;
+                        /* Check for overflows. */
+                        if(nCost + 8 < nCost)
+                            throw debug::exception("OP::LEDGER::TIMESTAMP costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 8;
 
                         break;
                     }
@@ -1445,7 +1722,7 @@ namespace TAO
                     {
                         /* Check for hash input availability. */
                         if(vRet.null())
-                            throw std::runtime_error("OP::CRYPTO::SK256: can't hash with no input");
+                            throw debug::exception("OP::CRYPTO::SK256: can't hash with no input");
 
                         /* Compute the return hash. */
                         uint256_t hash = LLC::SK256((uint8_t*)begin(vRet), (uint8_t*)end(vRet));
@@ -1456,8 +1733,12 @@ namespace TAO
                         /* Copy new hash into return value. */
                         allocate(hash, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 512;
+                        /* Check for overflows. */
+                        if(nCost + 2048 < nCost)
+                            throw debug::exception("OP::CRYPTO::SK256 costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 2048;
 
                         break;
                     }
@@ -1468,7 +1749,7 @@ namespace TAO
                     {
                         /* Check for hash input availability. */
                         if(vRet.null())
-                            throw std::runtime_error("OP::CRYPTO::SK512: can't hash with no input");
+                            throw debug::exception("OP::CRYPTO::SK512: can't hash with no input");
 
                         /* Compute the return hash. */
                         uint512_t hash = LLC::SK512((uint8_t*)begin(vRet), (uint8_t*)end(vRet));
@@ -1479,8 +1760,12 @@ namespace TAO
                         /* Copy new hash into return value. */
                         allocate(hash, vRet);
 
-                        /* Reduce the limits to prevent operation exhuastive attacks. */
-                        nLimits -= 1024;
+                        /* Check for overflows. */
+                        if(nCost + 2048 < nCost)
+                            throw debug::exception("OP::CRYPTO::SK512 costs value overflow");
+
+                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        nCost += 2048;
 
                         break;
                     }
@@ -1490,19 +1775,13 @@ namespace TAO
                     {
                         /* If no applicable instruction found, rewind and return. */
                         contract.Rewind(1, Contract::CONDITIONS);
-                        if(nLimits < 0)
-                            debug::error(FUNCTION, "out of computational limits ", nLimits);
 
-                        return (nLimits >= 0);
+                        return true;
                     }
                 }
             }
 
-            /* Log if computational limits expired. */
-            if(nLimits < 0)
-                debug::error(FUNCTION, "out of computational limits ", nLimits);
-
-            return (nLimits >= 0);
+            return true;
         }
     }
 }

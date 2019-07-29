@@ -66,8 +66,11 @@ namespace filesystem
         #ifdef WIN32
         if(_rmdir(debug::safe_printstr("rm -rf ", path).c_str()) != -1) //TODO: @scottsimon36 test this for windoze
             return true;
+        #elif defined(MAC_OSX)
+        if(system(debug::safe_printstr("sudo rm -rf '", path, "'").c_str()) == 0) //OSX requires sudo and special chars for path
+            return true;
         #else
-        if(system(debug::safe_printstr("rm -rf ", path).c_str()) == 0)
+        if(system(debug::safe_printstr("rm -rf '", path, "'").c_str()) == 0)
             return true;
         #endif
 

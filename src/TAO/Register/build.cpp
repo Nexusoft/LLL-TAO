@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/create.h>
 #include <TAO/Operation/include/credit.h>
 #include <TAO/Operation/include/debit.h>
+#include <TAO/Operation/include/fee.h>
 #include <TAO/Operation/include/genesis.h>
 #include <TAO/Operation/include/legacy.h>
 #include <TAO/Operation/include/stake.h>
@@ -605,6 +606,46 @@ namespace TAO
 
                         /* Write the state to memory map. */
                         mapStates[hashAddress] = TAO::Register::State(object);
+
+                        break;
+                    }
+
+
+                    /* Create unspendable fee that debits from the account and makes this unspendable. */
+                    case TAO::Operation::OP::FEE:
+                    {
+                        /* Get the register address. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
+
+                        /* Get the transfer amount. */
+                        uint64_t  nFees = 0;
+                        contract >> nFees;
+
+                        /* Serialize the pre-state byte into contract. */
+                        contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
+
+                        /* Check temporary memory states first. */
+                        Object object;
+                        if(mapStates.find(hashAddress) != mapStates.end())
+                            object = TAO::Register::Object(mapStates[hashAddress]);
+
+                        /* Read the register from database. */
+                        else if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
+                            return debug::error(FUNCTION, "OP::LEGACY: register pre-state doesn't exist");
+
+                        /* Serialize the pre-state into contract. */
+                        contract <<= object;
+
+                        /* Calculate the new operation. */
+                        if(!TAO::Operation::Fee::Execute(object, nFees, contract.Timestamp()))
+                            return debug::error(FUNCTION, "OP::LEGACY: cannot generate post-state");
+
+                        /* Serialize the post-state byte into contract. */
+                        contract <<= uint8_t(TAO::Register::STATES::POSTSTATE);
+
+                        /* Serialize the checksum into contract. */
+                        contract <<= object.GetHash();
 
                         break;
                     }

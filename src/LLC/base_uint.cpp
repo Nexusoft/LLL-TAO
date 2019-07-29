@@ -29,7 +29,7 @@ namespace
 }
 
 
-/** Default Constructor. **/
+/* Default Constructor. */
 template<uint32_t BITS>
 base_uint<BITS>::base_uint()
 {
@@ -38,14 +38,14 @@ base_uint<BITS>::base_uint()
 }
 
 
-/** Destructor. **/
+/* Destructor. */
 template<uint32_t BITS>
 base_uint<BITS>::~base_uint()
 {
 }
 
 
-/** Copy Constructor. **/
+/* Copy Constructor. */
 template<uint32_t BITS>
 base_uint<BITS>::base_uint(const base_uint<BITS>& b)
 {
@@ -66,7 +66,7 @@ base_uint<BITS>::base_uint(template<uint32_t BITS2> const base_uint<BITS2> &b)
 */
 
 
-/** Constructor. (from string) **/
+/* Constructor. (from string) */
 template<uint32_t BITS>
 base_uint<BITS>::base_uint(const std::string& str)
 {
@@ -74,7 +74,7 @@ base_uint<BITS>::base_uint(const std::string& str)
 }
 
 
-/** Constructor. (from vector) **/
+/* Constructor. (from vector) */
 template<uint32_t BITS>
 base_uint<BITS>::base_uint(const std::vector<uint8_t>& vch)
 {
@@ -85,7 +85,7 @@ base_uint<BITS>::base_uint(const std::vector<uint8_t>& vch)
 }
 
 
-/** Assignment operator. **/
+/* Assignment operator. */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator=(const base_uint<BITS>& b)
 {
@@ -96,7 +96,7 @@ base_uint<BITS>& base_uint<BITS>::operator=(const base_uint<BITS>& b)
 }
 
 
-/** Assignment operator. (64-bit) **/
+/* Assignment operator. (64-bit) */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator=(uint64_t b)
 {
@@ -110,7 +110,7 @@ base_uint<BITS>& base_uint<BITS>::operator=(uint64_t b)
 }
 
 
-/** Constructor. (64-bit) **/
+/* Constructor. (64-bit) */
 template<uint32_t BITS>
 base_uint<BITS>::base_uint(uint64_t b)
 {
@@ -122,7 +122,7 @@ base_uint<BITS>::base_uint(uint64_t b)
 }
 
 
-/** Logical NOT unary operator. **/
+/* Logical NOT unary operator. */
 template<uint32_t BITS>
 bool base_uint<BITS>::operator!() const
 {
@@ -136,7 +136,7 @@ bool base_uint<BITS>::operator!() const
 }
 
 
-/** Bitwise inversion unary operator. **/
+/* Bitwise inversion unary operator. */
 template<uint32_t BITS>
 const base_uint<BITS> base_uint<BITS>::operator~() const
 {
@@ -149,7 +149,7 @@ const base_uint<BITS> base_uint<BITS>::operator~() const
 }
 
 
-/** One's complement (negation) bitwise unary operator **/
+/* One's complement (negation) bitwise unary operator */
 template<uint32_t BITS>
 const base_uint<BITS> base_uint<BITS>::operator-() const
 {
@@ -164,7 +164,7 @@ const base_uint<BITS> base_uint<BITS>::operator-() const
 }
 
 
-/** XOR assignment operator. **/
+/* XOR assignment operator. */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator^=(const base_uint<BITS>& b)
 {
@@ -175,7 +175,7 @@ base_uint<BITS>& base_uint<BITS>::operator^=(const base_uint<BITS>& b)
 }
 
 
-/** XOR assignment operator. (64-bit) **/
+/* XOR assignment operator. (64-bit) */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator^=(uint64_t b)
 {
@@ -186,7 +186,7 @@ base_uint<BITS>& base_uint<BITS>::operator^=(uint64_t b)
 
 
 
-/** OR assignment operator. **/
+/* OR assignment operator. */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator|=(const base_uint<BITS>& b)
 {
@@ -197,7 +197,7 @@ base_uint<BITS>& base_uint<BITS>::operator|=(const base_uint<BITS>& b)
 }
 
 
-/** OR assignment operator. (64-bit) **/
+/* OR assignment operator. (64-bit) */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator|=(uint64_t b)
 {
@@ -208,7 +208,7 @@ base_uint<BITS>& base_uint<BITS>::operator|=(uint64_t b)
 }
 
 
-/** AND assignment operator. **/
+/* AND assignment operator. */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator&=(const base_uint<BITS>& b)
 {
@@ -219,7 +219,7 @@ base_uint<BITS>& base_uint<BITS>::operator&=(const base_uint<BITS>& b)
 }
 
 
-/** Left shift assignment operator. **/
+/* Left shift assignment operator. */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator<<=(uint32_t shift)
 {
@@ -242,7 +242,7 @@ base_uint<BITS>& base_uint<BITS>::operator<<=(uint32_t shift)
 
 
 
-/** Right shift assignment operator. **/
+/* Right shift assignment operator. */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator>>=(uint32_t shift)
 {
@@ -265,7 +265,7 @@ base_uint<BITS>& base_uint<BITS>::operator>>=(uint32_t shift)
 }
 
 
-/** Addition assignment operator. **/
+/* Addition assignment operator. */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator+=(const base_uint<BITS>& b)
 {
@@ -281,7 +281,7 @@ base_uint<BITS>& base_uint<BITS>::operator+=(const base_uint<BITS>& b)
 }
 
 
-/** Addition assignment operator. (64-bit) **/
+/* Addition assignment operator. (64-bit) */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator+=(uint64_t b64)
 {
@@ -293,7 +293,7 @@ base_uint<BITS>& base_uint<BITS>::operator+=(uint64_t b64)
 }
 
 
-/** Subtraction assignment operator. **/
+/* Subtraction assignment operator. */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator-=(const base_uint<BITS>& b)
 {
@@ -303,7 +303,7 @@ base_uint<BITS>& base_uint<BITS>::operator-=(const base_uint<BITS>& b)
 }
 
 
-/** Subtraction assignment operator. (64-bit) **/
+/* Subtraction assignment operator. (64-bit) */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator-=(uint64_t b64)
 {
@@ -315,7 +315,7 @@ base_uint<BITS>& base_uint<BITS>::operator-=(uint64_t b64)
 }
 
 
-/** Multiply assignment operator. **/
+/* Multiply assignment operator. */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator*=(const base_uint<BITS>& b)
 {
@@ -338,7 +338,7 @@ base_uint<BITS>& base_uint<BITS>::operator*=(const base_uint<BITS>& b)
 }
 
 
-/** Multiply assignment operator. (64-bit) **/
+/* Multiply assignment operator. (64-bit) */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator*=(uint64_t rhs)
 {
@@ -365,7 +365,7 @@ base_uint<BITS>& base_uint<BITS>::operator*=(uint64_t rhs)
 
 
 
-/** Divide assignment operator. **/
+/* Divide assignment operator. */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator/=(const base_uint<BITS>& b)
 {
@@ -402,7 +402,7 @@ base_uint<BITS>& base_uint<BITS>::operator/=(const base_uint<BITS>& b)
 }
 
 
-/** Divide assignment operator. (64-bit) **/
+/* Divide assignment operator. (64-bit) */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator/=(uint64_t b)
 {
@@ -414,7 +414,7 @@ base_uint<BITS>& base_uint<BITS>::operator/=(uint64_t b)
 
 
 
-/** Prefix increment operator. **/
+/* Prefix increment operator. */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator++()
 {
@@ -427,7 +427,7 @@ base_uint<BITS>& base_uint<BITS>::operator++()
 }
 
 
-/** Postfix increment operator. **/
+/* Postfix increment operator. */
 template<uint32_t BITS>
 const base_uint<BITS> base_uint<BITS>::operator++(int)
 {
@@ -439,7 +439,7 @@ const base_uint<BITS> base_uint<BITS>::operator++(int)
 }
 
 
-/** Prefix decrement operator. **/
+/* Prefix decrement operator. */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator--()
 {
@@ -452,7 +452,7 @@ base_uint<BITS>& base_uint<BITS>::operator--()
 }
 
 
-/** Postfix decrement operator. **/
+/* Postfix decrement operator. */
 template<uint32_t BITS>
 const base_uint<BITS> base_uint<BITS>::operator--(int)
 {
@@ -464,7 +464,7 @@ const base_uint<BITS> base_uint<BITS>::operator--(int)
 }
 
 
-/** Relational less-than operator. **/
+/* Relational less-than operator. */
 template<uint32_t BITS>
 bool base_uint<BITS>::operator<(const base_uint<BITS>& rhs) const
 {
@@ -480,7 +480,7 @@ bool base_uint<BITS>::operator<(const base_uint<BITS>& rhs) const
 }
 
 
-/** Relational less-than-or-equal operator. **/
+/* Relational less-than-or-equal operator. */
 template<uint32_t BITS>
 bool base_uint<BITS>::operator<=(const base_uint<BITS>& rhs) const
 {
@@ -496,7 +496,7 @@ bool base_uint<BITS>::operator<=(const base_uint<BITS>& rhs) const
 }
 
 
-/** Relational greater-than operator. **/
+/* Relational greater-than operator. */
 template<uint32_t BITS>
 bool base_uint<BITS>::operator>(const base_uint<BITS>& rhs) const
 {
@@ -512,7 +512,7 @@ bool base_uint<BITS>::operator>(const base_uint<BITS>& rhs) const
 }
 
 
-/** Relational greater-than-or-equal operator. **/
+/* Relational greater-than-or-equal operator. */
 template<uint32_t BITS>
 bool base_uint<BITS>::operator>=(const base_uint<BITS>& rhs) const
 {
@@ -528,7 +528,7 @@ bool base_uint<BITS>::operator>=(const base_uint<BITS>& rhs) const
 }
 
 
-/** Relational equivalence operator. **/
+/* Relational equivalence operator. */
 template<uint32_t BITS>
 bool base_uint<BITS>::operator==(const base_uint<BITS>& rhs) const
 {
@@ -540,7 +540,7 @@ bool base_uint<BITS>::operator==(const base_uint<BITS>& rhs) const
 }
 
 
-/** Relational equivalence operator. (64-bit) **/
+/* Relational equivalence operator. (64-bit) */
 template<uint32_t BITS>
 bool base_uint<BITS>::operator==(uint64_t rhs) const
 {
@@ -557,7 +557,7 @@ bool base_uint<BITS>::operator==(uint64_t rhs) const
 }
 
 
-/** Relational inequivalence operator. **/
+/* Relational inequivalence operator. */
 template<uint32_t BITS>
 bool base_uint<BITS>::operator!=(const base_uint<BITS>& rhs) const
 {
@@ -565,7 +565,7 @@ bool base_uint<BITS>::operator!=(const base_uint<BITS>& rhs) const
 }
 
 
-/** Relational inequivalence operator. (64-bit) **/
+/* Relational inequivalence operator. (64-bit) */
 template<uint32_t BITS>
 bool base_uint<BITS>::operator!=(uint64_t rhs) const
 {
@@ -573,7 +573,7 @@ bool base_uint<BITS>::operator!=(uint64_t rhs) const
 }
 
 
-/**  Translates the base_uint object to a hex string representation. **/
+/*  Translates the base_uint object to a hex string representation. */
 template<uint32_t BITS>
 std::string base_uint<BITS>::GetHex() const
 {
@@ -585,7 +585,7 @@ std::string base_uint<BITS>::GetHex() const
 }
 
 
-/**  Sets the base_uint object with data parsed from a C-string pointer. **/
+/*  Sets the base_uint object with data parsed from a C-string pointer. */
 template<uint32_t BITS>
 void base_uint<BITS>::SetHex(const char* psz)
 {
@@ -617,7 +617,7 @@ void base_uint<BITS>::SetHex(const char* psz)
 }
 
 
-/**  Sets the base_uint object with data parsed from a standard string object. **/
+/*  Sets the base_uint object with data parsed from a standard string object. */
 template<uint32_t BITS>
 void base_uint<BITS>::SetHex(const std::string& str)
 {
@@ -625,8 +625,28 @@ void base_uint<BITS>::SetHex(const std::string& str)
 }
 
 
-/**  Converts the corresponding 32-bit radix integer into bytes.
-  *  Used for serializing in Miner LLP **/
+/* Set the type byte into base_uint.*/
+template<uint32_t BITS>
+void base_uint<BITS>::SetType(const uint8_t nType)
+{
+    /* Mask off most significant byte (little endian). */
+    pn[WIDTH -1] = (pn[WIDTH - 1] & 0x00ffffff) + (nType << 24);
+}
+
+
+/*  Get the type byte from base_uint.*/
+template<uint32_t BITS>
+uint8_t base_uint<BITS>::GetType() const
+{
+    /* Get type from hash. */
+    uint8_t nType = (pn[WIDTH -1] >> 24);
+
+    return nType;
+}
+
+
+/*  Converts the corresponding 32-bit radix integer into bytes.
+ *  Used for serializing in Miner LLP */
 template<uint32_t BITS>
 const std::vector<uint8_t> base_uint<BITS>::GetBytes() const
 {
@@ -647,7 +667,7 @@ const std::vector<uint8_t> base_uint<BITS>::GetBytes() const
 }
 
 
-/**  Creates 32-bit radix integer from bytes. Used for de-serializing in Miner LLP **/
+/*  Creates 32-bit radix integer from bytes. Used for de-serializing in Miner LLP */
 template<uint32_t BITS>
 void base_uint<BITS>::SetBytes(const std::vector<uint8_t> DATA)
 {
@@ -659,7 +679,7 @@ void base_uint<BITS>::SetBytes(const std::vector<uint8_t> DATA)
 }
 
 
-/** Computes and returns the count of the highest order bit set. **/
+/* Computes and returns the count of the highest order bit set. */
 template<uint32_t BITS>
 uint32_t base_uint<BITS>::BitCount() const
 {
@@ -676,7 +696,7 @@ uint32_t base_uint<BITS>::BitCount() const
 }
 
 
-/**  Returns a string representation of the base_uint object. **/
+/*  Returns a string representation of the base_uint object. */
 template<uint32_t BITS>
 std::string base_uint<BITS>::ToString() const
 {
@@ -684,7 +704,7 @@ std::string base_uint<BITS>::ToString() const
 }
 
 
-/**  Returns a string representation of the base_uint object. **/
+/*  Returns a string representation of the base_uint object. */
 template<uint32_t BITS>
 std::string base_uint<BITS>::SubString(const uint32_t nSize) const
 {
@@ -693,7 +713,7 @@ std::string base_uint<BITS>::SubString(const uint32_t nSize) const
 
 
 
-/**  Returns a byte pointer to the begin of the base_uint object. **/
+/*  Returns a byte pointer to the begin of the base_uint object. */
 template<uint32_t BITS>
 uint8_t* base_uint<BITS>::begin() const
 {
@@ -701,7 +721,7 @@ uint8_t* base_uint<BITS>::begin() const
 }
 
 
-/**  Returns a byte pointer to the end of the base_uint object. **/
+/*  Returns a byte pointer to the end of the base_uint object. */
 template<uint32_t BITS>
 uint8_t* base_uint<BITS>::end() const
 {
@@ -709,7 +729,7 @@ uint8_t* base_uint<BITS>::end() const
 }
 
 
-/**  Gets a 32-bit word from the base_uint array at the given index. **/
+/*  Gets a 32-bit word from the base_uint array at the given index. */
 template<uint32_t BITS>
 uint32_t base_uint<BITS>::get(uint32_t n) const
 {
@@ -717,8 +737,8 @@ uint32_t base_uint<BITS>::get(uint32_t n) const
 }
 
 
-/**  Gets a 32-bit word from the base_uint array. If the base_uint cannot be
- *  represented as 32-bit bit word. Returns all-bits set (i.e 0xFFFFFFFF) **/
+/*  Gets a 32-bit word from the base_uint array. If the base_uint cannot be
+ *  represented as 32-bit bit word. Returns all-bits set (i.e 0xFFFFFFFF) */
 template<uint32_t BITS>
 uint32_t base_uint<BITS>::getuint32() const
 {
@@ -729,7 +749,7 @@ uint32_t base_uint<BITS>::getuint32() const
 }
 
 
-/**  Sets the base_uint object from a vector of data. **/
+/*  Sets the base_uint object from a vector of data. */
 template<uint32_t BITS>
 void base_uint<BITS>::set(const std::vector<uint32_t>& data)
 {
@@ -738,7 +758,7 @@ void base_uint<BITS>::set(const std::vector<uint32_t>& data)
 }
 
 
-/**  Returns the size in bytes of the base_uint object. **/
+/*  Returns the size in bytes of the base_uint object. */
 template<uint32_t BITS>
 uint32_t base_uint<BITS>::size()
 {
@@ -746,8 +766,8 @@ uint32_t base_uint<BITS>::size()
 }
 
 
-/**  Gets a 64-bit integer comprised of low and high 32-bit words derived from
- *  the number array at the given 64-bit index. **/
+/*  Gets a 64-bit integer comprised of low and high 32-bit words derived from
+ *  the number array at the given 64-bit index. */
 template<uint32_t BITS>
 uint64_t base_uint<BITS>::Get64(uint32_t n) const
 {
@@ -755,8 +775,8 @@ uint64_t base_uint<BITS>::Get64(uint32_t n) const
 }
 
 
-/**  A helper function used to inspect the most significant word. This can be
-  *  used to determine the size in base 2 up to 992 bits. **/
+/*  A helper function used to inspect the most significant word. This can be
+  *  used to determine the size in base 2 up to 992 bits. */
 template<uint32_t BITS>
 uint32_t base_uint<BITS>::high_bits(uint32_t mask)
 {
@@ -764,7 +784,7 @@ uint32_t base_uint<BITS>::high_bits(uint32_t mask)
 }
 
 
-/**  Returns the number of bits represented in the integer. **/
+/*  Returns the number of bits represented in the integer. */
 template <uint32_t BITS>
 uint32_t base_uint<BITS>::bits() const
 {
@@ -830,7 +850,7 @@ uint32_t base_uint<BITS>::GetCompact() const
 }
 
 
-/** Explicity instantiate all template instances needed for compiler. **/
+/* Explicity instantiate all template instances needed for compiler. */
 template class base_uint<128>;
 template class base_uint<256>;
 template class base_uint<512>;

@@ -105,7 +105,16 @@ namespace TAO
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();
-            ret["address"] = hashRegister.ToString();
+
+            /* The address for the name register is derived from the name / namespace / genesis.  To save working all this out again
+               we can just deserialize it from the contract created by Name::CreateName  */
+            tx[0].Reset();
+            uint8_t OPERATION = 0;
+            tx[0] >> OPERATION;
+            uint256_t hashAddress = 0;
+            tx[0]  >> hashAddress;
+
+            ret["address"] = hashAddress.ToString();
 
             return ret;
         }
@@ -147,8 +156,13 @@ namespace TAO
             /* Get the namespace name */
             std::string strNamespace = params["name"].get<std::string>();
 
+            /* Don't allow : and . */
+            if(strNamespace.find(":") != strNamespace.npos || strNamespace.find(".") != strNamespace.npos)
+                throw APIException(-162, "Namespace contains invalid characters");
+
+
             /* Generate register address for namespace, which must be a hash of the name */
-            uint256_t hashRegister = LLC::SK256(strNamespace);
+            uint256_t hashRegister = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
             /* check that the namespace object doesn't already exist*/
             TAO::Register::Object namespaceObject;

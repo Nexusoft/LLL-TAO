@@ -47,7 +47,7 @@ namespace TAO
                 /* This type of register has its data fields enforced by operations layer. */
                 OBJECT     = 0x04,
 
-                /* This type of register handles general accounts and DEBITS / CREDITS */
+                /* This type of register is special and for system update only. */
                 SYSTEM     = 0x05,
             };
         }

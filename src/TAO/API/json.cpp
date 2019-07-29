@@ -138,7 +138,7 @@ namespace TAO
             if(nVerbosity >= 2)
             {
                 /* Build base transaction data. */
-                ret["type"]      = tx.GetTxTypeString();
+                ret["type"]      = tx.TypeString();
                 ret["version"]   = tx.nVersion;
                 ret["sequence"]  = tx.nSequence;
                 ret["timestamp"] = tx.nTimestamp;
@@ -173,7 +173,7 @@ namespace TAO
             /* Basic TX info for level 1 and up */
             if(nVerbosity > 0)
             {
-                ret["type"] = tx.GetTxTypeString();
+                ret["type"] = tx.TypeString();
                 ret["timestamp"] = tx.nTime;
                 ret["amount"] = Legacy::SatoshisToAmount(tx.GetValueOut());
                 ret["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
@@ -394,7 +394,7 @@ namespace TAO
                         ret["OP"]      = "COINBASE";
                         ret["genesis"] = hashGenesis.ToString();
                         ret["nonce"]   = nExtraNonce;
-                        ret["amount"]  = nCredit;
+                        ret["amount"]  = (double) nCredit / TAO::Ledger::NXS_COIN;;
 
                         if(nVerbosity > 0)
                         {
@@ -426,7 +426,7 @@ namespace TAO
                         ret["OP"]      = "TRUST";
                         ret["last"]    = hashLastTrust.ToString();
                         ret["score"]   = nScore;
-                        ret["amount"]  = nReward;
+                        ret["amount"]  = (double) nReward / TAO::Ledger::NXS_COIN;;
 
                         break;
                     }
@@ -446,7 +446,7 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]        = "GENESIS";
                         ret["address"]   = hashAddress.ToString();
-                        ret["amount"]    = nReward;
+                        ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;;
 
                         break;
                     }
@@ -461,7 +461,7 @@ namespace TAO
 
                         /* Output the json information. */
                         ret["OP"]      = "STAKE";
-                        ret["amount"]  = nAmount;
+                        ret["amount"]  = (double) nAmount / TAO::Ledger::NXS_COIN;;
 
                         break;
                     }
@@ -481,7 +481,7 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]      = "UNSTAKE";
                         ret["penalty"] = nTrustPenalty;
-                        ret["amount"]  = nAmount;
+                        ret["amount"]  = (double) nAmount / TAO::Ledger::NXS_COIN;
 
                         break;
                     }
@@ -518,9 +518,6 @@ namespace TAO
                         if(!strTo.empty())
                             ret["to_name"] = strTo;
 
-                        /* Add the amount to the response */
-                        ret["amount"]   = nAmount;
-
                         /* Get the token/account we are debiting from so that we can output the token address / name. */
                         TAO::Register::Object object;
                         if(!LLD::Register->ReadState(hashFrom, object))
@@ -529,6 +526,9 @@ namespace TAO
                         /* Parse the object register. */
                         if(!object.Parse())
                             throw APIException(-14, "Object failed to parse");
+
+                        /* Add the amount to the response */
+                        ret["amount"]  = (double) nAmount / pow(10, GetDigits(object));
 
                         /* Get the object standard. */
                         uint8_t nStandard = object.Standard();
@@ -546,7 +546,7 @@ namespace TAO
                         ret["token"]   = hashToken.GetHex();
 
                         /* Resolve the name of the token name */
-                        std::string strToken = Names::ResolveName(hashCaller, hashToken);
+                        std::string strToken = hashToken != 0 ? Names::ResolveName(hashCaller, hashToken) : "NXS";
                         if(!strToken.empty())
                             ret["token_name"] = strToken;
 
@@ -590,9 +590,6 @@ namespace TAO
                         if(!strAccount.empty())
                             ret["account_name"] = strAccount;
 
-                        /* Add the amount to the response */
-                        ret["amount"]  = nCredit;
-
                         /* Get the token/account we are crediting to so that we can output the token address / name. */
                         TAO::Register::Object account;
                         if(!LLD::Register->ReadState(hashAddress, account))
@@ -601,6 +598,9 @@ namespace TAO
                         /* Parse the object register. */
                         if(!account.Parse())
                             throw APIException(-14, "Object failed to parse");
+
+                        /* Add the amount to the response */
+                        ret["amount"]  = (double) nCredit / pow(10, GetDigits(account));
 
                         /* Get the object standard. */
                         uint8_t nStandard = account.Standard();
@@ -618,7 +618,7 @@ namespace TAO
                         ret["token"]   = hashToken.GetHex();
 
                         /* Resolve the name of the token name */
-                        std::string strToken = Names::ResolveName(hashCaller, hashToken);
+                        std::string strToken = hashToken != 0 ? Names::ResolveName(hashCaller, hashToken) : "NXS";
                         if(!strToken.empty())
                             ret["token_name"] = strToken;
 
@@ -640,6 +640,24 @@ namespace TAO
                         ret["OP"]    = "AUTHORIZE";
                         ret["txid"]  = hashTx.ToString();
                         ret["proof"] = hashProof.ToString();
+
+                        break;
+                    }
+
+                    case TAO::Operation::OP::FEE:
+                    {
+                        /* Get the address of the account the fee came from. */
+                        uint256_t hashAccount = 0;
+                        contract >> hashAccount;
+
+                        /* The fee amount. */
+                        uint64_t nFee = 0;
+                        contract >> nFee;
+
+                        /* Output the json information. */
+                        ret["OP"]      = "FEE";
+                        ret["account"] = hashAccount.ToString();
+                        ret["amount"]  = (double) nFee / TAO::Ledger::NXS_COIN;
 
                         break;
                     }

@@ -28,7 +28,7 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** The Database Constructor. To determine file location and the Bytes per Record. **/
+    /* The Database Constructor. To determine file location and the Bytes per Record. */
     template<class KeychainType, class CacheType>
     SectorDatabase<KeychainType, CacheType>::SectorDatabase(const std::string& strNameIn,
                                                             const uint8_t nFlagsIn, const uint64_t nBucketsIn,
@@ -76,7 +76,7 @@ namespace LLD
     }
 
 
-    /** Default Destructor **/
+    /* Default Destructor */
     template<class KeychainType, class CacheType>
     SectorDatabase<KeychainType, CacheType>::~SectorDatabase()
     {

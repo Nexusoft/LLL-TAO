@@ -26,8 +26,14 @@ namespace TAO
         /** Enumeration for transaction types. **/
         enum
         {
-            TRITIUM = 0x00,
-            LEGACY  = 0x01
+            /** Reserved. **/
+            RESERVED = 0x00,
+
+            /** Tritium TX. **/
+            TRITIUM  = 0x01,
+
+            /** Legacy TX. **/
+            LEGACY   = 0x02
         };
 
 
@@ -42,6 +48,20 @@ namespace TAO
                 /** A transaction is at head if it is the last transaction. **/
                 HEAD        = 0x01
 
+            };
+        }
+
+
+        /** Type values for a genesis. These are very important for security to tell the difference from register hashes. **/
+        namespace GENESIS
+        {
+            enum
+            {
+                /** A mainnet genesis has to be pre-pended with byte 0xa1 **/
+                MAINNET     = 0xa1,
+
+                /** a testnet genesis has to be pre-pended with byte 0xa2. **/
+                TESTNET     = 0xa2,
             };
         }
 
@@ -66,6 +86,26 @@ namespace TAO
         }
 
 
+        /** State values for a transaction. **/
+        namespace CHANNEL
+        {
+            enum
+            {
+                /** Proof of stake channel. **/
+                STAKE   = 0x00,
+
+                /** Prime channel. **/
+                PRIME   = 0x01,
+
+                /** Hash channel. **/
+                HASH    = 0x02,
+
+                /** Private channel. **/
+                PRIVATE = 0x03,
+            };
+        }
+
+
         /** FLAGS
          *
          *  The flags on what to do to registers when executing operations.
@@ -82,7 +122,10 @@ namespace TAO
                 BLOCK       = 0x01,
 
                 /* Write data into memory on mempool. */
-                MEMPOOL     = 0x02
+                MEMPOOL     = 0x02,
+
+                /* Don't write data when calculating fees. */
+                FEES        = 0x03
             };
         }
     }

@@ -17,9 +17,10 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
-#include <TAO/Register/types/object.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
+#include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -34,7 +35,7 @@ namespace TAO
                               const uint256_t& hashAddress, const uint256_t& hashTransfer, const uint8_t nFlags)
         {
             /* Only commit events on new block. */
-            if((nFlags & TAO::Ledger::FLAGS::BLOCK) && hashTransfer != ~uint256_t(0))
+            if((nFlags & TAO::Ledger::FLAGS::BLOCK) && hashTransfer != TAO::Register::WILDCARD_ADDRESS)
             {
                 /* Write the transfer event. */
                 if(!LLD::Ledger->WriteEvent(hashTransfer, hashTx))
@@ -53,7 +54,7 @@ namespace TAO
         bool Transfer::Execute(TAO::Register::State &state, const uint256_t& hashTransfer, const uint64_t nTimestamp)
         {
             /* Set the new register's owner. */
-            state.hashOwner = hashTransfer; 
+            state.hashOwner = hashTransfer;
 
             /* Set the register checksum. */
             state.nModified = nTimestamp;
@@ -85,7 +86,7 @@ namespace TAO
                 return debug::error(FUNCTION, "called with incorrect OP");
 
             /* Extract the address from contract. */
-            uint256_t hashAddress = 0;
+            TAO::Register::Address hashAddress;
             contract >> hashAddress;
 
             /* Check for reserved values. */
@@ -93,15 +94,11 @@ namespace TAO
                 return debug::error(FUNCTION, "cannot transfer reserved address");
 
             /* Extract the address from contract. */
-            uint256_t hashTransfer = 0;
+            uint256_t hashTransfer;
             contract >> hashTransfer;
 
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashTransfer))
-                return debug::error(FUNCTION, "cannot transfer register to reserved address");
-
             /* Check the contract for conditions. */
-            if(hashTransfer == ~uint256_t(0) && contract.Empty(Contract::CONDITIONS))
+            if(hashTransfer == TAO::Register::WILDCARD_ADDRESS && contract.Empty(Contract::CONDITIONS))
                 return debug::error(FUNCTION, "cannot transfer to wildcard with no conditions");
 
             /* Get the state byte. */

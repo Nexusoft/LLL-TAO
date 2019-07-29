@@ -22,17 +22,19 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
+#include <TAO/Operation/include/cost.h>
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/include/verify.h>
 #include <TAO/Register/include/build.h>
-#include <TAO/Register/types/state.h>
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/stake.h>
+#include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -62,6 +64,8 @@ namespace TAO
         , nNextType(0)
         , vchPubKey()
         , vchSig()
+        , nFees(0)
+        , nCost(0)
         {
         }
 
@@ -94,7 +98,7 @@ namespace TAO
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "Contract read out of bounds"));
 
             /* Bind this transaction. */
-            vContracts[n].Bind(*this, n);
+            vContracts[n].Bind(this);
 
             return vContracts[n];
         }
@@ -108,7 +112,7 @@ namespace TAO
                 vContracts.resize(n + 1);
 
             /* Bind this transaction. */
-            vContracts[n].Bind(*this, n);
+            vContracts[n].Bind(this);
 
             return vContracts[n];
         }
@@ -143,6 +147,18 @@ namespace TAO
             /* Check for empty signatures. */
             if(vchSig.size() == 0)
                 return debug::error(FUNCTION, "transaction with empty signature");
+
+            /* Check the genesis first byte. */
+            if(hashGenesis.GetType() != (config::fTestNet.load() ? 0xa2 : 0xa1))
+                return debug::error(FUNCTION, "genesis using incorrect leading byte");
+
+            /* Run through all the contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Check for empty contracts. */
+                if(contract.Empty(TAO::Operation::Contract::OPERATIONS))
+                    return debug::error(FUNCTION, "contract is empty");
+            }
 
             /* Switch based on signature type. */
             switch(nKeyType)
@@ -190,21 +206,50 @@ namespace TAO
             std::map<uint256_t, TAO::Register::State> mapStates;
 
             /* Run through all the contracts. */
-            uint32_t nContract = 0;
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(*this, nContract);
+                contract.Bind(this);
 
                 /* Verify the register pre-states. */
                 if(!TAO::Register::Verify(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
-
-                /* Increment the contract id. */
-                ++nContract;
             }
 
             return true;
+        }
+
+
+        /* Get the total cost of this transaction. */
+        uint64_t Transaction::Cost()
+        {
+            /* Get the cost value. */
+            uint64_t nRet = 0;
+
+            /* Run through all the contracts. */
+            for(auto& contract : vContracts)
+            {
+                /* Bind the contract to this transaction. */
+                contract.Bind(this);
+
+                /* Calculate the pre-states and post-states. */
+                TAO::Operation::Cost(contract, nRet);
+            }
+
+            /* Check for frequency throttling. */
+            if(!IsFirst())
+            {
+                /* Make sure the previous transaction is on disk or mempool. */
+                TAO::Ledger::Transaction txPrev;
+                if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw debug::exception(FUNCTION, "couldn't read previous transaction");
+
+                /* Check the timestamps. */
+                if(nTimestamp - txPrev.nTimestamp > 60)
+                    nRet += 10 * NXS_CENT; //0.1 NXS per transaction above threshold.
+            }
+
+            return nRet;
         }
 
 
@@ -215,18 +260,14 @@ namespace TAO
             std::map<uint256_t, TAO::Register::State> mapStates;
 
             /* Run through all the contracts. */
-            uint32_t nContract = 0;
             for(auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(*this, nContract);
+                contract.Bind(this);
 
                 /* Calculate the pre-states and post-states. */
                 if(!TAO::Register::Build(contract, mapStates))
                     return false;
-
-                /* Increment the contract id. */
-                ++nContract;
             }
 
             return true;
@@ -242,6 +283,29 @@ namespace TAO
             /* Check for first. */
             if(IsFirst())
             {
+                /* Check for ambassador sigchains. */
+                if(!config::fTestNet.load() && AMBASSADOR.find(hashGenesis) != AMBASSADOR.end())
+                {
+                    /* Debug logging. */
+                    debug::log(1, FUNCTION, "Processing AMBASSADOR sigchain ", hashGenesis.SubString());
+
+                    /* Check that the hashes match. */
+                    if(AMBASSADOR.at(hashGenesis).first != PrevHash())
+                        return debug::error(FUNCTION, "AMBASSADOR sigchain using invalid credentials");
+                }
+
+
+                /* Check for ambassador sigchains. */
+                if(config::fTestNet.load() && AMBASSADOR_TESTNET.find(hashGenesis) != AMBASSADOR_TESTNET.end())
+                {
+                    /* Debug logging. */
+                    debug::log(1, FUNCTION, "Processing TESTNET AMBASSADOR sigchain ", hashGenesis.SubString());
+
+                    /* Check that the hashes match. */
+                    if(AMBASSADOR_TESTNET.at(hashGenesis).first != PrevHash())
+                        return debug::error(FUNCTION, "TESTNET AMBASSADOR sigchain using invalid credentials");
+                }
+
                 /* Write specific transaction flags. */
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
@@ -261,6 +325,10 @@ namespace TAO
                 TAO::Ledger::Transaction txPrev;
                 if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
                     return debug::error(FUNCTION, "prev transaction not on disk");
+
+                /* Check the timestamps. */
+                if(nTimestamp - txPrev.nTimestamp > 60)
+                    nCost += 10 * NXS_CENT; //0.1 NXS per transaction above threshold
 
                 /* Double check sequence numbers here. */
                 if(txPrev.nSequence + 1 != nSequence)
@@ -325,19 +393,23 @@ namespace TAO
             }
 
             /* Run through all the contracts. */
-            uint32_t nContract = 0;
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(*this, nContract);
+                contract.Bind(this);
 
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags))
                     return false;
-
-                /* Increment the contract id. */
-                ++nContract;
             }
+
+            //NOTE: @paulscreen, this is a bool argument right now until you add fees into API commands.
+            //you will need to calculate the required fees before adding them in an extra contract for OP::FEE
+            //ordering doesn't matter, once this is done, remove GetBoolArg to enforce fees on runtime.
+
+            /* Check that the fees match. */
+            if(config::GetBoolArg("-fees", false) && nCost > nFees)
+                return debug::error(FUNCTION, "not enough fees supplied ", nFees);
 
             return true;
         }
@@ -382,48 +454,39 @@ namespace TAO
 
 
         /* Determines if the transaction is a coinbase transaction. */
-        bool Transaction::IsCoinbase() const
+        bool Transaction::IsCoinBase() const
         {
-            /* Check for contracts. */
-            if(vContracts.size() == 0)
-                return false;
+            /* Check all contracts. */
+            for(const auto& contract : vContracts)
+            {
+                /* Check for empty first contract. */
+                if(contract.Empty())
+                    return false;
 
-            /* Check for empty first contract. */
-            if(vContracts[0].Empty())
-                return false;
+                /* Check for conditions. */
+                if(!contract.Empty(TAO::Operation::Contract::CONDITIONS))
+                    return false;
 
-            /* Check for conditions. */
-            if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
-                return false;
+                if(contract.Primitive() != TAO::Operation::OP::COINBASE)
+                    return false;
+            }
 
-            return (vContracts[0].Primitive() == TAO::Operation::OP::COINBASE);
+            return true;
         }
 
 
         /* Determines if the transaction is a coinstake (trust or genesis) transaction. */
-        bool Transaction::IsCoinstake() const
+        bool Transaction::IsCoinStake() const
         {
-            /* Check for contracts. */
-            if(vContracts.size() == 0)
-                return false;
-
-            /* Check for empty first contract. */
-            if(vContracts[0].Empty())
-                return false;
-
-            /* Check for conditions. */
-            if(!vContracts[0].Empty(TAO::Operation::Contract::CONDITIONS))
-                return false;
-
-            return (vContracts[0].Primitive() == TAO::Operation::OP::TRUST || vContracts[0].Primitive() == TAO::Operation::OP::GENESIS);
+            return (IsGenesis() || IsTrust());
         }
 
 
         /* Determines if the transaction is for a private block. */
         bool Transaction::IsPrivate() const
         {
-            /* Check for contracts. */
-            if(vContracts.size() == 0)
+            /* Check for single contract. */
+            if(vContracts.size() != 1)
                 return false;
 
             /* Check for empty first contract. */
@@ -441,8 +504,8 @@ namespace TAO
         /* Determines if the transaction is a coinstake transaction. */
         bool Transaction::IsTrust() const
         {
-            /* Check for contracts. */
-            if(vContracts.size() == 0)
+            /* Check for single contract. */
+            if(vContracts.size() != 1)
                 return false;
 
             /* Check for empty first contract. */
@@ -474,8 +537,8 @@ namespace TAO
         /* Determines if the transaction is a genesis transaction */
         bool Transaction::IsGenesis() const
         {
-            /* Check for contracts. */
-            if(vContracts.size() == 0)
+            /* Check for single contract. */
+            if(vContracts.size() != 1)
                 return false;
 
             /* Check for empty first contract. */
@@ -497,13 +560,52 @@ namespace TAO
         }
 
 
+        /*  Gets the total trust and stake of pre-state. */
+        bool Transaction::GetTrustInfo(uint64_t& nTrust, uint64_t& nStake) const
+        {
+            /* Check values. */
+            if(!IsCoinStake())
+                return debug::error(FUNCTION, "transaction is not trust");
+
+            /* Get internal contract. */
+            const TAO::Operation::Contract& contract = vContracts[0];
+
+            /* Seek to pre-state. */
+            contract.Reset();
+            contract.Seek(1, TAO::Operation::Contract::REGISTERS);
+
+            /* Get pre-state. */
+            TAO::Register::Object object;
+            contract >>= object;
+
+            /* Reset contract. */
+            contract.Reset();
+
+            /* Parse object. */
+            if(!object.Parse())
+                return debug::error(FUNCTION, "failed to parse trust object");
+
+            /* Set Values. */
+            nTrust = object.get<uint64_t>("trust");
+            nStake = object.get<uint64_t>("stake");
+
+            return true;
+        }
+
+
         /* Gets the hash of the transaction object. */
         uint512_t Transaction::GetHash() const
         {
             DataStream ss(SER_GETHASH, nVersion);
             ss << *this;
 
-            return LLC::SK512(ss.begin(), ss.end());
+            /* Get the hash. */
+            uint512_t hash = LLC::SK512(ss.begin(), ss.end());
+
+            /* Type of 0xff designates tritium tx. */
+            hash.SetType(TAO::Ledger::TRITIUM);
+
+            return hash;
         }
 
 
@@ -649,16 +751,16 @@ namespace TAO
         std::string Transaction::ToStringShort() const
         {
             std::string str;
-            std::string txtype = GetTxTypeString();
+            std::string txtype = TypeString();
             str += debug::safe_printstr(GetHash().ToString(), " ", txtype);
             return str;
         }
 
         /*  User readable description of the transaction type. */
-        std::string Transaction::GetTxTypeString() const
+        std::string Transaction::TypeString() const
         {
             std::string txtype = "tritium ";
-            if(IsCoinbase())
+            if(IsCoinBase())
                 txtype += "base";
             else if(IsFirst())
                 txtype += "first";

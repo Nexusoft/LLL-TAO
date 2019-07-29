@@ -35,7 +35,7 @@ namespace TAO
         static memory::encrypted_ptr<TAO::Ledger::SignatureChain> null_ptr;
 
 
-        /** Default Constructor. **/
+        /* Default Constructor. */
         Users::Users()
         : Base()
         , mapSessions()
@@ -55,7 +55,7 @@ namespace TAO
         }
 
 
-        /** Destructor. **/
+        /* Destructor. */
         Users::~Users()
         {
             /* Iterate through the sessions map and delete any sig chains that are still active */

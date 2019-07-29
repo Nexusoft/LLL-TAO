@@ -22,7 +22,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/state.h>
 #include <Util/templates/serialize.h>
-
+#include <Util/templates/datastream.h>
 
 namespace Legacy
 {
@@ -83,6 +83,11 @@ namespace Legacy
 		{
 			SetNull();
 		}
+
+
+		/** Copy Constructor (From Tritium). **/
+		Transaction(const TAO::Ledger::Transaction& tx);
+
 
 		/** Default destructor. **/
 		virtual ~Transaction() {}
@@ -291,7 +296,7 @@ namespace Legacy
 		 *  @see CTransaction::FetchInputs
 		 *
 		 **/
-		bool AreInputsStandard(const std::map<uint512_t, Transaction>& mapInputs) const;
+		bool AreInputsStandard(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& mapInputs) const;
 
 
 		/** Get Legacy SigOp Count
@@ -315,7 +320,7 @@ namespace Legacy
 		 *  @see CTransaction::FetchInputs
 		 *
 		 **/
-		uint32_t TotalSigOps(const std::map<uint512_t, Transaction>& mapInputs) const;
+		uint32_t TotalSigOps(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& mapInputs) const;
 
 
 		/** Get Value Out
@@ -338,7 +343,7 @@ namespace Legacy
 		 *  @see CTransaction::FetchInputs
 		 *
 		 **/
-		uint64_t GetValueIn(const std::map<uint512_t, Transaction>& mapInputs) const;
+		uint64_t GetValueIn(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& mapInputs) const;
 
 
 		/** Allow Free
@@ -376,14 +381,14 @@ namespace Legacy
 		 **/
 		std::string ToStringShort() const;
 
-		/** GetTxTypeString
+		/** TypeString
 		 *
 		 *  User readable description of the transaction type.
 		 *
 		 *  @return User readable description of the transaction type;
 		 *
 		 **/
-		std::string GetTxTypeString() const;
+		std::string TypeString() const;
 
 
 		/** To String
@@ -421,7 +426,7 @@ namespace Legacy
 		 *  @return true if the inputs were found
 		 *
 		 **/
-		bool FetchInputs(std::map<uint512_t, Transaction>& inputs) const;
+		bool FetchInputs(std::map<uint512_t, std::pair<uint8_t, DataStream> >& inputs) const;
 
 
 		/** Connect Inputs
@@ -435,7 +440,7 @@ namespace Legacy
 	     *  @return true if the inputs were found
 	     *
 	     **/
-		bool Connect(const std::map<uint512_t, Transaction>& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags = FLAGS::MEMPOOL) const;
+		bool Connect(const std::map<uint512_t, std::pair<uint8_t, DataStream> >& inputs, TAO::Ledger::BlockState& state, uint8_t nFlags = FLAGS::MEMPOOL) const;
 
 
 		/** Disconnect
@@ -472,7 +477,7 @@ namespace Legacy
 		 *  @return the output that was found.
 		 *
 		 **/
-		const TxOut& GetOutputFor(const TxIn& input, const std::map<uint512_t, Transaction>& inputs) const;
+		const TxOut GetOutputFor(const TxIn& input, const std::map<uint512_t, std::pair<uint8_t, DataStream> >& inputs) const;
 	};
 }
 

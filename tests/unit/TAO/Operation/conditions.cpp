@@ -24,6 +24,7 @@
 #include <LLD/include/global.h>
 
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/types/address.h>
 
 #include <cmath>
 
@@ -35,8 +36,8 @@ TEST_CASE( "Conditions Tests", "[operation]" )
 {
     using namespace TAO::Operation;
 
-    uint256_t hashFrom = LLC::GetRand256();
-    uint256_t hashTo   = LLC::GetRand256();
+    TAO::Register::Address hashFrom = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+    TAO::Register::Address hashTo   = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
     uint64_t  nAmount  = 500;
 
     TAO::Ledger::Transaction tx;
@@ -50,16 +51,17 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     contract <= (uint8_t)OP::TYPES::UINT32_T <= (uint32_t)7u <= (uint8_t) OP::MUL <= (uint8_t) OP::TYPES::UINT32_T <= (uint32_t)9u <= (uint8_t) OP::EQUALS <= (uint8_t)OP::TYPES::UINT32_T <= (uint32_t)63u;
 
 
-    uint256_t hash = LLC::GetRand256();
-    uint256_t hash2 = LLC::GetRand256();
+    TAO::Register::Address hash = TAO::Register::Address(TAO::Register::Address::RAW);
+    TAO::Register::Address hash2 = TAO::Register::Address(TAO::Register::Address::RAW);
+
     TAO::Register::State state;
     state.hashOwner = LLC::GetRand256();
     state.nType     = 2;
     state << hash2;
 
 
-    REQUIRE(LLD::Register->Write(hash, state));
-    REQUIRE(LLD::Register->Write(hashFrom, state));
+    REQUIRE(LLD::Register->WriteState(hash, state));
+    REQUIRE(LLD::Register->WriteState(hashFrom, state));
 
     std::string strName = "colasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfin!!!";
     uint256_t hashRegister = LLC::SK256(std::vector<uint8_t>(strName.begin(), strName.end()));
@@ -331,6 +333,32 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     }
 
 
+    /////CAT
+    contract.Clear();
+    contract <= (uint8_t)OP::TYPES::STRING <= std::string("is there an ") <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string("atomic bear out ");
+    contract <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string("there?") <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::STRING;
+    contract <= std::string("is there an atomic bear out there?");
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE(script.Execute());
+    }
+
+
+    /////CAT
+    contract.Clear();
+    contract <= (uint8_t)OP::TYPES::STRING <= std::string("I will") <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string(" combine ");
+    contract <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string("together");
+    contract <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string(" many words");
+    contract <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string(" to make sure they ");
+    contract <= (uint8_t)OP::CAT <= (uint8_t)OP::TYPES::STRING <= std::string("concatenate");
+    contract <= (uint8_t)OP::EQUALS <= (uint8_t)OP::TYPES::STRING;
+    contract <= std::string("I will combine together many words to make sure they concatenate");
+    {
+        Condition script = Condition(contract, caller);
+        REQUIRE(script.Execute());
+    }
+
+
 
 
     /////CONTAINS
@@ -445,14 +473,14 @@ TEST_CASE( "Conditions Tests", "[operation]" )
                << std::string("balance") << uint8_t(TYPES::UINT64_T) << uint64_t(55)
                << std::string("token") << uint8_t(TYPES::UINT256_T) << uint256_t(0);
 
-       object.hashOwner = LLC::GetRand256();
+       object.hashOwner = TAO::Register::Address(TAO::Register::Address::OBJECT);
        object.nType     = TAO::Register::REGISTER::OBJECT;
 
 
        std::string strObject = "register-vanity";
 
        uint256_t hashObject = LLC::SK256(std::vector<uint8_t>(strObject.begin(), strObject.end()));
-       REQUIRE(LLD::Register->Write(hashObject, object));
+       REQUIRE(LLD::Register->WriteState(hashObject, object));
 
 
       contract.Clear();
@@ -597,7 +625,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     }
 
     contract.Clear();
-    contract <= (uint8_t)OP::LEDGER::HEIGHT <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT64_T <= (uint64_t)23030;
+    contract <= (uint8_t)OP::LEDGER::HEIGHT <= (uint8_t)OP::EQUALS <= (uint8_t) OP::TYPES::UINT32_T <= (uint32_t)23030;
     {
         Condition script = Condition(contract, caller);
         REQUIRE(script.Execute());

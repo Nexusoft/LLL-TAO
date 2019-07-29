@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/local.h>
+#include <LLD/types/local.h>
 
 #include <TAO/Ledger/types/transaction.h>
 
@@ -19,8 +19,11 @@ namespace LLD
 {
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
-    LocalDB::LocalDB(uint8_t nFlags)
-    : SectorDatabase(std::string("local"), nFlags, 256 * 256 * 8)
+    LocalDB::LocalDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
+    : SectorDatabase(std::string("local")
+    , nFlagsIn
+    , nBucketsIn
+    , nCacheIn)
     {
     }
 

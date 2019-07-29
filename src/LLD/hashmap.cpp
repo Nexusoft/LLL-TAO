@@ -30,7 +30,7 @@ namespace LLD
     BinaryHashMap::BinaryHashMap()
     : KEY_MUTEX()
     , strBaseLocation()
-    , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+    , fileCache(new TemplateLRU<uint16_t, std::fstream*>(8))
     , pindex(nullptr)
     , hashmap(256 * 256 * 64)
     , HASHMAP_TOTAL_BUCKETS(256 * 256 * 64)
@@ -46,7 +46,7 @@ namespace LLD
     BinaryHashMap::BinaryHashMap(std::string strBaseLocationIn, uint8_t nFlagsIn, uint64_t nBucketsIn)
     : KEY_MUTEX()
     , strBaseLocation(strBaseLocationIn)
-    , fileCache(new TemplateLRU<uint32_t, std::fstream*>(8))
+    , fileCache(new TemplateLRU<uint16_t, std::fstream*>(8))
     , pindex(nullptr)
     , hashmap(nBucketsIn)
     , HASHMAP_TOTAL_BUCKETS(nBucketsIn)
@@ -161,7 +161,7 @@ namespace LLD
         else
         {
             /* Build a vector to read the disk index. */
-            std::vector<uint8_t> vIndex(HASHMAP_TOTAL_BUCKETS * 4, 0);
+            std::vector<uint8_t> vIndex(HASHMAP_TOTAL_BUCKETS * 2, 0);
 
             /* Read the disk index bytes. */
             std::fstream stream(index, std::ios::in | std::ios::binary);
@@ -172,7 +172,7 @@ namespace LLD
             uint32_t nTotalKeys = 0;
             for(uint32_t nBucket = 0; nBucket < HASHMAP_TOTAL_BUCKETS; ++nBucket)
             {
-                std::copy((uint8_t *)&vIndex[nBucket * 4], (uint8_t *)&vIndex[nBucket * 4] + 4, (uint8_t *)&hashmap[nBucket]);
+                std::copy((uint8_t *)&vIndex[nBucket * 2], (uint8_t *)&vIndex[nBucket * 2] + 2, (uint8_t *)&hashmap[nBucket]);
 
                 nTotalKeys += hashmap[nBucket];
             }
@@ -225,7 +225,7 @@ namespace LLD
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-        for(int i = hashmap[nBucket] - 1; i >= 0; --i)
+        for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
         {
             /* Find the file stream for LRU cache. */
             std::fstream *pstream;
@@ -299,7 +299,7 @@ namespace LLD
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-        for(int i = hashmap[nBucket] - 1; i >= 0; --i)
+        for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
         {
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
@@ -380,7 +380,7 @@ namespace LLD
         {
             /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
             std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-            for(int i = hashmap[nBucket] - 1; i >= 0; --i)
+            for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
             {
                 /* Find the file stream for LRU cache. */
                 std::fstream* pstream;
@@ -401,14 +401,11 @@ namespace LLD
                     fileCache->Put(i, pstream);
                 }
 
-
                 /* Seek to the hashmap index in file. */
                 pstream->seekg (nFilePos, std::ios::beg);
 
-
                 /* Read the bucket binary data from file stream */
                 pstream->read((char*) &vBucket[0], vBucket.size());
-
 
                 /* Check if this bucket has the key or is in an empty state. */
                 if(vBucket[0] == STATE::EMPTY || std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
@@ -511,13 +508,13 @@ namespace LLD
         pstream->flush();
 
         /* Seek to the index position. */
-        pindex->seekp((nBucket * 4), std::ios::beg);
+        pindex->seekp((nBucket * 2), std::ios::beg);
 
         /* Write the index to disk. */
-        uint32_t nIndex = ++hashmap[nBucket];
+        uint16_t nIndex = ++hashmap[nBucket];
 
         /* Get the bucket data. */
-        std::vector<uint8_t> vBucket((uint8_t*)&nIndex, (uint8_t*)&nIndex + 4);
+        std::vector<uint8_t> vBucket((uint8_t*)&nIndex, (uint8_t*)&nIndex + 2);
 
         /* Write the index into hashmap. */
         pindex->write((char*)&vBucket[0], vBucket.size());
@@ -557,7 +554,7 @@ namespace LLD
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-        for(int i = hashmap[nBucket] - 1; i >= 0; --i)
+        for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
         {
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;
@@ -630,7 +627,7 @@ namespace LLD
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
-        for(int i = hashmap[nBucket] - 1; i >= 0; --i)
+        for(int16_t i = hashmap[nBucket] - 1; i >= 0; --i)
         {
             /* Find the file stream for LRU cache. */
             std::fstream* pstream;

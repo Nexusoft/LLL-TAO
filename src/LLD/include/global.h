@@ -15,12 +15,12 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_INCLUDE_GLOBAL_H
 #define NEXUS_LLD_INCLUDE_GLOBAL_H
 
-#include <LLD/include/register.h>
-#include <LLD/include/ledger.h>
-#include <LLD/include/local.h>
-#include <LLD/include/legacy.h>
-#include <LLD/include/trust.h>
-#include <LLD/include/contract.h>
+#include <LLD/types/register.h>
+#include <LLD/types/ledger.h>
+#include <LLD/types/local.h>
+#include <LLD/types/legacy.h>
+#include <LLD/types/trust.h>
+#include <LLD/types/contract.h>
 
 namespace LLD
 {

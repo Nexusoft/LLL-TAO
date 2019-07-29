@@ -17,8 +17,9 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/system.h>
+#include <TAO/Register/include/reserved.h>
 #include <TAO/Register/include/reserved.h>
 #include <TAO/Register/types/object.h>
 
@@ -125,11 +126,11 @@ namespace TAO
             contract >> nContract;
 
             /* Read the to account that contract is operating on. */
-            uint256_t hashAccount = 0;
+            TAO::Register::Address hashAccount;
             contract >> hashAccount;
 
             /* Get the proof hash. */
-            uint256_t hashProof = 0;
+            TAO::Register::Address hashProof;
             contract >> hashProof;
 
             /* Read the contract totals. */
@@ -231,12 +232,49 @@ namespace TAO
                 return debug::error(FUNCTION, "tx claim is not a debit");
 
             /* Get the hashFrom */
-            uint256_t hashFrom = 0;
+            TAO::Register::Address hashFrom;
             debit  >> hashFrom;
 
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashFrom))
                 return debug::error(FUNCTION, "cannot credit register with reserved address");
+
+            /* Get the hashTo. */
+            TAO::Register::Address hashTo;
+            debit  >> hashTo;
+
+            /* Check for reserved values. */
+            if(TAO::Register::Reserved(hashTo))
+                return debug::error(FUNCTION, "cannot credit register with reserved address");
+
+            /* Check for wildcard from (which is a flag for credit from UTXO). */
+            if(hashFrom == TAO::Register::WILDCARD_ADDRESS)
+            {
+                /* Check the proof as being the caller. */
+                if(hashProof != hashFrom)
+                    return debug::error(FUNCTION, "proof must equal from for credit");
+
+                /* Check the proof as being the caller. */
+                if(hashTo != hashAccount)
+                    return debug::error(FUNCTION, "must have same address as UTXO to");
+
+                /* Get the debit amount. */
+                uint64_t nDebit = 0;
+                debit >> nDebit;
+
+                /* Check the debit amount. */
+                if(nDebit != nCredit)
+                    return debug::error(FUNCTION, "debit and credit value mismatch");
+
+                /* Seek read position to first position. */
+                contract.Rewind(72, Contract::OPERATIONS);
+                contract.Reset(Contract::REGISTERS);
+
+                /* Seek read position to first position. */
+                debit.Reset(Contract::OPERATIONS | Contract::REGISTERS);
+
+                return true;
+            }
 
             /* Get the byte from pre-state. */
             nState = 0;
@@ -262,17 +300,9 @@ namespace TAO
             if(accountFrom.get<uint256_t>("token") != account.get<uint256_t>("token"))
                 return debug::error(FUNCTION, "credit can't be of different identifier");
 
-            /* Get the hashTo. */
-            uint256_t hashTo = 0;
-            debit  >> hashTo;
-
-            /* Check for reserved values. */
-            if(TAO::Register::Reserved(hashTo))
-                return debug::error(FUNCTION, "cannot credit register with reserved address");
-
             /* Handle one-to-one debit to credit or return to self. */
             if(hashTo == hashAccount    //regular debit to credit
-            || hashTo == ~uint256_t(0)  //wildcard address (anyone can credit)
+            || hashTo == TAO::Register::WILDCARD_ADDRESS  //wildcard address (anyone can credit)
             || hashFrom == hashAccount) //return to self
             {
                 /* Check the proof as being the caller. */

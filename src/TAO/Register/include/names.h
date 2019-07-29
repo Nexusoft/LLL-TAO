@@ -29,6 +29,7 @@ namespace TAO
     /* Register Layer namespace. */
     namespace Register
     {
+        class Address;
 
         /** GetNameAddress
          *

@@ -78,7 +78,7 @@ namespace debug
         if(!filesystem::exists(strLogFolder))
         {
             filesystem::create_directory(strLogFolder);
-            log(0, FUNCTION, "created debug folder directory");
+            printf("created debug folder directory\n");
         }
 
 
@@ -93,7 +93,22 @@ namespace debug
         /* Get the debug logging configuration parameters (or default if none specified) */
         nLogFiles  = config::GetArg("-logfiles", 20);
         nLogSizeMB = config::GetArg("-logsizeMB", 5);
+    }
 
+
+    /*  Close the debug log file. */
+    void Shutdown()
+    {
+        LOCK(DEBUG_MUTEX);
+
+        if(ssFile.is_open())
+            ssFile.close();
+    }
+
+
+    /*  Log startup information. */
+    void LogStartup()
+    {
         /* Log the Operating System. */
         log(0, "Startup time ", convert::DateTimeStrFormat(runtime::timestamp()));
         log(0, version::CLIENT_VERSION_BUILD_STRING);
@@ -181,16 +196,6 @@ namespace debug
     }
 
 
-    /*  Close the debug log file. */
-    void Shutdown()
-    {
-        LOCK(DEBUG_MUTEX);
-
-        if(ssFile.is_open())
-            ssFile.close();
-    }
-
-
     /* Special Specification for HTTP Protocol. */
     std::string rfc1123Time()
     {
@@ -199,6 +204,7 @@ namespace debug
         char buffer[64];
         time_t now;
         time(&now);
+        
         struct tm* now_gmt = gmtime(&now);
         std::string locale(setlocale(LC_TIME, nullptr));
         setlocale(LC_TIME, "C"); // we want posix (aka "C") weekday/month strings

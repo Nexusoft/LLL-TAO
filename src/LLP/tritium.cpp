@@ -532,32 +532,32 @@ namespace LLP
                     return false;
 
                 /* Get the block state from. */
-                TAO::Ledger::BlockState state;
+                std::vector<TAO::Ledger::BlockState> vStates;
                 for(const auto& have : locator.vHave)
                 {
                     /* Check the database for the ancestor block. */
-                    if(LLD::Ledger->ReadBlock(have, state))
+                    if(LLD::Ledger->BatchRead(have, "block", vStates, 1000))
                         break;
                 }
 
                 /* If no ancestor blocks were found. */
-                if(!state)
-                    return debug::error(FUNCTION, "no ancestor blocks found");
+                if(vStates.size() == 0)
+                    return true;
 
                 /* Set the search from search limit. */
                 int32_t nLimit = 1000;
-                debug::log(2, NODE "getblocks ", state.nHeight, " to ", hashStop.SubString(), " limit ", nLimit);
+                debug::log(2, NODE "getblocks ", vStates[0].nHeight, " to ", hashStop.SubString(), " limit ", nLimit);
 
                 /* Iterate forward the blocks required. */
                 std::vector<CInv> vInv;
                 bool fIsLegacy = false;
-                while(!config::fShutdown.load())
-                {
-                    /* Iterate to next state, if there is one */
-                    state = state.Next();
 
-                    if(!state)
-                        break;
+                /* Loop through found states. */
+                for(const auto& state : vStates)
+                {
+                    /* Check if in main chain. */
+                    if(!state.IsInMainChain())
+                        continue;
 
                     fIsLegacy = state.vtx[0].first == TAO::Ledger::TYPE::LEGACY_TX;
 
@@ -661,7 +661,7 @@ namespace LLP
                                 vGet.push_back(inv);
 
                                 /* Add this item to cached relay inventory (key only). */
-                                //cacheInventory.Add(inv.GetHash());
+                                cacheInventory.Add(inv.GetHash());
                             }
                             else
                                 break; //break since iterating backwards (searching newest to oldest)
@@ -675,7 +675,7 @@ namespace LLP
                             vGet.push_back(inv);
 
                             /* Add this item to cached relay inventory (key only). */
-                            //cacheInventory.Add(uint512_t(inv.GetHash()));
+                            cacheInventory.Add(uint512_t(inv.GetHash()));
                         }
                     }
 
@@ -775,67 +775,6 @@ namespace LLP
             }
 
 
-            // case DAT_HAS_TX:
-            // {
-            //     /* Deserialize the data received. */
-            //     std::vector<uint512_t> vData;
-            //     ssPacket >> vData;
-
-            //     /* Request the inventory. */
-            //     for(const auto& hash : vData)
-            //         PushMessage(GET_TRANSACTION, hash);
-
-            //     break;
-            // }
-
-
-            // case GET_TRANSACTION:
-            // {
-            //     /* Deserialize the inventory. */
-            //     uint512_t hash;
-            //     ssPacket >> hash;
-
-            //     /* Check if you have it. */
-            //     TAO::Ledger::Transaction tx;
-            //     if(LLD::Ledger->ReadTx(hash, tx) || TAO::Ledger::mempool.Get(hash, tx))
-            //         PushMessage(DAT_TRANSACTION, tx);
-
-            //     break;
-            // }
-
-
-            // case DAT_HAS_BLOCK:
-            // {
-            //     /* Deserialize the data received. */
-            //     std::vector<uint1024_t> vData;
-            //     ssPacket >> vData;
-
-            //     /* Request the inventory. */
-            //     for(const auto& hash : vData)
-            //         PushMessage(GET_BLOCK, hash);
-
-            //     break;
-            // }
-
-
-            // case GET_BLOCK:
-            // {
-            //     /* Deserialize the inventory. */
-            //     uint1024_t hash;
-            //     ssPacket >> hash;
-
-            //     /* Check if you have it. */
-            //     TAO::Ledger::BlockState state;
-            //     if(LLD::Ledger->ReadBlock(hash, state))
-            //     {
-            //         TAO::Ledger::TritiumBlock block(state);
-            //         PushMessage(DAT_BLOCK, block);
-            //     }
-
-            //     break;
-            // }
-
-
             case DAT_TRANSACTION:
             {
                 /* Deserialize the tx. */
@@ -919,6 +858,9 @@ namespace LLP
 
                 break;
             }
+
+
+
             case DAT_BLOCK:
             {
                 uint8_t type;

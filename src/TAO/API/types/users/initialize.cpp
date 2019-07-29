@@ -21,6 +21,7 @@ namespace TAO
         /* Standard initialization function. */
         void Users::Initialize()
         {
+            mapFunctions["create/recovery"]          = Function(std::bind(&Users::Recovery,      this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["create/user"]              = Function(std::bind(&Users::Create,        this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["login/user"]               = Function(std::bind(&Users::Login,         this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["logout/user"]              = Function(std::bind(&Users::Logout,        this, std::placeholders::_1, std::placeholders::_2));
@@ -29,7 +30,7 @@ namespace TAO
             mapFunctions["list/transactions"]        = Function(std::bind(&Users::Transactions,  this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/notifications"]       = Function(std::bind(&Users::Notifications, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/assets"]              = Function(std::bind(&Users::Assets,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/items"]              = Function(std::bind(&Users::Items,        this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/items"]              = Function(std::bind(&Users::Items,          this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/tokens"]              = Function(std::bind(&Users::Tokens,        this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/accounts"]            = Function(std::bind(&Users::Accounts,      this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/names"]               = Function(std::bind(&Users::Names,         this, std::placeholders::_1, std::placeholders::_2));
@@ -50,6 +51,7 @@ namespace TAO
 
 
             if(strMethod.find("user/")          != std::string::npos
+            || strMethod.find("recovery/")      != std::string::npos
             || strMethod.find("transactions/")  != std::string::npos
             || strMethod.find("notifications/") != std::string::npos
             || strMethod.find("assets/")        != std::string::npos

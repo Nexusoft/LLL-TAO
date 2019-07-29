@@ -72,12 +72,24 @@ namespace TAO
             int32_t nMint;
 
 
+            /** The Total Fees in block. **/
+            uint64_t nFees;
+
+
             /** The height of this channel. */
             uint32_t nChannelHeight;
 
 
+            /** The weight of this channel. */
+            uint128_t nChannelWeight[3];
+
+
             /** The reserves that are released. */
             int64_t nReleasedReserve[3];
+
+
+            /** The reserves that are released. */
+            uint64_t nFeeReserve;
 
 
             /** Used to Iterate forward in the chain */
@@ -105,6 +117,15 @@ namespace TAO
                 READWRITE(nMoneySupply);
                 READWRITE(nMint);
                 READWRITE(nChannelHeight);
+
+                /* Tritium Block States. */
+                READWRITE(nFees);
+                READWRITE(nChannelWeight[0]);
+                READWRITE(nChannelWeight[1]);
+                READWRITE(nChannelWeight[2]);
+                READWRITE(nFeeReserve);
+
+                /* Reserves. */
                 READWRITE(nReleasedReserve[0]);
                 READWRITE(nReleasedReserve[1]);
                 READWRITE(nReleasedReserve[2]);
@@ -112,6 +133,7 @@ namespace TAO
 
                 READWRITE(vchBlockSig);
                 READWRITE(ssSystem);
+                READWRITE(vOffsets);
                 READWRITE(vtx);
           )
 
@@ -207,19 +229,29 @@ namespace TAO
              *  Remove a block state from the chain.
              *
              *  @return true if disconnected.
-             *
+             *Block
              **/
             bool Disconnect();
 
 
-            /** GetBlockTrust
+            /** Trust
              *
              *  Get the trust of this block.
              *
              *  @return the current trust in the chain.
              *
              **/
-            uint64_t GetBlockTrust() const;
+            uint64_t Trust() const;
+
+
+            /** Weight
+             *
+             *  Get the weight of this block.
+             *
+             *  @return the current weight for this block.
+             *
+             **/
+            uint64_t Weight() const;
 
 
             /** IsInMainChain

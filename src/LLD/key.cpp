@@ -17,7 +17,7 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** Default Constructor. **/
+    /* Default Constructor. */
     SectorKey::SectorKey()
     : nState(0)
     , nLength(0)
@@ -29,7 +29,7 @@ namespace LLD
     }
 
 
-    /** Constructor **/
+    /* Constructor */
     SectorKey::SectorKey(uint8_t nStateIn,
               std::vector<uint8_t> vKeyIn,
               uint16_t nSectorFileIn,
@@ -45,14 +45,14 @@ namespace LLD
     }
 
 
-    /** Default Destructor **/
+    /* Default Destructor */
     SectorKey::~SectorKey()
     {
 
     }
 
 
-    /** Copy Assignment Operator **/
+    /* Copy Assignment Operator */
     SectorKey& SectorKey::operator=(const SectorKey& key)
     {
         nState          = key.nState;
@@ -66,7 +66,7 @@ namespace LLD
     }
 
 
-    /** Copy Assignment Operator **/
+    /* Copy Assignment Operator */
     SectorKey& SectorKey::operator=(SectorKey& key)
     {
         nState          = key.nState;
@@ -80,7 +80,7 @@ namespace LLD
     }
 
 
-    /** Default Copy Constructor **/
+    /* Default Copy Constructor */
     SectorKey::SectorKey(const SectorKey& key)
     {
         nState          = key.nState;

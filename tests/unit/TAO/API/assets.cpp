@@ -98,7 +98,7 @@ TEST_CASE( "Test Assets API - create asset - basic", "[assets/create/asset]")
         /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
         REQUIRE(ret["error"]["code"].get<int32_t>() == -29);
-      
+
     }
 
     /* fail with missing fields */
@@ -142,7 +142,7 @@ TEST_CASE( "Test Assets API - create asset - basic", "[assets/create/asset]")
         params["pin"] = PIN;
         params["format"] = "basic";
         params["name"] = strBasicAsset;
-        
+
         params["field1"] = "data1";
 
         /* Invoke the API */
@@ -214,7 +214,7 @@ TEST_CASE( "Test Assets API - create asset - raw", "[assets/create/asset]")
         params["pin"] = PIN;
         params["format"] = "raw";
         params["name"] = strRawAsset;
-        
+
         params["data"] = "rawdata";
 
         /* Invoke the API */
@@ -305,7 +305,7 @@ TEST_CASE( "Test Assets API - create asset - json", "[assets/create/asset]")
 
         json::json jsonFieldDefinition;
 
-        
+
         /* Test missing name*/
         {
             jsonFieldDefinition.clear();
@@ -429,7 +429,7 @@ TEST_CASE( "Test Assets API - create asset - json", "[assets/create/asset]")
             REQUIRE(ret.find("error") != ret.end());
             REQUIRE(ret["error"]["code"].get<int32_t>() == -26);
         }
- 
+
     }
 
     /* Test success case for all field types */
@@ -834,7 +834,7 @@ TEST_CASE( "Test Assets API - transfer asset", "[assets/transfer/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["destination"] = LLC::GetRand256().GetHex(); 
+        params["destination"] = LLC::GetRand256().GetHex();
 
         /* Invoke the API */
         ret = APICall("assets/transfer/asset", params);
@@ -850,7 +850,7 @@ TEST_CASE( "Test Assets API - transfer asset", "[assets/transfer/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["username"] = "not a user"; 
+        params["username"] = "not a user";
 
         /* Invoke the API */
         ret = APICall("assets/transfer/asset", params);
@@ -866,7 +866,7 @@ TEST_CASE( "Test Assets API - transfer asset", "[assets/transfer/asset]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["destination"] = GENESIS2.GetHex(); 
+        params["destination"] = GENESIS2.GetHex();
 
         /* Invoke the API */
         ret = APICall("assets/transfer/asset", params);
@@ -926,7 +926,7 @@ TEST_CASE( "Test Assets API - transfer asset", "[assets/transfer/asset]")
 
         /* Check all of the fields */
         REQUIRE(result.find("txid") != result.end());
-        
+
         /* Grab the transfer txid so that we can use it for a claim */
         hashTransfer.SetHex(result["txid"].get<std::string>());
 
@@ -979,7 +979,7 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
 
     /* Success case */
     {
-        uint256_t hashAsset = LLC::GetRand256();
+        uint256_t hashAsset = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
         {
             TAO::Ledger::Transaction tx;
@@ -992,7 +992,7 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
 
             // add some data
             asset << std::string("data") << uint8_t(TAO::Register::TYPES::STRING) << std::string("somedata");
-            
+
 
             //payload
             tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashAsset << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
@@ -1030,7 +1030,7 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
 
             //commit to disk
             REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
-            
+
 
             hashTransfer = tx.GetHash();
         }
@@ -1048,7 +1048,7 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
 
         /* Check all of the fields */
         REQUIRE(result.find("txid") != result.end());
-        
+
 
     }
 
@@ -1138,7 +1138,7 @@ TEST_CASE( "Test Assets API - list asset history", "[assets/list/asset/history]"
             REQUIRE(entry.find("checksum") != entry.end());
             REQUIRE(entry.find("address") != entry.end());
         }
-        
+
     }
 
 }

@@ -319,6 +319,32 @@ namespace TAO
             json::json Create(const json::json& params, bool fHelp);
 
 
+            /** Update
+             *
+             *  Update a user account credentials.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Update(const json::json& params, bool fHelp);
+
+
+            /** Recovery
+             *
+             *  Create a user recovery passphrase.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Recovery(const json::json& params, bool fHelp);
+
+
             /** GetTransactions
              *
              *  Get transactions for an account
@@ -446,10 +472,11 @@ namespace TAO
                *  Gets the currently outstanding transactions that have not been matched with a credit or claim.
                *
                *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-               *  @param[out] vTransactions The array of outstanding contracts.
+               *  @param[out] vContracts The array of outstanding contracts.
                *
                **/
-              bool GetOutstanding(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions);
+              bool GetOutstanding(const uint256_t& hashGenesis,
+                    std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
 
 
           private:
@@ -461,10 +488,11 @@ namespace TAO
                *
                *  @param[in] hashGenesis The genesis hash for the sig chain owner.
                *  @param[in] hashLast The hash of the last transaction to iterate.
-               *  @param[out] vTransactions The array of outstanding transactions.
+               *  @param[out] vContracts The array of outstanding contracts.
                *
                **/
-              bool get_events(const uint256_t& hashGenesis, uint512_t hashLast, std::vector<TAO::Ledger::Transaction> &vTransactions);
+              bool get_events(const uint256_t& hashGenesis,
+                    uint512_t hashLast, std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
 
 
               /** get_coinbases
@@ -473,10 +501,11 @@ namespace TAO
                *
                *  @param[in] hashGenesis The genesis hash for the sig chain owner.
                *  @param[in] hashLast The hash of the last transaction to iterate.
-               *  @param[out] vTransactions The array of outstanding coinbase transactions.
+               *  @param[out] vContracts The array of outstanding contracts.
                *
                **/
-              bool get_coinbases(const uint256_t& hashGenesis, uint512_t hashLast, std::vector<TAO::Ledger::Transaction> &vTransactions);
+              bool get_coinbases(const uint256_t& hashGenesis,
+                    uint512_t hashLast, std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
 
 
         };

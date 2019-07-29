@@ -16,7 +16,7 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-    /** Default Constructor **/
+    /* Default Constructor */
     SectorTransaction::SectorTransaction()
     : mapTransactions()
     , mapOriginalData()
@@ -27,7 +27,7 @@ namespace LLD
     }
 
 
-    /** Default Destructor **/
+    /* Default Destructor */
     SectorTransaction::~SectorTransaction()
     {
     }

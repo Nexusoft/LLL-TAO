@@ -19,9 +19,12 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/append.h>
 #include <TAO/Operation/include/claim.h>
+#include <TAO/Operation/include/coinbase.h>
+#include <TAO/Operation/include/constants.h>
 #include <TAO/Operation/include/create.h>
 #include <TAO/Operation/include/credit.h>
 #include <TAO/Operation/include/debit.h>
+#include <TAO/Operation/include/fee.h>
 #include <TAO/Operation/include/genesis.h>
 #include <TAO/Operation/include/legacy.h>
 #include <TAO/Operation/include/stake.h>
@@ -35,7 +38,9 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/condition.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/types/address.h>
 
 namespace TAO
 {
@@ -214,6 +219,10 @@ namespace TAO
                         if(!Append::Execute(state, vchData, contract.Timestamp()))
                             return false;
 
+                        /* Check for maximum register size. */
+                        if(state.GetState().size() > TAO::Register::MAX_REGISTER_SIZE)
+                            return debug::error(FUNCTION, "OP::APPEND: register size out of bounds ", vchData.size());
+
                         /* Deserialize the pre-state byte from contract. */
                         nState = 0;
                         contract >>= nState;
@@ -252,7 +261,7 @@ namespace TAO
                             return false;
 
                         /* Get the Address of the Register. */
-                        uint256_t hashAddress = 0;
+                        TAO::Register::Address hashAddress;
                         contract >> hashAddress;
 
                         /* Get the Register Type. */
@@ -262,6 +271,10 @@ namespace TAO
                         /* Get the register data. */
                         std::vector<uint8_t> vchData;
                         contract >> vchData;
+
+                        /* Check for maximum register size. */
+                        if(vchData.size() > TAO::Register::MAX_REGISTER_SIZE)
+                            return debug::error(FUNCTION, "OP::CREATE: register size out of bounds ", vchData.size());
 
                         /* Create the register object. */
                         TAO::Register::State state;
@@ -289,9 +302,15 @@ namespace TAO
                         if(nChecksum != state.GetHash())
                             return debug::error(FUNCTION, "OP::CREATE: invalid register post-state");
 
+                        /* Check for the fees. */
+                        uint64_t nCost = 0;
+
                         /* Commit the register to disk. */
-                        if(!Create::Commit(state, hashAddress, nFlags))
+                        if(!Create::Commit(state, hashAddress, nCost, nFlags))
                             return false;
+
+                        /* Set the fee cost to the contract. */
+                        contract.AddCost(nCost);
 
                         break;
                     }
@@ -409,6 +428,10 @@ namespace TAO
                             }
                             else if(!conditions.Execute())
                                 return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
+
+                            /* Assess the fees for the computation limits. */
+                            if(conditions.nCost > CONDITION_LIMIT_FREE)
+                                contract.AddCost(conditions.nCost - CONDITION_LIMIT_FREE);
                         }
 
                         /* Get the state byte. */
@@ -458,8 +481,20 @@ namespace TAO
                         if(fValidate)
                             return debug::error(FUNCTION, "OP::COINBASE: cannot use OP::VALIDATE with coinbase");
 
+                        /* Check for valid coinbase. */
+                        if(!Coinbase::Verify(contract))
+                            return false;
+
+                        /* Get the genesis. */
+                        uint256_t hashGenesis;
+                        contract >> hashGenesis;
+
                         /* Seek to end. */
-                        contract.Seek(48);
+                        contract.Seek(16);
+
+                        /* Commit to disk. */
+                        if(contract.Caller() != hashGenesis && !Coinbase::Commit(hashGenesis, contract.Hash(), nFlags))
+                            return false;
 
                         break;
                     }
@@ -833,6 +868,10 @@ namespace TAO
                             }
                             else if(!conditions.Execute())
                                 return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+
+                            /* Assess the fees for the computation limits. */
+                            if(conditions.nCost > CONDITION_LIMIT_FREE)
+                                contract.AddCost(conditions.nCost - CONDITION_LIMIT_FREE);
                         }
 
                         /* Deserialize the pre-state byte from the contract. */
@@ -870,6 +909,68 @@ namespace TAO
                         /* Commit the register to disk. */
                         if(!Credit::Commit(object, debit, hashAddress, hashProof, hashTx, nContract, nAmount, nFlags))
                             return false;
+
+                        break;
+                    }
+
+
+                    /* Debit tokens from an account you own. */
+                    case OP::FEE:
+                    {
+                        /* Make sure there are no conditions. */
+                        if(!contract.Empty(Contract::CONDITIONS))
+                            return debug::error(FUNCTION, "OP::FEE: conditions not allowed on fees");
+
+                        /* Verify the operation rules. */
+                        if(!Fee::Verify(contract))
+                            return false;
+
+                        /* Get the register address. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
+
+                        /* Get the fee amount. */
+                        uint64_t  nFees = 0;
+                        contract >> nFees;
+
+                        /* Deserialize the pre-state byte from the contract. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check for pre-state. */
+                        if(nState != TAO::Register::STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::FEE: register pre-state doesn't exist");
+
+                        /* Read the register from database. */
+                        TAO::Register::Object object;
+                        contract >>= object;
+
+                        /* Calculate the new operation. */
+                        if(!Fee::Execute(object, nFees, contract.Timestamp()))
+                            return false;
+
+                        /* Deserialize the pre-state byte from contract. */
+                        nState = 0;
+                        contract >>= nState;
+
+                        /* Check for pre-state. */
+                        if(nState != TAO::Register::STATES::POSTSTATE)
+                            return debug::error(FUNCTION, "OP::FEE: register post-state doesn't exist");
+
+                        /* Deserialize the checksum from contract. */
+                        uint64_t nChecksum = 0;
+                        contract >>= nChecksum;
+
+                        /* Check the post-state to register state. */
+                        if(nChecksum != object.GetHash())
+                            return debug::error(FUNCTION, "OP::FEE: invalid register post-state");
+
+                        /* Commit the register to disk. */
+                        if(!Fee::Commit(object, hashAddress, nFlags))
+                            return false;
+
+                        /* Set the fee credit to the contract. */
+                        contract.AddFee(nFees);
 
                         break;
                     }

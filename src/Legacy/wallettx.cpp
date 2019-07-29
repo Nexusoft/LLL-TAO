@@ -13,7 +13,6 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/include/legacy.h>
 #include <LLD/include/global.h>
 
 #include <LLP/include/global.h>
@@ -42,7 +41,7 @@ namespace Legacy
     std::mutex WalletTx::cs_wallettx;
 
 
-    /** Constructor **/
+    /* Constructor */
     WalletTx::WalletTx()
     : ptransactionWallet(nullptr)
     , fHaveWallet(false)
@@ -51,7 +50,7 @@ namespace Legacy
     }
 
 
-    /** Constructor **/
+    /* Constructor */
     WalletTx::WalletTx(Wallet& walletIn)
     : ptransactionWallet(&walletIn)
     , fHaveWallet(true)
@@ -60,7 +59,7 @@ namespace Legacy
     }
 
 
-    /** Constructor **/
+    /* Constructor */
     WalletTx::WalletTx(Wallet* pwalletIn)
     : ptransactionWallet(pwalletIn)
     , fHaveWallet(true)
@@ -69,7 +68,7 @@ namespace Legacy
     }
 
 
-    /** Constructor **/
+    /* Constructor */
     WalletTx::WalletTx(Wallet* pwalletIn, const MerkleTx& txIn)
     : MerkleTx(txIn)
     , ptransactionWallet(pwalletIn)
@@ -79,7 +78,7 @@ namespace Legacy
     }
 
 
-    /** Constructor **/
+    /* Constructor */
     WalletTx::WalletTx(Wallet* pwalletIn, const Transaction& txIn)
     : MerkleTx(txIn)
     , ptransactionWallet(pwalletIn)
@@ -89,13 +88,13 @@ namespace Legacy
     }
 
 
-    /** Destructor **/
+    /* Destructor */
     WalletTx::~WalletTx()
     {
     }
 
 
-    /*  Initializes an empty wallet transaction */
+    /* Initializes an empty wallet transaction */
     void WalletTx::InitWalletTx()
     {
         vtxPrev.clear();

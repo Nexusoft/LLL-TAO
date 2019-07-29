@@ -45,18 +45,18 @@ namespace TAO
     {
 
         /*  Gets the currently outstanding contracts that have not been matched with a credit or claim. */
-        bool Users::GetOutstanding(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vTransactions)
+        bool Users::GetOutstanding(const uint256_t& hashGenesis,
+                std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts)
         {
             /* Get the last transaction. */
             uint512_t hashLast = 0;
-
             if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 /* Get the coinbase transactions. */
-                get_coinbases(hashGenesis, hashLast, vTransactions);
+                get_coinbases(hashGenesis, hashLast, vContracts);
 
                 /* Get the debit and transfer transactions. */
-                get_events(hashGenesis, hashLast, vTransactions);
+                get_events(hashGenesis, hashLast, vContracts);
 
             }
 
@@ -67,150 +67,49 @@ namespace TAO
 
 
         /* Get the outstanding debits and transfer transactions. */
-        bool Users::get_events(const uint256_t& hashGenesis, uint512_t hashLast, std::vector<TAO::Ledger::Transaction> &vTransactions)
+        bool Users::get_events(const uint256_t& hashGenesis,
+                uint512_t hashLast, std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts)
         {
-            /* List of token registers to process. */
-            std::vector<uint256_t> vRegisters;
-
-            /* Loop until genesis. */
-            while(hashLast != 0)
-            {
-                /* Get the transaction from disk. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    return debug::error(FUNCTION, "Failed to read transaction");
-
-                /* Set the next last. */
-                hashLast = tx.hashPrevTx;
-
-                /* Loop through all contracts. */
-                uint32_t nContracts = tx.Size();
-                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
-                {
-                    /* Attempt to unpack a register script. */
-                    uint256_t hashAddress;
-                    TAO::Register::Object account;
-                    if(!TAO::Register::Unpack(tx[nContract], account, hashAddress))
-                        continue;
-
-                    /* Parse out the object register. */
-                    if(!account.Parse())
-                        continue;
-
-                    /* Check that it is an object register account. */
-                    if(account.nType != TAO::Register::REGISTER::OBJECT || account.Base() != TAO::Register::OBJECTS::ACCOUNT)
-                        continue;
-
-                    /* Get the token address and ensure it exists. */
-                    uint256_t hashToken = account.get<uint256_t>("token");
-                    if(!LLD::Register->HasIdentifier(hashToken))
-                        continue;
-
-                    /* Check claims against notifications. */
-                    if(LLD::Ledger->HasProof(hashAddress, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
-                        continue;
-
-                    vRegisters.push_back(hashToken);
-                }
-            }
-
-
-            /* Get notifications for foreign token registers. */
-            for(const auto& hashToken : vRegisters)
-            {
-                /* Read the object register. */
-                TAO::Register::Object object;
-                if(!LLD::Register->ReadState(hashToken, object, TAO::Ledger::FLAGS::MEMPOOL))
-                    continue;
-
-                /* Parse the object register. */
-                if(!object.Parse())
-                    continue;
-
-                uint64_t nBalance = object.get<uint64_t>("balance");
-                uint64_t nSupply =  object.get<uint64_t>("supply");
-
-                /* Loop through all events for given token (split payments). */
-                TAO::Ledger::Transaction tx;
-                uint32_t nSequence = 0;
-                while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
-                {
-                    /* Determine if tx should be added. */
-                    bool fAdd = false;
-
-                    /* Loop through transaction contracts. */
-                    uint32_t nContracts = tx.Size();
-                    for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
-                    {
-                        /* Attempt to unpack a register script (DEBIT or TRANSFER). */
-                        uint256_t hashAddress;
-                        if(!TAO::Register::Unpack(tx[nContract], hashAddress))
-                            continue;
-
-                        /* Get the hash to */
-                        uint256_t hashTo;
-                        tx[nContract] >> hashTo;
-
-                        /* Verify that the hash to exists. */
-                        TAO::Register::State stateTo;
-                        if(!LLD::Register->ReadState(hashTo, stateTo, TAO::Ledger::FLAGS::MEMPOOL))
-                            continue;
-
-                        /* If the operation is a debit, calculate the partial token debit amount. */
-                        if(TAO::Register::Unpack(tx[nContract], Operation::OP::DEBIT))
-                        {
-                            if(stateTo.nType == TAO::Register::REGISTER::RAW || stateTo.nType == TAO::Register::REGISTER::READONLY)
-                            {
-                                /* Seek to the debit amount. */
-                                tx[nContract].Seek(65, Operation::Contract::OPERATIONS);
-
-                                /* Get the debit amount. */
-                                uint64_t nAmount;
-                                tx[nContract] >> nAmount;
-
-                                /* Calculate the partial debit amount. */
-                                uint64_t nPartial = (nAmount * nBalance) / nSupply;
-
-                                /* Place the partial debit amount in the contract operation stream. */
-                                tx[nContract].Rewind(sizeof(uint64_t), Operation::Contract::OPERATIONS);
-                                tx[nContract] << nPartial;
-                            }
-                        }
-
-                        /* Transaction is valid for notifications. */
-                        fAdd = true;
-                    }
-
-                    /* Add the current transaction to the list of notifications. */
-                    if(fAdd)
-                        vTransactions.push_back(tx);
-
-                    /* Iterate sequence forward. */
-                    ++nSequence;
-                }
-            }
-
             /* Get notifications for personal genesis indexes. */
             TAO::Ledger::Transaction tx;
+
             uint32_t nSequence = 0;
             while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
             {
+                /* Make a shared pointer to the transaction so that we can keep it alive until the caller 
+                   is done processing the contracts */
+                std::shared_ptr<TAO::Ledger::Transaction> ptx(new TAO::Ledger::Transaction(tx));
+
                 /* Loop through transaction contracts. */
-                uint32_t nContracts = tx.Size();
+                uint32_t nContracts = ptx->Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
-                    /* Attempt to unpack a register script (DEBIT or TRANSFER). */
-                    uint256_t hashAddress;
-                    if(!TAO::Register::Unpack(tx[nContract], hashAddress))
+                    /* Attempt to unpack a register script (DEBIT or TRANSFER or COINBASE). */
+                    uint256_t hashTransfer;
+                    if(!TAO::Register::Unpack((*ptx)[nContract], hashTransfer))
+                        continue;
+
+                    /* Check for genesis. */
+                    if((*ptx)[nContract].Primitive() == TAO::Operation::OP::DEBIT)
+                    {
+                        /* Check to genesis. */
+                        TAO::Register::State state;
+                        if(!LLD::Register->ReadState(hashTransfer, state))
+                            continue;
+
+                        /* Check owner. */
+                        if(state.hashOwner != hashGenesis)
+                            continue;
+                    }
+                    else if(hashGenesis != hashTransfer)
                         continue;
 
                     /* Check if proofs are spent. */
-                    if(LLD::Ledger->HasProof(hashAddress, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                    if(LLD::Ledger->HasProof(hashTransfer, ptx->GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
                         continue;
 
-                    /* Add the current contract to the json contracts array. */
-                    vTransactions.push_back(tx);
-                    break;
+                    /* Add the coinbase transaction and skip rest of contracts. */
+                    vContracts.push_back(std::make_pair(ptx, nContract));
                 }
 
                 /* Iterate the sequence id forward. */
@@ -222,7 +121,8 @@ namespace TAO
 
 
         /*  Get the outstanding coinbases. */
-        bool Users::get_coinbases(const uint256_t& hashGenesis, uint512_t hashLast, std::vector<TAO::Ledger::Transaction> &vTransactions)
+        bool Users::get_coinbases(const uint256_t& hashGenesis,
+                uint512_t hashLast, std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts)
         {
             /* Reverse iterate until genesis (newest to oldest). */
             while(hashLast != 0)
@@ -240,20 +140,34 @@ namespace TAO
                     continue;
                 }
 
+                /* Make a shared pointer to the transaction so that we can keep it alive until the caller 
+                   is done processing the contracts */
+                std::shared_ptr<TAO::Ledger::Transaction> ptx(new TAO::Ledger::Transaction(tx));
+
                 /* Loop through all contracts and add coinbase contracts to vector. */
-                uint32_t nContracts = tx.Size();
+                uint32_t nContracts = ptx->Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
                     /* Check for coinbase opcode */
-                    if(TAO::Register::Unpack(tx[nContract], Operation::OP::COINBASE))
+                    if(TAO::Register::Unpack((*ptx)[nContract], Operation::OP::COINBASE))
                     {
+                        /* Seek past operation. */
+                        (*ptx)[nContract].Seek(1);
+
+                        /* Get the proof to check coinbase. */
+                        uint256_t hashProof;
+                        (*ptx)[nContract] >> hashProof;
+
+                        /* Check that the proof is to your genesis. */
+                        if(hashProof != hashGenesis)
+                            continue;
+
                         /* Check if proofs are spent. */
                         if(LLD::Ledger->HasProof(hashGenesis, hashLast, nContract, TAO::Ledger::FLAGS::MEMPOOL))
                             continue;
 
                         /* Add the coinbase transaction and skip rest of contracts. */
-                        vTransactions.push_back(tx);
-                        break;
+                        vContracts.push_back(std::make_pair(ptx, nContract));
                     }
                 }
 
@@ -307,12 +221,15 @@ namespace TAO
             uint32_t nTotal = 0;
 
             /* Get the outstanding contracts not yet credited or claimed. */
-            std::vector<TAO::Ledger::Transaction> vTransactions;
-            GetOutstanding(hashGenesis, vTransactions);
+            std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> vContracts;
+            GetOutstanding(hashGenesis, vContracts);
 
             /* Get notifications for foreign token registers. */
-            for(const auto& tx : vTransactions)
+            for(const auto& contract : vContracts)
             {
+                /* Get a reference to the contract */
+                const TAO::Operation::Contract& refContract = (*contract.first)[contract.second]; 
+                
                 /* LOOP: Get the current page. */
                 uint32_t nCurrentPage = nTotal / nLimit;
 
@@ -324,14 +241,12 @@ namespace TAO
                 if(nTotal - (nPage * nLimit) > nLimit)
                     break;
 
-                /* Read the block state from the the ledger DB using the transaction hash index */
-                TAO::Ledger::BlockState blockState;
-                LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
+                /* Get contract JSON data. */
+                json::json obj = ContractToJSON(hashCaller, refContract, 1);
+                obj["txid"]      = refContract.Hash().ToString();
+                obj["time"]      = refContract.Timestamp();
 
-                /* Get the transaction JSON. */
-                json::json obj = TAO::API::TransactionToJSON(tx, blockState, 1);
-
-                /* Add the transactions to the JSON object. */
+                /* Add to return object. */
                 ret.push_back(obj);
 
                 /* Increment the total number of notifications. */

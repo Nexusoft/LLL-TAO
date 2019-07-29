@@ -92,7 +92,7 @@ namespace Legacy
 		 *	Determine if the object is in a null state.
 		 *
 		 **/
-		bool IsNull();
+		bool IsNull() const;
 
 
 		/** SetEmpty

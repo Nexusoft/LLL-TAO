@@ -19,6 +19,7 @@
 
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/names.h>
+#include <TAO/Register/types/address.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -39,6 +40,10 @@ namespace TAO
                                                    const std::string& strFullName,
                                                    const uint256_t& hashRegister)
         {
+            /* Don't allow : in name */
+            if(strFullName.find(":") != strFullName.npos)
+                throw APIException(-161, "Name contains invalid characters");
+
             /* Declare the contract for the response */
             TAO::Operation::Contract contract;
 
@@ -47,7 +52,7 @@ namespace TAO
             uint256_t hashNamespace = 0;
 
             /* The register address of the Name object. */
-            uint256_t hashNameAddress = 0;
+            TAO::Register::Address hashNameAddress;
 
             /* The namespace string, populated if the caller has passed the name in name.namespace format */
             std::string strNamespace = "";
@@ -65,7 +70,7 @@ namespace TAO
                 strNamespace = strFullName.substr(nPos+1);
 
                 /* Namespace hash is a SK256 hash of the namespace name */
-                hashNamespace = LLC::SK256(strNamespace);
+                hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
                 /* Namespace object to retrieve*/
                 TAO::Register::Object namespaceObject;
@@ -186,7 +191,7 @@ namespace TAO
                 strName = strName.substr(0, nNamespacePos);
 
                 /* Namespace hash is a SK256 hash of the namespace name */
-                hashNamespace = LLC::SK256(strNamespace);
+                hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
             }
 
             else if(nUserspacePos != std::string::npos)

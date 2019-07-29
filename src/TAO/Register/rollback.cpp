@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/rollback.h>
 #include <TAO/Register/types/state.h>
@@ -204,7 +205,7 @@ namespace TAO
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to rollback to pre-state");
 
                         /* Write the event to the ledger database. */
-                        if(hashTransfer != ~uint256_t(0) && !LLD::Ledger->EraseEvent(hashTransfer))
+                        if(hashTransfer != WILDCARD_ADDRESS && !LLD::Ledger->EraseEvent(hashTransfer))
                             return debug::error(FUNCTION, "OP::TRANSFER: failed to rollback event");
 
                         break;
@@ -408,7 +409,7 @@ namespace TAO
                             return debug::error(FUNCTION, "failed to read register to");
 
                         /* Write the event to the ledger database. */
-                        if(hashTo != ~uint256_t(0) && !LLD::Ledger->EraseEvent(stateTo.hashOwner))
+                        if(hashTo != WILDCARD_ADDRESS && !LLD::Ledger->EraseEvent(stateTo.hashOwner))
                             return debug::error(FUNCTION, "OP::DEBIT: failed to rollback event");
 
                         break;
@@ -482,6 +483,35 @@ namespace TAO
                             if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed - nAmount)))
                                 return debug::error(FUNCTION, "OP::CREDIT: failed to rollback claimed amount");
                         }
+
+                        break;
+                    }
+
+                    /* Debit tokens from an account you own for fees. */
+                    case TAO::Operation::OP::FEE:
+                    {
+                        /* Get account from block. */
+                        uint256_t hashAddress = 0;
+                        contract >> hashAddress;
+
+                        /* Seek to end. */
+                        contract.Seek(8);
+
+                        /* Verify the first register code. */
+                        uint8_t nState = 0;
+                        contract >>= nState;
+
+                        /* Check the state is prestate. */
+                        if(nState != STATES::PRESTATE)
+                            return debug::error(FUNCTION, "OP::FEE: register state not in pre-state");
+
+                        /* Verify the register's prestate. */
+                        State state;
+                        contract >>= state;
+
+                        /* Write the register from database. */
+                        if(!LLD::Register->WriteState(hashAddress, state))
+                            return debug::error(FUNCTION, "OP::FEE: failed to rollback to pre-state");
 
                         break;
                     }

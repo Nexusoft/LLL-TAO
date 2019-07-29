@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/verify.h>
 
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -78,6 +79,10 @@ namespace TAO
         /* Accepts a transaction with validation rules. */
         bool Mempool::Accept(TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode)
         {
+            /* Check for activation timestamp. */
+            if(!VersionActive(tx.nTimestamp + 7200, 7))
+                return debug::error(FUNCTION, "tritium transaciton not accepted until 2 hours after time-lock");
+
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
@@ -128,11 +133,11 @@ namespace TAO
             //TODO: add mapConflcts map to soft-ban conflicting blocks
 
             /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsCoinbase())
+            if(tx.IsCoinBase())
                 return debug::error(FUNCTION, "coinbase ", hashTx.SubString(), " not accepted in pool");
 
             /* Check for duplicate coinbase or coinstake. */
-            if(tx.IsCoinstake())
+            if(tx.IsCoinStake())
                 return debug::error(FUNCTION, "coinstake ", hashTx.SubString(), " not accepted in pool");
 
             /* Check for duplicate coinbase or coinstake. */

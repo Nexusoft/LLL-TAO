@@ -92,6 +92,14 @@ namespace TAO
             std::vector<uint8_t> vchSig;
 
 
+            /** MEMORY ONLY: the fees accumulated in this transaction. **/
+            uint64_t nFees;
+
+
+            /** MEMORY ONLY: the overall cost of this transaction. **/
+            uint64_t nCost;
+
+
             //serialization macros
             IMPLEMENT_SERIALIZE
             (
@@ -191,6 +199,16 @@ namespace TAO
             bool Verify() const;
 
 
+            /** Cost
+             *
+             *  Get the total cost of this transaction.
+             *
+             *  @return the cost of this transaction (in viz).
+             *
+             **/
+            uint64_t Cost();
+
+
             /** Build
              *
              *  Build the transaction contracts.
@@ -223,24 +241,24 @@ namespace TAO
             bool Disconnect();
 
 
-            /** IsCoinbase
+            /** IsCoinBase
              *
              *  Determines if the transaction is a coinbase transaction.
              *
              *  @return true if transaction is a coinbase.
              *
              **/
-            bool IsCoinbase() const;
+            bool IsCoinBase() const;
 
 
-            /** IsCoinstake
+            /** IsCoinStake
              *
              *  Determines if the transaction is a coinstake (trust or genesis) transaction.
              *
              *  @return true if transaction is a coinstake.
              *
              **/
-            bool IsCoinstake() const;
+            bool IsCoinStake() const;
 
 
             /** IsHead
@@ -302,6 +320,19 @@ namespace TAO
              *
              **/
             bool IsFirst() const;
+
+
+            /** GetTrustInfo
+             *
+             *  Gets the total trust and stake of pre-state.
+             *
+             *  @param[out] nTrust The total trust in object.
+             *  @param[out] nStake The total stake in object.
+             *
+             *  @return true if succeeded
+             *
+             **/
+            bool GetTrustInfo(uint64_t& nTrust, uint64_t& nStake) const;
 
 
             /** GetHash
@@ -373,14 +404,14 @@ namespace TAO
             std::string ToStringShort() const;
 
 
-            /** GetTxTypeString
+            /** TypeString
              *
              *  User readable description of the transaction type.
              *
              *  @return User readable description of the transaction type;
              *
              **/
-            std::string GetTxTypeString() const;
+            std::string TypeString() const;
 
         };
     }

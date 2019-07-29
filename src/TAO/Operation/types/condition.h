@@ -22,6 +22,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 
+#include <stack>
+
 namespace TAO
 {
 
@@ -36,9 +38,6 @@ namespace TAO
         class Condition : public TAO::Register::BaseVM
         {
 
-            /** Computational limits for validation script. **/
-            int32_t nLimits;
-
 
             /** Reference of the contract being execute. **/
             const Contract& contract;
@@ -48,10 +47,19 @@ namespace TAO
             const Contract& caller;
 
 
+            /** Build the stack for nested grouping. **/
+            std::stack<std::pair<bool, uint8_t>> vEvaluate;
+
+
         public:
 
+
+            /** Computational limits for validation script. **/
+            uint64_t nCost;
+
+
             /** Default constructor. **/
-            Condition(const Contract& contractIn, const Contract& callerIn, int32_t nLimitsIn = 2048);
+            Condition(const Contract& contractIn, const Contract& callerIn, const int64_t nCostIn = 0);
 
 
             /** Copy constructor. **/

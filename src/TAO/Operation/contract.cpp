@@ -11,6 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/types/txout.h>
+
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Ledger/types/transaction.h>
@@ -28,10 +31,7 @@ namespace TAO
         : ssOperation()
         , ssCondition()
         , ssRegister()
-        , hashCaller(0)
-        , nTimestamp(0)
-        , hashTx(0)
-        , nOutput(0)
+        , ptx(nullptr)
         {
         }
 
@@ -41,10 +41,7 @@ namespace TAO
         : ssOperation(contract.ssOperation)
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
-        , hashCaller(contract.hashCaller)
-        , nTimestamp(contract.nTimestamp)
-        , hashTx(contract.hashTx)
-        , nOutput(contract.nOutput)
+        , ptx(contract.ptx)
         {
         }
 
@@ -54,10 +51,7 @@ namespace TAO
         : ssOperation(contract.ssOperation)
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
-        , hashCaller(contract.hashCaller)
-        , nTimestamp(contract.nTimestamp)
-        , hashTx(contract.hashTx)
-        , nOutput(contract.nOutput)
+        , ptx(contract.ptx)
         {
         }
 
@@ -71,23 +65,36 @@ namespace TAO
             ssRegister  = contract.ssRegister;
 
             /* Set the transaction reference. */
-            hashCaller  = contract.hashCaller;
-            nTimestamp  = contract.nTimestamp;
-            hashTx      = contract.hashTx;
-            nOutput     = contract.nOutput;
-
+            ptx         = contract.ptx;
 
             return *this;
         }
 
 
         /* Bind the contract to a transaction. */
-        void Contract::Bind(const TAO::Ledger::Transaction& tx, uint32_t nContract) const
+        void Contract::Bind(const TAO::Ledger::Transaction* tx) const
         {
-            hashCaller = tx.hashGenesis;
-            nTimestamp = tx.nTimestamp;
-            hashTx     = tx.GetHash();
-            nOutput    = nContract;
+            ptx = const_cast<TAO::Ledger::Transaction*>(tx);
+        }
+
+
+        /* Add fees to the contract. */
+        void Contract::AddFee(const uint64_t nFee) const
+        {
+            if(ptx == nullptr)
+                throw debug::exception(FUNCTION, "add fee access for nullptr");
+
+            ptx->nFees += nFee;
+        }
+
+
+        /* Add costs to the contract. */
+        void Contract::AddCost(const uint64_t nCost) const
+        {
+            if(ptx == nullptr)
+                throw debug::exception(FUNCTION, "add fee access for nullptr");
+
+            ptx->nCost += nCost;
         }
 
 
@@ -96,37 +103,178 @@ namespace TAO
         {
             /* Sanity checks. */
             if(ssOperation.size() == 0)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "cannot get primitive when empty"));
+                throw debug::exception(FUNCTION, "cannot get primitive when empty");
+
+            /* Get the operation code.*/
+            uint8_t nOP = ssOperation.get(0);
+
+            /* Switch for validate or condition. */
+            switch(nOP)
+            {
+                /* Check for condition. */
+                case OP::CONDITION:
+                {
+                    /* Get next op. */
+                    return ssOperation.get(1);
+                }
+
+                /* Check for validate. */
+                case OP::VALIDATE:
+                {
+                    /* Skip over on validate. */
+                    return ssOperation.get(69);
+                }
+            }
 
             /* Return first byte. */
-            return ssOperation.get(0);
-        }
-
-
-        uint32_t Contract::Output() const
-        {
-            return nOutput;
+            return nOP;
         }
 
 
         /* Get this contract's execution time. */
         const uint64_t& Contract::Timestamp() const
         {
-            return nTimestamp;
+            /* Check for nullptr. */
+            if(!ptx)
+                throw debug::exception(FUNCTION, "timestamp access for nullptr");
+
+            return ptx->nTimestamp;
         }
 
 
         /* Get this contract's caller */
         const uint256_t& Contract::Caller() const
         {
-            return hashCaller;
+            /* Check for nullptr. */
+            if(!ptx)
+                throw debug::exception(FUNCTION, "caller access for nullptr");
+
+            return ptx->hashGenesis;
         }
 
 
         /* Get the hash of calling tx */
-        const uint512_t& Contract::Hash() const
+        const uint512_t Contract::Hash() const
         {
-            return hashTx;
+            /* Check for nullptr. */
+            if(!ptx)
+                throw debug::exception(FUNCTION, "hash access for nullptr");
+
+            //TODO: optimize with keeping txid cached
+            return ptx->GetHash();
+        }
+
+
+        /* Get the value of the contract if valid */
+        bool Contract::Value(uint64_t &nValue) const
+        {
+            /* Reset the contract. */
+            ssOperation.seek(0, STREAM::BEGIN);
+
+            /* Set value. */
+            nValue = 0;
+
+            /* Get the operation code.*/
+            uint8_t nOP = 0;
+            ssOperation >> nOP;
+
+            /* Switch for validate or condition. */
+            switch(nOP)
+            {
+                /* Check for condition. */
+                case OP::CONDITION:
+                {
+                    /* Get next op. */
+                    ssOperation >> nOP;
+
+                    break;
+                }
+
+                /* Check for validate. */
+                case OP::VALIDATE:
+                {
+                    /* Skip over on validate. */
+                    ssOperation.seek(68);
+
+                    /* Get next op. */
+                    ssOperation >> nOP;
+
+                    break;
+                }
+            }
+
+            /* Switch for validate or condition. */
+            switch(nOP)
+            {
+                /* Check for condition. */
+                case OP::DEBIT:
+                {
+                    /* Skip over from and to. */
+                    ssOperation.seek(64);
+
+                    /* Get value. */
+                    ssOperation >> nValue;
+
+                    break;
+                }
+
+                /* Check for condition. */
+                case OP::CREDIT:
+                {
+                    /* Skip over unrelated data. */
+                    ssOperation.seek(132);
+
+                    /* Get value. */
+                    ssOperation >> nValue;
+
+                    break;
+                }
+
+                /* Check for validate. */
+                case OP::COINBASE:
+                {
+                    /* Skip over genesis. */
+                    ssOperation.seek(32);
+
+                    /* Get value. */
+                    ssOperation >> nValue;
+
+                    break;
+                }
+            }
+
+            /* Reset before return. */
+            ssOperation.seek(0, STREAM::BEGIN);
+
+            return (nValue > 0);
+        }
+
+
+        /* Get the legacy converted output of the contract if valid */
+        bool Contract::Legacy(Legacy::TxOut& txout) const
+        {
+            /* Check for LEGACY. */
+            if(Primitive() != OP::LEGACY)
+                return false;
+
+            /* Skip over address. */
+            ssOperation.seek(33, STREAM::BEGIN);
+
+            /* Get the value. */
+            uint64_t nValue = 0;
+            ssOperation >> nValue;
+
+            /* Get the script. */
+            Legacy::Script scriptPubKey;
+            ssOperation >> scriptPubKey;
+
+            /* Get legacy converted output.*/
+            txout = Legacy::TxOut(int64_t(nValue), scriptPubKey);
+
+            /* Reset before return. */
+            ssOperation.seek(0, STREAM::BEGIN);
+
+            return true;
         }
 
 

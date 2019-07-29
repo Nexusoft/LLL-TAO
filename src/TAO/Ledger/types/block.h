@@ -17,6 +17,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <set>
+
 //forward declerations for BigNum
 namespace LLC
 {
@@ -73,6 +75,10 @@ namespace TAO
 
             /** The Block's timestamp. This number is locked into the signature hash. **/
             uint32_t nTime; //TODO: make this 64 bit
+
+
+            /** The prime origin offsets. **/
+            std::vector<uint8_t> vOffsets;
 
 
             /** The bytes holding the blocks signature. Signed by the block creator before broadcast. **/
@@ -253,6 +259,8 @@ namespace TAO
             /** BuildMerkleTree
              *
              *  Build the merkle tree from the transaction list.
+             *
+             *  @param[in] vMerkleTree The list of hashes to build merkle tree with.
              *
              *  @return The 512-bit merkle root
              *
