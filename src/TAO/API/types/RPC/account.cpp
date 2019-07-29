@@ -32,6 +32,8 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
+#include <TAO/API/include/utils.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -194,8 +196,23 @@ namespace TAO
                     "sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]"
                     "<amount> is a real and is rounded to the nearest 0.000001");
 
-            Legacy::NexusAddress address(params[0].get<std::string>());
-            if(!address.IsValid())
+            /* Extract the address, which will either be a legacy address or a sig chain account address */
+            std::string strAddress = params[0].get<std::string>();
+            Legacy::NexusAddress address(strAddress);
+            uint256_t hashAccount = 0;
+
+            /* The script to contain the recipient */
+            Legacy::Script scriptPubKey;
+
+            if(IsRegisterAddress(strAddress))
+            {
+                hashAccount.SetHex(strAddress);
+                scriptPubKey.SetRegisterAddress(hashAccount);
+            }
+            else
+                scriptPubKey.SetNexusAddress(address);
+
+            if(hashAccount == 0 && !address.IsValid())
                 throw APIException(-5, "Invalid Nexus address");
 
             // Amount
@@ -213,7 +230,7 @@ namespace TAO
             if(Legacy::Wallet::GetInstance().IsLocked())
                 throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-            std::string strError = Legacy::Wallet::GetInstance().SendToNexusAddress(address, nAmount, wtx);
+            std::string strError = Legacy::Wallet::GetInstance().SendToNexusAddress(scriptPubKey, nAmount, wtx);
             if(strError != "")
                 throw APIException(-4, strError);
 
@@ -507,7 +524,11 @@ namespace TAO
 
             Legacy::NexusAddress address = Legacy::Wallet::GetInstance().GetAddressBook().GetAccountAddress(strTo);
 
-            std::string strError = Legacy::Wallet::GetInstance().SendToNexusAddress(address, nAmount, wtx, false, 1);
+            /* The script to contain the recipient */
+            Legacy::Script scriptPubKey;
+            scriptPubKey.SetNexusAddress(address);
+
+            std::string strError = Legacy::Wallet::GetInstance().SendToNexusAddress(scriptPubKey, nAmount, wtx, false, 1);
             if(strError != "")
                 throw APIException(-4, strError);
 
@@ -555,8 +576,12 @@ namespace TAO
             if(nAmount > nBalance)
                 throw APIException(-6, "Account has insufficient funds");
 
+            /* The script to contain the recipient */
+            Legacy::Script scriptPubKey;
+            scriptPubKey.SetNexusAddress(address);
+
             // Send
-            std::string strError = Legacy::Wallet::GetInstance().SendToNexusAddress(address, nAmount, wtx);
+            std::string strError = Legacy::Wallet::GetInstance().SendToNexusAddress(scriptPubKey, nAmount, wtx);
             if(strError != "")
                 throw APIException(-4, strError);
 
@@ -598,16 +623,27 @@ namespace TAO
             int64_t totalAmount = 0;
             for(json::json::iterator it = sendTo.begin(); it != sendTo.end(); ++it)
             {
-                Legacy::NexusAddress address(it.key());
-                if(!address.IsValid())
-                    throw APIException(-5, std::string("Invalid Nexus address:")+it.key());
-
-                if(setAddress.count(address))
-                    throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+it.key());
-                setAddress.insert(address);
-
                 Legacy::Script scriptPubKey;
-                scriptPubKey.SetNexusAddress(address);
+                std::string strAddress = it.key();
+
+                /* handle recipeint being a register address */
+                if(IsRegisterAddress(strAddress))
+                {
+                    scriptPubKey.SetRegisterAddress( uint256_t(strAddress) );
+                }
+                else
+                {
+                    Legacy::NexusAddress address(it.key());
+                    if(!address.IsValid())
+                        throw APIException(-5, std::string("Invalid Nexus address:")+it.key());
+
+                    if(setAddress.count(address))
+                        throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+it.key());
+                    setAddress.insert(address);
+
+                    scriptPubKey.SetNexusAddress(address);
+                }
+
                 int64_t nAmount = Legacy::AmountToSatoshis(it.value());
                 if(nAmount < Legacy::MIN_TXOUT_AMOUNT)
                     throw APIException(-101, "Send amount too small");

@@ -759,6 +759,9 @@ namespace TAO
                     if(!tx.Connect())
                         return debug::error(FUNCTION, "failed to connect transaction");
 
+                    /* Add legacy transactions to the wallet where appropriate */
+                    Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
+
                     /* Accumulate the fees. */
                     nFees += tx.Fees();
 

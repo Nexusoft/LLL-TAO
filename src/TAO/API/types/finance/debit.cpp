@@ -29,6 +29,9 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 
+#include <TAO/Ledger/include/chainstate.h>
+#include <Legacy/wallet/wallet.h>
+
 #include <Util/templates/datastream.h>
 
 /* Global TAO namespace. */
@@ -71,15 +74,34 @@ namespace TAO
             if(!TAO::Ledger::CreateTransaction(user, strPIN, tx))
                 throw APIException(-17, "Failed to create transaction.");
 
-            /* Submit the transaction payload. */
+            /* The register address of the recipient acccount. */
             uint256_t hashTo = 0;
+
+            /* legacy recipient address if this is a sig chain to UTXO transaction */
+            Legacy::NexusAddress legacyAddress;
+
+            /* Flag to indicate this is a sig chain to UTXO transaction */
+            bool fLegacy = false;
 
             /* If name_to is provided then use this to deduce the register address,
              * otherwise try to find the raw hex encoded address. */
             if(params.find("name_to") != params.end())
                 hashTo = Names::ResolveAddress(params, params["name_to"].get<std::string>());
             else if(params.find("address_to") != params.end())
-                hashTo.SetHex(params["address_to"].get<std::string>());
+            {
+                std::string strAddressTo = params["address_to"].get<std::string>();
+                
+                if(IsRegisterAddress(strAddressTo))
+                    hashTo.SetHex(strAddressTo);
+                else
+                {
+                    legacyAddress.SetString(strAddressTo);
+                    fLegacy = true;
+                }
+
+                if( hashTo == 0 && !legacyAddress.IsValid())
+                    throw APIException(-165, "Invalid address_to");
+            }
             else
                 throw APIException(-64, "Missing recipient account name_to / address_to");
 
@@ -131,7 +153,18 @@ namespace TAO
                 throw APIException(-69, "Insufficient funds");
 
             /* Submit the payload object. */
-            tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
+            if(fLegacy)
+            {
+                //legacy payload
+                Legacy::Script script;
+                script.SetNexusAddress(legacyAddress);
+
+                tx[0] << (uint8_t)TAO::Operation::OP::LEGACY << hashFrom << nAmount << script;
+            }
+            else
+            {
+                tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
+            }
 
             /* Add the conditional statements. */
 
@@ -172,6 +205,12 @@ namespace TAO
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw APIException(-32, "Failed to accept");
 
+            /* If this is a legacy transaction then we need to make sure it shows in the legacy wallet */
+            if(fLegacy)
+            {
+                TAO::Ledger::BlockState notUsed;
+                Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
+            }
             /* Build a JSON response object. */
             ret["txid"] = tx.GetHash().ToString();
 
