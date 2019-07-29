@@ -91,15 +91,6 @@ namespace TAO
             std::vector<uint8_t> vchPubKey;
             std::vector<uint8_t> vchSig;
 
-
-            /** MEMORY ONLY: the fees accumulated in this transaction. **/
-            uint64_t nFees;
-
-
-            /** MEMORY ONLY: the overall cost of this transaction. **/
-            uint64_t nCost;
-
-
             //serialization macros
             IMPLEMENT_SERIALIZE
             (
@@ -412,6 +403,28 @@ namespace TAO
              *
              **/
             std::string TypeString() const;
+
+
+            /** Fees
+            *
+            *  Calculates and returns the total fee included in this transaction
+            *
+            *  @return The sum of all OP::FEE contracts in the transaction
+            *
+            **/
+            uint64_t Fees() const;
+
+
+            /** CachedCost
+            *
+            *  Calculates the cost of this transaction from the contracts within it
+            *
+            *  @param[in] txPrev The previous transaction - used to throttle the cost based on last transaction time
+            *
+            *  @return The calculated cost.
+            *
+            **/
+            uint64_t CachedCost(const TAO::Ledger::Transaction& txPrev) const;
 
         };
     }

@@ -149,6 +149,14 @@ namespace TAO
 
         /** The stake threshold weight multiplier. **/
         const uint64_t MAX_STAKE_WEIGHT = 1000 * NXS_COIN;
+
+        /* Fees */
+        const uint64_t THRESHOLD_FEE = 0.1 * NXS_COIN;
+        const uint64_t OBJECT_FEE = 1 * NXS_COIN;
+        const uint64_t NAME_FEE = 1 * NXS_COIN;
+        const uint64_t NAMESPACE_FEE = 1000 * NXS_COIN;
+        const uint64_t TOKEN_FEE = 1000 * NXS_COIN;
+        const uint64_t ACCOUNT_FEE = 0 * NXS_COIN;
     }
 }
 

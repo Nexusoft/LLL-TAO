@@ -116,7 +116,7 @@ namespace TAO
                 LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
 
                 /* Get the transaction JSON. */
-                json::json obj = TAO::API::TransactionToJSON(tx, blockState, nVerbose);
+                json::json obj = TAO::API::TransactionToJSON(hashCaller, tx, blockState, nVerbose);
 
                 ret.push_back(obj);
             }

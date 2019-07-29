@@ -87,7 +87,7 @@ namespace TAO
                 throw APIException(-10, "Invalid session ID");
 
             /* Lock the signature chain. */
-            LOCK(user->CREATE_MUTEX);
+            LOCK(users->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
@@ -102,6 +102,9 @@ namespace TAO
                NOTE we pass true for the fForceTransfer parameter so that the transfer is made immediately to the
                token without requiring a Claim */
             tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashToken << uint8_t(TAO::Operation::TRANSFER::FORCE);
+
+            /* Add the fee */
+            AddFee(tx);
 
             /* Execute the operations layer. */
             if(!tx.Build())

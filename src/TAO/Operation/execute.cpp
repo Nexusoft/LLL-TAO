@@ -969,9 +969,6 @@ namespace TAO
                         if(!Fee::Commit(object, hashAddress, nFlags))
                             return false;
 
-                        /* Set the fee credit to the contract. */
-                        contract.AddFee(nFees);
-
                         break;
                     }
 

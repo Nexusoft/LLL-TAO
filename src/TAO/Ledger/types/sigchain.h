@@ -67,9 +67,6 @@ namespace TAO
         public:
 
 
-            /** Public mutex for creating transactions on signature chain. **/
-            std::mutex CREATE_MUTEX;
-
 
             /** Default constructor. **/
             SignatureChain();

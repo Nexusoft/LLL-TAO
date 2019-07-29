@@ -59,7 +59,7 @@ namespace TAO
                 throw APIException(-10, "Invalid session ID.");
 
             /* Lock the signature chain. */
-            LOCK(user->CREATE_MUTEX);
+            LOCK(users->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
@@ -288,6 +288,9 @@ namespace TAO
             /* Check that output was found. */
             if(nCurrent == -1)
                 throw APIException(-43, "No valid contracts in debit tx.");
+
+            /* Add the fee */
+            AddFee(tx);
 
             /* Execute the operations layer. */
             if(!tx.Build())

@@ -141,23 +141,27 @@ namespace TAO
             uint8_t nStandard = Standard();
             switch(nStandard)
             {
-                /* Tokens cost 10k NXS */
+                /* Tokens cost 1000 NXS */
                 case TAO::Register::OBJECTS::TOKEN:
-                    return 10000 * TAO::Ledger::NXS_COIN;
+                    return TAO::Ledger::TOKEN_FEE;
 
-                /* Names cost 100 NXS in a namespace. */
+                /* Names cost 1 NXS. */
                 case TAO::Register::OBJECTS::NAME:
-                {
-                    std::string strNamespace = get<std::string>("namespace");
-                    if(!strNamespace.empty())
-                        return 100 * TAO::Ledger::NXS_COIN;
-
-                    break;
-                }
+                    return TAO::Ledger::NAME_FEE;
 
                 /* Namespaces cost 1000 NXS. */
                 case TAO::Register::OBJECTS::NAMESPACE:
-                    return 1000 * TAO::Ledger::NXS_COIN;
+                    return TAO::Ledger::NAMESPACE_FEE;
+
+                case TAO::Register::OBJECTS::ACCOUNT:
+                    return TAO::Ledger::ACCOUNT_FEE;
+
+                /* objects cost 1 NXS. */
+                case TAO::Register::OBJECTS::NONSTANDARD:
+                    return TAO::Ledger::OBJECT_FEE;
+
+                default:
+                    return 0;
             }
 
             return 0;

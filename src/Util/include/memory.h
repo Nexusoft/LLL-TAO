@@ -639,12 +639,13 @@ namespace memory
         , data(pdata)
         , nRefs(nRefsIn)
         {
-            /* Lock the mutex. */
-            MUTEX.lock();
-
             /* Decrypt memory on first proxy. */
             if(nRefs == 0)
+            {
+                /* Lock the mutex. */
+                MUTEX.lock();
                 data->Encrypt();
+            }
 
             /* Increment the reference count. */
             ++nRefs;
@@ -663,10 +664,14 @@ namespace memory
 
             /* Encrypt memory again when ref count is 0. */
             if(nRefs == 0)
+            {
                 data->Encrypt();
+                
+                /* Unlock the mutex. */
+                MUTEX.unlock();
+            }
 
-            /* Unlock the mutex. */
-            MUTEX.unlock();
+            
         }
 
 

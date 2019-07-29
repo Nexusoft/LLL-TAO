@@ -30,6 +30,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/create.h>
 
 #include <Util/include/args.h>
 #include <Util/include/convert.h>
@@ -96,7 +97,7 @@ namespace TAO
                         if(LLD::Ledger->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json ret = TransactionToJSON(tx, block, nVerbosity);
+                            json::json ret = TransactionToJSON(0, tx, block, nVerbosity);
 
                             txinfo.push_back(ret);
                         }
@@ -122,17 +123,13 @@ namespace TAO
         }
 
         /* Converts the transaction to formatted JSON */
-        json::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
+        json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity)
         {
             /* Declare JSON object to return */
             json::json ret;
 
             /* Always add the transaction hash */
             ret["txid"] = tx.GetHash().GetHex();
-
-            /* Always add the contracts if level 1 and up */
-            if(nVerbosity >= 1)
-                ret["contracts"] = ContractsToJSON(0, tx, nVerbosity);
 
             /* Basic TX info for level 2 and up */
             if(nVerbosity >= 2)
@@ -157,6 +154,10 @@ namespace TAO
                     ret["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
                 }
             }
+
+            /* Always add the contracts if level 1 and up */
+            if(nVerbosity >= 1)
+                ret["contracts"] = ContractsToJSON(hashCaller, tx, nVerbosity);
 
             return ret;
         }
@@ -318,7 +319,28 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]      = "CREATE";
                         ret["address"] = hashAddress.ToString();
-                        ret["type"]    = nType;
+                        ret["type"]    = RegisterType(nType);
+                        
+                        /* If this is a register object then decode the object type */
+                        if(nType == TAO::Register::REGISTER::OBJECT)
+                        {
+                            /* Create the register object. */
+                            TAO::Register::Object state;
+                            state.nVersion   = 1;
+                            state.nType      = nType;
+                            state.hashOwner  = contract.Caller();
+
+                            /* Calculate the new operation. */
+                            if(!TAO::Operation::Create::Execute(state, vchData, contract.Timestamp()))
+                                throw APIException(-110, "Contract execution failed");
+
+                            /* parse object so that the data fields can be accessed */
+                            if(!state.Parse())
+                                throw APIException(-36, "Failed to parse object register");
+
+                            ret["object_type"] = ObjectType(state.Standard());
+                        }
+
                         ret["data"]    = HexStr(vchData.begin(), vchData.end());
 
                         break;
@@ -657,6 +679,12 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]      = "FEE";
                         ret["account"] = hashAccount.ToString();
+
+                        /* Resolve the name of the account that the credit is to */
+                        std::string strAccount = Names::ResolveName(hashCaller, hashAccount);
+                        if(!strAccount.empty())
+                            ret["account_name"] = strAccount;
+
                         ret["amount"]  = (double) nFee / TAO::Ledger::NXS_COIN;
 
                         break;

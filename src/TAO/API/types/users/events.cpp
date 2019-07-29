@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/include/utils.h>
 #include <TAO/API/types/users.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -146,7 +147,7 @@ namespace TAO
                         throw APIException(-10, "Invalid session ID");
 
                     /* Lock the signature chain. */
-                    LOCK(user->CREATE_MUTEX);
+                    LOCK(users->CREATE_MUTEX);
 
                     /* Set the hash genesis for this user. */
                     uint256_t hashGenesis = user->Genesis();
@@ -298,6 +299,9 @@ namespace TAO
                     /* If any of the notifications have been matched, execute the operations layer and sign the transaction. */
                     if(nOut)
                     {
+                        /* Add the fee */
+                        AddFee(txout);
+
                         /* Execute the operations layer. */
                         if(!txout.Build())
                             throw APIException(-30, "Failed to build register pre-states");

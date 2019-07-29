@@ -60,7 +60,7 @@ namespace TAO
                 throw APIException(-10, "Invalid session ID");
 
             /* Lock the signature chain. */
-            LOCK(user->CREATE_MUTEX);
+            LOCK(users->CREATE_MUTEX);
 
             /* Check that the account is unlocked for creating transactions */
             if(!users->CanTransact())
@@ -117,7 +117,7 @@ namespace TAO
 
 
             uint64_t nDigits = TAO::Ledger::NXS_DIGITS;
-            uint64_t nCurrentBalance = object.get<uint64_t>("balance");;
+            uint64_t nCurrentBalance = object.get<uint64_t>("balance");
 
             /* Get the amount to debit. */
             uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDigits);
@@ -156,6 +156,9 @@ namespace TAO
             //tx[0] <= uint8_t(OP::THIS::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(3600);
             //tx[0] <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
             //tx[0] <= uint8_t(OP::UNGROUP);
+
+            /* Add the fee */
+            AddFee(tx);
 
             /* Execute the operations layer. */
             if(!tx.Build())
