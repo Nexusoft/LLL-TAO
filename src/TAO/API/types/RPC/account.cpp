@@ -447,8 +447,8 @@ namespace TAO
                     int64_t allGeneratedImmature, allGeneratedMature, allFee;
                     allGeneratedImmature = allGeneratedMature = allFee = 0;
                     std::string strSentAccount;
-                    std::list<std::pair<Legacy::NexusAddress, int64_t> > listReceived;
-                    std::list<std::pair<Legacy::NexusAddress, int64_t> > listSent;
+                    std::list<std::pair<Legacy::Script, int64_t> > listReceived;
+                    std::list<std::pair<Legacy::Script, int64_t> > listSent;
                     wtx.GetAmounts(allGeneratedImmature, allGeneratedMature, listReceived, listSent, allFee, strSentAccount);
                     if(wtx.GetDepthInMainChain() >= nMinDepth)
                     {
@@ -927,8 +927,8 @@ namespace TAO
         {
             int64_t nGeneratedImmature, nGeneratedMature, nFee;
             std::string strSentAccount;
-            std::list<std::pair<Legacy::NexusAddress, int64_t> > listReceived;
-            std::list<std::pair<Legacy::NexusAddress, int64_t> > listSent;
+            std::list<std::pair<Legacy::Script, int64_t> > listReceived;
+            std::list<std::pair<Legacy::Script, int64_t> > listSent;
 
             wtx.GetAmounts(nGeneratedImmature, nGeneratedMature, listReceived, listSent, nFee, strSentAccount);
 
@@ -946,17 +946,20 @@ namespace TAO
 
                 const Legacy::TxOut& txout = wtx.vout[0];
                 Legacy::NexusAddress address;
+                uint256_t hashRegister;
                 std::vector<uint8_t> vchPubKey;
 
                 /* Get the Nexus address from the txout public key */
-                if (!ExtractAddress(txout.scriptPubKey, address))
+                if(ExtractAddress(txout.scriptPubKey, address))
+                    entry["address"] = address.ToString();
+                else if(ExtractRegister(txout.scriptPubKey, hashRegister))
+                    entry["address"] = hashRegister.GetHex();
+                else
                 {
                     debug::log(0, FUNCTION, "Unknown transaction type found, txid ", wtx.GetHash().ToString());
 
                     address = " unknown ";
                 }
-
-                entry["address"] = address.ToString();
                 
                 /* The amount to output */
                 int64_t nAmount = nGeneratedImmature > 0 ? nGeneratedImmature : nGeneratedMature;
@@ -994,10 +997,14 @@ namespace TAO
             std::map<Legacy::NexusAddress, std::string> mapExclude;
             for(auto r : listReceived)
             {
+                Legacy::NexusAddress address;
+                if(!Legacy::ExtractAddress( r.first, address))
+                    continue;
+
                 /* Set default address string. */
                 std::string account = "";
-                if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(r.first))
-                    account = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(r.first);
+                if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(address))
+                    account = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(address);
 
                 /* Catch for blank being default. */
                 if(!config::GetBoolArg("-legacy"))
@@ -1019,7 +1026,7 @@ namespace TAO
                 {
                     auto result = std::find(listSent.begin(), listSent.end(), r);
                     if(result != listSent.end())
-                        mapExclude[r.first] = account;
+                        mapExclude[address] = account;
                 }
             }
 
@@ -1028,7 +1035,13 @@ namespace TAO
             {
                 for(const auto& s : listSent)
                 {
-                    if(mapExclude.count(s.first))
+                    Legacy::NexusAddress address;
+                    Legacy::ExtractAddress( s.first, address);
+
+                    uint256_t hashRegister;
+                    Legacy::ExtractRegister( s.first, hashRegister);
+                        
+                    if(mapExclude.count(address))
                         continue;
 
                     if(config::GetBoolArg("-legacy") && strSentAccount == "default")
@@ -1036,7 +1049,7 @@ namespace TAO
 
                     json::json entry;
                     entry["account"] = strSentAccount;
-                    entry["address"] = s.first.ToString();
+                    entry["address"] = address.IsValid() ? address.ToString() : hashRegister.GetHex(); // handle sending to register address
                     entry["category"] = "send";
                     entry["amount"] = Legacy::SatoshisToAmount(-s.second);
                     entry["fee"] = Legacy::SatoshisToAmount(-nFee);
@@ -1051,12 +1064,18 @@ namespace TAO
             {
                 for(const auto& r : listReceived)
                 {
-                    if(mapExclude.count(r.first))
+                    Legacy::NexusAddress address;
+                    Legacy::ExtractAddress( r.first, address);
+
+                    uint256_t hashRegister;
+                    Legacy::ExtractRegister( r.first, hashRegister);
+
+                    if(mapExclude.count(address))
                         continue;
 
                     std::string account;
-                    if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(r.first))
-                        account = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(r.first);
+                    if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(address))
+                        account = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(address);
 
                     if(account == "" || account == "*")
                         account = "default";
@@ -1071,7 +1090,7 @@ namespace TAO
 
                         json::json entry;
                         entry["account"] = account;
-                        entry["address"] = r.first.ToString();
+                        entry["address"] = address.IsValid() ? address.ToString() : hashRegister.GetHex(); // handle sending to register address
                         entry["category"] = "receive";
                         entry["amount"] = Legacy::SatoshisToAmount(r.second);
                         if(fLong)

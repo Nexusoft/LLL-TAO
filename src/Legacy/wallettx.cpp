@@ -456,8 +456,8 @@ namespace Legacy
 
 
     /* Retrieve information about the current transaction. */
-   void WalletTx::GetAmounts(int64_t& nGeneratedImmature, int64_t& nGeneratedMature, std::list<std::pair<NexusAddress, int64_t> >& listReceived,
-                              std::list<std::pair<NexusAddress, int64_t> >& listSent, int64_t& nFee, std::string& strSentAccount) const
+   void WalletTx::GetAmounts(int64_t& nGeneratedImmature, int64_t& nGeneratedMature, std::list<std::pair<Legacy::Script, int64_t> >& listReceived,
+                              std::list<std::pair<Legacy::Script, int64_t> >& listSent, int64_t& nFee, std::string& strSentAccount) const
     {
         nGeneratedImmature = nGeneratedMature = nFee = 0;
         listReceived.clear();
@@ -492,21 +492,13 @@ namespace Legacy
             NexusAddress address;
             std::vector<uint8_t> vchPubKey;
 
-            /* Get the Nexus address from the txout public key */
-            if(!ExtractAddress(txout.scriptPubKey, address))
-            {
-                debug::log(0, FUNCTION, "Unknown transaction type found, txid ", this->GetHash().ToString());
-
-                address = " unknown ";
-            }
-
             /* For tx from us, txouts represent the sent value, add to the sent list */
             if(nDebit > 0)
-                listSent.push_back(std::make_pair(address, txout.nValue));
+                listSent.push_back(std::make_pair(txout.scriptPubKey, txout.nValue));
 
             /* For txout received (sent to address in bound wallet), add to the received list */
             if(ptransactionWallet->IsMine(txout))
-                listReceived.push_back(std::make_pair(address, txout.nValue));
+                listReceived.push_back(std::make_pair(txout.scriptPubKey, txout.nValue));
         }
     }
 
@@ -522,8 +514,8 @@ namespace Legacy
         /* GetAmounts will return the strFromAccount for this transaction */
         std::string strSentAccount;
 
-        std::list<std::pair<NexusAddress, int64_t> > listReceived;
-        std::list<std::pair<NexusAddress, int64_t> > listSent;
+        std::list<std::pair<Legacy::Script, int64_t> > listReceived;
+        std::list<std::pair<Legacy::Script, int64_t> > listSent;
 
         GetAmounts(allGeneratedImmature, allGeneratedMature, listReceived, listSent, allFee, strSentAccount);
 
@@ -544,7 +536,8 @@ namespace Legacy
         {
             for(const auto& r : listReceived)
             {
-                if(ptransactionWallet->GetAddressBook().HasAddress(r.first))
+                NexusAddress address;
+                if( ExtractAddress( r.first, address) && ptransactionWallet->GetAddressBook().HasAddress(address))
                 {
                     /* When received Nexus Address (r.first) is in wallet address book,
                      * include it in nReceived amount if its label matches requested account label

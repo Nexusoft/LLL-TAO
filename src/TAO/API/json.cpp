@@ -188,6 +188,7 @@ namespace TAO
                     /* Iterate through each input */
                     for(const Legacy::TxIn& txin : tx.vin)
                     {
+                        json::json input;
                         /* Read the previous transaction in order to get its outputs */
                         Legacy::Transaction txprev;
                         if(!LLD::Legacy->ReadTx(txin.prevout.hash, txprev))
@@ -195,12 +196,18 @@ namespace TAO
 
                         /* Extract the Nexus Address. */
                         Legacy::NexusAddress address;
-                        if(!Legacy::ExtractAddress(txprev.vout[txin.prevout.n].scriptPubKey, address))
+                        uint256_t hashRegister;
+                        if(Legacy::ExtractAddress(txprev.vout[txin.prevout.n].scriptPubKey, address))
+                            input["address"] = address.ToString();
+                        else if(Legacy::ExtractRegister(txprev.vout[txin.prevout.n].scriptPubKey, hashRegister))
+                            input["address"] = hashRegister.GetHex();
+                        else
                             throw APIException(-8, "Unable to Extract Input Address");
 
-                        /* Push new input to return value. */
-                        inputs.push_back(debug::safe_printstr("%s:%f",
-                                address.ToString().c_str(), (double) tx.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN));
+                        input["amount"] = (double) tx.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN;
+
+                        inputs.push_back(input);
+                        
                     }
                     ret["inputs"] = inputs;
                 }
@@ -211,13 +218,21 @@ namespace TAO
                 /* Iterate through each output */
                 for(const Legacy::TxOut& txout : tx.vout)
                 {
+                    json::json output;
                     /* Extract the Nexus Address. */
                     Legacy::NexusAddress address;
-                    if(!Legacy::ExtractAddress(txout.scriptPubKey, address))
-                        throw APIException(-8, "Unable to Extract Input Address");
+                    uint256_t hashRegister;
+                    if(Legacy::ExtractAddress(txout.scriptPubKey, address))
+                        output["address"] = address.ToString();
+                    else if(Legacy::ExtractRegister(txout.scriptPubKey, hashRegister))
+                        output["address"] = hashRegister.GetHex();
+                    else
+                        throw APIException(-8, "Unable to Extract Output Address");
 
-                    /* Add to the outputs. */
-                    outputs.push_back(debug::safe_printstr("%s:%f", address.ToString().c_str(), (double) txout.nValue / Legacy::COIN));
+                    output["amount"] = (double) txout.nValue / TAO::Ledger::NXS_COIN;
+
+                    outputs.push_back(output);
+
                 }
                 ret["outputs"] = outputs;
             }
