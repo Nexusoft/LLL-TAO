@@ -389,7 +389,6 @@ namespace LLP
         */
         if(message == "version")
         {
-
             int64_t nTime;
             LegacyAddress addrMe;
             LegacyAddress addrFrom;
@@ -492,9 +491,9 @@ namespace LLP
             ssMessage >> block;
 
             /* Process the block. */
-            LegacyNode::Process(block, this);
+            return LegacyNode::Process(block, this);
 
-            return true;
+            //return true;
         }
 
 
@@ -629,12 +628,8 @@ namespace LLP
                     /* If this is a block type, only request if not in database. */
                     if(inv->GetType() == MSG_BLOCK_LEGACY)
                     {
-                        /* Get the inventory hash. */
-                        hashBlock = inv->GetHash();
-
                         /* Check the LLD for block. */
-                        if(!cacheInventory.Has(hashBlock)
-                        && !LLD::Ledger->HasBlock(hashBlock))
+                        if(!cacheInventory.Has(hashBlock) && !LLD::Ledger->HasBlock(hashBlock))
                         {
                             /* Add this item to request queue. */
                             vGet.push_back(*inv);
@@ -645,12 +640,8 @@ namespace LLP
                     }
 
                     /* Check the memory pool for transactions being relayed. */
-                    else if(!cacheInventory.Has(hashTx)
-                         && !TAO::Ledger::mempool.Has(hashTx))
+                    else if(!cacheInventory.Has(hashTx) && !TAO::Ledger::mempool.Has(hashTx))
                     {
-                        /* Get the inventory hash. */
-                        hashTx = hashBlock;
-
                         /* Add this item to cached relay inventory (key only). */
                         cacheInventory.Add(hashTx);
                     }
@@ -665,14 +656,6 @@ namespace LLP
             else
                 PushMessage("getdata", vInv);
         }
-
-
-        //DEPRECATED
-        else if(message == "headers")
-        {
-            return true; //DEPRECATED
-        }
-
 
         /* Get the Data for either a transaction or a block. */
         else if(message == "getdata")
@@ -821,14 +804,6 @@ namespace LLP
                 PushMessage("inv", vInv);
         }
 
-
-        //DEPRECATED
-        else if(message == "getheaders")
-        {
-            return true; //DEPRECATED
-        }
-
-
         /* TODO: Change this Algorithm. */
         else if(message == "getaddr")
         {
@@ -837,13 +812,15 @@ namespace LLP
             if(LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->GetAddresses(vAddr);
 
-            /* Add the best 1000 addresses. */
+            /* Add the best 1000 (or less) addresses. */
             std::vector<LegacyAddress> vSend;
-            for(uint32_t n = 0; n < vAddr.size() && n < 1000; ++n)
+            uint32_t nCount = std::min((uint32_t)vAddr.size(), 1000u);
+
+            for(uint32_t n = 0; n < nCount; ++n)
                 vSend.push_back(vAddr[n]);
 
             /* Send the addresses off. */
-            if(vSend.size() > 0)
+            if(nCount)
                 PushMessage("addr", vSend);
         }
 
@@ -856,9 +833,11 @@ namespace LLP
     {
         uint1024_t hash = block.GetHash();
 
+        const uint32_t nMaxFailures = 500;
+
         /* Check if the block is valid. */
         if(!block.Check())
-            return false;
+            return debug::error(FUNCTION, "invalid block: ", hash.SubString(), "height: ", block.nHeight);
 
         /* Check for orphan. */
         if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
@@ -883,8 +862,7 @@ namespace LLP
                 ++pnode->nConsecutiveOrphans;
 
             /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(pnode
-            && pnode->nConsecutiveOrphans >= 500)
+            if(pnode && pnode->nConsecutiveOrphans >= nMaxFailures)
             {
                 debug::log(0, FUNCTION, "node reached orphan limit... closing");
 
@@ -915,8 +893,7 @@ namespace LLP
                 ++pnode->nConsecutiveFails;
 
             /* Check for failure limit on node. */
-            if(pnode
-            && pnode->nConsecutiveFails >= 500)
+            if(pnode && pnode->nConsecutiveFails >= nMaxFailures)
             {
 
                 /* Fast Sync node switch. */
@@ -956,13 +933,13 @@ namespace LLP
             /* Update the last time received. */
             nLastTimeReceived = runtime::timestamp();
 
-            /* Reset the consecutive failures. */
-            if(pnode)
-                pnode->nConsecutiveFails = 0;
 
-            /* Reset the consecutive orphans. */
+            /* Reset the consecutive failures and orphans. */
             if(pnode)
+            {
+                pnode->nConsecutiveFails = 0;
                 pnode->nConsecutiveOrphans = 0;
+            }
         }
 
         /* Process orphan if found. */
