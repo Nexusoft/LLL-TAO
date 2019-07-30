@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_TIMELOCKS_H
 #define NEXUS_TAO_LEDGER_INCLUDE_TIMELOCKS_H
 
-#include <inttypes.h>
+#include <cstdint>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -61,7 +61,7 @@ namespace TAO
             1421949600,        //--- Block Version 4 Testnet Activation:  05/10/2015 08:01:00 GMT - 6
             1536562800,        //--- Block Version 5 Testnet Activation:  09/10/2018 00:00:00 GMT - 7
             1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 GMT - 7
-            1560373338,        //--- Block Version 7 Testnet Activation:  06/12/2019 14:02:00 GMT - 7
+            1569277200,        //--- Block Version 7 Testnet Activation:  06/12/2019 14:02:00 GMT - 7
         };
 
 
@@ -88,9 +88,9 @@ namespace TAO
          **/
         const uint32_t CHANNEL_TESTNET_TIMELOCK[] =
         {
-            1421949600,        //--- POS Testnet Activation:              05/10/2015 08:01:00 GMT - 6
-            1411437371,        //--- CPU Testnet Activation:              09/22/2014 18:56:11 GMT - 6
-            1411437371         //--- GPU Testnet Activation:              09/22/2014 18:56:11 GMT - 6
+            1421949600,        //--- Stake Testnet Activation:              05/10/2015 08:01:00 GMT - 6
+            1411437371,        //--- Prime Testnet Activation:              09/22/2014 18:56:11 GMT - 6
+            1411437371         //--- Hash Testnet Activation:              09/22/2014 18:56:11 GMT - 6
         };
 
 
@@ -101,13 +101,13 @@ namespace TAO
          **/
         const uint32_t CHANNEL_NETWORK_TIMELOCK[] =
         {
-            1438369200,        //--- POS Channel Activation:              07/31/2015 12:00:00 GMT - 7
-            1411510800,        //--- CPU Channel Activation:              09/23/2014 16:20:00 GMT - 6
-            1413914400         //--- GPU Channel Activation:              10/21/2014 12:00:00 GMT - 6
+            1438369200,        //--- Stake Channel Activation:              07/31/2015 12:00:00 GMT - 7
+            1411510800,        //--- Prime Channel Activation:              09/23/2014 16:20:00 GMT - 6
+            1413914400         //--- Hash Channel Activation:              10/21/2014 12:00:00 GMT - 6
         };
 
 
-        /** Network Active
+        /** NetworkActive
          *
          *  Helper function to determine if the network timelock has been met.
          *
@@ -119,7 +119,7 @@ namespace TAO
         bool NetworkActive(const uint64_t nTimestamp);
 
 
-        /** Channel Active
+        /** ChannelActive
          *
          *  Helper function to determine if a timelock has been met for a channel.
          *
@@ -132,7 +132,7 @@ namespace TAO
         bool ChannelActive(const uint64_t nTimestamp, const uint32_t nChannel);
 
 
-        /** Version Active
+        /** VersionActive
          *
          *  Helper function to determine if a give block version is active.
          *

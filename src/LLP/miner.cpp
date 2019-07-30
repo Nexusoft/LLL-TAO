@@ -10,30 +10,43 @@
             "ad vocem populi" - To the Voice of the People
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
 
-#include <LLP/types/legacy_miner.h>
+#include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
 
-#include <LLD/include/global.h>
+#include <LLP/types/tritium.h>
+#include <LLP/types/legacy.h>
 
+
+#include <TAO/API/include/global.h>
+
+#include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/tritium.h>
 
 #include <Legacy/include/create.h>
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/reservekey.h>
 
+#include <Util/include/config.h>
 #include <Util/include/convert.h>
+#include <Util/include/args.h>
 
 
 namespace LLP
 {
 
     /** Default Constructor **/
-    BaseMiner::BaseMiner()
+    Miner::Miner()
     : Connection()
     , CoinbaseTx()
     , MUTEX()
@@ -42,12 +55,14 @@ namespace LLP
     , nSubscribed(0)
     , nChannel(0)
     , nBlockIterator(0)
+    , pMiningKey(nullptr)
     {
+        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
     }
 
 
     /** Constructor **/
-    BaseMiner::BaseMiner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
+    Miner::Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(SOCKET_IN, DDOS_IN, isDDOS)
     , CoinbaseTx()
     , MUTEX()
@@ -56,12 +71,14 @@ namespace LLP
     , nSubscribed(0)
     , nChannel(0)
     , nBlockIterator(0)
+    , pMiningKey(nullptr)
     {
+        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
     }
 
 
     /** Constructor **/
-    BaseMiner::BaseMiner(DDOS_Filter* DDOS_IN, bool isDDOS)
+    Miner::Miner(DDOS_Filter* DDOS_IN, bool isDDOS)
     : Connection(DDOS_IN, isDDOS)
     , CoinbaseTx()
     , MUTEX()
@@ -70,16 +87,23 @@ namespace LLP
     , nSubscribed(0)
     , nChannel(0)
     , nBlockIterator(0)
+    , pMiningKey(nullptr)
     {
+        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
     }
 
 
     /** Default Destructor **/
-    BaseMiner::~BaseMiner()
+    Miner::~Miner()
     {
         LOCK(MUTEX);
-
         clear_map();
+
+        if(pMiningKey)
+        {
+            pMiningKey->ReturnKey();
+            delete pMiningKey;
+        }
     }
 
 
@@ -88,7 +112,7 @@ namespace LLP
      *  Handle custom message events.
      *
      **/
-    void BaseMiner::Event(uint8_t EVENT, uint32_t LENGTH)
+    void Miner::Event(uint8_t EVENT, uint32_t LENGTH)
     {
 
         /* Handle any DDOS Packet Filters. */
@@ -254,10 +278,10 @@ namespace LLP
 
     /** This function is necessary for a template LLP server. It handles your
         custom messaging system, and how to interpret it from raw packets. **/
-    bool BaseMiner::ProcessPacket()
+    bool Miner::ProcessPacket()
     {
         /* Get the incoming packet. */
-        Packet PACKET   = this->INCOMING;
+        Packet PACKET = this->INCOMING;
 
         /* TODO: add a check for the number of connections and return false if there
             are no connections */
@@ -517,12 +541,12 @@ namespace LLP
                 /* Make sure there is no inconsistencies in validating block. */
                 if(!validate_block(hashMerkle))
                 {
-                    /* Set best height to 0 to force miners to request new blocks, since we know that the current block 
+                    /* Set best height to 0 to force miners to request new blocks, since we know that the current block
                        will fail to be submitted */
                     nBestHeight = 0;
 
                     respond(BLOCK_REJECTED);
-                
+
                     return true;
                 }
 
@@ -562,7 +586,7 @@ namespace LLP
     }
 
 
-    void BaseMiner::respond(uint8_t nHeader, const std::vector<uint8_t>& vData)
+    void Miner::respond(uint8_t nHeader, const std::vector<uint8_t>& vData)
     {
         Packet RESPONSE;
 
@@ -575,7 +599,7 @@ namespace LLP
 
     /*  Checks the current height index and updates best height. It will clear
      *  the block map if the height is outdated. */
-    bool BaseMiner::check_best_height()
+    bool Miner::check_best_height()
     {
 
         if(nBestHeight == TAO::Ledger::ChainState::nBestHeight)
@@ -594,7 +618,7 @@ namespace LLP
 
 
     /*  Clear the blocks map. */
-    void BaseMiner::clear_map()
+    void Miner::clear_map()
     {
         /* Delete the dynamically allocated blocks in the map. */
         for(auto &block : mapBlocks)
@@ -615,7 +639,7 @@ namespace LLP
 
 
     /*  Determines if the block exists. */
-    bool BaseMiner::find_block(const uint512_t& hashMerkleRoot)
+    bool Miner::find_block(const uint512_t& hashMerkleRoot)
     {
         /* Check that the block exists. */
         if(!mapBlocks.count(hashMerkleRoot))
@@ -627,5 +651,304 @@ namespace LLP
 
         return true;
     }
+
+
+    /*  Adds a new block to the map. */
+   TAO::Ledger::Block *Miner::new_block()
+   {
+       /*  Make a copy of the base block before making the hash unique for this request*/
+       uint1024_t hashProof = 0;
+
+       /* If the primemod flag is set, take the hashProof down to 1017-bit to maximize prime ratio as much as possible. */
+       uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
+
+       { //legacy
+
+           /* Create a new Legacy Block. */
+           Legacy::LegacyBlock *pBlock = new Legacy::LegacyBlock();
+
+           /* Set it to a null state */
+           pBlock->SetNull();
+
+
+           /* Create a new block and loop for prime channel if minimum bit target length isn't met */
+           while(true)
+           {
+               if(!Legacy::CreateBlock(*pMiningKey, CoinbaseTx, nChannel.load(), ++nBlockIterator, *pBlock))
+                   debug::error(FUNCTION, "Failed to create a new Legacy Block.");
+
+               /* Get the proof hash. */
+               hashProof = pBlock->ProofHash();
+
+               /* Skip if not prime channel or version less than 5 */
+               if(nChannel.load() != 1 || pBlock->nVersion < 5)
+                   break;
+
+                /* Exit loop when the block is above minimum prime origins and less than 1024-bit hashes */
+                if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !hashProof.high_bits(nBitMask))
+                    break;
+           }
+
+           debug::log(2, FUNCTION, "Created new Legacy Block ", hashProof.SubString(), " nVersion=", pBlock->nVersion);
+
+           /* Return a pointer to the heap memory */
+           return pBlock;
+       }
+
+       { //tritium
+
+
+           /* Create a new Tritium Block. */
+           TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
+
+           /* Set it to a null state */
+           pBlock->SetNull();
+
+           /* Get the sigchain and the PIN. */
+           SecureString PIN;
+
+           /* Attempt to unlock the account. */
+           if(TAO::API::users->Locked())
+           {
+               debug::error(FUNCTION, "No unlocked account available");
+               return nullptr;
+           }
+           else
+               PIN = TAO::API::users->GetActivePin();
+
+           /* Attempt to get the sigchain. */
+           memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
+           if(!pSigChain)
+           {
+               debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
+               return nullptr;
+           }
+
+           /* Check that the account is unlocked for minting */
+           if(!TAO::API::users->CanMint())
+           {
+               debug::error(FUNCTION, "Account has not been unlocked for minting");
+               return nullptr;
+           }
+
+           /* Create a new block and loop for prime channel if minimum bit target length isn't met */
+           while(true)
+           {
+               /* Create the Tritium block with the corresponding sigchain and pin. */
+               if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *pBlock, ++nBlockIterator))
+               {
+                   debug::error(FUNCTION, "Failed to create a new Tritium Block.");
+                   return nullptr;
+               }
+
+               /* Update the time. */
+               pBlock->UpdateTime();
+
+               /* Get the proof hash. */
+               hashProof = pBlock->ProofHash();
+
+               /* Skip if not prime channel or version less than 5. */
+               if(nChannel != 1 || pBlock->nVersion < 5)
+                   break;
+
+               /* Exit loop when the block is above minimum prime origins and less than 1024-bit hashes */
+               if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !hashProof.high_bits(nBitMask))
+                   break;
+           }
+
+           debug::log(2, FUNCTION, "Created new Tritium Block ", hashProof.SubString(), " nVersion=", pBlock->nVersion);
+
+           /* Return a pointer to the heap memory */
+           return pBlock;
+       }
+   }
+
+
+   /*  signs the block. */
+  bool Miner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
+  {
+      { //legacy
+          Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[hashMerkleRoot]);
+
+          pBlock->nNonce = nNonce;
+          pBlock->UpdateTime();
+          pBlock->print(); // print pre-signed block to log, will print signed block in Accept()
+
+          if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
+          {
+              debug::log(2, FUNCTION, "Unable to Sign Legacy Block ", hashMerkleRoot.SubString());
+              return false;
+          }
+
+          return true;
+      }
+
+      { //tritium
+
+          /* Create the pointer to the heap. */
+          TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
+          pBlock->nNonce = nNonce;
+          pBlock->UpdateTime();
+
+          /* Get the sigchain and the PIN. */
+          SecureString PIN;
+
+          /* Attempt to unlock the account. */
+          if(TAO::API::users->Locked())
+              return debug::error(FUNCTION, "No unlocked account available");
+          else
+              PIN = TAO::API::users->GetActivePin();
+
+          /* Attempt to get the sigchain. */
+          memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
+          if(!pSigChain)
+              return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
+
+          /* Check that the account is unlocked for minting */
+          if(!TAO::API::users->CanMint())
+              return debug::error(FUNCTION, "Account has not been unlocked for minting");
+
+          /* Sign the submitted block */
+          std::vector<uint8_t> vBytes = pSigChain->Generate(pBlock->producer.nSequence, PIN).GetBytes();
+          LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
+
+          /* Switch based on signature type. */
+          switch(pBlock->producer.nKeyType)
+          {
+              /* Support for the FALCON signature scheeme. */
+              case TAO::Ledger::SIGNATURE::FALCON:
+              {
+                  /* Create the FL Key object. */
+                  LLC::FLKey key;
+
+                  /* Set the secret parameter. */
+                  if(!key.SetSecret(vchSecret, true))
+                      return debug::error(FUNCTION, "Unable to set key for signing Tritium Block ", hashMerkleRoot.SubString());
+
+                  /* Generate the signature. */
+                  if(!pBlock->GenerateSignature(key))
+                      return debug::error(FUNCTION, "Unable to sign Tritium Block ", hashMerkleRoot.SubString());
+
+                  break;
+              }
+
+              /* Support for the BRAINPOOL signature scheme. */
+              case TAO::Ledger::SIGNATURE::BRAINPOOL:
+              {
+                  /* Create EC Key object. */
+                  LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                  /* Set the secret parameter. */
+                  if(!key.SetSecret(vchSecret, true))
+                      return debug::error(FUNCTION, "Unable to set key for signing Tritium Block ", hashMerkleRoot.SubString());
+
+                  /* Generate the signature. */
+                  if(!pBlock->GenerateSignature(key))
+                      return debug::error(FUNCTION, "Unable to sign Tritium Block ", hashMerkleRoot.SubString());
+
+                  break;
+              }
+
+              default:
+                  return debug::error(FUNCTION, "Unknown signature type");
+          }
+
+          return true;
+      }
+  }
+
+
+
+    /*  validates the block. */
+   bool Miner::validate_block(const uint512_t& hashMerkleRoot)
+   {
+       { //legacy
+
+           Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[hashMerkleRoot]);
+
+           /* Check the Proof of Work for submitted block. */
+           if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
+           {
+               debug::log(2, FUNCTION, "Invalid Work for Legacy Block ", hashMerkleRoot.SubString());
+
+               return false;
+           }
+
+           /* Block is valid - Tell the wallet to keep this key. */
+           pMiningKey->KeepKey();
+
+           return true;
+       }
+
+       { //tritium
+
+           /* Create the pointer to the heap. */
+           TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
+
+           pBlock->print();
+
+           /* Log block found */
+           if(config::GetArg("-verbose", 0) > 0)
+           {
+               std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
+
+               if(pBlock->nChannel == 1)
+               {
+                   debug::log(1, FUNCTION, "Nexus Tritium Miner: new Prime channel block found at unified time ", strTimestamp);
+                   debug::log(1, "  blockHash: ", pBlock->ProofHash().SubString(30), " block height: ", pBlock->nHeight);
+                   debug::log(1, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(pBlock->nBits, 1));
+               }
+               else if(pBlock->nChannel == 2)
+               {
+                   uint1024_t hashTarget = LLC::CBigNum().SetCompact(pBlock->nBits).getuint1024();
+
+                   debug::log(1, FUNCTION, "Nexus Tritium Miner: new Hash channel block found at unified time ", strTimestamp);
+                   debug::log(1, "  blockHash: ", pBlock->ProofHash().SubString(30), " block height: ", pBlock->nHeight);
+                   debug::log(1, "  target: ", hashTarget.SubString(30));
+               }
+           }
+
+           if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
+           {
+               debug::log(0, FUNCTION, "Generated block is stale");
+               return false;
+           }
+
+           /* Attempt to get the sigchain. */
+           memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
+           if(!pSigChain)
+               return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
+
+           /* Lock the sigchain that is being mined. */
+           LOCK(TAO::API::users->CREATE_MUTEX);
+
+           /* Process the block and relay to network if it gets accepted into main chain. */
+           if(!TritiumNode::Process(*pBlock, nullptr))
+           {
+               debug::log(0, FUNCTION, "Generated block not accepted");
+               return false;
+           }
+
+           return true;
+       }
+   }
+
+
+
+
+    /*  Determines if the mining wallet is unlocked. */
+   bool Miner::is_locked()
+   {
+       { //legacy
+           return Legacy::Wallet::GetInstance().IsLocked();
+       }
+
+       { //tritium
+
+           /* Attempt to unlock the account. */
+           return TAO::API::users->Locked();
+
+       }
+   }
 
 }

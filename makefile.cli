@@ -282,7 +282,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLD_xxhash.o \
 		build/LLP_base_address.o \
 		build/LLP_base_connection.o \
-		build/LLP_base_miner.o \
+		build/LLP_miner.o \
 		build/LLP_connection.o \
         build/LLP_httpnode.o \
 		build/LLP_apinode.o \
@@ -293,7 +293,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_inv.o \
 		build/LLP_legacy.o \
 		build/LLP_legacy_address.o \
-		build/LLP_legacy_miner.o \
 		build/LLP_lisp.o \
 		build/LLP_manager.o \
 		build/LLP_network.o \
@@ -304,7 +303,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_socket.o \
 		build/LLP_time.o \
 		build/LLP_tritium.o \
-		build/LLP_tritium_miner.o \
 		build/LLP_trust_address.o \
 		build/API_types_assets_claim.o \
 		build/API_types_assets_create.o \

@@ -297,7 +297,7 @@ namespace TAO
                     /* Get the coinbase from the memory pool. */
                     Legacy::Transaction tx;
                     if(!LLD::Legacy->ReadTx(vtx[0].second, tx, FLAGS::MEMPOOL))
-                        return debug::error(FUNCTION, "cannot get coinbase tx");
+                        return debug::error(FUNCTION, "cannot get legacy coinbase tx");
 
                     /* Double check for coinbase. */
                     if(!tx.IsCoinBase())
@@ -319,7 +319,7 @@ namespace TAO
                     /* Get the coinbase from the memory pool. */
                     Transaction tx;
                     if(!LLD::Ledger->ReadTx(vtx.back().second, tx, FLAGS::MEMPOOL))
-                        return debug::error(FUNCTION, "cannot get coinbase tx");
+                        return debug::error(FUNCTION, "cannot get ledger coinbase tx");
 
                     /* Check for coinbase. */
                     if(!tx.IsCoinBase())

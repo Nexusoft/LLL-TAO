@@ -22,8 +22,7 @@ ________________________________________________________________________________
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
-#include <LLP/types/legacy_miner.h>
-#include <LLP/types/tritium_miner.h>
+#include <LLP/types/miner.h>
 
 #include <Util/include/hex.h>
 
@@ -410,7 +409,5 @@ namespace LLP
     template class DataThread<TimeNode>;
     template class DataThread<APINode>;
     template class DataThread<RPCNode>;
-    template class DataThread<LegacyMiner>;
-    template class DataThread<TritiumMiner>;
-
+    template class DataThread<Miner>;
 }

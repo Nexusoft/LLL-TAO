@@ -19,17 +19,23 @@ ________________________________________________________________________________
 #include <Legacy/types/coinbase.h>
 #include <atomic>
 
+namespace Legacy
+{
+    class ReserveKey;
+}
+
 
 namespace LLP
 {
 
-    /** BaseMiner
+    /** Miner
      *
      *  Connection class that handles requests and responses from miners.
      *
      **/
-    class BaseMiner : public Connection
+    class Miner : public Connection
     {
+
     protected:
 
         /* Externally set coinbase to be set on mined blocks */
@@ -102,22 +108,38 @@ namespace LLP
         uint32_t nBlockIterator;
 
 
+    private:
+        /** the mining key for block rewards to send **/
+        Legacy::ReserveKey *pMiningKey;
+
+
     public:
 
         /** Default Constructor **/
-        BaseMiner();
+        Miner();
 
 
         /** Constructor **/
-        BaseMiner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Constructor **/
-        BaseMiner(DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        Miner(DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Default Destructor **/
-        virtual ~BaseMiner() = 0;
+        ~Miner();
+
+
+        /** Name
+         *
+         *  Returns a string for the name of this type of Node.
+         *
+         **/
+         static std::string Name()
+         {
+             return "Miner";
+         }
 
 
         /** Event
@@ -173,12 +195,20 @@ namespace LLP
          void clear_map();
 
 
+         /** find_block
+          *
+          *  Determines if the block exists.
+          *
+          **/
+         bool find_block(const uint512_t& hashMerkleRoot);
+
+
          /** new_block
           *
           *  Adds a new block to the map.
           *
           **/
-         virtual TAO::Ledger::Block *new_block() = 0;
+         TAO::Ledger::Block *new_block();
 
 
          /** validate_block
@@ -186,33 +216,23 @@ namespace LLP
           *  validates the block for the derived miner class.
           *
           **/
-          virtual bool validate_block(const uint512_t& hashMerkleRoot) = 0;
+         bool validate_block(const uint512_t& hashMerkleRoot);
 
 
-          /** sign_block
-           *
-           *  validates the block for the derived miner class.
-           *
-           **/
-           virtual bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot) = 0;
+         /** sign_block
+          *
+          *  validates the block for the derived miner class.
+          *
+          **/
+         bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot);
 
 
-           /** is_locked
-            *
-            *  Determines if the mining wallet is unlocked.
-            *
-            **/
-           virtual bool is_locked() = 0;
-
-
-           /** find_block
-            *
-            *  Determines if the block exists.
-            *
-            **/
-           bool find_block(const uint512_t& hashMerkleRoot);
-
-
+         /** is_locked
+          *
+          *  Determines if the mining wallet is unlocked.
+          *
+          **/
+         bool is_locked();
 
     };
 }

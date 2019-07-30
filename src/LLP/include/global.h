@@ -23,18 +23,16 @@ ________________________________________________________________________________
 
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
-#include <LLP/types/legacy_miner.h>
-#include <LLP/types/tritium_miner.h>
+#include <LLP/types/miner.h>
 
 namespace LLP
 {
-    extern Server<LegacyNode>*        LEGACY_SERVER;
-    extern Server<TritiumNode>*       TRITIUM_SERVER;
-    extern Server<TimeNode>*          TIME_SERVER;
-    extern Server<APINode>*           API_SERVER;
-    extern Server<RPCNode>*           RPC_SERVER;
-    extern Server<LegacyMiner>*       LEGACY_MINING_SERVER;
-    extern Server<TritiumMiner>*      TRITIUM_MINING_SERVER;
+    extern Server<LegacyNode>*   LEGACY_SERVER;
+    extern Server<TritiumNode>*  TRITIUM_SERVER;
+    extern Server<TimeNode>*     TIME_SERVER;
+    extern Server<APINode>*      API_SERVER;
+    extern Server<RPCNode>*      RPC_SERVER;
+    extern Server<Miner>*        MINING_SERVER;
 
 
     /** Initialize
@@ -55,52 +53,19 @@ namespace LLP
 
     /** CreateMiningServer
      *
-     *  Helper for creating Mining Servers.
-     *
-     *  @return Returns a templated mining server.
+     *  Creates and returns the mining server.
      *
      **/
-    template <class ProtocolType>
-    Server<ProtocolType>* CreateMiningServer()
-    {
-
-        /* Create the mining server object. */
-        return new Server<ProtocolType>(
-
-            /* The port this server listens on. */
-            static_cast<uint16_t>(config::GetArg(std::string("-miningport"), config::fTestNet.load() ? TESTNET_MINING_LLP_PORT : MAINNET_MINING_LLP_PORT)),
-
-            /* The total data I/O threads. */
-            static_cast<uint16_t>(config::GetArg(std::string("-miningthreads"), 4)),
-
-            /* The timeout value (default: 30 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-miningtimeout"), 30)),
-
-            /* The DDOS if enabled. */
-            config::GetBoolArg(std::string("-miningddos"), false),
-
-            /* The connection score (total connections per second). */
-            static_cast<uint32_t>(config::GetArg(std::string("-miningcscore"), 1)),
-
-            /* The request score (total packets per second.) */
-            static_cast<uint32_t>(config::GetArg(std::string("-miningrscore"), 50)),
-
-            /* The DDOS moving average timespan (default: 60 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-miningtimespan"), 60)),
-
-            /* Mining server should always listen */
-            true,
-
-            /* Flag to determine if meters should be active. */
-            config::GetBoolArg(std::string("-meters"), false),
-
-            /* Mining server should never make outgoing connections. */
-            false
-
-      );
-    }
+    Server<Miner>* CreateMiningServer();
 
 
+    /** MakeConnections
+     *
+     *  Makes connections from -connect and -addnode arguments for the specified server.
+     *
+     *  @param[in] pServer The server to make connections with.
+     *
+     **/
     template <class ProtocolType>
     void MakeConnections(Server<ProtocolType> *pServer)
     {
@@ -170,7 +135,7 @@ namespace LLP
             /* Flag to determine if the connection manager should try new connections. */
             config::GetBoolArg(std::string("-manager"), true)
 
-      );
+        );
     }
 
 

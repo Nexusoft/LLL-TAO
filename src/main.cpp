@@ -16,8 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/port.h>
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
-#include <LLP/types/legacy_miner.h>
-#include <LLP/types/tritium_miner.h>
+#include <LLP/types/miner.h>
 #include <LLP/include/lisp.h>
 
 #include <LLD/include/global.h>
@@ -100,7 +99,7 @@ int main(int argc, char** argv)
 
     /* Log the startup information now. */
     debug::LogStartup();
-    
+
 
     /* Initialize LLD. */
     LLD::Initialize();
@@ -245,12 +244,7 @@ int main(int argc, char** argv)
 
         /* Set up Mining Server */
         if(config::GetBoolArg(std::string("-mining")))
-        {
-          if(config::GetBoolArg(std::string("-beta")))
-              LLP::LEGACY_MINING_SERVER  = LLP::CreateMiningServer<LLP::LegacyMiner>();
-          else
-              LLP::TRITIUM_MINING_SERVER = LLP::CreateMiningServer<LLP::TritiumMiner>();
-        }
+              LLP::MINING_SERVER  = LLP::CreateMiningServer();
 
 
         /* Elapsed Milliseconds from timer. */
