@@ -228,6 +228,10 @@ namespace TAO
             if(config::GetBoolArg("-private", false))
                 return 0;
 
+            /* No transaction cost in the first transaction as this is where we set up default accounts */
+            if(IsFirst())
+                return 0;
+
             /* Run through all the contracts. */
             for(auto& contract : vContracts)
             {

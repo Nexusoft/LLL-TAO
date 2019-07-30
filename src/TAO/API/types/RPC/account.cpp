@@ -32,6 +32,8 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
+#include <TAO/API/include/utils.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -194,8 +196,44 @@ namespace TAO
                     "sendtoaddress <Nexusaddress> <amount> [comment] [comment-to]"
                     "<amount> is a real and is rounded to the nearest 0.000001");
 
-            Legacy::NexusAddress address(params[0].get<std::string>());
-            if(!address.IsValid())
+            /* Extract the address, which will either be a legacy address or a sig chain account address */
+            std::string strAddress = params[0].get<std::string>();
+            Legacy::NexusAddress address(strAddress);
+            uint256_t hashAccount = 0;
+
+            /* The script to contain the recipient */
+            Legacy::Script scriptPubKey;
+
+            if(IsRegisterAddress(strAddress))
+            {
+                hashAccount.SetHex(strAddress);
+
+                /* Get the account object. */
+                TAO::Register::Object account;
+                if(!LLD::Register->ReadState(hashAccount, account))
+                    throw APIException(-5, "Invalid Nexus address");
+
+                /* Parse the object register. */
+                if(!account.Parse())
+                    throw APIException(-5, "Invalid Nexus address");
+
+                /* Get the object standard. */
+                uint8_t nStandard = account.Standard();
+
+                /* Check the object standard. */
+                if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+                    throw APIException(-126, "Address is not for a NXS account");
+
+                /* Check the account is a NXS account */
+                if(account.get<uint256_t>("token") != 0)
+                    throw APIException(-126, "Address is not for a NXS account");
+
+                scriptPubKey.SetRegisterAddress(hashAccount);
+            }
+            else
+                scriptPubKey.SetNexusAddress(address);
+
+            if(hashAccount == 0 && !address.IsValid())
                 throw APIException(-5, "Invalid Nexus address");
 
             // Amount
@@ -213,7 +251,7 @@ namespace TAO
             if(Legacy::Wallet::GetInstance().IsLocked())
                 throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
-            std::string strError = Legacy::Wallet::GetInstance().SendToNexusAddress(address, nAmount, wtx);
+            std::string strError = Legacy::Wallet::GetInstance().SendToNexusAddress(scriptPubKey, nAmount, wtx);
             if(strError != "")
                 throw APIException(-4, strError);
 
@@ -430,8 +468,8 @@ namespace TAO
                     int64_t allGeneratedImmature, allGeneratedMature, allFee;
                     allGeneratedImmature = allGeneratedMature = allFee = 0;
                     std::string strSentAccount;
-                    std::list<std::pair<Legacy::NexusAddress, int64_t> > listReceived;
-                    std::list<std::pair<Legacy::NexusAddress, int64_t> > listSent;
+                    std::list<std::pair<Legacy::Script, int64_t> > listReceived;
+                    std::list<std::pair<Legacy::Script, int64_t> > listSent;
                     wtx.GetAmounts(allGeneratedImmature, allGeneratedMature, listReceived, listSent, allFee, strSentAccount);
                     if(wtx.GetDepthInMainChain() >= nMinDepth)
                     {
@@ -507,7 +545,11 @@ namespace TAO
 
             Legacy::NexusAddress address = Legacy::Wallet::GetInstance().GetAddressBook().GetAccountAddress(strTo);
 
-            std::string strError = Legacy::Wallet::GetInstance().SendToNexusAddress(address, nAmount, wtx, false, 1);
+            /* The script to contain the recipient */
+            Legacy::Script scriptPubKey;
+            scriptPubKey.SetNexusAddress(address);
+
+            std::string strError = Legacy::Wallet::GetInstance().SendToNexusAddress(scriptPubKey, nAmount, wtx, false, 1);
             if(strError != "")
                 throw APIException(-4, strError);
 
@@ -555,8 +597,12 @@ namespace TAO
             if(nAmount > nBalance)
                 throw APIException(-6, "Account has insufficient funds");
 
+            /* The script to contain the recipient */
+            Legacy::Script scriptPubKey;
+            scriptPubKey.SetNexusAddress(address);
+
             // Send
-            std::string strError = Legacy::Wallet::GetInstance().SendToNexusAddress(address, nAmount, wtx);
+            std::string strError = Legacy::Wallet::GetInstance().SendToNexusAddress(scriptPubKey, nAmount, wtx);
             if(strError != "")
                 throw APIException(-4, strError);
 
@@ -594,20 +640,53 @@ namespace TAO
 
             std::set<Legacy::NexusAddress> setAddress;
             std::vector<std::pair<Legacy::Script, int64_t> > vecSend;
+            uint256_t hashAccount;
 
             int64_t totalAmount = 0;
             for(json::json::iterator it = sendTo.begin(); it != sendTo.end(); ++it)
             {
-                Legacy::NexusAddress address(it.key());
-                if(!address.IsValid())
-                    throw APIException(-5, std::string("Invalid Nexus address:")+it.key());
-
-                if(setAddress.count(address))
-                    throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+it.key());
-                setAddress.insert(address);
-
                 Legacy::Script scriptPubKey;
-                scriptPubKey.SetNexusAddress(address);
+                std::string strAddress = it.key();
+
+                /* handle recipient being a register address */
+                if(IsRegisterAddress(strAddress))
+                {
+                    hashAccount.SetHex(strAddress);
+
+                    /* Get the account object. */
+                    TAO::Register::Object account;
+                    if(!LLD::Register->ReadState(hashAccount, account))
+                        throw APIException(-5, "Invalid Nexus address");
+
+                    /* Parse the object register. */
+                    if(!account.Parse())
+                        throw APIException(-5, "Invalid Nexus address");
+
+                    /* Get the object standard. */
+                    uint8_t nStandard = account.Standard();
+
+                    /* Check the object standard. */
+                    if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+                        throw APIException(-126, "Address is not for a NXS account");
+
+                    /* Check the account is a NXS account */
+                    if(account.get<uint256_t>("token") != 0)
+                        throw APIException(-126, "Address is not for a NXS account");
+                    scriptPubKey.SetRegisterAddress( hashAccount );
+                }
+                else
+                {
+                    Legacy::NexusAddress address(it.key());
+                    if(!address.IsValid())
+                        throw APIException(-5, std::string("Invalid Nexus address:")+it.key());
+
+                    if(setAddress.count(address))
+                        throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+it.key());
+                    setAddress.insert(address);
+
+                    scriptPubKey.SetNexusAddress(address);
+                }
+
                 int64_t nAmount = Legacy::AmountToSatoshis(it.value());
                 if(nAmount < Legacy::MIN_TXOUT_AMOUNT)
                     throw APIException(-101, "Send amount too small");
@@ -891,8 +970,8 @@ namespace TAO
         {
             int64_t nGeneratedImmature, nGeneratedMature, nFee;
             std::string strSentAccount;
-            std::list<std::pair<Legacy::NexusAddress, int64_t> > listReceived;
-            std::list<std::pair<Legacy::NexusAddress, int64_t> > listSent;
+            std::list<std::pair<Legacy::Script, int64_t> > listReceived;
+            std::list<std::pair<Legacy::Script, int64_t> > listSent;
 
             wtx.GetAmounts(nGeneratedImmature, nGeneratedMature, listReceived, listSent, nFee, strSentAccount);
 
@@ -910,17 +989,20 @@ namespace TAO
 
                 const Legacy::TxOut& txout = wtx.vout[0];
                 Legacy::NexusAddress address;
+                uint256_t hashRegister;
                 std::vector<uint8_t> vchPubKey;
 
                 /* Get the Nexus address from the txout public key */
-                if (!ExtractAddress(txout.scriptPubKey, address))
+                if(ExtractAddress(txout.scriptPubKey, address))
+                    entry["address"] = address.ToString();
+                else if(ExtractRegister(txout.scriptPubKey, hashRegister))
+                    entry["address"] = hashRegister.GetHex();
+                else
                 {
                     debug::log(0, FUNCTION, "Unknown transaction type found, txid ", wtx.GetHash().ToString());
 
                     address = " unknown ";
                 }
-
-                entry["address"] = address.ToString();
                 
                 /* The amount to output */
                 int64_t nAmount = nGeneratedImmature > 0 ? nGeneratedImmature : nGeneratedMature;
@@ -958,10 +1040,14 @@ namespace TAO
             std::map<Legacy::NexusAddress, std::string> mapExclude;
             for(auto r : listReceived)
             {
+                Legacy::NexusAddress address;
+                if(!Legacy::ExtractAddress( r.first, address))
+                    continue;
+
                 /* Set default address string. */
                 std::string account = "";
-                if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(r.first))
-                    account = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(r.first);
+                if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(address))
+                    account = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(address);
 
                 /* Catch for blank being default. */
                 if(!config::GetBoolArg("-legacy"))
@@ -983,7 +1069,7 @@ namespace TAO
                 {
                     auto result = std::find(listSent.begin(), listSent.end(), r);
                     if(result != listSent.end())
-                        mapExclude[r.first] = account;
+                        mapExclude[address] = account;
                 }
             }
 
@@ -992,7 +1078,13 @@ namespace TAO
             {
                 for(const auto& s : listSent)
                 {
-                    if(mapExclude.count(s.first))
+                    Legacy::NexusAddress address;
+                    Legacy::ExtractAddress( s.first, address);
+
+                    uint256_t hashRegister;
+                    Legacy::ExtractRegister( s.first, hashRegister);
+                        
+                    if(mapExclude.count(address))
                         continue;
 
                     if(config::GetBoolArg("-legacy") && strSentAccount == "default")
@@ -1000,7 +1092,7 @@ namespace TAO
 
                     json::json entry;
                     entry["account"] = strSentAccount;
-                    entry["address"] = s.first.ToString();
+                    entry["address"] = address.IsValid() ? address.ToString() : hashRegister.GetHex(); // handle sending to register address
                     entry["category"] = "send";
                     entry["amount"] = Legacy::SatoshisToAmount(-s.second);
                     entry["fee"] = Legacy::SatoshisToAmount(-nFee);
@@ -1015,12 +1107,18 @@ namespace TAO
             {
                 for(const auto& r : listReceived)
                 {
-                    if(mapExclude.count(r.first))
+                    Legacy::NexusAddress address;
+                    Legacy::ExtractAddress( r.first, address);
+
+                    uint256_t hashRegister;
+                    Legacy::ExtractRegister( r.first, hashRegister);
+
+                    if(mapExclude.count(address))
                         continue;
 
                     std::string account;
-                    if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(r.first))
-                        account = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(r.first);
+                    if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(address))
+                        account = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(address);
 
                     if(account == "" || account == "*")
                         account = "default";
@@ -1035,7 +1133,7 @@ namespace TAO
 
                         json::json entry;
                         entry["account"] = account;
-                        entry["address"] = r.first.ToString();
+                        entry["address"] = address.IsValid() ? address.ToString() : hashRegister.GetHex(); // handle sending to register address
                         entry["category"] = "receive";
                         entry["amount"] = Legacy::SatoshisToAmount(r.second);
                         if(fLong)
@@ -1385,12 +1483,50 @@ namespace TAO
                     "validateaddress <Nexusaddress>"
                     " - Return information about <Nexusaddress>.");
 
-            Legacy::NexusAddress address(params[0].get<std::string>());
-            bool isValid = address.IsValid();
+            /* Extract the address, which will either be a legacy address or a sig chain account address */
+            std::string strAddress = params[0].get<std::string>();
+            Legacy::NexusAddress address(strAddress);
+            uint256_t hashAccount = 0;
+
+            /* Whether the address is considered valid */
+            bool isValid = false;
+
+            /* Flag indicating that this is a legacy (UTXO) address as opposed to a tritium register address */
+            bool isLegacy = false;
+
+            /* Check to see if they have passed in a 256-bit register address (in 64-char hex) */
+            if(IsRegisterAddress(strAddress))
+            {
+                isLegacy = false;
+                
+                hashAccount.SetHex(strAddress);
+
+                /* Get the account object. */
+                TAO::Register::Object account;
+                if(LLD::Register->ReadState(hashAccount, account))
+                {
+                    /* Parse the object register. */
+                    if(account.Parse())
+                    {
+                        /* Get the object standard. */
+                        uint8_t nStandard = account.Standard();
+
+                        /* Check the object standard and check the account is a NXS account */
+                        if((nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST)
+                        && (account.get<uint256_t>("token") == 0))
+                            isValid = true;
+                    }
+                }
+            }
+            else
+            {
+                isLegacy = true;
+                isValid = address.IsValid();
+            }
 
             json::json ret;
             ret["isvalid"] = isValid;
-            if(isValid)
+            if(isValid && isLegacy)
             {
                 std::string currentAddress = address.ToString();
                 ret["address"] = currentAddress;
@@ -1426,6 +1562,10 @@ namespace TAO
                     ret["ismine"] = false;
                 if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(address))
                     ret["account"] = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(address);
+            }
+            else if (isValid)
+            {
+                ret["address"] = hashAccount.GetHex();
             }
             return ret;
 

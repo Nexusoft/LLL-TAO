@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/pinunlock.h>
 
+#include <Legacy/types/transaction.h>
+
 #include <Util/include/mutex.h>
 #include <Util/include/memory.h>
 #include <condition_variable>
@@ -461,55 +463,77 @@ namespace TAO
              void EventsThread();
 
 
-             /** NotifyEvent
-              *
-              *  Notifies the events processor that an event has occurred so it
-              *  can check and update it's state.
-              *
-              **/
-              void NotifyEvent();
+            /** NotifyEvent
+             *
+             *  Notifies the events processor that an event has occurred so it
+             *  can check and update it's state.
+             *
+             **/
+            void NotifyEvent();
 
 
 
-              /** GetOutstanding
-               *
-               *  Gets the currently outstanding transactions that have not been matched with a credit or claim.
-               *
-               *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-               *  @param[out] vContracts The array of outstanding contracts.
-               *
-               **/
-              bool GetOutstanding(const uint256_t& hashGenesis,
-                    std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
+            /** GetOutstanding
+             *
+             *  Gets the currently outstanding transactions that have not been matched with a credit or claim.
+             *
+             *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+             *  @param[out] vContracts The array of outstanding contracts.
+             *
+             **/
+            bool GetOutstanding(const uint256_t& hashGenesis,
+                std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
+
+
+            /** GetOutstanding
+             *
+             *  Gets the currently outstanding legacy UTXO to register transactions that have not been matched with a credit.
+             *
+             *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+             *  @param[out] vContracts The array of outstanding contracts.
+             *
+             **/
+            bool GetOutstanding(const uint256_t& hashGenesis,
+                std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts);
 
 
           private:
 
 
-              /** get_events
-               *
-               *  Get the outstanding debits and transfer transactions.
-               *
-               *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-               *  @param[in] hashLast The hash of the last transaction to iterate.
-               *  @param[out] vContracts The array of outstanding contracts.
-               *
-               **/
-              bool get_events(const uint256_t& hashGenesis,
-                    uint512_t hashLast, std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
+            /** get_events
+             *
+             *  Get the outstanding debits and transfer transactions.
+             *
+             *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+             *  @param[out] vContracts The array of outstanding contracts.
+             *
+             **/
+            bool get_events(const uint256_t& hashGenesis,
+                std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
+
+            /** get_events
+             *
+             *  Get the outstanding legacy UTXO to register transactions.
+             *
+             *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+             *  @param[out] vContracts The array of outstanding contracts.
+             *
+             **/
+            bool get_events(const uint256_t& hashGenesis,
+                std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts);
 
 
-              /** get_coinbases
-               *
-               *  Get the outstanding coinbases.
-               *
-               *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-               *  @param[in] hashLast The hash of the last transaction to iterate.
-               *  @param[out] vContracts The array of outstanding contracts.
-               *
-               **/
-              bool get_coinbases(const uint256_t& hashGenesis,
-                    uint512_t hashLast, std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
+            /** get_coinbases
+             *
+             *  Get the outstanding coinbases.
+             *
+             *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+             *  @param[in] hashLast The hash of the last transaction to iterate.
+             *  @param[out] vContracts The array of outstanding contracts.
+             *
+             **/
+            bool get_coinbases(const uint256_t& hashGenesis,
+                uint512_t hashLast, std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
 
 
         };

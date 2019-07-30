@@ -188,6 +188,7 @@ namespace TAO
                     /* Iterate through each input */
                     for(const Legacy::TxIn& txin : tx.vin)
                     {
+                        json::json input;
                         /* Read the previous transaction in order to get its outputs */
                         Legacy::Transaction txprev;
                         if(!LLD::Legacy->ReadTx(txin.prevout.hash, txprev))
@@ -195,12 +196,18 @@ namespace TAO
 
                         /* Extract the Nexus Address. */
                         Legacy::NexusAddress address;
-                        if(!Legacy::ExtractAddress(txprev.vout[txin.prevout.n].scriptPubKey, address))
+                        uint256_t hashRegister;
+                        if(Legacy::ExtractAddress(txprev.vout[txin.prevout.n].scriptPubKey, address))
+                            input["address"] = address.ToString();
+                        else if(Legacy::ExtractRegister(txprev.vout[txin.prevout.n].scriptPubKey, hashRegister))
+                            input["address"] = hashRegister.GetHex();
+                        else
                             throw APIException(-8, "Unable to Extract Input Address");
 
-                        /* Push new input to return value. */
-                        inputs.push_back(debug::safe_printstr("%s:%f",
-                                address.ToString().c_str(), (double) tx.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN));
+                        input["amount"] = (double) tx.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN;
+
+                        inputs.push_back(input);
+                        
                     }
                     ret["inputs"] = inputs;
                 }
@@ -211,13 +218,21 @@ namespace TAO
                 /* Iterate through each output */
                 for(const Legacy::TxOut& txout : tx.vout)
                 {
+                    json::json output;
                     /* Extract the Nexus Address. */
                     Legacy::NexusAddress address;
-                    if(!Legacy::ExtractAddress(txout.scriptPubKey, address))
-                        throw APIException(-8, "Unable to Extract Input Address");
+                    uint256_t hashRegister;
+                    if(Legacy::ExtractAddress(txout.scriptPubKey, address))
+                        output["address"] = address.ToString();
+                    else if(Legacy::ExtractRegister(txout.scriptPubKey, hashRegister))
+                        output["address"] = hashRegister.GetHex();
+                    else
+                        throw APIException(-8, "Unable to Extract Output Address");
 
-                    /* Add to the outputs. */
-                    outputs.push_back(debug::safe_printstr("%s:%f", address.ToString().c_str(), (double) txout.nValue / Legacy::COIN));
+                    output["amount"] = (double) txout.nValue / TAO::Ledger::NXS_COIN;
+
+                    outputs.push_back(output);
+
                 }
                 ret["outputs"] = outputs;
             }
@@ -365,7 +380,22 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]       = "TRANSFER";
                         ret["address"]  = hashAddress.ToString();
-                        ret["transfer"] = hashTransfer.ToString();
+                        ret["destination"] = hashTransfer.ToString();
+
+                        /* If this is a register object then decode the object type */
+                        if(nType == TAO::Register::REGISTER::OBJECT)
+                        {
+                            TAO::Register::Object object;
+                            if(LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
+                            {
+                                /* parse object so that the data fields can be accessed */
+                                if(!object.Parse())
+                                    throw APIException(-36, "Failed to parse object register");
+
+                                ret["object_type"] = ObjectType(object.Standard());
+                            }
+                        }
+
                         ret["force"]    = (nType == TAO::Operation::TRANSFER::FORCE ? "True" : "False");
 
                         break;
@@ -392,6 +422,7 @@ namespace TAO
                         ret["txid"]       = hashTx.ToString();
                         ret["output"]     = nContract;
                         ret["address"]    = hashAddress.ToString();
+                        
 
                         break;
                     }
@@ -686,6 +717,71 @@ namespace TAO
                             ret["account_name"] = strAccount;
 
                         ret["amount"]  = (double) nFee / TAO::Ledger::NXS_COIN;
+
+                        break;
+                    }
+
+                    /* Debit NXS to legacy address. */
+                    case TAO::Operation::OP::LEGACY:
+                    {
+                        /* Get the register address. */
+                        uint256_t hashFrom = 0;
+                        contract >> hashFrom;
+
+
+                        /* Get the transfer amount. */
+                        uint64_t  nAmount = 0;
+                        contract >> nAmount;
+
+                        /* Get the output script. */
+                        Legacy::Script script;
+                        contract >> script;
+
+                        /* The receiving legacy address */
+                        Legacy::NexusAddress legacyAddress;
+
+                        /* Extract the receiving legacy address */
+                        Legacy::ExtractAddress(script, legacyAddress);
+
+                        /* Output the json information. */
+                        ret["OP"]       = "LEGACY";
+                        ret["from"]     = hashFrom.ToString();
+
+                        /* Resolve the name of the token/account that the debit is from */
+                        std::string strFrom = Names::ResolveName(hashCaller, hashFrom);
+                        if(!strFrom.empty())
+                            ret["from_name"] = strFrom;
+
+                        ret["to"]       = legacyAddress.ToString();
+
+                        /* Get the token/account we are debiting from so that we can output the token address / name. */
+                        TAO::Register::Object object;
+                        if(!LLD::Register->ReadState(hashFrom, object))
+                            throw APIException(-13, "Account not found");
+
+                        /* Parse the object register. */
+                        if(!object.Parse())
+                            throw APIException(-14, "Object failed to parse");
+
+                        /* Add the amount to the response */
+                        ret["amount"]  = (double) nAmount / pow(10, GetDigits(object));
+
+                        /* Get the object standard. */
+                        uint8_t nStandard = object.Standard();
+
+                        /* Check the object standard. */
+                        if(nStandard != TAO::Register::OBJECTS::ACCOUNT
+                        && nStandard != TAO::Register::OBJECTS::TRUST
+                        && nStandard != TAO::Register::OBJECTS::TOKEN)
+                            throw APIException(-15, "Object is not an account or token");
+
+                        /* Get the token address */
+                        uint256_t hashToken = object.get<uint256_t>("token");
+
+                        /* Add the token address to the response */
+                        ret["token"]   = hashToken.GetHex();
+                        ret["token_name"] = "NXS";
+
 
                         break;
                     }

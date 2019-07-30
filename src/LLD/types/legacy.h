@@ -136,6 +136,72 @@ namespace LLD
          **/
         bool IsSpent(const uint512_t& hashTx, uint32_t nOutput);
 
+
+        /** WriteSequence
+         *
+         *  Writes a new sequence event to the legacy database.
+         *
+         *  @param[in] hashAddress The event address to write.
+         *  @param[in] nSequence The sequence to write.
+         *
+         *  @return True if the write was successful.
+         *
+         **/
+        bool WriteSequence(const uint256_t& hashAddress, const uint32_t nSequence);
+
+
+        /** ReadSequence
+         *
+         *  Reads a new sequence from the legacy database
+         *
+         *  @param[in] hashAddress The event address to read.
+         *  @param[out] nSequence The sequence to read.
+         *
+         *  @return True if the write was successful.
+         *
+         **/
+        bool ReadSequence(const uint256_t& hashAddress, uint32_t &nSequence);
+
+
+        /** WriteEvent
+         *
+         *  Write a new event to the legacy database of current txid.
+         *
+         *  @param[in] hashAddress The event address to write.
+         *  @param[in] hashTx The transaction event is triggering.
+         *
+         *  @return True if the write was successful.
+         *
+         **/
+        bool WriteEvent(const uint256_t& hashAddress, const uint512_t& hashTx);
+
+
+        /** EraseEvent
+         *
+         *  Erase an event from the legacy database
+         *
+         *  @param[in] hashAddress The event address to write.
+         *
+         *  @return True if the write was successful.
+         *
+         **/
+        bool EraseEvent(const uint256_t& hashAddress);
+
+
+        /** ReadEvent
+         *
+         *  Reads a new event to the ledger database of foreign index.
+         *  This is responsible for knowing legacy transactions that correlate to your sig chain.
+         *
+         *  @param[in] hashAddress The event address to write.
+         *  @param[in] nSequence The sequence number to read from event.
+         *  @param[out] tx The legacy transaction to read event from.
+         *
+         *  @return True if the write was successful.
+         *
+         **/
+        bool ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, Legacy::Transaction &tx);
+
     };
 }
 

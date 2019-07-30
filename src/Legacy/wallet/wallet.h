@@ -1007,7 +1007,7 @@ namespace Legacy
          *
          *  Generate a transaction to send balance to a given Nexus address.
          *
-         *  @param[in] address Nexus address where we are sending balance
+         *  @param[in] scriptPubKey The script containing the Nexus address or register address where we are sending balance
          *
          *  @param[in] nValue Amount to send
          *
@@ -1020,7 +1020,7 @@ namespace Legacy
          *  @return empty string if successful, otherwise contains a displayable error message
          *
          **/
-        std::string SendToNexusAddress(const NexusAddress& address, const int64_t nValue, WalletTx& wtxNew,
+        std::string SendToNexusAddress(const Script& scriptPubKey, const int64_t nValue, WalletTx& wtxNew,
                                        const bool fAskFee = false, const uint32_t nMinDepth = 1);
 
 

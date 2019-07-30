@@ -1670,7 +1670,7 @@ namespace Legacy
 
 
     /* Generate a transaction to send balance to a given Nexus address. */
-    std::string Wallet::SendToNexusAddress(const NexusAddress& address, const int64_t nValue, WalletTx& wtxNew,
+    std::string Wallet::SendToNexusAddress(const Script& scriptPubKey, const int64_t nValue, WalletTx& wtxNew,
                                             const bool fAskFee, const uint32_t nMinDepth)
     {
         /* Validate amount */
@@ -1683,10 +1683,6 @@ namespace Legacy
         /* Validate balance supports value + fees */
         if(nValue + MIN_TX_FEE > GetBalance())
             return std::string("Insufficient funds");
-
-        /* Parse Nexus address */
-        Script scriptPubKey;
-        scriptPubKey.SetNexusAddress(address);
 
         /* Place the script and amount into sending vector */
         std::vector< std::pair<Script, int64_t> > vecSend;

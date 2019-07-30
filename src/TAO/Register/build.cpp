@@ -647,6 +647,9 @@ namespace TAO
                         /* Serialize the checksum into contract. */
                         contract <<= object.GetHash();
 
+                        /* Write the state to memory map. */
+                        mapStates[hashAddress] = TAO::Register::State(object);
+
                         break;
                     }
 
@@ -705,6 +708,9 @@ namespace TAO
 
                         /* Serialize the checksum into contract. */
                         contract <<= object.GetHash();
+
+                        /* Write the state to memory map. */
+                        mapStates[hashAddress] = TAO::Register::State(object);
 
                         /* Get the script data. */
                         ::Legacy::Script script;

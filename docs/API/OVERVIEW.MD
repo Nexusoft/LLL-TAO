@@ -240,13 +240,13 @@ Error Codes
 | -117 | Item not found |
 | -118 | Missing type |
 | -119 | Missing supply |
-| -120 | Debit transacton is for a NXS account.  Please use the Finance API for crediting NXS accounts |
+| -120 | Debit transaction is for a NXS account.  Please use the Finance API for crediting NXS accounts |
 | -121 | Account to credit is not for the same token as the debit |
 | -122 | Token/account not found |
 | -123 | Object is not a token |
 | -124 | Unknown token / account |
 | -125 | Token not found |
-| -126 | Object is not an account |
+| -126 | Address is not for a NXS account" |
 | -127 | Missing username |
 | -128 | Missing password |
 | -129 | Missing PIN |
@@ -285,6 +285,7 @@ Error Codes
 | -162 | Name contains invalid characters |
 | -163 | Could not retrieve default NXS account to debit fees |
 | -164 | Account 'default' is not a NXS account |
+| -165 | Invalid address_to |
 
 
 

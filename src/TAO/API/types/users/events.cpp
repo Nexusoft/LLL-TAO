@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
@@ -28,6 +29,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
+
+#include <Legacy/include/evaluate.h>
 
 #include <Util/include/debug.h>
 
@@ -168,6 +171,10 @@ namespace TAO
                     std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> vContracts;
                     GetOutstanding(hashGenesis, vContracts);
 
+                    /* Get the list of outstanding legacy transactions . */
+                    std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> vLegacyTx;
+                    GetOutstanding(hashGenesis, vLegacyTx);
+
                     /* The transaction hash. */
                     uint512_t hashTx;
 
@@ -295,6 +302,62 @@ namespace TAO
                                 break;
                         }
                     }
+
+
+                    /* Now process the legacy transactions */
+                    for(const auto& contract : vLegacyTx)
+                    {
+                        /* Set the transaction hash. */
+                        hashTx = contract.first->GetHash();
+
+                        /* The index of the output in the legacy transaction */
+                        uint32_t nContract = contract.second;
+                        
+                        /* The TxOut to be checked */
+                        const Legacy::TxOut& txLegacy = contract.first->vout[nContract];
+
+                        /* The hash of the receiving account. */
+                        uint256_t hashAccount;
+                        
+                        /* Extract the sig chain account register address  from the legacy script */ 
+                        if(!Legacy::ExtractRegister(txLegacy.scriptPubKey, hashAccount))
+                            continue;
+
+                        /* Get the token / account object that the debit was made to. */
+                        TAO::Register::Object debit;
+                        if(!LLD::Register->ReadState(hashAccount, debit))
+                            continue;
+
+                        /* Parse the object register. */
+                        if(!debit.Parse())
+                            throw APIException(-41, "Failed to parse object from debit transaction");
+
+                        /* Check for the owner to make sure this was a send to the current users account */
+                        if(debit.hashOwner == user->Genesis())
+                        {
+                            /* Check the object base to see whether it is an account. */
+                            if(debit.Base() == TAO::Register::OBJECTS::ACCOUNT)
+                            {
+                                if(debit.get<uint256_t>("token") != 0)
+                                    throw APIException(-51, "Debit transaction is not for a NXS account.  Please use the tokens API for crediting token accounts.");
+
+                                /* The amount to credit */
+                                uint64_t nAmount = txLegacy.nValue;
+
+                                /* if we passed these checks then insert the credit contract into the tx */
+                                txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccount <<  TAO::Register::WILDCARD_ADDRESS << nAmount;
+
+                                /* Increment the contract ID. */
+                                ++nOut;
+
+                                /* Log debug message. */
+                                debug::log(0, FUNCTION, "Matching LEGACY SEND with CREDIT");
+                            }
+                            else
+                                continue;
+                        }
+                    }
+
 
                     /* If any of the notifications have been matched, execute the operations layer and sign the transaction. */
                     if(nOut)

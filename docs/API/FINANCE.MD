@@ -82,7 +82,7 @@ This example creates an account called "main".
 
 # `debit/account`
 
-Deduct an amount of NXS from an account and send it to another account. The API supports an alternative endpoint that can include the account name in the URL.  For example `/finance/debit/account/savings` will resolve to `finance/debit/account?name=savings`.
+Deduct an amount of NXS from an account and send it to another account or legacy UTXO address. The API supports an alternative endpoint that can include the account name in the URL.  For example `/finance/debit/account/savings` will resolve to `finance/debit/account?name=savings`.
 
 
 ### Endpoint:
@@ -104,7 +104,7 @@ Deduct an amount of NXS from an account and send it to another account. The API 
 
 `name_to` : The name identifying the account to send to. This is optional if the address is provided.  The name should be in username:name format
 
-`address_to` : The register address of the account to send to. This is optional if the name is provided.
+`address_to` : The register address of the account to send to. This is optional if the name is provided.  The address_to can also contain a legacy UTXO address if sending from a signature chain account to a legacy address.
 
 
 ### Example:
@@ -152,7 +152,7 @@ Increment an amount received from another NXS account to an account owned by you
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the account. For single-user API mode the session should not be supplied.
 
-`txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.
+`txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.  The transaction can also be a legacy transaction created from sendtoaddress or sendmany where the inputs are UTXO but the output is an account register address. 
 
 `name` : The name identifying the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 

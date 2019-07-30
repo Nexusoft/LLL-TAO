@@ -71,7 +71,7 @@ namespace TAO
             {
                 /* If the user requested a particular object type then check it is that type */
                 if(params.find("type") != params.end() && params["type"].get<std::string>() == "account")
-                    throw APIException(-126, "Object is not an account");
+                    throw APIException(-65, "Object is not an account");
 
                 /* Convert the token object to JSON */
                 ret = ObjectToJSON(params, object, hashRegister);

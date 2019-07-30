@@ -90,4 +90,57 @@ namespace LLD
     {
         return Exists(std::make_pair(hashTx, nOutput));
     }
+
+    /* Writes a new sequence event to the ledger database. */
+    bool LegacyDB::WriteSequence(const uint256_t& hashAddress, const uint32_t nSequence)
+    {
+        return Write(std::make_pair(std::string("sequence"), hashAddress), nSequence);
+    }
+
+
+    /* Reads a new sequence from the ledger database */
+    bool LegacyDB::ReadSequence(const uint256_t& hashAddress, uint32_t& nSequence)
+    {
+        return Read(std::make_pair(std::string("sequence"), hashAddress), nSequence);
+    }
+
+
+    /* Write a new event to the ledger database of current txid. */
+    bool LegacyDB::WriteEvent(const uint256_t& hashAddress, const uint512_t& hashTx)
+    {
+        /* Get the current sequence number. */
+        uint32_t nSequence = 0;
+        if(!ReadSequence(hashAddress, nSequence))
+            nSequence = 0; //reset value just in case
+
+        /* Write the new sequence number iterated by one. */
+        if(!WriteSequence(hashAddress, nSequence + 1))
+            return false;
+
+        return Index(std::make_pair(hashAddress, nSequence), std::make_pair(std::string("tx"), hashTx));
+    }
+
+
+    /* Erase an event from the ledger database. */
+    bool LegacyDB::EraseEvent(const uint256_t& hashAddress)
+    {
+        /* Get the current sequence number. */
+        uint32_t nSequence = 0;
+        if(!ReadSequence(hashAddress, nSequence))
+            return false;
+
+        /* Write the new sequence number iterated by one. */
+        if(!WriteSequence(hashAddress, nSequence - 1))
+            return false;
+
+        return Erase(std::make_pair(hashAddress, nSequence - 1));
+    }
+
+
+    /*  Reads a new event to the ledger database of foreign index.
+     *  This is responsible for knowing foreign sigchain events that correlate to your own. */
+    bool LegacyDB::ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, Legacy::Transaction& tx)
+    {
+        return Read(std::make_pair(hashAddress, nSequence), tx);
+    }
 }

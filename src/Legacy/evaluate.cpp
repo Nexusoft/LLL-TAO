@@ -1253,4 +1253,35 @@ namespace Legacy
         return true;
     }
 
+
+    /* Extract a Sig chain register address from a public key script. */
+    bool ExtractRegister(const Script& scriptPubKey, uint256_t& hashRegister)
+    {
+        /* Ensure the script is 34 bytes = 1 byte for size, the 256-bit hash, and the OP_RETURN */
+        if(scriptPubKey.size() != 34)
+            return false;
+
+        uint8_t nSize = scriptPubKey.at(0);
+
+        /* Ensure the data size is 32 */
+        if( nSize != 32)
+            return false;    
+
+        std::vector<uint8_t> vBytes;
+        vBytes.assign(scriptPubKey.begin()+1, scriptPubKey.begin()+1 + nSize);
+
+        /* The last OP code which must always be OP_RETURN for a script containing a register address */
+        uint8_t nOP = scriptPubKey.at(nSize +1);
+
+        /* Ensure that it is OP_RETURN */
+        if( nOP != Legacy::OP_RETURN)
+            return false;
+
+        /* Set the register address hash to return */
+        hashRegister = uint256_t(vBytes);
+
+        return true;
+
+    }
+
 }

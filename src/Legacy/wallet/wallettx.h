@@ -495,8 +495,8 @@ namespace Legacy
          *  @param[out] strSentAccount The sent from account assigned to this transaction, if any
          *
          **/
-        void GetAmounts(int64_t& nGeneratedImmature, int64_t& nGeneratedMature, std::list<std::pair<NexusAddress, int64_t> >& listReceived,
-                        std::list<std::pair<NexusAddress, int64_t> >& listSent, int64_t& nFee, std::string& strSentAccount) const;
+        void GetAmounts(int64_t& nGeneratedImmature, int64_t& nGeneratedMature, std::list<std::pair<Legacy::Script, int64_t> >& listReceived,
+                        std::list<std::pair<Legacy::Script, int64_t> >& listSent, int64_t& nFee, std::string& strSentAccount) const;
 
 
         /** GetAmounts

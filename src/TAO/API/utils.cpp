@@ -333,7 +333,7 @@ namespace TAO
 
                 /* Retrieve the account */
                 TAO::Register::Object object;
-                if(!LLD::Register->ReadState(hashFeeAccount, object))
+                if(!LLD::Register->ReadState(hashFeeAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
                     throw TAO::API::APIException(-13, "Account not found");
 
                 /* Parse the object register. */

@@ -136,6 +136,39 @@ namespace TAO
                 /* Add the transaction to the block. */
                 block.vtx.push_back(std::make_pair(TRITIUM_TX, hash));
             }
+
+            //add legacy
+            std::vector<uint512_t> vLegacyMempool;
+            
+            /* Retrieve list of transaction hashes from mempool.
+            * Limit list to a sane size that would typically more than fill a legacy block, rather than pulling entire pool if it is very large
+            */
+            TAO::Ledger::mempool.ListLegacy(vLegacyMempool, 1000);
+
+            /* Loop through the list of transactions. */
+            for(const auto& hash : vLegacyMempool)
+            {
+                /* Check the Size limits of the Current Block. */
+                if(::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION) + 200 >= MAX_BLOCK_SIZE)
+                    break;
+
+                /* Get the transaction from the memory pool. */
+                Legacy::Transaction tx;
+                if(!mempool.Get(hash, tx))
+                    continue;
+
+                /* Don't add transactions that are coinbase or coinstake. */
+                if(tx.IsCoinBase() || tx.IsCoinStake())
+                    continue;
+
+                /* Check for timestamp violations. */
+                if(tx.nTime > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+                    continue;
+
+                /* Add the transaction to the block. */
+                block.vtx.push_back(std::make_pair(LEGACY_TX, hash));
+            }
+
         }
 
 

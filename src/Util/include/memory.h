@@ -639,11 +639,12 @@ namespace memory
         , data(pdata)
         , nRefs(nRefsIn)
         {
+            /* Lock the mutex. */
+            MUTEX.lock();
+
             /* Decrypt memory on first proxy. */
             if(nRefs == 0)
             {
-                /* Lock the mutex. */
-                MUTEX.lock();
                 data->Encrypt();
             }
 
@@ -667,11 +668,10 @@ namespace memory
             {
                 data->Encrypt();
                 
-                /* Unlock the mutex. */
-                MUTEX.unlock();
             }
 
-            
+            /* Unlock the mutex. */
+            MUTEX.unlock();
         }
 
 

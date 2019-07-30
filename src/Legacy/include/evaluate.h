@@ -171,6 +171,19 @@ namespace Legacy
      **/
     bool VerifyScript(const Script& scriptSig, const Script& scriptPubKey, const Transaction& txTo, uint32_t nIn, int32_t nHashType);
 
+
+    /** ExtractRegister
+     *
+     *  Extract a Sig chain register address from a public key script.
+     *
+     *  @param[in] scriptPubKey The script object to extract address from.
+     *  @param[out] hashRegister The register address hash object to return
+     *
+     *  @return true if address was extracted successfully.
+     *
+     **/
+    bool ExtractRegister(const Script& scriptPubKey, uint256_t& hashRegister);
+
 }
 
 #endif
