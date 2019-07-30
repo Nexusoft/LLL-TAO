@@ -62,11 +62,12 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
         REQUIRE(tx.FetchInputs(inputs));
 
-        //conect tx
-        REQUIRE(tx.Connect(inputs, TAO::Ledger::ChainState::stateGenesis, Legacy::FLAGS::BLOCK));
-
         //write to disk
         REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
+        
+        //conect tx
+        REQUIRE(tx.Connect(inputs, TAO::Ledger::ChainState::stateGenesis, Legacy::FLAGS::BLOCK));
+        
         REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
 
         //add to wallet
@@ -342,11 +343,12 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
             REQUIRE(wtx.FetchInputs(inputs));
 
-            //conect tx
-            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
-
             //write to disk
             REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
+
+            //conect tx
+            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
+            
             REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
 
             //add to wallet
@@ -394,11 +396,11 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
             REQUIRE(wtx.FetchInputs(inputs));
 
-            //conect tx
-            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
-
             //write to disk
             REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
+
+            //conect tx
+            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
 
             //index to block
             REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
@@ -444,11 +446,11 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
             REQUIRE(wtx.FetchInputs(inputs));
 
-            //conect tx
-            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
-
             //write to disk
             REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
+            
+            //conect tx
+            REQUIRE(wtx.Connect(inputs, state, Legacy::FLAGS::BLOCK));
 
             //index to block
             REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
