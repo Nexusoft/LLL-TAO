@@ -51,6 +51,9 @@ namespace LLP
     /* Mutex to protect checking more than one block at a time. */
     std::mutex PROCESSING_MUTEX;
 
+    /* Mutex to protect the legacy orphans map. */
+    std::mutex ORPHAN_MUTEX;
+
     /* Mutex to protect connected sessions. */
     std::mutex SESSIONS_MUTEX;
 
@@ -447,10 +450,7 @@ namespace LLP
             ssMessage >> block;
 
             /* Process the block. */
-            if(!LegacyNode::Process(block, this))
-                return false;
-
-            return true;
+            return LegacyNode::Process(block, this);
         }
 
 
@@ -618,14 +618,6 @@ namespace LLP
                 PushMessage("getdata", vInv);
         }
 
-
-        //DEPRECATED
-        else if (message == "headers")
-        {
-            return true; //DEPRECATED
-        }
-
-
         /* Get the Data for either a transaction or a block. */
         else if (message == "getdata")
         {
@@ -774,13 +766,6 @@ namespace LLP
         }
 
 
-        //DEPRECATED
-        else if (message == "getheaders")
-        {
-            return true; //DEPRECATED
-        }
-
-
         /* TODO: Change this Algorithm. */
         else if (message == "getaddr")
         {
@@ -789,13 +774,14 @@ namespace LLP
             if(LEGACY_SERVER->pAddressManager)
                 LEGACY_SERVER->pAddressManager->GetAddresses(vAddr);
 
-            /* Add the best 1000 addresses. */
+            /* Add the best 1000 (or less) addresses. */
             std::vector<LegacyAddress> vSend;
-            for(uint32_t n = 0; n < vAddr.size() && n < 1000; ++n)
+            uint32_t nCount = std::min((uint32_t)vAddr.size(), 1000u);
+            for(uint32_t n = 0; n < nCount; ++n)
                 vSend.push_back(vAddr[n]);
 
             /* Send the addresses off. */
-            if(vSend.size() > 0)
+            if(nCount)
                 PushMessage("addr", vSend);
         }
 
@@ -806,18 +792,19 @@ namespace LLP
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
     {
-        LOCK(PROCESSING_MUTEX);
+        uint1024_t hash = block.GetHash();
 
-        /* Check block for validitiy. */
-        if(!block.Check())
-            return true;
+        const uint32_t nMaxFailures = 500;
 
         /* Check if the block is valid. */
-        uint1024_t hash = block.GetHash();
+        if(!block.Check())
+            return false;
 
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
+            LOCK(ORPHAN_MUTEX);
+
             /* Fast sync block requests. */
             if(!TAO::Ledger::ChainState::Synchronizing())
             {
@@ -831,8 +818,12 @@ namespace LLP
                 pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
             }
 
+            /* Increment the consecutive orphans. */
+            if(pnode)
+                ++pnode->nConsecutiveOrphans;
+
             /* Detect large orphan chains and ask for new blocks from origin again. */
-            if(pnode && pnode->nConsecutiveOrphans >= 500)
+            if(pnode && pnode->nConsecutiveOrphans >= nMaxFailures)
             {
                 debug::log(0, FUNCTION, "node reached orphan limit... closing");
 
@@ -845,23 +836,17 @@ namespace LLP
 
             /* Skip if already in orphan queue. */
             if(!mapLegacyOrphans.count(block.hashPrevBlock))
-            {
-                /* Add to the map of orphans. */
                 mapLegacyOrphans[block.hashPrevBlock] = block;
 
-                /* Increment the consecutive orphans. */
-                if(pnode)
-                    ++pnode->nConsecutiveOrphans;
-
-                /* Debug output. */
-                debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
-            }
+            /* Debug output. */
+            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
 
             return true;
         }
 
 
         /* Check if valid in the chain. */
+        LOCK(PROCESSING_MUTEX);
         if(!block.Accept())
         {
             /* Increment the consecutive failures. */
@@ -869,8 +854,7 @@ namespace LLP
                 ++pnode->nConsecutiveFails;
 
             /* Check for failure limit on node. */
-            if(pnode
-            && pnode->nConsecutiveFails >= 500)
+            if(pnode && pnode->nConsecutiveFails >= nMaxFailures)
             {
 
                 /* Fast Sync node switch. */
@@ -893,8 +877,7 @@ namespace LLP
         else
         {
             /* Special meter for synchronizing. */
-            if(TAO::Ledger::ChainState::Synchronizing()
-            && block.nHeight % 1000 == 0)
+            if(block.nHeight % 1000 == 0 && TAO::Ledger::ChainState::Synchronizing())
             {
                 uint64_t nElapsed = runtime::timestamp(true) - nTimer;
                 debug::log(0, FUNCTION,
@@ -902,7 +885,7 @@ namespace LLP
                     TAO::Ledger::ChainState::PercentSynchronized(), " %]",
                     " height=", TAO::Ledger::ChainState::nBestHeight.load(),
                     " trust=", TAO::Ledger::ChainState::nBestChainTrust.load(),
-                    " [", 1000000 / nElapsed, " blocks/s]" );
+                    " [", 1000000 / nElapsed, " blocks/s]");
 
                 nTimer = runtime::timestamp(true);
             }
@@ -910,29 +893,28 @@ namespace LLP
             /* Update the last time received. */
             nLastTimeReceived = runtime::timestamp();
 
-            /* Reset the consecutive failures. */
-            if(pnode)
-                pnode->nConsecutiveFails = 0;
 
-            /* Reset the consecutive orphans. */
+            /* Reset the consecutive failures and orphans. */
             if(pnode)
+            {
+                pnode->nConsecutiveFails = 0;
                 pnode->nConsecutiveOrphans = 0;
+            }
         }
 
-
-        /* Check for orphans to process. */
+        /* Process orphan if found. */
+        std::unique_lock<std::mutex>lock(ORPHAN_MUTEX);
         while(mapLegacyOrphans.count(hash))
         {
-            Legacy::LegacyBlock& orphan = mapLegacyOrphans[hash];
+            uint1024_t hashPrev = mapLegacyOrphans[hash].GetHash();
 
-            debug::log(0, FUNCTION, "processing ORPHAN prev=", orphan.GetHash().ToString().substr(0, 20), " size=", mapLegacyOrphans.size());
+            debug::log(0, FUNCTION, "processing ORPHAN prev=", hashPrev.ToString().substr(0, 20), " size=", mapLegacyOrphans.size());
 
-            uint1024_t hashOrphan = hash;
-            if(!orphan.Accept())
+            if(!mapLegacyOrphans[hash].Accept())
                 return true;
 
-            hash = orphan.GetHash();
-            mapLegacyOrphans.erase(hashOrphan);
+            mapLegacyOrphans.erase(hash);
+            hash = hashPrev;
         }
 
         return true;
