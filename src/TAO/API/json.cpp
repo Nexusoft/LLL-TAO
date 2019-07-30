@@ -380,7 +380,22 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]       = "TRANSFER";
                         ret["address"]  = hashAddress.ToString();
-                        ret["transfer"] = hashTransfer.ToString();
+                        ret["destination"] = hashTransfer.ToString();
+
+                        /* If this is a register object then decode the object type */
+                        if(nType == TAO::Register::REGISTER::OBJECT)
+                        {
+                            TAO::Register::Object object;
+                            if(LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
+                            {
+                                /* parse object so that the data fields can be accessed */
+                                if(!object.Parse())
+                                    throw APIException(-36, "Failed to parse object register");
+
+                                ret["object_type"] = ObjectType(object.Standard());
+                            }
+                        }
+
                         ret["force"]    = (nType == TAO::Operation::TRANSFER::FORCE ? "True" : "False");
 
                         break;
@@ -407,6 +422,7 @@ namespace TAO
                         ret["txid"]       = hashTx.ToString();
                         ret["output"]     = nContract;
                         ret["address"]    = hashAddress.ToString();
+                        
 
                         break;
                     }

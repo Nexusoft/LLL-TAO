@@ -30,11 +30,14 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/types/object.h>
 
 #include <Util/include/hex.h>
 #include <Util/include/debug.h>
+
+#include <Legacy/include/evaluate.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -56,7 +59,7 @@ namespace TAO
                 get_coinbases(hashGenesis, hashLast, vContracts);
 
                 /* Get the debit and transfer transactions. */
-                get_events(hashGenesis, hashLast, vContracts);
+                get_events(hashGenesis, vContracts);
 
             }
 
@@ -66,9 +69,21 @@ namespace TAO
         }
 
 
+        /*  Gets the currently outstanding legacy UTXO to register transactions that have not been matched with a credit */
+        bool Users::GetOutstanding(const uint256_t& hashGenesis,
+                std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts)
+        {
+            get_events(hashGenesis, vContracts);
+
+            //TODO: sort transactions by timestamp here.
+
+            return true;
+        }
+
+
         /* Get the outstanding debits and transfer transactions. */
         bool Users::get_events(const uint256_t& hashGenesis,
-                uint512_t hashLast, std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts)
+                std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts)
         {
             /* Get notifications for personal genesis indexes. */
             TAO::Ledger::Transaction tx;
@@ -106,6 +121,53 @@ namespace TAO
 
                     /* Check if proofs are spent. */
                     if(LLD::Ledger->HasProof(hashTransfer, ptx->GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                        continue;
+
+                    /* Add the coinbase transaction and skip rest of contracts. */
+                    vContracts.push_back(std::make_pair(ptx, nContract));
+                }
+
+                /* Iterate the sequence id forward. */
+                ++nSequence;
+            }
+
+            return true;
+        }
+
+        /* Get the outstanding legacy UTXO to register transactions. */
+        bool Users::get_events(const uint256_t& hashGenesis,
+                std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> &vContracts)
+        {
+            /* Get notifications for personal genesis indexes. */
+            Legacy::Transaction tx;
+
+            uint32_t nSequence = 0;
+            while(LLD::Legacy->ReadEvent(hashGenesis, nSequence, tx))
+            {
+                /* Make a shared pointer to the transaction so that we can keep it alive until the caller 
+                   is done processing the contracts */
+                std::shared_ptr<Legacy::Transaction> ptx(new Legacy::Transaction(tx));
+
+                /* Loop through transaction outputs. */
+                uint32_t nContracts = ptx->vout.size();
+                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                {
+                    /* check the script to see if it contains a register address */
+                    uint256_t hashTo;
+                    if(!Legacy::ExtractRegister(ptx->vout[nContract].scriptPubKey, hashTo))
+                        continue;
+                    
+                    /* Read the hashTo account */
+                    TAO::Register::State state;
+                    if(!LLD::Register->ReadState(hashTo, state))
+                        continue;
+
+                    /* Check owner. */
+                    if(state.hashOwner != hashGenesis)
+                        continue;
+                
+                    /* Check if proofs are spent. NOTE the proof is the wildcard address since this is a legacy transaction*/
+                    if(LLD::Ledger->HasProof(TAO::Register::WILDCARD_ADDRESS, ptx->GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
                         continue;
 
                     /* Add the coinbase transaction and skip rest of contracts. */
@@ -245,6 +307,49 @@ namespace TAO
                 json::json obj = ContractToJSON(hashCaller, refContract, 1);
                 obj["txid"]      = refContract.Hash().ToString();
                 obj["time"]      = refContract.Timestamp();
+
+                /* Add to return object. */
+                ret.push_back(obj);
+
+                /* Increment the total number of notifications. */
+                ++nTotal;
+            }
+
+            /* Get the outstanding legacy transactions not yet credited. */
+            std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> vLegacy;
+            GetOutstanding(hashGenesis, vLegacy);
+
+            /* Get notifications for foreign token registers. */
+            for(const auto& tx : vLegacy)
+            {
+                /* LOOP: Get the current page. */
+                uint32_t nCurrentPage = nTotal / nLimit;
+
+                /* Check the paged data. */
+                if(nCurrentPage < nPage)
+                    continue;
+                if(nCurrentPage > nPage)
+                    break;
+                if(nTotal - (nPage * nLimit) > nLimit)
+                    break;
+
+                /* The register address of the recipient account */
+                uint256_t hashTo;
+                Legacy::ExtractRegister(tx.first->vout[tx.second].scriptPubKey, hashTo);
+
+                /* Get transaction JSON data. */
+                json::json obj; 
+                obj["OP"]       = "LEGACY";
+                obj["address"]  = hashTo.GetHex();
+
+                /* Resolve the name of the token/account/register that the debit is to */
+                std::string strTo = Names::ResolveName(hashCaller, hashTo);
+                if(!strTo.empty())
+                    obj["account_name"] = strTo;
+
+                obj["amount"]   = (double)tx.first->vout[tx.second].nValue / TAO::Ledger::NXS_COIN;
+                obj["txid"]     = tx.first->GetHash().GetHex();
+                obj["time"]     = tx.first->nTime;
 
                 /* Add to return object. */
                 ret.push_back(obj);
