@@ -720,6 +720,71 @@ namespace TAO
 
                         break;
                     }
+
+                    /* Debit NXS to legacy address. */
+                    case TAO::Operation::OP::LEGACY:
+                    {
+                        /* Get the register address. */
+                        uint256_t hashFrom = 0;
+                        contract >> hashFrom;
+
+
+                        /* Get the transfer amount. */
+                        uint64_t  nAmount = 0;
+                        contract >> nAmount;
+
+                        /* Get the output script. */
+                        Legacy::Script script;
+                        contract >> script;
+
+                        /* The receiving legacy address */
+                        Legacy::NexusAddress legacyAddress;
+
+                        /* Extract the receiving legacy address */
+                        Legacy::ExtractAddress(script, legacyAddress);
+
+                        /* Output the json information. */
+                        ret["OP"]       = "LEGACY";
+                        ret["from"]     = hashFrom.ToString();
+
+                        /* Resolve the name of the token/account that the debit is from */
+                        std::string strFrom = Names::ResolveName(hashCaller, hashFrom);
+                        if(!strFrom.empty())
+                            ret["from_name"] = strFrom;
+
+                        ret["to"]       = legacyAddress.ToString();
+
+                        /* Get the token/account we are debiting from so that we can output the token address / name. */
+                        TAO::Register::Object object;
+                        if(!LLD::Register->ReadState(hashFrom, object))
+                            throw APIException(-13, "Account not found");
+
+                        /* Parse the object register. */
+                        if(!object.Parse())
+                            throw APIException(-14, "Object failed to parse");
+
+                        /* Add the amount to the response */
+                        ret["amount"]  = (double) nAmount / pow(10, GetDigits(object));
+
+                        /* Get the object standard. */
+                        uint8_t nStandard = object.Standard();
+
+                        /* Check the object standard. */
+                        if(nStandard != TAO::Register::OBJECTS::ACCOUNT
+                        && nStandard != TAO::Register::OBJECTS::TRUST
+                        && nStandard != TAO::Register::OBJECTS::TOKEN)
+                            throw APIException(-15, "Object is not an account or token");
+
+                        /* Get the token address */
+                        uint256_t hashToken = object.get<uint256_t>("token");
+
+                        /* Add the token address to the response */
+                        ret["token"]   = hashToken.GetHex();
+                        ret["token_name"] = "NXS";
+
+
+                        break;
+                    }
                 }
             }
             catch(const std::exception& e)
