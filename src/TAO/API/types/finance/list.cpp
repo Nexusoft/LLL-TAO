@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/finance.h>
+#include <TAO/API/types/objects.h>
 #include <TAO/API/include/global.h>
 
 #include <TAO/API/include/utils.h>
@@ -110,6 +111,12 @@ namespace TAO
             }
 
             return ret;
+        }
+
+        /* Lists all transactions for a given account. */
+        json::json Finance::ListTransactions(const json::json& params, bool fHelp)
+        {
+            return Objects::ListTransactions(params, fHelp);
         }
     }
 }

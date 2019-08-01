@@ -340,6 +340,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_objects_claim.o \
 		build/API_types_objects_history.o \
 		build/API_types_objects_list.o \
+		build/API_types_objects_transactions.o \
 		build/API_types_objects_transfer.o \
 		build/API_types_RPC_account.o \
 		build/API_types_RPC_daemon.o \

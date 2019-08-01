@@ -24,8 +24,10 @@ The following methods are currently supported by this API
 [`credit/account`](#creditaccount)    
 [`get/account`](#getaccount)    
 [`list/accounts`](#listaccounts)    
+[`list/account/transactions`](#listaccounttransactions)    
 [`get/stakeinfo`](#getstakeinfo)    
 [`set/stake`](#setstake)    
+
 
 -----------------------------------
 ***
@@ -283,6 +285,129 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 `token` : This will always be set to 0 for NXS accounts.
 
 `balance` : The current balance of the token account.
+
+
+****
+
+
+# `list/account/transactions`
+
+This will list off all of the transactions related to a given account. You DO NOT need to be logged in to use this command. If you are logged in, then neither username or genesis are required as it will default to the logged in user. 
+
+**NOTE** : The returned transaction data will only include contracts that related to the requested account.  Any other contracts are omitted from the transaction result. 
+
+**NOTE** : If you use the username parameter it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
+
+
+### Endpoint:
+
+`/finance/list/account/transactions`
+
+
+### Parameters:
+
+
+`genesis` : The genesis hash identifying the signature chain to scan for transactions (optional if username is supplied or already logged in).
+
+`username` : The username identifying the signature chain to scan for transactions(optional if genesis is supplied or already logged in).
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the account name in order to deduce the register address of the account.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
+
+`name` : The name identifying the NXS account to list transactions for. This is optional if the address is provided. The name should be in username:name format.  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+
+`address` : The register address of the NXS account to list transactions for. This is optional if the name is provided.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
+
+`limit` : The number of transactions to return for the current page. The default is 100.
+
+`verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
+ - `default` : hash, contracts
+ - `summary` : type, version, sequence, timestamp, operation, and confirmations.
+ - `detail` : genesis, nexthash, prevhash, pubkey and signature.
+
+
+
+### Return value JSON object:
+```
+[
+    {
+        "txid": "01034b39cb3635d370f97339e6f87b8751d4c0d62676da7d6ec20416966f298f47dea99603d03a74e638b0d50b31b1e721790e5b103abfe3353a709ccf5d1e7c",
+        "contracts": [
+            {
+                "OP": "CREDIT",
+                "txid": "01e73b498dbabbf4629ad674b9ae3824b96cca83199c25a67901db53b271d19acf1411b0c4f9a3d8ded80860ffe2dcf683d2d227a675d453303b31f86f868f9e",
+                "output": 0,
+                "proof": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+                "account": "d430231b0c1973c784cc9942daa32f704db571a5c7d2a1f091e91fdd4abe622b",
+                "account_name": "default",
+                "amount": 76.450762,
+                "token": "0000000000000000000000000000000000000000000000000000000000000000",
+                "token_name": "NXS"
+            },
+            {
+                "OP": "FEE",
+                "account": "d430231b0c1973c784cc9942daa32f704db571a5c7d2a1f091e91fdd4abe622b",
+                "account_name": "default",
+                "amount": 0.1
+            }
+        ]
+    }
+]
+
+```
+
+### Return values:
+
+`txid` : The transaction hash.
+
+`type` : The description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`).
+
+`version` : The serialization version of the transaction.
+
+`sequence` : The sequence number of this transaction within the signature chain.
+
+`timestamp` : The Unix timestamp of when the transaction was created.
+
+`confirmations` : The number of confirmations that this transaction obtained by the network.
+
+`genesis` : The signature chain genesis hash.
+
+`nexthash` : The hash of the next transaction in the sequence.
+
+`prevhash` : the hash of the previous transaction in the sequence.
+
+`pubkey` : The public key.
+
+`signature` : The signature hash.
+
+`contracts` : The array of contracts bound to this transaction and their details with opcodes.    
+{    
+&nbsp;&nbsp;&nbsp;`OP` : The contract operation. Can be `APPEND`, `CLAIM`, `COINBASE`, `CREATE`, `CREDIT`, `DEBIT`, `FEE`, `GENESIS`, `LEGACY`, `TRANSFER`, `TRUST`, `STAKE`, `UNSTAKE`, `WRITE`.
+
+&nbsp;&nbsp;&nbsp;`txid` : The transaction that was credited / claimed.
+
+&nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
+
+&nbsp;&nbsp;&nbsp;`account` : For `CREDIT` transactions, the register address of the account that the transaction relates to.
+
+&nbsp;&nbsp;&nbsp;`account_name` : For `CREDIT` transactions, the name of the account that the transaction relates to.  Only included if the name can be resolved.
+
+&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` transactions, the register address of the account that the debit is being made from.
+
+&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
+
+&nbsp;&nbsp;&nbsp;`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
+
+&nbsp;&nbsp;&nbsp;`to_name` : For `DEBIT` transactions, the name of the account that the debit is being made to.  Only included if the name can be resolved.
+
+&nbsp;&nbsp;&nbsp;`amount` : the token amount of the transaction.
+
+&nbsp;&nbsp;&nbsp;`token` : the register address of the token that the transaction relates to.  Set to 0 for NXS transactions
+
+&nbsp;&nbsp;&nbsp;`token_name` : The name of the token that the transaction relates to.
+
+}
 
 ***
 
