@@ -59,7 +59,7 @@ namespace Legacy
     {
         /* Check the index for the last block. */
         TAO::Ledger::BlockState stateLast = state;
-        if(!GetLastTrust(*this, stateLast))
+        if(!LLD::Ledger->ReadBlock(hashLastBlock, stateLast))
             return debug::error(FUNCTION, "last trust block not found");
 
         /* Block Age is Time to Previous Block's Time. */

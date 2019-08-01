@@ -67,6 +67,7 @@ namespace Legacy
      *    - "defaultkey" = Default public key value
      *    - "key"<public key> = unencrypted private key
      *    - "ckey"<public key> = encrypted private key
+     *    - "trustkey" <public key> = the key/ckey used for staking
      *    - "tx"<tx hash> = serialized wallet transaction
      *    - "cscript"<script hash> = serialized redeem script
      *    - "bestblock" = block locator
