@@ -60,13 +60,15 @@ namespace TAO
             if(nVersion == 1)
                 return true;
 
+            /* Cache testnet flag. */
+            bool fTestNet = config::fTestNet.load();
+
             /* Get current version. */
-            uint32_t nCurrent  = (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION :
-                                                            NETWORK_BLOCK_CURRENT_VERSION);
+            uint32_t nCurrent  = (fTestNet ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION);
 
             /* Get the current timelock. */
-            uint64_t nTimelock = (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] :
-                                                            NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]);
+            uint64_t nTimelock = (fTestNet ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] :
+                                             NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]);
 
             /* Check current version. */
             if(nVersion > nCurrent)
