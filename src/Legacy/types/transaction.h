@@ -21,11 +21,16 @@ ________________________________________________________________________________
 #include <Legacy/types/txout.h>
 
 #include <TAO/Ledger/types/state.h>
+
 #include <Util/templates/serialize.h>
 #include <Util/templates/datastream.h>
 
 namespace Legacy
 {
+	/* forward declaration
+	 * (can't include trustkey.h in this file -- It includes legacy.h which needs Transaction declared and it isn't yet)
+	 */
+	class TrustKey;
 
 	/** Transaction Class
 	 *
@@ -458,11 +463,13 @@ namespace Legacy
 		 *  Check the calculated trust score meets published one.
 		 *
 		 *  @param[in] state The block state to check from.
+		 *  @param[in] trustKey Trust key to check against
 		 *
 		 *  @return true if the trust score was satisfied.
 		 *
 		 **/
-		bool CheckTrust(const TAO::Ledger::BlockState& state) const;
+		bool CheckTrust(const TAO::Ledger::BlockState& state, const Legacy::TrustKey& trustKey) const;
+		// Need to scope TrustKey because there is also a TrustKey() method within Transaction
 
 
 	protected:

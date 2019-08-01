@@ -709,15 +709,6 @@ namespace Legacy
         if(!block.Check())
             return debug::error(FUNCTION, "Check block failed");
 
-        /* Check the stake. */
-        if(!block.CheckStake())
-            return debug::error(FUNCTION, "Check state failed");
-
-        /* Check the trust. */
-        TAO::Ledger::BlockState state(block);
-        if(!block.vtx[0].CheckTrust(state))
-            return debug::error(FUNCTION, "Check trust failed");
-
         /* Check the work for the block.
          * After a successful check, CheckWork() calls LLP::Process() for the new block.
          * That method will call LegacyBlock::Accept() and BlockState::Accept()
