@@ -662,10 +662,13 @@ namespace LLP
        /* If the primemod flag is set, take the hashProof down to 1017-bit to maximize prime ratio as much as possible. */
        uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
 
+
+       TAO::Ledger::Block *pBlock = nullptr;
+
        { //legacy
 
            /* Create a new Legacy Block. */
-           Legacy::LegacyBlock *pBlock = new Legacy::LegacyBlock();
+           pBlock = new Legacy::LegacyBlock();
 
            /* Set it to a null state */
            pBlock->SetNull();
@@ -674,7 +677,7 @@ namespace LLP
            /* Create a new block and loop for prime channel if minimum bit target length isn't met */
            while(true)
            {
-               if(!Legacy::CreateBlock(*pMiningKey, CoinbaseTx, nChannel.load(), ++nBlockIterator, *pBlock))
+               if(!Legacy::CreateBlock(*pMiningKey, CoinbaseTx, nChannel.load(), ++nBlockIterator, pBlock))
                    debug::error(FUNCTION, "Failed to create a new Legacy Block.");
 
                /* Get the proof hash. */
@@ -699,7 +702,7 @@ namespace LLP
 
 
            /* Create a new Tritium Block. */
-           TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
+           pBlock = new TAO::Ledger::TritiumBlock();
 
            /* Set it to a null state */
            pBlock->SetNull();

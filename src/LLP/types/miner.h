@@ -215,13 +215,22 @@ namespace LLP
           *
           *  validates the block for the derived miner class.
           *
+          *  @param[in] hashMerkleRoot The root hash of the merkle tree.
+          *
+          *  @return Returns true if block is valid, false otherwise.
+          *
           **/
          bool validate_block(const uint512_t& hashMerkleRoot);
 
 
          /** sign_block
           *
-          *  validates the block for the derived miner class.
+          *  signs the block to seal the proof of work.
+          *
+          *  @param[in] nNonce The nonce secret for the block proof.
+          *  @param[in] hashMerkleRoot The root hash of the merkle tree.
+          *
+          *  @return Returns true if block is valid, false otherwise.
           *
           **/
          bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot);
@@ -229,7 +238,7 @@ namespace LLP
 
          /** is_locked
           *
-          *  Determines if the mining wallet is unlocked.
+          *  Returns true if the mining wallet locked, false otherwise.
           *
           **/
          bool is_locked();
