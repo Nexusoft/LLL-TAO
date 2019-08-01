@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <Legacy/include/create.h>
 #include <Legacy/include/trust.h>
 #include <Legacy/types/address.h>
+#include <Legacy/types/transaction.h>
 #include <Legacy/wallet/addressbook.h>
 
 #include <LLC/types/bignum.h>
@@ -61,9 +62,11 @@ namespace Legacy
     /* Destructor - Returns reserve key if not used */
     LegacyMinter::~LegacyMinter()
     {
+        /* If minter has reserved a key to stake for Genesis, return it to the key pool and clean up the pointer. */
         if(pReservedTrustKey != nullptr)
         {
             pReservedTrustKey->ReturnKey();
+
             delete pReservedTrustKey;
             pReservedTrustKey = nullptr;
         }
@@ -216,6 +219,8 @@ namespace Legacy
      */
     void LegacyMinter::FindTrustKey()
     {
+        static bool fVerified = false;
+
         trustKey.SetNull();
 
         /* Attempt to use the trust key cached in the wallet */
@@ -229,18 +234,22 @@ namespace Legacy
             /* Read the key cached in wallet from the Trust DB */
             if(!LLD::Trust->ReadTrustKey(cKey, trustKey))
             {
-                /* Cached wallet trust key not found in trust db, reset it */
+                /* Cached wallet trust key not found in trust db, reset it (can happen if Genesis is orphaned). */
                 trustKey.SetNull();
                 pStakingWallet->RemoveTrustKey();
             }
             else
             {
                 /* Found trust key cached in wallet */
-                debug::log(0, FUNCTION, "Staking with existing Trust Key");
+                if(!fVerified)
+                {
+                    /* Only need to log this first time it is retrieved (ie, before verified) */
+                    debug::log(0, FUNCTION, "Staking with existing trust key");
+                }
             }
         }
 
-        /* Scan for trust key within the trust database if none found in wallet.
+        /* If wallet does not contain trust key, need to scan for it within the trust database.
          * Should only have to do this if new wallet (no trust key), or converting old wallet that doesn't have its key cached yet.
          */
         if(trustKey.IsNull())
@@ -261,6 +270,9 @@ namespace Legacy
                         /* Trust key is in wallet, check version of most recent block */
                         debug::log(2, FUNCTION, "Checking trustKey ", address.ToString());
 
+                        /* Read the block for hashLastBlock to check its version. We can use this, even if it has not
+                         * been verified as most recent hashLastBlock, yet, because all we need is the version of the block.
+                         */
                         TAO::Ledger::BlockState state;
                         if(LLD::Ledger->ReadBlock(trustKeyCheck.hashLastBlock, state))
                         {
@@ -287,6 +299,40 @@ namespace Legacy
                 }
             }
         }
+
+
+        /* When trust key found, verify data stored against actual last trust block.
+         * Older versions of code did not revert trust key data after an orphan and it may be out of date.
+         * The GetLastTrust method can be slow, so only do it the first time after minter is started.
+         */
+        if(!fVerified && !trustKey.IsNull() && !config::fShutdown.load())
+        {
+            TAO::Ledger::BlockState stateLast = TAO::Ledger::ChainState::stateBest.load();
+            if(GetLastTrust(trustKey, stateLast))
+            {
+                uint1024_t hashLast = stateLast.GetHash();
+
+                if(trustKey.hashLastBlock != hashLast)
+                {
+                    /* Trust key is out of date. Update it */
+                    debug::log(2, FUNCTION, "Updating trust key");
+
+                    uint64_t nBlockTime = stateLast.GetBlockTime();
+
+                    trustKey.hashLastBlock = hashLast;
+                    trustKey.nLastBlockTime = nBlockTime;
+                    trustKey.nStakeRate = trustKey.StakeRate(stateLast, nBlockTime);
+
+                    uint576_t cKey;
+                    cKey.SetBytes(trustKey.vchPubKey);
+
+                    LLD::Trust->WriteTrustKey(cKey, trustKey);
+                }
+            }
+
+            fVerified = true;
+        }
+
 
         if (trustKey.IsNull() && !config::fShutdown.load())
         {
@@ -363,14 +409,8 @@ namespace Legacy
                 return false;
             }
 
-            /* Prevout index needs to be 0 in coinstake transaction. */
-            block.vtx[0].vin[0].prevout.n = 0;
-
-            /* Prevout hash is trust key hash */
-            block.vtx[0].vin[0].prevout.hash = trustKey.GetHash();
-
             /* Get the last stake block for this trust key. */
-            TAO::Ledger::BlockState statePrev = TAO::Ledger::ChainState::stateBest.load();
+            TAO::Ledger::BlockState statePrev;
             if(!LLD::Ledger->ReadBlock(trustKey.hashLastBlock, statePrev))
                 return debug::error(FUNCTION, "Failed to get last stake for trust key");
 
@@ -452,6 +492,12 @@ namespace Legacy
             if(nScore > nMaxTrustScore)
                 nScore = nMaxTrustScore;
 
+            /* Prevout index needs to be 0 in coinstake transaction. */
+            block.vtx[0].vin[0].prevout.n = 0;
+
+            /* Prevout hash is trust key hash */
+            block.vtx[0].vin[0].prevout.hash = trustKey.GetHash();
+
             /* Serialize previous trust block hash, new sequence, and new trust score into vin. */
             DataStream scriptPub(block.vtx[0].vin[0].scriptSig, SER_NETWORK, LLP::PROTOCOL_VERSION);
             scriptPub << statePrev.GetHash() << nSequence << nScore;
@@ -497,9 +543,7 @@ namespace Legacy
         }
 
         /* Update the current stake rate in the minter (not used for calculations, retrievable for display) */
-        double nCurrentStakeRate = trustKey.StakeRate(block, block.GetBlockTime());
-
-        nStakeRate.store(nCurrentStakeRate);
+        nStakeRate.store(trustKey.StakeRate(block, block.GetBlockTime()));
 
         return true;
     }
@@ -709,41 +753,31 @@ namespace Legacy
         if(!block.Check())
             return debug::error(FUNCTION, "Check block failed");
 
-        /* Check the work for the block.
+        /* Check the workand process the block.
          * After a successful check, CheckWork() calls LLP::Process() for the new block.
          * That method will call LegacyBlock::Accept() and BlockState::Accept()
          * After all is accepted, BlockState::Accept() will call BlockState::SetBest()
          * to set the new best chain. This final method relays the new block to the
-         * network.
+         * network. It also connects the block.
          */
         if(!CheckWork(block, *pStakingWallet))
             return debug::error(FUNCTION, "Check work failed");
 
         if(pReservedTrustKey != nullptr)
         {
-            /* New block was Genesis using reserved key. Create new trust key from it. Have to call GetReservedKey before KeepKey, which resets it  */
-            uint576_t cKey;
-            cKey.SetBytes(pReservedTrustKey->GetReservedKey());
-
-            /* Create new trust key with Genesis block hash, Genesis tx hash, and Genesis time based on current block */
-            TrustKey trustKeyNew(pReservedTrustKey->GetReservedKey(), block.GetHash(),
-                                    block.vtx[0].GetHash(), block.GetBlockTime());
-
-            /* Add trust key to trust db */
-            LLD::Trust->WriteTrustKey(cKey, trustKeyNew);
-
-            /* Cache trust key in wallet */
+            /* New block was Genesis using reserved key.
+             * Block processing creates the actual TrustKey and writes it to trust db.
+             * Here just need to save it to the wallet for future retrieval.
+             */
             pStakingWallet->SetTrustKey(pReservedTrustKey->GetReservedKey());
 
+            /* Marks the key as used by the wallet and removes permanently from key pool. */
             pReservedTrustKey->KeepKey();
-
-            /* Use new key for further staking */
-            trustKey = trustKeyNew;
-
-            debug::log(0, FUNCTION, "New trust key generated and stored");
 
             delete pReservedTrustKey;
             pReservedTrustKey = nullptr;
+
+            debug::log(0, FUNCTION, "New trust key generated and stored");
         }
 
         return true;
@@ -770,7 +804,6 @@ namespace Legacy
             return;
 
         debug::log(0, FUNCTION, "Stake Minter Initialized");
-        pLegacyMinter->FindTrustKey();
 
         pLegacyMinter->nSleepTime = 1000;
 
@@ -779,12 +812,18 @@ namespace Legacy
         {
             runtime::sleep(pLegacyMinter->nSleepTime);
 
+            /* Save the current best block hash immediately after sleep in case it changes while we do setup */
+            pLegacyMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
+
             /* Check stop/shutdown status after wakeup */
             if(LegacyMinter::fStopMinter.load() || config::fShutdown.load())
                 continue;
 
-            /* Save the current best block hash immediately in case it changes while we do setup */
-            pLegacyMinter->hashLastBlock = TAO::Ledger::ChainState::hashBestChain.load();
+            /* Reload trust key each block iteration to assure we get updates after new block or orphan disconnect.
+             * Don't need to do this if staking Genesis.
+             */
+            if(pLegacyMinter->pReservedTrustKey == nullptr)
+                pLegacyMinter->FindTrustKey();
 
             /* Set up the candidate block the minter is attempting to mine */
             if(!pLegacyMinter->CreateCandidateBlock())

@@ -455,7 +455,7 @@ namespace Legacy
 		 *  @return true if the inputs were disconnected
 		 *
 		 **/
-		bool Disconnect() const;
+		bool Disconnect(const TAO::Ledger::BlockState& state) const;
 
 
 		/** Check Trust

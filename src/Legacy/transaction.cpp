@@ -1148,7 +1148,7 @@ namespace Legacy
     }
 
     /* Mark the inputs in a transaction as unspent. */
-    bool Transaction::Disconnect() const
+    bool Transaction::Disconnect(const TAO::Ledger::BlockState& state) const
     {
         /* Coinbase has no inputs. */
         if(!IsCoinBase())
@@ -1168,17 +1168,66 @@ namespace Legacy
             for(const auto txout : vout )
             {
                 uint256_t hashTo;
-                if( ExtractRegister( txout.scriptPubKey, hashTo))
+                if(ExtractRegister(txout.scriptPubKey, hashTo))
                 {
                     /* Read the owner of register. */
-                    TAO::Register::State state;
-                    if(!LLD::Register->ReadState(hashTo, state))
+                    TAO::Register::State stateReg;
+                    if(!LLD::Register->ReadState(hashTo, stateReg))
                         return debug::error(FUNCTION, "failed to read register to");
 
-                    /* Commit an event for receiving sigchain in the legay DB. */
-                    if(!LLD::Legacy->EraseEvent(state.hashOwner))
-                        return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
+                    /* Commit an event for receiving sigchain in the legacy DB. */
+                    if(!LLD::Legacy->EraseEvent(stateReg.hashOwner))
+                        return debug::error(FUNCTION, "failed to write event for account ", stateReg.hashOwner.SubString());
                 }
+            }
+        }
+
+        if(IsCoinStake())
+        {
+            /* On disconnecting a coinstake, revert the trust key to its prior state */
+
+            /* Get the trust key. */
+            std::vector<uint8_t> vTrustKey;
+            if(!TrustKey(vTrustKey))
+                return debug::error(FUNCTION, "can't extract trust key.");
+
+            /* Check for trust key. */
+            uint576_t cKey;
+            cKey.SetBytes(vTrustKey);
+
+            Legacy::TrustKey trustKey;
+
+            if(LLD::Trust->ReadTrustKey(cKey, trustKey)) //no need to revert if trust key not in database, so skip on read fail
+            {
+                if(state.GetHash() == trustKey.hashGenesisBlock)
+                {
+                    /* Disconnecting the Genesis transaction. Remove the trust key from the trust db */
+                    LLD::Trust->EraseTrustKey(cKey);
+                    return true;
+                }
+
+                uint1024_t hashLastBlock;
+                uint32_t nSequence;
+                uint32_t nTrustScore;
+
+                /* Disconnecting Trust transaction. Retrieve the previous stake block and use it to revert trust key */
+                if(!ExtractTrust(hashLastBlock, nSequence, nTrustScore))
+                    return debug::error(FUNCTION, "failed to extract coinstake trust values from script");
+
+                TAO::Ledger::BlockState statePrev;
+
+                if(!LLD::Ledger->ReadBlock(hashLastBlock, statePrev))
+                    return debug::error(FUNCTION, "failed to read previous stake block");
+
+                trustKey.hashLastBlock = hashLastBlock;
+
+                uint64_t nBlockTime = statePrev.GetBlockTime();
+                trustKey.nLastBlockTime = nBlockTime;
+
+                trustKey.nStakeRate = trustKey.StakeRate(statePrev, nBlockTime);
+
+                /* Write the reverted trust key. */
+                LLD::Trust->WriteTrustKey(cKey, trustKey);
             }
         }
 
