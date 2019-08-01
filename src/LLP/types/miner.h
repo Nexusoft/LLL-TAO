@@ -11,8 +11,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLP_TYPES_BASE_MINER_H
-#define NEXUS_LLP_TYPES_BASE_MINER_H
+#ifndef NEXUS_LLP_TYPES_MINER_H
+#define NEXUS_LLP_TYPES_MINER_H
 
 #include <LLP/templates/connection.h>
 #include <TAO/Ledger/types/block.h>
