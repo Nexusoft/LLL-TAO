@@ -105,7 +105,7 @@ namespace TAO
             else
                 throw APIException(-64, "Missing recipient account name_to / address_to");
 
-            /* Get the transaction id. */
+            /* The account to debit from. */
             uint256_t hashFrom = 0;
 
             /* If name is provided then use this to deduce the register address,

@@ -119,6 +119,19 @@ namespace TAO
             static json::json List(const json::json& params, uint8_t nRegisterType, uint8_t nObjectType);
 
 
+            /** ListTransactions
+             *
+             *  Lists all transactions for a given object register
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            static json::json ListTransactions(const json::json& params, bool fHelp);
+
+
         };
     }
 }

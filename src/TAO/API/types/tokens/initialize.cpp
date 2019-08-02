@@ -29,6 +29,8 @@ namespace TAO
             mapFunctions["credit"] = Function(std::bind(&Tokens::Credit, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["debit"]  = Function(std::bind(&Tokens::Debit,  this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get"]    = Function(std::bind(&Tokens::Get,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/accounts"]   = Function(std::bind(&Tokens::ListAccounts, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list"]  = Function(std::bind(&Tokens::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
         }
 
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
@@ -43,6 +45,42 @@ namespace TAO
             std::string strMethodRewritten = strMethod;
             /* route the /token and /account endpoints to the generic ones e.g. create/token to create?type=token */
 
+            /* Edge case for list/accounts */
+            if(strMethod.find("list/accounts") != std::string::npos )
+            {
+                /* set the method name */
+                strMethodRewritten = "list/accounts";
+
+                return strMethodRewritten;
+            }
+
+            /* Edge case for list/account/transactions and list/token/transactions */
+            if(strMethod.find("/transactions") != std::string::npos )
+            {
+                /* set the method name */
+                strMethodRewritten = "list";
+
+                /* Check to see whether there is a name after the /transactions/ name, i.e. tokens/list/transactions/mytoken */
+                std::size_t nPos = strMethod.find("/transactions/");
+
+                if(nPos != std::string::npos)
+                {
+                    /* Get the name or address that comes after the /transactions/ part */
+                    std::string strNameOrAddress = strMethod.substr(nPos +14);
+
+                    /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
+                    if(IsRegisterAddress(strNameOrAddress))
+                        jsonParams["address"] = strNameOrAddress;
+                    else
+                        jsonParams["name"] = strNameOrAddress;
+
+                }
+
+                /* Set the type parameter to token or account*/
+                jsonParams["type"] = strMethod.find("token") != std::string::npos ? "token" : "account";
+
+                return strMethodRewritten;
+            }
 
             std::size_t nPos = strMethod.find("/token");
             if(nPos != std::string::npos)

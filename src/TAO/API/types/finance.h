@@ -168,6 +168,19 @@ namespace TAO
              **/
             json::json Stake(const json::json& params, bool fHelp);
 
+
+            /** ListTransactions
+             *
+             *  Lists all transactions for a given account
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json ListTransactions(const json::json& params, bool fHelp);
+
         };
     }
 }
