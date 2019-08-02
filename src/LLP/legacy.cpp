@@ -44,8 +44,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /* Keep track of how many blocks have been asked for. */
-    std::atomic<uint32_t> nAsked(0);
 
     /* Static instantiation of orphan blocks in queue to process. */
     std::map<uint1024_t, Legacy::LegacyBlock> mapLegacyOrphans;
@@ -65,20 +63,31 @@ namespace LLP
         /* Normal case of asking for a getblocks inventory message. */
         memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(LegacyNode::addrFastSync.load());
 
-        /* Null check the pointer. */
         if(pBest != nullptr)
         {
+            /* Send out another getblocks request. */
             try
             {
-                /* Switch to a new node for fast sync. */
                 pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
             }
             catch(const std::runtime_error& e)
             {
+                /* Recurse on failure. */
                 debug::error(FUNCTION, e.what());
 
                 SwitchNode();
             }
+        }
+        else
+        {
+            /* Reset the sync address. */
+            LegacyNode::addrFastSync = BaseAddress();
+
+            /* Reset the getblocks request timeout. */
+            LegacyNode::nLastGetBlocks.store(0);
+
+            /* Logging to verify (for debugging). */
+            debug::log(0, FUNCTION, "No Sync Nodes Available, Resetting State");
         }
     }
 
@@ -286,7 +295,7 @@ namespace LLP
             && nLastTimeReceived.load() + 15 < nTimestamp
             && nLastGetBlocks.load() + 15 < nTimestamp)
             {
-                debug::log(0, NODE, "fast sync event timeout");
+                debug::log(0, NODE, "Sync Node Timeout");
 
                 /* Switch to a new node. */
                 SwitchNode();
@@ -357,7 +366,7 @@ namespace LLP
             /* Detect if the fast sync node was disconnected. */
             if(addrFastSync == GetAddress())
             {
-                debug::log(0, NODE, "fast sync node disconnected");
+                debug::log(0, NODE, "Sync Node Disconnected");
 
                 /* Switch the node. */
                 SwitchNode();
@@ -455,11 +464,8 @@ namespace LLP
             PushMessage("verack");
 
             /* Push our version back since we just completed getting the version from the other node. */
-            if (fOUTGOING && nAsked == 0)
-            {
-                ++nAsked;
+            if(fOUTGOING && !addrFastSync.load().IsValid())
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-            }
 
             PushMessage("getaddr");
         }
