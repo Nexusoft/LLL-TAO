@@ -286,6 +286,7 @@ Error Codes
 | -163 | Could not retrieve default NXS account to debit fees |
 | -164 | Account 'default' is not a NXS account |
 | -165 | Invalid address_to |
+| -166 | "Account is a NXS account.  Please use the finance API for accessing NXS accounts." |
 
 
 

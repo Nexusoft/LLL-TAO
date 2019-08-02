@@ -360,6 +360,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_tokens_create.o \
 		build/API_types_tokens_credit.o \
 		build/API_types_tokens_debit.o \
+		build/API_types_tokens_list.o \
 		build/API_types_tokens_get.o \
 		build/API_types_tokens_initialize.o \
 		build/API_types_users_accounts.o \
