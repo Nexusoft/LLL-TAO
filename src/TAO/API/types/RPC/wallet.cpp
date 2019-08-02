@@ -12,14 +12,17 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/rpc.h>
-#include <Util/include/json.h>
 
+#include <Legacy/include/money.h>
+#include <Legacy/types/secret.h>
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
-#include <Legacy/include/money.h>
-#include <TAO/Ledger/include/chainstate.h>
-#include <Legacy/types/secret.h>
+
 #include <LLC/include/eckey.h>
+
+#include <TAO/Ledger/include/chainstate.h>
+
+#include <Util/include/json.h>
 #include <Util/include/runtime.h>
 
 /* Global TAO namespace. */
@@ -83,14 +86,15 @@ namespace TAO
             if(fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && (params.size() < 1 || params.size() > 3)))
                 return std::string(
                     "walletpassphrase <passphrase> [timeout] [mintonly]"
-                    " - Stores the wallet decryption key in memory for [timeout] seconds."
-                    " mintonly is optional true/false allowing only block minting. timeout is ignored if mintonly is true / 1");
-
-            if(!Legacy::Wallet::GetInstance().IsLocked())
-                throw APIException(-17, "Error: Wallet is already unlocked, use walletlock first if need to change unlock settings.");
+                    "\n - Stores the wallet decryption key in memory for [timeout] seconds."
+                    "\n - [mintonly] is optional true/false allowing only block minting."
+                    "\n - [timeout] is ignored if mintonly is true / 1");
 
             if(!Legacy::Wallet::GetInstance().IsCrypted())
                 throw APIException(-15, "Error: running with an unencrypted wallet, but walletpassphrase was called.");
+
+            if(!Legacy::Wallet::GetInstance().IsLocked())
+                throw APIException(-17, "Error: Wallet is already unlocked, use walletlock first if need to change unlock settings.");
 
             // Note that the walletpassphrase is stored in params[0]
             SecureString strWalletPass;
@@ -121,8 +125,10 @@ namespace TAO
             }
             else
                 return std::string(
-                    "walletpassphrase <passphrase> [timeout]"
-                    " - Stores the wallet decryption key in memory for [timeout] seconds.");
+                    "walletpassphrase <passphrase> [timeout] [mintonly]"
+                    "\n - Stores the wallet decryption key in memory for [timeout] seconds."
+                    "\n - [mintonly] is optional true/false allowing only block minting."
+                    "\n - [timeout] is ignored if mintonly is true / 1");
 
 
             return "";
