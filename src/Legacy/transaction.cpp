@@ -921,6 +921,10 @@ namespace Legacy
             Legacy::TrustKey trustKey;
             if(IsGenesis())
             {
+                /* Genesis has a trust score of 0. */
+                if(state.nVersion >= 5 && vin[0].scriptSig.size() != 8)
+                    return debug::error(FUNCTION, "genesis unexpected size ", vin[0].scriptSig.size());
+
                 /* Create the Trust Key from Genesis Transaction Block. */
                 trustKey = Legacy::TrustKey(vTrustKey, state.GetHash(), GetHash(), state.GetBlockTime());
 
@@ -952,6 +956,11 @@ namespace Legacy
                 /* Double Check the Genesis Transaction. */
                 if(!trustKey.CheckGenesis(stateGenesis))
                     return debug::error(FUNCTION, "invalid genesis transaction");
+
+                /* Check that the trust score is accurate. */
+                if(state.nVersion >= 5 && !CheckTrust(state, trustKey))
+                    return debug::error(FUNCTION, "invalid trust score");
+
             }
 
             /* Write trust key changes to disk. */
@@ -966,10 +975,6 @@ namespace Legacy
 
             /* Write the trust key. */
             LLD::Trust->WriteTrustKey(cKey, trustKey);
-
-            /* Check that the trust score is accurate. */
-            if(state.nVersion >= 5 && !CheckTrust(state))
-                return debug::error(FUNCTION, "invalid trust score");
         }
 
         /* Read all of the inputs. */
@@ -1143,7 +1148,7 @@ namespace Legacy
     }
 
     /* Mark the inputs in a transaction as unspent. */
-    bool Transaction::Disconnect() const
+    bool Transaction::Disconnect(const TAO::Ledger::BlockState& state) const
     {
         /* Coinbase has no inputs. */
         if(!IsCoinBase())
@@ -1163,17 +1168,66 @@ namespace Legacy
             for(const auto txout : vout )
             {
                 uint256_t hashTo;
-                if( ExtractRegister( txout.scriptPubKey, hashTo))
+                if(ExtractRegister(txout.scriptPubKey, hashTo))
                 {
                     /* Read the owner of register. */
-                    TAO::Register::State state;
-                    if(!LLD::Register->ReadState(hashTo, state))
+                    TAO::Register::State stateReg;
+                    if(!LLD::Register->ReadState(hashTo, stateReg))
                         return debug::error(FUNCTION, "failed to read register to");
 
-                    /* Commit an event for receiving sigchain in the legay DB. */
-                    if(!LLD::Legacy->EraseEvent(state.hashOwner))
-                        return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
+                    /* Commit an event for receiving sigchain in the legacy DB. */
+                    if(!LLD::Legacy->EraseEvent(stateReg.hashOwner))
+                        return debug::error(FUNCTION, "failed to write event for account ", stateReg.hashOwner.SubString());
                 }
+            }
+        }
+
+        if(IsCoinStake())
+        {
+            /* On disconnecting a coinstake, revert the trust key to its prior state */
+
+            /* Get the trust key. */
+            std::vector<uint8_t> vTrustKey;
+            if(!TrustKey(vTrustKey))
+                return debug::error(FUNCTION, "can't extract trust key.");
+
+            /* Check for trust key. */
+            uint576_t cKey;
+            cKey.SetBytes(vTrustKey);
+
+            Legacy::TrustKey trustKey;
+
+            if(LLD::Trust->ReadTrustKey(cKey, trustKey)) //no need to revert if trust key not in database, so skip on read fail
+            {
+                if(state.GetHash() == trustKey.hashGenesisBlock)
+                {
+                    /* Disconnecting the Genesis transaction. Remove the trust key from the trust db */
+                    LLD::Trust->EraseTrustKey(cKey);
+                    return true;
+                }
+
+                uint1024_t hashLastBlock;
+                uint32_t nSequence;
+                uint32_t nTrustScore;
+
+                /* Disconnecting Trust transaction. Retrieve the previous stake block and use it to revert trust key */
+                if(!ExtractTrust(hashLastBlock, nSequence, nTrustScore))
+                    return debug::error(FUNCTION, "failed to extract coinstake trust values from script");
+
+                TAO::Ledger::BlockState statePrev;
+
+                if(!LLD::Ledger->ReadBlock(hashLastBlock, statePrev))
+                    return debug::error(FUNCTION, "failed to read previous stake block");
+
+                trustKey.hashLastBlock = hashLastBlock;
+
+                uint64_t nBlockTime = statePrev.GetBlockTime();
+                trustKey.nLastBlockTime = nBlockTime;
+
+                trustKey.nStakeRate = trustKey.StakeRate(statePrev, nBlockTime);
+
+                /* Write the reverted trust key. */
+                LLD::Trust->WriteTrustKey(cKey, trustKey);
             }
         }
 
@@ -1182,39 +1236,33 @@ namespace Legacy
 
 
     /* Check the calculated trust score meets published one. */
-    bool Transaction::CheckTrust(const TAO::Ledger::BlockState& state) const
+    bool Transaction::CheckTrust(const TAO::Ledger::BlockState& state, const Legacy::TrustKey& trustKey) const
     {
-        /* No trust score for non proof of stake (for now). */
-        if(!IsCoinStake())
-            return debug::error(FUNCTION, "not proof of stake");
-
-        /* Extract the trust key from the coinstake. */
-        uint576_t cKey;
-        if(!TrustKey(cKey))
-            return debug::error(FUNCTION, "trust key not found in script");
-
-        /* Genesis has a trust score of 0. */
-        if(IsGenesis())
-        {
-            if(vin[0].scriptSig.size() != 8)
-                return debug::error(FUNCTION, "genesis unexpected size ", vin[0].scriptSig.size());
-
-            return true;
-        }
-
         /* Version 5 - last trust block. */
         uint1024_t hashLastBlock;
-        uint32_t   nSequence;
-        uint32_t   nTrustScore;
+        uint32_t nSequence;
+        uint32_t nTrustScore;
 
         /* Extract values from coinstake vin. */
         if(!ExtractTrust(hashLastBlock, nSequence, nTrustScore))
             return debug::error(FUNCTION, "failed to extract values from script");
 
+        /* Validate claimed last trust block is actual last trust block for key */
+        if(!TAO::Ledger::ChainState::Synchronizing() && hashLastBlock != trustKey.hashLastBlock)
+        {
+            /* Can't reject transaction or older versions will fork. Add if do activation (return from debug::error).
+             * Until then, just log the error message.
+             */
+            debug::log(2, FUNCTION, "trust key hashLastBlock ", trustKey.hashLastBlock.ToString());
+            debug::log(2, FUNCTION, "scriptsig hashLastBlock ", hashLastBlock.ToString());
+
+            debug::error(FUNCTION, "published last stake block does not match actual last stake block");
+        }
+
         /* Check that the last trust block is in the block database. */
         TAO::Ledger::BlockState stateLast;
         if(!LLD::Ledger->ReadBlock(hashLastBlock, stateLast))
-            return debug::error(FUNCTION, "last block not in database");
+            return debug::error(FUNCTION, "last stake block not in database");
 
         /* Check that the previous block is in the block database. */
         TAO::Ledger::BlockState statePrev;
@@ -1234,7 +1282,11 @@ namespace Legacy
         if(state.nHeight - stateLast.nHeight < nMinimumInterval)
             return debug::error(FUNCTION, "trust key interval below minimum interval ", state.nHeight - stateLast.nHeight);
 
-        /* Extract the last trust key */
+        /* Current key to verify */
+        uint576_t cKey;
+        cKey.SetBytes(trustKey.vchPubKey);
+
+        /* Extract trust key from last coinstake */
         uint576_t keyLast;
         if(!txLast.TrustKey(keyLast))
             return debug::error(FUNCTION, "couldn't extract trust key from previous tx");
@@ -1242,8 +1294,8 @@ namespace Legacy
         /* Ensure the last block being checked is the same trust key. */
         if(keyLast != cKey)
             return debug::error(FUNCTION,
-                "trust key in previous block ", cKey.SubString(),
-                " to this one ", keyLast.SubString());
+                "trust key in previous stake block ", cKey.SubString(),
+                " does not match current stake block ", keyLast.SubString());
 
         /* Placeholder in case previous block is a version 4 block. */
         uint32_t nScorePrev = 0;
@@ -1263,18 +1315,13 @@ namespace Legacy
         /* Version 4 blocks need to get score from previous blocks calculated score from the trust pool. */
         else if(stateLast.nVersion < 5)
         {
-            /* Check the trust pool - this should only execute once transitioning from version 4 to version 5 trust keys. */
-            Legacy::TrustKey trustKey;
-            if(!LLD::Trust->ReadTrustKey(cKey, trustKey))
-                return debug::error(FUNCTION, "couldn't find the genesis");
-
             /* Enforce sequence number of 1 for anything made from version 4 blocks. */
             if(nSequence != 1)
                 return debug::error(FUNCTION, "version 4 block sequence number is ", nSequence);
 
             /* Ensure that a version 4 trust key is not expired based on new timespan rules. */
             if(trustKey.Expired(TAO::Ledger::ChainState::stateBest.load()))
-                return debug::error("version 4 key expired ", trustKey.BlockAge(TAO::Ledger::ChainState::stateBest.load()));
+                return debug::error("version 4 key expired");
 
             /* Score is the total age of the trust key for version 4. */
             nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
@@ -1284,7 +1331,7 @@ namespace Legacy
         else
         {
             /* The last block of previous. */
-            uint1024_t hashBlockPrev = 0; //dummy variable unless we want to do recursive checking of scores all the way back to genesis
+            uint1024_t hashBlockPrev = 0; //dummy variable unless we want to recursively check scores all the way back to genesis
 
             /* Extract the value from the previous block. */
             uint32_t nSequencePrev;
@@ -1317,20 +1364,20 @@ namespace Legacy
                 nScore = (nScorePrev - nPenalty);
         }
 
-        /* Set maximum trust score to seconds passed for interest rate. */
+        /* Cap trust score at max. */
         if(nScore > TAO::Ledger::TRUST_SCORE_MAX)
             nScore = TAO::Ledger::TRUST_SCORE_MAX;
 
-        /* Debug output. */
+        /* Check that published score in this block is equivilent to calculated score. */
+        if(nTrustScore != nScore)
+            return debug::error(FUNCTION, "published trust score ", nTrustScore, " not meeting calculated score ", nScore);
+
+        /* Log trust score */
         debug::log(2, FUNCTION,
             "score=", nScore, ", ",
             "prev=", nScorePrev, ", ",
             "timespan=", nTimespan, ", ",
             "change=", (int32_t)(nScore - nScorePrev), ")" );
-
-        /* Check that published score in this block is equivilent to calculated score. */
-        if(nTrustScore != nScore)
-            return debug::error(FUNCTION, "published trust score ", nTrustScore, " not meeting calculated score ", nScore);
 
         return true;
     }

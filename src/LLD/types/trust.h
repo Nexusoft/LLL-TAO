@@ -71,6 +71,21 @@ namespace LLD
          **/
         bool ReadTrustKey(const uint576_t& hashKey, Legacy::TrustKey& key);
 
+
+        /** EraseTrustKey
+         *
+         *  Erases a trust key from the trust DB.
+         *
+         *  @param[in] hashKey The key of the trust key to erase.
+         *
+         *  @return True if the trust key was successfully erased, false otherwise.
+         *
+         **/
+        bool EraseTrustKey(const uint576_t& hashKey)
+        {
+            return Erase(hashKey);
+        }
+
     };
 }
 

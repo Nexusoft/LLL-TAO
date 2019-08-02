@@ -1003,7 +1003,7 @@ namespace TAO
 
                     address = " unknown ";
                 }
-                
+
                 /* The amount to output */
                 int64_t nAmount = nGeneratedImmature > 0 ? nGeneratedImmature : nGeneratedMature;
 
@@ -1083,7 +1083,7 @@ namespace TAO
 
                     uint256_t hashRegister;
                     Legacy::ExtractRegister( s.first, hashRegister);
-                        
+
                     if(mapExclude.count(address))
                         continue;
 
@@ -1156,17 +1156,12 @@ namespace TAO
             std::string strAccount = "*";
             if(params.size() > 0)
                 strAccount = params[0].get<std::string>();
-            int nCount = 10;
+            uint64_t nCount = 10;
             if(params.size() > 1)
                 nCount = params[1];
-            int nFrom = 0;
+            uint64_t nFrom = 0;
             if(params.size() > 2)
                 nFrom = params[2];
-
-            if(nCount < 0)
-                throw APIException(-8, "Negative count");
-            if(nFrom < 0)
-                throw APIException(-8, "Negative from");
 
             json::json ret = json::json::array();
             Legacy::WalletDB walletdb(Legacy::Wallet::GetInstance().GetWalletFile());
@@ -1190,7 +1185,7 @@ namespace TAO
                 if(pwtx != 0)
                     ListTransactionsJSON(*pwtx, strAccount, 0, true, ret);
 
-                if(ret.size() >= (nCount+nFrom)) break;
+                if(ret.size() >= (nCount + nFrom)) break;
             }
             // ret is newest to oldest
 
@@ -1498,7 +1493,7 @@ namespace TAO
             if(IsRegisterAddress(strAddress))
             {
                 isLegacy = false;
-                
+
                 hashAccount.SetHex(strAddress);
 
                 /* Get the account object. */
