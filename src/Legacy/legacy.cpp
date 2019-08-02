@@ -20,22 +20,24 @@ ________________________________________________________________________________
 #include <Legacy/include/ambassador.h>
 #include <Legacy/include/constants.h>
 #include <Legacy/include/evaluate.h>
+#include <Legacy/include/trust.h>
 
 #include <LLD/include/global.h>
 
+#include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/timelocks.h>
-#include <TAO/Ledger/types/state.h>
-#include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
-#include <Legacy/include/trust.h>
-#include <TAO/Ledger/include/checkpoints.h>
-#include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/timelocks.h>
+
+#include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
+#include <Util/include/runtime.h>
 
 #include <cmath>
 
@@ -146,8 +148,19 @@ namespace Legacy
         if(GetChannel() > 2)
             return debug::error(FUNCTION, "channel out of range");
 
-        /* Check that the time was within range. */
-        if(GetBlockTime() > runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT)
+        /* Check that the time was within range. If before v7 activation, keep legacy block compatible with legacy setting. */
+        uint64_t nMaxDrift = MAX_UNIFIED_DRIFT;
+
+        if(TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7
+        || (runtime::unifiedtimestamp() < (config::fTestNet.load()
+                                        ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[5]
+                                        : TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])))
+        {
+            nMaxDrift = MAX_UNIFIED_DRIFT_LEGACY;
+        }
+
+
+        if(GetBlockTime() > runtime::unifiedtimestamp() + nMaxDrift)
             return debug::error(FUNCTION, "block timestamp too far in the future");
 
         /* Check the Current Version Block Time-Lock. */
@@ -202,8 +215,20 @@ namespace Legacy
             if(nHeight > 2392970 && nNonce == 0)
                 return debug::error(FUNCTION, "stake cannot have nonce of 0");
 
-            /* Check the Coinstake Time is before Unified Timestamp. */
-            if(vtx[0].nTime > (runtime::unifiedtimestamp() + MAX_UNIFIED_DRIFT))
+            /* Check the Coinstake Time is before Unified Timestamp.
+             * If before v7 activation, keep legacy coinstake compatible with legacy setting.
+             */
+            uint64_t nMaxDrift = MAX_UNIFIED_DRIFT;
+
+            if(TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7
+            || (runtime::unifiedtimestamp() < (config::fTestNet.load()
+                                            ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[5]
+                                            : TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])))
+            {
+                nMaxDrift = MAX_UNIFIED_DRIFT_LEGACY;
+            }
+
+            if(vtx[0].nTime > (runtime::unifiedtimestamp() + nMaxDrift))
                 return debug::error(FUNCTION, "coinstake too far in Future.");
 
             /* Make Sure Coinstake Transaction is First. */
