@@ -232,19 +232,35 @@ namespace LLP
                 switch(reason)
                 {
                     case DISCONNECT_TIMEOUT:
-                        strReason = "DISCONNECT_TIMEOUT";
+                        strReason = "Timeout";
                         break;
+
+                    case DISCONNECT_PEER:
+                        strReason = "Peer disconnected";
+                        break;
+
                     case DISCONNECT_ERRORS:
-                        strReason = "DISCONNECT_ERRORS";
+                        strReason = "Errors";
                         break;
+
+                    case DISCONNECT_POLL_ERROR:
+                        strReason = "Poll Error";
+                        break;
+
+                    case DISCONNECT_POLL_EMPTY:
+                        strReason = "Unavailable";
+                        break;
+
                     case DISCONNECT_DDOS:
-                        strReason = "DISCONNECT_DDOS";
+                        strReason = "DDOS";
                         break;
+
                     case DISCONNECT_FORCE:
-                        strReason = "DISCONNECT_FORCE";
+                        strReason = "Forced";
                         break;
+
                     default:
-                        strReason = "UNKNOWN";
+                        strReason = "Other";
                         break;
                 }
                 debug::log(2, FUNCTION, "Disconnecting ", GetAddress().ToStringIP(), " (", strReason, ")");
@@ -515,12 +531,12 @@ namespace LLP
                 /* Make sure there is no inconsistencies in validating block. */
                 if(!validate_block(hashMerkleRoot))
                 {
-                    /* Set best height to 0 to force miners to request new blocks, since we know that the current block 
+                    /* Set best height to 0 to force miners to request new blocks, since we know that the current block
                        will fail to be submitted */
                     nBestHeight = 0;
 
                     respond(BLOCK_REJECTED);
-                
+
                     return true;
                 }
 
