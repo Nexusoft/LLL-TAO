@@ -1,0 +1,23 @@
+#
+# This is an example seed-node configuration for a private blockchain. If there
+# is more than one seed node used, only one must use the generate statement.
+#       
+rpcuser=username
+rpcpassword=password
+rpcallowip=127.0.0.1
+testnet=100
+beta=0
+fastsync=1
+server=1
+daemon=1
+threads=10            
+verbose=3    
+maxconnections=16
+private=1
+apisessions=1
+pmanager=1
+generate=one-seed
+argon2_memory=4
+nodns=1    
+argon2=1
+    

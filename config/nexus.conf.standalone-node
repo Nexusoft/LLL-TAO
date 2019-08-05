@@ -1,0 +1,23 @@
+#
+# This is an example nexus.conf for a Tritium Testnet for a single node.
+#
+# This configuration file is for the 'merging' branch.
+#
+rpcuser=username
+rpcpassword=password
+rpcallowip=127.0.0.1
+testnet=1
+beta=0
+fastsync=1
+server=1
+daemon=1
+threads=10            
+verbose=3    
+maxconnections=16
+private=1
+multiuser=1
+indexheight=1    
+generate=password
+#argon2_memory=4
+#nodns=1
+#argon2=1
