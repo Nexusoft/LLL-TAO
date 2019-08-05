@@ -155,8 +155,8 @@ namespace TAO
                 }
             }
 
-            /* Always add the contracts if level 1 and up */
-            if(nVerbosity >= 1)
+            /* Always add the contracts if level 2 and up */
+            if(nVerbosity >= 2)
                 ret["contracts"] = ContractsToJSON(hashCaller, tx, nVerbosity);
 
             return ret;

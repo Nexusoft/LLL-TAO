@@ -36,7 +36,7 @@ namespace TAO
     {
 
         /* Get a list of accounts owned by a signature chain. */
-        json::json Finance::List(const json::json& params, bool fHelp)
+        json::json Tokens::ListAccounts(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
             json::json ret;// = json::json::array();
@@ -87,8 +87,8 @@ namespace TAO
                 if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                     continue;
 
-                /* Check the account is a NXS account */
-                if(object.get<uint256_t>("token") != 0)
+                /* Check the account is not a NXS account */
+                if(object.get<uint256_t>("token") == 0)
                     continue;
 
                 /* Get the current page. */
@@ -114,7 +114,7 @@ namespace TAO
         }
 
         /* Lists all transactions for a given account. */
-        json::json Finance::ListTransactions(const json::json& params, bool fHelp)
+        json::json Tokens::ListTransactions(const json::json& params, bool fHelp)
         {
             /* The account to list transactions for. */
             uint256_t hashAccount = 0;
@@ -128,10 +128,20 @@ namespace TAO
             else
                 throw APIException(-33, "Missing name or address");
 
+            /* the type to list transactions for - should be "token" or "account" */
+            std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";
+
             /* Get the account object. */
             TAO::Register::Object object;
-            if(!LLD::Register->ReadState(hashAccount, object))
-                throw APIException(-13, "Account not found");
+            if(!LLD::Register->ReadState(hashAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
+            {
+                if(strType == "account")
+                    throw APIException(-13, "Account not found");
+                else if(strType == "token")
+                    throw APIException(-125, "Token not found");
+                else
+                    throw APIException(-104, "Object not found");
+            }
 
             /* Parse the object register. */
             if(!object.Parse())
@@ -141,13 +151,27 @@ namespace TAO
             uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
-            if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
-                throw APIException(-65, "Object is not an account");
+            if(nStandard == TAO::Register::OBJECTS::TOKEN
+            || nStandard == TAO::Register::OBJECTS::ACCOUNT
+            || nStandard == TAO::Register::OBJECTS::TRUST)
+            {
+                /* If the user requested a particular object type then check it is that type */
+                if(strType == "token" && (nStandard == TAO::Register::OBJECTS::ACCOUNT || nStandard == TAO::Register::OBJECTS::TRUST))
+                    throw APIException(-123, "Object is not a token");
+                else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
+                    throw APIException(-65, "Object is not an account");
 
-            /* Check the account is a NXS account */
-            if(object.get<uint256_t>("token") != 0)
-                throw APIException(-66, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
+                /* Check the account is not a NXS account */
+                if(strType == "account" && object.get<uint256_t>("token") == 0)
+                    throw APIException(-166, "Account is a NXS account.  Please use the finance API for accessing NXS accounts.");
 
+            }
+            else
+            {
+                throw APIException(-124, "Unknown token / account.");
+            }
+
+            
 
             return Objects::ListTransactions(params, fHelp);
         }

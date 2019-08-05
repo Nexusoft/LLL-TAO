@@ -264,15 +264,24 @@ namespace LLP
                     /* Disconnect if there was a polling error */
                     if((POLLFDS.at(nIndex).revents & POLLERR))
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
+                        disconnect_remove_event(nIndex, DISCONNECT_POLL_ERROR);
                         continue;
                     }
+
+#ifdef WIN32
+                    /* Disconnect if the socket was disconnected by peer (This happens on Windows only) */
+                    if((POLLFDS.at(nIndex).revents & POLLHUP))
+                    {
+                        disconnect_remove_event(nIndex, DISCONNECT_PEER);
+                        continue;
+                    }
+#endif
 
                     /* Disconnect if pollin signaled with no data (This happens on Linux). */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
                     && connection->Available() == 0)
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT_ERRORS);
+                        disconnect_remove_event(nIndex, DISCONNECT_POLL_EMPTY);
                         continue;
                     }
 
