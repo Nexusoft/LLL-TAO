@@ -183,7 +183,7 @@ namespace LLP
             case EVENT_GENERIC:
             {
                 /* On generic events, return if no workers subscribed. */
-                uint16_t count = nSubscribed.load();
+                uint32_t count = nSubscribed.load();
                 if(count == 0)
                     return;
 
@@ -201,7 +201,7 @@ namespace LLP
                 std::vector<uint8_t> vData;
                 TAO::Ledger::Block *pBlock = nullptr;
 
-                for(uint16_t i = 0; i < count; ++i)
+                for(uint32_t i = 0; i < count; ++i)
                 {
                     {
                         LOCK(MUTEX);
@@ -301,7 +301,7 @@ namespace LLP
         {
             case SET_CHANNEL:
             {
-                nChannel = static_cast<uint8_t>(convert::bytes2uint(PACKET.DATA));
+                nChannel = convert::bytes2uint(PACKET.DATA);
 
                 switch (nChannel.load())
                 {
@@ -313,7 +313,7 @@ namespace LLP
                     debug::log(2, FUNCTION, "Hash Channel Set.");
                     break;
 
-                    /** Don't allow Mining LLP Requests for Proof of Stake Channel. **/
+                    /* Don't allow Mining LLP Requests for Proof of Stake, or any other Channel. */
                     default:
                     return debug::error(2, FUNCTION, "Invalid PoW Channel (", nChannel.load(), ")");
                 }
@@ -462,14 +462,14 @@ namespace LLP
 
             case SUBSCRIBE:
             {
-                nSubscribed = static_cast<uint16_t>(convert::bytes2uint(PACKET.DATA));
+                nSubscribed = convert::bytes2uint(PACKET.DATA);
 
                 /** Don't allow mining llp requests for proof of stake channel **/
-                if(nSubscribed == 0 || nChannel.load() == 0)
+                if(nSubscribed.load() == 0 || nChannel.load() == 0)
                     return false;
 
                 /* Debug output. */
-                debug::log(2, FUNCTION, "Subscribed to ", nSubscribed, " Blocks");
+                debug::log(2, FUNCTION, "Subscribed to ", nSubscribed.load(), " Blocks");
                 return true;
             }
 
@@ -675,17 +675,15 @@ namespace LLP
            /* Set it to a null state */
            pBlock->SetNull();
 
-           /* Get the sigchain and the PIN. */
-           SecureString PIN;
-
            /* Attempt to unlock the account. */
            if(TAO::API::users->Locked())
            {
                debug::error(FUNCTION, "No unlocked account available");
                return nullptr;
            }
-           else
-               PIN = TAO::API::users->GetActivePin();
+
+           /* Get the sigchain and the PIN. */
+           SecureString PIN = TAO::API::users->GetActivePin();
 
            /* Attempt to get the sigchain. */
            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
@@ -706,7 +704,7 @@ namespace LLP
            while(true)
            {
                /* Create the Tritium block with the corresponding sigchain and pin. */
-               if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel, *(TAO::Ledger::TritiumBlock *)pBlock, ++nBlockIterator))
+               if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *(TAO::Ledger::TritiumBlock *)pBlock, ++nBlockIterator))
                {
                    debug::error(FUNCTION, "Failed to create a new Tritium Block.");
                    return nullptr;
@@ -719,7 +717,7 @@ namespace LLP
                hashProof = pBlock->ProofHash();
 
                /* Skip if not prime channel or version less than 5. */
-               if(nChannel != 1 || pBlock->nVersion < 5)
+               if(nChannel.load() != 1 || pBlock->nVersion < 5)
                    break;
 
                /* Exit loop when the block is above minimum prime origins and less than 1024-bit hashes */
@@ -730,7 +728,6 @@ namespace LLP
            debug::log(2, FUNCTION, "Created new Tritium Block ", hashProof.SubString(), " nVersion=", pBlock->nVersion);
 
        }
-
        /* Create Legacy blocks if version 7 not active. */
        else
        {
@@ -743,6 +740,7 @@ namespace LLP
            /* Create a new block and loop for prime channel if minimum bit target length isn't met */
            while(true)
            {
+               /* Create the Legacy block with the corresponding coinbase mining key. */
                if(!Legacy::CreateBlock(*pMiningKey, CoinbaseTx, nChannel.load(), ++nBlockIterator, *(Legacy::LegacyBlock *)pBlock))
                    debug::error(FUNCTION, "Failed to create a new Legacy Block.");
 

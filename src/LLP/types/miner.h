@@ -51,10 +51,10 @@ namespace LLP
         std::atomic<uint32_t> nBestHeight;
 
         /** Subscribe to display how many blocks connection subscribed to **/
-        std::atomic<uint16_t> nSubscribed;
+        std::atomic<uint32_t> nSubscribed;
 
         /** The current channel mining for. */
-        std::atomic<uint8_t> nChannel;
+        std::atomic<uint32_t> nChannel;
 
 
         enum
