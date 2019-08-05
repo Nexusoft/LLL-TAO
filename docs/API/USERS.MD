@@ -712,8 +712,6 @@ This will list off all of the transactions for the requested signature chain gen
 
 `txid` : The transaction hash.
 
-`contracts` : The list of contracts bound to this transaction and their details with opcodes.
-
 `type` : The description of the transaction (`legacy` | `tritium base` | `trust` | `genesis` | `user`).
 
 `version` : The serialization version of the transaction.
@@ -733,5 +731,33 @@ This will list off all of the transactions for the requested signature chain gen
 `pubkey` : The public key.
 
 `signature` : The signature hash.
+
+`contracts` : The array of contracts bound to this transaction and their details with opcodes.    
+{    
+&nbsp;&nbsp;&nbsp;`OP` : The contract operation. Can be `APPEND`, `CLAIM`, `COINBASE`, `CREATE`, `CREDIT`, `DEBIT`, `FEE`, `GENESIS`, `LEGACY`, `TRANSFER`, `TRUST`, `STAKE`, `UNSTAKE`, `WRITE`.
+
+&nbsp;&nbsp;&nbsp;`txid` : The transaction that was credited / claimed.
+
+&nbsp;&nbsp;&nbsp;`proof` : The register address proving the credit.
+
+&nbsp;&nbsp;&nbsp;`account` : For `CREDIT` transactions, the register address of the account that the transaction relates to.
+
+&nbsp;&nbsp;&nbsp;`account_name` : For `CREDIT` transactions, the name of the account that the transaction relates to.  Only included if the name can be resolved.
+
+&nbsp;&nbsp;&nbsp;`from` : For `DEBIT` transactions, the register address of the account that the debit is being made from.
+
+&nbsp;&nbsp;&nbsp;`from_name` : For `DEBIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
+
+&nbsp;&nbsp;&nbsp;`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
+
+&nbsp;&nbsp;&nbsp;`to_name` : For `DEBIT` transactions, the name of the account that the debit is being made to.  Only included if the name can be resolved.
+
+&nbsp;&nbsp;&nbsp;`amount` : the token amount of the transaction.
+
+&nbsp;&nbsp;&nbsp;`token` : the register address of the token that the transaction relates to.  Set to 0 for NXS transactions
+
+&nbsp;&nbsp;&nbsp;`token_name` : The name of the token that the transaction relates to.
+
+}
 
 ****

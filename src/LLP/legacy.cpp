@@ -44,17 +44,12 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    /* Keep track of how many blocks have been asked for. */
-    std::atomic<uint32_t> nAsked(0);
 
     /* Static instantiation of orphan blocks in queue to process. */
     std::map<uint1024_t, Legacy::LegacyBlock> mapLegacyOrphans;
 
     /* Mutex to protect checking more than one block at a time. */
     std::mutex PROCESSING_MUTEX;
-
-    /* Mutex to protect the legacy orphans map. */
-    std::mutex ORPHAN_MUTEX;
 
     /* Mutex to protect connected sessions. */
     std::mutex SESSIONS_MUTEX;
@@ -68,20 +63,31 @@ namespace LLP
         /* Normal case of asking for a getblocks inventory message. */
         memory::atomic_ptr<LegacyNode>& pBest = LEGACY_SERVER->GetConnection(LegacyNode::addrFastSync.load());
 
-        /* Null check the pointer. */
         if(pBest != nullptr)
         {
+            /* Send out another getblocks request. */
             try
             {
-                /* Switch to a new node for fast sync. */
                 pBest->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
             }
             catch(const std::runtime_error& e)
             {
+                /* Recurse on failure. */
                 debug::error(FUNCTION, e.what());
 
                 SwitchNode();
             }
+        }
+        else
+        {
+            /* Reset the sync address. */
+            LegacyNode::addrFastSync = BaseAddress();
+
+            /* Reset the getblocks request timeout. */
+            LegacyNode::nLastGetBlocks.store(0);
+
+            /* Logging to verify (for debugging). */
+            debug::log(0, FUNCTION, "No Sync Nodes Available, Resetting State");
         }
     }
 
@@ -286,10 +292,10 @@ namespace LLP
             /* Unreliabilitiy re-requesting (max time since getblocks) */
             if(TAO::Ledger::ChainState::Synchronizing()
             && addrFastSync == GetAddress()
-            && nLastTimeReceived.load() + 30 < nTimestamp
-            && nLastGetBlocks.load() + 30 < nTimestamp)
+            && nLastTimeReceived.load() + 15 < nTimestamp
+            && nLastGetBlocks.load() + 15 < nTimestamp)
             {
-                debug::log(0, NODE, "fast sync event timeout");
+                debug::log(0, NODE, "Sync Node Timeout");
 
                 /* Switch to a new node. */
                 SwitchNode();
@@ -328,8 +334,20 @@ namespace LLP
                     strReason = "Timeout";
                     break;
 
+                case DISCONNECT_PEER:
+                    strReason = "Peer disconnected";
+                    break;
+
                 case DISCONNECT_ERRORS:
                     strReason = "Errors";
+                    break;
+
+                case DISCONNECT_POLL_ERROR:
+                    strReason = "Poll Error";
+                    break;
+
+                case DISCONNECT_POLL_EMPTY:
+                    strReason = "Unavailable";
                     break;
 
                 case DISCONNECT_DDOS:
@@ -339,12 +357,16 @@ namespace LLP
                 case DISCONNECT_FORCE:
                     strReason = "Forced";
                     break;
+
+                default:
+                    strReason = "Other";
+                    break;
             }
 
             /* Detect if the fast sync node was disconnected. */
             if(addrFastSync == GetAddress())
             {
-                debug::log(0, NODE, "fast sync node disconnected");
+                debug::log(0, NODE, "Sync Node Disconnected");
 
                 /* Switch the node. */
                 SwitchNode();
@@ -441,11 +463,8 @@ namespace LLP
             PushMessage("verack");
 
             /* Push our version back since we just completed getting the version from the other node. */
-            if (fOUTGOING && nAsked == 0)
-            {
-                ++nAsked;
+            if(fOUTGOING && !addrFastSync.load().IsValid())
                 PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-            }
 
             PushMessage("getaddr");
         }
@@ -831,9 +850,13 @@ namespace LLP
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
     {
-        uint1024_t hash = block.GetHash();
+        LOCK(PROCESSING_MUTEX);
 
+        /* The number of allowable maximum consecutive failures. */
         const uint32_t nMaxFailures = 500;
+
+        /* Check if the block is valid. */
+        uint1024_t hash = block.GetHash();
 
         /* Check if the block is valid. */
         if(!block.Check())
@@ -842,8 +865,6 @@ namespace LLP
         /* Check for orphan. */
         if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
         {
-            LOCK(ORPHAN_MUTEX);
-
             /* Fast sync block requests. */
             if(!TAO::Ledger::ChainState::Synchronizing())
             {
@@ -856,10 +877,6 @@ namespace LLP
                 /* Run a getblocks to be sure. */
                 pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
             }
-
-            /* Increment the consecutive orphans. */
-            if(pnode)
-                ++pnode->nConsecutiveOrphans;
 
             /* Detect large orphan chains and ask for new blocks from origin again. */
             if(pnode && pnode->nConsecutiveOrphans >= nMaxFailures)
@@ -875,17 +892,23 @@ namespace LLP
 
             /* Skip if already in orphan queue. */
             if(!mapLegacyOrphans.count(block.hashPrevBlock))
+            {
+                /* Add to the map of orphans. */
                 mapLegacyOrphans[block.hashPrevBlock] = block;
 
-            /* Debug output. */
-            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.SubString());
+                /* Increment the consecutive orphans. */
+                if(pnode)
+                    ++pnode->nConsecutiveOrphans;
+
+                /* Debug output. */
+                debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
+            }
 
             return true;
         }
 
 
         /* Check if valid in the chain. */
-        LOCK(PROCESSING_MUTEX);
         if(!block.Accept())
         {
             /* Increment the consecutive failures. */
@@ -943,7 +966,6 @@ namespace LLP
         }
 
         /* Process orphan if found. */
-        std::unique_lock<std::mutex> lock(ORPHAN_MUTEX);
         while(mapLegacyOrphans.count(hash))
         {
             uint1024_t hashPrev = mapLegacyOrphans[hash].GetHash();

@@ -262,8 +262,8 @@ namespace LLP
     {
         /* List of connections to return. */
         uint32_t nLatency   = std::numeric_limits<uint32_t>::max();
-        uint16_t nRetThread = 0;
-        uint16_t nRetIndex  = 0;
+        int16_t nRetThread = -1;
+        int16_t nRetIndex  = -1;
 
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
@@ -301,6 +301,11 @@ namespace LLP
                 }
             }
         }
+
+        /* Handle if no connections were found. */
+        static memory::atomic_ptr<ProtocolType> pNULL;
+        if(nRetThread == -1 || nRetIndex == -1)
+            return pNULL;
 
         return DATA_THREADS[nRetThread]->CONNECTIONS->at(nRetIndex);
     }

@@ -296,6 +296,19 @@ namespace LLP
             return debug::error(FUNCTION, "Cannot mine while wallet is locked.");
 
 
+        uint64_t nTimeLock = TAO::Ledger::CurrentTimelock();
+        uint64_t nTimeStamp = runtime::unifiedtimestamp();
+
+        if(nTimeStamp < nTimeLock)
+        {
+            uint64_t nSeconds =  nTimeLock - nTimeStamp;
+
+            /* Print a message explaining how many minutes until timelock activation. */
+            if(nSeconds % 60 == 0)
+                debug::log(0, FUNCTION, "Timelock ", TAO::Ledger::CurrentVersion(), " activation in ", nSeconds / 60, " minutes. ");
+        }
+
+
         /* Set the Mining Channel this Connection will Serve Blocks for. */
         switch(PACKET.HEADER)
         {
@@ -663,16 +676,11 @@ namespace LLP
        /* If the primemod flag is set, take the hashProof down to 1017-bit to maximize prime ratio as much as possible. */
        uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
 
-       /* Base class block pointer to derived class block. */
-       TAO::Ledger::Block *pBlock = nullptr;
 
        /* Create Tritium blocks if version 7 active. */
        if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7))
        {
-           /* Create a new Tritium Block. */
-           pBlock = new TAO::Ledger::TritiumBlock();
-
-           /* Set it to a null state */
+           TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
            pBlock->SetNull();
 
            /* Attempt to unlock the account. */
@@ -704,7 +712,7 @@ namespace LLP
            while(true)
            {
                /* Create the Tritium block with the corresponding sigchain and pin. */
-               if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *(TAO::Ledger::TritiumBlock *)pBlock, ++nBlockIterator))
+               if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *pBlock, ++nBlockIterator))
                {
                    debug::error(FUNCTION, "Failed to create a new Tritium Block.");
                    return nullptr;
@@ -725,43 +733,37 @@ namespace LLP
                    break;
            }
 
+           /* Output debug info and return the newly created block. */
            debug::log(2, FUNCTION, "Created new Tritium Block ", hashProof.SubString(), " nVersion=", pBlock->nVersion);
+           return pBlock;
 
        }
+
        /* Create Legacy blocks if version 7 not active. */
-       else
+       Legacy::LegacyBlock *pBlock = new Legacy::LegacyBlock();
+       pBlock->SetNull();
+
+       /* Create a new block and loop for prime channel if minimum bit target length isn't met */
+       while(true)
        {
-           /* Create a new Legacy Block. */
-           pBlock = new Legacy::LegacyBlock();
+           /* Create the Legacy block with the corresponding coinbase mining key. */
+           if(!Legacy::CreateBlock(*pMiningKey, CoinbaseTx, nChannel.load(), ++nBlockIterator, *pBlock))
+               debug::error(FUNCTION, "Failed to create a new Legacy Block.");
 
-           /* Set it to a null state */
-           pBlock->SetNull();
+           /* Get the proof hash. */
+           hashProof = pBlock->ProofHash();
 
-           /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-           while(true)
-           {
-               /* Create the Legacy block with the corresponding coinbase mining key. */
-               if(!Legacy::CreateBlock(*pMiningKey, CoinbaseTx, nChannel.load(), ++nBlockIterator, *(Legacy::LegacyBlock *)pBlock))
-                   debug::error(FUNCTION, "Failed to create a new Legacy Block.");
+           /* Skip if not prime channel or version less than 5 */
+           if(nChannel.load() != 1 || pBlock->nVersion < 5)
+               break;
 
-               /* Get the proof hash. */
-               hashProof = pBlock->ProofHash();
-
-               /* Skip if not prime channel or version less than 5 */
-               if(nChannel.load() != 1 || pBlock->nVersion < 5)
-                   break;
-
-                /* Exit loop when the block is above minimum prime origins and less than 1024-bit hashes */
-                if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !hashProof.high_bits(nBitMask))
-                    break;
-           }
-
-           debug::log(2, FUNCTION, "Created new Legacy Block ", hashProof.SubString(), " nVersion=", pBlock->nVersion);
-
+            /* Exit loop when the block is above minimum prime origins and less than 1024-bit hashes */
+            if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !hashProof.high_bits(nBitMask))
+                break;
        }
 
-
-       /* Return a pointer to the heap memory */
+       /* Output debug info and return the newly created block. */
+       debug::log(2, FUNCTION, "Created new Legacy Block ", hashProof.SubString(), " nVersion=", pBlock->nVersion);
        return pBlock;
    }
 

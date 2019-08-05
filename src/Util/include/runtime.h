@@ -29,6 +29,8 @@ extern std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
 /** The maximum time in the future clock can be. **/
 const uint32_t MAX_UNIFIED_DRIFT = 1;
 
+const uint32_t MAX_UNIFIED_DRIFT_LEGACY = 10;
+
 
 namespace runtime
 {

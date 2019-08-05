@@ -32,7 +32,7 @@ namespace TAO
             mapFunctions["list/accounts"]   = Function(std::bind(&Finance::List, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["get/stakeinfo"]   = Function(std::bind(&Finance::Info, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["set/stake"]       = Function(std::bind(&Finance::Stake, this, std::placeholders::_1, std::placeholders::_2));
-
+            mapFunctions["list/account/transactions"]  = Function(std::bind(&Finance::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
         }
 
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
@@ -52,11 +52,27 @@ namespace TAO
             {
                 std::string strNameOrAddress;
 
-                strMethodRewritten = strMethod.substr(0, nPos+8);
+                /* edge case for list/account/transactions */
+                std::size_t nListPos = strMethod.find("/account/transactions/");
 
-                /* Get the name or address that comes after the /account/ part */
-                strNameOrAddress = strMethod.substr(nPos +9);
+                if(nListPos != std::string::npos)
+                {
+                    /* Extract the method name */
+                    strMethodRewritten = strMethod.substr(0, nListPos+21);
 
+                    /* Get the name or address that comes after the /account/ part */
+                    strNameOrAddress = strMethod.substr(nListPos +22);
+                }
+                else
+                {
+                    /* Extract the method name */
+                    strMethodRewritten = strMethod.substr(0, nPos+8);
+
+                    /* Get the name or address that comes after the /account/ part */
+                    strNameOrAddress = strMethod.substr(nPos +9);
+                }
+                
+            
                 /* Check to see whether there is a fieldname after the token name, i.e.  get/account/myaccount/somefield */
                 nPos = strNameOrAddress.find("/");
 
