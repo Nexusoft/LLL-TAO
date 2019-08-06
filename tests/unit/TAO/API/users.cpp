@@ -38,36 +38,6 @@ TEST_CASE( "Test Users API", "[API/users]")
     if(!config::fMultiuser.load())
         LogoutUser(GENESIS1, SESSION1);
 
-    /* Test failing with invalid characters */
-    {
-        params.clear();
-        params["username"] = "not:allowed";
-        params["password"] = PASSWORD;
-        params["pin"] = PIN;
-
-        /* Params are already populated from the previous call so just invoke the API again */
-        ret = APICall("users/create/user", params);
-
-        /* Check response is an error and validate error code */
-        REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -160);
-    }
-
-    /* Test failing with invalid characters */
-    {
-        params.clear();
-        params["username"] = "not.allowed";
-        params["password"] = PASSWORD;
-        params["pin"] = PIN;
-
-        /* Params are already populated from the previous call so just invoke the API again */
-        ret = APICall("users/create/user", params);
-
-        /* Check response is an error and validate error code */
-        REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -160);
-    }
-
     /* Test creating a new user */
     {
 

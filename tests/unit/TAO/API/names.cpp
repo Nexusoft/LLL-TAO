@@ -105,23 +105,7 @@ TEST_CASE( "Test Names API - create namespace", "[names/create/namespace]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["name"] = "not.allowed";
-
-        /* Invoke the API */
-        ret = APICall("names/create/namespace", params);
-
-        /* Check response is an error and validate error code */
-        REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -162);
-    }
-
-    /* fail with invalid chars in name name */
-    {
-        /* Build the parameters to pass to the API */
-        params.clear();
-        params["session"] = SESSION1;
-        params["pin"] = PIN;
-        params["name"] = "not:allowed";
+        params["name"] = "not@allowed";
 
         /* Invoke the API */
         ret = APICall("names/create/namespace", params);
@@ -658,22 +642,6 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         REQUIRE(ret["error"]["code"].get<int32_t>() == -89);
     }
 
-    /* fail with invalid chars in name */
-    {
-        /* Build the parameters to pass to the API */
-        params.clear();
-        params["session"] = SESSION1;
-        params["pin"] = PIN;
-        params["name"] = "not:allowed";
-        params["register_address"] = hashRegisterAddress.GetHex();
-
-        /* Invoke the API */
-        ret = APICall("names/create/name", params);
-
-        /* Check response is an error and validate error code */
-        REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -161);
-    }
 
     /* fail with invalid namespace  */
     {
@@ -681,7 +649,7 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["name"] = strName +".notanamespace";
+        params["name"] = strName +"@notanamespace";
         params["register_address"] = hashRegisterAddress.GetHex();
 
         /* Invoke the API */
@@ -698,7 +666,7 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         params.clear();
         params["session"] = SESSION1;
         params["pin"] = PIN;
-        params["name"] = strName +"." +strNamespace;
+        params["name"] = strName +"@" +strNamespace;
         params["register_address"] = hashRegisterAddress.GetHex();
 
         /* Invoke the API */
@@ -738,7 +706,7 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
         params.clear();
         params["session"] = SESSION2;
         params["pin"] = PIN;
-        params["name"] = strName +"." +strNamespace;
+        params["name"] = strName +"@" +strNamespace;
         params["register_address"] = hashRegisterAddress.GetHex();
 
         /* Invoke the API */
@@ -839,7 +807,7 @@ TEST_CASE( "Test Names API - get name", "[names/get/name]")
     {
         /* Build the parameters to pass to the API */
         params.clear();
-        params["name"] = strName + "." +strNamespace;
+        params["name"] = strName + "@" +strNamespace;
 
         /* Invoke the API */
         ret = APICall("names/get/name", params);
@@ -1124,7 +1092,7 @@ TEST_CASE( "Test Names API - transfer name", "[names/transfer/name]")
         params.clear();
         params["session"] = SESSION2;
         params["pin"] = PIN;
-        params["name"] = strName +"." +strNamespace;;
+        params["name"] = strName +"@" +strNamespace;;
         params["destination"] = GENESIS1.GetHex();
 
         /* Invoke the API */
@@ -1224,7 +1192,7 @@ TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
             tx.nTimestamp  = runtime::timestamp();
 
             //create name object in the namespace
-            strName = "name." + strNamespace ;
+            strName = "name@" + strNamespace ;
 
             /* Get the address of the name register based on the namespace and name */
             TAO::Register::GetNameAddress(hashNamespace, "name", hashName);
