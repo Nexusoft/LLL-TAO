@@ -51,9 +51,6 @@ namespace LLP
     /* Mutex to protect checking more than one block at a time. */
     std::mutex PROCESSING_MUTEX;
 
-    /* Mutex to protect the legacy orphans map. */
-    std::mutex ORPHAN_MUTEX;
-
     /* Mutex to protect connected sessions. */
     std::mutex SESSIONS_MUTEX;
 
@@ -776,7 +773,7 @@ namespace LLP
 
             /* Add the best 1000 (or less) addresses. */
             std::vector<LegacyAddress> vSend;
-            uint32_t nCount = std::min((uint32_t)vAddr.size(), 1000u);
+            const uint32_t nCount = std::min((uint32_t)vAddr.size(), 1000u);
             for(uint32_t n = 0; n < nCount; ++n)
                 vSend.push_back(vAddr[n]);
 
@@ -792,7 +789,7 @@ namespace LLP
     /* pnode = Node we received block from, nullptr if we are originating the block (mined or staked) */
     bool LegacyNode::Process(const Legacy::LegacyBlock& block, LegacyNode* pnode)
     {
-        uint1024_t hash = block.GetHash();
+        LOCK(PROCESSING_MUTEX);
 
         const uint32_t nMaxFailures = 500;
 
@@ -803,8 +800,6 @@ namespace LLP
         /* Check for orphan. */
         if(!LLD::legDB->HasBlock(block.hashPrevBlock))
         {
-            LOCK(ORPHAN_MUTEX);
-
             /* Fast sync block requests. */
             if(!TAO::Ledger::ChainState::Synchronizing())
             {
@@ -836,17 +831,18 @@ namespace LLP
 
             /* Skip if already in orphan queue. */
             if(!mapLegacyOrphans.count(block.hashPrevBlock))
+            {
                 mapLegacyOrphans[block.hashPrevBlock] = block;
 
-            /* Debug output. */
-            debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
+                /* Debug output. */
+                debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
+            }
 
             return true;
         }
 
 
         /* Check if valid in the chain. */
-        LOCK(PROCESSING_MUTEX);
         if(!block.Accept())
         {
             /* Increment the consecutive failures. */
@@ -902,8 +898,9 @@ namespace LLP
             }
         }
 
+        uint1024_t hash = block.GetHash();
+
         /* Process orphan if found. */
-        std::unique_lock<std::mutex>lock(ORPHAN_MUTEX);
         while(mapLegacyOrphans.count(hash))
         {
             uint1024_t hashPrev = mapLegacyOrphans[hash].GetHash();
