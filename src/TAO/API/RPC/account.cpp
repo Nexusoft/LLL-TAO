@@ -1086,6 +1086,7 @@ namespace TAO
             }
             entry["txid"] = wtx.GetHash().GetHex();
             entry["time"] = (int64_t)wtx.GetTxTime();
+
             for( const auto& item : wtx.mapValue)
                 entry[item.first] = item.second;
         }
@@ -1449,34 +1450,53 @@ namespace TAO
         Get detailed information about <txid> */
         json::json RPC::GetTransaction(const json::json& params, bool fHelp)
         {
-            if (fHelp || params.size() != 1)
+            if(fHelp || params.size() != 1)
                 return std::string(
                     "gettransaction <txid>"
                     " - Get detailed information about <txid>");
+
+            Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
             uint512_t hash;
             hash.SetHex(params[0].get<std::string>());
 
             json::json ret;
 
-            if (!Legacy::Wallet::GetInstance().mapWallet.count(hash))
+            if (!wallet.mapWallet.count(hash))
                 throw APIException(-5, "Invalid or non-wallet transaction id");
-            const Legacy::WalletTx& wtx = Legacy::Wallet::GetInstance().mapWallet[hash];
+            const Legacy::WalletTx& wtx = wallet.mapWallet[hash];
 
-            int64_t nCredit = wtx.GetCredit();
-            int64_t nDebit = wtx.GetDebit();
-            int64_t nNet = nCredit - nDebit;
+            /* Coinstake is "from me" so stake reward ends up in nFee. Need to handle that type of tx separately */
+            if(wtx.IsCoinStake())
+            {
+                int64_t nReward = wtx.GetValueOut() - wtx.GetDebit();
+                ret["amount"] = Legacy::SatoshisToAmount(nReward);
+            }
+            else
+            {
+                /* Receive tx will have credit for received amount with debit of zero.
+                 *
+                 * Send tx will have debit for full spent balance with credit for change. Net sent amount is the difference,
+                 * which includes the fee paid.
+                 *
+                 * Fee for sent tx is difference between full value out (amount sent plus change) and the full spent balance.
+                 */
+                int64_t nCredit = wtx.GetCredit();
+                int64_t nDebit = wtx.GetDebit();
+                int64_t nNet = nCredit - nDebit;  //includes fee
 
-            int64_t nFee = (wtx.IsFromMe() ? wtx.GetValueOut() - nDebit : 0);
+                int64_t nFee = (wtx.IsFromMe() ? wtx.GetValueOut() - nDebit : 0);
 
-            ret["amount"] = Legacy::SatoshisToAmount(nNet - nFee);
-            if (wtx.IsFromMe())
-                ret["fee"] = Legacy::SatoshisToAmount(nFee);
+                ret["amount"] = Legacy::SatoshisToAmount(nNet - nFee);
 
-            WalletTxToJSON(Legacy::Wallet::GetInstance().mapWallet[hash], ret);
+                if (wtx.IsFromMe())
+                    ret["fee"] = Legacy::SatoshisToAmount(nFee);
+            }
+
+            WalletTxToJSON(wtx, ret);
 
             json::json details = json::json::array();
-            ListTransactionsJSON(Legacy::Wallet::GetInstance().mapWallet[hash], "*", 0, false, details);
+            ListTransactionsJSON(wtx, "*", 0, false, details);
             ret["details"] = details;
 
             return ret;
