@@ -76,11 +76,10 @@ namespace TAO
             if(params.find("name") == params.end())
                 throw APIException(-88, "Missing name.");
 
-
             /* The register address to create the name for */
             uint256_t hashRegister = 0;
 
-            /* Check caller has provided the register adress parameter */
+            /* Check caller has provided the register address parameter */
             if(params.find("register_address") != params.end() )
             {
                 /* Check that the register address is a valid address */
@@ -162,10 +161,13 @@ namespace TAO
             /* Get the namespace name */
             std::string strNamespace = params["name"].get<std::string>();
 
-            /* Don't allow : and . */
-            if(strNamespace.find(":") != strNamespace.npos || strNamespace.find(".") != strNamespace.npos)
-                throw APIException(-162, "Namespace contains invalid characters");
+            /* Ensure namespace names are more than 3 characters */
+            if(strNamespace.length() < 3)
+                throw APIException(-167, "Name cannot be less than 3 characters long");
 
+            /* Don't allow @ in namespace names even if it is escaped */
+            if(strNamespace.find("@") != strNamespace.npos )
+                throw APIException(-162, "Namespace contains invalid characters");
 
             /* Generate register address for namespace, which must be a hash of the name */
             uint256_t hashRegister = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);

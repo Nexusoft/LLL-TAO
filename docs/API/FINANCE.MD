@@ -98,20 +98,20 @@ Deduct an amount of NXS from an account and send it to another account or legacy
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the account owner. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the account to debit. This is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the account to debit. This is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address` : The register address of the account to debit. This is optional if the name is provided.
 
 `amount` : The amount of NXS to debit.
 
-`name_to` : The name identifying the account to send to. This is optional if the address is provided.  The name should be in username:name format
+`name_to` : The name identifying the account to send to. This is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address_to` : The register address of the account to send to. This is optional if the name is provided.  The address_to can also contain a legacy UTXO address if sending from a signature chain account to a legacy address.
 
 
 ### Example:
 
-The following example shows the json payload for a debit of 10.5 NXS from an account called "main" (that itself was created by the sig chain logged into session "16953804956473956578") being sent to an account identified by the name "bob:savings".  In the name_to field, "bob" refers to the username of the account holder and "savings" is their NXS account.  If Bob is concerned about privacy he could have provided the register address of his token account instead
+The following example shows the json payload for a debit of 10.5 NXS from an account called "main" (that itself was created by the sig chain logged into session "16953804956473956578") being sent to an account identified by the name "savings@accounts".  
 
 ```
 {
@@ -119,7 +119,7 @@ The following example shows the json payload for a debit of 10.5 NXS from an acc
     "session": "16953804956473956578",
     "name": "main",
     "amount": 10.5,
-    "name_to": "bob:savings"
+    "name_to": "savings@accounts"
 }
 ```
 
@@ -156,24 +156,21 @@ Increment an amount received from another NXS account to an account owned by you
 
 `txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.  The transaction can also be a legacy transaction created from sendtoaddress or sendmany where the inputs are UTXO but the output is an account register address. 
 
-`name` : The name identifying the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address` : The register address of the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the name is provided.
 
-`name_proof` : The name identifying the account that proves your ownership of the share of the debit. This is only required for split payments and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name_proof` : The name identifying the account that proves your ownership of the share of the debit. This is only required for split payments and is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address_proof` : The register address of the account that proves your ownership of the share of the debit. This is only required for spit payments and is optional if the name is provided.
 
 
 ### Example:
 
-The following example shows the json payload for a credit to an account called "savings" (that itself was created by the sig chain logged into session "16953804956473956578") identified by the name "bob:savings".  In the name field, "bob" refers to the username of the account holder and "savings" is their NXS account.
-
 ```
 {
     "pin": "1234",
     "session": "16953804956473956578",
-    "name": "bob:savings",
     "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
 }
 ```
@@ -207,7 +204,7 @@ Additionally the API supports passing a field name in the URL after the account 
 
 ### Parameters:
 
-`name` : The name identifying the NXS account to retrieve. This is optional if the address is provided.  The name should be in username:name format.  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the NXS account to retrieve. This is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the name in order to deduce the register address of the object.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
@@ -313,7 +310,7 @@ This will list off all of the transactions related to a given account. You DO NO
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the account name in order to deduce the register address of the account.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the NXS account to list transactions for. This is optional if the address is provided. The name should be in username:name format.  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the NXS account to list transactions for. This is optional if the address is provided. The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address` : The register address of the NXS account to list transactions for. This is optional if the name is provided.
 

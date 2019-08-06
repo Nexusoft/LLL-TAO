@@ -99,13 +99,13 @@ Deduct a token amount from a token's initial supply and send it to a token accou
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the token owner. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the token to debit. This is optional if the address is provided.  The name should be in username:name format.  However, if the token was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the token to debit. This is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address` : The register address of the token to debit. This is optional if the name is provided.
 
 `amount` : The amount of tokens to debit.
 
-`name_to` : The name identifying the token account to send to. This is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name_to` : The name identifying the token account to send to. This is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address_to` : The register address of the token account to send to. This is optional if the name is provided.
 
@@ -152,7 +152,7 @@ Increment the token balance by an amount received from a token account. This met
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the token account. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the token to credit. This is optional if the address is provided.  `name` : The name identifying the token to debit. This is optional if the address is provided.  The name should be in username:name format.  However, if the token was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the token to credit. This is optional if the address is provided.  `name` : The name identifying the token to debit. This is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address` : The register address of the token to credit. This is optional if the name is provided.
 
@@ -200,7 +200,7 @@ Additionally the API supports passing a field name in the URL after the token na
 ### Parameters:
 
 
-`name` : The name identifying the token to retrieve. This is optional if the address is provided.  `name` : The name identifying the token to debit. This is optional if the address is provided.  The name should be in username:name format.  However, if the token was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the token to retrieve. This is optional if the address is provided.  `name` : The name identifying the token to debit. This is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the name in order to deduce the register address of the token.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
@@ -266,7 +266,7 @@ This will list off all of the transactions related to a given token. You DO NOT 
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the token name in order to deduce the register address of the token.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the token to list transactions for. This is optional if the address is provided. The name should be in username:name format.  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the token to list transactions for. This is optional if the address is provided. The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address` : The register address of the token to list transactions for. This is optional if the name is provided.
 
@@ -447,13 +447,13 @@ Deduct a token amount from a token account and send it to another token account.
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) that owns the token account. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the token account to debit. This is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the token account to debit. This is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address` : The register address of the token account to debit. This is optional if the name is provided.
 
 `amount` : The amount of tokens to debit.
 
-`name_to` : The name identifying the token account to send to. This is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name_to` : The name identifying the token account to send to. This is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address_to` : The register address of the token account to send to. This is optional if the name is provided.
 
@@ -500,7 +500,7 @@ Increment an amount received from another token account to an account owned by y
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the token account. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the token account to credit. This is only required for split payments (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the token account to credit. This is only required for split payments (where the receiving account is not included in the credit transaction) and is optional if the address is provided. The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address` : The register address of the account to credit. This is only required for split payments (where the receiving account is not included in the credit transaction) and is optional if the name is provided.
 
@@ -553,8 +553,7 @@ Additionally the API supports passing a field name in the URL after the account 
 ### Parameters:
 
 
-`name` : The name identifying the token account to retrieve. This is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
-
+`name` : The name identifying the token account to retrieve. This is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 `session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the name in order to deduce the register address of the account.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
 `address` : The register address of the token account to retrieve. This is optional if the name is provided.
@@ -616,7 +615,7 @@ This will list off all of the transactions related to a given account. You DO NO
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the account name in order to deduce the register address of the account.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the token account to list transactions for. This is optional if the address is provided. The name should be in username:name format.  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the token account to list transactions for. This is optional if the address is provided. The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `address` : The register address of the token account to list transactions for. This is optional if the name is provided.
 

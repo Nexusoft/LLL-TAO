@@ -267,7 +267,7 @@ This will create a new name.  The API supports an alternative endpoint that can 
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the name should be created with. For single-user API mode the session should not be supplied.
 
-`name` : The name of the object that this name will point to. The name can be provided in the format myname.mynamespace, in which case the caller must own the Namespace "mynamespace".  If the name is provided without the namespace suffix then the name is created in the users local namespace, and from then on will need to be referred to by username:name
+`name` : The name of the object that this name will point to. The name can be provided in the format myname@mynamespace, in which case the caller must own the Namespace "mynamespace".  If the name is provided without the namespace suffix then the name is created in the users local namespace
 
 `register_address` : The register address of the the object that this Name will point to. 
 
@@ -314,7 +314,7 @@ The API supports an alternative endpoint that can include the name in the URL.  
 
 ### Parameters:
 
-`name` : The name identifying the name object. The name should be in the format username:name (for local names) or name.namespace (for names in a global namespace).  If the `name` parameter is provided then all other parameters are ignored.
+`name` : The name identifying the name object. The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).If the `name` parameter is provided then all other parameters are ignored.
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which signature chain should be searched. For single-user API mode the session should not be supplied, and the logged in signature chain will be used.  This parameter is ignored if `name` is provided.
 

@@ -27,6 +27,8 @@
 #include <Util/include/base64.h>
 #include <Util/include/debug.h>
 
+#include <regex>
+
 
 /* Global TAO namespace. */
 namespace TAO
@@ -40,10 +42,6 @@ namespace TAO
                                                    const std::string& strFullName,
                                                    const uint256_t& hashRegister)
         {
-            /* Don't allow : in name */
-            if(strFullName.find(":") != strFullName.npos)
-                throw APIException(-161, "Name contains invalid characters");
-
             /* Declare the contract for the response */
             TAO::Operation::Contract contract;
 
@@ -60,14 +58,32 @@ namespace TAO
             /* The name of the Name object */
             std::string strName = strFullName;
 
-            /* Check to see whether the name has a namesace suffix */
-            size_t nPos = strName.find_last_of(".");
+            /* Edge case check for name starting with @, which will pass the escape regex and is essentially a zero-length name*/
+            if(strName.find("@", 0) == 0)
+                throw APIException(-167, "Name cannot be less than 3 characters long");
 
-            if(nPos != strName.npos)
+            /* Check to see whether the name has a namesace suffix.  This will be the last instance of an @ that is not 
+               escaped with '!' */
+            std::regex search("[^!]@");
+            std::smatch match;
+            
+            /* Search the string for any occurrences of @ that are not escaped with '!'.  The first check here is ensure that the
+               string does not start with an @, which would pass the regex. */
+            if( std::regex_search( strName, match, search))
             {
+                /* If there is more than one match then error, as the unescaped @ is not allowed in the name */
+                if(match.size() > 1)
+                    throw APIException(-161, "Name contains invalid characters.  Please escape them with '\'");
+
+                /* Get the postition of the @ sign that we found */
+                size_t nPos = match.position(0)+1; 
+
                 /* If so then strip off the namespace so that we can check that this user has permission to use it */
                 strName = strName.substr(0, nPos);
                 strNamespace = strFullName.substr(nPos+1);
+
+                if(strNamespace.length() == 0)
+                    throw APIException(-94, "Invalid namespace");
 
                 /* Namespace hash is a SK256 hash of the namespace name */
                 hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
@@ -100,6 +116,9 @@ namespace TAO
                 else
                     throw APIException(-98, "An object with this name already exists for this user.");
             }
+
+            if(strName.length() < 3)
+                throw APIException(-167, "Name cannot be less than 3 characters long");
 
 
             /* Create the Name register object pointing to hashRegister */
@@ -170,41 +189,36 @@ namespace TAO
             TAO::Register::Object nameObject;
 
             /* In order to resolve an object name to a register address we also need to know the namespace.
-            *  This must either be provided by the caller explicitly in a namespace parameter or by passing
-            *  the name in the format namespace:name.  However since the default namespace is the username
-            *  of the sig chain that created the object, if no namespace is explicitly provided we will
-            *  also try using the username of currently logged in sig chain */
+            *  This must be provided by the caller by passing the name in the name@namespace format.  
+            *  If no namespace is explicitly provided we will search the names of currently logged in sig chain */
             std::string strName = strObjectName;
             std::string strNamespace = "";
 
             /* Declare the namespace hash to use for this object. */
             uint256_t hashNamespace = 0;
 
-            /* First check to see if the name parameter has been provided in either the userspace:name or name.namespace format */
-            size_t nNamespacePos = strName.find(".");
-            size_t nUserspacePos = strName.find(":");
-
-            if(nNamespacePos != std::string::npos)
+            /* First check to see if the name parameter has been provided in name@namespace format */
+            std::regex search("[^!]@");
+            std::smatch match;
+            
+            /* Search the string for any occurrences of @ that are not escaped */
+            if(std::regex_search( strName, match, search))
             {
-                /* If the name is in name.namespace format then split the namespace and name into separate variables */
+                /* If there is more than one match then error, as the unescaped @ is not allowed in the name */
+                if(match.size() > 1)
+                    throw APIException(-161, "Name contains invalid characters.  Please escape them with '\'");
+
+                /* Get the postition of the @ sign that we found */
+                size_t nNamespacePos = match.position(0) +1; 
+
+                /* If the name is in name@namespace format then split the namespace and name into separate variables */
                 strNamespace = strName.substr(nNamespacePos+1);
                 strName = strName.substr(0, nNamespacePos);
 
                 /* Namespace hash is a SK256 hash of the namespace name */
                 hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
             }
-
-            else if(nUserspacePos != std::string::npos)
-            {
-                /* If the name is in username:name format then split the username and name into separate variables */
-                strNamespace = strName.substr(0, nUserspacePos);
-                strName = strName.substr(nUserspacePos+1);
-
-                /* get the namespace hash from the user name */
-                hashNamespace = TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
-            }
-
-            /* If neither of those then check to see if there is an active session to access the sig chain */
+            /* If namespace is not provided then check to see if there is an active session to access the sig chain */
             else
             {
                 /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can
@@ -224,9 +238,7 @@ namespace TAO
             if(!TAO::Register::GetNameRegister(hashNamespace, strName, nameObject))
             {
                 if(strNamespace.empty())
-                    throw APIException(-101, debug::safe_printstr("Unknown name: ", strName));
-                else
-                    throw APIException(-101, debug::safe_printstr("Unknown name: ", strNamespace, ":", strName));
+                    throw APIException(-101, debug::safe_printstr("Unknown name: ", strObjectName));
             }
 
             /* Get the address of the Name object to return */

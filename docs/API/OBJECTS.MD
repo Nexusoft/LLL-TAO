@@ -122,7 +122,7 @@ Retrieves the schema / object definition of an object.
 
 ### Parameters:
 
-`name` : The name identifying the object. This is optional if the address is provided.  The name should be in username:name format.  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the object. This is optional if the address is provided.  The name can either be a local name or a namespaced name in the format name@namespace.  If a local name is used then the caller must be logged in (single user mode) or the the `session` parameter must be provided (multiuser mode).
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the name in order to deduce the register address of the object.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 

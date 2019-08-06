@@ -52,10 +52,7 @@ namespace TAO
             /* Extract the username and check for allowed characters / length */
             std::string strUsername = params["username"].get<std::string>();
 
-            /* Don't allow : and . */
-            if(strUsername.find(":") != strUsername.npos || strUsername.find(".") != strUsername.npos)
-                throw APIException(-160, "Username contains invalid characters");
-
+        
             /* Check for password parameter. */
             if(params.find("password") == params.end())
                 throw APIException(-128, "Missing password");

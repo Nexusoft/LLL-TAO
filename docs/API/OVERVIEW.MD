@@ -281,13 +281,13 @@ Error Codes
 | -158 | Value longer than maximum length (field) |
 | -159 | Values must be passed in as strings |
 | -160 | Username contains invalid characters |
-| -161 | Name contains invalid characters |
+| -161 | Name contains invalid characters.  Please escape them with '\' |
 | -162 | Name contains invalid characters |
 | -163 | Could not retrieve default NXS account to debit fees |
 | -164 | Account 'default' is not a NXS account |
 | -165 | Invalid address_to |
 | -166 | "Account is a NXS account.  Please use the finance API for accessing NXS accounts." |
-
+| -167 Name cannot be less than 3 characters long |
 
 
 

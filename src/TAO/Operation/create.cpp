@@ -26,6 +26,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 
+#include <regex>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -150,8 +152,23 @@ namespace TAO
                             /* Build vector to hold the genesis + name data for hashing */
                             std::vector<uint8_t> vData((uint8_t*)&hashNamespace, (uint8_t*)&hashNamespace + 32);
 
-                            /* Insert the name of from the Name object */
+                            /* The name of the Name object */
                             std::string strName = object.get<std::string>("name");
+
+                            /* Ensure the name is more than 2 characters */
+                            if( strName.length() < 2)
+                                return debug::error(FUNCTION, "name too short");
+
+                            /* Ensure name does not contain an @ sign unless preceeded by a ! */
+                            std::regex search("[^!]@");
+                            std::smatch match;
+                            
+                            /* Search the string for any occurrences of @ that are not escaped with '!'.  The first check here is ensure that the
+                               string does not start with an @, which would pass the regex. */
+                            if(strName.find("@", 0) == 0 || std::regex_search( strName, match, search))
+                                return debug::error(FUNCTION, "name contains unescaped @ sign");
+
+                            /* Insert the name of from the Name object */
                             vData.insert(vData.end(), strName.begin(), strName.end());
 
                             /* Hash this in the same was as the caller would have to generate hashAddress */
@@ -172,8 +189,21 @@ namespace TAO
                             if(!address.IsNamespace())
                                 return debug::error(FUNCTION, "address type mismatch with object type");
 
-                            /* Insert the name of from the Name object */
+                            /* The name of from the Namespace object */
                             std::string strNamespace = object.get<std::string>("namespace");
+
+                            /* Ensure the name is more than 2 characters */
+                            if( strNamespace.length() < 2)
+                                return debug::error(FUNCTION, "namespace name too short");
+
+                            /* Ensure name does not contain an @ sign unless preceeded by a ! */
+                            std::regex search("[^!]@");
+                            std::smatch match;
+                            
+                            /* Search the string for any occurrences of @ that are not escaped with '!'.  The first check here is ensure that the
+                               string does not start with an @, which would pass the regex. */
+                            if(strNamespace.find("@", 0) == 0 || std::regex_search( strNamespace, match, search))
+                                return debug::error(FUNCTION, "namespace name contains unescaped @ sign");
 
                             /* Hash this in the same was as the caller would have to generate hashAddress */
                             TAO::Register::Address name = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
