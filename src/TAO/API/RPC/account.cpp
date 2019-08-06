@@ -1097,12 +1097,14 @@ namespace TAO
             std::list<std::pair<Legacy::NexusAddress, int64_t> > listReceived;
             std::list<std::pair<Legacy::NexusAddress, int64_t> > listSent;
 
+            Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+
             wtx.GetAmounts(nGeneratedImmature, nGeneratedMature, listReceived, listSent, nFee, strSentAccount);
 
             bool fAllAccounts = (strAccount == std::string("*"));
 
             // Generated blocks assigned to account ""
-            if ((nGeneratedMature+nGeneratedImmature) != 0 && (fAllAccounts || strAccount == ""))
+            if ((nGeneratedMature + nGeneratedImmature) != 0 && (fAllAccounts || strAccount == ""))
             {
                 json::json entry;
                 entry["account"] = std::string("");
@@ -1113,17 +1115,18 @@ namespace TAO
 
                 const Legacy::TxOut& txout = wtx.vout[0];
                 Legacy::NexusAddress address;
-                std::vector<uint8_t> vchPubKey;
 
                 /* Get the Nexus address from the txout public key */
-                if (!ExtractAddress(txout.scriptPubKey, address))
+                if (ExtractAddress(txout.scriptPubKey, address))
+                {
+                    entry["address"] = address.ToString();
+                }
+                else
                 {
                     debug::log(0, FUNCTION, "Unknown transaction type found, txid ", wtx.GetHash().ToString());
 
-                    address = " unknown ";
+                    entry["address"] = "unknown";
                 }
-
-                entry["address"] = address.ToString();
 
                 /* The amount to output */
                 int64_t nAmount = nGeneratedImmature > 0 ? nGeneratedImmature : nGeneratedMature;
@@ -1159,35 +1162,22 @@ namespace TAO
                 ret.push_back(entry);
             }
 
-            std::map<Legacy::NexusAddress, std::string> mapExclude;
-            for(auto r : listReceived)
+            /* Transactions sent from wallet will likely include a change output.
+             *
+             * This output will show up as both sent and received. Sent because it is part of the output of the Send transaction,
+             * and received because the output pays funds to the wallet.
+             *
+             * Filter out this pair of entries from listSent and listReceived to remove them from output.
+             */
+            std::map<Legacy::NexusAddress, int64_t> mapExclude;
+
+            if (wtx.IsFromMe())
             {
-                /* Set default address string. */
-                std::string account = "";
-                if (Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(r.first))
-                    account = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(r.first);
-
-                /* Catch for blank being default. */
-                if(!config::GetBoolArg("-legacy"))
-                {
-                    if(account == "" || account == "*")
-                        account = "default";
-                }
-                else
-                {
-                    if(strSentAccount == "default")
-                        strSentAccount = "";
-
-                    if(account == "default" || account == "*")
-                        account = "";
-                }
-
-                /* Check if there are change transactions. */
-                if (strSentAccount == account)
+                for(auto r : listReceived)
                 {
                     auto result = std::find(listSent.begin(), listSent.end(), r);
                     if(result != listSent.end())
-                        mapExclude[r.first] = account;
+                        mapExclude[r.first] = r.second;
                 }
             }
 
@@ -1223,8 +1213,8 @@ namespace TAO
                         continue;
 
                     std::string account;
-                    if (Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(r.first))
-                        account = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(r.first);
+                    if (wallet.GetAddressBook().GetAddressBookMap().count(r.first))
+                        account = wallet.GetAddressBook().GetAddressBookMap().at(r.first);
 
                     if(account == "" || account == "*")
                         account = "default";
@@ -1270,10 +1260,9 @@ namespace TAO
                 nFrom = params[2];
 
             json::json ret = json::json::array();
-            Legacy::WalletDB walletdb(Legacy::Wallet::GetInstance().GetWalletFile());
 
             // First: get all Legacy::WalletTx and Wallet::AccountingEntry into a sorted-by-time multimap.
-            typedef std::multimap<int64_t, const Legacy::WalletTx* > TxItems;
+            typedef std::multimap<uint64_t, const Legacy::WalletTx* > TxItems;
             TxItems txByTime;
 
             // Note: maintaining indices in the database of (account,time) --> txid and (account, time) --> acentry
@@ -1285,7 +1274,7 @@ namespace TAO
             }
 
             // iterate backwards until we have nCount items to return:
-            for (TxItems::reverse_iterator it = txByTime.rbegin(); it != txByTime.rend(); ++it)
+            for (auto it = txByTime.crbegin(); it != txByTime.crend(); ++it)
             {
                 const Legacy::WalletTx* pwtx = (*it).second;
                 if (pwtx != 0)
