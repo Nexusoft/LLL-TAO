@@ -758,6 +758,8 @@ This will list off all of the transactions for the requested signature chain gen
 
 &nbsp;&nbsp;&nbsp;`token_name` : The name of the token that the transaction relates to.
 
+&nbsp;&nbsp;&nbsp;`reference` : For `DEBIT` and `CREDIT` transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
+
 }
 
 ****

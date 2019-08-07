@@ -154,7 +154,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken << TAO::Register::WILDCARD_ADDRESS << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << TAO::Register::WILDCARD_ADDRESS << uint64_t(500) << uint64_t(0);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -184,7 +184,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken << TAO::Register::WILDCARD_ADDRESS << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << TAO::Register::WILDCARD_ADDRESS << uint64_t(500) << uint64_t(0);
             tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashGenesis;
 
             //generate the prestates and poststates
@@ -304,12 +304,12 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::DEBIT) << hashToken << TAO::Register::WILDCARD_ADDRESS << uint64_t(500);
+            tx[0] << uint8_t(OP::CONDITION) << uint8_t(OP::DEBIT) << hashToken << TAO::Register::WILDCARD_ADDRESS << uint64_t(500) << uint64_t(0);
 
 
             //build condition requirement
             TAO::Operation::Stream compare;
-            compare << uint8_t(OP::DEBIT) << uint256_t(0) << hashAccount << uint64_t(200);
+            compare << uint8_t(OP::DEBIT) << uint256_t(0) << hashAccount << uint64_t(200) << uint64_t(0);
 
             //conditions
             tx[0] <= uint8_t(OP::GROUP);
@@ -383,7 +383,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200);
+            tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200) << uint64_t(0);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -452,7 +452,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200);
+            tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200) << uint64_t(0);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -629,7 +629,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
 
             //build condition requirement
             TAO::Operation::Stream compare;
-            compare << uint8_t(OP::DEBIT) << uint256_t(0) << hashAccount << uint64_t(200);
+            compare << uint8_t(OP::DEBIT) << uint256_t(0) << hashAccount << uint64_t(200) << uint64_t(0);
 
             //conditions
             tx[0] <= uint8_t(OP::GROUP);
@@ -706,7 +706,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200);
+            tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200) << uint64_t(0);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -775,7 +775,7 @@ TEST_CASE( "Validate Primitive Tests", "[operation]" )
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200);
+            tx[0] << uint8_t(OP::VALIDATE) << hashTx << uint32_t(0) << uint8_t(OP::DEBIT) << hashToken2 << hashAccount << uint64_t(200) << uint64_t(0);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());

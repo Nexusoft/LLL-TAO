@@ -126,7 +126,7 @@ namespace TAO
 
                         /* Build the transaction. */
                         tx[0] << uint8_t(TAO::Operation::OP::VALIDATE) << hashTx << uint32_t(0);
-                        tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashFrom << hashTo << nPrice;
+                        tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashFrom << hashTo << nPrice << uint64_t(0);
 
                         fFound = true;
 

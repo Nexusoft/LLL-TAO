@@ -33,6 +33,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 
 #include <Util/templates/datastream.h>
+#include <Util/include/string.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -152,6 +153,21 @@ namespace TAO
             if(nAmount > nCurrentBalance)
                 throw APIException(-69, "Insufficient funds");
 
+            /* The optional payment reference */
+            uint64_t nReference = 0;
+            if(params.find("reference") != params.end())
+            {
+                /* The reference as a string */
+                std::string strReference = params["reference"].get<std::string>();
+
+                /* Check that the reference contains only numeric characters before attempting to convert it */
+                if(!IsAllDigit(strReference) || !IsUINT64(strReference))
+                    throw APIException(-167, "Invalid reference");
+
+                /* Convert the reference to uint64 */
+                nReference = stoull(strReference);
+            }
+            
             /* Submit the payload object. */
             if(fLegacy)
             {
@@ -163,7 +179,7 @@ namespace TAO
             }
             else
             {
-                tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
+                tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
             }
 
             /* Add the conditional statements. */

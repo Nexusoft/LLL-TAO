@@ -529,6 +529,10 @@ namespace TAO
                         uint64_t nAmount = 0;
                         contract >> nAmount;
 
+                        /* Get the reference. */
+                        uint64_t nReference = 0;
+                        contract >> nReference;
+
                         /* Serialize the pre-state byte into contract. */
                         contract <<= uint8_t(TAO::Register::STATES::PRESTATE);
 

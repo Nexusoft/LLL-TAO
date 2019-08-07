@@ -302,7 +302,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100) << uint64_t(0);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -348,7 +348,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(500) << uint64_t(0);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -394,7 +394,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300) << uint64_t(0);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -434,7 +434,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
             tx.nTimestamp  = runtime::timestamp();
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(300) << uint64_t(0);
 
             //generate the prestates and poststates
             REQUIRE_FALSE(tx.Build());
@@ -459,7 +459,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[ledger]")
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100);
+            tx[0] << uint8_t(OP::DEBIT) << hashToken << hashAccount << uint64_t(100) << uint64_t(0);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());

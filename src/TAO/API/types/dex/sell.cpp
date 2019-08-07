@@ -110,11 +110,11 @@ namespace TAO
                 throw APIException(-17, "Failed to create transaction.");
 
             /* Transation payload. */
-            tx[0] << uint8_t(TAO::Operation::OP::CONDITION) << uint8_t(TAO::Operation::OP::DEBIT) << hashFrom << TAO::Register::WILDCARD_ADDRESS << nAmount;
+            tx[0] << uint8_t(TAO::Operation::OP::CONDITION) << uint8_t(TAO::Operation::OP::DEBIT) << hashFrom << TAO::Register::WILDCARD_ADDRESS << nAmount << uint64_t(0);
 
             /* Conditional Requirement. */
             TAO::Operation::Stream compare;
-            compare << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashTo << nPrice;
+            compare << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashTo << nPrice << uint64_t(0);
 
             /* Conditions. */
             tx[0] <= uint8_t(TAO::Operation::OP::GROUP);

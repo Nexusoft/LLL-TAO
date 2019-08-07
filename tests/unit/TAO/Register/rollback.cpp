@@ -672,7 +672,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
             tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
             //payload
-            tx[0] << uint8_t(OP::DEBIT) << hashRegister << hashAccount << uint64_t(500);
+            tx[0] << uint8_t(OP::DEBIT) << hashRegister << hashAccount << uint64_t(500) << uint64_t(0);
 
             //generate the prestates and poststates
             REQUIRE(tx.Build());
@@ -781,7 +781,7 @@ TEST_CASE( "Register Rollback Tests", "[register]")
                 tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
                 //payload
-                tx[0] << uint8_t(OP::DEBIT) << hashRegister << hashAccount << uint64_t(500);
+                tx[0] << uint8_t(OP::DEBIT) << hashRegister << hashAccount << uint64_t(500) << uint64_t(0);
 
                 //generate the prestates and poststates
                 REQUIRE(tx.Build());

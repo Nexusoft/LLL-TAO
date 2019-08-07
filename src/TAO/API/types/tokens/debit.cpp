@@ -141,8 +141,13 @@ namespace TAO
             if(nAmount > nCurrentBalance)
                 throw APIException(-69, "Insufficient funds");
 
+            /* The optional payment reference */
+            uint64_t nReference = 0;
+            if(params.find("reference") != params.end())
+                nReference = stoull(params["reference"].get<std::string>());
+
             /* Submit the payload object. */
-            tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
+            tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
 
             /* Add the fee */
             AddFee(tx);

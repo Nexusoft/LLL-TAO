@@ -188,6 +188,8 @@ Retrieving block data by height is only allowed if the daemon has been configure
 
 &nbsp;&nbsp;&nbsp;`token_name` : The name of the token that the transaction relates to.
 
+&nbsp;&nbsp;&nbsp;`reference` : For `DEBIT` and `CREDIT` transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
+
 }
 
 ****
@@ -349,6 +351,8 @@ Retrieving block data by height is only allowed if the daemon has been configure
 
 &nbsp;&nbsp;&nbsp;`token_name` : The name of the token that the transaction relates to.
 
+&nbsp;&nbsp;&nbsp;`reference` : For `DEBIT` and `CREDIT` transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
+
 }
 
 ****
@@ -459,6 +463,8 @@ Retrieves transaction data for a given transaction hash.
 &nbsp;&nbsp;&nbsp;`token` : the register address of the token that the transaction relates to.  Set to 0 for NXS transactions
 
 &nbsp;&nbsp;&nbsp;`token_name` : The name of the token that the transaction relates to.
+
+&nbsp;&nbsp;&nbsp;`reference` : For `DEBIT` and `CREDIT` transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 
 }
 

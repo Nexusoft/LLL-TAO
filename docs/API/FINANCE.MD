@@ -108,6 +108,8 @@ Deduct an amount of NXS from an account and send it to another account or legacy
 
 `address_to` : The register address of the account to send to. This is optional if the name is provided.  The address_to can also contain a legacy UTXO address if sending from a signature chain account to a legacy address.
 
+`reference` : This optional field allows callers to provide a reference, which the recipient can then use to relate the transaction to an order number, invoice number etc.  The reference is be a 64-bit unsigned integer in the range of 0 to 18446744073709551615
+
 
 ### Example:
 
@@ -406,6 +408,8 @@ This will list off all of the transactions related to a given account. You DO NO
 &nbsp;&nbsp;&nbsp;`token` : the register address of the token that the transaction relates to.  Set to 0 for NXS transactions
 
 &nbsp;&nbsp;&nbsp;`token_name` : The name of the token that the transaction relates to.
+
+&nbsp;&nbsp;&nbsp;`reference` : For `DEBIT` and `CREDIT` transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 
 }
 

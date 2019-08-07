@@ -556,6 +556,10 @@ namespace TAO
                         uint8_t nState = 0;
                         contract >>= nState;
 
+                        /* Get the reference. */
+                        uint64_t nReference = 0;
+                        contract >> nReference;
+
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
                             return debug::error(FUNCTION, "OP::DEBIT: register state not in pre-state");

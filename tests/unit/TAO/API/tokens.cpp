@@ -887,7 +887,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
         //payload
-        tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashToken << hashAccount << uint64_t(100000);
+        tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashToken << hashAccount << uint64_t(100000) << uint64_t(0);
 
         //generate the prestates and poststates
         REQUIRE(tx.Build());
@@ -1060,7 +1060,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
         tx.hashNextTx  = TAO::Ledger::STATE::HEAD;
 
         //payload
-        tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashToken << hashAccount << uint64_t(1000);
+        tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashToken << hashAccount << uint64_t(1000) << uint64_t(0);
 
         //generate the prestates and poststates
         REQUIRE(tx.Build());

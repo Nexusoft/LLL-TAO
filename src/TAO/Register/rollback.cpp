@@ -385,7 +385,7 @@ namespace TAO
                         contract >> hashTo;
 
                         /* Seek to end. */
-                        contract.Seek(8);
+                        contract.Seek(16);
 
                         /* Verify the first register code. */
                         uint8_t nState = 0;

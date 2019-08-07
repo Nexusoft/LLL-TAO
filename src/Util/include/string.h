@@ -191,4 +191,16 @@ std::string ToLower(const std::string& strIn);
 bool IsAllDigit(const std::string& strIn);
 
 
+/** IsUINT64
+*
+*  Checks if the string can be cast to a uint64.
+*
+*  @param[in] strIn The string to be checked.
+*
+*  @return true if the string can be cast to a uint64.
+*
+**/
+bool IsUINT64(const std::string& strIn);
+
+
 #endif

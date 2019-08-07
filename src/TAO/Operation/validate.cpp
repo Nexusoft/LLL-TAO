@@ -112,6 +112,10 @@ namespace TAO
                     uint64_t nAmount = 0;
                     condition >> nAmount;
 
+                    /* Get the reference */
+                    uint64_t nReference = 0;
+                    condition >> nReference;
+
                     /* Check that transfer is wildcard. */
                     if(hashTo != TAO::Register::WILDCARD_ADDRESS)
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");

@@ -43,7 +43,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
     TAO::Ledger::Transaction tx;
     tx.nTimestamp  = 989798;
     tx.hashGenesis = LLC::GetRand256();
-    tx[0] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount;
+    tx[0] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount << uint64_t(0);
 
     const Contract& caller = tx[0];
 
@@ -415,7 +415,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
 
 
     Stream ssCompare;
-    ssCompare << (uint8_t)OP::DEBIT << uint256_t(0) << uint256_t(0) << nAmount;
+    ssCompare << (uint8_t)OP::DEBIT << uint256_t(0) << uint256_t(0) << nAmount << uint64_t(0);
 
     contract.Clear();
     contract <= (uint8_t)OP::CALLER::OPERATIONS <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::BYTES <= ssCompare.Bytes();
@@ -426,7 +426,7 @@ TEST_CASE( "Conditions Tests", "[operation]" )
 
 
     ssCompare.SetNull();
-    ssCompare << (uint8_t)OP::DEBIT << uint256_t(0) << uint256_t(5) << nAmount;
+    ssCompare << (uint8_t)OP::DEBIT << uint256_t(0) << uint256_t(5) << nAmount << uint64_t(0);
 
     contract.Clear();
     contract <= (uint8_t)OP::CALLER::OPERATIONS <= (uint8_t)OP::CONTAINS <= (uint8_t)OP::TYPES::BYTES <= ssCompare.Bytes();
