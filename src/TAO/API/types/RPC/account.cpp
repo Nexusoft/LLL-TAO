@@ -723,9 +723,44 @@ namespace TAO
             if(strFrom != "default" && strFrom != "*" && !Find(wallet.GetAddressBook().GetAddressBookMap(), strFrom))
                 throw APIException(-5, debug::safe_printstr(strFrom, " from account doesn't exist."));
 
-            /* Nexus Address */
-            Legacy::NexusAddress address(params[1].get<std::string>());
-            if(!address.IsValid())
+            /* Nexus Address (supports register addresses) */
+            std::string strAddress = params[1].get<std::string>();
+            Legacy::NexusAddress address(strAddress);
+            uint256_t hashAccount = 0;
+
+            /* The script to contain the recipient */
+            Legacy::Script scriptPubKey;
+
+            if(IsRegisterAddress(strAddress))
+            {
+                hashAccount.SetHex(strAddress);
+
+                /* Get the account object. */
+                TAO::Register::Object account;
+                if(!LLD::Register->ReadState(hashAccount, account))
+                    throw APIException(-5, "Invalid Nexus address");
+
+                /* Parse the object register. */
+                if(!account.Parse())
+                    throw APIException(-5, "Invalid Nexus address");
+
+                /* Get the object standard. */
+                uint8_t nStandard = account.Standard();
+
+                /* Check the object standard. */
+                if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+                    throw APIException(-126, "Address is not for a NXS account");
+
+                /* Check the account is a NXS account */
+                if(account.get<uint256_t>("token") != 0)
+                    throw APIException(-126, "Address is not for a NXS account");
+
+                scriptPubKey.SetRegisterAddress(hashAccount);
+            }
+            else
+                scriptPubKey.SetNexusAddress(address);
+
+            if(hashAccount == 0 && !address.IsValid())
                 throw APIException(-5, "Invalid Nexus address");
 
             /* Amount */
@@ -792,13 +827,7 @@ namespace TAO
             /* Send */
             std::string strError;
             if(!fInsufficientBalance)
-            {
-                /* The script to contain the recipient */
-                Legacy::Script scriptPubKey;
-                scriptPubKey.SetNexusAddress(address);
-
                 strError = wallet.SendToNexusAddress(scriptPubKey, nAmount, wtx, false, nMinDepth);
-            }
 
             /* If used walletpassphrase to temporarily unlock wallet, return to prior state. */
             if(wallet.IsCrypted() && (fLocked || fMintOnly))
@@ -905,6 +934,7 @@ namespace TAO
                     /* Check the account is a NXS account */
                     if(account.get<uint256_t>("token") != 0)
                         throw APIException(-126, "Address is not for a NXS account");
+
                     scriptPubKey.SetRegisterAddress( hashAccount );
                 }
                 else
