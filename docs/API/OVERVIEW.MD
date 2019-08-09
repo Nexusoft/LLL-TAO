@@ -288,6 +288,7 @@ Error Codes
 | -165 | Invalid address_to |
 | -166 | "Account is a NXS account.  Please use the finance API for accessing NXS accounts." |
 | -167 | Invalid reference |
+| -168 | Invalid expiration time |
 
 
 

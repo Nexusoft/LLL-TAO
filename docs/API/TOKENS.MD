@@ -111,6 +111,8 @@ Deduct a token amount from a token's initial supply and send it to a token accou
 
 `reference` : This optional field allows callers to provide a reference, which the recipient can then use to relate the transaction to an order number, invoice number etc.  The reference is be a 64-bit unsigned integer in the range of 0 to 18446744073709551615
 
+`expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to reverse the transaction until after the expiration time.  
+
 ### Example:
 
 The following example shows the json payload for a debit of 10.5 ABC tokens (that itself was created by the sig chain logged into session "16953804956473956578") being sent to a token account identified by the name "jack:savings".  In the name_to field, "jack" refers to the username of the account holder and "savings" is their token account.  If jack is concerned about privacy he could have provided the register address of his token account instead
@@ -462,6 +464,8 @@ Deduct a token amount from a token account and send it to another token account.
 `address_to` : The register address of the token account to send to. This is optional if the name is provided.
 
 `reference` : This optional field allows callers to provide a reference, which the recipient can then use to relate the transaction to an order number, invoice number etc.  The reference is be a 64-bit unsigned integer in the range of 0 to 18446744073709551615
+
+`expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to reverse the transaction until after the expiration time.  
 
 ### Example:
 

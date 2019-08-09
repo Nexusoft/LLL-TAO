@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/conditions.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -127,6 +128,10 @@ namespace TAO
                NOTE we pass false for the fForceTransfer parameter so that the Transfer requires a corresponding Claim */
             tx[0] << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashTo << uint8_t(TAO::Operation::TRANSFER::CLAIM);
 
+            /* Add expiration condition if caller has passed an expires value */
+            if(params.find("expires") != params.end())
+                AddExpires( params, user->Genesis(), tx[0]);
+            
             /* Add the fee */
             AddFee(tx);
 
