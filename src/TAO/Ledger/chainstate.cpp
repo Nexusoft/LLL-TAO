@@ -125,8 +125,9 @@ namespace TAO
             }
 
             /* Check blocks and check transactions for consistency. */
-            /* Check last 20k blocks by default in order to remove any recent bad blocks */
-            if(config::GetArg("-checkblocks", 20000) > 0)
+            /* Check last 100 blocks by default in order to remove any recent bad blocks */
+            int64_t nCheckblocks = config::GetArg("-checkblocks", 1000);
+            if(nCheckblocks > 0)
             {
                 debug::log(0, FUNCTION, "Checking from height=", stateBest.load().nHeight, " hash=", stateBest.load().GetHash().ToString().substr(0, 20));
 
@@ -135,7 +136,7 @@ namespace TAO
                 Legacy::Transaction tx;
 
                 TAO::Ledger::BlockState stateReset = stateBest.load();
-                for(uint32_t i = 0; i < config::GetArg("-checkblocks", 0) && !config::fShutdown.load(); ++i)
+                for(uint32_t i = 0; i < nCheckblocks && !config::fShutdown.load(); ++i)
                 {
                     if(state == stateGenesis)
                         break;
@@ -185,7 +186,7 @@ namespace TAO
                         break;
 
                     /* Debug Output. */
-                    if(i % 100000 == 0)
+                    if(i % 100000 == 0 && i != 0)
                         debug::log(0, "Checked ", i, " Blocks...");
                 }
 
