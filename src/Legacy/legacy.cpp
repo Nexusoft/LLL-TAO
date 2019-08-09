@@ -203,7 +203,7 @@ namespace Legacy
 
 
         /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
-        if (nVersion > 1 && nVersion == (config::fTestNet ?
+        if (nVersion > 1 && nVersion <= (config::fTestNet ?
             TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 1 :
             TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 1) &&
             (nBlockTime - 3600) > (config::fTestNet ?
@@ -211,8 +211,8 @@ namespace Legacy
             TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 2]))
             return debug::error(FUNCTION, "version ", nVersion, " blocks have been obsolete for ",
                 (nUnifiedTimeStamp - (config::fTestNet ?
-                TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2] :
-                TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2])), " seconds");
+                TAO::Ledger::TESTNET_VERSION_TIMELOCK[nVersion - 1] :
+                TAO::Ledger::NETWORK_VERSION_TIMELOCK[nVersion - 1])), " seconds");
 
 
         /* Check the Current Version Block Time-Lock. */

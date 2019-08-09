@@ -125,7 +125,8 @@ namespace TAO
             }
 
             /* Check blocks and check transactions for consistency. */
-            if(config::GetArg("-checkblocks", 0) > 0)
+            /* Check last 20k blocks by default in order to remove any recent bad blocks */
+            if(config::GetArg("-checkblocks", 20000) > 0)
             {
                 debug::log(0, FUNCTION, "Checking from height=", stateBest.load().nHeight, " hash=", stateBest.load().GetHash().ToString().substr(0, 20));
 
