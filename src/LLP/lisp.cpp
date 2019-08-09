@@ -93,7 +93,7 @@ namespace LLP
     }
 
 
-    /* Asynchronously invokes the lispers.net API to obtain the EIDs and RLOCs used by this node 
+    /* Asynchronously invokes the lispers.net API to obtain the EIDs and RLOCs used by this node
     *  and caches them for future use */
     void CacheEIDs()
     {
@@ -101,8 +101,8 @@ namespace LLP
         std::thread([=]()
         {
             EIDS.clear();
-            
-            try 
+
+            try
             {
                 std::string strResponse = LispersAPIRequest( "data/database-mapping");
 
@@ -133,8 +133,8 @@ namespace LLP
                                 LLP::RLOC RLOC;
                                 RLOC.strInterface = rloc.value()["interface"];
                                 RLOC.strRLOCName = rloc.value()["rloc-name"];
-                                
-                                /* if nodes are behind NAT then their public IP will be supplied 
+
+                                /* if nodes are behind NAT then their public IP will be supplied
                                     in a translated-rloc field, otherwise the public IP will be
                                     supplied in the rloc field */
                                 if( rloc.value().count("translated-rloc") > 0 )
@@ -151,9 +151,9 @@ namespace LLP
                     }
                 }
             }
-            catch( TAO::API::APIException& e )
+            catch(const std::exception& e)
             {
-                /* we want to absorb an API exception here as the lispers.net API might not be available or 
+                /* we want to absorb an API exception here as the lispers.net API might not be available or
                    LISP might not be running.  In which case there are no EIDs to cache, so just log the error and move on. */
                 debug::log(3, FUNCTION, e.what());
             }
@@ -161,5 +161,5 @@ namespace LLP
 
     }
 
-    
+
 }
