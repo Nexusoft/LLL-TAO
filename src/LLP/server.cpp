@@ -71,7 +71,6 @@ namespace LLP
         if(fManager)
         {
             pAddressManager = new AddressManager(nPort);
-
             if(!pAddressManager)
                 debug::error(FUNCTION, "Failed to allocate memory for address manager on port ", nPort);
 
