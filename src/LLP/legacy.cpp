@@ -820,19 +820,13 @@ namespace LLP
             /* Skip if already in orphan queue. */
             if(!mapLegacyOrphans.count(block.hashPrevBlock))
             {
-                /* Check the checkpoint height. */
-                if(block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
-                    return false;
-
-                /* Add to the orphans map. */
-                mapLegacyOrphans[block.hashPrevBlock] = block;
-
-                /* Debug output. */
-                debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
-
                 /* Fast sync block requests. */
                 if(!TAO::Ledger::ChainState::Synchronizing())
                 {
+                    /* Check the checkpoint height. */
+                    if(block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
+                        return false;
+
                     /* Inventory requests. */
                     std::vector<CInv> vInv = { CInv(block.hashPrevBlock, LLP::MSG_BLOCK) };
 
@@ -842,6 +836,12 @@ namespace LLP
                     /* Run a getblocks to be sure. */
                     pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
                 }
+
+                /* Add to the orphans map. */
+                mapLegacyOrphans[block.hashPrevBlock] = block;
+
+                /* Debug output. */
+                debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
             }
 
             return true;
