@@ -398,10 +398,6 @@ int main(int argc, char** argv)
         }
 
 
-        /** Rebroadcast transactions. **/
-        Legacy::Wallet::GetInstance().ResendWalletTransactions();
-
-
         /** Initialize ChainState. */
         TAO::Ledger::ChainState::Initialize();
 

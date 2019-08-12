@@ -218,7 +218,8 @@ namespace LLP
                 PushMessage("ping", nNonce);
 
                 /* Rebroadcast transactions. */
-                Legacy::Wallet::GetInstance().ResendWalletTransactions();
+                if(!TAO::Ledger::ChainState::Synchronizing())
+                    Legacy::Wallet::GetInstance().ResendWalletTransactions();
             }
 
 
