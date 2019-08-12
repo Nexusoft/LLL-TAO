@@ -329,12 +329,6 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
 
 
-    /* Get the port for Legacy Server. */
-    nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? LEGACY_TESTNET_PORT : LEGACY_MAINNET_PORT));
-
-    /* Initialize the Legacy Server. */
-    LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(nPort);
-
     /* Get the port for the Core API Server. */
     nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
 
@@ -350,6 +344,7 @@ int main(int argc, char** argv)
         config::GetBoolArg("-listen", true),
         false,
         false);
+
 
     /* Startup timer stats. */
     uint32_t nElapsed = 0;
@@ -433,6 +428,15 @@ int main(int argc, char** argv)
         {
              LEGACY_MINING_SERVER  = LLP::CreateMiningServer<LLP::LegacyMiner>();
         }
+
+
+        /* Get the port for Legacy Server. */
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet ? LEGACY_TESTNET_PORT : LEGACY_MAINNET_PORT));
+
+
+        /* Initialize the Legacy Server. */
+        LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(nPort);
+
 
         /* cache the EIDs and RLOCs if using LISP so that we don't need to hit the lispers.net API
            to obtain this data after this point.  NOTE that we do this in a separate thread because the API call

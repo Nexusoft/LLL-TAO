@@ -1313,7 +1313,9 @@ namespace Legacy
 
                 /* Validate the transaction, then process rebroadcast on it */
                 if (wtx.CheckTransaction())
+                {
                     wtx.RelayWalletTransaction();
+                }
                 else
                     debug::log(0, FUNCTION, "CheckTransaction failed for transaction ", wtx.GetHash().ToString());
             }
