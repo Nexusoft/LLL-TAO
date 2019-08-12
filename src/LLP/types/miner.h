@@ -35,28 +35,6 @@ namespace LLP
      **/
     class Miner : public Connection
     {
-
-    protected:
-
-        /* Externally set coinbase to be set on mined blocks */
-        Legacy::Coinbase CoinbaseTx;
-
-        /* Used for synchronization */
-        std::mutex MUTEX;
-
-        /** The map to hold the list of blocks that are being mined. */
-        std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
-
-        /** The current best block. **/
-        std::atomic<uint32_t> nBestHeight;
-
-        /** Subscribe to display how many blocks connection subscribed to **/
-        std::atomic<uint32_t> nSubscribed;
-
-        /** The current channel mining for. */
-        std::atomic<uint32_t> nChannel;
-
-
         enum
         {
             /** DATA PACKETS **/
@@ -104,11 +82,29 @@ namespace LLP
             CLOSE    = 254
         };
 
+    private:
+
+        /* Externally set coinbase to be set on mined blocks */
+        Legacy::Coinbase CoinbaseTx;
+
+        /* Used for synchronization */
+        std::mutex MUTEX;
+
+        /** The map to hold the list of blocks that are being mined. */
+        std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
+
+        /** The current best block. **/
+        std::atomic<uint32_t> nBestHeight;
+
+        /** Subscribe to display how many blocks connection subscribed to **/
+        std::atomic<uint32_t> nSubscribed;
+
+        /** The current channel mining for. */
+        std::atomic<uint32_t> nChannel;
+
         /* Used as an ID iterator for generating unique hashes from same block transactions. */
         uint32_t nBlockIterator;
 
-
-    private:
         /** the mining key for block rewards to send **/
         Legacy::ReserveKey *pMiningKey;
 
@@ -178,8 +174,7 @@ namespace LLP
 
         /** check_best_height
          *
-         *  Checks the current height index and updates best height. It will clear
-         *  the block map if the height is outdated.
+         *  Checks the current height index and updates best height. Clears the block map if the height is outdated.
          *
          *  @return Returns true if best height was outdated, false otherwise.
          *
@@ -242,6 +237,18 @@ namespace LLP
           *
           **/
          bool is_locked();
+
+
+         /** is_prime_mod
+          *
+          *  Helper function used for prime channel modification rule in loop.
+          *  Returns true if the condition is satisfied, false otherwise.
+          *
+          *  @param[in] nBitMask The bitMask for the highest order bits of a block hash to check for to satisfy rule.
+          *  @param[in] pBlock The block to check.
+          *
+          **/
+          bool is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock);
 
     };
 }

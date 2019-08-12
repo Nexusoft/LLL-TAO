@@ -114,6 +114,7 @@ namespace Legacy
         newBlock.nBits          = GetNextTargetRequired(prevBlockState, nChannel, false);
         newBlock.nNonce         = 1;
 
+        /* Update the time for the newly created block. */
         newBlock.UpdateTime();
 
         return true;

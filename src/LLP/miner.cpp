@@ -475,11 +475,16 @@ namespace LLP
 
             case SUBSCRIBE:
             {
+                /* Don't allow mining llp requests for proof of stake channel */
+                if(nChannel.load() == 0)
+                    return debug::error(FUNCTION, "Cannot subscribe to Stake Channel.");
+
+                /* Get the number of subscribed blocks. */
                 nSubscribed = convert::bytes2uint(PACKET.DATA);
 
-                /** Don't allow mining llp requests for proof of stake channel **/
-                if(nSubscribed.load() == 0 || nChannel.load() == 0)
-                    return false;
+                /* Check for zero blocks. */
+                if(nSubscribed.load() == 0)
+                    return debug::error(FUNCTION, "No blocks subscribed.");
 
                 /* Debug output. */
                 debug::log(2, FUNCTION, "Subscribed to ", nSubscribed.load(), " Blocks");
@@ -555,12 +560,7 @@ namespace LLP
                 /* Make sure there is no inconsistencies in validating block. */
                 if(!validate_block(hashMerkle))
                 {
-                    /* Set best height to 0 to force miners to request new blocks, since we know that the current block
-                       will fail to be submitted */
-                    nBestHeight = 0;
-
                     respond(BLOCK_REJECTED);
-
                     return true;
                 }
 
@@ -600,6 +600,7 @@ namespace LLP
     }
 
 
+    /* Sends a packet response. */
     void Miner::respond(uint8_t nHeader, const std::vector<uint8_t>& vData)
     {
         Packet RESPONSE;
@@ -612,7 +613,7 @@ namespace LLP
     }
 
 
-    /*  Checks the current height index and updates best height. It will clear the block map if the height is outdated. */
+    /* Checks the current height index and updates best height. Clears the block map if the height is outdated. */
     bool Miner::check_best_height()
     {
 
@@ -670,19 +671,13 @@ namespace LLP
     /*  Adds a new block to the map. */
    TAO::Ledger::Block *Miner::new_block()
    {
-       /*  Make a copy of the base block before making the hash unique for this request*/
-       uint1024_t hashProof = 0;
-
-       /* If the primemod flag is set, take the hashProof down to 1017-bit to maximize prime ratio as much as possible. */
+       /* If the primemod flag is set, take the hash proof down to 1017-bit to maximize prime ratio as much as possible. */
        uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
 
 
        /* Create Tritium blocks if version 7 active. */
        if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7))
        {
-           TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
-           pBlock->SetNull();
-
            /* Attempt to unlock the account. */
            if(TAO::API::users->Locked())
            {
@@ -708,62 +703,36 @@ namespace LLP
                return nullptr;
            }
 
+           /* Allocate memory for the new block. */
+           TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
+
            /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-           while(true)
+           while(TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *pBlock, ++nBlockIterator))
            {
-               /* Create the Tritium block with the corresponding sigchain and pin. */
-               if(!TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *pBlock, ++nBlockIterator))
-               {
-                   debug::error(FUNCTION, "Failed to create a new Tritium Block.");
-                   return nullptr;
-               }
-
-               /* Update the time. */
-               pBlock->UpdateTime();
-
-               /* Get the proof hash. */
-               hashProof = pBlock->ProofHash();
-
-               /* Skip if not prime channel or version less than 5. */
-               if(nChannel.load() != 1 || pBlock->nVersion < 5)
-                   break;
-
-               /* Exit loop when the block is above minimum prime origins and less than 1024-bit hashes */
-               if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !hashProof.high_bits(nBitMask))
+               /* Break out of loop when block is ready for prime mod. */
+               if(is_prime_mod(nBitMask, pBlock))
                    break;
            }
 
            /* Output debug info and return the newly created block. */
-           debug::log(2, FUNCTION, "Created new Tritium Block ", hashProof.SubString(), " nVersion=", pBlock->nVersion);
+           debug::log(2, FUNCTION, "Created new Tritium Block ", pBlock->ProofHash().SubString(), " nVersion=", pBlock->nVersion);
            return pBlock;
 
        }
 
        /* Create Legacy blocks if version 7 not active. */
        Legacy::LegacyBlock *pBlock = new Legacy::LegacyBlock();
-       pBlock->SetNull();
 
        /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-       while(true)
+       while(Legacy::CreateBlock(*pMiningKey, CoinbaseTx, nChannel.load(), ++nBlockIterator, *pBlock))
        {
-           /* Create the Legacy block with the corresponding coinbase mining key. */
-           if(!Legacy::CreateBlock(*pMiningKey, CoinbaseTx, nChannel.load(), ++nBlockIterator, *pBlock))
-               debug::error(FUNCTION, "Failed to create a new Legacy Block.");
-
-           /* Get the proof hash. */
-           hashProof = pBlock->ProofHash();
-
-           /* Skip if not prime channel or version less than 5 */
-           if(nChannel.load() != 1 || pBlock->nVersion < 5)
-               break;
-
-            /* Exit loop when the block is above minimum prime origins and less than 1024-bit hashes */
-            if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !hashProof.high_bits(nBitMask))
+           /* Break out of loop when block is ready for prime mod. */
+           if(is_prime_mod(nBitMask, pBlock))
                 break;
        }
 
        /* Output debug info and return the newly created block. */
-       debug::log(2, FUNCTION, "Created new Legacy Block ", hashProof.SubString(), " nVersion=", pBlock->nVersion);
+       debug::log(2, FUNCTION, "Created new Legacy Block ", pBlock->ProofHash().SubString(), " nVersion=", pBlock->nVersion);
        return pBlock;
    }
 
@@ -772,15 +741,21 @@ namespace LLP
   bool Miner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
   {
 
+      TAO::Ledger::Block *pBaseBlock = mapBlocks[hashMerkleRoot];
+
+      /* Update block with the nonce and time. */
+      if(pBaseBlock)
+      {
+          pBaseBlock->nNonce = nNonce;
+          pBaseBlock->UpdateTime();
+      }
+
       /* If the block dynamically casts to a legacy block, validate the legacy block. */
       {
-          Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(mapBlocks[hashMerkleRoot]);
+          Legacy::LegacyBlock *pBlock = dynamic_cast<Legacy::LegacyBlock *>(pBaseBlock);
 
           if(pBlock)
           {
-              pBlock->nNonce = nNonce;
-              pBlock->UpdateTime();
-
               if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
                   return debug::error(FUNCTION, "Unable to Sign Legacy Block ", hashMerkleRoot.SubString());
 
@@ -789,13 +764,10 @@ namespace LLP
       }
 
       /* If the block dynamically casts to a tritium block, validate the tritium block. */
-      TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(mapBlocks[hashMerkleRoot]);
+      TAO::Ledger::TritiumBlock *pBlock = dynamic_cast<TAO::Ledger::TritiumBlock *>(pBaseBlock);
 
       if(pBlock)
       {
-          pBlock->nNonce = nNonce;
-          pBlock->UpdateTime();
-
           /* Check that the account is unlocked for minting */
           if(!TAO::API::users->CanMint())
               return debug::error(FUNCTION, "Account has not been unlocked for minting");
@@ -878,11 +850,7 @@ namespace LLP
 
                /* Check the Proof of Work for submitted block. */
                if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
-               {
-                   debug::log(2, FUNCTION, "Invalid Work for Legacy Block ", hashMerkleRoot.SubString());
-
-                   return false;
-               }
+                   return debug::error(FUNCTION, "Invalid Work for Legacy Block ", hashMerkleRoot.SubString());
 
                /* Block is valid - Tell the wallet to keep this key. */
                pMiningKey->KeepKey();
@@ -921,10 +889,7 @@ namespace LLP
            }
 
            if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
-           {
-               debug::log(0, FUNCTION, "Generated block is stale");
-               return false;
-           }
+               return debug::error(FUNCTION, "Generated block is stale");
 
            /* Attempt to get the sigchain. */
            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = TAO::API::users->GetAccount(0);
@@ -936,10 +901,7 @@ namespace LLP
 
            /* Process the block and relay to network if it gets accepted into main chain. */
            if(!TritiumNode::Process(*pBlock, nullptr))
-           {
-               debug::log(0, FUNCTION, "Generated block not accepted");
-               return false;
-           }
+               return debug::error(FUNCTION, "Generated block not accepted");
 
            return true;
        }
@@ -958,6 +920,26 @@ namespace LLP
 
        return Legacy::Wallet::GetInstance().IsLocked();
    }
+
+
+   /*  Helper function used for prime channel modification rule in loop.
+    *  Returns true if the condition is satisfied, false otherwise. */
+    bool Miner::is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock)
+    {
+        /* Get the proof hash. */
+        uint1024_t hashProof = pBlock->ProofHash();
+
+        /* Skip if not prime channel or version less than 5 */
+        if(nChannel.load() != 1 || pBlock->nVersion < 5)
+            return true;
+
+         /* Exit loop when the block is above minimum prime origins and less than 1024-bit hashes */
+         if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !hashProof.high_bits(nBitMask))
+             return true;
+
+        /* Otherwise keep looping. */
+        return false;
+    }
 
 
 }

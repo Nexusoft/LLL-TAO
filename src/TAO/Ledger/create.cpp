@@ -391,6 +391,9 @@ namespace TAO
                 blockCache[nChannel].store(block);
             }
 
+            /* Update the time for the newly created block. */
+            block.UpdateTime();
+
             return true;
         }
 
