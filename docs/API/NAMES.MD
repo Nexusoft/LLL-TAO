@@ -135,6 +135,8 @@ This will transfer ownership of an namespace .  This is a generic endpoint requi
 
 `destination` : The genesis hash of the signature chain to transfer the the namespace to. This is optional if the username is provided.
 
+`expires` : This optional field allows callers to specify an expiration for the transfer transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be claimed by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to reverse the transaction until after the expiration time.
+
 
 ### Return value JSON object:
 ```
@@ -423,6 +425,8 @@ This will transfer ownership of a name .  Only names created in a global namespa
 `username` : The username identifying the user account (sig-chain) to transfer the name to. This is optional if the destination is provided.
 
 `destination` : The genesis hash of the signature chain to transfer the the name to. This is optional if the username is provided.
+
+`expires` : This optional field allows callers to specify an expiration for the transfer transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be claimed by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to reverse the transaction until after the expiration time.
 
 
 ### Return value JSON object:

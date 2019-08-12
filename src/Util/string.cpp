@@ -248,3 +248,12 @@ bool IsAllDigit(const std::string& strIn)
         return !std::isdigit(c);
     }) == strIn.end();
 }
+
+/*  Checks if the string can be cast to a uint64 */
+bool IsUINT64(const std::string& strIn)
+{
+    char* end;
+    errno = 0;
+    uint64_t v = strtoull( strIn.c_str(), &end, 10 );
+    return errno == 0 && *end == '\0' && end != strIn.c_str() && v <= std::numeric_limits<uint64_t>::max();
+}

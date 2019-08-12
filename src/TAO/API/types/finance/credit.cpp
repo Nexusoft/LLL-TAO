@@ -156,16 +156,15 @@ namespace TAO
                         uint8_t nStandard = debit.Base();
 
                         /* In order to know how to process the credit we need to know whether it is a split payment or not.
-                        for split payments the hashTo object will be an Asset, and the owner of that asset must be a token.
+                        For split payments the hashTo object will be an Asset, and the owner of that asset must be a token.
                         If this is the case, then the caller must supply both an account to receive their payment, and the
                         token account that proves their entitlement to the split of the debit payment. */
 
-                        /* Check for the owner. If this is the current user then it must be a payment to an account/token and
-                        therefore not a split payment. */
-                        if(debit.hashOwner == user->Genesis())
+                        /* Check to see whether this is a simple debit to an account */
+                        if(debit.Base() == TAO::Register::OBJECTS::ACCOUNT)
                         {
-                            /* Check the object base to see whether it is an account. */
-                            if(debit.Base() == TAO::Register::OBJECTS::ACCOUNT)
+                            /* Check that the debit was made to an account that we own */
+                            if(debit.hashOwner == user->Genesis())
                             {
                                 /* If the user requested a particular object type then check it is that type */
                                 std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";

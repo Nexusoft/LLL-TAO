@@ -511,8 +511,6 @@ namespace LLP
 
             /* Process the block. */
             return LegacyNode::Process(block, this);
-
-            //return true;
         }
 
 
@@ -676,6 +674,7 @@ namespace LLP
                 PushMessage("getdata", vInv);
         }
 
+
         /* Get the Data for either a transaction or a block. */
         else if(message == "getdata")
         {
@@ -823,6 +822,7 @@ namespace LLP
                 PushMessage("inv", vInv);
         }
 
+
         /* TODO: Change this Algorithm. */
         else if(message == "getaddr")
         {
@@ -833,13 +833,12 @@ namespace LLP
 
             /* Add the best 1000 (or less) addresses. */
             std::vector<LegacyAddress> vSend;
-            uint32_t nCount = std::min((uint32_t)vAddr.size(), 1000u);
-
+            const uint32_t nCount = std::min((uint32_t)vAddr.size(), 1000u);
             for(uint32_t n = 0; n < nCount; ++n)
                 vSend.push_back(vAddr[n]);
 
             /* Send the addresses off. */
-            if(nCount)
+            if(nCount > 0)
                 PushMessage("addr", vSend);
         }
 
@@ -852,15 +851,11 @@ namespace LLP
     {
         LOCK(PROCESSING_MUTEX);
 
-        /* The number of allowable maximum consecutive failures. */
         const uint32_t nMaxFailures = 500;
 
         /* Check if the block is valid. */
-        uint1024_t hash = block.GetHash();
-
-        /* Check if the block is valid. */
         if(!block.Check())
-            return debug::error(FUNCTION, "invalid block: ", hash.SubString(), "height: ", block.nHeight);
+            return debug::error(FUNCTION, "invalid block: ", block.GetHash().SubString(), " height: ", block.nHeight);
 
         /* Check for orphan. */
         if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
@@ -877,6 +872,10 @@ namespace LLP
                 /* Run a getblocks to be sure. */
                 pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
             }
+
+            /* Increment the consecutive orphans. */
+            if(pnode)
+                ++pnode->nConsecutiveOrphans;
 
             /* Detect large orphan chains and ask for new blocks from origin again. */
             if(pnode && pnode->nConsecutiveOrphans >= nMaxFailures)
@@ -895,10 +894,6 @@ namespace LLP
             {
                 /* Add to the map of orphans. */
                 mapLegacyOrphans[block.hashPrevBlock] = block;
-
-                /* Increment the consecutive orphans. */
-                if(pnode)
-                    ++pnode->nConsecutiveOrphans;
 
                 /* Debug output. */
                 debug::log(0, FUNCTION, "ORPHAN height=", block.nHeight, " prev=", block.hashPrevBlock.ToString().substr(0, 20));
@@ -956,7 +951,6 @@ namespace LLP
             /* Update the last time received. */
             nLastTimeReceived = runtime::timestamp();
 
-
             /* Reset the consecutive failures and orphans. */
             if(pnode)
             {
@@ -964,6 +958,8 @@ namespace LLP
                 pnode->nConsecutiveOrphans = 0;
             }
         }
+
+        uint1024_t hash = block.GetHash();
 
         /* Process orphan if found. */
         while(mapLegacyOrphans.count(hash))

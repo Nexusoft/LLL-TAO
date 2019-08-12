@@ -98,17 +98,17 @@ namespace TAO
             else if(params.find("address_proof") != params.end())
                 hashProof.SetHex(params["address_proof"].get<std::string>());
 
-            /* Read the previous transaction. */
-            TAO::Ledger::Transaction txPrev;
-            if(!LLD::Ledger->ReadTx(hashTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+            /* Read the debit transaction that is being credited. */
+            TAO::Ledger::Transaction txDebit;
+            if(!LLD::Ledger->ReadTx(hashTx, txDebit, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-40, "Previous transaction not found.");
 
             /* Loop through all transactions. */
             int32_t nCurrent = -1;
-            for(uint32_t nContract = 0; nContract < txPrev.Size(); ++nContract)
+            for(uint32_t nContract = 0; nContract < txDebit.Size(); ++nContract)
             {
                 /* Get the contract. */
-                const TAO::Operation::Contract& contract = txPrev[nContract];
+                const TAO::Operation::Contract& contract = txDebit[nContract];
 
                 /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
                 contract.Reset();
@@ -178,12 +178,11 @@ namespace TAO
                    If this is the case, then the caller must supply both an account to receive their payment, and the
                    token account that proves their entitlement to the split of the debit payment. */
 
-                /* Check for the owner. If this is the current user then it must be a payment to an account/token and
-                   therefore not a split payment. */
-                if(objectTo.hashOwner == user->Genesis())
+                /* Check to see whether this is a simple debit to an account or token */
+                if(objectTo.Base() == TAO::Register::OBJECTS::ACCOUNT || objectTo.Base() == TAO::Register::OBJECTS::TOKEN)
                 {
-                    /* Check the object base to see whether it is an account. */
-                    if(objectTo.Base() == TAO::Register::OBJECTS::ACCOUNT)
+                    /* Check that the debit was made to an account that we own */
+                    if(objectTo.hashOwner == user->Genesis())
                     {
                         /* If the user requested a particular object type then check it is that type */
                         std::string strType = params.find("type") != params.end() ? params["type"].get<std::string>() : "";

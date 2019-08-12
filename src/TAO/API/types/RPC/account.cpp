@@ -15,9 +15,9 @@ ________________________________________________________________________________
 
 #include <Legacy/include/constants.h>
 
-#include <Legacy/wallet/wallet.h>
 #include <Legacy/include/money.h>
 #include <Legacy/include/evaluate.h>
+#include <Legacy/types/script.h>
 
 #include <Legacy/wallet/accountingentry.h>
 #include <Legacy/wallet/output.h>
@@ -486,19 +486,12 @@ namespace TAO
              return Legacy::SatoshisToAmount(nAmount);
         }
 
-        int64_t GetAccountBalance(Legacy::WalletDB& walletdb, const std::string& strAccount, int nMinDepth)
+        int64_t GetAccountBalance(const std::string& strAccount, int nMinDepth)
         {
             int64_t nBalance = 0;
             Legacy::Wallet::GetInstance().BalanceByAccount(strAccount, nBalance, nMinDepth);
 
             return nBalance;
-        }
-
-
-        int64_t GetAccountBalance(const std::string& strAccount, int nMinDepth)
-        {
-            Legacy::WalletDB walletdb(Legacy::Wallet::GetInstance().GetWalletFile());
-            return GetAccountBalance(walletdb, strAccount, nMinDepth);
         }
 
         /* getbalance [account] [minconf=1]
@@ -573,50 +566,128 @@ namespace TAO
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
-            if(fHelp || params.size() < 3 || params.size() > 5)
+            if(wallet.IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
+                return std::string(
+                    "move <fromaccount> <toaccount> <amount> [minconf=1] [comment] [passphrase]"
+                    "\n - Move from one account in your wallet to another."
+                    "\n - <amount> is a real and is rounded to the nearest 0.000001"
+                    "\n - <fromaccount> can be a valid account name (including default), or use empty string if no preference"
+                    "\n - <toaccount> must be a valid account name"
+                    "\n - requires wallet unlocked or [passphrase] provided"
+                    "\n - [passphrase] temporarily unlocks wallet for send operation only");
+
+            if(!wallet.IsCrypted() && (fHelp || params.size() < 3 || params.size() > 5))
                 return std::string(
                     "move <fromaccount> <toaccount> <amount> [minconf=1] [comment]"
-                    " - Move from one account in your wallet to another.");
+                    "\n - Move from one account in your wallet to another."
+                    "\n - <amount> is a real and is rounded to the nearest 0.000001"
+                    "\n - <fromaccount> can be a valid account name (including default), or use empty string if no preference"
+                    "\n - <toaccount> must be a valid account name");
 
+            /* Account to MoveFrom */
             std::string strFrom = AccountFromValue(params[0]);
-            std::string strTo = AccountFromValue(params[1]);
-            int64_t nAmount = Legacy::AmountToSatoshis(params[2]);
+            if(strFrom == "")
+                strFrom = "*"; //replace empty string with wildcard (to retrieve correct wallet balance)
 
-            // unused parameter, used to be nMinDepth, keep type-checking it though
-            if(params.size() > 3 && !params[3].is_number())
-                throw APIException(-3, "Invalid minconf value");
-
-            std::string strComment;
-            if(params.size() > 4)
-                strComment = params[4].get<std::string>();
-
-            /* Check for users. */
-            if((strFrom != "default" || strFrom != "") && !Find(wallet.GetAddressBook().GetAddressBookMap(), strFrom))
+            if(strFrom != "default" && strFrom != "*" && !Find(wallet.GetAddressBook().GetAddressBookMap(), strFrom))
                 throw APIException(-5, debug::safe_printstr(strFrom, " from account doesn't exist."));
 
-            if((strTo != "default" || strTo != "") && !Find(wallet.GetAddressBook().GetAddressBookMap(), strTo))
+            /* Account to MoveTo */
+            std::string strTo = AccountFromValue(params[1]);
+
+            if(!Find(wallet.GetAddressBook().GetAddressBookMap(), strTo))
                 throw APIException(-5, debug::safe_printstr(strTo, " to account doesn't exist."));
-
-            /* Build the from transaction. */
-            Legacy::WalletTx wtx;
-            wtx.strFromAccount = strFrom;
-
-            /* Watch for encryption. */
-            if(wallet.IsLocked())
-                throw APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
-
-            /* Check the account balance. */
-            int64_t nBalance = GetAccountBalance(strFrom, 1);
-            if(nAmount > nBalance)
-                throw APIException(-6, "Account has insufficient funds");
 
             Legacy::NexusAddress address = wallet.GetAddressBook().GetAccountAddress(strTo);
 
-            /* The script to contain the recipient */
-            Legacy::Script scriptPubKey;
-            scriptPubKey.SetNexusAddress(address);
+            /* Amount */
+            int64_t nAmount = Legacy::AmountToSatoshis(params[2]);
+            if(nAmount < Legacy::MIN_TXOUT_AMOUNT)
+                throw APIException(-101, "Send amount too small");
 
-            std::string strError = wallet.SendToNexusAddress(scriptPubKey, nAmount, wtx, false, 1);
+            /* Min number of confirmations for transactions to source NXS */
+            uint32_t nMinDepth = 1;
+            if(params.size() > 3)
+                nMinDepth = params[3];
+
+            /* Wallet comments (allow for empty strings as placeholders when only want to provide passphrase) */
+            Legacy::WalletTx wtx;
+
+            if(params.size() > 4 && !params[4].is_null() && params[4].get<std::string>() != "")
+                wtx.mapValue["comment"] = params[4].get<std::string>();
+
+            /* Wallet passphrase */
+            SecureString strWalletPass;
+            strWalletPass.reserve(100);
+
+            if(params.size() > 5 && !params[5].is_null() && params[5].get<std::string>() != "")
+                strWalletPass = params[5].get<std::string>().c_str();
+
+            /* Save the current lock state of wallet */
+            bool fLocked = wallet.IsLocked();
+            bool fMintOnly = Legacy::fWalletUnlockMintOnly;
+
+            /* Must provide passphrase to send if wallet locked or unlocked for minting only */
+            if(wallet.IsCrypted() && (fLocked || fMintOnly))
+            {
+                if(strWalletPass.length() == 0)
+                    throw APIException(-13, "Error: Wallet is locked.");
+
+                /* Unlock returns true if already unlocked, but passphrase must be validated for mint only so must lock first */
+                if(fMintOnly)
+                {
+                    wallet.Lock();
+                    Legacy::fWalletUnlockMintOnly = false; //Assures temporary unlock is a full unlock for send
+                }
+
+                /* Handle temporary unlock (send false for fStartStake so stake minter does not start during send)
+                 * An incorrect passphrase will leave the wallet locked, even if it was previously unlocked for minting.
+                 */
+                if(!wallet.Unlock(strWalletPass, 0, false))
+                    throw APIException(-14, "Error: The wallet passphrase entered was incorrect.");
+            }
+
+            bool fInsufficientBalance = false;
+
+            /* Check the account balance.
+             * This calls wallet BalanceByAccount() which does not support "" for strFrom, why it was changed to * above
+             */
+            int64_t nBalance = GetAccountBalance(strFrom, nMinDepth);
+            if(nAmount > nBalance)
+                fInsufficientBalance = true;
+
+            /* Assign from account into wtx only when there is a specific one requested, send will use this */
+            if(strFrom != "*")
+                wtx.strFromAccount = strFrom;
+
+            /* Send */
+            std::string strError;
+            if(!fInsufficientBalance)
+            {
+                /* The script to contain the recipient */
+                Legacy::Script scriptPubKey;
+                scriptPubKey.SetNexusAddress(address);
+
+                strError = wallet.SendToNexusAddress(scriptPubKey, nAmount, wtx, false, nMinDepth);
+            }
+
+            /* If used walletpassphrase to temporarily unlock wallet, return to prior state. */
+            if(wallet.IsCrypted() && (fLocked || fMintOnly))
+            {
+                wallet.Lock();
+
+                if(fMintOnly)
+                {
+                    wallet.Unlock(strWalletPass, 0); //restarts the stake minter
+
+                    Legacy::fWalletUnlockMintOnly = true;
+                }
+            }
+
+            /* Only throw errors from insufficient balance or SendToNexusAddress after returning to prior lock state */
+            if(fInsufficientBalance)
+                throw APIException(-6, "Account has insufficient funds");
+
             if(strError != "")
                 throw APIException(-4, strError);
 
@@ -634,20 +705,62 @@ namespace TAO
                 return std::string(
                     "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to] [passphrase]"
                     "\n - <amount> is a real and is rounded to the nearest 0.000001"
+                    "\n - <fromaccount> can be a valid account name (including default), or use empty string if no preference"
                     "\n - requires wallet unlocked or [passphrase] provided"
                     "\n - [passphrase] temporarily unlocks wallet for send operation only");
 
             if(!wallet.IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
                 return std::string(
                     "sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]"
-                    "\n - <amount> is a real and is rounded to the nearest 0.000001");
+                    "\n - <amount> is a real and is rounded to the nearest 0.000001"
+                    "\n - <fromaccount> can be a valid account name (including default), or use empty string if no preference");
 
             /* Account to SendFrom */
-            std::string strAccount = AccountFromValue(params[0]);
+            std::string strFrom = AccountFromValue(params[0]);
+            if(strFrom == "")
+                strFrom = "*"; //replace empty string with wildcard (to retrieve correct wallet balance)
 
-            /* Nexus Address */
-            Legacy::NexusAddress address(params[1].get<std::string>());
-            if(!address.IsValid())
+            if(strFrom != "default" && strFrom != "*" && !Find(wallet.GetAddressBook().GetAddressBookMap(), strFrom))
+                throw APIException(-5, debug::safe_printstr(strFrom, " from account doesn't exist."));
+
+            /* Nexus Address (supports register addresses) */
+            std::string strAddress = params[1].get<std::string>();
+            Legacy::NexusAddress address(strAddress);
+            uint256_t hashAccount = 0;
+
+            /* The script to contain the recipient */
+            Legacy::Script scriptPubKey;
+
+            if(IsRegisterAddress(strAddress))
+            {
+                hashAccount.SetHex(strAddress);
+
+                /* Get the account object. */
+                TAO::Register::Object account;
+                if(!LLD::Register->ReadState(hashAccount, account))
+                    throw APIException(-5, "Invalid Nexus address");
+
+                /* Parse the object register. */
+                if(!account.Parse())
+                    throw APIException(-5, "Invalid Nexus address");
+
+                /* Get the object standard. */
+                uint8_t nStandard = account.Standard();
+
+                /* Check the object standard. */
+                if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+                    throw APIException(-126, "Address is not for a NXS account");
+
+                /* Check the account is a NXS account */
+                if(account.get<uint256_t>("token") != 0)
+                    throw APIException(-126, "Address is not for a NXS account");
+
+                scriptPubKey.SetRegisterAddress(hashAccount);
+            }
+            else
+                scriptPubKey.SetNexusAddress(address);
+
+            if(hashAccount == 0 && !address.IsValid())
                 throw APIException(-5, "Invalid Nexus address");
 
             /* Amount */
@@ -662,7 +775,6 @@ namespace TAO
 
             /* Wallet comments (allow for empty strings as placeholders when only want to provide passphrase) */
             Legacy::WalletTx wtx;
-            wtx.strFromAccount = strAccount;
 
             if(params.size() > 4 && !params[4].is_null() && params[4].get<std::string>() != "")
                 wtx.mapValue["comment"] = params[4].get<std::string>();
@@ -704,20 +816,18 @@ namespace TAO
             bool fInsufficientBalance = false;
 
             /* Check funds */
-            int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
+            int64_t nBalance = GetAccountBalance(strFrom, nMinDepth);
             if(nAmount > nBalance)
                 fInsufficientBalance = true;
+
+            /* Assign from account into wtx only when there is a specific one requested, send will use this */
+            if(strFrom != "*")
+                wtx.strFromAccount = strFrom;
 
             /* Send */
             std::string strError;
             if(!fInsufficientBalance)
-            {
-                /* The script to contain the recipient */
-                Legacy::Script scriptPubKey;
-                scriptPubKey.SetNexusAddress(address);
-
                 strError = wallet.SendToNexusAddress(scriptPubKey, nAmount, wtx, false, nMinDepth);
-            }
 
             /* If used walletpassphrase to temporarily unlock wallet, return to prior state. */
             if(wallet.IsCrypted() && (fLocked || fMintOnly))
@@ -824,6 +934,7 @@ namespace TAO
                     /* Check the account is a NXS account */
                     if(account.get<uint256_t>("token") != 0)
                         throw APIException(-126, "Address is not for a NXS account");
+
                     scriptPubKey.SetRegisterAddress( hashAccount );
                 }
                 else
@@ -1178,12 +1289,14 @@ namespace TAO
             std::list<std::pair<Legacy::Script, int64_t> > listReceived;
             std::list<std::pair<Legacy::Script, int64_t> > listSent;
 
+            Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+
             wtx.GetAmounts(nGeneratedImmature, nGeneratedMature, listReceived, listSent, nFee, strSentAccount);
 
             bool fAllAccounts = (strAccount == std::string("*"));
 
             // Generated blocks assigned to account ""
-            if((nGeneratedMature+nGeneratedImmature) != 0 && (fAllAccounts || strAccount == ""))
+            if((nGeneratedMature + nGeneratedImmature) != 0 && (fAllAccounts || strAccount == ""))
             {
                 json::json entry;
                 entry["account"] = std::string("");
@@ -1195,7 +1308,6 @@ namespace TAO
                 const Legacy::TxOut& txout = wtx.vout[0];
                 Legacy::NexusAddress address;
                 uint256_t hashRegister;
-                std::vector<uint8_t> vchPubKey;
 
                 /* Get the Nexus address from the txout public key */
                 if(ExtractAddress(txout.scriptPubKey, address))
@@ -1206,7 +1318,7 @@ namespace TAO
                 {
                     debug::log(0, FUNCTION, "Unknown transaction type found, txid ", wtx.GetHash().ToString());
 
-                    address = " unknown ";
+                    address = "unknown";
                 }
 
                 /* The amount to output */
@@ -1242,39 +1354,22 @@ namespace TAO
                 ret.push_back(entry);
             }
 
-            std::map<Legacy::NexusAddress, std::string> mapExclude;
-            for(auto r : listReceived)
+            /* Transactions sent from wallet will likely include a change output.
+             *
+             * This output will show up as both sent and received. Sent because it is part of the output of the Send transaction,
+             * and received because the output pays funds to the wallet.
+             *
+             * Filter out this pair of entries from listSent and listReceived to remove them from output.
+             */
+            std::map<Legacy::NexusAddress, int64_t> mapExclude;
+
+            if (wtx.IsFromMe())
             {
-                Legacy::NexusAddress address;
-                if(!Legacy::ExtractAddress( r.first, address))
-                    continue;
-
-                /* Set default address string. */
-                std::string account = "";
-                if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(address))
-                    account = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(address);
-
-                /* Catch for blank being default. */
-                if(!config::GetBoolArg("-legacy"))
-                {
-                    if(account == "" || account == "*")
-                        account = "default";
-                }
-                else
-                {
-                    if(strSentAccount == "default")
-                        strSentAccount = "";
-
-                    if(account == "default" || account == "*")
-                        account = "";
-                }
-
-                /* Check if there are change transactions. */
-                if(strSentAccount == account)
+                for(auto r : listReceived)
                 {
                     auto result = std::find(listSent.begin(), listSent.end(), r);
                     if(result != listSent.end())
-                        mapExclude[address] = account;
+                        mapExclude[r.first] = r.second;
                 }
             }
 
@@ -1322,8 +1417,8 @@ namespace TAO
                         continue;
 
                     std::string account;
-                    if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(address))
-                        account = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(address);
+                    if(wallet.GetAddressBook().GetAddressBookMap().count(address))
+                        account = wallet.GetAddressBook().GetAddressBookMap().at(address);
 
                     if(account == "" || account == "*")
                         account = "default";
@@ -1369,10 +1464,9 @@ namespace TAO
                 nFrom = params[2];
 
             json::json ret = json::json::array();
-            Legacy::WalletDB walletdb(Legacy::Wallet::GetInstance().GetWalletFile());
 
             // First: get all Legacy::WalletTx and Wallet::AccountingEntry into a sorted-by-time multimap.
-            typedef std::multimap<int64_t, const Legacy::WalletTx* > TxItems;
+            typedef std::multimap<uint64_t, const Legacy::WalletTx* > TxItems;
             TxItems txByTime;
 
             // Note: maintaining indices in the database of (account,time) --> txid and (account, time) --> acentry
@@ -1384,7 +1478,7 @@ namespace TAO
             }
 
             // iterate backwards until we have nCount items to return:
-            for(TxItems::reverse_iterator it = txByTime.rbegin(); it != txByTime.rend(); ++it)
+            for(auto it = txByTime.crbegin(); it != txByTime.crend(); ++it)
             {
                 const Legacy::WalletTx* pwtx = (*it).second;
                 if(pwtx != 0)
@@ -1565,29 +1659,47 @@ namespace TAO
                     "gettransaction <txid>"
                     " - Get detailed information about <txid>");
 
+            Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+
             uint512_t hash;
             hash.SetHex(params[0].get<std::string>());
 
             json::json ret;
 
-            if(!Legacy::Wallet::GetInstance().mapWallet.count(hash))
+            if(!wallet.mapWallet.count(hash))
                 throw APIException(-5, "Invalid or non-wallet transaction id");
-            const Legacy::WalletTx& wtx = Legacy::Wallet::GetInstance().mapWallet[hash];
+            const Legacy::WalletTx& wtx = wallet.mapWallet[hash];
 
-            int64_t nCredit = wtx.GetCredit();
-            int64_t nDebit = wtx.GetDebit();
-            int64_t nNet = nCredit - nDebit;
+            /* Coinstake is "from me" so stake reward ends up in nFee. Need to handle that type of tx separately */
+            if(wtx.IsCoinStake())
+            {
+                int64_t nReward = wtx.GetValueOut() - wtx.GetDebit();
+                ret["amount"] = Legacy::SatoshisToAmount(nReward);
+            }
+            else
+            {
+                /* Receive tx will have credit for received amount with debit of zero.
+                 *
+                 * Send tx will have debit for full spent balance with credit for change. Net sent amount is the difference,
+                 * which includes the fee paid.
+                 *
+                 * Fee for sent tx is difference between full value out (amount sent plus change) and the full spent balance.
+                 */
+                int64_t nCredit = wtx.GetCredit();
+                int64_t nDebit = wtx.GetDebit();
+                int64_t nNet = nCredit - nDebit;  //includes fee
 
-            int64_t nFee = (wtx.IsFromMe() ? wtx.GetValueOut() - nDebit : 0);
+                int64_t nFee = (wtx.IsFromMe() ? wtx.GetValueOut() - nDebit : 0);
 
-            ret["amount"] = Legacy::SatoshisToAmount(nNet - nFee);
-            if(wtx.IsFromMe())
-                ret["fee"] = Legacy::SatoshisToAmount(nFee);
+                ret["amount"] = Legacy::SatoshisToAmount(nNet - nFee);
+                if(wtx.IsFromMe())
+                    ret["fee"] = Legacy::SatoshisToAmount(nFee);
+            }
 
-            WalletTxToJSON(Legacy::Wallet::GetInstance().mapWallet[hash], ret);
+            WalletTxToJSON(wallet.mapWallet[hash], ret);
 
             json::json details = json::json::array();
-            ListTransactionsJSON(Legacy::Wallet::GetInstance().mapWallet[hash], "*", 0, false, details);
+            ListTransactionsJSON(wallet.mapWallet[hash], "*", 0, false, details);
             ret["details"] = details;
 
             return ret;

@@ -382,6 +382,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_json.o \
         build/API_global.o \
         build/API_cmd.o \
+		build/API_conditions.o \
 		build/Operation_append.o \
 		build/Operation_claim.o \
 		build/Operation_coinbase.o \

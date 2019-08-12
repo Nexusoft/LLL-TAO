@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/conditions.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -33,6 +34,9 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 
 #include <Util/templates/datastream.h>
+#include <Util/include/string.h>
+
+using namespace TAO::Operation;
 
 /* Global TAO namespace. */
 namespace TAO
@@ -152,43 +156,39 @@ namespace TAO
             if(nAmount > nCurrentBalance)
                 throw APIException(-69, "Insufficient funds");
 
-            /* Submit the payload object. */
+            /* The optional payment reference */
+            uint64_t nReference = 0;
+            if(params.find("reference") != params.end())
+            {
+                /* The reference as a string */
+                std::string strReference = params["reference"].get<std::string>();
+
+                /* Check that the reference contains only numeric characters before attempting to convert it */
+                if(!IsAllDigit(strReference) || !IsUINT64(strReference))
+                    throw APIException(-167, "Invalid reference");
+
+                /* Convert the reference to uint64 */
+                nReference = stoull(strReference);
+            }
+            
+            /* Build the transaction payload object. */
             if(fLegacy)
             {
-                //legacy payload
+                /* legacy payload */
                 Legacy::Script script;
                 script.SetNexusAddress(legacyAddress);
 
-                tx[0] << (uint8_t)TAO::Operation::OP::LEGACY << hashFrom << nAmount << script;
+                tx[0] << (uint8_t)OP::LEGACY << hashFrom << nAmount << script;
             }
             else
             {
-                tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount;
+                /* Build the OP:DEBIT */
+                tx[0] << (uint8_t)OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
+            
+                /* Add expiration condition if caller has passed an expires value */
+                if(params.find("expires") != params.end())
+                    AddExpires( params, user->Genesis(), tx[0]);
             }
-
-            /* Add the conditional statements. */
-
-            //TODO: @paulscreen this below is a simple conditional statement for reversing a transaction after expiration
-            //do some testing on it and add this conditional statement to debits and transfers and set an "expires" field for these
-            //API calls
-
-            //return to self if claim is 1 hour after transaction was broadcast
-            //tx[0] <= uint8_t(OP::GROUP);
-            //tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::EQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= user->Genesis();
-            //tx[0] <= uint8_t(OP::AND);
-            //tx[0] <= uint8_t(OP::THIS::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(3600);
-            //tx[0] <= uint8_t(OP::LESSTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
-            //tx[0] <= uint8_t(OP::UNGROUP);
-
-            //tx[0] <= uint8_t(OP::OR);
-
-            //claim transaction if time is 1 hour before transaction broadcast
-            //tx[0] <= uint8_t(OP::GROUP);
-            //tx[0] <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::NOTEQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= user->Genesis();
-            //tx[0] <= uint8_t(OP::AND);
-            //tx[0] <= uint8_t(OP::THIS::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(3600);
-            //tx[0] <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
-            //tx[0] <= uint8_t(OP::UNGROUP);
 
             /* Add the fee */
             AddFee(tx);

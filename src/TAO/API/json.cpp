@@ -555,6 +555,10 @@ namespace TAO
                         uint64_t  nAmount = 0;
                         contract >> nAmount;
 
+                        /* Get the reference */
+                        uint64_t nReference = 0;
+                        contract >> nReference;
+
                         /* Output the json information. */
                         ret["OP"]       = "DEBIT";
                         ret["from"]     = hashFrom.ToString();
@@ -582,6 +586,9 @@ namespace TAO
 
                         /* Add the amount to the response */
                         ret["amount"]  = (double) nAmount / pow(10, GetDigits(object));
+
+                        /* Add the reference to the response */
+                        ret["reference"] = nReference;
 
                         /* Get the object standard. */
                         uint8_t nStandard = object.Standard();
@@ -674,6 +681,29 @@ namespace TAO
                         std::string strToken = hashToken != 0 ? Names::ResolveName(hashCaller, hashToken) : "NXS";
                         if(!strToken.empty())
                             ret["token_name"] = strToken;
+
+                        /* The debit transaction being credited */
+                        TAO::Ledger::Transaction txDebit;
+
+                        /* Read the corresponding debit transaction to look up the reference field */
+                        if(LLD::Ledger->ReadTx(hashTx, txDebit))
+                        {
+                            /* Get the contract. */
+                            const TAO::Operation::Contract& debitContract = txDebit[nID];
+
+                            /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
+                            debitContract.Reset();
+
+                            /* Seek to reference. */
+                            debitContract.Seek(73);
+
+                            /* The reference */
+                            uint64_t nReference = 0;
+                            debitContract >> nReference;
+
+                            ret["reference"] = nReference;
+
+                        }
 
                         break;
                     }
