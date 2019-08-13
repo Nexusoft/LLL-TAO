@@ -268,7 +268,7 @@ namespace LLP
                     }
 
 #ifdef WIN32
-                    /* Disconnect if the socket was disconnected by peer (This happens on Windows only) */
+                    /* Disconnect if the socket was disconnected by peer (need for Windows) */
                     if((POLLFDS.at(nIndex).revents & POLLHUP))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_PEER);

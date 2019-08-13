@@ -116,13 +116,11 @@ namespace TAO
                 obj["eids"] = jsonEIDs;
             }
 
-
-
-
-
-            obj["testnet"] = config::fTestNet.load();
+            obj["testnet"]       = config::fTestNet.load();
             obj["keypoololdest"] = (int64_t)Legacy::Wallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
-            obj["keypoolsize"] = Legacy::Wallet::GetInstance().GetKeyPool().GetKeyPoolSize();
+            obj["keypoolsize"]   = Legacy::Wallet::GetInstance().GetKeyPool().GetKeyPoolSize();
+            obj["paytxfee"]      = Legacy::SatoshisToAmount(Legacy::TRANSACTION_FEE);
+
             if(Legacy::Wallet::GetInstance().IsCrypted())
             {
                 obj["locked"] = Legacy::Wallet::GetInstance().IsLocked();

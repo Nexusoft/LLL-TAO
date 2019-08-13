@@ -71,7 +71,6 @@ namespace LLP
         if(fManager)
         {
             pAddressManager = new AddressManager(nPort);
-
             if(!pAddressManager)
                 debug::error(FUNCTION, "Failed to allocate memory for address manager on port ", nPort);
 
@@ -262,9 +261,9 @@ namespace LLP
     {
         /* List of connections to return. */
         uint32_t nLatency   = std::numeric_limits<uint32_t>::max();
+
         int16_t nRetThread = -1;
         int16_t nRetIndex  = -1;
-
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
             /* Get the data threads. */

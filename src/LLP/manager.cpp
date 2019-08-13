@@ -41,7 +41,6 @@ namespace LLP
     , nPort(port)
     {
         pDatabase = new LLD::AddressDB(port, LLD::FLAGS::CREATE | LLD::FLAGS::FORCE);
-
         if(pDatabase)
             return;
 
@@ -406,13 +405,13 @@ namespace LLP
         /* Check if the DNS needs update. */
         uint64_t nLastUpdate = 0;
         if(!config::GetBoolArg("-nodns")
-           && (!pDatabase->ReadLastUpdate(nLastUpdate) ||
-                nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::unifiedtimestamp()))
+            && (!pDatabase->ReadLastUpdate(nLastUpdate) ||
+                nLastUpdate + config::GetArg("-dnsupdate", 86400) <= runtime::timestamp()))
         {
             /* Log out that DNS is updating. */
             debug::log(0, "DNS cache is out of date by ",
-                (runtime::unifiedtimestamp() - (nLastUpdate + config::GetArg("-dnsupdate", 86400))),
-                " seconds... refreshing");
+                (runtime::timestamp() - (nLastUpdate + config::GetArg("-dnsupdate", 86400))),
+                " seconds for port ", nPort, "... refreshing");
 
             /* Add the DNS seeds for this server. */
             runtime::timer timer;
@@ -422,7 +421,8 @@ namespace LLP
             AddSeedAddresses(config::fTestNet.load());
 
             /* Write that DNS was updated. */
-            pDatabase->WriteLastUpdate();
+            if(!pDatabase->WriteLastUpdate())
+                debug::error(FUNCTION, "failed to update DNS timer");
 
             /* Log the time it took to resolve DNS items. */
             debug::log(0, "DNS cache updated in ",
