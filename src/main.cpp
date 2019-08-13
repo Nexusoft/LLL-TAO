@@ -413,7 +413,7 @@ int main(int argc, char** argv)
                 return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
             else if (nLoadWalletRet == Legacy::DB_NEEDS_RESCAN)
             {
-                debug::log(0, FUNCTION, "Wallet.dat contains invalid transactions, rescanning");
+                debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning...");
 
                 Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
             }
