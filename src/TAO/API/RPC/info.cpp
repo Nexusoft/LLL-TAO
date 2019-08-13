@@ -116,16 +116,15 @@ namespace TAO
                 obj["eids"] = jsonEIDs;
             }
 
-
-
-
-            obj["testnet"] = config::fTestNet;
+            obj["testnet"]       = config::fTestNet;
             obj["keypoololdest"] = (int64_t)Legacy::Wallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
-            obj["keypoolsize"] = Legacy::Wallet::GetInstance().GetKeyPool().GetKeyPoolSize();
-            if (Legacy::Wallet::GetInstance().IsCrypted())
+            obj["keypoolsize"]   = Legacy::Wallet::GetInstance().GetKeyPool().GetKeyPoolSize();
+            obj["paytxfee"]      = Legacy::SatoshisToAmount(Legacy::TRANSACTION_FEE);
+
+            if(Legacy::Wallet::GetInstance().IsCrypted())
             {
                 obj["locked"] = Legacy::Wallet::GetInstance().IsLocked();
-                if( !Legacy::Wallet::GetInstance().IsLocked())
+                if(!Legacy::Wallet::GetInstance().IsLocked())
                 {
                     if( (uint64_t) Legacy::Wallet::GetInstance().GetWalletUnlockTime() > 0 )
                         obj["unlocked_until"] = (uint64_t) Legacy::Wallet::GetInstance().GetWalletUnlockTime() ;

@@ -741,9 +741,19 @@ namespace TAO
             *  @return JSON containing the information.
             *
             **/
-            /*  keypoolrefill
-            *   Fills the keypool, requires wallet passphrase to be set */
             json::json KeypoolRefill(const json::json& params, bool fHelp);
+
+
+            /** SetTxFee
+            *
+            *  Sets the default transaction fee to be used
+            *
+            *  @param[in] params Parameters array passed by the caller.
+            *
+            *  @return JSON containing the information.
+            *
+            **/
+            json::json SetTxFee(const json::json& params, bool fHelp);
 
 
             /** WalletPassphrase
