@@ -12,10 +12,10 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
 #include <LLP/types/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
-
 #include <LLP/types/tritium.h>
 #include <LLP/types/legacy.h>
 
@@ -288,8 +288,9 @@ namespace LLP
         /* Get the incoming packet. */
         Packet PACKET = this->INCOMING;
 
-        /* TODO: add a check for the number of connections and return false if there
-            are no connections */
+        /* Make sure the mining server has a connection. */
+        if(MINING_SERVER && MINING_SERVER->GetConnectionCount() == 0)
+            return debug::error(FUNCTION, "No active connections.");
 
         /* No mining when synchronizing. */
         if(TAO::Ledger::ChainState::Synchronizing())
@@ -499,8 +500,19 @@ namespace LLP
                     check_best_height();
                 }
 
+                /* Get the best block state. */
+                TAO::Ledger::BlockState best = TAO::Ledger::ChainState::stateBest.load();
+
                 /* Get the mining reward amount for the channel currently set. */
-                uint64_t nReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
+                uint64_t nReward = TAO::Ledger::GetCoinbaseReward(best, nChannel.load(), 0);
+
+                /* Check to make sure the reward is greater than zero. */
+                if(nReward == 0)
+                {
+                    best.print();
+                    return debug::error(FUNCTION, "No coinbase reward.");
+                }
+
 
                 /* Respond with BLOCK_REWARD message. */
                 respond(BLOCK_REWARD, convert::uint2bytes64(nReward));
