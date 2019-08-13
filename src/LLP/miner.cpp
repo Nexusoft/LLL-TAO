@@ -119,6 +119,7 @@ namespace LLP
         /* Handle any DDOS Packet Filters. */
         switch(EVENT)
         {
+            /* Handle for a Packet Header Read. */
             case EVENT_HEADER:
             {
                 if(fDDOS)
@@ -175,9 +176,11 @@ namespace LLP
                 }
             }
 
+
             /* Handle for a Packet Data Read. */
             case EVENT_PACKET:
                 return;
+
 
             /* On Generic Event, Broadcast new block if flagged. */
             case EVENT_GENERIC:
@@ -234,6 +237,7 @@ namespace LLP
                 }
                 return;
             }
+
 
             /* On Connect Event, Assign the Proper Daemon Handle. */
             case EVENT_CONNECT:
@@ -295,23 +299,24 @@ namespace LLP
         if(is_locked())
             return debug::error(FUNCTION, "Cannot mine while wallet is locked.");
 
-
+        /* Obtain timelock and timestamp. */
         uint64_t nTimeLock = TAO::Ledger::CurrentTimelock();
         uint64_t nTimeStamp = runtime::unifiedtimestamp();
 
+        /* Print a message explaining how many minutes until timelock activation. */
         if(nTimeStamp < nTimeLock)
         {
             uint64_t nSeconds =  nTimeLock - nTimeStamp;
 
-            /* Print a message explaining how many minutes until timelock activation. */
             if(nSeconds % 60 == 0)
                 debug::log(0, FUNCTION, "Timelock ", TAO::Ledger::CurrentVersion(), " activation in ", nSeconds / 60, " minutes. ");
         }
 
-
-        /* Set the Mining Channel this Connection will Serve Blocks for. */
+        /* Evaluate the packet header to determine what to do. */
         switch(PACKET.HEADER)
         {
+
+            /* Set the Mining Channel this Connection will Serve Blocks for. */
             case SET_CHANNEL:
             {
                 nChannel = convert::bytes2uint(PACKET.DATA);
@@ -334,6 +339,7 @@ namespace LLP
                 return true;
             }
 
+
             /* Return a Ping if Requested. */
             case PING:
             {
@@ -341,20 +347,24 @@ namespace LLP
                 return true;
             }
 
+
+            /* Setup a coinbase reward for potentially many outputs. */
             case SET_COINBASE:
             {
                 /* The maximum coinbase reward for a block. */
                 uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
 
+                /* Byte 0 is the number of records. */
+                uint8_t nSize = PACKET.DATA[0];
+
                 /* Bytes 1 - 8 is the Pool Fee for that Round. */
                 uint64_t nPoolFee  = convert::bytes2uint64(PACKET.DATA, 1);
 
+                /* Iterator offset for map deserialization. */
+                uint32_t nIterator = 9;
+
                 /* The map of outputs for this coinbase transaction. */
                 std::map<std::string, uint64_t> vOutputs;
-
-                /* First byte of Serialization Packet is the Number of Records. */
-                uint32_t nIterator = 9;
-                uint8_t nSize = PACKET.DATA[0];
 
                 /* Loop through every Record. */
                 for(uint8_t nIndex = 0; nIndex < nSize; ++nIndex)
@@ -363,9 +373,9 @@ namespace LLP
                     uint32_t nLength = PACKET.DATA[nIterator];
 
                     /* Get the string address for coinbase output. */
-                    std::string strAddress = convert::bytes2string(
-                        std::vector<uint8_t>(PACKET.DATA.begin() + nIterator + 1,
-                                             PACKET.DATA.begin() + nIterator + 1 + nLength));
+                    std::vector<uint8_t> vAddress = std::vector<uint8_t>(
+                                             PACKET.DATA.begin() + nIterator + 1,
+                                             PACKET.DATA.begin() + nIterator + 1 + nLength);
 
                     /* Get the value for the coinbase output. */
                     uint64_t nValue = convert::bytes2uint64(
@@ -373,7 +383,12 @@ namespace LLP
                                              PACKET.DATA.begin() + nIterator + 1 + nLength + 8));
 
                     /* Validate the address */
-                    Legacy::NexusAddress address(strAddress);
+                    Legacy::NexusAddress address;
+                    address.SetPubKey(vAddress);
+
+                    /* Get the string address. */
+                    std::string strAddress = convert::bytes2string(vAddress);
+
                     if(!address.IsValid())
                     {
                         /* Disconnect immediately if an invalid address is provided. */
@@ -402,10 +417,15 @@ namespace LLP
 
                 /* Send a coinbase set message. */
                 respond(COINBASE_SET);
+
                 debug::log(2, "Coinbase Set");
+
+                if(config::GetArg("-verbose", 0 ) >= 2)
+                    CoinbaseTx.Print();
 
                 return true;
             }
+
 
             /* Clear the Block Map if Requested by Client. */
             case CLEAR_MAP:
@@ -431,6 +451,7 @@ namespace LLP
                 return true;
             }
 
+
             /* Respond to a miner if it is a new round. */
             case GET_ROUND:
             {
@@ -442,8 +463,7 @@ namespace LLP
                     fNewRound = check_best_height();
                 }
 
-                /* If height was outdated, respond with old round, otherwise
-                 * respond with a new round */
+                /* If height was outdated, respond with old round, otherwise respond with a new round */
                 if(fNewRound)
                     respond(NEW_ROUND);
                 else
@@ -453,6 +473,7 @@ namespace LLP
             }
 
 
+            /* Respond with the block reward in a given round. */
             case GET_REWARD:
             {
                 /* Check for the best block height. */
@@ -473,6 +494,7 @@ namespace LLP
             }
 
 
+            /* Set the number of subscribed blocks. */
             case SUBSCRIBE:
             {
                 /* Don't allow mining llp requests for proof of stake channel */
@@ -570,7 +592,7 @@ namespace LLP
             }
 
 
-            /** Check Block Command: Allows Client to Check if a Block is part of the Main Chain. **/
+            /* Allows a client to check if a block is part of the main chain. */
             case CHECK_BLOCK:
             {
                 uint1024_t hashBlock;
