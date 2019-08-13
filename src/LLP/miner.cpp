@@ -333,7 +333,7 @@ namespace LLP
 
                     /* Don't allow Mining LLP Requests for Proof of Stake, or any other Channel. */
                     default:
-                    return debug::error(2, FUNCTION, "Invalid PoW Channel (", nChannel.load(), ")");
+                    return debug::error(FUNCTION, "Invalid PoW Channel (", nChannel.load(), ")");
                 }
 
                 return true;
@@ -353,6 +353,13 @@ namespace LLP
             {
                 /* The maximum coinbase reward for a block. */
                 uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
+
+                /* Make sure there is a coinbase reward. */
+                if(nMaxValue == 0)
+                {
+                    respond(COINBASE_FAIL);
+                    return debug::error(FUNCTION, "Invalid coinbase reward.");
+                }
 
                 /* Byte 0 is the number of records. */
                 uint8_t nSize = PACKET.DATA[0];
@@ -382,6 +389,13 @@ namespace LLP
                         std::vector<uint8_t>(PACKET.DATA.begin() + nIterator + 1 + nLength,
                                              PACKET.DATA.begin() + nIterator + 1 + nLength + 8));
 
+                    /* Check value for coinbase output. */
+                     if(nValue == 0 || nValue > nMaxValue)
+                     {
+                         respond(COINBASE_FAIL);
+                         return debug::error(FUNCTION, "Invalid coinbase recipient reward.");
+                     }
+
                     /* Validate the address */
                     Legacy::NexusAddress address;
                     address.SetPubKey(vAddress);
@@ -402,6 +416,9 @@ namespace LLP
                     /* Increment the iterator. */
                     nIterator += (nLength + 9);
                 }
+
+                /* Lock the coinbase transaction object. */
+                LOCK(MUTEX);
 
                 /* Update the coinbase transaction. */
                 CoinbaseTx = Legacy::Coinbase(vOutputs, nMaxValue, nPoolFee);
@@ -638,7 +655,7 @@ namespace LLP
     /* Checks the current height index and updates best height. Clears the block map if the height is outdated. */
     bool Miner::check_best_height()
     {
-
+        /* Return early if the height doesn't change. */
         if(nBestHeight == TAO::Ledger::ChainState::nBestHeight)
             return false;
 
