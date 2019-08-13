@@ -329,8 +329,27 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
 
 
+    nPort = static_cast<uint16_t>(config::fTestNet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT);
+
+
+    /** Startup the time server. **/
+    LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
+        nPort,
+        10,
+        30,
+        false,
+        0,
+        0,
+        10,
+        config::GetBoolArg(std::string("-unified"), false),
+        config::GetBoolArg(std::string("-meters"), false),
+        true,
+        30000);
+
+
     /* Get the port for the Core API Server. */
     nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
+
 
     /* Set up RPC server */
     RPC_SERVER = new LLP::Server<LLP::RPCNode>(
@@ -349,6 +368,7 @@ int main(int argc, char** argv)
     /* Startup timer stats. */
     uint32_t nElapsed = 0;
 
+
     /* Check for failures. */
     bool fFailed = config::fShutdown.load();
     if(!fFailed)
@@ -360,15 +380,18 @@ int main(int argc, char** argv)
                         256 * 256 * 128,
                         config::GetArg("-maxcache", 64) * 1024 * 512);
 
+
         /* Create the legacy database instance. */
         LLD::legacyDB = new LLD::LegacyDB(
                         LLD::FLAGS::CREATE | LLD::FLAGS::WRITE,
                         256 * 256 * 128,
                         config::GetArg("-maxcache", 64) * 1024 * 512);
 
+
         /* Create the trust database instance. */
         LLD::trustDB  = new LLD::TrustDB(
                         LLD::FLAGS::CREATE | LLD::FLAGS::WRITE);
+
 
         /* Handle database recovery mode. */
         LLD::TxnRecovery();
@@ -388,6 +411,12 @@ int main(int argc, char** argv)
                 return debug::error("Failed loading wallet.dat: Wallet corrupted");
             else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
                 return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
+            else if (nLoadWalletRet == Legacy::DB_NEEDS_RESCAN)
+            {
+                debug::log(0, FUNCTION, "Wallet.dat contains invalid transactions, rescanning");
+
+                Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+            }
             else
                 return debug::error("Failed loading wallet.dat");
         }
@@ -404,23 +433,6 @@ int main(int argc, char** argv)
         /** Handle Rescanning. **/
         if(config::GetBoolArg(std::string("-rescan")))
             Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
-
-
-        nPort = static_cast<uint16_t>(config::fTestNet ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT);
-
-        /** Startup the time server. **/
-        LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
-            nPort,
-            10,
-            30,
-            false,
-            0,
-            0,
-            10,
-            config::GetBoolArg(std::string("-unified"), false),
-            config::GetBoolArg(std::string("-meters"), false),
-            true,
-            30000);
 
 
         /* Set up Mining Server */

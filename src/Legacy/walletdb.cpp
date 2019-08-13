@@ -368,11 +368,11 @@ namespace Legacy
         std::vector<uint512_t> vWalletRemove;
 
         /* Flush thread shouldn't be running while we load, but ensure it doesn't try to flush during load if it is.
-         * This will atomically set flag to true if it is currently false as expected, otherwise it returns false and wait loop executes. 
+         * This will atomically set flag to true if it is currently false as expected, otherwise it returns false and wait loop executes.
          *
          * Although the primary purpose is to suspend flush thread operations, this flag also acts as a "soft lock" token for any method
          * that performs database operations requiring multiple steps. BerkeleyDB locks during each individual database call, but not
-         * across calls that use cursors or db transactions. Holding this flag forces other multi-step operations to wait 
+         * across calls that use cursors or db transactions. Holding this flag forces other multi-step operations to wait
          * for it to become available.
          *
          * compare_exchange_weak expects us to pass references that match the atomic type, not literals, so we have to define them.
@@ -393,6 +393,10 @@ namespace Legacy
 
         /* Reset default key into wallet to clear any current value. (done now so it stays empty if none loaded) */
         wallet.vchDefaultKey.clear();
+
+        /* Debug output for walletcheck. */
+        if(config::GetBoolArg("-walletcheck", false))
+            debug::log(0, FUNCTION, "Checking transactions for consistency");
 
         /* Read and validate minversion required by database file */
         uint32_t nMinVersion = 0;
@@ -475,9 +479,9 @@ namespace Legacy
                     vWalletRemove.push_back(hash);
 
                 }
-                else if (wtx.GetHash() != hash)
+                else if(config::GetBoolArg("-walletcheck", false) && wtx.GetHash() != hash)
                 {
-                    debug::error(FUNCTION, "Error in ", strWalletFile, 
+                    debug::error(FUNCTION, "Error in ", strWalletFile,
                                  ", hash mismatch. Removing Transaction from wallet map. Run the rescan command to restore.");
 
                     /* Add mismatched transaction to list of transactions to remove from database */
@@ -678,10 +682,14 @@ namespace Legacy
                     EraseTx(hash);
                     wallet.mapWallet.erase(hash);
                     ++nWalletDBUpdated;
-
-                    debug::log(0, FUNCTION, "Erasing Transaction with hash ", hash.ToString());
                 }
+
+                debug::log(0, FUNCTION, "Erasing ", vWalletRemove.size(), " Transactions from WalletDB");
+
+                nRet = DB_NEEDS_RESCAN; // Will return this on successful completion
             }
+            else
+                nRet = DB_LOAD_OK; // Will return this on successful completion
 
             /* Update file version to latest version */
             if (nFileVersion < LLD::DATABASE_VERSION)
@@ -690,8 +698,6 @@ namespace Legacy
             uint64_t elapsedTime = runtime::timestamp(true) - startTimestamp;
 
             debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", elapsedTime, " ms file version = ", nFileVersion);
-
-            nRet = DB_LOAD_OK; // Will return this on successful completion
         }
 
         /* Ok to flush again */
@@ -847,9 +853,9 @@ namespace Legacy
             if (nLastFlushed != nLastSeen && (runtime::unifiedtimestamp() - nLastWalletUpdate) >= minTimeSinceLastUpdate)
             {
 
-                /* If fDbInProgress currently false, atomically set it to true and performs flush. 
-                 * Otherwise, value has changed since the check above. Skip flush this iteration. 
-                 * Use strong compare here instead of weak to avoid possible spurious fail that would require an unnecessary loop iteration. 
+                /* If fDbInProgress currently false, atomically set it to true and performs flush.
+                 * Otherwise, value has changed since the check above. Skip flush this iteration.
+                 * Use strong compare here instead of weak to avoid possible spurious fail that would require an unnecessary loop iteration.
                  */
                 bool expectedValue = false;
                 bool desiredValue = true;
