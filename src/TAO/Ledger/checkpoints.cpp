@@ -83,21 +83,16 @@ namespace TAO
                 return it->second == state.hashCheckpoint;
             }
 
-            /* Get checkpoint state. */
-            BlockState stateCheckpoint;
-            if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheckpoint))
-                return debug::error(FUNCTION, "failed to read checkpoint");
-
             /* Check The Block Hash */
             BlockState check = state;
             while(!check.IsNull())
             {
                 /* Check that checkpoint exists in the map. */
-                if(ChainState::hashCheckpoint == check.hashCheckpoint)
+                if(ChainState::hashCheckpoint.load() == check.hashCheckpoint)
                     return true;
 
                 /* Break when new height is found. */
-                if(state.nHeight < stateCheckpoint.nHeight)
+                if(state.nHeight < ChainState::nCheckpointHeight.load())
                     return false;
 
                 /* Iterate backwards. */
@@ -118,8 +113,16 @@ namespace TAO
             /* Update the Checkpoints into Memory. */
             ChainState::hashCheckpoint    = state.hashCheckpoint;
 
+            /* Get checkpoint state. */
+            BlockState stateCheckpoint;
+            if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheckpoint))
+                return debug::error(FUNCTION, "failed to read checkpoint");
+
+            /* Set the correct height for the checkpoint. */
+            ChainState::nCheckpointHeight = stateCheckpoint.nHeight;
+
             /* Dump the Checkpoint if not Initializing. */
-            debug::log(ChainState::Synchronizing() ? 1 : 0, "===== Hardened Checkpoint ", ChainState::hashCheckpoint.load().ToString().substr(0, 20));
+            debug::log(ChainState::Synchronizing() ? 1 : 0, "===== Hardened Checkpoint ", ChainState::hashCheckpoint.load().ToString().substr(0, 20), " Height ", ChainState::nCheckpointHeight.load());
 
             return true;
         }

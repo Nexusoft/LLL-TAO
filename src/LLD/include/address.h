@@ -117,7 +117,7 @@ namespace LLD
         bool WriteLastUpdate()
         {
             uint64_t nUpdated = runtime::timestamp();
-            return Write(std::string("updated"), nUpdated);
+            return Write(std::string("dnscache"), nUpdated);
         }
 
 
@@ -132,7 +132,7 @@ namespace LLD
          **/
         bool ReadLastUpdate(uint64_t& nUpdated)
         {
-            return Read(std::string("updated"), nUpdated);
+            return Read(std::string("dnscache"), nUpdated);
         }
     };
 }

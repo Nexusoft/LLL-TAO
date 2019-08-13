@@ -33,6 +33,10 @@ namespace TAO
         std::atomic<uint64_t> ChainState::nBestChainTrust;
 
 
+        /* The current checkpoint height. */
+        std::atomic<uint64_t> ChainState::nCheckpointHeight;
+
+
         /* The best hash in the chain. */
         memory::atomic<uint1024_t> ChainState::hashBestChain;
 
@@ -97,7 +101,7 @@ namespace TAO
                 during a block commit.  In this case we can attempt to recover by iterating forward from the genesis
                 blockState until we reach the end of the chain, which is the last written block. */
                 BlockState stateBestKnown = stateGenesis;
-                while( !stateBestKnown.IsNull() && stateBestKnown.hashNextBlock != 0)
+                while(!stateBestKnown.IsNull() && stateBestKnown.hashNextBlock != 0)
                 {
                     stateBest = stateBestKnown;
                     stateBestKnown = stateBestKnown.Next();
@@ -220,7 +224,15 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to find the checkpoint");
 
                 /* Set the checkpoint. */
-                hashCheckpoint = state.hashCheckpoint;
+                hashCheckpoint    = state.hashCheckpoint;
+
+                /* Get checkpoint state. */
+                BlockState stateCheckpoint;
+                if(!LLD::legDB->ReadBlock(state.hashCheckpoint, stateCheckpoint))
+                    return debug::error(FUNCTION, "failed to read checkpoint");
+
+                /* Set the correct height for the checkpoint. */
+                nCheckpointHeight = stateCheckpoint.nHeight;
             }
 
             /* Ensure the block height index is intact */

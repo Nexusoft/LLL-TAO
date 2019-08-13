@@ -44,6 +44,10 @@ namespace TAO
             static std::atomic<uint64_t> nBestChainTrust;
 
 
+            /** The current checkpoint height. **/
+            static std::atomic<uint64_t> nCheckpointHeight;
+
+
             /** The best hash in the chain. */
             static memory::atomic<uint1024_t> hashBestChain;
 
