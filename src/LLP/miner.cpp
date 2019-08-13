@@ -436,9 +436,9 @@ namespace LLP
                 /* Send a coinbase set message. */
                 respond(COINBASE_SET);
 
-                debug::log(2, "Coinbase Set");
-
-                if(config::GetArg("-verbose", 0 ) >= 2)
+                /* Verbose output. */
+                debug::log(2, FUNCTION, " Set Coinbase Reward of ", nMaxValue);
+                if(config::GetArg("-verbose", 0 ) >= 3)
                     CoinbaseTx.Print();
 
                 return true;
@@ -500,18 +500,12 @@ namespace LLP
                     check_best_height();
                 }
 
-                /* Get the best block state. */
-                TAO::Ledger::BlockState best = TAO::Ledger::ChainState::stateBest.load();
-
                 /* Get the mining reward amount for the channel currently set. */
-                uint64_t nReward = TAO::Ledger::GetCoinbaseReward(best, nChannel.load(), 0);
+                uint64_t nReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
 
                 /* Check to make sure the reward is greater than zero. */
                 if(nReward == 0)
-                {
-                    best.print();
                     return debug::error(FUNCTION, "No coinbase reward.");
-                }
 
 
                 /* Respond with BLOCK_REWARD message. */
