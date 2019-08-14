@@ -64,7 +64,7 @@ namespace LLP
         struct rlimit lim;
         getrlimit(RLIMIT_NOFILE, &lim);
 
-        debug::log(2, FUNCTION " File descriptor limit set to ", lim.rlim_cur, " and maximum ", lim.rlim_max);
+        debug::log(2, FUNCTION "File descriptor limit set to ", lim.rlim_cur, " and maximum ", lim.rlim_max);
     }
 
     #endif
@@ -78,9 +78,8 @@ namespace LLP
         /* Create the global network SSL object. */
         pSSL_CTX = SSL_CTX_new(SSLv23_method());
 
-
+        /* Set the verification callback to always true. */
         SSL_CTX_set_verify(pSSL_CTX, SSL_VERIFY_PEER, LLC::always_true_callback);
-
 
         /* Instantiate a certificate for use with SSL context */
         LLC::X509Cert cert;
@@ -94,7 +93,7 @@ namespace LLP
             return debug::error(FUNCTION, "Certificate Verify Failed for SSL Context");
 
 
-        debug::log(3, "SSL context and certificate creation complete.");
+        debug::log(3, FUNCTION, "SSL context and certificate creation complete.");
         debug::log(2, FUNCTION, "Network resource initialization complete");
 
         return true;
