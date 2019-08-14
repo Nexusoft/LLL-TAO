@@ -113,6 +113,9 @@ namespace TAO
             /* Make the connection to the API server. */
             LLP::APINode apiNode;
 
+            /* Determine if connection should use SSL encryption. */
+            apiNode.SetSSL(config::GetBoolArg(std::string("-apissl"), false));
+
             std::string strAddr = config::GetArg("-apiconnect", "127.0.0.1");
             uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
 
@@ -237,6 +240,9 @@ namespace TAO
 
             /* Make the connection to the API server. */
             LLP::RPCNode rpcNode;
+
+            /* Determine if connection should use SSL encryption. */
+            rpcNode.SetSSL(config::GetBoolArg(std::string("-rpcssl"), false));
 
             std::string strAddr = config::GetArg("-rpcconnect", "127.0.0.1");
             uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
