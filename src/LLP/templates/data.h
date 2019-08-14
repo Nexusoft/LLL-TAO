@@ -48,6 +48,7 @@ namespace LLP
         /* Variables to track Connection / Request Count. */
         bool fDDOS;
         bool fMETER;
+        bool fSSL;
 
         /* Destructor flag. */
         std::atomic<bool> fDestruct;
@@ -75,7 +76,7 @@ namespace LLP
          *
          **/
         DataThread<ProtocolType>(uint32_t id, bool isDDOS, uint32_t rScore, uint32_t cScore,
-                                 uint32_t nTimeout, bool fMeter = false);
+                                 uint32_t nTimeout, bool fMeter = false, bool fSSL_ = false);
 
 
         /** Default Destructor

@@ -152,7 +152,8 @@ int main(int argc, char** argv)
         60,
         config::GetBoolArg("-listen", true),
         false,
-        false);
+        false,
+        config::GetBoolArg("-rpcssl", false));
 
 
     /* Startup timer stats. */
@@ -240,7 +241,8 @@ int main(int argc, char** argv)
             60,
             true,
             false,
-            false);
+            false,
+            config::GetBoolArg(std::string("-apissl"), false));
 
 
         /* Handle Manual Connections from Command Line, if there are any. */

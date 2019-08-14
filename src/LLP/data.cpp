@@ -34,9 +34,10 @@ namespace LLP
     template <class ProtocolType>
     DataThread<ProtocolType>::DataThread(uint32_t id, bool isDDOS,
                                          uint32_t rScore, uint32_t cScore,
-                                         uint32_t nTimeout, bool fMeter)
+                                         uint32_t nTimeout, bool fMeter, bool fSSL_)
     : fDDOS(isDDOS)
     , fMETER(fMeter)
+    , fSSL(fSSL_)
     , fDestruct(false)
     , nConnections(0)
     , ID(id)
@@ -74,6 +75,9 @@ namespace LLP
         {
             /* Create a new pointer on the heap. */
             ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
+
+            /* Set the ssl flag for the node depending on the data thread. */
+            node->SetSSL(fSSL);
             node->fCONNECTED.store(true);
 
             /* Find an available slot. */
@@ -113,6 +117,10 @@ namespace LLP
         {
             /* Create a new pointer on the heap. */
             ProtocolType* node = new ProtocolType(DDOS, fDDOS);
+
+            /* Set the ssl flag for the node depending on the data thread. */
+            node->SetSSL(fSSL);
+
             if(!node->Connect(addr))
             {
                 node->Disconnect();
