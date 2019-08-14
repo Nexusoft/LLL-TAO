@@ -59,8 +59,8 @@ namespace Legacy
 
         /* Modulate the Block Versions if they correspond to their proper time stamp */
         if(runtime::unifiedtimestamp() >= (config::fTestNet.load()
-                                            ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2]
-                                            : TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 2]))
+            ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2]
+            : TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 2]))
         {
             newBlock.nVersion = config::fTestNet.load()
                                 ? TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION
@@ -114,6 +114,7 @@ namespace Legacy
         newBlock.nBits          = GetNextTargetRequired(prevBlockState, nChannel, false);
         newBlock.nNonce         = 1;
 
+        /* Update the time for the newly created block. */
         newBlock.UpdateTime();
 
         return true;
@@ -156,8 +157,8 @@ namespace Legacy
         /* Previous block state is current best state on chain */
         TAO::Ledger::BlockState prevBlockState = TAO::Ledger::ChainState::stateBest.load();
 
-        /* Output type 0 is minting of miner reward */
-        int64_t nBlockReward = TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 0);
+        /* Output type 0 is minting of mining/minting reward */
+        uint64_t nBlockReward = TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 0);
 
         /* Initialize vin */
         coinbaseTx.vin.resize(1);
@@ -167,7 +168,7 @@ namespace Legacy
         coinbaseTx.vin[0].scriptSig = (Legacy::Script() << ((uint64_t)nID * 513513512151));
 
         /* calculate the reward for this wallet */
-        int64_t nReward = 0;
+        uint64_t nReward = 0;
         if(coinbaseRecipients.IsNull())
             nReward = nBlockReward;
         else
@@ -183,7 +184,7 @@ namespace Legacy
         /* if additional coinbase recipients have been provided them add them to vout*/
         if(!coinbaseRecipients.IsNull())
         {
-            unsigned int nTx = 1;
+            uint32_t nTx = 1;
             coinbaseTx.vout.resize(coinbaseRecipients.vOutputs.size() + coinbaseTx.vout.size());
             for(const auto& entry : coinbaseRecipients.vOutputs)
             {
@@ -191,16 +192,16 @@ namespace Legacy
                 coinbaseTx.vout[nTx].scriptPubKey.SetNexusAddress(NexusAddress(entry.first));
                 coinbaseTx.vout[nTx].nValue = entry.second;
 
-                nTx++;
+                ++nTx;
             }
 
-            int64_t nMiningReward = 0;
-            for(int nIndex = 0; nIndex < coinbaseTx.vout.size(); nIndex++)
+            uint64_t nMiningReward = 0;
+            for(uint32_t nIndex = 0; nIndex < coinbaseTx.vout.size(); ++nIndex)
                 nMiningReward += coinbaseTx.vout[nIndex].nValue;
 
             /* Double Check the Coinbase Transaction Fits in the Maximum Value. */
             if(nMiningReward != nBlockReward)
-                return false;
+                return debug::error("Mining reward ", nMiningReward, " does not match block reward ", nBlockReward);
         }
 
 
@@ -209,6 +210,7 @@ namespace Legacy
 
         /* Create the ambassador and developer outputs for Coinbase transaction */
         coinbaseTx.vout.resize(coinbaseTx.vout.size() + 2);
+
         NexusAddress ambassadorKeyAddress(config::fTestNet.load()
                                             ? (nNewBlockVersion < 5 ? TESTNET_DUMMY_ADDRESS
                                                                     : TESTNET_DUMMY_AMBASSADOR_RECYCLED)
@@ -224,8 +226,11 @@ namespace Legacy
         coinbaseTx.vout[coinbaseTx.vout.size() - 2].scriptPubKey.SetNexusAddress(ambassadorKeyAddress);
         coinbaseTx.vout[coinbaseTx.vout.size() - 1].scriptPubKey.SetNexusAddress(devKeyAddress);
 
-        coinbaseTx.vout[coinbaseTx.vout.size() - 2].nValue = TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 1); // Output type 1 is ambassador mint
-        coinbaseTx.vout[coinbaseTx.vout.size() - 1].nValue = TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 2); // Output type 2 is dev mint
+        /* Output type 1 is ambassador mint. */
+        coinbaseTx.vout[coinbaseTx.vout.size() - 2].nValue = TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 1);
+
+        /* Output type 2 is dev mint */
+        coinbaseTx.vout[coinbaseTx.vout.size() - 1].nValue = TAO::Ledger::GetCoinbaseReward(prevBlockState, nChannel, 2);
 
         return true;
     }

@@ -139,7 +139,7 @@ namespace TAO
 
             //add legacy
             std::vector<uint512_t> vLegacyMempool;
-            
+
             /* Retrieve list of transaction hashes from mempool.
             * Limit list to a sane size that would typically more than fill a legacy block, rather than pulling entire pool if it is very large
             */
@@ -224,9 +224,9 @@ namespace TAO
         bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
             const uint32_t nChannel, TAO::Ledger::TritiumBlock& block, const uint64_t nExtraNonce)
         {
-
+            /* Only allow prime, hash, and private channels. */
             if (nChannel < 1 || nChannel > 3)
-                return debug::error(FUNCTION, "invalid channel");
+                return debug::error(FUNCTION, "invalid channel: ", nChannel);
 
             /* Set the block to null. */
             block.SetNull();
@@ -390,6 +390,9 @@ namespace TAO
                 /* Store the cached block. */
                 blockCache[nChannel].store(block);
             }
+
+            /* Update the time for the newly created block. */
+            block.UpdateTime();
 
             return true;
         }

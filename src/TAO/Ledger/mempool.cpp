@@ -81,7 +81,7 @@ namespace TAO
         {
             /* Check for activation timestamp. */
             if(!VersionActive(tx.nTimestamp + 7200, 7))
-                return debug::error(FUNCTION, "tritium transaciton not accepted until 2 hours after time-lock");
+                return debug::error(FUNCTION, "tritium transaction not accepted until 2 hours after time-lock");
 
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();

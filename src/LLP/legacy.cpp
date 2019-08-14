@@ -21,8 +21,8 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 
 #include <LLP/include/hosts.h>
-#include <LLP/include/inv.h>
 #include <LLP/include/global.h>
+#include <LLP/include/inv.h>
 #include <LLP/types/legacy.h>
 #include <LLP/templates/events.h>
 #include <LLP/include/manager.h>
@@ -282,7 +282,8 @@ namespace LLP
                 PushMessage("ping", nNonce);
 
                 /* Rebroadcast transactions. */
-                Legacy::Wallet::GetInstance().ResendWalletTransactions();
+                if(!TAO::Ledger::ChainState::Synchronizing())
+                    Legacy::Wallet::GetInstance().ResendWalletTransactions();
             }
 
 
@@ -411,7 +412,6 @@ namespace LLP
         */
         if(message == "version")
         {
-
             int64_t nTime;
             LegacyAddress addrMe;
             LegacyAddress addrFrom;
@@ -646,12 +646,8 @@ namespace LLP
                     /* If this is a block type, only request if not in database. */
                     if(inv->GetType() == MSG_BLOCK_LEGACY)
                     {
-                        /* Get the inventory hash. */
-                        hashBlock = inv->GetHash();
-
                         /* Check the LLD for block. */
-                        if(!cacheInventory.Has(hashBlock)
-                        && !LLD::Ledger->HasBlock(hashBlock))
+                        if(!cacheInventory.Has(hashBlock) && !LLD::Ledger->HasBlock(hashBlock))
                         {
                             /* Add this item to request queue. */
                             vGet.push_back(*inv);
@@ -662,12 +658,8 @@ namespace LLP
                     }
 
                     /* Check the memory pool for transactions being relayed. */
-                    else if(!cacheInventory.Has(hashTx)
-                         && !TAO::Ledger::mempool.Has(hashTx))
+                    else if(!cacheInventory.Has(hashTx) && !TAO::Ledger::mempool.Has(hashTx))
                     {
-                        /* Get the inventory hash. */
-                        hashTx = hashBlock;
-
                         /* Add this item to cached relay inventory (key only). */
                         cacheInventory.Add(hashTx);
                     }
@@ -864,24 +856,11 @@ namespace LLP
 
         /* Check if the block is valid. */
         if(!block.Check())
-            return false;
+            return debug::error(FUNCTION, "invalid block: ", block.GetHash().SubString(), " height: ", block.nHeight);
 
         /* Check for orphan. */
         if(!LLD::Ledger->HasBlock(block.hashPrevBlock))
         {
-            /* Fast sync block requests. */
-            if(!TAO::Ledger::ChainState::Synchronizing())
-            {
-                /* Inventory requests. */
-                std::vector<CInv> vInv = { CInv(block.hashPrevBlock, LLP::MSG_BLOCK_LEGACY) };
-
-                /* Get batch of inventory. */
-                pnode->PushMessage("getdata", vInv);
-
-                /* Run a getblocks to be sure. */
-                pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
-            }
-
             /* Increment the consecutive orphans. */
             if(pnode)
                 ++pnode->nConsecutiveOrphans;
@@ -901,7 +880,24 @@ namespace LLP
             /* Skip if already in orphan queue. */
             if(!mapLegacyOrphans.count(block.hashPrevBlock))
             {
-                /* Add to the map of orphans. */
+                /* Fast sync block requests. */
+                if(!TAO::Ledger::ChainState::Synchronizing())
+                {
+                    /* Check the checkpoint height. */
+                    if(block.nHeight < TAO::Ledger::ChainState::nCheckpointHeight)
+                        return false;
+
+                    /* Inventory requests. */
+                    std::vector<CInv> vInv = { CInv(block.hashPrevBlock, LLP::MSG_BLOCK_LEGACY) };
+
+                    /* Get batch of inventory. */
+                    pnode->PushMessage("getdata", vInv);
+
+                    /* Run a getblocks to be sure. */
+                    pnode->PushGetBlocks(TAO::Ledger::ChainState::hashBestChain.load(), uint1024_t(0));
+                }
+
+                /* Add to the orphans map. */
                 mapLegacyOrphans[block.hashPrevBlock] = block;
 
                 /* Debug output. */
@@ -920,8 +916,7 @@ namespace LLP
                 ++pnode->nConsecutiveFails;
 
             /* Check for failure limit on node. */
-            if(pnode
-            && pnode->nConsecutiveFails >= nMaxFailures)
+            if(pnode && pnode->nConsecutiveFails >= nMaxFailures)
             {
 
                 /* Fast Sync node switch. */
@@ -944,8 +939,7 @@ namespace LLP
         else
         {
             /* Special meter for synchronizing. */
-            if(TAO::Ledger::ChainState::Synchronizing()
-            && block.nHeight % 1000 == 0)
+            if(block.nHeight % 1000 == 0 && TAO::Ledger::ChainState::Synchronizing())
             {
                 uint64_t nElapsed = runtime::timestamp(true) - nTimer;
                 debug::log(0, FUNCTION,

@@ -22,8 +22,7 @@ ________________________________________________________________________________
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
-#include <LLP/types/legacy_miner.h>
-#include <LLP/types/tritium_miner.h>
+#include <LLP/types/miner.h>
 
 #include <Util/include/hex.h>
 
@@ -269,7 +268,7 @@ namespace LLP
                     }
 
 #ifdef WIN32
-                    /* Disconnect if the socket was disconnected by peer (This happens on Windows only) */
+                    /* Disconnect if the socket was disconnected by peer (need for Windows) */
                     if((POLLFDS.at(nIndex).revents & POLLHUP))
                     {
                         disconnect_remove_event(nIndex, DISCONNECT_PEER);
@@ -419,7 +418,5 @@ namespace LLP
     template class DataThread<TimeNode>;
     template class DataThread<APINode>;
     template class DataThread<RPCNode>;
-    template class DataThread<LegacyMiner>;
-    template class DataThread<TritiumMiner>;
-
+    template class DataThread<Miner>;
 }

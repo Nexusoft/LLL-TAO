@@ -167,7 +167,7 @@ namespace TAO
 
             if(config::GetBoolArg("-mining", false))
             {
-                obj["totalConnections"] = LLP::TRITIUM_MINING_SERVER->GetConnectionCount();
+                obj["totalConnections"] = LLP::MINING_SERVER->GetConnectionCount();
             }
 
             return obj;

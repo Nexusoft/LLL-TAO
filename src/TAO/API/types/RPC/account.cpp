@@ -1290,7 +1290,6 @@ namespace TAO
             std::list<std::pair<Legacy::Script, int64_t> > listSent;
 
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
-
             wtx.GetAmounts(nGeneratedImmature, nGeneratedMature, listReceived, listSent, nFee, strSentAccount);
 
             bool fAllAccounts = (strAccount == std::string("*"));
@@ -1486,7 +1485,6 @@ namespace TAO
 
                 if(ret.size() >= (nCount + nFrom)) break;
             }
-            // ret is newest to oldest
 
             if(nFrom > (int)ret.size())
                 nFrom = ret.size();

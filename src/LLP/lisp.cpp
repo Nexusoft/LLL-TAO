@@ -170,7 +170,7 @@ namespace LLP
 
         /* We want to absorb an API exception here as the lispers.net API might not be available or
             LISP might not be running.  In which case there are no EIDs to cache, so just log the error and move on. */
-        catch(std::exception& e)
+        catch(const std::exception& e)
         {
             debug::log(3, FUNCTION, e.what());
         }

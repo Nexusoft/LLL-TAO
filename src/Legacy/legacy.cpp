@@ -151,13 +151,8 @@ namespace Legacy
         /* Check that the time was within range. If before v7 activation, keep legacy block compatible with legacy setting. */
         uint64_t nMaxDrift = MAX_UNIFIED_DRIFT;
 
-        if(TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7
-        || (runtime::unifiedtimestamp() < (config::fTestNet.load()
-                                        ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[5]
-                                        : TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])))
-        {
+        if(!TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7))
             nMaxDrift = MAX_UNIFIED_DRIFT_LEGACY;
-        }
 
 
         if(GetBlockTime() > runtime::unifiedtimestamp() + nMaxDrift)
@@ -220,13 +215,8 @@ namespace Legacy
              */
             uint64_t nMaxDrift = MAX_UNIFIED_DRIFT;
 
-            if(TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7
-            || (runtime::unifiedtimestamp() < (config::fTestNet.load()
-                                            ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[5]
-                                            : TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])))
-            {
+            if(!TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7))
                 nMaxDrift = MAX_UNIFIED_DRIFT_LEGACY;
-            }
 
             if(vtx[0].nTime > (runtime::unifiedtimestamp() + nMaxDrift))
                 return debug::error(FUNCTION, "coinstake too far in Future.");

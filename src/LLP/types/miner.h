@@ -11,46 +11,30 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLP_TYPES_BASE_MINER_H
-#define NEXUS_LLP_TYPES_BASE_MINER_H
+#ifndef NEXUS_LLP_TYPES_MINER_H
+#define NEXUS_LLP_TYPES_MINER_H
 
 #include <LLP/templates/connection.h>
 #include <TAO/Ledger/types/block.h>
 #include <Legacy/types/coinbase.h>
 #include <atomic>
 
+namespace Legacy
+{
+    class ReserveKey;
+}
+
 
 namespace LLP
 {
 
-    /** BaseMiner
+    /** Miner
      *
      *  Connection class that handles requests and responses from miners.
      *
      **/
-    class BaseMiner : public Connection
+    class Miner : public Connection
     {
-    protected:
-
-        /* Externally set coinbase to be set on mined blocks */
-        Legacy::Coinbase CoinbaseTx;
-
-        /* Used for synchronization */
-        std::mutex MUTEX;
-
-        /** The map to hold the list of blocks that are being mined. */
-        std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
-
-        /** The current best block. **/
-        std::atomic<uint32_t> nBestHeight;
-
-        /** Subscribe to display how many blocks connection subscribed to **/
-        std::atomic<uint16_t> nSubscribed;
-
-        /** The current channel mining for. */
-        std::atomic<uint8_t> nChannel;
-
-
         enum
         {
             /** DATA PACKETS **/
@@ -98,26 +82,60 @@ namespace LLP
             CLOSE    = 254
         };
 
+    private:
+
+        /* Externally set coinbase to be set on mined blocks */
+        Legacy::Coinbase CoinbaseTx;
+
+        /* Used for synchronization */
+        std::mutex MUTEX;
+
+        /** The map to hold the list of blocks that are being mined. */
+        std::map<uint512_t, TAO::Ledger::Block *> mapBlocks;
+
+        /** The current best block. **/
+        std::atomic<uint32_t> nBestHeight;
+
+        /** Subscribe to display how many blocks connection subscribed to **/
+        std::atomic<uint32_t> nSubscribed;
+
+        /** The current channel mining for. */
+        std::atomic<uint32_t> nChannel;
+
         /* Used as an ID iterator for generating unique hashes from same block transactions. */
         uint32_t nBlockIterator;
+
+        /** the mining key for block rewards to send **/
+        Legacy::ReserveKey *pMiningKey;
 
 
     public:
 
         /** Default Constructor **/
-        BaseMiner();
+        Miner();
 
 
         /** Constructor **/
-        BaseMiner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Constructor **/
-        BaseMiner(DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        Miner(DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Default Destructor **/
-        virtual ~BaseMiner() = 0;
+        ~Miner();
+
+
+        /** Name
+         *
+         *  Returns a string for the name of this type of Node.
+         *
+         **/
+         static std::string Name()
+         {
+             return "Miner";
+         }
 
 
         /** Event
@@ -156,8 +174,7 @@ namespace LLP
 
         /** check_best_height
          *
-         *  Checks the current height index and updates best height. It will clear
-         *  the block map if the height is outdated.
+         *  Checks the current height index and updates best height. Clears the block map if the height is outdated.
          *
          *  @return Returns true if best height was outdated, false otherwise.
          *
@@ -173,46 +190,65 @@ namespace LLP
          void clear_map();
 
 
+         /** find_block
+          *
+          *  Determines if the block exists.
+          *
+          **/
+         bool find_block(const uint512_t& hashMerkleRoot);
+
+
          /** new_block
           *
           *  Adds a new block to the map.
           *
           **/
-         virtual TAO::Ledger::Block *new_block() = 0;
+         TAO::Ledger::Block *new_block();
 
 
          /** validate_block
           *
           *  validates the block for the derived miner class.
           *
+          *  @param[in] hashMerkleRoot The root hash of the merkle tree.
+          *
+          *  @return Returns true if block is valid, false otherwise.
+          *
           **/
-          virtual bool validate_block(const uint512_t& hashMerkleRoot) = 0;
+         bool validate_block(const uint512_t& hashMerkleRoot);
 
 
-          /** sign_block
-           *
-           *  validates the block for the derived miner class.
-           *
-           **/
-           virtual bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot) = 0;
+         /** sign_block
+          *
+          *  signs the block to seal the proof of work.
+          *
+          *  @param[in] nNonce The nonce secret for the block proof.
+          *  @param[in] hashMerkleRoot The root hash of the merkle tree.
+          *
+          *  @return Returns true if block is valid, false otherwise.
+          *
+          **/
+         bool sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot);
 
 
-           /** is_locked
-            *
-            *  Determines if the mining wallet is unlocked.
-            *
-            **/
-           virtual bool is_locked() = 0;
+         /** is_locked
+          *
+          *  Returns true if the mining wallet locked, false otherwise.
+          *
+          **/
+         bool is_locked();
 
 
-           /** find_block
-            *
-            *  Determines if the block exists.
-            *
-            **/
-           bool find_block(const uint512_t& hashMerkleRoot);
-
-
+         /** is_prime_mod
+          *
+          *  Helper function used for prime channel modification rule in loop.
+          *  Returns true if the condition is satisfied, false otherwise.
+          *
+          *  @param[in] nBitMask The bitMask for the highest order bits of a block hash to check for to satisfy rule.
+          *  @param[in] pBlock The block to check.
+          *
+          **/
+          bool is_prime_mod(uint32_t nBitMask, TAO::Ledger::Block *pBlock);
 
     };
 }

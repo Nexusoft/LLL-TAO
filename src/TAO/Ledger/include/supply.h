@@ -25,21 +25,12 @@ namespace TAO
     namespace Ledger
     {
 
+        /* Forward Declarations */
         class BlockState;
 
-        /** These values reflect the Three Decay Equations.
-         *
-         *     50 * e ^ (-0.0000011  * nMinutes) + 1.0
-         *     10 * e ^ (-0.00000055 * nMinutes) + 1.0
-         *      1 * e ^ (-0.00000059 * nMinutes) + 0.032
-         *
-         */
-        const double decay[3][3] =
-            {
-                {50.0, -0.0000011, 1.0},
-                {10.0, -0.00000055, 1.0},
-                {1.0, -0.00000059, 0.032}
-            };
+
+        /* These values reflect the Three Decay Equations for Miners, Ambassadors, and Developers. */
+        extern const double decay[3][3];
 
 
         /** GetSubsidy
@@ -52,7 +43,7 @@ namespace TAO
          *  @return The total reward for interval.
          *
          **/
-        uint64_t GetSubsidy(const uint32_t nMinutes, const uint32_t nType);
+        uint64_t GetSubsidy(const uint32_t nMinutes, const uint8_t nType);
 
 
         /** SubsidyInterval
@@ -78,7 +69,7 @@ namespace TAO
          *  @return The total reward compounded over minutes.
          *
          **/
-        uint64_t CompoundSubsidy(const int32_t nMinutes, const uint8_t nTypes = 3);
+        uint64_t CompoundSubsidy(const uint32_t nMinutes, const uint8_t nTypes = 3);
 
 
         /** GetMoneySupply
@@ -132,7 +123,7 @@ namespace TAO
          *  @return The subsidy reward.
          *
          **/
-        uint64_t GetCoinbaseReward(const BlockState& state, const uint32_t nChannel, const uint8_t nType);
+        uint64_t GetCoinbaseReward(const BlockState& state, const uint8_t nChannel, const uint8_t nType);
 
 
         /** ReleaseRewards
@@ -160,7 +151,7 @@ namespace TAO
          *  @return The released reserves.
          *
          **/
-        uint64_t GetReleasedReserve(const BlockState& state, const uint32_t nChannel, const uint8_t nType);
+        uint64_t GetReleasedReserve(const BlockState& state, const uint8_t nChannel, const uint8_t nType);
     }
 }
 

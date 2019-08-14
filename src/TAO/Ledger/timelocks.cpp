@@ -23,6 +23,64 @@ namespace TAO
     namespace Ledger
     {
 
+        /* The network current block version. */
+        const uint32_t NETWORK_BLOCK_CURRENT_VERSION = 7;
+
+
+        /* The testnet current block version. */
+        const uint32_t TESTNET_BLOCK_CURRENT_VERSION = 7;
+
+
+         /* Activated test network at timestamp. */
+        const uint32_t NEXUS_TESTNET_TIMELOCK = 1421250000;        //--- Nexus Testnet Activation:        1/14/2015 08:38:00 GMT - 6
+
+
+        /* Activated main network at timestamp. */
+        const uint32_t NEXUS_NETWORK_TIMELOCK = 1411510800;        //--- Nexus Network Launch:           09/23/2014 16:20:00 GMT - 6
+
+
+        /* Lock for the Nexus block version upgrades. */
+        const uint32_t TESTNET_VERSION_TIMELOCK[]   =
+        {
+            1412676000,        //--- Block Version 2 Testnet Activation:  10/07/2014 04:00:00 GMT - 6
+            1421293891,        //--- Block Version 3 Testnet Activation:  01/15/2015 07:51:31 GMT - 6
+            1421949600,        //--- Block Version 4 Testnet Activation:  05/10/2015 08:01:00 GMT - 6
+            1536562800,        //--- Block Version 5 Testnet Activation:  09/10/2018 00:00:00 GMT - 7
+            1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 GMT - 7
+            1560481207,        //--- Block Version 7 Testnet Activation:  06/12/2019 14:02:00 GMT - 7
+        };
+
+
+        /* Lock for the Nexus block version upgrades. */
+        const uint32_t NETWORK_VERSION_TIMELOCK[]   =
+        {
+            1412964000,        //--- Block Version 2 Activation:          10/10/2014 12:00:00 GMT - 6
+            1421949600,        //--- Block Version 3 Activation:          01/22/2015 12:00:00 GMT - 6
+            1438369200,        //--- Block Version 4 Activation:          07/31/2015 12:00:00 GMT - 7
+            1536977460,        //--- Block Version 5 Activation:          09/14/2018 19:11:00 GMT - 7
+            1538791860,        //--- Block Version 6 Activation:          10/05/2018 19:11:00 GMT - 7
+            1569277200,        //--- Block Version 7 Activation:          09/23/2019 16:20:00 GMT - 6
+        };
+
+
+        /* Lock to activate each corresponding proof channel. */
+        const uint32_t CHANNEL_TESTNET_TIMELOCK[] =
+        {
+            1421949600,        //--- Stake Testnet Activation:              05/10/2015 08:01:00 GMT - 6
+            1411437371,        //--- Prime Testnet Activation:              09/22/2014 18:56:11 GMT - 6
+            1411437371         //--- Hash Testnet Activation:              09/22/2014 18:56:11 GMT - 6
+        };
+
+
+        /* Lock to activate each corresponding proof channel. */
+        const uint32_t CHANNEL_NETWORK_TIMELOCK[] =
+        {
+            1438369200,        //--- Stake Channel Activation:              07/31/2015 12:00:00 GMT - 7
+            1411510800,        //--- Prime Channel Activation:              09/23/2014 16:20:00 GMT - 6
+            1413914400         //--- Hash Channel Activation:              10/21/2014 12:00:00 GMT - 6
+        };
+
+
         /* Helper function to determine if the network timelock has been met. */
         bool NetworkActive(const uint64_t nTimestamp)
         {
@@ -61,19 +119,17 @@ namespace TAO
                 return true;
 
             /* Get current version. */
-            uint32_t nCurrent  = (config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION :
-                                                            NETWORK_BLOCK_CURRENT_VERSION);
+            uint32_t nCurrent  = CurrentVersion();
 
             /* Get the current timelock. */
-            uint64_t nTimelock = (config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] :
-                                                            NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]);
+            uint64_t nTimelock = CurrentTimelock();
 
             /* Check current version. */
             if(nVersion > nCurrent)
                 return false;
 
             /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
-            if(nVersion == (nCurrent - 1) && (nTimestamp - 3600) > nTimelock)
+            if(nVersion <= (nCurrent - 1) && (nTimestamp - 3600) > nTimelock)
                 return false;
 
             /* Check the Current Version Block Time-Lock. */
@@ -82,5 +138,21 @@ namespace TAO
 
             return true;
         }
+
+
+        /* Returns current block version from mainnet or testnet. */
+        uint32_t CurrentVersion()
+        {
+            return config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION;
+        }
+
+
+        /* Returns current block timelock activation from mainnet or testnet. */
+        uint32_t CurrentTimelock()
+        {
+           return config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2]
+                                          : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2];
+        }
+
     }
 }

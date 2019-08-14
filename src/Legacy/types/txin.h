@@ -131,7 +131,7 @@ namespace Legacy
 
 		/** IsFinal
 		 *
-		 *	Flag to determin if the object sequence is in final state
+		 *	Flag to determine if the object sequence is in final state
 		 *
 		 *	@return true if the transaction is final
 		 *

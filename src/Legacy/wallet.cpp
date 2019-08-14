@@ -61,6 +61,10 @@ namespace Legacy
     std::atomic<bool> Wallet::fWalletInitialized(false);
 
 
+    /** Transaction fee to be used. **/
+    uint64_t TRANSACTION_FEE = MIN_TX_FEE;
+
+
     /** Constructor **/
     Wallet::Wallet()
     : CryptoKeyStore()
@@ -1697,7 +1701,7 @@ namespace Legacy
             return debug::safe_printstr("Send amount less than minimum of ", FormatMoney(MIN_TXOUT_AMOUNT), " NXS");
 
         /* Validate balance supports value + fees */
-        if(nValue + MIN_TX_FEE > GetBalance())
+        if (nValue + TRANSACTION_FEE > GetBalance())
             return std::string("Insufficient funds");
 
         /* Place the script and amount into sending vector */
@@ -1785,7 +1789,7 @@ namespace Legacy
             wtxNew.BindWallet(this);
 
             /* Set fee to minimum for first loop iteration */
-            nFeeRet = MIN_TX_FEE;
+            nFeeRet = TRANSACTION_FEE;
 
             /* This loop is generally executed only once, unless the size of the transaction requires a fee increase.
              * When fee increased, it is possible that selected inputs do not cover it, so repeat the process to
@@ -1901,7 +1905,7 @@ namespace Legacy
                     return false; // tx size too large
 
                 /* Each multiple of 1000 bytes of tx size multiplies the fee paid */
-                int64_t nPayFee = MIN_TX_FEE * (1 + (int64_t)nBytes / 1000);
+                int64_t nPayFee = TRANSACTION_FEE * (1 + (int64_t)nBytes / 1000);
 
                 /* Get minimum required fee from transaction */
                 int64_t nMinFee = wtxNew.GetMinFee(1, false, Legacy::GMF_SEND);

@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <Util/include/string.h>
 #include <Util/include/mutex.h>
 
+#include <LLP/include/port.h>
+
 #include <cstring>
 #include <string>
 #include <cmath>
@@ -55,7 +57,6 @@ namespace config
             {
                 if(mapSettingsRet[name].empty())
                     mapSettingsRet[positive] = "0";
-
                 else
                     mapSettingsRet[positive] = (convert::atoi32(mapArgs[name]) == 0) ? "1" : "0";
             }
@@ -189,6 +190,18 @@ namespace config
             uint16_t nPort = std::stoi(entry.substr(nPortPos + 1));
 
             mapIPFilters[nPort].push_back(strIP);
+        }
+
+        /* Parse the legacy rpcallowip entries and add them to to the filters map too, so that legacy users
+           can migrate without having to change their config files*/
+        const std::vector<std::string>& vRPCFilters = config::mapMultiArgs["-rpcallowip"];
+
+        /* get the RPC port in use */
+        uint16_t nRPCPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
+
+        for(const auto& entry : vRPCFilters)
+        {
+            mapIPFilters[nRPCPort].push_back(entry);
         }
     }
 }

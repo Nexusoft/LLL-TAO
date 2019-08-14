@@ -65,8 +65,8 @@ namespace TAO
         uint64_t TrustKey::BlockAge(const TAO::Ledger::BlockState& state) const
         {
             /* Check the index for the last block. */
-            TAO::Ledger::BlockState stateLast = state;
-            if(!GetLastTrust(*this, stateLast))
+            TAO::Ledger::BlockState stateLast;
+            if(LLD::legDB->ReadBlock(hashLastBlock, stateLast))
                 return debug::error(FUNCTION, "last trust block not found");
 
             /* Block Age is Time to Previous Block's Time. */

@@ -21,8 +21,7 @@ ________________________________________________________________________________
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
-#include <LLP/types/legacy_miner.h>
-#include <LLP/types/tritium_miner.h>
+#include <LLP/types/miner.h>
 
 #include <LLP/include/manager.h>
 #include <LLP/include/trust_address.h>
@@ -72,7 +71,6 @@ namespace LLP
         if(fManager)
         {
             pAddressManager = new AddressManager(nPort);
-
             if(!pAddressManager)
                 debug::error(FUNCTION, "Failed to allocate memory for address manager on port ", nPort);
 
@@ -263,9 +261,9 @@ namespace LLP
     {
         /* List of connections to return. */
         uint32_t nLatency   = std::numeric_limits<uint32_t>::max();
+
         int16_t nRetThread = -1;
         int16_t nRetIndex  = -1;
-
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
             /* Get the data threads. */
@@ -714,6 +712,5 @@ namespace LLP
     template class Server<TimeNode>;
     template class Server<APINode>;
     template class Server<RPCNode>;
-    template class Server<LegacyMiner>;
-    template class Server<TritiumMiner>;
+    template class Server<Miner>;
 }

@@ -26,11 +26,19 @@ namespace TAO
     namespace Ledger
     {
 
-        /* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
-        uint64_t GetSubsidy(const uint32_t nMinutes, const uint32_t nType)
+        /* These values reflect the Three Decay Equations for Miners, Ambassadors, and Developers. */
+        const double decay[3][3] =
         {
-            return (((decay[nType][0] * exp(decay[nType][1] * nMinutes))
-                + decay[nType][2]) * (Legacy::COIN / 2.0));
+            {50.0, -0.00000110, 1.000},
+            {10.0, -0.00000055, 1.000},
+            {01.0, -0.00000059, 0.032}
+        };
+
+
+        /* Get the Total Amount to be Released at a given Minute since the NETWORK_TIMELOCK. */
+        uint64_t GetSubsidy(const uint32_t nMinutes, const uint8_t nType)
+        {
+            return (((decay[nType][0] * exp(decay[nType][1] * nMinutes)) + decay[nType][2]) * (Legacy::COIN / 2.0));
         }
 
 
@@ -43,26 +51,23 @@ namespace TAO
             /* Compound all the minutes of the interval and types. */
             for(uint32_t nMinute = nMinutes; nMinute < (nInterval + nMinutes); ++nMinute)
             {
-                for(uint32_t nType = 0; nType < 3; ++nType)
-                {
-                    nMoneySupply += (GetSubsidy(nMinute, nType) * 2);
-                }
+                    nMoneySupply += GetSubsidy(nMinute, 0);
+                    nMoneySupply += GetSubsidy(nMinute, 1);
+                    nMoneySupply += GetSubsidy(nMinute, 2);
             }
 
-            return nMoneySupply;
+            return nMoneySupply * 2;
         }
 
 
         /* Calculate the Compounded amount of NXS that should "ideally" have been created to this minute. */
-        uint64_t CompoundSubsidy(const int32_t nMinutes, const uint8_t nTypes)
+        uint64_t CompoundSubsidy(const uint32_t nMinutes, const uint8_t nTypes)
         {
             uint64_t nMoneySupply = 0;
-            for(int nMinute = 1; nMinute <= nMinutes; ++nMinute)
+            for(uint32_t nMinute = 1; nMinute <= nMinutes; ++nMinute)
             {
-                for(int nType = (nTypes == 3 ? 0 : nTypes); nType < (nTypes == 3 ? 4 : nTypes + 1); ++nType)
-                {
-                    nMoneySupply += (GetSubsidy(nMinute, nType) * 2);
-                }
+                for(uint8_t nType = (nTypes == 3 ? 0 : nTypes); nType < (nTypes == 3 ? 4 : nTypes + 1); ++nType)
+                    nMoneySupply += GetSubsidy(nMinute, nType) * 2;
             }
 
             return nMoneySupply;
@@ -87,19 +92,19 @@ namespace TAO
         /* Get a fractional reward based on time. */
         uint64_t GetFractionalSubsidy(const uint32_t nMinutes, const uint8_t nType, const double nFraction)
         {
-            int nInterval = floor(nFraction);
-            double nRemainder   = nFraction - nInterval;
+            uint32_t nInterval = floor(nFraction);
+            double nRemainder  = nFraction - nInterval;
 
             uint64_t nSubsidy = 0;
-            for(int nMinute = 0; nMinute < nInterval; ++nMinute)
+            for(uint32_t nMinute = 0; nMinute < nInterval; ++nMinute)
                 nSubsidy += GetSubsidy(nMinutes + nMinute, nType);
 
-            return nSubsidy + (GetSubsidy(nMinutes + nInterval, nType) * nRemainder);
+            return nSubsidy + GetSubsidy(nMinutes + nInterval, nType) * nRemainder;
         }
 
 
-        /* Get the Coinbase Rewards based on the Reserve Balances to keep the Coinbase rewards under the Reserve Production Rates. */
-        uint64_t GetCoinbaseReward(const BlockState& state, const uint32_t nChannel, const uint8_t nType)
+        /* Get the Coinbase Rewards based on the Reserve Balances to keep the Coinbase rewards under the Reserve Production Rates.*/
+        uint64_t GetCoinbaseReward(const BlockState& state, const uint8_t nChannel, const uint8_t nType)
         {
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
@@ -123,7 +128,7 @@ namespace TAO
             if(state.nVersion >= 3)
             {
 
-                /* For Block Version 3: Release 3 Minute Reward decayed at Channel Height when Reserves are above 20 Minute Supply. */
+                /* For Block Version 3: Release 3 Minute Reward decayed at Channel Height when Reserves above 20 Minute Supply. */
                 if(first.nReleasedReserve[nType] > GetFractionalSubsidy(first.nChannelHeight, nType, 20.0))
                     return GetFractionalSubsidy(first.nChannelHeight, nType, 3.0);
 
@@ -152,17 +157,16 @@ namespace TAO
         uint64_t ReleaseRewards(const uint32_t nTimespan, const uint32_t nStart, const uint8_t nType)
         {
             uint64_t nSubsidy = 0;
-            for(int nMinutes = nStart; nMinutes < (nStart + nTimespan); ++nMinutes)
-            {
+
+            for(uint32_t nMinutes = nStart; nMinutes < (nStart + nTimespan); ++nMinutes)
                 nSubsidy += GetSubsidy(nMinutes, nType);
-            }
 
             return nSubsidy;
         }
 
 
         /* Get the total amount released into this given reserve by this point in time in the block state */
-        uint64_t GetReleasedReserve(const BlockState& state, const uint32_t nChannel, const uint8_t nType)
+        uint64_t GetReleasedReserve(const BlockState& state, const uint8_t nChannel, const uint8_t nType)
         {
             /* Get Last Block Index [1st block back in Channel]. **/
             BlockState first = state;
@@ -170,13 +174,13 @@ namespace TAO
                 return Legacy::COIN;
 
             /* Get Last Block Index [2nd block back in Channel]. */
-            int32_t nMinutes = GetChainAge(first.GetBlockTime());
+            uint32_t nMinutes = GetChainAge(first.GetBlockTime());
             BlockState last = first.Prev();
             if(!GetLastState(last, nChannel))
                 return ReleaseRewards(nMinutes + 5, 1, nType);
 
             /* Only allow rewards to be released one time per minute */
-            int32_t nLastMinutes = GetChainAge(last.GetBlockTime());
+            uint32_t nLastMinutes = GetChainAge(last.GetBlockTime());
             if(nMinutes == nLastMinutes)
                 return 0;
 
