@@ -47,6 +47,10 @@ namespace Legacy
     const uint64_t MIN_RELAY_TX_FEE = CENT;
 
 
+    /** Transaction fee to be used. **/
+    extern uint64_t TRANSACTION_FEE;
+
+
     /** Max TxOut
      *
      *  Maximum value out per transaction
@@ -91,6 +95,7 @@ namespace Legacy
         return (double)viz / (double)Legacy::COIN;
     }
 
+
     inline int64_t AmountToSatoshis(double dAmount)
     {
         if(dAmount <= 0.0 || dAmount > static_cast<double>(Legacy::MaxTxOut()))
@@ -98,6 +103,7 @@ namespace Legacy
         int64_t nAmount = convert::roundint64(dAmount * COIN);
         if(!MoneyRange(nAmount))
             throw std::runtime_error("Invalid amount");
+
         return nAmount;
     }
 

@@ -34,6 +34,10 @@ namespace TAO
         std::atomic<uint64_t> ChainState::nBestChainTrust;
 
 
+        /* The current checkpoint height. */
+        std::atomic<uint64_t> ChainState::nCheckpointHeight;
+
+
         /* The best hash in the chain. */
         memory::atomic<uint1024_t> ChainState::hashBestChain;
 
@@ -143,7 +147,9 @@ namespace TAO
             }
 
             /* Check blocks and check transactions for consistency. */
-            if(config::GetArg("-checkblocks", 0) > 0)
+            /* Check last 100 blocks by default in order to remove any recent bad blocks */
+            int64_t nCheckblocks = config::GetArg("-checkblocks", 1000);
+            if(nCheckblocks > 0)
             {
                 debug::log(0, FUNCTION, "Checking from height=", stateBest.load().nHeight, " hash=", stateBest.load().GetHash().SubString());
 
@@ -152,7 +158,7 @@ namespace TAO
                 Legacy::Transaction tx;
 
                 TAO::Ledger::BlockState stateReset = stateBest.load();
-                for(uint32_t i = 0; i < config::GetArg("-checkblocks", 0) && !config::fShutdown.load(); ++i)
+                for(uint32_t i = 0; i < nCheckblocks && !config::fShutdown.load(); ++i)
                 {
                     if(state == stateGenesis)
                         break;
@@ -202,7 +208,7 @@ namespace TAO
                         break;
 
                     /* Debug Output. */
-                    if(i % 100000 == 0)
+                    if(i % 100000 == 0 && i != 0)
                         debug::log(0, "Checked ", i, " Blocks...");
                 }
 
@@ -236,7 +242,15 @@ namespace TAO
                     return debug::error(FUNCTION, "failed to find the checkpoint");
 
                 /* Set the checkpoint. */
-                hashCheckpoint = state.hashCheckpoint;
+                hashCheckpoint    = state.hashCheckpoint;
+
+                /* Get checkpoint state. */
+                BlockState stateCheckpoint;
+                if(!LLD::Ledger->ReadBlock(state.hashCheckpoint, stateCheckpoint))
+                    return debug::error(FUNCTION, "failed to read checkpoint");
+
+                /* Set the correct height for the checkpoint. */
+                nCheckpointHeight = stateCheckpoint.nHeight;
             }
 
             /* Ensure the block height index is intact */

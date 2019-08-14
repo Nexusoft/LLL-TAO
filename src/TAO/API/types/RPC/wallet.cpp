@@ -76,6 +76,20 @@ namespace TAO
         }
 
 
+        /* Set the default transaction fee. */
+        json::json RPC::SetTxFee(const json::json& params, bool fHelp)
+        {
+            if (fHelp || params.size() < 1 || params.size() > 1 || Legacy::AmountToSatoshis(params[0]) < Legacy::MIN_TX_FEE)
+                return std::string(
+                    "settxfee <amount>\n"
+                    "<amount> is a real and is rounded to 0.01 (cent)\n"
+                    "Minimum and default transaction fee per KB is 1 cent");
+
+            Legacy::TRANSACTION_FEE = Legacy::AmountToSatoshis(params[0]);
+            Legacy::TRANSACTION_FEE = (Legacy::TRANSACTION_FEE / Legacy::CENT) * Legacy::CENT;  // round to cent
+
+            return true;
+        }
 
 
         /* walletpassphrase <passphrase> [timeout] [mintonly]

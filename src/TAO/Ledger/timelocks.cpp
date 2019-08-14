@@ -47,7 +47,7 @@ namespace TAO
             1421949600,        //--- Block Version 4 Testnet Activation:  05/10/2015 08:01:00 GMT - 6
             1536562800,        //--- Block Version 5 Testnet Activation:  09/10/2018 00:00:00 GMT - 7
             1537167600,        //--- Block Version 6 Testnet Activation:  09/17/2018 00:00:00 GMT - 7
-            1565648396,        //--- Block Version 7 Testnet Activation:  06/12/2019 14:02:00 GMT - 7
+            1560481207,        //--- Block Version 7 Testnet Activation:  06/12/2019 14:02:00 GMT - 7
         };
 
 
@@ -129,7 +129,7 @@ namespace TAO
                 return false;
 
             /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
-            if(nVersion == (nCurrent - 1) && (nTimestamp - 3600) > nTimelock)
+            if(nVersion <= (nCurrent - 1) && (nTimestamp - 3600) > nTimelock)
                 return false;
 
             /* Check the Current Version Block Time-Lock. */
@@ -148,11 +148,11 @@ namespace TAO
 
 
         /* Returns current block timelock activation from mainnet or testnet. */
-       uint32_t CurrentTimelock()
-       {
+        uint32_t CurrentTimelock()
+        {
            return config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2]
                                           : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2];
-       }
+        }
 
     }
 }

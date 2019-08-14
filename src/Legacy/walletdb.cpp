@@ -394,6 +394,10 @@ namespace Legacy
         /* Reset default key into wallet to clear any current value. (done now so it stays empty if none loaded) */
         wallet.vchDefaultKey.clear();
 
+        /* Debug output for walletcheck. */
+        if(config::GetBoolArg("-walletcheck", false))
+            debug::log(0, FUNCTION, "Checking transactions for consistency");
+
         /* Read and validate minversion required by database file */
         uint32_t nMinVersion = 0;
         if(ReadMinVersion(nMinVersion))
@@ -475,7 +479,7 @@ namespace Legacy
                     vWalletRemove.push_back(hash);
 
                 }
-                else if(hash.GetType() != TAO::Ledger::TRITIUM && wtx.GetHash() != hash)
+                else if(config::GetBoolArg("-walletcheck", false) && wtx.GetHash() != hash)
                 {
                     debug::error(FUNCTION, "Error in ", strWalletFile,
                                  ", hash mismatch. Removing Transaction from wallet map. Run the rescan command to restore.");
@@ -678,10 +682,14 @@ namespace Legacy
                     EraseTx(hash);
                     wallet.mapWallet.erase(hash);
                     ++nWalletDBUpdated;
-
-                    debug::log(0, FUNCTION, "Erasing Transaction with hash ", hash.ToString());
                 }
+
+                debug::log(0, FUNCTION, "Erasing ", vWalletRemove.size(), " Transactions from WalletDB");
+
+                nRet = DB_NEEDS_RESCAN; // Will return this on successful completion
             }
+            else
+                nRet = DB_LOAD_OK; // Will return this on successful completion
 
             /* Update file version to latest version */
             if(nFileVersion < LLD::DATABASE_VERSION)
@@ -690,8 +698,6 @@ namespace Legacy
             uint64_t elapsedTime = runtime::timestamp(true) - startTimestamp;
 
             debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", elapsedTime, " ms file version = ", nFileVersion);
-
-            nRet = DB_LOAD_OK; // Will return this on successful completion
         }
 
         /* Ok to flush again */

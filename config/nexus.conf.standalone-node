@@ -3,8 +3,15 @@
 #
 # This configuration file is for the 'merging' branch.
 #
+
+#default RPC user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
 rpcuser=username
 rpcpassword=password
+
+#default API user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
+apiuser=username
+apipassword=password
+
 rpcallowip=127.0.0.1
 testnet=1
 beta=0

@@ -2,8 +2,14 @@
 # This is an example seed-node configuration for a private blockchain. If there
 # is more than one seed node used, only one must use the generate statement.
 #       
+#default RPC user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
 rpcuser=username
 rpcpassword=password
+
+#default API user/pass to blank for private network (no authentication of API requests)
+apiuser=
+apipassword=
+
 rpcallowip=127.0.0.1
 testnet=100
 beta=0

@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 #include <LLP/include/lisp.h>
+#include <LLP/include/port.h>
 
 #include <LLD/include/global.h>
 
@@ -67,8 +68,11 @@ int main(int argc, char** argv)
     /* Initalize the debug logger. */
     debug::Initialize();
 
+    /* ensure that apiuser / apipassword has been configured */
+    if( config::mapArgs.find("-apiuser") == config::mapArgs.end() || config::mapArgs.find("-apipassword") == config::mapArgs.end())
+        return debug::error("You must set apiuser=<user> and apipassword=<password> in your configuration file or startup parameters.  If you intend to run the API server without authenticating requests (not recommended), please set apiuser and apipassword to blank values.");
 
-    /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
+    /* Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) */
     LLP::Initialize();
 
 
@@ -101,17 +105,12 @@ int main(int argc, char** argv)
     debug::LogStartup();
 
 
-    /* Initialize LLD. */
-    LLD::Initialize();
-
-
-    /** Run the process as Daemon RPC/LLP Server if Flagged. **/
+    /* Run the process as Daemon RPC/LLP Server if Flagged. */
     if(config::fDaemon)
     {
         debug::log(0, FUNCTION, "-daemon flag enabled. Running in background");
         Daemonize();
     }
-
 
     /* Create directories if they don't exist yet. */
     if(!filesystem::exists(config::GetDataDir()) &&
@@ -120,28 +119,12 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
     }
 
-    /** Handle the beta server. */
+    /* Handle the beta server. */
     uint16_t nPort = 0;
-    if(!config::GetBoolArg(std::string("-beta")))
-    {
-        /* Get the port for Tritium Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
-
-        /* Initialize the Tritium Server. */
-        LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort);
-    }
-    else
-    {
-        /* Get the port for Legacy Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : LEGACY_MAINNET_PORT));
-
-        /* Initialize the Legacy Server. */
-        LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(nPort);
-    }
 
     nPort = static_cast<uint16_t>(config::fTestNet.load() ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT);
 
-    /** Startup the time server. **/
+    /* Startup the time server. */
     LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
         nPort,
         10,
@@ -155,20 +138,42 @@ int main(int argc, char** argv)
         true,
         30000);
 
+    /* Get the port for the Core API Server. */
+    nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
+
+    /* Set up RPC server */
+    LLP::RPC_SERVER = new LLP::Server<LLP::RPCNode>(
+        nPort,
+        static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4)),
+        30,
+        false,
+        0,
+        0,
+        60,
+        config::GetBoolArg("-listen", true),
+        false,
+        false);
+
+
     /* Startup timer stats. */
     uint32_t nElapsed = 0;
+
 
     /* Check for failures. */
     bool fFailed = config::fShutdown.load();
     if(!fFailed)
     {
-        /** Load the Wallet Database. **/
+        /* Initialize LLD. */
+        LLD::Initialize();
+
+
+        /* Load the Wallet Database. */
         bool fFirstRun;
         if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
             return debug::error("Failed initializing wallet");
 
 
-        /** Check the wallet loading for errors. **/
+        /* Check the wallet loading for errors. */
         uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
         if (nLoadWalletRet != Legacy::DB_LOAD_OK)
         {
@@ -176,26 +181,46 @@ int main(int argc, char** argv)
                 return debug::error("Failed loading wallet.dat: Wallet corrupted");
             else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
                 return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
+            else if (nLoadWalletRet == Legacy::DB_NEEDS_RESCAN)
+            {
+                debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning...");
+
+                Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+            }
             else
                 return debug::error("Failed loading wallet.dat");
         }
 
 
-        /** Rebroadcast transactions. **/
-        Legacy::Wallet::GetInstance().ResendWalletTransactions();
-
-
-        /** Initialize ChainState. */
+        /* Initialize ChainState. */
         TAO::Ledger::ChainState::Initialize();
 
 
-        /** Initialize the scripts for legacy mode. **/
+        /* Initialize the scripts for legacy mode. */
         Legacy::InitializeScripts();
 
 
-        /** Handle Rescanning. **/
+        /* Handle Rescanning. */
         if(config::GetBoolArg(std::string("-rescan")))
             Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+
+        /* Initialize the Main Net LLP's. */
+        if(!config::GetBoolArg(std::string("-beta")))
+        {
+            /* Get the port for Tritium Server. */
+            nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
+
+            /* Initialize the Tritium Server. */
+            LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort);
+        }
+        else
+        {
+            /* Get the port for Legacy Server. */
+            nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (LEGACY_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : LEGACY_MAINNET_PORT));
+
+            /* Initialize the Legacy Server. */
+            LLP::LEGACY_SERVER = LLP::CreateTAOServer<LLP::LegacyNode>(nPort);
+        }
 
 
         /* Initialize API Pointers. */
@@ -214,23 +239,6 @@ int main(int argc, char** argv)
             0,
             60,
             true,
-            false,
-            false);
-
-
-        /* Get the port for the Core API Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
-
-        /* Set up RPC server */
-        LLP::RPC_SERVER = new LLP::Server<LLP::RPCNode>(
-            nPort,
-            static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4)),
-            30,
-            false,
-            0,
-            0,
-            60,
-            config::GetBoolArg("-listen", true),
             false,
             false);
 
