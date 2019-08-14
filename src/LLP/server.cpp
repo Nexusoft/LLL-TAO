@@ -159,6 +159,8 @@ namespace LLP
             pAddressManager = nullptr;
         }
 
+        /* Free the ssl object. */
+        SSL_free(pSSL);
     }
 
 
@@ -174,9 +176,6 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::Shutdown()
     {
-        /* DEPRECATED. address write to database on update, not shutdown. */
-        //if(pAddressManager)
-        //  pAddressManager->WriteDatabase();
     }
 
 
