@@ -11,12 +11,19 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/include/x509_cert.h>
+
 #include <LLP/include/network.h>
 
 #include <Util/include/debug.h>
 
+#include <openssl/ssl.h>
+
 namespace LLP
 {
+
+    /* The global SSL Context for the LLP */
+    SSL_CTX *pSSL_CTX = nullptr;
 
     /* Perform any necessary processing to initialize the underlying network
      * resources such as sockets, etc.
@@ -62,6 +69,32 @@ namespace LLP
 
     #endif
 
+
+
+        /* OpenSSL initialization. */
+        SSL_load_error_strings();
+        OpenSSL_add_ssl_algorithms();
+
+        /* Create the global network SSL object. */
+        pSSL_CTX = SSL_CTX_new(SSLv23_method());
+
+
+        SSL_CTX_set_verify(pSSL_CTX, SSL_VERIFY_PEER, LLC::always_true_callback);
+
+
+        /* Instantiate a certificate for use with SSL context */
+        LLC::X509Cert cert;
+
+        cert.Generate();
+        cert.Verify();
+
+        if(!cert.Init_SSL(pSSL_CTX))
+            return debug::error(FUNCTION, "Certificate Init Failed for SSL Context");
+        if(!cert.Verify(pSSL_CTX))
+            return debug::error(FUNCTION, "Certificate Verify Failed for SSL Context");
+
+
+        debug::log(3, "SSL context and certificate creation complete.");
         debug::log(2, FUNCTION, "Network resource initialization complete");
 
         return true;
@@ -83,6 +116,9 @@ namespace LLP
         }
 
     #endif
+
+        /* Free the SSL context. */
+        SSL_CTX_free(pSSL_CTX);
 
         debug::log(2, FUNCTION, "Network resource cleanup complete");
 
