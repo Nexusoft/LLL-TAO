@@ -125,7 +125,8 @@ namespace LLP
                              bool fRemote = false,
                              bool fMeter = false,
                              bool fManager = false,
-                             uint32_t nSleepTimeIn = 1000);
+                             uint32_t nSleepTimeIn = 1000,
+                             bool fSSL_ = false);
 
 
         /** Default Destructor **/

@@ -33,6 +33,7 @@ ________________________________________________________________________________
 #include <functional>
 #include <numeric>
 
+#include <openssl/ssl.h>
 #ifdef USE_UPNP
 #include <miniupnpc/miniwget.h>
 #include <miniupnpc/miniupnpc.h>
@@ -67,6 +68,9 @@ namespace LLP
     , pAddressManager (nullptr)
     , nSleepTime      (nSleepTimeIn)
     , hListenSocket   (-1, -1)
+    , fSSL(fSSL_)
+    , MANAGER()
+                         bool fMeter, bool fManager, uint32_t nSleepTimeIn, bool fSSL_)
     {
         for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
         {
