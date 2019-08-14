@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <vector>
 #include <stdio.h>
 
+#include <LLP/include/network.h>
 #include <LLP/templates/socket.h>
 
 #include <Util/include/runtime.h>
@@ -25,6 +26,8 @@ ________________________________________________________________________________
 #include <sys/ioctl.h>
 #endif
 
+#include <openssl/ssl.h>
+
 namespace LLP
 {
 
@@ -32,6 +35,8 @@ namespace LLP
     Socket::Socket()
     : PACKET_MUTEX()
     , DATA_MUTEX()
+    , fSSL(false)
+    , pSSL(SSL_new(pSSL_CTX))
     , nLastSend(0)
     , nLastRecv(0)
     , nError(0)
@@ -51,6 +56,8 @@ namespace LLP
     : pollfd(socket)
     , PACKET_MUTEX()
     , DATA_MUTEX()
+    , fSSL(false)
+    , pSSL(SSL_new(pSSL_CTX))
     , nLastSend(socket.nLastSend.load())
     , nLastRecv(socket.nLastRecv.load())
     , nError(socket.nError.load())
@@ -64,6 +71,8 @@ namespace LLP
     Socket::Socket(int32_t nSocketIn, const BaseAddress &addrIn)
     : PACKET_MUTEX()
     , DATA_MUTEX()
+    , fSSL(false)
+    , pSSL(SSL_new(pSSL_CTX))
     , nLastSend(0)
     , nLastRecv(0)
     , nError(0)
@@ -82,6 +91,8 @@ namespace LLP
     Socket::Socket(const BaseAddress &addrConnect)
     : PACKET_MUTEX()
     , DATA_MUTEX()
+    , fSSL(false)
+    , pSSL(SSL_new(pSSL_CTX))
     , nLastSend(0)
     , nLastRecv(0)
     , nError(0)
@@ -102,6 +113,8 @@ namespace LLP
     /* Destructor for socket */
     Socket::~Socket()
     {
+        /* Free the ssl object. */
+        SSL_free(pSSL);
     }
 
 
@@ -139,7 +152,7 @@ namespace LLP
                 fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 
             /* Catch failure if socket couldn't be initialized. */
-            if(fd == INVALID_SOCKET)
+            if (fd == INVALID_SOCKET)
                 return false;
 
             nFile = fd;
@@ -200,13 +213,20 @@ namespace LLP
             fConnected = (connect(nFile, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
 
+        if(fSSL)
+        {
+            SSL_set_fd(pSSL, fd);
+            //SSL_do_handshake(pSSL);
+            fConnected = (SSL_connect(pSSL) != SOCKET_ERROR);
+        }
+
         /* Handle final socket checks if connection established with no errors. */
-        if(fConnected)
+        if (fConnected)
         {
             /* We would expect to get WSAEWOULDBLOCK/WSAEINPROGRESS here in the normal case of attempting a connection. */
             nError = WSAGetLastError();
 
-            if(nError == WSAEWOULDBLOCK || nError == WSAEALREADY || nError == WSAEINPROGRESS)
+            if (nError == WSAEWOULDBLOCK || nError == WSAEALREADY || nError == WSAEINPROGRESS)
             {
                 struct timeval timeout;
                 timeout.tv_sec  = nTimeout / 1000;
@@ -223,19 +243,25 @@ namespace LLP
                 int nRet = select(nFile + 1, nullptr, &fdset, nullptr, &timeout);
 
                 /* If the connection attempt timed out with select. */
-                if(nRet == 0)
+                if (nRet == 0)
                 {
                     debug::log(2, FUNCTION, "Connection timeout ", addrDest.ToString());
                     closesocket(nFile);
+
+                    if(fSSL)
+                        SSL_shutdown(pSSL);
 
                     return false;
                 }
 
                 /* If the select failed. */
-                else if(nRet == SOCKET_ERROR)
+                else if (nRet == SOCKET_ERROR)
                 {
                     debug::log(3, FUNCTION, "Select failed ", addrDest.ToString(), " (",  WSAGetLastError(), ")");
                     closesocket(nFile);
+
+                    if(fSSL)
+                        SSL_shutdown(pSSL);
 
                     return false;
                 }
@@ -243,32 +269,38 @@ namespace LLP
                 /* Get socket options. TODO: Remove preprocessors for cross platform sockets. */
                 socklen_t nRetSize = sizeof(nRet);
     #ifdef WIN32
-                if(getsockopt(nFile, SOL_SOCKET, SO_ERROR, (char*)(&nRet), &nRetSize) == SOCKET_ERROR)
+                if (getsockopt(nFile, SOL_SOCKET, SO_ERROR, (char*)(&nRet), &nRetSize) == SOCKET_ERROR)
     #else
-                if(getsockopt(nFile, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
+                if (getsockopt(nFile, SOL_SOCKET, SO_ERROR, &nRet, &nRetSize) == SOCKET_ERROR)
     #endif
                 {
                     debug::log(3, FUNCTION, "Get options failed ", addrDest.ToString(), " (", WSAGetLastError(), ")");
                     closesocket(nFile);
+                    if(fSSL)
+                        SSL_shutdown(pSSL);
 
                     return false;
                 }
 
                 /* If there are no socket options set. */
-                if(nRet != 0)
+                if (nRet != 0)
                 {
                     debug::log(3, FUNCTION, "Failed after select ", addrDest.ToString(), " (", nRet, ")");
 
                     closesocket(nFile);
+                    if(fSSL)
+                        SSL_shutdown(pSSL);
 
                     return false;
                 }
             }
-            else if(nError != WSAEISCONN)
+            else if (nError != WSAEISCONN)
             {
                 debug::log(3, FUNCTION, "Connect failed ", addrDest.ToString(), " (", nError, ")");
 
                 closesocket(nFile);
+                if(fSSL)
+                    SSL_shutdown(pSSL);
 
                 return false;
             }
@@ -307,6 +339,10 @@ namespace LLP
             closesocket(fd);
 
         fd = INVALID_SOCKET;
+
+        /* Shut down a TLS/SSL connection by sending the "close notify" shutdown alert to the peer. */
+        if(fSSL)
+            SSL_shutdown(pSSL);
     }
 
 
@@ -315,13 +351,20 @@ namespace LLP
     {
         int32_t nRead = 0;
 
-    #ifdef WIN32
-        nRead = static_cast<int32_t>(recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT));
-    #else
-        nRead = static_cast<int32_t>(recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT));
-    #endif
+        if(fSSL)
+        {
+            nRead = SSL_read(pSSL, (int8_t*)&vData[0], nBytes);
+        }
+        else
+        {
+        #ifdef WIN32
+            nRead = static_cast<int32_t>(recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT));
+        #else
+            nRead = static_cast<int32_t>(recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT));
+        #endif
+        }
 
-        if(nRead < 0)
+        if (nRead < 0)
         {
             nError = WSAGetLastError();
             debug::log(2, FUNCTION, "read failed ", addr.ToString(), " (", nError, " ", strerror(nError), ")");
@@ -339,13 +382,21 @@ namespace LLP
     {
         int32_t nRead = 0;
 
-    #ifdef WIN32
-        nRead = static_cast<int32_t>(recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT));
-    #else
-        nRead = static_cast<int32_t>(recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT));
-    #endif
+        if(fSSL)
+        {
+            nRead = SSL_read(pSSL, (int8_t*)&vData[0], nBytes);
+        }
+        else
+        {
+        #ifdef WIN32
+            nRead = static_cast<int32_t>(recv(fd, (char*)&vData[0], nBytes, MSG_DONTWAIT));
+        #else
+            nRead = static_cast<int32_t>(recv(fd, (int8_t*)&vData[0], nBytes, MSG_DONTWAIT));
+        #endif
+        }
 
-        if(nRead < 0)
+
+        if (nRead < 0)
         {
             nError = WSAGetLastError();
             debug::log(2, FUNCTION, "read failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
@@ -381,11 +432,18 @@ namespace LLP
         {
             LOCK(PACKET_MUTEX);
 
+            if(fSSL)
+            {
+                nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t*)&vData[0], nBytes));
+            }
+            else
+            {
             #ifdef WIN32
                 nSent = static_cast<int32_t>(send(fd, (char*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #else
                 nSent = static_cast<int32_t>(send(fd, (int8_t*)&vData[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #endif
+            }
         }
 
 
@@ -436,13 +494,20 @@ namespace LLP
         {
             LOCK(PACKET_MUTEX);
 
+            if(fSSL)
+            {
+                nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t *)&vBuffer[0], nBytes));
+            }
+            else
+            {
             #ifdef WIN32
                 nSent = static_cast<int32_t>(send(fd, (char*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #else
                 nSent = static_cast<int32_t>(send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #endif
-        }
+            }
 
+        }
 
         /* Handle errors on flush. */
         if(nSent < 0)
@@ -499,13 +564,20 @@ namespace LLP
     int Socket::error_code() const
     {
         /* Check for errors from reads or writes. */
-        if(nError == WSAEWOULDBLOCK ||
+        if (nError == WSAEWOULDBLOCK ||
             nError == WSAEMSGSIZE ||
             nError == WSAEINTR ||
             nError == WSAEINPROGRESS)
             return 0;
 
         return nError;
+    }
+
+
+    /*  Sets the SSL flag for sockets to use ssl or not. */
+    void Socket::SetSSL(bool fSSL_)
+    {
+        fSSL = fSSL_;
     }
 
 

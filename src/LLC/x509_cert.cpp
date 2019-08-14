@@ -30,18 +30,56 @@ namespace LLC
     X509Cert::X509Cert(uint32_t bits)
     : px509(nullptr)
     , pkey(nullptr)
-    , pRSA(nullptr)
     , nBits(bits)
     {
-        if(!init_cert())
-            throw key_error("X509Cert::X509Cert : Certificate initialization failed.");
+        init();
     }
 
 
     /** Default Destructor **/
     X509Cert::~X509Cert()
     {
-        free_cert();
+        shutdown();
+    }
+
+    bool X509Cert::Read()
+    {
+        //bool ret = 0;
+
+        /* Identify the ssl subfolder. */
+        std::string strFolder = config::GetDataDir() + "ssl/";
+
+        /* Check if the ssl subfolder exists. */
+        if(!filesystem::exists(strFolder))
+            return debug::error(FUNCTION, "Folder doesn't exist: ", strFolder);
+
+
+        /* Identify the certificate and key paths. */
+        std::string strCertPath = strFolder + "cert.pem";
+
+        /* Read the private key PEM file from the key path. */
+        FILE *pFile = fopen(strCertPath.c_str(), "rb");
+        if(!pFile)
+            return debug::error(FUNCTION, "X509Cert : Unable to open key file.");
+
+        PEM_read_PrivateKey(pFile, &pkey, nullptr, nullptr);
+
+        fclose(pFile);
+        //if(!ret)
+        //    return debug::error(FUNCTION, "X509Cert : Unable to read key file.");
+
+        /* Read the certificate PEM file from the certificate path. */
+        pFile = fopen(strCertPath.c_str(), "rb");
+        if(!pFile)
+            return debug::error(FUNCTION, "X509Cert : Unable to open cert file.");
+
+        PEM_read_X509(pFile, &px509, nullptr, nullptr);
+
+        fclose(pFile);
+        //if(!ret)
+        //    return debug::error(FUNCTION, "X509Cert : Unable to read cert file.");
+
+        return true;
     }
 
 
@@ -88,53 +126,14 @@ namespace LLC
     }
 
 
-    /*  Modifies the SSL internal state with certificate and key information. */
-    bool X509Cert::Init_SSL(SSL *ssl)
-    {
-        /* Check for null data. */
-        if(ssl == nullptr)
-            return debug::error(FUNCTION, "SSL object is null.");
-        if(px509 == nullptr)
-            return debug::error(FUNCTION, "certificate is null.");
-        if(pkey == nullptr)
-            return debug::error(FUNCTION, "private key is null.");
-
-        /* Assign the certiicate to the SSL object. */
-        if(SSL_use_certificate(ssl, px509) != 1)
-            return debug::error(FUNCTION, "Failed to initialize SSL with certificate.");
-
-        /* Assign the private key to the SSL object. */
-        if(SSL_use_PrivateKey(ssl, pkey) != 1)
-            return debug::error(FUNCTION, "Failed to initialize SSL with private key.");
-
-        return true;
-    }
-
-
-    /*  Prints out information about the certificate with human readable format. */
-    void X509Cert::Print()
-    {
-        char *str = X509_NAME_oneline(X509_get_subject_name(px509), 0, 0);
-        debug::log(0, "subject: ", str);
-        OPENSSL_free(str);
-        str = X509_NAME_oneline(X509_get_issuer_name(px509), 0, 0);
-        debug::log(0, "issuer: ", str);
-        OPENSSL_free(str);
-    }
-
-
-    /* Initializes and creates a new certificate signed with a unique RSA private key. */
-    bool X509Cert::init_cert()
+    /*  Generate the private key and certificate. */
+    bool X509Cert::Generate()
     {
         int32_t ret = 0;
 
-        /* Create the EVP_PKEY structure. */
-        pkey = EVP_PKEY_new();
-        if(pkey == nullptr)
-            return debug::error(FUNCTION, "EVP_PKEY_new() failed");
-
         /* Create the RSA structure. */
-        pRSA = RSA_new();
+        RSA *pRSA = RSA_new();
+
         if(pRSA == nullptr)
             return debug::error(FUNCTION, "RSA_new() failed");
 
@@ -148,12 +147,13 @@ namespace LLC
 
         /* Assign RSA to the EVP key. */
         if(!EVP_PKEY_assign_RSA(pkey, pRSA))
-            return debug::error(FUNCTION, "Unable to assign ", nBits, "-Bit RSA key.");
+        {
+            if(pRSA)
+                RSA_free(pRSA);
 
-        /* Create the X509 structure. */
-        px509 = X509_new();
-        if(px509 == nullptr)
-            return debug::error(FUNCTION, "X509_new() failed");
+            return debug::error(FUNCTION, "Unable to assign ", nBits, "-Bit RSA key.");
+        }
+
 
         /* Set the serial number of certificate to '1'. Some open-source HTTP servers refuse to accept a certificate with a
            serial number of '0', which is the default. */
@@ -180,12 +180,115 @@ namespace LLC
         /* Peform the sign. */
         X509_sign(px509, pkey, EVP_sha1());
 
+
         return true;
     }
 
 
+    /*  Modifies the SSL internal state with certificate and key information. */
+    bool X509Cert::Init_SSL(SSL *ssl)
+    {
+        /* Check for null data. */
+        if(ssl == nullptr)
+            return debug::error(FUNCTION, "SSL object is null.");
+        if(px509 == nullptr)
+            return debug::error(FUNCTION, "certificate is null.");
+        if(pkey == nullptr)
+            return debug::error(FUNCTION, "private key is null.");
+
+        /* Assign the certificate to the SSL object. */
+        if(SSL_use_certificate(ssl, px509) != 1)
+            return debug::error(FUNCTION, "Failed to initialize SSL with certificate.");
+
+        /* Assign the private key to the SSL object. */
+        if(SSL_use_PrivateKey(ssl, pkey) != 1)
+            return debug::error(FUNCTION, "Failed to initialize SSL with private key.");
+
+        return true;
+    }
+
+    /*  Modifies the SSL internal state with certificate and key information. */
+    bool X509Cert::Init_SSL(SSL_CTX *ssl_ctx)
+    {
+        /* Check for null data. */
+        if(ssl_ctx == nullptr)
+            return debug::error(FUNCTION, "SSL object is null.");
+        if(px509 == nullptr)
+            return debug::error(FUNCTION, "certificate is null.");
+        if(pkey == nullptr)
+            return debug::error(FUNCTION, "private key is null.");
+
+        /* Assign the certificate to the SSL object. */
+        if(SSL_CTX_use_certificate(ssl_ctx, px509) != 1)
+            return debug::error(FUNCTION, "Failed to initialize SSL Context with certificate.");
+
+        /* Assign the private key to the SSL object. */
+        if(SSL_CTX_use_PrivateKey(ssl_ctx, pkey) != 1)
+            return debug::error(FUNCTION, "Failed to initialize SSL Context with private key.");
+
+        return true;
+    }
+
+
+    /*  Check that the private key matches the public key in the x509 certificate. */
+    bool X509Cert::Verify()
+    {
+        if(X509_check_private_key(px509, pkey) != 1)
+            return debug::error(FUNCTION, "X509_check_private_key() : Private key does not match the certificate public key.");
+
+        return true;
+    }
+
+
+    /* Check the authenticity of the public key in the certificate and the private key paired with it. */
+    bool X509Cert::Verify(SSL *ssl)
+    {
+        if(SSL_check_private_key(ssl) != 1)
+            return debug::error(FUNCTION, "SSL_check_private_key() : Private key does not match the certificate public key.");
+
+        return true;
+    }
+
+
+    /* Check the authenticity of the public key in the certificate and the private key paired with it. */
+    bool X509Cert::Verify(SSL_CTX *ssl_ctx)
+    {
+        if(SSL_CTX_check_private_key(ssl_ctx) != 1)
+            return debug::error(FUNCTION, "SSL_CTX_check_private_key() : Private key does not match the certificate public key.");
+
+        return true;
+    }
+
+
+    /*  Prints out information about the certificate with human readable format. */
+    void X509Cert::Print()
+    {
+        char *str = X509_NAME_oneline(X509_get_subject_name(px509), 0, 0);
+        debug::log(0, "subject: ", str);
+        OPENSSL_free(str);
+        str = X509_NAME_oneline(X509_get_issuer_name(px509), 0, 0);
+        debug::log(0, "issuer: ", str);
+        OPENSSL_free(str);
+    }
+
+
+    /* Initializes a new certificate and private key. */
+    void X509Cert::init()
+    {
+        /* Create the EVP_PKEY structure. */
+        pkey = EVP_PKEY_new();
+        if(pkey == nullptr)
+            debug::error(FUNCTION, "EVP_PKEY_new() failed");
+
+        /* Create the X509 structure. */
+        px509 = X509_new();
+        if(px509 == nullptr)
+            debug::error(FUNCTION, "X509_new() failed");
+    }
+
+
     /*  Frees memory associated with the certificate and key. */
-    void X509Cert::free_cert()
+    void X509Cert::shutdown()
     {
         if(px509)
             X509_free(px509);
@@ -193,6 +296,75 @@ namespace LLC
         /* No need to call RSA_free if it is assigned to EVP_PKEY, it will free it automatically. */
         if(pkey)
             EVP_PKEY_free(pkey);
+    }
+
+
+    /*  Print information about peer certificate. */
+    void PrintCert(X509 *cert)
+    {
+        if(cert != nullptr)
+        {
+            char *str = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
+            debug::log(0, "\tsubject: ", str);
+            OPENSSL_free(str);
+            str = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
+            debug::log(0, "\tissuer: ", str);
+            OPENSSL_free(str);
+        }
+        else
+        {
+            debug::log(0, "\tsubject: (NONE)");
+            debug::log(0, "\tissuer: (NONE)");
+        }
+    }
+
+
+    /*  Print information about peer certificate. */
+    void PeerCertificateInfo(SSL *pSSL)
+    {
+        X509 *pPeerCert = SSL_get_peer_certificate(pSSL);
+
+        debug::log(0, "Peer certificate:");
+
+        if(pPeerCert)
+        {
+            int nRet = SSL_get_verify_result(pSSL);
+            switch(nRet)
+            {
+                case X509_V_OK:
+                {
+                    break;
+                }
+                case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
+                {
+                    debug::error("self-signed cert: X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT");
+                    break;
+                }
+                case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
+                {
+                    debug::error("self-signed cert: X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN");
+                    break;
+                }
+                default:
+                {
+                    debug::error("certificate verification error: ", nRet);
+                    break;
+                }
+            }
+        }
+
+
+        PrintCert(pPeerCert);
+
+        /* Does nothing if null */
+        X509_free(pPeerCert);
+    }
+
+
+    /* Always returns true. Callback function. */
+    int always_true_callback(int ok, X509_STORE_CTX *ctx)
+    {
+        return 1;
     }
 
 
