@@ -8,6 +8,14 @@
 #this value can be any integer value, to make it simple to create new testnets on the fly.
 testnet=1
 
+#default RPC user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
+rpcuser=username
+rpcpassword=password
+
+#default API user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
+apiuser=username
+apipassword=password
+
 #this will launch the process into the background
 daemon=1
 

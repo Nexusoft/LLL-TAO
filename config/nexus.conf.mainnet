@@ -11,6 +11,15 @@ daemon=1
 #this will trigger the software to run on the Legacy Main Network
 beta=1
 
+#default RPC user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
+rpcuser=username
+rpcpassword=password
+
+#default API user/pass.  PLEASE CHANGE THESE TO SUITABLE VALUES
+apiuser=username
+apipassword=password
+
+
 #OPTIONAL: seed node to force connect to
 #connect=node1.nexusoft.io
 
@@ -22,3 +31,4 @@ beta=1
 
 #OPTIONAL: if your application requires multiple users
 #multiuser=1
+

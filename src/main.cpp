@@ -68,6 +68,9 @@ int main(int argc, char** argv)
     /* Initalize the debug logger. */
     debug::Initialize();
 
+    /* ensure that apiuser / apipassword has been configured */
+    if( config::mapArgs.find("-apiuser") == config::mapArgs.end() || config::mapArgs.find("-apipassword") == config::mapArgs.end())
+        return debug::error("You must set apiuser=<user> and apipassword=<password> in your configuration file or startup parameters.  If you intend to run the API server without authenticating requests (not recommended), please set apiuser and apipassword to blank values.");
 
     /** Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) **/
     LLP::Initialize();

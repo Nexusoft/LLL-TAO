@@ -6,6 +6,8 @@
 #
 rpcuser=username
 rpcpassword=password
+apiuser=username
+apipassword=password
 llpallowip=127.0.0.1:9336
 daemon=1
 #mining=1
