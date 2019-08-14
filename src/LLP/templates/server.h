@@ -34,6 +34,7 @@ namespace LLP
     class AddressManager;
     class DDOS_Filter;
     class InfoAddress;
+    typedef struct ssl_st SSL;
 
 
     /** Server
@@ -58,6 +59,14 @@ namespace LLP
         /** DDOS flag for off or on. **/
         std::atomic<bool> fDDOS;
 
+        /* Determine if Server should use an SSL connection. */
+        std::atomic<bool> fSSL;
+
+        /* The ssl object for SSL LLP connections. */
+        SSL *pSSL;
+
+        /* condition variable for manager thread. */
+        std::condition_variable MANAGER;
 
         /** Listener Thread for accepting incoming connections. **/
         std::thread          LISTEN_THREAD;

@@ -50,6 +50,7 @@ namespace LLP
     , DATA_THREAD     (std::bind(&DataThread::Thread, this))
     , FLUSH_CONDITION ( )
     , FLUSH_THREAD    (std::bind(&DataThread::Flush, this))
+    , fSSL(fSSL_)
     {
     }
 
