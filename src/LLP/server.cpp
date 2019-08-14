@@ -33,6 +33,8 @@ ________________________________________________________________________________
 #include <functional>
 #include <numeric>
 
+#include <openssl/ssl.h>
+
 
 namespace LLP
 {
@@ -50,8 +52,10 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType>::Server(uint16_t nPort, uint16_t nMaxThreads, uint32_t nTimeout, bool fDDOS_,
                          uint32_t cScore, uint32_t rScore, uint32_t nTimespan, bool fListen,
-                         bool fMeter, bool fManager, uint32_t nSleepTimeIn)
+                         bool fMeter, bool fManager, uint32_t nSleepTimeIn, bool fSSL_)
     : fDDOS(fDDOS_)
+    , fSSL(fSSL_)
+    , pSSL(SSL_new(pSSL_CTX))
     , MANAGER()
     , PORT(nPort)
     , MAX_THREADS(nMaxThreads)
