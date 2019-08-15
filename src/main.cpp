@@ -153,7 +153,8 @@ int main(int argc, char** argv)
         config::GetBoolArg("-listen", true),
         false,
         false,
-        config::GetBoolArg("-rpcssl", false));
+        1000,
+        config::GetBoolArg(std::string("-rpcssl")));
 
 
     /* Startup timer stats. */
@@ -242,11 +243,12 @@ int main(int argc, char** argv)
             true,
             false,
             false,
-            config::GetBoolArg(std::string("-apissl"), false));
+            1000,
+            config::GetBoolArg(std::string("-apissl")));
 
 
         /* Handle Manual Connections from Command Line, if there are any. */
-        if(config::GetBoolArg("-beta"))
+        if(config::GetBoolArg(std::string("-beta")))
             LLP::MakeConnections<LLP::LegacyNode>(LLP::LEGACY_SERVER);
         else
             LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);

@@ -62,6 +62,8 @@ namespace LLP
     , vBuffer(socket.vBuffer)
     , addr(socket.addr)
     {
+        /* Determine if copy needs SSL. */
+        SetSSL(socket.IsSSL());
     }
 
 
@@ -89,7 +91,7 @@ namespace LLP
             if(SSL_accept(pSSL) == SOCKET_ERROR)
                 debug::error(FUNCTION, "SSL Socket error SSL_accept failed: ", WSAGetLastError());
 
-            debug::log(0, FUNCTION, " : SSL Connection using ", SSL_get_cipher(pSSL));
+            debug::log(0, FUNCTION, "SSL Connection using ", SSL_get_cipher(pSSL));
         }
 
         /* Reset the internal timers. */
@@ -586,6 +588,18 @@ namespace LLP
             SSL_free(pSSL);
             pSSL = nullptr;
         }
+    }
+
+
+    /* Determines if socket is using SSL encryption. */
+    bool Socket::IsSSL() const
+    {
+        LOCK(DATA_MUTEX);
+
+        if(pSSL != nullptr)
+            return true;
+
+        return false;
     }
 
 

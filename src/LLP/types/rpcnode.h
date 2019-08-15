@@ -47,11 +47,11 @@ namespace LLP
 
 
         /** Constructor **/
-        RPCNode(LLP::Socket SOCKET_IN, LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        RPCNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Constructor **/
-        RPCNode(LLP::DDOS_Filter* DDOS_IN, bool isDDOS = false);
+        RPCNode(DDOS_Filter* DDOS_IN, bool isDDOS = false);
 
 
         /** Default Destructor **/

@@ -234,6 +234,14 @@ namespace LLP
          void SetSSL(bool fSSL);
 
 
+         /** IsSSL
+          *
+          * Determines if socket is using SSL encryption.
+          *
+          **/
+          bool IsSSL() const;
+
+
     private:
 
         /** error_code
