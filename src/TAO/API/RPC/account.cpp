@@ -473,7 +473,8 @@ namespace TAO
             if (params.size() > 1)
                 nMinDepth = params[1];
 
-            if (params[0].get<std::string>() == "*") {
+            if (params[0].get<std::string>() == "*")
+            {
                 // Calculate total balance a different way from GetBalance()
                 // (GetBalance() sums up all unspent TxOuts)
                 // getbalance and getbalance '*' should always return the same number.

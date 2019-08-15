@@ -44,7 +44,7 @@ namespace Legacy
 
     /** Constructor **/
     WalletTx::WalletTx()
-    : ptransactionWallet(nullptr)
+    : pWallet(nullptr)
     , fHaveWallet(false)
     {
         InitWalletTx();
@@ -53,7 +53,7 @@ namespace Legacy
 
     /** Constructor **/
     WalletTx::WalletTx(Wallet& walletIn)
-    : ptransactionWallet(&walletIn)
+    : pWallet(&walletIn)
     , fHaveWallet(true)
     {
         InitWalletTx();
@@ -62,7 +62,7 @@ namespace Legacy
 
     /** Constructor **/
     WalletTx::WalletTx(Wallet* pwalletIn)
-    : ptransactionWallet(pwalletIn)
+    : pWallet(pwalletIn)
     , fHaveWallet(true)
     {
         InitWalletTx();
@@ -72,7 +72,7 @@ namespace Legacy
     /** Constructor **/
     WalletTx::WalletTx(Wallet* pwalletIn, const MerkleTx& txIn)
     : MerkleTx(txIn)
-    , ptransactionWallet(pwalletIn)
+    , pWallet(pwalletIn)
     , fHaveWallet(true)
     {
         InitWalletTx();
@@ -82,7 +82,7 @@ namespace Legacy
     /** Constructor **/
     WalletTx::WalletTx(Wallet* pwalletIn, const Transaction& txIn)
     : MerkleTx(txIn)
-    , ptransactionWallet(pwalletIn)
+    , pWallet(pwalletIn)
     , fHaveWallet(true)
     {
         InitWalletTx();
@@ -131,7 +131,7 @@ namespace Legacy
         {
             LOCK(WalletTx::cs_wallettx);
 
-            ptransactionWallet = pwalletIn;
+            pWallet = pwalletIn;
             fHaveWallet = true;
             MarkDirty();
         }
@@ -160,7 +160,7 @@ namespace Legacy
             LOCK(WalletTx::cs_wallettx);
 
             /* Call corresponding method in wallet that will check which txin entries belong to it */
-            nDebitCached = ptransactionWallet->GetDebit(*this);
+            nDebitCached = pWallet->GetDebit(*this);
 
             /* Set cached flag */
             fDebitCached = true;
@@ -189,7 +189,7 @@ namespace Legacy
             LOCK(WalletTx::cs_wallettx);
 
             /* Call corresponding method in wallet that will check which txout entries belong to it */
-            nCreditCached = ptransactionWallet->GetCredit(*this);
+            nCreditCached = pWallet->GetCredit(*this);
 
             /* Set cached flag */
             fCreditCached = true;
@@ -229,7 +229,7 @@ namespace Legacy
                 if (!IsSpent(i) && vout[i].nValue > 0)
                 {
                     /* Call corresponding method in wallet that will check which txout entries belong to it */
-                    nCredit += ptransactionWallet->GetCredit(txout);
+                    nCredit += pWallet->GetCredit(txout);
 
                     if (!Legacy::MoneyRange(nCredit))
                         throw std::runtime_error("WalletTx::GetAvailableCredit() : value out of range");
@@ -262,7 +262,7 @@ namespace Legacy
             LOCK(WalletTx::cs_wallettx);
 
             /* Call corresponding method in wallet that will find the change transaction, if any */
-            nChangeCached = ptransactionWallet->GetChange(*this);
+            nChangeCached = pWallet->GetChange(*this);
 
             /* Set cached flag */
             fChangeCached = true;
@@ -286,7 +286,7 @@ namespace Legacy
         if (!IsBound())
             return 0;
 
-        return ptransactionWallet->GetRequestCount(*this);
+        return pWallet->GetRequestCount(*this);
     }
 
 
@@ -314,21 +314,43 @@ namespace Legacy
             return false;
 
         /* If no confirmations but it is a transaction we sent (vtxPrev populated by AddSupportingTransactions()),
-         * we can still consider it confirmed if all supporting transactions are confirmed.
-         *
-         * When every tx in vtxPrev for this transaction is Final with Depth > 0 and IsFromMe()
-         * it will continue each iteration until for loop ends and method returns true.
-         */
+         * we can still consider it confirmed if all supporting transactions are confirmed.*/
+        std::map<uint512_t, const MerkleTx*> mapPrev;
         for(const auto& prevTx : vtxPrev)
+            mapPrev[prevTx.GetHash()] = &prevTx;
+
+        /* Work queue to process all inputs recursively. */
+        std::vector<const MerkleTx*> vWorkQueue;
+        vWorkQueue.reserve(vtxPrev.size() + 1);
+
+        /* Push back this tx to start with. */
+        vWorkQueue.push_back(this);
+
+        /* Loop through work queue. */
+        for(uint32_t i = 0; i < vWorkQueue.size(); ++i)
         {
-            if (!prevTx.IsFinal())
+            /* Check for finality. */
+            const MerkleTx* ptx = vWorkQueue[i];
+            if(!ptx->IsFinal())
                 return false;
 
-            if (prevTx.GetDepthInMainChain() == 0)
+            /* This code is only for edge case change transactions, so skip confiremd ones. */
+            if(ptx->GetDepthInMainChain() >= 1)
+                continue;
+
+            /* This is for change transactions, so skip if previous isn't your change. */
+            if(!pWallet->IsFromMe(*ptx))
                 return false;
 
-            if (!ptransactionWallet->IsFromMe(prevTx))
-                return false;
+            /* Loop through inputs of transaction. */
+            for(const auto& txin : ptx->vin)
+            {
+                /* Filter out inputs not included in dependant transactions. */
+                if(!mapPrev.count(txin.prevout.hash))
+                    return false;
+
+                vWorkQueue.push_back(mapPrev[txin.prevout.hash]);
+            }
         }
 
         return true;
@@ -444,9 +466,9 @@ namespace Legacy
     {
         LOCK(WalletTx::cs_wallettx);
 
-        if (IsBound() && ptransactionWallet->IsFileBacked())
+        if (IsBound() && pWallet->IsFileBacked())
         {
-            WalletDB walletDB(ptransactionWallet->GetWalletFile());
+            WalletDB walletDB(pWallet->GetWalletFile());
             bool ret = walletDB.WriteTx(GetHash(), *this);
 
             return ret;
@@ -470,7 +492,7 @@ namespace Legacy
         if (IsCoinBase() || IsCoinStake())
         {
             if (GetBlocksToMaturity() > 0)
-                nGeneratedImmature = ptransactionWallet->GetCredit(*this); //WalletTx::GetCredit() returns zero for immature
+                nGeneratedImmature = pWallet->GetCredit(*this); //WalletTx::GetCredit() returns zero for immature
             else
                 nGeneratedMature = GetCredit();
 
@@ -506,7 +528,7 @@ namespace Legacy
                 listSent.push_back(std::make_pair(address, txout.nValue));
 
             /* For txout received (sent to address in bound wallet), add to the received list */
-            if (ptransactionWallet->IsMine(txout))
+            if (pWallet->IsMine(txout))
                 listReceived.push_back(std::make_pair(address, txout.nValue));
         }
     }
@@ -545,12 +567,12 @@ namespace Legacy
         {
             for(const auto& r : listReceived)
             {
-                if (ptransactionWallet->GetAddressBook().HasAddress(r.first))
+                if (pWallet->GetAddressBook().HasAddress(r.first))
                 {
                     /* When received Nexus Address (r.first) is in wallet address book,
                      * include it in nReceived amount if its label matches requested account label
                      */
-                    if (ptransactionWallet->GetAddressBook().GetAddressBookName(r.first) == strAccount)
+                    if (pWallet->GetAddressBook().GetAddressBookName(r.first) == strAccount)
                         nReceived += r.second;
                 }
                 else if (strAccount == "" || strAccount == "*")
@@ -566,7 +588,7 @@ namespace Legacy
     /* Populates transaction data for previous transactions into vtxPrev */
     void WalletTx::AddSupportingTransactions()
     {
-        /* ptransactionWallet->cs_wallet should already be locked before calling this method
+        /* pWallet->cs_wallet should already be locked before calling this method
          * Locking removed from within the method itself
          */
         vtxPrev.clear();
@@ -602,9 +624,9 @@ namespace Legacy
                     Legacy::Transaction parentTransaction;
 
                     /* Find returns iterator to equivalent of pair<uint512_t, WalletTx> */
-                    auto mi = ptransactionWallet->mapWallet.find(prevoutTxHash);
+                    auto mi = pWallet->mapWallet.find(prevoutTxHash);
 
-                    if (mi != ptransactionWallet->mapWallet.end())
+                    if (mi != pWallet->mapWallet.end())
                     {
                         /* Found previous transaction (input to this one) in wallet */
                         const WalletTx& prevTx = (*mi).second; // Need WalletTx for access to vtxPrev
@@ -627,7 +649,7 @@ namespace Legacy
                     else if (!config::fClient && LLD::legacyDB->ReadTx(prevoutTxHash, parentTransaction))
                     {
                         /* Found transaction in database, but it isn't in wallet. Create a new WalletTx from it to use as prevMerkleTx */
-                        prevMerkleTx = WalletTx(ptransactionWallet, parentTransaction);
+                        prevMerkleTx = WalletTx(pWallet, parentTransaction);
                     }
                     else
                     {

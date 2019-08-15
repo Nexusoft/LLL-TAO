@@ -55,5 +55,5 @@ namespace version
         const std::string BUILD_ARCH = "[x86]";
     #endif
 
-    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + " " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH);// + " " + CLIENT_TYPE);
+    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + ".rc2 " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH);// + " " + CLIENT_TYPE);
 }
