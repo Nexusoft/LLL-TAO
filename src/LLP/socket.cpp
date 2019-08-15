@@ -62,8 +62,9 @@ namespace LLP
     , vBuffer(socket.vBuffer)
     , addr(socket.addr)
     {
-        /* Determine if copy needs SSL. */
-        SetSSL(socket.IsSSL());
+        if(socket.pSSL)
+            pSSL = SSL_dup(socket.pSSL);
+
     }
 
 
@@ -88,6 +89,8 @@ namespace LLP
         if(fSSL)
         {
             SSL_set_fd(pSSL, fd);
+            SSL_set_accept_state(pSSL);
+
             if(SSL_accept(pSSL) == SOCKET_ERROR)
                 debug::error(FUNCTION, "SSL Socket error SSL_accept failed: ", WSAGetLastError());
 
@@ -230,8 +233,9 @@ namespace LLP
         if(pSSL)
         {
 
-            SSL_set_fd(pSSL, fd);
-            //SSL_do_handshake(pSSL);
+            SSL_set_fd(pSSL, nFile);
+            SSL_set_connect_state(pSSL);
+
             fConnected = (SSL_connect(pSSL) != SOCKET_ERROR);
         }
 

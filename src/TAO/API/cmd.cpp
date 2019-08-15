@@ -35,6 +35,62 @@ namespace TAO
     namespace API
     {
 
+        /* Makes a connection, write packet, read response, and then disconnects. */
+        template<typename ProtocolType>
+        int WriteReadResponse(ProtocolType &node, const LLP::BaseAddress& addr, std::vector<uint8_t> &vBuffer, const std::string& type)
+        {
+            if(!node.Connect(addr))
+            {
+                debug::log(0, "Couldn't Connect to ", type);
+
+                return 0;
+            }
+
+            /* Write the buffer to the socket. */
+            node.Write(vBuffer, vBuffer.size());
+
+            /* Read the response packet. */
+            while(!node.INCOMING.Complete() && !config::fShutdown.load())
+            {
+                node.Flush();
+
+                /* Catch if the connection was closed. */
+                if(!node.Connected())
+                {
+                    debug::log(0, "Connection Terminated");
+
+                    return 0;
+                }
+
+                /* Catch if the socket experienced errors. */
+                if(node.Errors())
+                {
+                    debug::log(0, "Socket Error");
+
+                    return 0;
+                }
+
+                /* Catch if the connection timed out. */
+                if(node.Timeout(120))
+                {
+                    debug::log(0, "Socket Timeout");
+                    return 0;
+                }
+
+                /* Read the response packet. */
+                node.ReadPacket();
+                runtime::sleep(1);
+
+                debug::log(0, FUNCTION);
+            }
+
+            /* Disconnect node. */
+            node.Disconnect();
+
+            return 1;
+        }
+
+
         /* Executes an API call from the commandline */
         int CommandLineAPI(int argc, char** argv, int argn)
         {
@@ -114,56 +170,16 @@ namespace TAO
             LLP::APINode apiNode;
 
             /* Determine if connection should use SSL encryption. */
-            apiNode.SetSSL(config::GetBoolArg(std::string("-apissl"), false));
+            apiNode.SetSSL(config::GetBoolArg(std::string("-apissl")));
 
             std::string strAddr = config::GetArg("-apiconnect", "127.0.0.1");
             uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
 
             LLP::BaseAddress addr(strAddr, nPort);
 
-            if(!apiNode.Connect(addr))
-            {
-                debug::log(0, "Couldn't Connect to API");
-
+            /* Make connection, write packet, read response, and disconnect. */
+            if(!WriteReadResponse<LLP::APINode>(apiNode, addr, vBuffer, "API"))
                 return 0;
-            }
-
-            /* Write the buffer to the socket. */
-            apiNode.Write(vBuffer, vBuffer.size());
-            apiNode.Flush();
-
-            /* Read the response packet. */
-            while(!apiNode.INCOMING.Complete() && !config::fShutdown.load())
-            {
-
-                /* Catch if the connection was closed. */
-                if(!apiNode.Connected())
-                {
-                    debug::log(0, "Connection Terminated");
-                    return 0;
-                }
-
-                /* Catch if the socket experienced errors. */
-                if(apiNode.Errors())
-                {
-                    debug::log(0, "Socket Error");
-                    return 0;
-                }
-
-                /* Catch if the connection timed out. */
-                if(apiNode.Timeout(120))
-                {
-                    debug::log(0, "Socket Timeout");
-                    return 0;
-                }
-
-                /* Read the response packet. */
-                apiNode.ReadPacket();
-                runtime::sleep(1);
-            }
-
-            /* Disconnect node. */
-            apiNode.Disconnect();
 
             /* Parse response JSON. */
             json::json ret = json::json::parse(apiNode.INCOMING.strContent);
@@ -242,51 +258,16 @@ namespace TAO
             LLP::RPCNode rpcNode;
 
             /* Determine if connection should use SSL encryption. */
-            rpcNode.SetSSL(config::GetBoolArg(std::string("-rpcssl"), false));
+            rpcNode.SetSSL(config::GetBoolArg(std::string("-rpcssl")));
 
             std::string strAddr = config::GetArg("-rpcconnect", "127.0.0.1");
             uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
 
             LLP::BaseAddress addr(strAddr, nPort);
 
-            if(!rpcNode.Connect(addr))
-            {
-                debug::log(0, "Couldn't Connect to RPC");
-
+            /* Make connection, write packet, read response, and disconnect. */
+            if(!WriteReadResponse<LLP::RPCNode>(rpcNode, addr, vBuffer, "RPC"))
                 return 0;
-            }
-
-            /* Write the buffer to the socket. */
-            rpcNode.Write(vBuffer, vBuffer.size());
-
-            /* Read the response packet. */
-            while(!rpcNode.INCOMING.Complete() && !config::fShutdown.load())
-            {
-                rpcNode.Flush();
-
-                /* Catch if the connection was closed. */
-                if(!rpcNode.Connected())
-                {
-                    debug::log(0, "Connection Terminated");
-
-                    return 0;
-                }
-
-                /* Catch if the socket experienced errors. */
-                if(rpcNode.Errors())
-                {
-                    debug::log(0, "Socket Error");
-
-                    return 0;
-                }
-
-                /* Read the response packet. */
-                rpcNode.ReadPacket();
-                runtime::sleep(1);
-            }
-
-            /* Disconnect node. */
-            rpcNode.Disconnect();
 
             /* Dump the response to the console. */
             int nRet = 0;
