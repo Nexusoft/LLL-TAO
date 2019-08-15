@@ -1189,7 +1189,7 @@ namespace TAO
             if ((nGeneratedMature + nGeneratedImmature) != 0 && (fAllAccounts || strAccount == ""))
             {
                 json::json entry;
-                entry["account"] = std::string("");
+                entry["account"] = std::string("default");
 
                 /* For coinbase / coinstake transactions we need to extract the address from the first TxOut in vout */
                 if(wtx.vout.size() == 0)
