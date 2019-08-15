@@ -45,9 +45,6 @@ namespace LLP
         mutable std::mutex PACKET_MUTEX;
         mutable std::mutex DATA_MUTEX;
 
-        /* Flag for SSL communication. */
-        std::atomic<bool> fSSL;
-
         /* SSL object */
         SSL *pSSL;
 
@@ -83,15 +80,15 @@ namespace LLP
 
 
         /** The socket constructor. **/
-        Socket(int32_t nSocketIn, const BaseAddress &addrIn);
+        Socket(int32_t nSocketIn, const BaseAddress &addrIn, bool fSSL = false);
 
 
         /** Constructor for socket
          *
-         *  @param[in] addrDest The address to connect socket to
+         *  @param[in] addrConnect The address to connect socket to
          *
          **/
-        Socket(const BaseAddress &addrDest);
+        Socket(const BaseAddress &addrConnect, bool fSSL = false);
 
 
         /** Destructor for socket **/
@@ -229,12 +226,12 @@ namespace LLP
 
         /** SetSSL
          *
-         *  Sets the SSL flag for sockets to use ssl or not.
+         *  Creates or destroys the SSL object depending on the flag set.
          *
          *  @param[in] fSSL_ The flag to set SSL on or off.
          *
          **/
-         void SetSSL(bool fSSL_);
+         void SetSSL(bool fSSL);
 
 
     private:

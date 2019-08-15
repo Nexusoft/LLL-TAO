@@ -76,8 +76,7 @@ namespace LLP
             /* Create a new pointer on the heap. */
             ProtocolType* node = new ProtocolType(SOCKET, DDOS, fDDOS);
 
-            /* Set the ssl flag for the node depending on the data thread. */
-            node->SetSSL(fSSL);
+            /* Set the connected flag. */
             node->fCONNECTED.store(true);
 
             /* Find an available slot. */
@@ -118,7 +117,7 @@ namespace LLP
             /* Create a new pointer on the heap. */
             ProtocolType* node = new ProtocolType(DDOS, fDDOS);
 
-            /* Set the ssl flag for the node depending on the data thread. */
+            /* Configure SSL for the node depending on the data thread flag. */
             node->SetSSL(fSSL);
 
             if(!node->Connect(addr))

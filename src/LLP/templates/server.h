@@ -56,9 +56,6 @@ namespace LLP
         /* Determine if Server should use an SSL connection. */
         std::atomic<bool> fSSL;
 
-        /* The ssl object for SSL LLP connections. */
-        SSL *pSSL;
-
         /* condition variable for manager thread. */
         std::condition_variable MANAGER;
 

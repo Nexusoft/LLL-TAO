@@ -31,12 +31,11 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /** The default constructor. **/
+    /* The default constructor. */
     Socket::Socket()
     : PACKET_MUTEX()
     , DATA_MUTEX()
-    , fSSL(false)
-    , pSSL(SSL_new(pSSL_CTX))
+    , pSSL(nullptr)
     , nLastSend(0)
     , nLastRecv(0)
     , nError(0)
@@ -51,13 +50,12 @@ namespace LLP
     }
 
 
-    /** Copy constructor. **/
+    /* Copy constructor. */
     Socket::Socket(const Socket& socket)
     : pollfd(socket)
     , PACKET_MUTEX()
     , DATA_MUTEX()
-    , fSSL(false)
-    , pSSL(SSL_new(pSSL_CTX))
+    , pSSL(nullptr)
     , nLastSend(socket.nLastSend.load())
     , nLastRecv(socket.nLastRecv.load())
     , nError(socket.nError.load())
@@ -67,12 +65,11 @@ namespace LLP
     }
 
 
-    /** The socket constructor. **/
-    Socket::Socket(int32_t nSocketIn, const BaseAddress &addrIn)
+    /* The socket constructor. */
+    Socket::Socket(int32_t nSocketIn, const BaseAddress &addrIn, bool fSSL)
     : PACKET_MUTEX()
     , DATA_MUTEX()
-    , fSSL(false)
-    , pSSL(SSL_new(pSSL_CTX))
+    , pSSL(nullptr)
     , nLastSend(0)
     , nLastRecv(0)
     , nError(0)
@@ -82,17 +79,29 @@ namespace LLP
         fd = nSocketIn;
         events = POLLIN;
 
+        /* Determine if socket should use SSL. */
+        SetSSL(fSSL);
+
+        /* TCP connection is ready. Do server side SSL. */
+        if(fSSL)
+        {
+            SSL_set_fd(pSSL, fd);
+            if(SSL_accept(pSSL) == SOCKET_ERROR)
+                debug::error(FUNCTION, "SSL Socket error SSL_accept failed: ", WSAGetLastError());
+
+            debug::log(0, FUNCTION, " : SSL Connection using ", SSL_get_cipher(pSSL));
+        }
+
         /* Reset the internal timers. */
         Reset();
     }
 
 
     /* Constructor for socket */
-    Socket::Socket(const BaseAddress &addrConnect)
+    Socket::Socket(const BaseAddress &addrConnect, bool fSSL)
     : PACKET_MUTEX()
     , DATA_MUTEX()
-    , fSSL(false)
-    , pSSL(SSL_new(pSSL_CTX))
+    , pSSL(nullptr)
     , nLastSend(0)
     , nLastRecv(0)
     , nError(0)
@@ -104,6 +113,9 @@ namespace LLP
 
         /* Reset the internal timers. */
         Reset();
+
+        /* Determine if socket should use SSL. */
+        SetSSL(fSSL);
 
         /* Connect socket to external address. */
         Attempt(addrConnect);
@@ -114,11 +126,11 @@ namespace LLP
     Socket::~Socket()
     {
         /* Free the ssl object. */
-        SSL_free(pSSL);
+        SetSSL(false);
     }
 
 
-    /*  Returns the address of the socket. */
+    /* Returns the address of the socket. */
     BaseAddress Socket::GetAddress() const
     {
         LOCK(DATA_MUTEX);
@@ -127,7 +139,7 @@ namespace LLP
     }
 
 
-    /*  Resets the internal timers. */
+    /* Resets the internal timers. */
     void Socket::Reset()
     {
         /* Atomic data types, no need for lock */
@@ -213,8 +225,9 @@ namespace LLP
             fConnected = (connect(nFile, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
 
-        if(fSSL)
+        if(pSSL)
         {
+
             SSL_set_fd(pSSL, fd);
             //SSL_do_handshake(pSSL);
             fConnected = (SSL_connect(pSSL) != SOCKET_ERROR);
@@ -248,7 +261,7 @@ namespace LLP
                     debug::log(2, FUNCTION, "Connection timeout ", addrDest.ToString());
                     closesocket(nFile);
 
-                    if(fSSL)
+                    if(pSSL)
                         SSL_shutdown(pSSL);
 
                     return false;
@@ -260,7 +273,7 @@ namespace LLP
                     debug::log(3, FUNCTION, "Select failed ", addrDest.ToString(), " (",  WSAGetLastError(), ")");
                     closesocket(nFile);
 
-                    if(fSSL)
+                    if(pSSL)
                         SSL_shutdown(pSSL);
 
                     return false;
@@ -276,7 +289,7 @@ namespace LLP
                 {
                     debug::log(3, FUNCTION, "Get options failed ", addrDest.ToString(), " (", WSAGetLastError(), ")");
                     closesocket(nFile);
-                    if(fSSL)
+                    if(pSSL)
                         SSL_shutdown(pSSL);
 
                     return false;
@@ -288,7 +301,7 @@ namespace LLP
                     debug::log(3, FUNCTION, "Failed after select ", addrDest.ToString(), " (", nRet, ")");
 
                     closesocket(nFile);
-                    if(fSSL)
+                    if(pSSL)
                         SSL_shutdown(pSSL);
 
                     return false;
@@ -299,7 +312,7 @@ namespace LLP
                 debug::log(3, FUNCTION, "Connect failed ", addrDest.ToString(), " (", nError, ")");
 
                 closesocket(nFile);
-                if(fSSL)
+                if(pSSL)
                     SSL_shutdown(pSSL);
 
                 return false;
@@ -341,7 +354,7 @@ namespace LLP
         fd = INVALID_SOCKET;
 
         /* Shut down a TLS/SSL connection by sending the "close notify" shutdown alert to the peer. */
-        if(fSSL)
+        if(pSSL)
             SSL_shutdown(pSSL);
     }
 
@@ -351,7 +364,7 @@ namespace LLP
     {
         int32_t nRead = 0;
 
-        if(fSSL)
+        if(pSSL)
         {
             nRead = SSL_read(pSSL, (int8_t*)&vData[0], nBytes);
         }
@@ -377,12 +390,13 @@ namespace LLP
         return nRead;
     }
 
+
     /* Read data from the socket buffer non-blocking */
     int32_t Socket::Read(std::vector<int8_t> &vData, size_t nBytes)
     {
         int32_t nRead = 0;
 
-        if(fSSL)
+        if(pSSL)
         {
             nRead = SSL_read(pSSL, (int8_t*)&vData[0], nBytes);
         }
@@ -428,11 +442,11 @@ namespace LLP
             }
         }
 
-        /* If there were any errors, handle them gracefully. */
+        /* Write the packet. */
         {
             LOCK(PACKET_MUTEX);
 
-            if(fSSL)
+            if(pSSL)
             {
                 nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t*)&vData[0], nBytes));
             }
@@ -446,7 +460,7 @@ namespace LLP
             }
         }
 
-
+        /* If there were any errors, handle them gracefully. */
         if(nSent < 0)
         {
             nError = WSAGetLastError();
@@ -494,7 +508,7 @@ namespace LLP
         {
             LOCK(PACKET_MUTEX);
 
-            if(fSSL)
+            if(pSSL)
             {
                 nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t *)&vBuffer[0], nBytes));
             }
@@ -529,7 +543,7 @@ namespace LLP
     }
 
 
-    /*  Determines if nTime seconds have elapsed since last Read / Write. */
+    /* Determines if nTime seconds have elapsed since last Read / Write. */
     bool Socket::Timeout(uint32_t nTime) const
     {
         return (runtime::timestamp() > (uint64_t)(nLastSend + nTime) &&
@@ -537,7 +551,7 @@ namespace LLP
     }
 
 
-    /*  Checks if is in null state. */
+    /* Checks if is in null state. */
     bool Socket::IsNull() const
     {
         LOCK(DATA_MUTEX);
@@ -546,17 +560,32 @@ namespace LLP
     }
 
 
-    /*  Checks for any flags in the Error Handle. */
+    /* Checks for any flags in the Error Handle. */
     bool Socket::Errors() const
     {
         return error_code() != 0;
     }
 
 
-    /*  Give the message (c-string) of the error in the socket. */
+    /* Give the message (c-string) of the error in the socket. */
     char *Socket::Error() const
     {
         return strerror(error_code());
+    }
+
+
+    /*  Creates or destroys the SSL object depending on the flag set. */
+    void Socket::SetSSL(bool fSSL)
+    {
+        LOCK(DATA_MUTEX);
+
+        if(fSSL && pSSL == nullptr)
+            pSSL = SSL_new(pSSL_CTX);
+        else if(pSSL)
+        {
+            SSL_free(pSSL);
+            pSSL = nullptr;
+        }
     }
 
 
@@ -564,21 +593,9 @@ namespace LLP
     int Socket::error_code() const
     {
         /* Check for errors from reads or writes. */
-        if (nError == WSAEWOULDBLOCK ||
-            nError == WSAEMSGSIZE ||
-            nError == WSAEINTR ||
-            nError == WSAEINPROGRESS)
+        if (nError == WSAEWOULDBLOCK || nError == WSAEMSGSIZE || nError == WSAEINTR || nError == WSAEINPROGRESS)
             return 0;
 
         return nError;
     }
-
-
-    /*  Sets the SSL flag for sockets to use ssl or not. */
-    void Socket::SetSSL(bool fSSL_)
-    {
-        fSSL = fSSL_;
-    }
-
-
 }
