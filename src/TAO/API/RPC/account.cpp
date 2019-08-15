@@ -1156,19 +1156,32 @@ namespace TAO
             return ListReceived(params, true);
         }
 
-        void WalletTxToJSON(const Legacy::WalletTx& wtx, json::json& entry)
+        /* Added ftxValid because wallet data can potentially include invalid transactions that are not on chain.
+         * If one is recognized, this flag allows us to still generate output for it. Set the value false and function
+         * will generate output as a tx with zero confirms rather than potentially incorrect data.
+         */
+        void WalletTxToJSON(const Legacy::WalletTx& wtx, json::json& entry, bool ftxValid = true)
         {
-            int confirms = wtx.GetDepthInMainChain();
-            entry["confirmations"] = confirms;
-            if (confirms)
+            if(!ftxValid)
             {
-                entry["blockhash"] = wtx.hashBlock.GetHex();
-                entry["blockindex"] = wtx.nIndex;
+                entry["confirmations"] = 0;
             }
+            else
+            {
+                int confirms = wtx.GetDepthInMainChain();
+                entry["confirmations"] = confirms;
+
+                if(confirms > 0)
+                {
+                    entry["blockhash"] = wtx.hashBlock.GetHex();
+                    entry["blockindex"] = wtx.nIndex;
+                }
+            }
+
             entry["txid"] = wtx.GetHash().GetHex();
             entry["time"] = (int64_t)wtx.GetTxTime();
 
-            for( const auto& item : wtx.mapValue)
+            for(const auto& item : wtx.mapValue)
                 entry[item.first] = item.second;
         }
 
@@ -1184,6 +1197,7 @@ namespace TAO
             wtx.GetAmounts(nGeneratedImmature, nGeneratedMature, listReceived, listSent, nFee, strSentAccount);
 
             bool fAllAccounts = (strAccount == std::string("*"));
+            bool ftxValid = true;
 
             // Generated blocks assigned to account ""
             if ((nGeneratedMature + nGeneratedImmature) != 0 && (fAllAccounts || strAccount == ""))
@@ -1217,9 +1231,21 @@ namespace TAO
                 if (wtx.IsGenesis() || wtx.IsCoinStake())
                 {
                     std::map<uint512_t, Legacy::Transaction> mapInputs;
-                    wtx.FetchInputs(mapInputs);
 
-                    nAmount -= wtx.GetValueIn(mapInputs);
+                    /* If there is are invalid stake transactions saved in wallet file, FetchInputs can fail with logged error.
+                     * Thus inputs are unavailable. If we allow it to proceed with GetValueIn, it will throw an exception
+                     * and this method will not return anything besides the exception. To handle things more gracefully,
+                     * set amount for current tx to zero and set txValid flag to false. This will allow us to still produce
+                     * a transaction list that will show the invalid one as "pending" confirms where it can be seen and
+                     * dealt with.
+                     */
+                    if(wtx.FetchInputs(mapInputs))
+                        nAmount -= wtx.GetValueIn(mapInputs);
+                    else
+                    {
+                        nAmount = 0;
+                        ftxValid = false;
+                    }
                 }
 
                 if (nGeneratedImmature)
@@ -1240,7 +1266,7 @@ namespace TAO
 
 
                 if (fLong)
-                    WalletTxToJSON(wtx, entry);
+                    WalletTxToJSON(wtx, entry, ftxValid);
                 ret.push_back(entry);
             }
 
