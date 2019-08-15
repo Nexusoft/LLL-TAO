@@ -79,8 +79,13 @@ namespace LLD
 
 
     /** Default Destructor **/
+    static uint64_t nTotalKeys = 0;
+    static uint64_t nTotalHashmaps = 0;
     BinaryHashMap::~BinaryHashMap()
     {
+        debug::log(0, FUNCTION, "Total Space Efficiency is ", (nTotalKeys * 100.0) / (hashmap.size() * nTotalHashmaps),
+                                " With ", nTotalKeys, " Keys");
+
         delete fileCache;
         delete pindex;
     }
@@ -112,7 +117,7 @@ namespace LLD
     uint32_t BinaryHashMap::GetBucket(const std::vector<uint8_t>& vKey)
     {
         /* Get an xxHash. */
-        uint64_t nBucket = XXH64(&vKey[0], vKey.size(), 0);
+        uint64_t nBucket = XXH64(&vKey[0], vKey.size(), 0) / 7;
 
         return static_cast<uint32_t>(nBucket % HASHMAP_TOTAL_BUCKETS);
     }
@@ -153,12 +158,15 @@ namespace LLD
             stream.close();
 
             /* Deserialize the values into memory index. */
-            uint32_t nTotalKeys = 0;
+            //uint32_t nTotalKeys = 0;
             for(uint32_t nBucket = 0; nBucket < HASHMAP_TOTAL_BUCKETS; ++nBucket)
             {
                 std::copy((uint8_t *)&vIndex[nBucket * 2], (uint8_t *)&vIndex[nBucket * 2] + 2, (uint8_t *)&hashmap[nBucket]);
 
                 nTotalKeys += hashmap[nBucket];
+
+                if(hashmap[nBucket] > nTotalHashmaps)
+                    nTotalHashmaps = hashmap[nBucket];
             }
 
             /* Debug output showing loading of disk index. */
@@ -459,8 +467,13 @@ namespace LLD
             stream.flush();
             stream.close();
 
+            ++nTotalHashmaps;
+
             /* Debug output for monitoring new disk maps. */
             debug::log(0, FUNCTION, "Generated Disk Hash Map ", hashmap[nBucket], " of ", vSpace.size(), " bytes");
+
+            debug::log(0, FUNCTION, "Total Space Efficiency is ", (nTotalKeys * 100.0) / (hashmap.size() * nTotalHashmaps),
+                                    " With ", nTotalKeys, " Keys");
         }
 
         /* Read the State and Size of Sector Header. */
@@ -496,6 +509,8 @@ namespace LLD
 
         /* Write the index to disk. */
         uint16_t nIndex = ++hashmap[nBucket];
+
+        ++nTotalKeys;
 
         /* Get the bucket data. */
         std::vector<uint8_t> vBucket((uint8_t*)&nIndex, (uint8_t*)&nIndex + 2);

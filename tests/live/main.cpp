@@ -15,7 +15,9 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 
-#include <LLD/cache/binary_lfu.h>
+#include <LLD/cache/binary_lru.h>
+#include <LLD/keychain/hashmap.h>
+#include <LLD/templates/sector.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/base64.h>
@@ -46,40 +48,55 @@ ________________________________________________________________________________
 #include <variant>
 
 
+class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>
+{
+public:
+    TestDB()
+    : SectorDatabase("testdb"
+    , LLD::FLAGS::CREATE | LLD::FLAGS::FORCE | LLD::FLAGS::APPEND
+    , 1024
+    , 1024)
+    {
+    }
+
+    ~TestDB()
+    {
+
+    }
+
+    bool WriteHash(const uint1024_t& hash)
+    {
+        return Write(hash, hash);
+    }
+};
+
+
+/*
+Hash Tables:
+
+Set max tables per timestamp.
+
+Keep disk index of all timestamps in memory.
+
+Keep caches of Disk Index files (LRU) for low memory footprint
+
+Check the timestamp range of bucket whether to iterate forwards or backwards
+
+*/
+
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    TAO::Register::Address address = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-    debug::log(0, address.ToString());
 
-    Legacy::NexusAddress legacy;
-    legacy.SetHash256(address);
-    if(!legacy.IsValid())
-        return debug::error("Invalid address");
+    //uint1024_t hash = ;
 
-    debug::log(0, legacy.GetHash256().ToString());
+    TestDB* testDB = new TestDB();
+    for(int i = 0; i < 10000000; ++i)
+        testDB->WriteHash(LLC::GetRand1024());
 
-    return 0;
+    delete testDB;
 
-    uint256_t hashTest = LLC::GetRand256();
-
-    TAO::Ledger::Genesis genesis = TAO::Ledger::Genesis(hashTest);
-
-    debug::log(0, "Genesis ", genesis.ToString());
-
-    debug::log(0, "Hash: ", hashTest.ToString());
-
-    TAO::Register::Address addr = TAO::Register::Address(TAO::Register::Address::NAME);
-
-    debug::log(0, "Hash: ", addr.ToString());
-
-    printf("BYTE: %x\n", addr.GetType());
-
-    debug::log(0, "Valid: ", addr.IsValid() ? "Yes" : "No");
-
-    TAO::Register::Address name = TAO::Register::Address("colin2", TAO::Register::Address::NAMESPACE);
-
-    debug::log(0, "Hash: ", name.ToString());
 
 
     return 0;
