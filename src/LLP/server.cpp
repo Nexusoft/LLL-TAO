@@ -158,9 +158,6 @@ namespace LLP
             delete pAddressManager;
             pAddressManager = nullptr;
         }
-
-        /* Free the ssl object. */
-        SSL_free(pSSL);
     }
 
 
@@ -545,19 +542,9 @@ namespace LLP
                     if(!DDOS_MAP.count(addr))
                         DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
 
-                    /* TCP connection is ready. Do server side SSL. */
-                    if(fSSL.load())
-                    {
-                        SSL_set_fd(pSSL, hSocket);
-                        if(SSL_accept(pSSL) == SOCKET_ERROR)
-                            debug::error(FUNCTION, "SSL Socket error SSL_accept failed: ", WSAGetLastError());
-
-                        debug::log(0, FUNCTION, Name(), " : SSL Connection using ", SSL_get_cipher(pSSL));
-                    }
 
                     /* Add a new listening socket with SSL on or off according to server. */
-                    Socket sockNew(hSocket, addr);
-                    sockNew.SetSSL(fSSL.load());
+                    Socket sockNew(hSocket, addr, fSSL.load());
 
                     /* DDOS Operations: Only executed when DDOS is enabled. */
                     if((fDDOS && DDOS_MAP[addr]->Banned()))
@@ -572,9 +559,6 @@ namespace LLP
                         debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
 
                         closesocket(hSocket);
-
-                        if(fSSL.load())
-                            SSL_shutdown(pSSL);
 
                         continue;
                     }
@@ -601,10 +585,6 @@ namespace LLP
         }
 
         closesocket(fIPv4 ? hListenSocket.first : hListenSocket.second);
-
-        if(fSSL.load())
-            SSL_shutdown(pSSL);
-
     }
 
 
