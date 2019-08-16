@@ -1528,6 +1528,98 @@ namespace TAO
             return ret;
         }
 
+        /* RPC Method to bridge limitation of Transaction Lookup from Wallet. Allows lookup from any wallet. */
+        json::json RPC::GetGlobalTransaction(const json::json& params, bool fHelp)
+        {
+            if (fHelp || params.size() != 1)
+                return std::string(
+                    "getglobaltransaction [txid]\n"
+                    "Get detailed information about [txid]");
+
+            /* Get hash Index. */
+            uint512_t hash;
+            hash.SetHex(params[0].get<std::string>());
+
+            /* Get the transaction object. */
+            Legacy::Transaction tx;
+            if(!TAO::Ledger::mempool.Get(hash, tx))
+            {
+                if(!LLD::legacyDB->ReadTx(hash, tx))
+                    throw APIException(-5, "No information available about transaction");
+            }
+
+            /* Build return json object. */
+            json::json ret;
+
+            /* Get confirmations. */
+            uint32_t nConfirmations = 0;
+            TAO::Ledger::BlockState state;
+            if(LLD::legDB->ReadBlock(hash, state))
+            {
+                /* Set block hash. */
+                ret["blockhash"] = state.GetHash().GetHex();
+
+                /* Calculate confirmations. */
+                nConfirmations = (TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight) + 1;
+            }
+
+            /* Set confirmations. */
+            ret["confirmations"] = nConfirmations;
+
+            /* Fill other relevant data. */
+            ret["txid"]   = hash.GetHex();
+            ret["time"]   = tx.nTime;
+            ret["amount"] = Legacy::SatoshisToAmount(tx.GetValueOut());
+
+            /* Get the outputs. */
+            json::json outputs;
+            for(const auto& out : tx.vout)
+            {
+                Legacy::NexusAddress address;
+                if(!Legacy::ExtractAddress(out.scriptPubKey, address))
+                    throw APIException(-5, "failed to extract output address");
+
+                outputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(out.nValue)));
+            }
+
+            /* Get the inputs. */
+            if(!tx.IsCoinBase())
+            {
+                /* Get the number of inputs to the transaction. */
+                uint32_t nSize = static_cast<uint32_t>(tx.vin.size());
+
+                /* Read all of the inputs. */
+                json::json inputs;
+                for (uint32_t i = (uint32_t)tx.IsCoinStake(); i < nSize; ++i)
+                {
+                    /* Skip inputs that are already found. */
+                    Legacy::OutPoint prevout = tx.vin[i].prevout;
+
+                    /* Read the previous transaction. */
+                    Legacy::Transaction txPrev;
+                    if(!LLD::legacyDB->ReadTx(prevout.hash, txPrev))
+                        throw APIException(-5, debug::safe_printstr("tx ", prevout.hash.ToString().substr(0, 20), " not found"));
+
+                    /* Extract the address. */
+                    Legacy::NexusAddress address;
+                    if(!Legacy::ExtractAddress(txPrev.vout[prevout.n].scriptPubKey, address))
+                        throw APIException(-5, "failed to extract input address");
+
+                    /* Add inputs to json. */
+                    inputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed,
+                     Legacy::SatoshisToAmount(txPrev.vout[prevout.n].nValue)));
+                }
+
+                /* Add to return value. */
+                ret["inputs"] = inputs;
+            }
+
+            /* Add to return value. */
+            ret["outputs"] = outputs;
+
+            return ret;
+        }
+
         /* gettransaction <txid>
         Get detailed information about <txid> */
         json::json RPC::GetTransaction(const json::json& params, bool fHelp)
