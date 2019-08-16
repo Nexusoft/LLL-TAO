@@ -62,7 +62,7 @@ namespace Legacy
         static std::mutex cs_wallettx;
 
         /** Pointer to the wallet to which this transaction is bound **/
-        Wallet* ptransactionWallet;
+        Wallet* pWallet;
 
         /** Flag indicating whether or not transaction bound to wallet **/
         bool fHaveWallet;
@@ -232,7 +232,7 @@ namespace Legacy
             if (fRead)
             {
                 pthis->fHaveWallet = false;
-                pthis->ptransactionWallet = nullptr;
+                pthis->pWallet = nullptr;
                 pthis->InitWalletTx();
             }
             bool fSpent = false;
