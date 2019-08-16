@@ -154,6 +154,7 @@ namespace TAO
         const uint64_t THRESHOLD_FEE = 0.1 * NXS_COIN;
         const uint64_t OBJECT_FEE = 1 * NXS_COIN;
         const uint64_t NAME_FEE = 1 * NXS_COIN;
+        const uint64_t GLOBAL_NAME_FEE = 2000 * NXS_COIN;
         const uint64_t NAMESPACE_FEE = 1000 * NXS_COIN;
         const uint64_t TOKEN_FEE = 1 * NXS_COIN;
         const uint64_t ACCOUNT_FEE = 0 * NXS_COIN;
