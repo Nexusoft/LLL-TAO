@@ -166,9 +166,16 @@ namespace LLP
         /* Get the size of the vector. */
         uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
 
-        /* Iterate through connections to remove. */
+        /* Iterate through connections to remove. When call on destruct, simply remove the connection. Otherwise,
+         * force a disconnect event. This will inform address manager so it knows to attempt new connections.
+         */
         for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
-           remove(nIndex);
+        {
+            if(!fDestruct.load())
+                disconnect_remove_event(nIndex, DISCONNECT_FORCE);
+            else
+                remove(nIndex);
+        }
     }
 
 
