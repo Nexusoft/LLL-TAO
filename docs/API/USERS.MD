@@ -41,8 +41,7 @@ The following methods are currently supported by this API
 # `create/user`
 
 This will create a new user account (signature chain) for use on the network. The user account is secured by a combination of username, password, and PIN.
-
-**NOTE** : username's must not contain either colon `:` or full stop `.` characters, as these are reserved for namespaces   
+  
 **NOTE** : username must be a minimum of 3 characters   
 **NOTE** : password must be a minimum of 8 characters   
 **NOTE** : pin must be a minimum of 4 characters    

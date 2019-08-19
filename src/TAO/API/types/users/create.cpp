@@ -52,10 +52,6 @@ namespace TAO
             /* Extract the username and check for allowed characters / length */
             std::string strUsername = params["username"].get<std::string>();
 
-            /* Don't allow : and . */
-            if(strUsername.find(":") != strUsername.npos || strUsername.find(".") != strUsername.npos)
-                throw APIException(-160, "Username contains invalid characters");
-
             /* Check for password parameter. */
             if(params.find("password") == params.end())
                 throw APIException(-128, "Missing password");
@@ -89,7 +85,7 @@ namespace TAO
             TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::TRUST);
 
             /* Add a Name record for the trust account */
-            tx[0] = Names::CreateName(user->Genesis(), "trust", hashRegister);
+            tx[0] = Names::CreateName(user->Genesis(), "trust", "", hashRegister);
 
             /* Set up tx operation to create the trust account register at the same time as sig chain genesis. */
             tx[1] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
@@ -99,7 +95,7 @@ namespace TAO
             hashRegister = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
             /* Add a Name record for the trust account */
-            tx[2] = Names::CreateName(user->Genesis(), "default", hashRegister);
+            tx[2] = Names::CreateName(user->Genesis(), "default", "", hashRegister);
 
             /* Add the default account register operation to the transaction */
             tx[3] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister

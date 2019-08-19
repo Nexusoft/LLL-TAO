@@ -37,12 +37,17 @@ namespace TAO
         /* Creates a new Name Object register for the given name and register
            address adds the register operation to the contract */
         TAO::Operation::Contract Names::CreateName(const uint256_t& hashGenesis,
-                                                   const std::string& strFullName,
+                                                   const std::string& strName,
+                                                   const std::string& strNamespace,
                                                    const uint256_t& hashRegister)
         {
-            /* Don't allow : in name */
-            if(strFullName.find(":") != strFullName.npos)
-                throw APIException(-161, "Name contains invalid characters");
+            /* Check name length */
+            if(strName.length() == 0)
+                throw APIException(-88, "Missing name");
+            
+            /* Name can't start with : */
+            if(strName[0]== ':' )
+                throw APIException(-161, "Names cannot start with a colon");
 
             /* Declare the contract for the response */
             TAO::Operation::Contract contract;
@@ -54,37 +59,35 @@ namespace TAO
             /* The register address of the Name object. */
             TAO::Register::Address hashNameAddress;
 
-            /* The namespace string, populated if the caller has passed the name in name.namespace format */
-            std::string strNamespace = "";
-
-            /* The name of the Name object */
-            std::string strName = strFullName;
-
-            /* Check to see whether the name has a namesace suffix */
-            size_t nPos = strName.find_last_of(".");
-
-            if(nPos != strName.npos)
+            /* Check to see whether the name is being created in a namesace */
+            if(strNamespace.length() > 0)
             {
-                /* If so then strip off the namespace so that we can check that this user has permission to use it */
-                strName = strName.substr(0, nPos);
-                strNamespace = strFullName.substr(nPos+1);
-
                 /* Namespace hash is a SK256 hash of the namespace name */
                 hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
-                /* Namespace object to retrieve*/
-                TAO::Register::Object namespaceObject;
+                /* If the name is not being created in the global namespace then check that the caller owns the namespace */
+                if(strNamespace != TAO::Register::NAMESPACE::GLOBAL)
+                {
+                    /* Namespace object to retrieve*/
+                    TAO::Register::Object namespaceObject;
 
-                /* Retrieve the Namespace object by name */
-                if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
-                    throw APIException(-95, "Namespace does not exist: " + strNamespace);
+                    /* Retrieve the Namespace object by name */
+                    if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
+                        throw APIException(-95, "Namespace does not exist: " + strNamespace);
 
-                /* Check the owner is the hashGenesis */
-                if(namespaceObject.hashOwner != hashGenesis)
-                    throw APIException(-96, "Cannot create a name in namespace " + strNamespace + " as you are not the owner.");
+                    /* Check the owner is the hashGenesis */
+                    if(namespaceObject.hashOwner != hashGenesis)
+                        throw APIException(-96, "Cannot create a name in namespace " + strNamespace + " as you are not the owner.");
+                }
+                else
+                {
+                    /* If it is a global name then check it doesn't contain any colons */
+                    if(strNamespace.find(":") != strNamespace.npos )
+                        throw APIException(-171, "Global names cannot cannot contain a colon");
+                }
             }
             else
-                /* If no global namespace suffix has been passed in then use the callers genesis hash for the hashNamespace. */
+                /* If no namespace has been passed in then use the callers genesis hash for the hashNamespace. */
                 hashNamespace = hashGenesis;
 
 
@@ -153,7 +156,7 @@ namespace TAO
 
                     /* If a name was found then create a Name record for the new owner using the same name */
                     if(!strAssetName.empty())
-                        contract = Names::CreateName(hashGenesis, strAssetName, hashAddress);
+                        contract = Names::CreateName(hashGenesis, strAssetName, "", hashAddress);
 
                     /* If found break. */
                     break;
@@ -169,66 +172,85 @@ namespace TAO
             /* Declare the name object to return */
             TAO::Register::Object nameObject;
 
+            /* Flag indicating we found a name */
+            bool fFound = false;
+
             /* In order to resolve an object name to a register address we also need to know the namespace.
-            *  This must either be provided by the caller explicitly in a namespace parameter or by passing
-            *  the name in the format namespace:name.  However since the default namespace is the username
-            *  of the sig chain that created the object, if no namespace is explicitly provided we will
-            *  also try using the username of currently logged in sig chain */
+            *  First we check to see whether a local name exists in the caller's sig chain.
+            *  If that doesn't exist then we check to see whether the name contains a single : denoting a username qualified namespace. 
+            *  If so then we check to see whether the name exists in that users sig chain
+            *  If the name contains a double colon then we assume that is namespace qualified and search the name in that namespace
+            *  If the name contains no colons and is not a local name then we check to see whether the name exists in the global namespace   */
             std::string strName = strObjectName;
             std::string strNamespace = "";
 
             /* Declare the namespace hash to use for this object. */
             uint256_t hashNamespace = 0;
 
-            /* First check to see if the name parameter has been provided in either the userspace:name or name.namespace format */
-            size_t nNamespacePos = strName.find(".");
-            size_t nUserspacePos = strName.find(":");
+            /* First check the callers local namespace to see if it exists */
+            /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can check the 
+               other namespaces after */
+            uint64_t nSession = users->GetSession(params, false);
 
-            if(nNamespacePos != std::string::npos)
+            /* Get the account. */
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
+            if(!user.IsNull())
             {
-                /* If the name is in name.namespace format then split the namespace and name into separate variables */
-                strNamespace = strName.substr(nNamespacePos+1);
-                strName = strName.substr(0, nNamespacePos);
-
-                /* Namespace hash is a SK256 hash of the namespace name */
-                hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
-            }
-
-            else if(nUserspacePos != std::string::npos)
-            {
-                /* If the name is in username:name format then split the username and name into separate variables */
-                strNamespace = strName.substr(0, nUserspacePos);
-                strName = strName.substr(nUserspacePos+1);
-
-                /* get the namespace hash from the user name */
-                hashNamespace = TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
-            }
-
-            /* If neither of those then check to see if there is an active session to access the sig chain */
-            else
-            {
-                /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can
-                   throw a missing namespace exception if no valid session could be found */
-                uint64_t nSession = users->GetSession(params, false);
-
-                /* Get the account. */
-                memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
-                if(!user)
-                    throw APIException(-100, "Missing username prefix before name");
-
                 /* Set the namespace name to be the user's genesis ID */
                 hashNamespace = user->Genesis();
+
+                /* Attempt to Read the Name Object */
+                fFound = TAO::Register::GetNameRegister(hashNamespace, strName, nameObject);
             }
 
-            /* Read the Name Object */
-            if(!TAO::Register::GetNameRegister(hashNamespace, strName, nameObject))
+            /* If it wasn't in the callers local namespace then check to see if the name was provided in either 
+               the userspace:name or namespace::name format */
+            if(!fFound)
             {
-                if(strNamespace.empty())
-                    throw APIException(-101, debug::safe_printstr("Unknown name: ", strName));
-                else
-                    throw APIException(-101, debug::safe_printstr("Unknown name: ", strNamespace, ":", strName));
+                size_t nNamespacePos = strName.find("::");
+                size_t nUserspacePos = strName.find(":");
+
+                /* If there is a namespace delimiter and it appears before the userspace delimiter (if there is one) */
+                if(nNamespacePos != std::string::npos 
+                && (nUserspacePos == std::string::npos || nNamespacePos <= nUserspacePos))
+                {
+                    /* If the name is namespace::name format then split the namespace and name into separate variables at the first ::*/
+                    strNamespace = strName.substr(0, nNamespacePos);
+                    strName = strName.substr(nNamespacePos+2);
+
+                    /* Namespace hash is a SK256 hash of the namespace name */
+                    hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
+                }
+                /* If there is a userspace delimiter and it appears before any namespace delimiter (if there is one) */
+                else if(nUserspacePos != std::string::npos 
+                && (nNamespacePos == std::string::npos || nUserspacePos < nNamespacePos))
+                {
+                    /* If the name is in username:name format then split the username and name into separate variables at the first :*/
+                    strNamespace = strName.substr(0, nUserspacePos);
+                    strName = strName.substr(nUserspacePos+1);
+
+                    /* get the namespace hash from the user name */
+                    hashNamespace = TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
+                }
+
+                /* Attempt to Read the Name Object */
+                fFound = TAO::Register::GetNameRegister(hashNamespace, strName, nameObject);
             }
 
+            /* If it still hasn't been resolved then check the global namespace */
+            if(!fFound)
+            {
+                /* Get the hashNamespace for the global namespace */
+                hashNamespace = TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
+
+                /* Attempt to Read the Name Object */
+                fFound = TAO::Register::GetNameRegister(hashNamespace, strName, nameObject);
+            }
+
+            /* If it wasn't resolved then error */
+            if(!fFound)
+                throw APIException(-101, debug::safe_printstr("Unknown name: ", strObjectName));
+                
             /* Get the address of the Name object to return */
             TAO::Register::GetNameAddress(hashNamespace, strName, hashNameObject);
 

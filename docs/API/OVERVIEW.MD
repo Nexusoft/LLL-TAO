@@ -289,6 +289,9 @@ Error Codes
 | -166 | "Account is a NXS account.  Please use the finance API for accessing NXS accounts." |
 | -167 | Invalid reference |
 | -168 | Invalid expiration time |
+| -169 | Names cannot start with a colon |
+| -170 | Global names cannot be created in a namespace |
+| -171 | Global names cannot cannot contain a colon |
 
 
 

@@ -707,7 +707,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashToken << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();
 
         //create name
-        tx[1] = TAO::API::Names::CreateName(GENESIS1, strToken, hashToken);
+        tx[1] = TAO::API::Names::CreateName(GENESIS1, strToken, "", hashToken);
 
         //generate the prestates and poststates
         REQUIRE(tx.Build());
@@ -738,7 +738,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashAccount << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
 
         //create name
-        tx[1] = TAO::API::Names::CreateName(GENESIS1, strAccount, hashAccount);
+        tx[1] = TAO::API::Names::CreateName(GENESIS1, strAccount, "", hashAccount);
 
         //generate the prestates and poststates
         REQUIRE(tx.Build());
@@ -1001,7 +1001,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
         tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashToken << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();
 
         //create name
-        tx[1] = TAO::API::Names::CreateName(GENESIS1, strToken, hashToken);
+        tx[1] = TAO::API::Names::CreateName(GENESIS1, strToken, "", hashToken);
 
         //generate the prestates and poststates
         REQUIRE(tx.Build());
@@ -1035,7 +1035,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
         tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashAccount << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
 
         //create name
-        tx[1] = TAO::API::Names::CreateName(GENESIS1, strAccount, hashAccount);
+        tx[1] = TAO::API::Names::CreateName(GENESIS1, strAccount, "", hashAccount);
 
         //generate the prestates and poststates
         REQUIRE(tx.Build());

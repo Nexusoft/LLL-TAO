@@ -90,7 +90,7 @@ namespace TAO
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
             if(params.find("name") != params.end())
-                tx[1] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), hashRegister);
+                tx[1] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), "", hashRegister);
 
             /* Add the fee */
             AddFee(tx);

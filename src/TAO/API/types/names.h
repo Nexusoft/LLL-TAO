@@ -233,14 +233,16 @@ namespace TAO
              *  operation to the contract
              *
              *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
-             *  @param[in] strFullName The Name of the object.  May include the namespace suffix
+             *  @param[in] strName The Name of the object
+             *  @param[in] strNamespace The Namespace to create the name in
              *  @param[in] hashRegister The register address that the Name object should resolve to
              *
              *  @return The contract to containing the Name object creation .
              *
              **/
             static TAO::Operation::Contract CreateName(const uint256_t& hashGenesis,
-                                                       const std::string& strFullName,
+                                                       const std::string& strName,
+                                                       const std::string& strNamespace,
                                                        const uint256_t& hashRegister);
 
 

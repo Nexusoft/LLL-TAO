@@ -948,7 +948,20 @@ namespace TAO
                     {
                         ret["address"]          = hashRegister.ToString();
                         ret["name"]             = object.get<std::string>("name");
-                        ret["namespace"]        = object.get<std::string>("namespace");
+                        
+                        std::string strNamespace = object.get<std::string>("namespace");
+                        if(strNamespace == TAO::Register::NAMESPACE::GLOBAL)
+                        {
+                            ret["namespace"] = "";
+                            ret["global"] = true;
+                        }
+                        else
+                        {
+                            ret["namespace"] = strNamespace;
+                            ret["global"] = true;
+                        }
+                        
+                        
                         ret["register_address"] = object.get<uint256_t>("address").GetHex();
 
                         break;
