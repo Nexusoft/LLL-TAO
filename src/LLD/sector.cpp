@@ -75,8 +75,11 @@ namespace LLD
         fDestruct = true;
         CONDITION.notify_all();
 
-        CacheWriterThread.join();
-        MeterThread.join();
+        if(CacheWriterThread.joinable())
+            CacheWriterThread.join();
+
+        if(MeterThread.joinable())
+            MeterThread.join();
 
         if(pTransaction)
             delete pTransaction;

@@ -804,7 +804,9 @@ namespace Legacy
         if (config::GetBoolArg("-flushwallet", true))
         {
             WalletDB::fShutdownFlushThread.store(true);
-            WalletDB::flushThread.join();
+
+            if(WalletDB::flushThread.joinable())
+                WalletDB::flushThread.join();
         }
     }
 

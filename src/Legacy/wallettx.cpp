@@ -128,13 +128,9 @@ namespace Legacy
     /* Assigns the wallet for this wallet transaction. */
     void WalletTx::BindWallet(Wallet* pwalletIn)
     {
-        {
-            LOCK(WalletTx::cs_wallettx);
-
-            pWallet = pwalletIn;
-            fHaveWallet = true;
-            MarkDirty();
-        }
+        pWallet = pwalletIn;
+        fHaveWallet = true;
+        MarkDirty();
     }
 
 
@@ -156,15 +152,11 @@ namespace Legacy
         if (fDebitCached)
             return nDebitCached;
 
-        {
-            LOCK(WalletTx::cs_wallettx);
+        /* Call corresponding method in wallet that will check which txin entries belong to it */
+        nDebitCached = pWallet->GetDebit(*this);
 
-            /* Call corresponding method in wallet that will check which txin entries belong to it */
-            nDebitCached = pWallet->GetDebit(*this);
-
-            /* Set cached flag */
-            fDebitCached = true;
-        }
+        /* Set cached flag */
+        fDebitCached = true;
 
         return nDebitCached;
     }
@@ -185,15 +177,11 @@ namespace Legacy
         if (fCreditCached)
             return nCreditCached;
 
-        {
-            LOCK(WalletTx::cs_wallettx);
+        /* Call corresponding method in wallet that will check which txout entries belong to it */
+        nCreditCached = pWallet->GetCredit(*this);
 
-            /* Call corresponding method in wallet that will check which txout entries belong to it */
-            nCreditCached = pWallet->GetCredit(*this);
-
-            /* Set cached flag */
-            fCreditCached = true;
-        }
+        /* Set cached flag */
+        fCreditCached = true;
 
         return nCreditCached;
     }
@@ -217,31 +205,26 @@ namespace Legacy
         */
 
         int64_t nCredit = 0;
-
+        for (uint32_t i = 0; i < vout.size(); i++)
         {
-            LOCK(WalletTx::cs_wallettx);
+            const TxOut &txout = vout[i];
 
-            for (uint32_t i = 0; i < vout.size(); i++)
+            /* Calculate credit value only including unspent outputs */
+            if (!IsSpent(i) && vout[i].nValue > 0)
             {
-                const TxOut &txout = vout[i];
+                /* Call corresponding method in wallet that will check which txout entries belong to it */
+                nCredit += pWallet->GetCredit(txout);
 
-                /* Calculate credit value only including unspent outputs */
-                if (!IsSpent(i) && vout[i].nValue > 0)
-                {
-                    /* Call corresponding method in wallet that will check which txout entries belong to it */
-                    nCredit += pWallet->GetCredit(txout);
-
-                    if (!Legacy::MoneyRange(nCredit))
-                        throw std::runtime_error("WalletTx::GetAvailableCredit() : value out of range");
-                }
+                if (!Legacy::MoneyRange(nCredit))
+                    throw std::runtime_error("WalletTx::GetAvailableCredit() : value out of range");
             }
-
-            /* Store cached value */
-            nAvailableCreditCached = nCredit;
-
-            /* Set cached flag */
-            fAvailableCreditCached = true;
         }
+
+        /* Store cached value */
+        nAvailableCreditCached = nCredit;
+
+        /* Set cached flag */
+        fAvailableCreditCached = true;
 
         return nCredit;
     }
@@ -258,15 +241,11 @@ namespace Legacy
         if (fChangeCached)
             return nChangeCached;
 
-        {
-            LOCK(WalletTx::cs_wallettx);
+        /* Call corresponding method in wallet that will find the change transaction, if any */
+        nChangeCached = pWallet->GetChange(*this);
 
-            /* Call corresponding method in wallet that will find the change transaction, if any */
-            nChangeCached = pWallet->GetChange(*this);
-
-            /* Set cached flag */
-            fChangeCached = true;
-        }
+        /* Set cached flag */
+        fChangeCached = true;
 
         return nChangeCached;
     }
@@ -360,16 +339,14 @@ namespace Legacy
     /* Checks whether a particular output for this transaction is marked as spent */
     bool WalletTx::IsSpent(const uint32_t nOut) const
     {
-        bool result = false;
-
-        if (nOut >= vout.size())
+        if(nOut >= vout.size())
             throw std::runtime_error("WalletTx::IsSpent() : nOut out of range");
 
         /* Any valid nOut value >= vfSpent.size() (not tracked) is considered unspent */
-        if (nOut < vfSpent.size())
-            result = vfSpent[nOut];
+        if(nOut >= vfSpent.size())
+            return false;
 
-        return result;
+        return (!!vfSpent[nOut]);
     }
 
 
@@ -389,19 +366,13 @@ namespace Legacy
         if (nOut >= vout.size())
             throw std::runtime_error("WalletTx::MarkSpent() : nOut out of range");
 
+        vfSpent.resize(vout.size());
+        if (!vfSpent[nOut])
         {
-            LOCK(WalletTx::cs_wallettx);
+            vfSpent[nOut] = true;
 
-            if (vfSpent.size() != vout.size())
-                vfSpent.resize(vout.size());
-
-            if (!vfSpent[nOut])
-            {
-                vfSpent[nOut] = true;
-
-                /* Changing spent flags requires recalculating available credit */
-                fAvailableCreditCached = false;
-            }
+            /* Changing spent flags requires recalculating available credit */
+            fAvailableCreditCached = false;
         }
     }
 
@@ -412,19 +383,13 @@ namespace Legacy
         if (nOut >= vout.size())
             throw std::runtime_error("WalletTx::MarkUnspent() : nOut out of range");
 
+        vfSpent.resize(vout.size());
+        if (vfSpent[nOut])
         {
-            LOCK(WalletTx::cs_wallettx);
+            vfSpent[nOut] = false;
 
-            if (vfSpent.size() != vout.size())
-                vfSpent.resize(vout.size());
-
-            if (vfSpent[nOut])
-            {
-                vfSpent[nOut] = false;
-
-                /* Changing spent flags requires recalculating available credit */
-                fAvailableCreditCached = false;
-            }
+            /* Changing spent flags requires recalculating available credit */
+            fAvailableCreditCached = false;
         }
     }
 
@@ -433,27 +398,19 @@ namespace Legacy
     bool WalletTx::UpdateSpent(const std::vector<bool>& vfNewSpent)
     {
         bool fReturn = false;
-
+        for (uint32_t i = 0; i < vfNewSpent.size(); i++)
         {
-            LOCK(WalletTx::cs_wallettx);
+            if (i == vfSpent.size())
+                break;
 
-            if (vfSpent.size() != vout.size())
-                vfSpent.resize(vout.size());
-
-            for (uint32_t i = 0; i < vfNewSpent.size(); i++)
+            /* Only update if new flag is spent and old is unspent */
+            if (vfNewSpent[i] && !vfSpent[i])
             {
-                if (i == vfSpent.size())
-                    break;
+                vfSpent[i] = true;
+                fReturn = true;
 
-                /* Only update if new flag is spent and old is unspent */
-                if (vfNewSpent[i] && !vfSpent[i])
-                {
-                    vfSpent[i] = true;
-                    fReturn = true;
-
-                    /* Changing spent flags requires recalculating available credit */
-                    fAvailableCreditCached = false;
-                }
+                /* Changing spent flags requires recalculating available credit */
+                fAvailableCreditCached = false;
             }
         }
 

@@ -1196,12 +1196,12 @@ namespace Legacy
 
                 if (mi != mapWallet.end())
                 {
-                    WalletTx& prevTx = (*mi).second;
+                    WalletTx& txPrev = (*mi).second;
 
-                    if (txin.prevout.n < prevTx.vout.size() && IsMine(prevTx.vout[txin.prevout.n]))
+                    if (txin.prevout.n < txPrev.vout.size() && IsMine(txPrev.vout[txin.prevout.n]))
                     {
-                        prevTx.MarkUnspent(txin.prevout.n);
-                        prevTx.WriteToDisk();
+                        txPrev.MarkUnspent(txin.prevout.n);
+                        txPrev.WriteToDisk();
                     }
                 }
             }
@@ -1341,21 +1341,20 @@ namespace Legacy
             {
                 /* Check the txin to see if prevout hash maps to a transaction in this wallet */
                 TransactionMap::iterator mi = mapWallet.find(txin.prevout.hash);
-
                 if (mi != mapWallet.end())
                 {
                     /* When there is a match to the prevout hash, get the previous wallet transaction */
-                    WalletTx& prevTx = (*mi).second;
+                    WalletTx& txPrev = (*mi).second;
 
                     /* Outputs in wallet tx will have same index recorded in transaction txin
                      * Check any that are not flagged spent for belonging to this wallet and mark them as spent
                      */
-                    if (!prevTx.IsSpent(txin.prevout.n) && IsMine(prevTx.vout[txin.prevout.n]))
+                    if (!txPrev.IsSpent(txin.prevout.n) && IsMine(txPrev.vout[txin.prevout.n]))
                     {
-                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " NXS ", prevTx.GetHash().ToString().substr(0, 20));
+                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(txPrev.GetCredit()), " NXS ", txPrev.GetHash().ToString().substr(0, 20));
 
-                        prevTx.MarkSpent(txin.prevout.n);
-                        prevTx.WriteToDisk();
+                        txPrev.MarkSpent(txin.prevout.n);
+                        txPrev.WriteToDisk();
                     }
                 }
             }
@@ -1882,10 +1881,10 @@ namespace Legacy
             std::set<WalletTx*> setCoins;
             for (const TxIn& txin : wtxNew.vin)
             {
-                WalletTx& prevTx = mapWallet[txin.prevout.hash];
-                prevTx.BindWallet(this);
-                prevTx.MarkSpent(txin.prevout.n);
-                prevTx.WriteToDisk(); //Stores to wallet database
+                WalletTx& txPrev = mapWallet[txin.prevout.hash];
+                txPrev.BindWallet(this);
+                txPrev.MarkSpent(txin.prevout.n);
+                txPrev.WriteToDisk(); //Stores to wallet database
             }
         }
 
