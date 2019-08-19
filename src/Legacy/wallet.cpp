@@ -1392,10 +1392,10 @@ namespace Legacy
                 if (!IsMine(walletTx.vout[n]))
                     continue;
 
-                bool isSpentOnChain = LLD::legacyDB->IsSpent(walletTx.GetHash(), n);
+                bool fSpentOnChain = LLD::legacyDB->IsSpent(walletTx.GetHash(), n);
 
                 /* Handle when Transaction on chain records output as unspent but wallet accounting has it as spent */
-                if (walletTx.IsSpent(n) && !isSpentOnChain)
+                if (walletTx.IsSpent(n) && !fSpentOnChain)
                 {
                     debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20),
                         "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
@@ -1412,7 +1412,7 @@ namespace Legacy
                 }
 
                 /* Handle when Transaction on chain records output as spent but wallet accounting has it as unspent */
-                else if (!walletTx.IsSpent(n) && isSpentOnChain)
+                else if (!walletTx.IsSpent(n) && fSpentOnChain)
                 {
                     debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20),
                         "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
