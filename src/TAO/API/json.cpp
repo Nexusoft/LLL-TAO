@@ -958,7 +958,7 @@ namespace TAO
                         else
                         {
                             ret["namespace"] = strNamespace;
-                            ret["global"] = true;
+                            ret["global"] = false;
                         }
                         
                         
