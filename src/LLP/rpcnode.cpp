@@ -159,6 +159,7 @@ namespace LLP
             /* Push the response data with json payload. */
             PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
         }
+        
         /* Handle for memory allocation fail. */
         catch(const std::bad_alloc &e)
         {

@@ -61,8 +61,10 @@ namespace Legacy
         /** Mutex for thread concurrency across transaction operations. **/
         static std::mutex cs_wallettx;
 
+
         /** Pointer to the wallet to which this transaction is bound **/
         Wallet* pWallet;
+
 
         /** Flag indicating whether or not transaction bound to wallet **/
         bool fHaveWallet;

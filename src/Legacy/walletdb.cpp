@@ -282,12 +282,12 @@ namespace Legacy
         bool fAllAccounts = (strAccount == "*");
 
         /* Don't flush during cursor operations. See LoadWallet() for discussion of this code. */
-        bool expectedValue = false;
-        bool desiredValue = true;
-        while (!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
+        bool fExpectedValue = false;
+        bool fDesiredValue = true;
+        while (!WalletDB::fDbInProgress.compare_exchange_weak(fExpectedValue, fDesiredValue))
         {
             runtime::sleep(100);
-            expectedValue = false;
+            fExpectedValue = false;
         }
 
         BerkeleyDB& db = BerkeleyDB::GetInstance();
@@ -381,12 +381,12 @@ namespace Legacy
          *
          * Weak form is used because it is faster, and its possibility of a spurious fail is ok. We are already checking in a loop.
          */
-        bool expectedValue = false;
-        bool desiredValue = true;
-        while (!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
+        bool fExpectedValue = false;
+        bool fDesiredValue = true;
+        while (!WalletDB::fDbInProgress.compare_exchange_weak(fExpectedValue, fDesiredValue))
         {
             runtime::sleep(100);
-            expectedValue = false;
+            fExpectedValue = false;
         }
 
         BerkeleyDB& db = BerkeleyDB::GetInstance();
@@ -713,12 +713,12 @@ namespace Legacy
         bool fSuccessful = true;
 
         /* Don't flush during encryption transaction. See LoadWallet() for discussion of this code. */
-        bool expectedValue = false;
-        bool desiredValue = true;
-        while (!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
+        bool fExpectedValue = false;
+        bool fDesiredValue = true;
+        while (!WalletDB::fDbInProgress.compare_exchange_weak(fExpectedValue, fDesiredValue))
         {
             runtime::sleep(100);
-            expectedValue = false;
+            fExpectedValue = false;
         }
 
         BerkeleyDB& db = BerkeleyDB::GetInstance();
@@ -843,7 +843,6 @@ namespace Legacy
 
             /* Copy the atomic value to a local variable so we can use it without any chance that it will change */
             const uint32_t nWalletUpdatedCount = WalletDB::nWalletDBUpdated.load();
-
             if (nLastSeen != nWalletUpdatedCount)
             {
                 /* Database is updated since last checked. Record time update recognized */
@@ -859,9 +858,9 @@ namespace Legacy
                  * Otherwise, value has changed since the check above. Skip flush this iteration.
                  * Use strong compare here instead of weak to avoid possible spurious fail that would require an unnecessary loop iteration.
                  */
-                bool expectedValue = false;
-                bool desiredValue = true;
-                if (WalletDB::fDbInProgress.compare_exchange_strong(expectedValue, desiredValue))
+                bool fExpectedValue = false;
+                bool fDesiredValue = true;
+                if (WalletDB::fDbInProgress.compare_exchange_strong(fExpectedValue, fDesiredValue))
                 {
                     BerkeleyDB::GetInstance().DBFlush();
                     nLastFlushed = nLastSeen;
@@ -896,12 +895,12 @@ namespace Legacy
         while (!config::fShutdown.load()) //Loop used so we can easily break to the end on error. Only iterates once.
         {
             /* Tell flush thread not to flush during backup (backup will flush below). See LoadWallet() for discussion of this code. */
-            bool expectedValue = false;
-            bool desiredValue = true;
-            while (!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
+            bool fExpectedValue = false;
+            bool fDesiredValue = true;
+            while (!WalletDB::fDbInProgress.compare_exchange_weak(fExpectedValue, fDesiredValue))
             {
                 runtime::sleep(100);
-                expectedValue = false;
+                fExpectedValue = false;
             }
 
             if (config::fShutdown.load()) //Just in case we had to wait and it changed

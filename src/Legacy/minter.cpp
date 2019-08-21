@@ -192,7 +192,9 @@ namespace Legacy
             debug::log(0, FUNCTION, "Shutting down Stake Minter");
 
         	StakeMinter::fstopMinter.store(true);
-            StakeMinter::minterThread.join();
+
+            if(StakeMinter::minterThread.joinable())
+                StakeMinter::minterThread.join();
 
             if (pReservedTrustKey != nullptr)
             {

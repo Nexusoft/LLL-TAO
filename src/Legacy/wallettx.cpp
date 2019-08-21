@@ -44,28 +44,76 @@ namespace Legacy
 
     /** Constructor **/
     WalletTx::WalletTx()
-    : pWallet(nullptr)
+    : MerkleTx()
+    , pWallet(nullptr)
     , fHaveWallet(false)
+    , vtxPrev()
+    , mapValue()
+    , vOrderForm()
+    , strFromAccount()
+    , vfSpent(false, vout.size())
+    , fTimeReceivedIsTxTime(false)
+    , nTimeReceived(0)
+    , fFromMe(false)
+    , fDebitCached(false)
+    , fCreditCached(false)
+    , fAvailableCreditCached(false)
+    , fChangeCached(false)
+    , nDebitCached(0)
+    , nCreditCached(0)
+    , nAvailableCreditCached(0)
+    , nChangeCached(0)
     {
-        InitWalletTx();
     }
 
 
     /** Constructor **/
     WalletTx::WalletTx(Wallet& walletIn)
-    : pWallet(&walletIn)
+    : MerkleTx()
+    , pWallet(&walletIn)
     , fHaveWallet(true)
+    , vtxPrev()
+    , mapValue()
+    , vOrderForm()
+    , strFromAccount()
+    , vfSpent(false, vout.size())
+    , fTimeReceivedIsTxTime(false)
+    , nTimeReceived(0)
+    , fFromMe(false)
+    , fDebitCached(false)
+    , fCreditCached(false)
+    , fAvailableCreditCached(false)
+    , fChangeCached(false)
+    , nDebitCached(0)
+    , nCreditCached(0)
+    , nAvailableCreditCached(0)
+    , nChangeCached(0)
     {
-        InitWalletTx();
     }
 
 
     /** Constructor **/
     WalletTx::WalletTx(Wallet* pwalletIn)
-    : pWallet(pwalletIn)
+    : MerkleTx()
+    , pWallet(pwalletIn)
     , fHaveWallet(true)
+    , vtxPrev()
+    , mapValue()
+    , vOrderForm()
+    , strFromAccount()
+    , vfSpent(false, vout.size())
+    , fTimeReceivedIsTxTime(false)
+    , nTimeReceived(0)
+    , fFromMe(false)
+    , fDebitCached(false)
+    , fCreditCached(false)
+    , fAvailableCreditCached(false)
+    , fChangeCached(false)
+    , nDebitCached(0)
+    , nCreditCached(0)
+    , nAvailableCreditCached(0)
+    , nChangeCached(0)
     {
-        InitWalletTx();
     }
 
 
@@ -74,8 +122,23 @@ namespace Legacy
     : MerkleTx(txIn)
     , pWallet(pwalletIn)
     , fHaveWallet(true)
+    , vtxPrev()
+    , mapValue()
+    , vOrderForm()
+    , strFromAccount()
+    , vfSpent(false, vout.size())
+    , fTimeReceivedIsTxTime(false)
+    , nTimeReceived(0)
+    , fFromMe(false)
+    , fDebitCached(false)
+    , fCreditCached(false)
+    , fAvailableCreditCached(false)
+    , fChangeCached(false)
+    , nDebitCached(0)
+    , nCreditCached(0)
+    , nAvailableCreditCached(0)
+    , nChangeCached(0)
     {
-        InitWalletTx();
     }
 
 
@@ -84,8 +147,23 @@ namespace Legacy
     : MerkleTx(txIn)
     , pWallet(pwalletIn)
     , fHaveWallet(true)
+    , vtxPrev()
+    , mapValue()
+    , vOrderForm()
+    , strFromAccount()
+    , vfSpent(false, vout.size())
+    , fTimeReceivedIsTxTime(false)
+    , nTimeReceived(0)
+    , fFromMe(false)
+    , fDebitCached(false)
+    , fCreditCached(false)
+    , fAvailableCreditCached(false)
+    , fChangeCached(false)
+    , nDebitCached(0)
+    , nCreditCached(0)
+    , nAvailableCreditCached(0)
+    , nChangeCached(0)
     {
-        InitWalletTx();
     }
 
 
@@ -346,7 +424,7 @@ namespace Legacy
         if(nOut >= vfSpent.size())
             return false;
 
-        return (!!vfSpent[nOut]);
+        return vfSpent[nOut];
     }
 
 
@@ -436,7 +514,7 @@ namespace Legacy
 
 
     /* Retrieve information about the current transaction. */
-   void WalletTx::GetAmounts(int64_t& nGeneratedImmature, int64_t& nGeneratedMature, std::list<std::pair<NexusAddress, int64_t> >& listReceived,
+    void WalletTx::GetAmounts(int64_t& nGeneratedImmature, int64_t& nGeneratedMature, std::list<std::pair<NexusAddress, int64_t> >& listReceived,
                               std::list<std::pair<NexusAddress, int64_t> >& listSent, int64_t& nFee, std::string& strSentAccount) const
     {
         nGeneratedImmature = nGeneratedMature = nFee = 0;
