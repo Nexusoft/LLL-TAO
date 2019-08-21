@@ -84,8 +84,11 @@ namespace LLD
         if(pTransaction)
             delete pTransaction;
 
-        delete cachePool;
-        delete fileCache;
+        if(cachePool)
+            delete cachePool;
+
+        if(fileCache)
+            delete fileCache;
 
         if(pSectorKeys)
             delete pSectorKeys;
