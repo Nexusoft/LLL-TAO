@@ -841,16 +841,13 @@ namespace TAO
                 /* Get callers hashGenesis . */
                 uint256_t hashGenesis = users->GetCallersGenesis(params);
 
-                /* Don't attempt to resolve the object name if there is no logged in user as there will be no sig chain  to scan */
-                if(hashGenesis != 0)
-                {
-                    /* Look up the object name based on the Name records in the caller's sig chain */
-                    std::string strName = Names::ResolveName(hashGenesis, hashRegister);
+                /* Look up the object name based on the Name records in the caller's sig chain */
+                std::string strName = Names::ResolveName(hashGenesis, hashRegister);
 
-                    /* Add the name to the response if one is found. */
-                    if(!strName.empty())
-                        ret["name"] = strName;
-                }
+                /* Add the name to the response if one is found. */
+                if(!strName.empty())
+                    ret["name"] = strName;
+
             }
 
             /* Now build the response based on the register type */

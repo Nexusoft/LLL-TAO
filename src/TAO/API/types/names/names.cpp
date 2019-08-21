@@ -233,8 +233,9 @@ namespace TAO
                     hashNamespace = TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
                 }
 
-                /* Attempt to Read the Name Object */
-                fFound = TAO::Register::GetNameRegister(hashNamespace, strName, nameObject);
+                /* Attempt to Read the Name Object if we have either a user or namespace name*/
+                if(hashNamespace != 0)
+                    fFound = TAO::Register::GetNameRegister(hashNamespace, strName, nameObject);
             }
 
             /* If it still hasn't been resolved then check the global namespace */
@@ -334,13 +335,40 @@ namespace TAO
             /* Register address of nameObject.  Not used by this method */
             uint256_t hashNameObject = 0;
 
-            /* Look up the Name object for the register address hash */
-            TAO::Register::Object name = Names::GetName(hashGenesis, hashRegister, hashNameObject);
+            /* The resolved name record  */
+            TAO::Register::Object name; 
+            
+            /* Look up the Name object for the register address in the specified sig chain, if one has been provided */
+            if(hashGenesis != 0)
+                name =Names::GetName(hashGenesis, hashRegister, hashNameObject);
 
+            /* Check to see if we resolved the name using the specified sig chain */
             if(!name.IsNull())
             {
                 /* Get the name from the Name register */
                 strName = name.get<std::string>("name");
+            }
+            else
+            {
+                /* If we couldn't resolve the register name from the callers local names, we next scan the register owners sig chain
+                   to see if they have a name record for it.  NOTE: we only want to search global names from the register owners 
+                   sig chain, so that we don't leak the private names */
+                
+                /* Read the  the object from the register DB.  We can read it as an Object and then check its nType
+                   to determine whether or not it is a Name. */
+                TAO::Register::State state;
+                if(LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
+                {
+                    /* Look up the Name object for the register address hash in the register owners sig chain*/
+                    name = Names::GetName(state.hashOwner, hashRegister, hashNameObject);
+                    
+                    /* Get the name from the register owners name record as long as it is a global name */
+                    if(!name.IsNull() && name.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
+                    {
+                        /* Get the name from the Name register */
+                        strName = name.get<std::string>("name");
+                    }
+                }
             }
 
             return strName;
@@ -370,18 +398,11 @@ namespace TAO
                     strTokenName = "NXS";
                 else
                 {
-                    /* Get the session to be used for this API call. */
-                    uint64_t nSession = users->GetSession(params, false);
-
-                    /* Don't attempt to resolve the object name if there is no logged in user as there will be no sig chain  to scan */
-                    if(nSession != -1)
-                    {
-                        /* Get the account. */
-                        memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = users->GetAccount(nSession);
-
-                        /* Look up the token name based on the Name records in the caller's sig chain */
-                        strTokenName = Names::ResolveName(user->Genesis(), hashToken);
-                    }
+                    /* the genesis hash of the caller */
+                    uint256_t hashGenesis = users->GetCallersGenesis(params);
+                    
+                    /* Look up the token name based on the Name records in the caller's sig chain */
+                    strTokenName = Names::ResolveName(hashGenesis, hashToken);
                 }
             }
             else
