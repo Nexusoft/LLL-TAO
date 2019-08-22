@@ -1075,7 +1075,7 @@ namespace Legacy
         }
 
         /* debug print */
-        debug::log(0, FUNCTION, wtxIn.GetHash().ToString().substr(0,10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+        debug::log(1, FUNCTION, wtxIn.GetHash().ToString().substr(0,10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
         /* Write to disk */
         if (fInsertedNew || fUpdated)
@@ -1244,6 +1244,16 @@ namespace Legacy
 
                 /* Update the scanned count for meters. */
                 ++nScannedCount;
+
+                /* Meter for output. */
+                if(nScannedCount % 100000 == 0)
+                {
+                    /* Get the time it took to rescan. */
+                    uint32_t nElapsedSeconds = timer.Elapsed();
+                    debug::log(0, FUNCTION, "Processed ", nTransactionCount,
+                        " tx of ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
+                        std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
+                }
             }
 
             /* Set hash Last. */
@@ -1334,8 +1344,6 @@ namespace Legacy
      * in this wallet. For any it finds, verifies that the outputs are marked as spent, updating
      * them as needed.
      */
-    static std::map<uint512_t, uint32_t> mapSpent;
-
     void Wallet::WalletUpdateSpent(const Transaction& tx)
     {
         {
@@ -1360,9 +1368,6 @@ namespace Legacy
                      */
                     if(!wtx.IsSpent(txin.prevout.n) && IsMine(wtx.vout[txin.prevout.n]))
                     {
-                        if(!mapSpent.count(wtx.GetHash()))
-                            mapSpent[wtx.GetHash()] = 1;
-
                         debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(wtx.GetCredit()), " NXS ", wtx.GetHash().ToString().substr(0, 20));
 
                         wtx.MarkSpent(txin.prevout.n);
@@ -1426,15 +1431,6 @@ namespace Legacy
                         {
                             wtx.MarkSpent(n);
                             wtx.WriteToDisk();
-                        }
-
-                        if(mapSpent.count(map.first))
-                        {
-                            debug::log(0, FUNCTION, ANSI_COLOR_GREEN, "FOUND SPENT COINS THAT WERE ALREADY FLAGGED AS UNSPENT ", wtx.GetHash().ToString().substr(0, 20), ANSI_COLOR_RESET);
-                        }
-                        else
-                        {
-                            debug::log(0, FUNCTION, ANSI_COLOR_RED, "FOUND SPENT COINS THAT WERE NOT FLAGGED ", wtx.GetHash().ToString().substr(0, 20), ANSI_COLOR_RESET);
                         }
                     }
                 }
