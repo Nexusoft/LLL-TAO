@@ -230,9 +230,11 @@ namespace LLD
 
             /* Read the new proof state. */
             if(mapClaims.count(std::make_pair(hashTx, nContract)))
+            {
                 nClaimed = mapClaims[std::make_pair(hashTx, nContract)];
 
-            return true;
+                return true;
+            }
         }
 
         return Read(std::make_pair(hashTx, nContract), nClaimed);
