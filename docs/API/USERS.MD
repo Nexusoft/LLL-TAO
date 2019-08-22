@@ -558,26 +558,61 @@ This will list off all of the transactions sent to a particular genesis or usern
 ```
 [
     {
-        "txid": "0afb32d8316c9ad97504fbf26093a86cbce03ba8137c5f63e16991e3a99aee3cbb5696f0c889a75fe61541898d350f4023edca2e2b66545f7c2ef9af254f99f0",
-        "contracts": [
-            {
-                "OP": "DEBIT",
-                "from": "6118a477d187277d167bd7965d89d228a4fd04bdc48ae83157554f074eca8e61",
-                "to": "464f3ab4a704a100e6413c2891efaba61375513b00bdc903d8a1f32500f01e36",
-                "amount": 10000
-            }
-        ]
+        "OP": "DEBIT",
+        "from": "d5dd7b3660565dca8811f1e2532c464e3e14a246bf62858cb1df031531ed1ec9",
+        "from_name": "abc",
+        "to": "d35df4a1bc272e936fd29abcbf8211c4927070685b928235b5f105c3de915632",
+        "to_name": "myasset",
+        "amount": 10.0,
+        "reference": 0,
+        "token": "d5dd7b3660565dca8811f1e2532c464e3e14a246bf62858cb1df031531ed1ec9",
+        "token_name": "abc",
+        "txid": "01fa33c49901f3a2622b724d33e6bae238a8a0c3615facb4a00842b1b3a8545e275aff1015f1f2d04bffb3f47f54f64aa917702e3a8904c1be874ce5e969adb4",
+        "time": 1566479032,
+        "proof": "d4bb1bbd4ea3795cc906353d26930bc0c54cc165f357fdf232c7887542e9eab4",
+        "dividend_payment": true
     },
+    {
+        "OP": "TRANSFER",
+        "address": "d35b4f7d07a2a42bb38cf36eea35f924b6c9a64ba791562a901d8bf92633b94a",
+        "destination": "a2056d518d6e6d65c6c2e05af7fe2d3182a93def20e960fcfa0d35777a082440",
+        "force": false,
+        "txid": "0123200b85d720d85211d245fa4a38671622accd544f049262506eff242241733c5acfb396499e88a9156534b7d7943d554b59cbb38070fa323b16d52e439995",
+        "time": 1566479610
+    }
+
 ]
+
 
 ```
 
 ### Return values:
 
-`txid` : The transaction hash.
+An array of contracts deifned as:
 
-`contracts` : The list of contracts bound to this transaction and their details with opcodes.
+`OP` : The contract operation. Can be `COINBASE`, `DEBIT`, `FEE`, `TRANSFER`.
 
+`txid` : The transaction that was credited / claimed.
+
+`from` : For `DEBIT` transactions, the register address of the account that the debit is being made from.
+
+`from_name` : For `DEBIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
+
+`to` : For `DEBIT` transactions, the register address of the account that the debit is being made to.
+
+`to_name` : For `DEBIT` transactions, the name of the account that the debit is being made to.  Only included if the name can be resolved.
+
+`amount` : the token amount of the transaction.
+
+`token` : the register address of the token that the transaction relates to.  Set to 0 for NXS transactions
+
+`token_name` : The name of the token that the transaction relates to.
+
+`reference` : For `DEBIT` transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
+
+`proof` : The register address of the token account proving the the split dividend debit.
+
+`dividend_payment` : Flag indicating that this debit is a split dividend payment to a tokenized asset
 
 ****
 
