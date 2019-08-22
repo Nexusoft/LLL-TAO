@@ -171,6 +171,19 @@ namespace TAO
              **/
             json::json MiningInfo(const json::json& params, bool fHelp);
 
+
+            /** VoidTransaction
+             *
+             *  Reverses a debit or transfer transaction that the caller has made 
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json VoidTransaction(const json::json& params, bool fHelp);
+
         };
     }
 }
