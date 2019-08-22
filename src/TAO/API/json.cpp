@@ -396,7 +396,7 @@ namespace TAO
                             }
                         }
 
-                        ret["force"]    = (nType == TAO::Operation::TRANSFER::FORCE ? "True" : "False");
+                        ret["force"]    = nType == TAO::Operation::TRANSFER::FORCE;
 
                         break;
                     }

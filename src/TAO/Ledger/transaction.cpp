@@ -354,7 +354,7 @@ namespace TAO
                         fRecovery = true;
                     }
                     else
-                        return debug::error(FUNCTION, "next hash mismatch with previous transaction");
+                        return debug::error(FUNCTION, "invalid signature chain credentials");
                 }
 
                 /* Check recovery hash is sequenced from previous tx (except for changing from 0) */

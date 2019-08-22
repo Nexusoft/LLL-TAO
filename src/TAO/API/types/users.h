@@ -482,7 +482,7 @@ namespace TAO
              *
              **/
             bool GetOutstanding(const uint256_t& hashGenesis,
-                std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
+                std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
 
             /** GetOutstanding
@@ -509,7 +509,7 @@ namespace TAO
              *
              **/
             bool get_events(const uint256_t& hashGenesis,
-                std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
+                std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
             /** get_events
              *
@@ -533,7 +533,19 @@ namespace TAO
              *
              **/
             bool get_coinbases(const uint256_t& hashGenesis,
-                uint512_t hashLast, std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> &vContracts);
+                uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
+
+            
+            /** get_tokenized_debits
+             *
+             *  Get the outstanding debit transactions made to assets owned by tokens you hold.
+             *
+             *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+             *  @param[out] vContracts The array of outstanding contracts.
+             *
+             **/
+            bool get_tokenized_debits(const uint256_t& hashGenesis,
+                std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
 
         };

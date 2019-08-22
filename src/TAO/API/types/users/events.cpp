@@ -23,6 +23,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/names.h>
+#include <TAO/Register/include/unpack.h>
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -163,12 +164,12 @@ namespace TAO
 
                     /* Retrieve user's default NXS account. */
                     std::string strAccount = "default";
-                    TAO::Register::Object account;
-                    if(!TAO::Register::GetNameRegister(hashGenesis, strAccount, account))
+                    TAO::Register::Object defaultAccount;
+                    if(!TAO::Register::GetNameRegister(hashGenesis, strAccount, defaultAccount))
                         throw APIException(-63, "Could not retrieve default NXS account to credit");
 
                     /* Get the list of outstanding contracts. */
-                    std::vector<std::pair<std::shared_ptr<TAO::Ledger::Transaction>, uint32_t>> vContracts;
+                    std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
                     GetOutstanding(hashGenesis, vContracts);
 
                     /* Get the list of outstanding legacy transactions . */
@@ -195,7 +196,7 @@ namespace TAO
                     for(const auto& contract : vContracts)
                     {
                         /* Get a reference to the contract */
-                        const TAO::Operation::Contract& refContract = (*contract.first)[contract.second]; 
+                        const TAO::Operation::Contract& refContract = std::get<0>(contract); 
 
                         /* Set the transaction hash. */
                         hashTx = refContract.Hash();
@@ -216,23 +217,100 @@ namespace TAO
                             /* Check for Debits. */
                             case Operation::OP::DEBIT:
                             {
-                                /* Set to and from hashes and amount. */
-                                refContract >> hashFrom;
-                                refContract >> hashTo;
-                                refContract >> nAmount;
+                                /* Check to see if there is a proof for the contract, indicating this is a split dividend payment 
+                                   and the hashProof is the account the proves the ownership of it*/
+                                uint256_t hashProof = std::get<2>(contract);
+                                
+                                if(hashProof != 0)
+                                {                                    
+                                    /* If this is a split dividend payment then we can only (currently) process it if it is NXS.  
+                                       Therefore we need to retrieve the account/token the debit is from so that we can check */
+                                    
+                                    /* Get the token/account we are debiting from */
+                                    refContract >> hashFrom;
+                                    TAO::Register::Object from;
+                                    if(!LLD::Register->ReadState(hashFrom, from))
+                                        continue;
 
-                                /* Submit the payload object. */
-                                txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
-                                txout[nOut] << hashTx << contract.second;
-                                txout[nOut] << hashTo << hashFrom;
-                                txout[nOut] << nAmount;
+                                    /* Parse the object register. */
+                                    if(!from.Parse())
+                                        continue;
+                                    
+                                    /* Check the token type */
+                                    if( from.get<uint256_t>("token") != 0)
+                                    {
+                                        debug::log(2, FUNCTION, "Skipping split dividend DEBIT as token is not NXS");
+                                        continue;
+                                    }
+                                    
+                                    /* If this is a NXS debit then process the credit to the default account */
+                                    hashTo = defaultAccount.get<uint256_t>("address");
+
+                                    /* Read the object register, which is the token . */
+                                    TAO::Register::Object account;
+                                    if(!LLD::Register->ReadState(hashProof, account, TAO::Ledger::FLAGS::MEMPOOL))
+                                        continue;
+
+                                    /* Parse the object register. */
+                                    if(!account.Parse())
+                                        continue;
+
+                                    /* Check that this is an account */
+                                    if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT )
+                                        continue;
+
+                                    /* Get the token address */
+                                    uint256_t hashToken = account.get<uint256_t>("token");                    
+
+                                    /* Read the token register. */
+                                    TAO::Register::Object token;
+                                    if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::MEMPOOL))
+                                        continue;
+
+                                    /* Parse the object register. */
+                                    if(!token.Parse())
+                                        continue;
+
+                                    /* Get the token supply so that we an determine our share */
+                                    uint64_t nSupply = token.get<uint64_t>("supply");
+
+                                    /* Get the balance of our token account */
+                                    uint64_t nBalance = account.get<uint64_t>("balance");
+
+                                    /* Get the amount from the debit contract*/
+                                    uint64_t nAmount = 0;
+                                    TAO::Register::Unpack(refContract, nAmount);
+
+                                    /* Calculate the partial debit amount that this token holder is entitled to. */
+                                    uint64_t nPartial = (nAmount * nBalance) / nSupply;
+
+                                    /* Submit the payload object for the split dividend. Notice we use the hashProof */
+                                    txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
+                                    txout[nOut] << hashTx << std::get<1>(contract);
+                                    txout[nOut] << hashTo << hashProof;
+                                    txout[nOut] << nPartial;
+                                    
+                                }
+                                else
+                                {
+                                    /* Set to and from hashes and amount. */
+                                    refContract >> hashFrom;
+                                    refContract >> hashTo;
+                                    refContract >> nAmount;
+
+                                    /* Submit the payload object. */
+                                    txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
+                                    txout[nOut] << hashTx << std::get<1>(contract);
+                                    txout[nOut] << hashTo << hashFrom;
+                                    txout[nOut] << nAmount;
+                                }
 
                                 /* Increment the contract ID. */
                                 ++nOut;
 
                                 /* Log debug message. */
                                 debug::log(0, FUNCTION, "Matching DEBIT with CREDIT");
-
+                                
                                 break;
                             }
 
@@ -250,12 +328,12 @@ namespace TAO
                                 refContract >> hashFrom;
                                 refContract >> nAmount;
 
-                                /* Get the address that this name register is pointing to. */
-                                hashTo = account.get<uint256_t>("address");
+                                /* Get the address that this name register for default account is pointing to. */
+                                hashTo = defaultAccount.get<uint256_t>("address");
 
                                 /* Submit the payload object. */
                                 txout[nOut] << uint8_t(TAO::Operation::OP::CREDIT);
-                                txout[nOut] << hashTx << contract.second;
+                                txout[nOut] << hashTx << std::get<1>(contract);
                                 txout[nOut] << hashTo << hashFrom;
                                 txout[nOut] << nAmount;
 
@@ -287,7 +365,7 @@ namespace TAO
 
                                 /* Submit the payload object. */
                                 txout[nOut] << uint8_t(TAO::Operation::OP::CLAIM);
-                                txout[nOut] << hashTx << contract.second;
+                                txout[nOut] << hashTx << std::get<1>(contract);
                                 txout[nOut] << hashFrom;
 
                                 /* Increment the contract ID. */
