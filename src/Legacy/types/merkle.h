@@ -41,20 +41,6 @@ namespace Legacy
      **/
 	class MerkleTx : public Transaction
 	{
-	private:
-
-        /** Init
-         *
-         *  Initializes an empty merkle transaction
-         *
-         **/
-		void Init()
-		{
-			hashBlock = 0;
-			nIndex = -1;
-		}
-
-
 	public:
 
 		/** The block hash of the block containing this transaction **/
@@ -83,8 +69,11 @@ namespace Legacy
          *
          **/
 		MerkleTx()
+		: Transaction()
+		, hashBlock(0)
+		, vMerkleBranch()
+		, nIndex(-1)
 		{
-			Init();
 		}
 
 
@@ -99,8 +88,10 @@ namespace Legacy
          **/
 		MerkleTx(const Transaction& txIn)
 		: Transaction(txIn)
+		, hashBlock(0)
+		, vMerkleBranch()
+		, nIndex(-1)
 		{
-			Init();
 		}
 
 
@@ -130,7 +121,7 @@ namespace Legacy
          *  The current best in chain has depth 1. (0 indicates not added to chain)
          *
          *  Thus, if you want to test for x blocks added after block containing this transactions (ie, for maturity)
-         *  then need to test that GetDepthInMainChain() >= (x + 1) 
+         *  then need to test that GetDepthInMainChain() >= (x + 1)
          *
          *  More concretely, if 10 blocks are required for maturity, that is reached when this method returns >= 11
          *  That tells us at least 10 blocks were added after block containing this transaction.

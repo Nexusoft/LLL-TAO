@@ -29,6 +29,8 @@ namespace config
     extern std::string strMiscWarning;
 
     extern std::atomic<bool> fShutdown;
+    extern std::atomic<bool> fInitialized;
+
     extern bool fDebug;
     extern bool fPrintToConsole;
     extern bool fDaemon;

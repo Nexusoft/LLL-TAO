@@ -60,7 +60,9 @@ namespace LLP
         fDestruct = true;
 
         CONDITION.notify_all();
-        DATA_THREAD.join();
+
+        if(DATA_THREAD.joinable())
+            DATA_THREAD.join();
 
         DisconnectAll();
 

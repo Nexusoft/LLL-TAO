@@ -1035,9 +1035,9 @@ namespace Legacy
         }
 
         WalletTx& wtx = (*ret.first).second;
-        bool fInsertedNew = ret.second;
         wtx.BindWallet(this);
 
+        bool fInsertedNew = ret.second;
         if (fInsertedNew && wtx.nTimeReceived == 0) // Time will be non-zero if preset by processing (such as rescan)
         {
             /* wtx.nTimeReceive must remain uint32_t for backward compatability */
@@ -1075,7 +1075,7 @@ namespace Legacy
         }
 
         /* debug print */
-        debug::log(0, FUNCTION, wtxIn.GetHash().ToString().substr(0,10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+        debug::log(1, FUNCTION, wtxIn.GetHash().ToString().substr(0,10), " ", (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
         /* Write to disk */
         if (fInsertedNew || fUpdated)
@@ -1119,14 +1119,14 @@ namespace Legacy
         bool fExisted = mapWallet.count(hash);
 
         /* When transaction already in wallet, return unless update is specifically requested */
-        if (fExisted && !fUpdate)
+        if(fExisted && !fUpdate)
             return false;
 
         /* Check if transaction has outputs (IsMine) or inputs (IsFromMe) belonging to this wallet */
-        if (IsMine(tx) || IsFromMe(tx))
+        if(IsMine(tx) || IsFromMe(tx))
         {
             WalletTx wtx(this, tx);
-            if (fRescan || TAO::Ledger::ChainState::Synchronizing())
+            if(fRescan || TAO::Ledger::ChainState::Synchronizing())
             {
                 /* On rescan or initial download, set wtx time to transaction time instead of time tx received.
                  * These are both uint32_t timestamps to support unserialization of legacy data.
@@ -1135,11 +1135,13 @@ namespace Legacy
             }
 
             /* If find is enabled, read the block from LLD. */
-            if (fFindBlock)
+            if(fFindBlock)
             {
                 /* Read the block state. */
-                if (LLD::legDB->ReadBlock(tx.GetHash(), state))
-                    wtx.hashBlock = state.GetHash();
+                if(!LLD::legDB->ReadBlock(tx.GetHash(), state))
+                    return debug::error(FUNCTION, "transaction was orphaned...");
+
+                wtx.hashBlock = state.GetHash();
             }
             else if(!state.IsNull())
             {
@@ -1150,8 +1152,9 @@ namespace Legacy
             /* AddToWallet preforms merge (update) for transactions already in wallet */
             return AddToWallet(wtx);
         }
-        else
-            WalletUpdateSpent(tx);
+
+        /* Check for spent flags if this transaction was not ours. */
+        WalletUpdateSpent(tx);
 
         return false;
     }
@@ -1196,12 +1199,12 @@ namespace Legacy
 
                 if (mi != mapWallet.end())
                 {
-                    WalletTx& prevTx = (*mi).second;
+                    WalletTx& txPrev = (*mi).second;
 
-                    if (txin.prevout.n < prevTx.vout.size() && IsMine(prevTx.vout[txin.prevout.n]))
+                    if (txin.prevout.n < txPrev.vout.size() && IsMine(txPrev.vout[txin.prevout.n]))
                     {
-                        prevTx.MarkUnspent(txin.prevout.n);
-                        prevTx.WriteToDisk();
+                        txPrev.MarkUnspent(txin.prevout.n);
+                        txPrev.WriteToDisk();
                     }
                 }
             }
@@ -1241,10 +1244,24 @@ namespace Legacy
 
                 /* Update the scanned count for meters. */
                 ++nScannedCount;
+
+                /* Meter for output. */
+                if(nScannedCount % 100000 == 0)
+                {
+                    /* Get the time it took to rescan. */
+                    uint32_t nElapsedSeconds = timer.Elapsed();
+                    debug::log(0, FUNCTION, "Processed ", nTransactionCount,
+                        " tx of ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
+                        std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
+                }
             }
 
             /* Set hash Last. */
             hashLast = vtx.back().GetHash();
+
+            /* Check for end. */
+            if(vtx.size() != 1000)
+                break;
 
             /* Clear the transactions. */
             vtx.clear();
@@ -1331,7 +1348,7 @@ namespace Legacy
      * in this wallet. For any it finds, verifies that the outputs are marked as spent, updating
      * them as needed.
      */
-    void Wallet::WalletUpdateSpent(const Transaction &tx)
+    void Wallet::WalletUpdateSpent(const Transaction& tx)
     {
         {
             LOCK(cs_wallet);
@@ -1341,21 +1358,24 @@ namespace Legacy
             {
                 /* Check the txin to see if prevout hash maps to a transaction in this wallet */
                 TransactionMap::iterator mi = mapWallet.find(txin.prevout.hash);
-
                 if (mi != mapWallet.end())
                 {
                     /* When there is a match to the prevout hash, get the previous wallet transaction */
-                    WalletTx& prevTx = (*mi).second;
+                    WalletTx& wtx = (*mi).second;
+
+                    /* Check if wallet is bound. */
+                    if(!wtx.IsBound())
+                        wtx.BindWallet(this);
 
                     /* Outputs in wallet tx will have same index recorded in transaction txin
                      * Check any that are not flagged spent for belonging to this wallet and mark them as spent
                      */
-                    if (!prevTx.IsSpent(txin.prevout.n) && IsMine(prevTx.vout[txin.prevout.n]))
+                    if(!wtx.IsSpent(txin.prevout.n) && IsMine(wtx.vout[txin.prevout.n]))
                     {
-                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " NXS ", prevTx.GetHash().ToString().substr(0, 20));
+                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(wtx.GetCredit()), " NXS ", wtx.GetHash().ToString().substr(0, 20));
 
-                        prevTx.MarkSpent(txin.prevout.n);
-                        prevTx.WriteToDisk();
+                        wtx.MarkSpent(txin.prevout.n);
+                        wtx.WriteToDisk();
                     }
                 }
             }
@@ -1369,75 +1389,56 @@ namespace Legacy
         nMismatchFound = 0;
         nBalanceInQuestion = 0;
 
-        std::vector<WalletTx> vTransactionsInWallet;
-        std::vector<WalletTx> vRepairedTx;
-
         {
             LOCK(cs_wallet);
 
-            vTransactionsInWallet.reserve(mapWallet.size());
-            for (auto& item : mapWallet)
-                vTransactionsInWallet.push_back(item.second);
-
-        }
-
-        for(WalletTx& walletTx : vTransactionsInWallet)
-        {
-            /* Verify transaction is in the tx db */
-            Legacy::Transaction txTemp;
-
-            /* Check all the outputs to make sure the flags are all set properly. */
-            for (uint32_t n=0; n < walletTx.vout.size(); n++)
+            /* Loop through all values in the wallet map. */
+            for(auto& map : mapWallet)
             {
-                if (!IsMine(walletTx.vout[n]))
-                    continue;
+                /* Get a reference of value. */
+                WalletTx& wtx = map.second;
 
-                bool isSpentOnChain = LLD::legacyDB->IsSpent(walletTx.GetHash(), n);
-
-                /* Handle when Transaction on chain records output as unspent but wallet accounting has it as spent */
-                if (walletTx.IsSpent(n) && !isSpentOnChain)
+                /* Check all the outputs to make sure the flags are all set properly. */
+                for (uint32_t n=0; n < wtx.vout.size(); n++)
                 {
-                    debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20),
-                        "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
+                    if (!IsMine(wtx.vout[n]))
+                        continue;
 
-                    ++nMismatchFound;
-                    nBalanceInQuestion += walletTx.vout[n].nValue;
+                    bool fSpentOnChain = LLD::legacyDB->IsSpent(map.first, n);
 
-                    if (!fCheckOnly)
+                    /* Handle when Transaction on chain records output as unspent but wallet accounting has it as spent */
+                    if (wtx.IsSpent(n) && !fSpentOnChain)
                     {
-                        walletTx.MarkUnspent(n);
-                        walletTx.WriteToDisk();
-                        vRepairedTx.push_back(walletTx);
+                        debug::log(2, FUNCTION, "Found unspent coin ", FormatMoney(wtx.vout[n].nValue), " NXS ", wtx.GetHash().ToString().substr(0, 20),
+                            "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
+
+                        ++nMismatchFound;
+                        nBalanceInQuestion += wtx.vout[n].nValue;
+
+                        if (!fCheckOnly)
+                        {
+                            wtx.MarkUnspent(n);
+                            wtx.WriteToDisk();
+                        }
                     }
-                }
 
-                /* Handle when Transaction on chain records output as spent but wallet accounting has it as unspent */
-                else if (!walletTx.IsSpent(n) && isSpentOnChain)
-                {
-                    debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(walletTx.vout[n].nValue), " NXS ", walletTx.GetHash().ToString().substr(0, 20),
-                        "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
-
-                    ++nMismatchFound;
-
-                    nBalanceInQuestion += walletTx.vout[n].nValue;
-
-                    if (!fCheckOnly)
+                    /* Handle when Transaction on chain records output as spent but wallet accounting has it as unspent */
+                    else if (!wtx.IsSpent(n) && fSpentOnChain)
                     {
-                        walletTx.MarkSpent(n);
-                        walletTx.WriteToDisk();
-                        vRepairedTx.push_back(walletTx);
+                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(wtx.vout[n].nValue), " NXS ", wtx.GetHash().ToString().substr(0, 20),
+                            "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
+
+                        ++nMismatchFound;
+                        nBalanceInQuestion += wtx.vout[n].nValue;
+
+                        if (!fCheckOnly)
+                        {
+                            wtx.MarkSpent(n);
+                            wtx.WriteToDisk();
+                        }
                     }
                 }
             }
-        }
-
-        if (nMismatchFound > 0 && vRepairedTx.size() > 0)
-        {
-            /* Update mapWallet with repaired transactions */
-            LOCK(cs_wallet);
-
-            for (WalletTx& walletTx : vRepairedTx)
-                mapWallet[walletTx.GetHash()] = walletTx;
         }
     }
 
@@ -1724,7 +1725,8 @@ namespace Legacy
              * When fee increased, it is possible that selected inputs do not cover it, so repeat the process to
              * assure we have enough value in. It also has to re-do the change calculation and output.
              */
-            while(true) {
+            while(true)
+            {
                 /* Reset transaction contents */
                 wtxNew.vin.clear();
                 wtxNew.vout.clear();
@@ -1882,10 +1884,10 @@ namespace Legacy
             std::set<WalletTx*> setCoins;
             for (const TxIn& txin : wtxNew.vin)
             {
-                WalletTx& prevTx = mapWallet[txin.prevout.hash];
-                prevTx.BindWallet(this);
-                prevTx.MarkSpent(txin.prevout.n);
-                prevTx.WriteToDisk(); //Stores to wallet database
+                WalletTx& txPrev = mapWallet[txin.prevout.hash];
+                txPrev.BindWallet(this);
+                txPrev.MarkSpent(txin.prevout.n);
+                txPrev.WriteToDisk(); //Stores to wallet database
             }
         }
 

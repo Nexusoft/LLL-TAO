@@ -474,6 +474,10 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION, "Started up in ", nElapsed, "ms");
 
 
+        /* Set the initialized flags. */
+        config::fInitialized.store(true);
+
+
         /* Initialize generator thread. */
         std::thread thread;
         if(config::GetBoolArg(std::string("-private")))

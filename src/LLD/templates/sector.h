@@ -304,8 +304,8 @@ namespace LLD
             while(nLimit == -1 || nLimit > 0)
             {
                 /* Get filestream object. */
-                std::fstream stream = std::fstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
-                if(!stream.is_open())
+                std::ifstream stream = std::ifstream(debug::strprintf("%s_block.%05u", strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
+                if(!stream)
                     return (vValues.size() > 0);
 
                 /* Read into serialize stream. */
@@ -340,6 +340,8 @@ namespace LLD
 
                     /* Read the data into the buffer. */
                     stream.read((char*)ssData.data(), ssData.size());
+                    if(!stream)
+                        ssData.resize(stream.gcount());
 
                     /* Set the start to read size. */
                     nStart += ssData.size();
@@ -409,9 +411,15 @@ namespace LLD
 
                             /* Read the data into the buffer. */
                             stream.read((char*)ssData.data(ssData.size() - nBufferSize), nBufferSize);
+                            if(!stream)
+                            {
+                                ssData.resize(ssData.size() - (nBufferSize - stream.gcount()));
+                                nStart += stream.gcount();
+                            }
 
                             /* Set the start to read size. */
-                            nStart += nBufferSize;
+                            else
+                                nStart += nBufferSize;
 
                             /* Reset the position. */
                             ssData.SetPos(nPos);
@@ -420,7 +428,8 @@ namespace LLD
                 }
 
                 /* Close the stream. */
-                stream.close();
+                if(stream.is_open())
+                    stream.close();
 
                 /* Iterate to the next file. */
                 ++nFile;
@@ -459,7 +468,7 @@ namespace LLD
             while(nLimit == -1 || nLimit > 0)
             {
                 /* Get filestream object. */
-                std::fstream stream = std::fstream(debug::strprintf("%s_block.%05u",
+                std::ifstream stream = std::ifstream(debug::strprintf("%s_block.%05u",
                                         strBaseLocation.c_str(), nFile), std::ios::in | std::ios::binary);
                 if(!stream.is_open())
                     return (vValues.size() > 0);
@@ -495,7 +504,7 @@ namespace LLD
                     if(nFile == cKey.nSectorFile)
                     {
                         /* Set the position. */
-                        nStart = cKey.nSectorStart + cKey.nSectorSize;
+                        nStart = cKey.nSectorStart;
 
                         /* Seek stream to sector position. */
                         stream.seekg(nStart, std::ios::beg);
@@ -512,6 +521,8 @@ namespace LLD
 
                     /* Read the data into the buffer. */
                     stream.read((char*)ssData.data(), nBufferSize);
+                    if(!stream)
+                        ssData.resize(stream.gcount());
 
                     /* Set the start to read size. */
                     nStart += ssData.size();
@@ -553,7 +564,6 @@ namespace LLD
                         /* Iterate to next position. */
                         nPos += nSize + GetSizeOfCompactSize(nSize);
                         ssData.SetPos(nPos);
-
                     }
                     catch(const std::exception& e)
                     {
@@ -578,16 +588,21 @@ namespace LLD
 
                             /* Read the data into the buffer. */
                             stream.read((char*)ssData.data(ssData.size() - nBufferSize), nBufferSize);
+                            if(!stream)
+                            {
+                                ssData.resize(ssData.size() - (nBufferSize - stream.gcount()));
+                                nStart += stream.gcount();
+                            }
 
                             /* Set the start to read size. */
-                            nStart += nBufferSize;
+                            else
+                                nStart += nBufferSize;
 
                             /* Reset the position. */
                             ssData.SetPos(nPos);
                         }
                     }
                 }
-
 
                 /* Close the stream. */
                 if(stream.is_open())

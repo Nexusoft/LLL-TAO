@@ -30,6 +30,7 @@ namespace config
     std::map<uint32_t, std::vector<std::string> > mapIPFilters;
 
     std::atomic<bool> fShutdown(false);
+    std::atomic<bool> fInitialized(false);
 
     bool fDebug = false;
     bool fPrintToConsole = false;
@@ -204,7 +205,7 @@ namespace config
             mapIPFilters[nPort].push_back(strIP);
         }
 
-        /* Parse the legacy rpcallowip entries and add them to to the filters map too, so that legacy users 
+        /* Parse the legacy rpcallowip entries and add them to to the filters map too, so that legacy users
            can migrate without having to change their config files*/
         const std::vector<std::string>& vRPCFilters = config::mapMultiArgs["-rpcallowip"];
 

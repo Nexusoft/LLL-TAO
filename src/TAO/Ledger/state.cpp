@@ -290,17 +290,17 @@ namespace TAO
             time.Start();
 
             /* Get the hash. */
-            uint1024_t nHash = GetHash();
+            uint1024_t hash = GetHash();
 
             /* Watch for genesis. */
             if (!ChainState::stateGenesis)
             {
                 /* Write the best chain pointer. */
-                if(!LLD::legDB->WriteBestChain(nHash))
+                if(!LLD::legDB->WriteBestChain(hash))
                     return debug::error(FUNCTION, "failed to write best chain");
 
                 /* Write the block to disk. */
-                if(!LLD::legDB->WriteBlock(nHash, *this))
+                if(!LLD::legDB->WriteBlock(hash, *this))
                     return debug::error(FUNCTION, "block state already exists");
 
                 /* Set the genesis block. */
@@ -359,7 +359,7 @@ namespace TAO
                         "..",  ChainState::stateBest.load().GetHash().ToString().substr(0,20));
 
                     debug::log(0, FUNCTION, "REORGANIZE: Connect ", vConnect.size(), " blocks; ", fork.GetHash().ToString().substr(0,20),
-                        "..", nHash.ToString().substr(0,20));
+                        "..", hash.ToString().substr(0,20));
                 }
 
                 /* List of transactions to resurrect. */
@@ -377,24 +377,24 @@ namespace TAO
                     /* Add transactions into memory pool. */
                     if(!vConnect.empty())
                     {
-                        for(const auto& txAdd : state.vtx)
+                        for(const auto& proof : state.vtx)
                         {
-                            if(txAdd.first == TYPE::TRITIUM_TX)
+                            if(proof.first == TYPE::TRITIUM_TX)
                             {
                                 /* Check if in memory pool. */
                                 TAO::Ledger::Transaction tx;
-                                if(!LLD::legDB->ReadTx(txAdd.second, tx))
+                                if(!LLD::legDB->ReadTx(proof.second, tx))
                                     return debug::error(FUNCTION, "transaction is not on disk");
 
                                 /* Resurrect. */
                                 if(!tx.IsCoinbase() && !tx.IsTrust())
                                     vTritiumResurrect.push_back(tx);
                             }
-                            else if(txAdd.first == TYPE::LEGACY_TX)
+                            else if(proof.first == TYPE::LEGACY_TX)
                             {
                                 /* Check if in memory pool. */
                                 Legacy::Transaction tx;
-                                if(!LLD::legacyDB->ReadTx(txAdd.second, tx))
+                                if(!LLD::legacyDB->ReadTx(proof.second, tx))
                                     return debug::error(FUNCTION, "transaction is not on disk");
 
                                 /* Resurrect */
@@ -462,8 +462,8 @@ namespace TAO
                     }
 
                     /* Remove transactions from memory pool. */
-                    for(const auto& tx : state->vtx)
-                        vDelete.push_back(tx.second);
+                    for(const auto& proof : state->vtx)
+                        vDelete.push_back(proof.second);
 
                     /* Harden a checkpoint if there is any. */
                     HardenCheckpoint(Prev());
@@ -477,7 +477,7 @@ namespace TAO
 
                 /* Set the best chain variables. */
                 ChainState::stateBest          = *this;
-                ChainState::hashBestChain      = nHash;
+                ChainState::hashBestChain      = hash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
 
@@ -489,7 +489,7 @@ namespace TAO
 
                 /* Debug output about the best chain. */
                 debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
-                    "New Best Block hash=", nHash.ToString().substr(0, 20),
+                    "New Best Block hash=", hash.ToString().substr(0, 20),
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
                     " [verified in ", time.ElapsedMilliseconds(), " ms]",
@@ -526,13 +526,13 @@ namespace TAO
         {
 
             /* Check through all the transactions. */
-            for(const auto& tx : vtx)
+            for(const auto& proof : vtx)
             {
                 /* Only work on tritium transactions for now. */
-                if(tx.first == TYPE::TRITIUM_TX)
+                if(proof.first == TYPE::TRITIUM_TX)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = tx.second;
+                    uint512_t hash = proof.second;
 
                     /* Make sure the transaction is on disk. */
                     TAO::Ledger::Transaction tx;
@@ -582,10 +582,10 @@ namespace TAO
                             return debug::error(FUNCTION, "failed to write last hash");
                     }
                 }
-                else if(tx.first == TYPE::LEGACY_TX)
+                else if(proof.first == TYPE::LEGACY_TX)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = tx.second;
+                    uint512_t hash = proof.second;
 
                     /* Make sure the transaction isn't on disk. */
                     Legacy::Transaction tx;
@@ -617,7 +617,7 @@ namespace TAO
                     return debug::error(FUNCTION, "using an unknown transaction type");
 
                 /* Write the indexing entries. */
-                LLD::legDB->IndexBlock(tx.second, GetHash());
+                LLD::legDB->IndexBlock(proof.second, GetHash());
             }
 
             /* Update the previous state's next pointer. */
@@ -653,13 +653,13 @@ namespace TAO
         bool BlockState::Disconnect()
         {
             /* Check through all the transactions. */
-            for(const auto& tx : vtx)
+            for(const auto& proof : vtx)
             {
                 /* Only work on tritium transactions for now. */
-                if(tx.first == TYPE::TRITIUM_TX)
+                if(proof.first == TYPE::TRITIUM_TX)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = tx.second;
+                    uint512_t hash = proof.second;
 
                     /* Check if in memory pool. */
                     TAO::Ledger::Transaction tx;
@@ -670,10 +670,10 @@ namespace TAO
                     if(!TAO::Register::Rollback(tx))
                         return debug::error(FUNCTION, "transaction register layer failed to rollback");
                 }
-                else if(tx.first == TYPE::LEGACY_TX)
+                else if(proof.first == TYPE::LEGACY_TX)
                 {
                     /* Get the transaction hash. */
-                    uint512_t hash = tx.second;
+                    uint512_t hash = proof.second;
 
                     /* Check if in memory pool. */
                     Legacy::Transaction tx;
@@ -690,7 +690,7 @@ namespace TAO
                 }
 
                 /* Write the indexing entries. */
-                LLD::legDB->EraseIndex(tx.second);
+                LLD::legDB->EraseIndex(proof.second);
             }
 
             /* Erase the index for block by height. */
