@@ -1259,6 +1259,10 @@ namespace Legacy
             /* Set hash Last. */
             hashLast = vtx.back().GetHash();
 
+            /* Check for end. */
+            if(vtx.size() != 1000)
+                break;
+
             /* Clear the transactions. */
             vtx.clear();
 
