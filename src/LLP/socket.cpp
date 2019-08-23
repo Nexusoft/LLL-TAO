@@ -27,6 +27,7 @@ ________________________________________________________________________________
 #endif
 
 #include <openssl/ssl.h>
+#include <openssl/err.h>
 
 namespace LLP
 {
@@ -99,10 +100,16 @@ namespace LLP
             SSL_set_fd(pSSL, fd);
             SSL_set_accept_state(pSSL);
 
-            if(SSL_accept(pSSL) == SOCKET_ERROR)
-                debug::error(FUNCTION, "SSL Socket error SSL_accept failed: ", WSAGetLastError());
+            int32_t nRet = SSL_accept(pSSL);
 
-            debug::log(0, FUNCTION, "SSL Connection using ", SSL_get_cipher(pSSL));
+            if(nRet)
+                debug::log(2, FUNCTION, "SSL Connection using ", SSL_get_cipher(pSSL));
+            else
+            {
+                nError = SSL_get_error(pSSL, nRet);
+                debug::error(FUNCTION, "SSL_accept failed: ", ERR_reason_error_string(nError));
+            }
+
         }
 
         /* Reset the internal timers. */
@@ -334,6 +341,10 @@ namespace LLP
     {
         LOCK(SOCKET_MUTEX);
 
+        /* Return number of readable bytes for an SSL socket connection. */
+        if(pSSL)
+            return SSL_pending(pSSL);
+
     #ifdef WIN32
         long unsigned int nAvailable = 0;
         ioctlsocket(fd, FIONREAD, &nAvailable);
@@ -384,6 +395,13 @@ namespace LLP
 
         if (nRead < 0)
         {
+            if(pSSL)
+            {
+                nError = SSL_get_error(pSSL, nRead);
+                debug::log(2, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                return nError;
+            }
+
             nError = WSAGetLastError();
             debug::log(3, FUNCTION, "read failed ", addr.ToString(), " (", nError, " ", strerror(nError), ")");
 
@@ -419,6 +437,13 @@ namespace LLP
 
         if (nRead < 0)
         {
+            if(pSSL)
+            {
+                nError = SSL_get_error(pSSL, nRead);
+                debug::log(2, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                return nError;
+            }
+
             nError = WSAGetLastError();
             debug::log(3, FUNCTION, "read failed ",  addr.ToString(), " (", nError, " ", strerror(nError), ")");
 
@@ -469,6 +494,14 @@ namespace LLP
 
         /* Handle for error state. */
         if(nSent < 0)
+        {
+            if(pSSL)
+            {
+                nError = SSL_get_error(pSSL, nSent);
+                debug::log(2, FUNCTION, "SSL_write failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                return nError;
+            }
+
             nError = WSAGetLastError();
 
         /* If not all data was sent non-blocking, recurse until it is complete. */
@@ -500,8 +533,11 @@ namespace LLP
         if(nSize == 0)
             return 0;
 
+        /* maximum transmission unit. */
+        const uint32_t MTU = 16384;
+
         /* Set the maximum bytes to flush to 2^16 or maximum socket buffers. */
-        nBytes = std::min(nSize, std::min((uint32_t)config::GetArg("-maxsendsize", 65535u), 65535u));
+        nBytes = std::min(nSize, std::min((uint32_t)config::GetArg("-maxsendsize", MTU), MTU));
 
         /* If there were any errors, handle them gracefully. */
         {
@@ -526,6 +562,12 @@ namespace LLP
         /* Handle errors on flush. */
         if(nSent < 0)
         {
+            if(pSSL)
+            {
+                nError = SSL_get_error(pSSL, nSent);
+                return nError;
+            }
+
             nError = WSAGetLastError();
             ++nConsecutiveErrors;
         }
@@ -580,19 +622,47 @@ namespace LLP
     }
 
 
-    /* Checks for any flags in the Error Handle. */
+    /*  Checks for any flags in the Error Handle. */
     bool Socket::Errors() const
     {
+        LOCK(DATA_MUTEX);
+
         return error_code() != 0;
     }
 
 
-    /* Give the message (c-string) of the error in the socket. */
-    char *Socket::Error() const
+    /*  Give the message (c-string) of the error in the socket. */
+    const char *Socket::Error() const
     {
+        LOCK(DATA_MUTEX);
+
+        if(pSSL)
+            return ERR_reason_error_string(error_code());
+
         return strerror(error_code());
     }
 
+
+    /* Returns the error of socket if any */
+    int Socket::error_code() const
+    {
+
+        if(pSSL)
+        {
+            /* Check for errors from reads or writes. */
+            if(nError == SSL_ERROR_WANT_READ || nError == SSL_ERROR_WANT_WRITE)
+                return 0;
+
+            return nError;
+        }
+
+
+        /* Check for errors from reads or writes. */
+        if(nError == WSAEWOULDBLOCK  || nError == WSAEMSGSIZE  || nError == WSAEINTR  || nError == WSAEINPROGRESS)
+            return 0;
+
+        return nError;
+    }
 
     /*  Creates or destroys the SSL object depending on the flag set. */
     void Socket::SetSSL(bool fSSL)
@@ -620,14 +690,4 @@ namespace LLP
         return false;
     }
 
-
-    /* Returns the error of socket if any */
-    int Socket::error_code() const
-    {
-        /* Check for errors from reads or writes. */
-        if (nError == WSAEWOULDBLOCK || nError == WSAEMSGSIZE || nError == WSAEINTR || nError == WSAEINPROGRESS)
-            return 0;
-
-        return nError;
-    }
 }

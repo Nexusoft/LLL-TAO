@@ -718,6 +718,7 @@ namespace LLP
         /* Clear the map of blocks if a new block has been accepted. */
         clear_map();
 
+
         /* Set the new best height. */
         nBestHeight = nChainStateHeight;
         debug::log(2, FUNCTION, "Mining best height changed to ", nBestHeight);

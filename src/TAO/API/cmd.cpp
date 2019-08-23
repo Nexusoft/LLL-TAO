@@ -79,7 +79,7 @@ namespace TAO
 
                 /* Read the response packet. */
                 node.ReadPacket();
-                runtime::sleep(1);
+                runtime::sleep(10);
 
                 debug::log(0, FUNCTION);
             }
