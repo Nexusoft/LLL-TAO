@@ -743,28 +743,25 @@ namespace Legacy
     int64_t Wallet::GetBalance()
     {
         int64_t nTotalBalance = 0;
-
-        TransactionMap mapWalletCopy;
-
         {
             /* Lock wallet only to take a snapshot of current transaction map for calculating balance
              * After unlock, mapWallet can change but it won't affect balance calculation
              */
             LOCK(cs_wallet);
 
-            mapWalletCopy = mapWallet;
+            for (const auto& item : mapWallet)
+            {
+                const WalletTx& walletTx = item.second;
+
+                /* Skip any transaction that isn't final, isn't completely confirmed, or has a future timestamp */
+                if (!walletTx.IsFinal() || !walletTx.IsConfirmed() || walletTx.nTime > runtime::unifiedtimestamp())
+                    continue;
+
+                nTotalBalance += walletTx.GetAvailableCredit();
+            }
         }
 
-        for (const auto& item : mapWalletCopy)
-        {
-            const WalletTx& walletTx = item.second;
 
-            /* Skip any transaction that isn't final, isn't completely confirmed, or has a future timestamp */
-            if (!walletTx.IsFinal() || !walletTx.IsConfirmed() || walletTx.nTime > runtime::unifiedtimestamp())
-                continue;
-
-            nTotalBalance += walletTx.GetAvailableCredit();
-        }
 
         return nTotalBalance;
     }
@@ -833,27 +830,24 @@ namespace Legacy
     int64_t Wallet::GetUnconfirmedBalance()
     {
         int64_t nUnconfirmedBalance = 0;
-
-        TransactionMap mapWalletCopy;
-
         {
             /* Lock wallet only to take a snapshot of current transaction map for calculating balance
              * After unlock, mapWallet can change but it won't affect balance calculation
              */
             LOCK(cs_wallet);
 
-            mapWalletCopy = mapWallet;
+            for (const auto& item : mapWallet)
+            {
+                const WalletTx& walletTx = item.second;
+
+                if (walletTx.IsFinal() && walletTx.IsConfirmed())
+                    continue;
+
+                nUnconfirmedBalance += walletTx.GetAvailableCredit();
+            }
         }
 
-        for (const auto& item : mapWalletCopy)
-        {
-            const WalletTx& walletTx = item.second;
 
-            if (walletTx.IsFinal() && walletTx.IsConfirmed())
-                continue;
-
-            nUnconfirmedBalance += walletTx.GetAvailableCredit();
-        }
 
         return nUnconfirmedBalance;
     }
