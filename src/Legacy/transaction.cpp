@@ -32,6 +32,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/stake.h>
+
 #include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/runtime.h>
@@ -1015,7 +1017,13 @@ namespace Legacy
                             return debug::error(FUNCTION, "failed to read previous tx block");
 
                         /* Check the maturity. */
-                        if((state.nHeight - statePrev.nHeight) < (config::fTestNet.load() ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
+                        uint32_t nMaturity;
+                        if(txPrev.IsCoinBase())
+                            nMaturity = TAO::Ledger::MaturityCoinBase();
+                        else
+                            nMaturity = TAO::Ledger::MaturityCoinStake();
+
+                        if((state.nHeight - statePrev.nHeight) < nMaturity)
                             return debug::error(FUNCTION, "tried to spend immature balance ", (state.nHeight - statePrev.nHeight));
                     }
 
@@ -1274,12 +1282,8 @@ namespace Legacy
         if(!LLD::Legacy->ReadTx(stateLast.vtx[0].second, txLast))
             return debug::error(FUNCTION, "last state coinstake tx not found");
 
-        /* Enforce the minimum trust key interval of 120 blocks. */
-        const uint32_t nMinimumInterval = config::fTestNet.load()
-                                            ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
-                                            : TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
-
-        if(state.nHeight - stateLast.nHeight < nMinimumInterval)
+        /* Enforce the minimum trust key interval */
+        if((state.nHeight - stateLast.nHeight) < TAO::Ledger::MinStakeInterval())
             return debug::error(FUNCTION, "trust key interval below minimum interval ", state.nHeight - stateLast.nHeight);
 
         /* Current key to verify */

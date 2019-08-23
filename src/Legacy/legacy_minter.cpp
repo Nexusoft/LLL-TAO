@@ -29,6 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h> //for LEGACY_TX enum
 
@@ -356,14 +357,8 @@ namespace Legacy
 
         static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
-        /* New Mainnet interval will go into effect with activation of v7. Can't be static so it goes live immediately (can update after activation) */
-        const uint32_t nMinimumInterval = config::fTestNet.load()
-                                            ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
-                                            : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
-                                                ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY
-                                                : (runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])
-                                                        ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL
-                                                        : TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
+        /* Retrieve the current setting for minimum stake interval */
+        const uint32_t nMinimumInterval = TAO::Ledger::MinStakeInterval();
 
         /* Create the block to work on */
         block = LegacyBlock();

@@ -417,6 +417,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_block.o \
 		build/Ledger_chainstate.o \
 		build/Ledger_checkpoints.o \
+		build/Ledger_constants.o \
 		build/Ledger_create.o \
 		build/Ledger_difficulty.o \
 		build/Ledger_genesis.o \
