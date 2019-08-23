@@ -406,7 +406,7 @@ namespace TAO
                 }
             }
 
-            return vHashes.size() > 1;
+            return vHashes.size() > 0;
         }
 
 

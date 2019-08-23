@@ -329,10 +329,6 @@ namespace TAO
                 if(!token.Parse())
                     continue;
 
-                /* Get the token supply so that we an determine our share */
-                uint64_t nSupply = token.get<uint64_t>("supply");
-\
-
                 /* The last modified time the balance of this token account changed */
                 uint64_t nModified = object.nModified;
 
@@ -372,20 +368,6 @@ namespace TAO
                         /* Now check to see whether the sender has voided (credited back to themselves) */
                         if(LLD::Ledger->HasProof(hashFrom, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
                             continue;
-
-                        /* Seek to the debit amount. */
-                        contract.Seek(33, Operation::Contract::OPERATIONS);
-
-                        /* Get the debit amount. */
-                        uint64_t nAmount;
-                        contract >> nAmount;
-
-                        /* Calculate the partial debit amount that this token holder is entitled to. */
-                        uint64_t nPartial = (nAmount * nBalance) / nSupply;
-
-                        /* Place the partial debit amount in the contract operation stream. */
-                        contract.Rewind(sizeof(uint64_t), Operation::Contract::OPERATIONS);
-                        contract << nPartial;
 
                         /* Add the contract to the return list  . */
                         vContracts.push_back(std::make_tuple(contract, nContract, hashRegister));

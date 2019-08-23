@@ -19,12 +19,14 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/types/stream.h>
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/names.h>
+#include <TAO/Register/include/unpack.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
@@ -428,6 +430,482 @@ namespace TAO
 
             return strObjectType;
         }
+
+
+        /* Get the sum of all debit notifications for the the specified token */
+        uint64_t GetPending(const uint256_t& hashGenesis, const uint256_t& hashToken, const uint256_t& hashAccount)
+        {
+            /* Th return value */
+            uint64_t nPending = 0;
+
+            /* Transaction to check */
+            TAO::Ledger::Transaction tx;
+
+            /* Iterate through all events */
+            uint32_t nSequence = 0;
+            while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
+            {
+                /* Loop through transaction contracts. */
+                uint32_t nContracts = tx.Size();
+                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                {
+                    /* The proof to check for this contract */
+                    uint256_t hashProof = 0;
+
+                    /* Reset the op stream */
+                    tx[nContract].Reset();
+
+                    /* The operation */
+                    uint8_t nOp;
+                    tx[nContract] >> nOp;
+
+                    /* Check for that the debit is meant for us. */
+                    if(nOp == TAO::Operation::OP::DEBIT)
+                    {
+                        /* Get the source address which is the proof for the debit */
+                        tx[nContract] >> hashProof;
+                        
+                        /* Get the recipient account */
+                        uint256_t hashTo = 0;
+                        tx[nContract] >> hashTo; 
+
+                        /* Check the account filter */
+                        if(hashAccount != 0 && hashAccount != hashTo)
+                            continue;
+
+                        /* Retrieve the account. */
+                        TAO::Register::Object account;
+                        if(!LLD::Register->ReadState(hashTo, account))
+                            continue;
+
+                        /* Parse the object register. */
+                        if(!account.Parse())
+                            continue;
+
+                        /* Check that this is an account */
+                        if(account.Base() != TAO::Register::OBJECTS::ACCOUNT )
+                            continue;
+
+                        /* Get the token address */
+                        uint256_t token = account.get<uint256_t>("token");
+                        
+                        /* Check the account token matches the one passed in*/
+                        if(token != hashToken)
+                            continue;
+
+                        /* Check owner that we are the owner of the recipient account  */
+                        if(account.hashOwner != hashGenesis)
+                            continue;
+
+                        /* Check to see if we have already credited this debit. */
+                        if(LLD::Ledger->HasProof(hashProof, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                            continue;
+                        
+                    }
+                    else if(hashToken == 0 // only include coinbase for NXS token
+                        && hashAccount == 0 // only include coinbase if no account is specified
+                        && nOp == TAO::Operation::OP::COINBASE)
+                    {
+                        /* Unpack the miners genesis from the contract */
+                        if(!TAO::Register::Unpack(tx[nContract], hashProof))
+                            continue;
+
+                        /* Check that it is meant for our sig chain */
+                        if(hashGenesis != hashProof) 
+                            continue;
+                        
+                        /* Check to see if we have already credited this coinbase. */
+                        if(LLD::Ledger->HasProof(hashProof, tx.GetHash(), nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                            continue;
+                    }
+                    else 
+                        continue;
+
+                    /* Get the amount */
+                    uint64_t nAmount = 0;
+                    TAO::Register::Unpack(tx[nContract], nAmount);
+
+                    /* Add it onto our pending amount */
+                    nPending += nAmount;
+                }
+
+                /* Iterate the sequence id forward. */
+                ++nSequence;
+            }
+
+            /* Next we need to include mature coinbase transactions.  We can skip this if a token as been specified as coinbase 
+               only apply to NXS accounts.  We can also skip if an account has been specified as coinbases can be credited to
+               any account */
+            if(hashToken == 0 && hashAccount == 0)
+            {
+                /* Get the last transaction. */
+                uint512_t hashLast = 0;
+                LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL);
+
+                /* Get the mature coinbase transactions */
+                std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
+                Users::get_coinbases(hashGenesis, hashLast, vContracts);
+
+                /* Iterate through all un-credited debits and see whether they apply to this token/account */
+                for(const auto& contract : vContracts)
+                {
+                    /* Get a reference to the contract */
+                    const TAO::Operation::Contract& refContract = std::get<0>(contract); 
+
+                    /* Reset the contract operation stream. */
+                    refContract.Reset();
+
+                    /* Get the opcode. */
+                    uint8_t OPERATION;
+                    refContract >> OPERATION;
+
+                    /* Get the genesis hash */
+                    uint256_t hashFrom = 0;
+                    refContract >> hashFrom;
+
+                    /* Get the amount */
+                    uint64_t nAmount = 0;
+                    refContract >> nAmount;
+
+                    /* Add this to the pending amount */
+                    nPending += nAmount;
+                }
+            }
+
+
+            /* Now we need to look at tokenized debits that are coming in.  We can skip this if an account filter has been passed
+               in as tokenized debits are not made to a specific account. */
+            if(hashAccount == 0)
+            {
+                std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
+                Users::get_tokenized_debits(hashGenesis, vContracts);
+
+                /* Iterate through all un-credited debits and see whether they apply to this token/account */
+                for(const auto& contract : vContracts)
+                {
+                    /* Get a reference to the contract */
+                    const TAO::Operation::Contract& refContract = std::get<0>(contract); 
+
+                    /* Reset the contract operation stream. */
+                    refContract.Reset();
+
+                    /* Get the opcode. */
+                    uint8_t OPERATION;
+                    refContract >> OPERATION;
+
+                    /* Get the token/account we are debiting from */
+                    uint256_t hashFrom = 0;
+                    refContract >> hashFrom;
+
+                    /* REtrieve the account/token the debit was from */
+                    TAO::Register::Object from;
+                    if(!LLD::Register->ReadState(hashFrom, from))
+                        continue;
+
+                    /* Parse the object register. */
+                    if(!from.Parse())
+                        continue;
+                    
+                    /* Check the token type */
+                    if(from.get<uint256_t>("token") != hashToken)
+                        continue;
+
+                    /* Retrieve the proof account so we can work out the partial claim amount */
+                    uint256_t hashProof = std::get<2>(contract);
+
+                    /* Read the object register, which is the proof account . */
+                    TAO::Register::Object account;
+                    if(!LLD::Register->ReadState(hashProof, account, TAO::Ledger::FLAGS::MEMPOOL))
+                        continue;
+
+                    /* Parse the object register. */
+                    if(!account.Parse())
+                        continue;
+
+                    /* Check that this is an account */
+                    if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT )
+                        continue;
+
+                    /* Get the token address */
+                    uint256_t hashProofToken = account.get<uint256_t>("token");                    
+
+                    /* Read the token register. */
+                    TAO::Register::Object token;
+                    if(!LLD::Register->ReadState(hashProofToken, token, TAO::Ledger::FLAGS::MEMPOOL))
+                        continue;
+
+                    /* Parse the object register. */
+                    if(!token.Parse())
+                        continue;
+
+                    /* Get the token supply so that we an determine our share */
+                    uint64_t nSupply = token.get<uint64_t>("supply");
+
+                    /* Get the balance of our token account */
+                    uint64_t nBalance = account.get<uint64_t>("balance");
+
+                    /* Get the amount from the debit contract*/
+                    uint64_t nAmount = 0;
+                    TAO::Register::Unpack(refContract, nAmount);
+
+                    /* Calculate the partial debit amount that this token holder is entitled to. */
+                    uint64_t nPartial = (nAmount * nBalance) / nSupply;
+
+                    /* Add this to our pending balance */
+                    nPending += nPartial;
+                }
+
+            }
+
+            return nPending;
+        }
+
+        /* Get the sum of all debit transactions in the mempool for the the specified token */
+        uint64_t GetUnconfirmed(const uint256_t& hashGenesis, const uint256_t& hashToken, bool fOutgoing, const uint256_t& hashAccount)
+        {
+            /* The return value */
+            uint64_t nUnconfirmed = 0;
+
+            /* Get all transactions in the mempool */
+            std::vector<uint512_t> vMempool;
+            if(TAO::Ledger::mempool.List(vMempool))
+            {
+                /* Loop through the list of transactions. */
+                for(const auto& hash : vMempool)
+                {
+                    /* Get the transaction from the memory pool. */
+                    TAO::Ledger::Transaction tx;
+                    if(!TAO::Ledger::mempool.Get(hash, tx))
+                        continue;
+     
+                    /* Loop through transaction contracts. */
+                    uint32_t nContracts = tx.Size();
+                    for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                    {
+                        /* Reset the op stream */
+                        tx[nContract].Reset();
+
+                        /* The operation */
+                        uint8_t nOp;
+                        tx[nContract] >> nOp;
+
+                        /* Check for that the debit is meant for us. */
+                        if(nOp == TAO::Operation::OP::DEBIT)
+                        {
+                            /* The proof to check for this contract */
+                            uint256_t hashFrom = 0;
+                            
+                            /* Get the source address which is the proof for the debit */
+                            tx[nContract] >> hashFrom;
+                            
+                            /* Get the recipient account */
+                            uint256_t hashTo = 0;
+                            tx[nContract] >> hashTo; 
+
+                            /* Get the amount */
+                            uint64_t nAmount = 0;
+                            tx[nContract] >> nAmount;
+
+                            /* If caller wants outgoing transactions then check that we made the transaction */
+                            if(fOutgoing)
+                            {
+                                /* Check we made the transaction */
+                                if(tx.hashGenesis != hashGenesis)
+                                    continue;
+
+                                /* Check the account filter based on the originating account*/
+                                if(hashAccount != 0 && hashAccount != hashFrom)
+                                    continue;
+                                    
+                                /* Retrieve the account. */
+                                TAO::Register::Object account;
+                                if(!LLD::Register->ReadState(hashFrom, account))
+                                    continue;
+
+                                /* Parse the object register. */
+                                if(!account.Parse())
+                                    continue;
+
+                                /* Check that this is an account */
+                                if(account.Base() != TAO::Register::OBJECTS::ACCOUNT )
+                                    continue;
+
+                                /* Get the token address */
+                                uint256_t token = account.get<uint256_t>("token");
+                                
+                                /* Check the account token matches the one passed in*/
+                                if(token != hashToken)
+                                    continue;
+                            }
+                            else
+                            {
+                                /* Check the account filter */
+                                if(hashAccount != 0 && hashAccount != hashTo)
+                                    continue;
+
+                                /* Retrieve the account. */
+                                TAO::Register::Object account;
+                                if(!LLD::Register->ReadState(hashTo, account))
+                                    continue;
+
+                                /* Parse the object register. */
+                                if(!account.Parse())
+                                    continue;
+
+                                /* Check that this is an account */
+                                if(account.Base() != TAO::Register::OBJECTS::ACCOUNT )
+                                    continue;
+
+                                /* Get the token address */
+                                uint256_t token = account.get<uint256_t>("token");
+                                
+                                /* Check the account token matches the one passed in*/
+                                if(token != hashToken)
+                                    continue;
+
+                                /* Check owner that we are the owner of the recipient account  */
+                                if(account.hashOwner != hashGenesis)
+                                    continue;
+                            }
+
+                            /* Add this amount to our total */
+                            nUnconfirmed += nAmount;
+
+                        }
+                        /* Check for that the credits we made . */
+                        else if(!fOutgoing && nOp == TAO::Operation::OP::CREDIT)
+                        {
+                            /* For credits first make sure we made the transaction */
+                            if(tx.hashGenesis != hashGenesis)
+                                continue;
+
+                            /* Extract the transaction from contract. */
+                            uint512_t hashTx = 0;
+                            tx[nContract] >> hashTx;
+
+                            /* Extract the contract-id. */
+                            uint32_t nID = 0;
+                            tx[nContract] >> nID;
+
+                            /* Get the account address. */
+                            uint256_t hashTo = 0;
+                            tx[nContract] >> hashTo;
+
+                            /* Get the proof address. */
+                            uint256_t hashProof = 0;
+                            tx[nContract] >> hashProof;
+
+                            /* Get the credit amount. */
+                            uint64_t nCredit = 0;
+                            tx[nContract] >> nCredit;
+
+                            /* Check the account filter */
+                            if(hashAccount != 0 && hashAccount != hashTo)
+                                continue;
+
+                            /* Retrieve the account. */
+                            TAO::Register::Object account;
+                            if(!LLD::Register->ReadState(hashTo, account))
+                                continue;
+
+                            /* Parse the object register. */
+                            if(!account.Parse())
+                                continue;
+
+                            /* Check that this is an account */
+                            if(account.Base() != TAO::Register::OBJECTS::ACCOUNT )
+                                continue;
+
+                            /* Get the token address */
+                            uint256_t token = account.get<uint256_t>("token");
+                            
+                            /* Check the account token matches the one passed in*/
+                            if(token != hashToken)
+                                continue;
+
+                            /* Check owner that we are the owner of the recipient account  */
+                            if(account.hashOwner != hashGenesis)
+                                continue;
+
+                            /* Add this amount to our total */
+                            nUnconfirmed += nCredit;
+                        } 
+                    }
+                }
+            }
+
+            return nUnconfirmed;
+        }
+
+
+        /*  Get the outstanding coinbases. */
+        void GetImmature(const uint256_t& hashGenesis, uint64_t& nCoinbase, uint64_t& nCoinstake)
+        {
+            /* Reset amounts */
+            nCoinbase = 0;
+            nCoinstake = 0;
+
+            /* Get the last transaction. */
+            uint512_t hashLast = 0;
+            if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+            {
+                /* Reverse iterate until genesis (newest to oldest). */
+                while(hashLast != 0)
+                {
+                    /* Get the transaction from disk. */
+                    TAO::Ledger::Transaction tx;
+                    if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                        debug::error(FUNCTION, "Failed to read transaction");
+
+                    /* Skip this transaction if it is mature. */
+                    if(LLD::Ledger->ReadMature(hashLast))
+                    {
+                        /* Set the next last. */
+                        hashLast = tx.hashPrevTx;
+                        continue;
+                    }
+
+                    /* Loop through all contracts and check that it is a coinbase. */
+                    uint32_t nContracts = tx.Size();
+                    for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                    {
+                        uint64_t nAmount = 0;
+
+                        /* The operation */
+                        uint8_t nOp = 0;
+
+                        /* Reset the contract operation stream */
+                        tx[nContract].Reset();
+
+                        /* Get the operation */
+                        tx[nContract] >> nOp;
+
+                        /* Check for coinbase or coinstake opcode */
+                        if(nOp == Operation::OP::COINBASE)
+                        {
+                            /* Get the amount */
+                            TAO::Register::Unpack(tx[nContract], nAmount);
+
+                            /* Add it to our return values */
+                            nCoinbase += nAmount;
+
+                        }
+                        else if(nOp == Operation::OP::TRUST || nOp == Operation::OP::GENESIS)
+                        {
+                            /* Get the amount */
+                            TAO::Register::Unpack(tx[nContract], nAmount);
+
+                            /* Add it to our return values */
+                            nCoinstake += nAmount;
+                        }
+                    }
+
+                    /* Set the next last. */
+                    hashLast = tx.hashPrevTx;
+                }
+            }
+        }
+
 
 
     } // End API namespace

@@ -27,6 +27,7 @@ The following methods are currently supported by this API
 [`list/account/transactions`](#listaccounttransactions)    
 [`get/stakeinfo`](#getstakeinfo)    
 [`set/stake`](#setstake)    
+[`get/balances`](#getbalances)    
 
 
 -----------------------------------
@@ -502,5 +503,50 @@ This sets the stake amount for a signature chain's trust account to the requeste
 ### Return values:
 
 `txid` : The ID (hash) of the transaction that includes the stake change.
+
+***
+
+# `get/balances`
+
+This will retrieve a summary of balance information for all NXS accounts belonging to the currently logged in signature chain.
+
+
+### Endpoint:
+
+`/finance/get/balances`
+
+
+### Parameters:
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the trust account. For single-user API mode the session should not be supplied.
+
+
+### Return value JSON object:
+```
+{
+    "available": 1000,
+    "pending": 50,
+    "unconfirmed": 5,
+    "stake": 5000,
+    "immature_mined": 100,
+    "immature_trust": 0.01234
+}
+```
+
+
+### Return values:
+
+`available` : The current balance across all NXS accounts that is available to be spent.
+
+`pending` : The sum of all debit transactions made to your NXS accounts that are confirmed but have not yet been credited.  This does NOT include immature unconfirmed amounts
+
+`unconfirmed` : The sum of all debit transactions made to your NXS accounts that are not confirmed, or credits you have made to your accounts that are not yet confirmed (not yet included in a block)
+
+`immature_mined`  The sum of all coinbase transactions that have not yet reached maturity.   
+
+`immature_stake`  The sum of all stake transactions that have not yet reached maturity.   
+
+`stake` : The amount of NXS currently staked in the trust account.
+
 
 ***

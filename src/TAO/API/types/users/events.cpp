@@ -246,7 +246,7 @@ namespace TAO
                                     /* If this is a NXS debit then process the credit to the default account */
                                     hashTo = defaultAccount.get<uint256_t>("address");
 
-                                    /* Read the object register, which is the token . */
+                                    /* Read the object register, which is the proof account . */
                                     TAO::Register::Object account;
                                     if(!LLD::Register->ReadState(hashProof, account, TAO::Ledger::FLAGS::MEMPOOL))
                                         continue;

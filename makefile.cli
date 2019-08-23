@@ -315,6 +315,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_dex_buy.o \
 		build/API_types_dex_sell.o \
 		build/API_types_dex_initialize.o \
+		build/API_types_finance_balances.o \
 		build/API_types_finance_create.o \
 		build/API_types_finance_credit.o \
 		build/API_types_finance_debit.o \
