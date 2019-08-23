@@ -159,10 +159,13 @@ in encrypted memory.
 ### Return value JSON object:
 ```
 {
-    true
+    "success": true
 }
 ```
 
+### Return values:
+
+`success` : Flag indicating if the call was successful
 
 ****
 
@@ -196,9 +199,13 @@ The PIN field is mandatory for unlock. The minting/transactions parameters are o
 ### Return value JSON object:
 ```
 {
-    true
+    "success": true
 }
 ```
+
+### Return values:
+
+`success` : Flag indicating if the call was successful
 
 ****
 
@@ -226,9 +233,13 @@ The minting/transactions parameters are optional and, if supplied, allow the sig
 ### Return value JSON object:
 ```
 {
-    true
+    "success": true
 }
 ```
+
+### Return values:
+
+`success` : Flag indicating if the call was successful
 
 
 ****

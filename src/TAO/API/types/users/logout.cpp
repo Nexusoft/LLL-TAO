@@ -33,7 +33,9 @@ namespace TAO
         /* Login to a user account. */
         json::json Users::Logout(const json::json& params, bool fHelp)
         {
-
+            /* JSON return value. */
+            json::json ret;
+            
             /* Check for username parameter. */
             if(config::fMultiuser.load() && params.find("session") == params.end())
                 throw APIException(-12, "Missing Session ID");
@@ -59,7 +61,8 @@ namespace TAO
 
             }
 
-            return true;
+            ret["success"] = true;
+            return ret;
         }
     }
 }

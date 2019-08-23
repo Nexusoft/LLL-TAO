@@ -146,7 +146,8 @@ TEST_CASE( "Test Users API", "[API/users]")
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
 
-        REQUIRE(result.get<bool>() == true);
+        REQUIRE(result.find("success") != result.end());
+        REQUIRE(result["success"].get<bool>() == true);
     }
 
 
@@ -164,7 +165,8 @@ TEST_CASE( "Test Users API", "[API/users]")
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
 
-        REQUIRE(result.get<bool>() == true);
+        REQUIRE(result.find("success") != result.end());
+        REQUIRE(result["success"].get<bool>() == true);
     }
 
 
@@ -181,7 +183,8 @@ TEST_CASE( "Test Users API", "[API/users]")
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
 
-        REQUIRE(result.get<bool>() == true);
+        REQUIRE(result.find("success") != result.end());
+        REQUIRE(result["success"].get<bool>() == true);
 
     }
 
