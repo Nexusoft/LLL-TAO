@@ -959,7 +959,6 @@ namespace Legacy
 
             /* Find the requested transaction in the wallet */
             TransactionMap::iterator mi = mapWallet.find(hashTx);
-
             if (mi != mapWallet.end())
             {
                 wtx = (*mi).second;

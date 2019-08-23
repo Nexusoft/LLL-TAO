@@ -59,7 +59,6 @@ ________________________________________________________________________________
 
 namespace debug
 {
-    static FILE* fileout = nullptr;
     std::mutex DEBUG_MUTEX;
     std::ofstream ssFile;
 
@@ -259,71 +258,6 @@ namespace debug
 
         log(0, "");
         log(0, "");
-    }
-
-
-    /*  Prints and logs the stack trace of the code execution call stack up to
-     *  the point where this function is called to debug.log */
-    void LogStackTrace()
-    {
-        debug::log(0, "\n\n******* exception encountered *******");
-        if (fileout)
-        {
-        #ifndef WIN32
-            void* pszBuffer[32];
-            size_t size;
-            size = backtrace(pszBuffer, 32);
-            backtrace_symbols_fd(pszBuffer, size, fileno(fileout));
-        #endif
-        }
-    }
-
-    /* Outputs a formatted string for the calling thread and exception thrown */
-    void FormatException(char* pszMessage, std::exception* pex, const char* pszThread)
-    {
-    #ifdef WIN32
-        char pszModule[MAX_PATH];
-        pszModule[0] = '\0';
-        GetModuleFileNameA(nullptr, pszModule, sizeof(pszModule));
-    #else
-        const char* pszModule = "Nexus";
-    #endif
-
-        if (pex)
-            snprintf(pszMessage, 1000,
-                "EXCEPTION: %s       \n%s       \n%s in %s       \n", typeid(*pex).name(), pex->what(), pszModule, pszThread);
-            else
-            snprintf(pszMessage, 1000,
-                "UNKNOWN EXCEPTION       \n%s in %s       \n", pszModule, pszThread);
-    }
-
-    /*  Prints and logs the exception that is thrown with the named calling thread. */
-    void LogException(std::exception* pex, const char* pszThread)
-    {
-        char pszMessage[10000];
-        FormatException(pszMessage, pex, pszThread);
-        debug::log(0, pszMessage);
-    }
-
-    /*  Prints the exception with the named calling thread and throws it */
-    void PrintException(std::exception* pex, const char* pszThread)
-    {
-        char pszMessage[10000];
-        FormatException(pszMessage, pex, pszThread);
-        debug::log(0, "\n\n************************\n", pszMessage);
-        fprintf(stderr, "\n\n************************\n%s\n", pszMessage);
-
-        throw;
-    }
-
-    /*  Prints the exception with the named calling thread but does not throw it. */
-    void PrintExceptionContinue(std::exception* pex, const char* pszThread)
-    {
-        char pszMessage[10000];
-        FormatException(pszMessage, pex, pszThread);
-        debug::log(0, "************************", pszMessage);
-        fprintf(stderr, "************************%s", pszMessage);
-
     }
 
     /*  Gets the size of the file in bytes. */
