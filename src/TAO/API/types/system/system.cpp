@@ -79,6 +79,9 @@ namespace TAO
             /* Whether this node is running in private mode */
             jsonRet["private"] = config::GetBoolArg("-private");
 
+            /* Whether this node is running in multiuser mode */
+            jsonRet["multiuser"] = config::fMultiuser.load();
+
             /* The current block height of this node */
             jsonRet["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
 

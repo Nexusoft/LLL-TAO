@@ -39,6 +39,7 @@ Returns a summary of information about this node
     "timestamp": 1557884743,
     "testnet": 11,
     "private": false,
+    "multiuser": false,
     "blocks": 380,
     "synchronizing": true,
     "synccomplete": 31,
@@ -67,6 +68,8 @@ Returns a summary of information about this node
 `testnet` : If this node is running on the testnet then this shows the testnet number.
 
 `private` : Whether this node is running in private mode.
+
+`multiuser` : Whether this node is running in multiuser mode.
 
 `blocks` : The current block height of this node.
 
