@@ -1131,8 +1131,8 @@ namespace Legacy
             if(fFindBlock)
             {
                 /* Read the block state. */
-                if(!LLD::legDB->ReadBlock(tx.GetHash(), state))
-                    return debug::error(FUNCTION, "transaction was orphaned...");
+                if(!LLD::legDB->ReadBlock(hash, state))
+                    return debug::error(FUNCTION, "tx ", hash.ToString().substr(0, 20), " is an ORPHAN");
 
                 wtx.hashBlock = state.GetHash();
             }

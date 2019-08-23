@@ -361,7 +361,7 @@ namespace Legacy
     uint32_t WalletDB::LoadWallet(Wallet& wallet)
     {
         uint32_t nFileVersion = 0;
-        uint64_t startTimestamp = runtime::timestamp(true);
+        uint64_t nStartTimestamp = runtime::timestamp(true);
         bool fIsEncrypted = false;
         uint32_t nRet = 0;
 
@@ -482,14 +482,13 @@ namespace Legacy
                 else if(config::GetBoolArg("-walletcheck", false) && wtx.GetHash() != hash)
                 {
                     debug::error(FUNCTION, "Error in ", strWalletFile,
-                                 ", hash mismatch. Removing Transaction from wallet map. Run the rescan command to restore.");
+                                 ", hash mismatch, resolving");
 
                     /* Add mismatched transaction to list of transactions to remove from database */
                     vWalletRemove.push_back(hash);
                 }
                 else
                     wtx.BindWallet(wallet);
-
             }
 
             else if (strType == "defaultkey")
@@ -677,14 +676,16 @@ namespace Legacy
             /* Remove transactions flagged for removal */
             if(vWalletRemove.size() > 0)
             {
+                /* Debug output. */
+                debug::log(0, FUNCTION, "Erasing ", vWalletRemove.size(), " Transactions from WalletDB");
+
+                /* Erase the flagged transactions. */
                 for(const auto& hash : vWalletRemove)
                 {
                     EraseTx(hash);
                     wallet.mapWallet.erase(hash);
                     ++nWalletDBUpdated;
                 }
-
-                debug::log(0, FUNCTION, "Erasing ", vWalletRemove.size(), " Transactions from WalletDB");
 
                 nRet = DB_NEEDS_RESCAN; // Will return this on successful completion
             }
@@ -695,9 +696,8 @@ namespace Legacy
             if (nFileVersion < LLD::DATABASE_VERSION)
                 db.WriteVersion(LLD::DATABASE_VERSION);
 
-            uint64_t elapsedTime = runtime::timestamp(true) - startTimestamp;
-
-            debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", elapsedTime, " ms file version = ", nFileVersion);
+            uint64_t nElapsed = runtime::timestamp(true) - nStartTimestamp;
+            debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", nElapsed, " ms file version = ", nFileVersion);
         }
 
         /* Ok to flush again */
