@@ -79,8 +79,8 @@ namespace TAO
         /* Accepts a transaction with validation rules. */
         bool Mempool::Accept(TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode)
         {
-            /* Check for activation timestamp. */
-            if(!VersionActive(tx.nTimestamp + 7200, 7))
+            /* Check for activation timestamp (2 hours after v7 timelock activation). */
+            if(!(TAO::Ledger::VersionActive((tx.nTimestamp - 7200), 7) || TAO::Ledger::CurrentVersion() > 7))
                 return debug::error(FUNCTION, "tritium transaction not accepted until 2 hours after time-lock");
 
             /* Get the transaction hash. */

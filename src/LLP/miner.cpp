@@ -720,8 +720,8 @@ namespace LLP
        uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
 
 
-       /* Create Tritium blocks if version 7 active. */
-       if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7))
+       /* Create Tritium blocks if version 7 or above active. */
+       if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
        {
            /* Attempt to unlock the account. */
            if(TAO::API::users->Locked())
@@ -960,7 +960,7 @@ namespace LLP
    bool Miner::is_locked()
    {
        /* Check if mining should use tritium or legacy for wallet locked check. */
-       if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7))
+       if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7) || TAO::Ledger::CurrentVersion() > 7)
             return TAO::API::users->Locked();
 
        return Legacy::Wallet::GetInstance().IsLocked();

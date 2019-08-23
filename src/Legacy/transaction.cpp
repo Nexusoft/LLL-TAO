@@ -100,8 +100,8 @@ namespace Legacy
         /* Get the hash. */
 	    uint512_t hash = LLC::SK512(ss.begin(), ss.end());
 
-        /* Type of 0xfe designates legacy tx. */
-        if(TAO::Ledger::VersionActive(nTime, 7))
+        /* Type of 0xfe designates legacy tx beginning with v7 timelock activation. */
+        if(TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
             hash.SetType(TAO::Ledger::LEGACY);
 
         return hash;
@@ -829,9 +829,9 @@ namespace Legacy
                 continue;
 
             /* Check for Tritium version transactions.
-             * Becomes ACTIVE 2 hours after time-lock.
+             * Becomes ACTIVE 2 hours after v7 timelock activation.
              */
-            if(TAO::Ledger::VersionActive(nTime + 7200, 7))
+            if(TAO::Ledger::VersionActive((nTime - 7200), 7) || TAO::Ledger::CurrentVersion() > 7)
             {
                 /* Get the type of transaction. */
                 if(prevout.hash.GetType() == TAO::Ledger::TRITIUM)
@@ -1055,9 +1055,9 @@ namespace Legacy
                 case TAO::Ledger::TRITIUM:
                 {
                     /* Check for Tritium version transactions.
-                     * Becomes ACTIVE 2 hours after time-lock.
+                     * Becomes ACTIVE 2 hours after v7 activation timelock
                      */
-                    if(!TAO::Ledger::VersionActive(nTime + 7200, 7))
+                    if(!(TAO::Ledger::VersionActive((nTime - 7200), 7) || TAO::Ledger::CurrentVersion() > 7))
                         return debug::error(FUNCTION, "tritium transactions not available until version 7");
 
                     /* Get the previous transaction. */

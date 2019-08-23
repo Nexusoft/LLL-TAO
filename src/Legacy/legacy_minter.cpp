@@ -259,6 +259,13 @@ namespace Legacy
             std::vector<Legacy::TrustKey> vKeys;
             if(LLD::Trust->BatchRead("trust", vKeys, -1))
             {
+                /* Cutoff time for v4 trust keys. Anything prior to v4 end plus the original one timespan grace period.
+                 * This addresses an issue that some v4 keys produced one v5 block during grace period, but then incorrectly
+                 * "expired" and were replaced with a new v5 key.
+                 */
+                uint64_t nCutoff = TAO::Ledger::EndTimelock(4) + (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET
+                                                                                             : TAO::Ledger::TRUST_KEY_TIMESPAN);
+
                 /* Search through the trust keys. */
                 for(const auto& trustKeyCheck : vKeys)
                 {
@@ -279,7 +286,10 @@ namespace Legacy
                         {
                             debug::log(2, FUNCTION, "Checking last stake height=", state.nHeight, " version=", state.nVersion);
 
-                            if(state.nVersion >= 5)
+                            /* This will ignore a v5 key if last block was before v4 cutoff, so it does not
+                             * use keys affected by grace period issue.
+                             */
+                            if(state.nVersion >= 5 && state.nTime >= nCutoff)
                             {
                                 /* Set the trust key if found. */
                                 trustKey = trustKeyCheck;
