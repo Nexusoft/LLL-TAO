@@ -538,7 +538,7 @@ This will retrieve a summary of balance information for all NXS accounts belongi
 
 `available` : The current balance across all NXS accounts that is available to be spent.
 
-`pending` : The sum of all debit transactions made to your NXS accounts that are confirmed but have not yet been credited.  This does NOT include immature unconfirmed amounts
+`pending` : The sum of all debit and coinbase transactions made to your NXS accounts that are confirmed but have not yet been credited.  This does NOT include immature and unconfirmed amounts
 
 `unconfirmed` : The sum of all debit transactions made to your NXS accounts that are not confirmed, or credits you have made to your accounts that are not yet confirmed (not yet included in a block)
 
