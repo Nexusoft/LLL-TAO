@@ -66,7 +66,7 @@ namespace LLP
             /* Handle Reading Data into Buffer. */
             uint32_t nAvailable = Available();
             if(nAvailable > 0)
-            {
+            {                
                 std::vector<int8_t> vchData(nAvailable);
                 uint32_t nRead = Read(vchData, nAvailable);
                 if(nRead > 0)

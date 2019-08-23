@@ -221,7 +221,7 @@ namespace LLP
          *  Give the message (c-string) of the error in the socket.
          *
          **/
-        char* Error() const;
+        const char* Error() const;
 
 
         /** SetSSL

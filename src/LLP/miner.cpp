@@ -667,7 +667,7 @@ namespace LLP
 
         /* Clear the map of blocks if a new block has been accepted. */
         clear_map();
-        CoinbaseTx.SetNull();
+
 
         /* Set the new best height. */
         nBestHeight = TAO::Ledger::ChainState::nBestHeight.load();
