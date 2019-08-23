@@ -113,8 +113,7 @@ namespace LLD
                         throw debug::exception(FUNCTION, "maturity overflow");
 
                     /* Check the intervals. */
-                    if((TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight) <
-                        (config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
+                    if((TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight) < TAO::Ledger::MaturityCoinBase())
                         throw debug::exception(FUNCTION, "coinbase is immature");
                 }
 
@@ -230,11 +229,9 @@ namespace LLD
 
             /* Read the new proof state. */
             if(mapClaims.count(std::make_pair(hashTx, nContract)))
-            {
                 nClaimed = mapClaims[std::make_pair(hashTx, nContract)];
 
-                return true;
-            }
+            return true;
         }
 
         return Read(std::make_pair(hashTx, nContract), nClaimed);
@@ -244,15 +241,24 @@ namespace LLD
     /* Read if a transaction is mature. */
     bool LedgerDB::ReadMature(const uint512_t &hashTx)
     {
-        /* Default confirmations to zero. */
-        uint32_t nConfirms = 0;
+        /* Read the transaction so we can check type. Transaction must be in a block or it is immature by default. */
+        TAO::Ledger::Transaction tx;
+        if(!ReadTx(hashTx, tx))
+            return false;
 
-        /* Read the number of confirmations. */
+        uint32_t nConfirms;
+
         if(!ReadConfirmations(hashTx, nConfirms))
             return false;
 
-        /* Compare to the network maturity constants for maturity result. */
-        return (nConfirms >= (config::fTestNet ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS));
+        if(tx.IsCoinBase())
+            return nConfirms >= TAO::Ledger::MaturityCoinBase();
+
+        else if(tx.IsCoinStake())
+            return nConfirms >= TAO::Ledger::MaturityCoinStake();
+
+        else
+            return true; //non-producer transactions have no maturity requirement
     }
 
 
@@ -262,10 +268,13 @@ namespace LLD
         /* Read a block state for this transaction. */
         TAO::Ledger::BlockState state;
         if(!ReadBlock(hashTx, state))
+        {
+            nConfirms = 0;
             return false;
+        }
 
         /* Set the number of confirmations based on chainstate/blockstate height. */
-        nConfirms = TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight;
+        nConfirms = TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight + 1;
 
         return true;
     }

@@ -29,6 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h> //for LEGACY_TX enum
 
@@ -258,6 +259,13 @@ namespace Legacy
             std::vector<Legacy::TrustKey> vKeys;
             if(LLD::Trust->BatchRead("trust", vKeys, -1))
             {
+                /* Cutoff time for v4 trust keys. Anything prior to v4 end plus the original one timespan grace period.
+                 * This addresses an issue that some v4 keys produced one v5 block during grace period, but then incorrectly
+                 * "expired" and were replaced with a new v5 key.
+                 */
+                uint64_t nCutoff = TAO::Ledger::EndTimelock(4) + (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET
+                                                                                             : TAO::Ledger::TRUST_KEY_TIMESPAN);
+
                 /* Search through the trust keys. */
                 for(const auto& trustKeyCheck : vKeys)
                 {
@@ -278,7 +286,10 @@ namespace Legacy
                         {
                             debug::log(2, FUNCTION, "Checking last stake height=", state.nHeight, " version=", state.nVersion);
 
-                            if(state.nVersion >= 5)
+                            /* This will ignore a v5 key if last block was before v4 cutoff, so it does not
+                             * use keys affected by grace period issue.
+                             */
+                            if(state.nVersion >= 5 && state.nTime >= nCutoff)
                             {
                                 /* Set the trust key if found. */
                                 trustKey = trustKeyCheck;
@@ -356,14 +367,8 @@ namespace Legacy
 
         static uint32_t nWaitCounter = 0; //Prevents log spam during wait period
 
-        /* New Mainnet interval will go into effect with activation of v7. Can't be static so it goes live immediately (can update after activation) */
-        const uint32_t nMinimumInterval = config::fTestNet.load()
-                                            ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
-                                            : (TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
-                                                ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY
-                                                : (runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])
-                                                        ? TAO::Ledger::MAINNET_MINIMUM_INTERVAL
-                                                        : TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
+        /* Retrieve the current setting for minimum stake interval */
+        const uint32_t nMinimumInterval = TAO::Ledger::MinStakeInterval();
 
         /* Create the block to work on */
         block = LegacyBlock();

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/bignum.h>
 
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -72,7 +73,10 @@ namespace TAO
 
 
         /** Mainnet maturity for blocks. */
-        const uint32_t NEXUS_MATURITY_BLOCKS = 100;
+        const uint32_t NEXUS_MATURITY_LEGACY = 100;
+
+        const uint32_t NEXUS_MATURITY_COINBASE = 500;
+        const uint32_t NEXUS_MATURITY_COINSTAKE = 250;
 
 
         /** Stake reward rate is annual. Define one year (364 days) of time for reward calculations **/
@@ -158,6 +162,27 @@ namespace TAO
         const uint64_t NAMESPACE_FEE = 1000 * NXS_COIN;
         const uint64_t TOKEN_FEE = 1 * NXS_COIN;
         const uint64_t ACCOUNT_FEE = 0 * NXS_COIN;
+
+
+        /** MaturityCoinbase
+         *
+         *  Retrieve the number of blocks (confirmations) required for coinbase maturity.
+         *
+         *  @return maturity setting for coinbase producer, based on current testnet or mainnet
+         *
+         **/
+        uint32_t MaturityCoinBase();
+
+
+        /** MaturityCoinstake
+         *
+         *  Retrieve the number of blocks (confirmations) required for coinstake maturity.
+         *
+         *  @return maturity setting for coinstake producer, based on current testnet or mainnet
+         *
+         **/
+        uint32_t MaturityCoinStake();
+
     }
 }
 

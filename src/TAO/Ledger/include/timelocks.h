@@ -108,7 +108,8 @@ namespace TAO
 
         /** VersionActive
          *
-         *  Helper function to determine if a give block version is active.
+         *  Helper function to test if a given block version is active
+         *  at the time of the provided timestamp.
          *
          *  @param[in] nTimestamp The timestamp to check against.
          *  @param[in] nVersion The version to check against.
@@ -119,7 +120,7 @@ namespace TAO
 
         /** CurrentVersion
          *
-         *  Returns current block version from mainnet or testnet.
+         *  Retrieve the current block version from mainnet or testnet.
          *
          **/
         uint32_t CurrentVersion();
@@ -127,10 +128,40 @@ namespace TAO
 
         /** CurrentTimelock
          *
-         *  Returns current block timelock activation from mainnet or testnet.
+         *  Retrieve the current block timelock activation from mainnet or testnet.
          *
          **/
         uint32_t CurrentTimelock();
+
+
+        /** StartTimelock
+         *
+         *  Retrieve the timelock activation for a given block version on mainnet or testnet.
+         *
+         *  Invalid versions (version 0 or anything after current version) return 0. This should be checked.
+         *
+         *  @param[in] nVersion The version of the timelock to retreive
+         *
+         *  @return version activation timelock
+         *
+         **/
+        uint64_t StartTimelock(const uint32_t nVersion);
+
+
+        /** EndTimelock
+         *
+         *  Retrieve the ending timelock for a given block version on mainnet or testnet. This value equals the StartTimelock()
+         *  value of the next version.
+         *
+         *  Invalid versions (version 0 or anything after current version) return 0, as does the current version.
+         *  This should be checked.
+         *
+         *  @param[in] nVersion The version of the timelock to retreive
+         *
+         *  @return version ending timelock
+         *
+         **/
+        uint64_t EndTimelock(const uint32_t nVersion);
 
     }
 }
