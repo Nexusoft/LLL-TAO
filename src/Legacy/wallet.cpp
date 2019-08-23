@@ -1232,7 +1232,7 @@ namespace Legacy
             return 0;
 
         /* Loop in batches of 1000 until finished. */
-        uint512_t hashLast = vtx.back().GetHash();
+        uint512_t hashLast = 0;
         do
         {
             /* Loop through found transactions. */
