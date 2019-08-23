@@ -113,7 +113,7 @@ namespace LLD
                         throw debug::exception(FUNCTION, "maturity overflow");
 
                     /* Check the intervals. */
-                    if((TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight) < TAO::Ledger::MaturityCoinBase())
+                    if((TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight + 1) < TAO::Ledger::MaturityCoinBase())
                         throw debug::exception(FUNCTION, "coinbase is immature");
                 }
 
@@ -229,9 +229,11 @@ namespace LLD
 
             /* Read the new proof state. */
             if(mapClaims.count(std::make_pair(hashTx, nContract)))
+            {
                 nClaimed = mapClaims[std::make_pair(hashTx, nContract)];
+                return true;
+            }
 
-            return true;
         }
 
         return Read(std::make_pair(hashTx, nContract), nClaimed);
