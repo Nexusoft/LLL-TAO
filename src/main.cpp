@@ -397,6 +397,14 @@ int main(int argc, char** argv)
         LLD::TxnRecovery();
 
 
+        /** Initialize ChainState. */
+        TAO::Ledger::ChainState::Initialize();
+
+
+        /** Initialize the scripts for legacy mode. **/
+        Legacy::InitializeScripts();
+
+
         /** Load the Wallet Database. **/
         bool fFirstRun;
         if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
@@ -420,14 +428,6 @@ int main(int argc, char** argv)
             else
                 return debug::error("Failed loading wallet.dat");
         }
-
-
-        /** Initialize ChainState. */
-        TAO::Ledger::ChainState::Initialize();
-
-
-        /** Initialize the scripts for legacy mode. **/
-        Legacy::InitializeScripts();
 
 
         /** Handle Rescanning. **/

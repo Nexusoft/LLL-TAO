@@ -1158,7 +1158,7 @@ namespace Legacy
 
         /* Check for null. */
         if(!stateBegin)
-            return 0;
+            return debug::error(FUNCTION, "search from block is invalid");
 
         /* Check for genesis. */
         uint512_t hashLast = 0;
@@ -1167,7 +1167,7 @@ namespace Legacy
             /* Check next block. */
             TAO::Ledger::BlockState stateNext = stateBegin.Next();
             if(!stateNext)
-                return 0;
+                return debug::error(FUNCTION, "next block is null");
 
             hashLast = stateNext.vtx[0].second;
         }
@@ -1175,7 +1175,7 @@ namespace Legacy
             hashLast = stateBegin.vtx[0].second;
 
         /* Loop until complete. */
-
+        debug::log(0, FUNCTION, "Scanning from tx ", hashLast.ToString().substr(0, 20));
         while(!config::fShutdown.load())
         {
             /* Read the next batch of inventory. */
