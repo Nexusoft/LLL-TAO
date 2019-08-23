@@ -402,7 +402,7 @@ namespace LLD
                                 ssData >> value;
 
                                 /* Push next value. */
-                                vValues.emplace_back(value);
+                                vValues.push_back(value);
 
                                 /* Check limits. */
                                 if(nLimit != -1 && --nLimit == 0)

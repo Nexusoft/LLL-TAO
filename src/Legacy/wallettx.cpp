@@ -336,17 +336,6 @@ namespace Legacy
     }
 
 
-    /*  Get the number of remote requests recorded for this transaction. */
-    int32_t WalletTx::GetRequestCount() const
-    {
-        /* Return 0 if no wallet bound */
-        if (!IsBound())
-            return 0;
-
-        return pWallet->GetRequestCount(*this);
-    }
-
-
     /*  Checks whether this transaction contains any inputs belonging
      *  to the bound wallet. */
     bool  WalletTx::IsFromMe() const

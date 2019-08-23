@@ -231,9 +231,6 @@ namespace Legacy
         TransactionMap mapWallet;
 
 
-        std::map<uint1024_t, uint32_t> mapRequestCount;
-
-
     /*----------------------------------------------------------------------------------------*/
     /*  Wallet General                                                                        */
     /*----------------------------------------------------------------------------------------*/
@@ -349,19 +346,6 @@ namespace Legacy
          *
          */
         uint32_t LoadWallet(bool& fFirstRunRet);
-
-
-        /** Inventory
-         *
-         *  Tracks requests for transactions contained in this wallet, or the blocks that contain them.
-         *
-         *  When mapRequestCount contains the given block hash, wallet has one or more
-         *  transactions in that block and increments the request count.
-         *
-         *  @param[in] hash Block hash to track
-         *
-         */
-        void Inventory(const uint1024_t& hash);  //Not really a very intuitive method name
 
 
         /** GetWalletUnlockTime
@@ -674,21 +658,6 @@ namespace Legacy
          *
          **/
         bool GetTransaction(const uint512_t& hashTx, WalletTx& wtx);
-
-
-        /** GetRequestCount
-         *
-         *  Get the number of remote requests recorded for a transaction.
-         *
-         *  Coinbase and Coinstake transactions are tracked at the block level,
-         *  so count records requests for the block containing them.
-         *
-         *  @param[in] wtx The wallet transaction to check
-         *
-         *  @return The request count as recorded by request tracking, -1 if not tracked
-         *
-         **/
-        int32_t GetRequestCount(const WalletTx& wtx) const;
 
 
         /** AddToWallet

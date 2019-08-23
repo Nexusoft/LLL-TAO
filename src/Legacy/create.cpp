@@ -167,7 +167,7 @@ namespace Legacy
         /* calculate the reward for this wallet */
         int64_t nReward = 0;
         if(coinbaseRecipients.IsNull())
-            nReward = nBlockReward; 
+            nReward = nBlockReward;
         else
             nReward = coinbaseRecipients.nPoolFee;
 
@@ -508,12 +508,6 @@ namespace Legacy
 
         if (block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
             return debug::error(FUNCTION, "Generated block is stale");
-
-        /* Add new block to request tracking in wallet */
-        {
-            LOCK(wallet.cs_wallet);
-            wallet.mapRequestCount[block.GetHash()] = 0;
-        }
 
         /* Print the newly found block. Accept() prints a duplicate if verbose >= 2 because it prints all blocks, not just mined ones */
         block.print();
