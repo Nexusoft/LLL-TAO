@@ -397,21 +397,21 @@ int main(int argc, char** argv)
         LLD::TxnRecovery();
 
 
-        /** Initialize ChainState. */
+        /* Initialize ChainState. */
         TAO::Ledger::ChainState::Initialize();
 
 
-        /** Initialize the scripts for legacy mode. **/
+        /* Initialize the scripts for legacy mode. */
         Legacy::InitializeScripts();
 
 
-        /** Load the Wallet Database. **/
+        /* Load the Wallet Database. */
         bool fFirstRun;
         if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
             return debug::error("Failed initializing wallet");
 
 
-        /** Check the wallet loading for errors. **/
+        /* Check the wallet loading for errors. */
         uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
         if (nLoadWalletRet != Legacy::DB_LOAD_OK)
         {
@@ -421,7 +421,7 @@ int main(int argc, char** argv)
                 return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
             else if (nLoadWalletRet == Legacy::DB_NEEDS_RESCAN)
             {
-                debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning...");
+                debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning now");
 
                 Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
             }
@@ -430,9 +430,13 @@ int main(int argc, char** argv)
         }
 
 
-        /** Handle Rescanning. **/
+        /* Handle Rescanning. */
         if(config::GetBoolArg(std::string("-rescan")))
             Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+
+
+        /* Relay transactions. */
+        Legacy::Wallet::GetInstance().ResendWalletTransactions();
 
 
         /* Set up Mining Server */
