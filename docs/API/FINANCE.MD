@@ -529,7 +529,7 @@ This will retrieve a summary of balance information for all NXS accounts belongi
     "unconfirmed": 5,
     "stake": 5000,
     "immature_mined": 100,
-    "immature_trust": 0.01234
+    "immature_stake": 0.01234
 }
 ```
 
