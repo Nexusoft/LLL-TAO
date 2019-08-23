@@ -313,7 +313,7 @@ namespace TAO
                     "rescan"
                     " - Rescans the database for relevant wallet transactions.");
 
-            Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+            Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
 
             return "success";
 

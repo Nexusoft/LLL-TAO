@@ -415,7 +415,7 @@ int main(int argc, char** argv)
             {
                 debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning...");
 
-                Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+                Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
             }
             else
                 return debug::error("Failed loading wallet.dat");
@@ -432,7 +432,7 @@ int main(int argc, char** argv)
 
         /** Handle Rescanning. **/
         if(config::GetBoolArg(std::string("-rescan")))
-            Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+            Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
 
 
         /* Set up Mining Server */

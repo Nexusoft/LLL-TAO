@@ -1208,27 +1208,46 @@ namespace Legacy
     /* Scan the block chain for transactions from or to keys in this wallet.
      * Add/update the current wallet transactions for any found.
      */
-    uint32_t Wallet::ScanForWalletTransactions(const TAO::Ledger::BlockState* pstartBlock, const bool fUpdate)
+    uint32_t Wallet::ScanForWalletTransactions(const TAO::Ledger::BlockState& stateBegin, const bool fUpdate)
     {
         /* Count the number of transactions process for this wallet to use as return value */
         uint32_t nTransactionCount = 0;
         uint32_t nScannedCount     = 0;
 
-        TAO::Ledger::BlockState state;
-
         runtime::timer timer;
         timer.Start();
 
-        /* Do a batch read from legacy database. */
-        std::vector<Legacy::Transaction> vtx;
-        if(!LLD::legacyDB->BatchRead("tx", vtx, 1000))
+        /* Check for null. */
+        if(!stateBegin)
             return 0;
 
-        /* Loop in batches of 1000 until finished. */
+        /* Check for genesis. */
         uint512_t hashLast = 0;
-        do
+        if(stateBegin.nHeight == 0)
         {
+            /* Check next block. */
+            TAO::Ledger::BlockState stateNext = stateBegin.Next();
+            if(!stateNext)
+                return 0;
+
+            hashLast = stateNext.vtx[0].second;
+        }
+        else
+            hashLast = stateBegin.vtx[0].second;
+
+        /* Loop until complete. */
+
+        while(!config::fShutdown.load())
+        {
+            /* Read the next batch of inventory. */
+            std::vector<Legacy::Transaction> vtx;
+
+            /* Consecutive batches. */
+            if(!LLD::legacyDB->BatchRead(std::make_pair(std::string("tx"), hashLast), "tx", vtx, 1000, nScannedCount > 0))
+                break;
+
             /* Loop through found transactions. */
+            TAO::Ledger::BlockState state;
             for(const auto& tx : vtx)
             {
                 /* Add to the wallet */
@@ -1255,11 +1274,7 @@ namespace Legacy
             /* Check for end. */
             if(vtx.size() != 1000)
                 break;
-
-            /* Clear the transactions. */
-            vtx.clear();
-
-        } while(!config::fShutdown.load() && LLD::legacyDB->BatchRead(std::make_pair(std::string("tx"), hashLast), "tx", vtx, 1000));
+        }
 
         /* Get the time it took to rescan. */
         uint32_t nElapsedSeconds = timer.Elapsed();

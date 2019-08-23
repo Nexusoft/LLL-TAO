@@ -311,12 +311,14 @@ namespace LLD
          *  @param[in] strType The type specifier to read records from
          *  @param[out] vValues The database entry value to read out.
          *  @param[in] nLimit The total records to read.
+         *  @param[in] fExclude Flag to choose whether to exclude current key.
          *
          *  @return True if the entry read, false otherwise.
          *
          **/
         template<typename Key, typename Type>
-        bool BatchRead(const Key& key, const std::string& strType, std::vector<Type>& vValues, int32_t nLimit = 1000)
+        bool BatchRead(const Key& key, const std::string& strType,
+            std::vector<Type>& vValues, int32_t nLimit = 1000, bool fExclude = true)
         {
             /* Serialize Key into Bytes. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
@@ -328,7 +330,7 @@ namespace LLD
                 return false;
 
             /* The current file being read. */
-            return GetBatch(cKey.nSectorStart + cKey.nSectorSize, cKey.nSectorFile, strType, vValues, nLimit);
+            return GetBatch(cKey.nSectorStart + (fExclude ? cKey.nSectorSize : 0), cKey.nSectorFile, strType, vValues, nLimit);
         }
 
 
@@ -346,7 +348,8 @@ namespace LLD
          *
          **/
         template<typename Type>
-        bool GetBatch(uint64_t nStart, uint32_t nFile, const std::string& strType, std::vector<Type>& vValues, int32_t nLimit = 1000)
+        bool GetBatch(uint64_t nStart, uint32_t nFile, const std::string& strType,
+            std::vector<Type>& vValues, int32_t nLimit = 1000)
         {
             /* Scan until limit is reached. */
             while(nLimit == -1 || nLimit > 0)

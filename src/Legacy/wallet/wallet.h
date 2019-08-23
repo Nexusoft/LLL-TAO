@@ -768,7 +768,7 @@ namespace Legacy
          *  @return The number of transactions added/updated by the scan
          *
          **/
-        uint32_t ScanForWalletTransactions(const TAO::Ledger::BlockState* pState, const bool fUpdate = false);
+        uint32_t ScanForWalletTransactions(const TAO::Ledger::BlockState& stateBegin, const bool fUpdate = false);
 
 
         /** ResendWalletTransactions
