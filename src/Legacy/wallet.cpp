@@ -129,7 +129,7 @@ namespace Legacy
     bool Wallet::SetMinVersion(const enum Legacy::WalletFeature nVersion, const bool fForceLatest)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Allows potential to override nVersion with FEATURE_LATEST */
             Legacy::WalletFeature nVersionToSet = nVersion;
@@ -165,7 +165,7 @@ namespace Legacy
     bool Wallet::SetMaxVersion(const enum Legacy::WalletFeature nVersion)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Cannot downgrade below current version */
             if (nWalletVersion > nVersion)
@@ -194,7 +194,7 @@ namespace Legacy
 
         {
             /* Lock wallet so WalletDB can load all data into it */
-            //LOCK(cs_wallet);
+            //RLOCK(cs_wallet);
 
             uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
 
@@ -327,7 +327,7 @@ namespace Legacy
     bool Wallet::AddScript(const Script& redeemScript)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Call overridden inherited method to add key to key store */
             if (!CryptoKeyStore::AddScript(redeemScript))
@@ -368,7 +368,7 @@ namespace Legacy
     bool Wallet::SetDefaultKey(const std::vector<uint8_t>& vchPubKey)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             if (fFileBacked)
             {
@@ -390,7 +390,7 @@ namespace Legacy
     bool Wallet::SetTrustKey(const std::vector<uint8_t>& vchPubKey)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             if (fFileBacked)
             {
@@ -412,7 +412,7 @@ namespace Legacy
     bool Wallet::RemoveTrustKey()
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             if (fFileBacked)
             {
@@ -481,7 +481,7 @@ namespace Legacy
         /* kMasterKey now contains the master key encrypted by the provided passphrase. Ready to perform wallet encryption. */
         {
             /* Lock for writing master key and converting keys */
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             nNewMasterKeyId = ++nMasterKeyMaxID;
             mapMasterKeys[nNewMasterKeyId] = kMasterKey;
@@ -523,7 +523,7 @@ namespace Legacy
 
         /* Replace key pool with encrypted keys */
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             keyPool.NewKeyPool();
         }
@@ -536,7 +536,7 @@ namespace Legacy
          */
         bool rewriteResult = true;
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             if (fFileBacked)
             {
@@ -579,7 +579,7 @@ namespace Legacy
         bool fUnlockSuccessful = false;
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* If more than one master key in wallet's map (unusual), this will attempt each one with the passphrase.
              * If any one master key decryption works and unlocks the wallet, then the unlock is successful.
@@ -650,7 +650,7 @@ namespace Legacy
          */
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Save current lock state so it can be reset when done */
             bool fWasLocked = IsLocked();
@@ -729,7 +729,7 @@ namespace Legacy
             /* Lock wallet only to take a snapshot of current transaction map for calculating balance
              * After unlock, mapWallet can change but it won't affect balance calculation
              */
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             for (const auto& item : mapWallet)
             {
@@ -754,7 +754,7 @@ namespace Legacy
     bool Wallet::BalanceByAccount(std::string strAccount, int64_t& nBalance, int32_t nMinDepth)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
             nBalance = 0;
             for (auto it = mapWallet.begin(); it != mapWallet.end(); ++it)
             {
@@ -816,7 +816,7 @@ namespace Legacy
             /* Lock wallet only to take a snapshot of current transaction map for calculating balance
              * After unlock, mapWallet can change but it won't affect balance calculation
              */
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             for (const auto& item : mapWallet)
             {
@@ -841,7 +841,7 @@ namespace Legacy
         int64_t nTotalStake = 0;
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             for (const auto& item : mapWallet)
             {
@@ -863,7 +863,7 @@ namespace Legacy
         int64_t nTotalMint = 0;
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             for (const auto& item : mapWallet)
             {
@@ -882,7 +882,7 @@ namespace Legacy
     void Wallet::AvailableCoins(const uint32_t nSpendTime, std::vector<Output>& vCoins, const bool fOnlyConfirmed)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             vCoins.clear();
 
@@ -925,7 +925,7 @@ namespace Legacy
     void Wallet::MarkDirty()
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             for(auto& item : mapWallet)
                 item.second.MarkDirty();
@@ -937,7 +937,7 @@ namespace Legacy
     bool Wallet::GetTransaction(const uint512_t& hashTx, WalletTx& wtx)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Find the requested transaction in the wallet */
             TransactionMap::iterator mi = mapWallet.find(hashTx);
@@ -960,7 +960,7 @@ namespace Legacy
         /* Use the returned tx, not wtxIn, in case insert returned an existing transaction */
         std::pair<TransactionMap::iterator, bool> ret;
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Inserts only if not already there, returns tx inserted or tx found */
             ret = mapWallet.insert(std::make_pair(hash, wtxIn));
@@ -1098,7 +1098,7 @@ namespace Legacy
         if (!fFileBacked)
             return false;
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             if (mapWallet.erase(hash))
             {
@@ -1122,7 +1122,7 @@ namespace Legacy
 
         {
             /* Disconnecting coinstake requires marking input unspent */
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             for(const TxIn& txin : tx.vin)
             {
@@ -1262,7 +1262,7 @@ namespace Legacy
         /* Record that it is processing resend now */
         snLastHeight = TAO::Ledger::ChainState::nBestHeight.load();
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Find any sent tx not in block and sort them in chronological order */
             std::multimap<uint64_t, WalletTx> mapSorted;
@@ -1298,7 +1298,7 @@ namespace Legacy
     void Wallet::WalletUpdateSpent(const Transaction& tx)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Loop through and the tx inputs, checking each separately */
             for(const auto& txin : tx.vin)
@@ -1337,7 +1337,7 @@ namespace Legacy
         nBalanceInQuestion = 0;
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Loop through all values in the wallet map. */
             for(auto& map : mapWallet)
@@ -1408,7 +1408,7 @@ namespace Legacy
     bool Wallet::IsMine(const TxIn &txin)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Any input from this wallet will have a corresponding UTXO in the previous transaction
              * Thus, if the wallet doesn't contain the previous transaction, the input is not from this wallet.
@@ -1499,13 +1499,12 @@ namespace Legacy
             return 0;
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* A debit spends the txout value from a previous output
              * so begin by finding the previous transaction in the wallet
              */
             auto mi = mapWallet.find(txin.prevout.hash);
-
             if (mi != mapWallet.end())
             {
                 const WalletTx& prev = (*mi).second;
@@ -1551,7 +1550,7 @@ namespace Legacy
         NexusAddress address;
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             if (ExtractAddress(txout.scriptPubKey, address) && HaveKey(address))
             {
@@ -1661,7 +1660,7 @@ namespace Legacy
         }
 
         {
-            //LOCK(cs_wallet);
+            //RLOCK(cs_wallet);
 
             /* Link wallet to transaction, don't add to wallet yet (will be done when transaction committed) */
             wtxNew.BindWallet(this);
@@ -1826,7 +1825,7 @@ namespace Legacy
         changeKey.KeepKey();
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Mark old coins as spent */
             for (const TxIn& txin : wtxNew.vin)
@@ -1856,7 +1855,7 @@ namespace Legacy
     /* Add inputs (and output amount with reward) to the coinstake txin for a coinstake block */
     bool Wallet::AddCoinstakeInputs(LegacyBlock& block)
     {
-        LOCK(cs_wallet);
+        RLOCK(cs_wallet);
 
         const uint32_t nMinimumCoinAge = (config::fTestNet ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE);
 

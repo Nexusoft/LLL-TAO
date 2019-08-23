@@ -224,7 +224,7 @@ namespace Legacy
 
     public:
         /** Mutex for thread concurrency across wallet operations **/
-        mutable std::mutex cs_wallet;
+        mutable std::recursive_mutex cs_wallet;
 
 
         /** Map of wallet transactions contained in this wallet **/
