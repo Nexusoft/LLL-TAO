@@ -1128,7 +1128,6 @@ namespace Legacy
             {
                 /* Find the previous transaction and mark as unspent the output that corresponds to current txin */
                 TransactionMap::iterator mi = mapWallet.find(txin.prevout.hash);
-
                 if (mi != mapWallet.end())
                 {
                     WalletTx& txPrev = (*mi).second;
@@ -1236,10 +1235,10 @@ namespace Legacy
          * and returns. Any subsequent calls will only process resend if at least that much time
          * has passed.
          */
-        static std::atomic<int64_t> snNextTime;
+        static std::atomic<uint64_t> snNextTime;
 
         /* Also keep track of best height on last resend, because no need to process again if has not changed */
-        static std::atomic<int32_t> snLastHeight;
+        static std::atomic<uint32_t> snLastHeight;
 
 
         bool fFirst = (snNextTime == 0);
@@ -1249,7 +1248,7 @@ namespace Legacy
             return;
 
         /* Set a random time until resend is processed */
-        snNextTime = runtime::unifiedtimestamp() + LLC::GetRand(30 * 5);
+        snNextTime = runtime::unifiedtimestamp() + LLC::GetRand(5 * 30);
 
         /* On first iteration, just return. All it does is set snNextTime */
         if (fFirst)
@@ -1265,27 +1264,28 @@ namespace Legacy
             RLOCK(cs_wallet);
 
             /* Find any sent tx not in block and sort them in chronological order */
-            std::multimap<uint64_t, WalletTx> mapSorted;
+            std::multimap<uint64_t, const WalletTx*> mapSorted;
             for(const auto& item : mapWallet)
             {
                 const WalletTx& wtx = item.second;
+                if(wtx.hashBlock != 0)
+                    continue;
 
                 /* Don't put in sorted map for rebroadcast until it's had enough time to be added to a block */
                 if (runtime::timestamp() - wtx.nTimeReceived > 1 * 60)
-                    mapSorted.insert(std::make_pair(wtx.nTimeReceived, wtx));
+                    mapSorted.insert(std::make_pair(wtx.nTimeReceived, &wtx));
             }
 
+            /* Loop through sorted transactions. */
             for(const auto& item : mapSorted)
             {
-                const WalletTx& wtx = item.second;
+                const WalletTx* wtx = item.second;
 
                 /* Validate the transaction, then process rebroadcast on it */
-                if (wtx.CheckTransaction())
-                {
-                    wtx.RelayWalletTransaction();
-                }
+                if (wtx->CheckTransaction())
+                    wtx->RelayWalletTransaction();
                 else
-                    debug::log(0, FUNCTION, "CheckTransaction failed for transaction ", wtx.GetHash().ToString());
+                    debug::log(0, FUNCTION, "CheckTransaction failed for transaction ", wtx->GetHash().ToString());
             }
         }
     }

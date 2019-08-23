@@ -521,7 +521,7 @@ namespace Legacy
          *  Send this transaction to the network if not in our database, yet.
          *
          **/
-        void RelayWalletTransaction() const;
+        bool RelayWalletTransaction() const;
 
     };
 

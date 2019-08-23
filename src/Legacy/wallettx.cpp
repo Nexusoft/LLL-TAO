@@ -706,7 +706,7 @@ namespace Legacy
 
 
     /* Send this transaction to the network if not in our database, yet. */
-    void WalletTx::RelayWalletTransaction() const
+    bool WalletTx::RelayWalletTransaction() const
     {
         for(const MerkleTx& tx : vtxPrev)
         {
@@ -714,13 +714,13 @@ namespace Legacy
             if (!(tx.IsCoinBase() || tx.IsCoinStake()))
             {
                 uint512_t hash = tx.GetHash();
-                if (!LLD::legacyDB->HasTx(hash))
+                if (!LLD::legDB->HasIndex(hash))
                 {
                     std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX) };
                     LLP::LEGACY_SERVER->Relay("inv", vInv);
 
                     //Add to the memory pool
-                    TAO::Ledger::mempool.Accept((Transaction)tx);
+                    return TAO::Ledger::mempool.Accept((Transaction)tx);
                 }
             }
         }
@@ -730,17 +730,19 @@ namespace Legacy
             uint512_t hash = GetHash();
 
             /* Relay this tx if we don't have it in our database, yet */
-            if (!LLD::legacyDB->HasTx(hash))
+            if (!LLD::legDB->HasIndex(hash))
             {
-                debug::log(0, FUNCTION, "Relaying wtx ", hash.ToString().substr(0,10));
+                debug::log(0, FUNCTION, "Relaying wtx ", hash.ToString().substr(0, 10));
 
                 std::vector<LLP::CInv> vInv = { LLP::CInv(hash, LLP::MSG_TX) };
                 LLP::LEGACY_SERVER->Relay("inv", vInv);
 
                 //Add to the memory pool
-                TAO::Ledger::mempool.Accept((Transaction)*this);
+                return TAO::Ledger::mempool.Accept((Transaction)*this);
             }
         }
+
+        return false;
     }
 
 }

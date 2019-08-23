@@ -395,7 +395,7 @@ namespace Legacy
         wallet.vchDefaultKey.clear();
 
         /* Debug output for walletcheck. */
-        if(config::GetBoolArg("-walletcheck", false))
+        if(config::GetBoolArg("-walletcheck", true))
             debug::log(0, FUNCTION, "Checking transactions for consistency");
 
         /* Read and validate minversion required by database file */
