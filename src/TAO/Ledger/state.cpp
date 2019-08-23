@@ -472,7 +472,7 @@ namespace TAO
 
                 /* Remove transactions from memory pool. */
                 for(const auto& hashTx : vDelete)
-                    mempool.Remove(hashTx);
+                    mempool.RemoveLegacy(hashTx);
 
 
                 /* Set the best chain variables. */

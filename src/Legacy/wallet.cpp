@@ -1412,7 +1412,8 @@ namespace Legacy
                     if (!IsMine(wtx.vout[n]))
                         continue;
 
-                    bool fSpentOnChain = LLD::legacyDB->IsSpent(map.first, n);
+                    /* Check in LLD keychains and memory pool for spends. */
+                    bool fSpentOnChain = LLD::legacyDB->IsSpent(map.first, n) || TAO::Ledger::mempool.IsSpent(map.first, n);
 
                     /* Handle when Transaction on chain records output as unspent but wallet accounting has it as spent */
                     if (wtx.IsSpent(n) && !fSpentOnChain)
