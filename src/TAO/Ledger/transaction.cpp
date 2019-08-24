@@ -566,7 +566,7 @@ namespace TAO
 
 
         /*  Gets the total trust and stake of pre-state. */
-        bool Transaction::GetTrustInfo(uint64_t& nTrust, uint64_t& nStake) const
+        bool Transaction::GetTrustInfo(uint64_t& nBalance, uint64_t& nTrust, uint64_t& nStake) const
         {
             /* Check values. */
             if(!IsCoinStake())
@@ -591,6 +591,7 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to parse trust object");
 
             /* Set Values. */
+            nBalance = object.get<uint64_t>("balance");
             nTrust = object.get<uint64_t>("trust");
             nStake = object.get<uint64_t>("stake");
 

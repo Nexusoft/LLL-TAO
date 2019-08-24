@@ -977,9 +977,16 @@ namespace TAO
                         if(!LLD::Ledger->ReadTx(vtx.back().second, tx))
                             throw std::runtime_error(debug::safe_printstr(FUNCTION, "could not read producer"));
 
-                        /* Get trust information. */
-                        if(!tx.GetTrustInfo(nTrust, nStake))
+                        /* Get trust information */
+                        uint64_t nBalance;
+                        if(!tx.GetTrustInfo(nBalance, nTrust, nStake))
                             throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get trust info"));
+                        
+                        /* If this is a genesis then there will be nothing in stake at this point, as the balance is not moved
+                           to the stake until the operations layer.  So for the purpose of the weight calculation here we will
+                           use the balance from the trust account for the stake amount */
+                        if(tx.IsGenesis())
+                            nStake = nBalance;
                     }
 
                     /* Handle for version 5 blocks. */
