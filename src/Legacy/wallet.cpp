@@ -395,13 +395,13 @@ namespace Legacy
             if(fFileBacked)
             {
                 WalletDB walletdb(strWalletFile);
-                bool result = walletdb.WriteDefaultKey(vchPubKey);
+                bool result = walletdb.WriteTrustKey(vchPubKey);
 
                 if(!result)
                     return false;
             }
 
-            vchDefaultKey = vchPubKey;
+            vchTrustKey = vchPubKey;
         }
 
         return true;
