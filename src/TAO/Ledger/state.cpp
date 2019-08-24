@@ -964,7 +964,7 @@ namespace TAO
                 case CHANNEL::STAKE:
                 {
                     /* Get the proof hash. */
-                    uint1024_t hashProof = ProofHash();
+                    uint1024_t hashProof = StakeHash();
 
                     /* Trust inforamtion variables. */
                     uint64_t nTrust = 0;
