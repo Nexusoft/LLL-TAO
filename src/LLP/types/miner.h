@@ -96,17 +96,20 @@ namespace LLP
         /** The current best block. **/
         std::atomic<uint32_t> nBestHeight;
 
-        /** Subscribe to display how many blocks connection subscribed to **/
+        /* Subscribe to display how many blocks connection subscribed to */
         std::atomic<uint32_t> nSubscribed;
 
-        /** The current channel mining for. */
+        /* The current channel mining for. */
         std::atomic<uint32_t> nChannel;
 
         /* Used as an ID iterator for generating unique hashes from same block transactions. */
         uint32_t nBlockIterator;
 
-        /** the mining key for block rewards to send **/
+        /* the mining key for block rewards to send */
         Legacy::ReserveKey *pMiningKey;
+
+        /* The last txid on user's signature chain. Used to orphan blocks if another transaction is made while mining. */
+        uint512_t nHashLast;
 
 
     public:
