@@ -196,7 +196,8 @@ namespace Legacy
             LegacyMinter::fStopMinter.store(true);
 
             /* Wait for minter thread to stop */
-            LegacyMinter::minterThread.join();
+            if(LegacyMinter::minterThread.joinable())
+                LegacyMinter::minterThread.join();
 
             if(pReservedTrustKey != nullptr)
             {

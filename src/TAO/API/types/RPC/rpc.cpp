@@ -57,6 +57,7 @@ namespace TAO
             mapFunctions["listaddresses"] = Function(std::bind(&RPC::ListAddresses, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["listaccounts"] = Function(std::bind(&RPC::ListAccounts, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["listsinceblock"] = Function(std::bind(&RPC::ListSinceBlock, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["getglobaltransaction"] = Function(std::bind(&RPC::GetGlobalTransaction, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["gettransaction"] = Function(std::bind(&RPC::GetTransaction, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["getrawtransaction"] = Function(std::bind(&RPC::GetRawTransaction, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["sendrawtransaction"] = Function(std::bind(&RPC::SendRawTransaction, this, std::placeholders::_1, std::placeholders::_2));

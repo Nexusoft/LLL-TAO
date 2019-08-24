@@ -149,6 +149,13 @@ namespace TAO
             return true;
         }
 
+
+        /* Checks if a given output is spent in memory. */
+        bool Mempool::IsSpent(const uint512_t& hash, const uint32_t n)
+        {
+            return mapInputs.count(Legacy::OutPoint(hash, n));
+        }
+
         /* Gets a legacy transaction from mempool */
         bool Mempool::Get(const uint512_t& hashTx, Legacy::Transaction &tx) const
         {

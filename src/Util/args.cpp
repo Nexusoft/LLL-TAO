@@ -42,6 +42,7 @@ namespace config
     std::atomic<bool> fLogTimestamps(false);
     std::atomic<bool> fMultiuser(false);
     std::atomic<bool> fEventsProcessor(false);
+    std::atomic<bool> fInitialized(false);
 
     std::mutex ARGS_MUTEX;
 

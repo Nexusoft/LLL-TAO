@@ -128,6 +128,19 @@ namespace TAO
             bool Accept(const Legacy::Transaction& tx);
 
 
+            /** IsSpent
+             *
+             *  Checks if a given output is spent in memory.
+             *
+             *  @param[in] hash The hash of spent output
+             *  @param[in] n The output number being checked
+             *
+             *  @return true if spent.
+             *
+             **/
+            bool IsSpent(const uint512_t& hash, const uint32_t n);
+
+
             /** Get
              *
              *  Gets a transaction from mempool

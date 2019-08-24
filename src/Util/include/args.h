@@ -41,6 +41,7 @@ namespace config
     extern std::atomic<bool> fLogTimestamps;
     extern std::atomic<bool> fMultiuser;
     extern std::atomic<bool> fEventsProcessor;
+    extern std::atomic<bool> fInitialized;
 
 
     /** InterpretNegativeSetting

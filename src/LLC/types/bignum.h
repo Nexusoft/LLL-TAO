@@ -71,7 +71,7 @@ namespace LLC
     };
 
 
-    /** CAutoBN_CTX
+    /** CBigNum
      *
      *  C++ wrapper for BIGNUM (OpenSSL bignum)
      *

@@ -171,7 +171,7 @@ namespace TAO
 
 
             /** Not operator overloading. **/
-            bool operator!(void);
+            bool operator!(void) const;
 
 
             /** Prev

@@ -308,7 +308,7 @@ namespace TAO
             if(fHelp || params.size() != 0)
                 return std::string("rescan - Rescans the database for relevant wallet transactions.");
 
-            Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+            Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
 
             return "success";
 

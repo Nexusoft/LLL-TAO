@@ -279,12 +279,13 @@ namespace LLD
         }
 
 
-        /** Read
+        /** BatchRead
          *
-         *  Read a database entry identified by the given key.
+         *  Sequential read from beginning of datachain.
          *
-         *  @param[in] key The key to the database entry to read.
-         *  @param[out] value The database entry value to read out.
+         *  @param[in] strType The type specifier to read records from
+         *  @param[out] vValues The database entry value to read out.
+         *  @param[in] nLimit The total records to read.
          *
          *  @return True if the entry read, false otherwise.
          *
@@ -293,151 +294,26 @@ namespace LLD
         bool BatchRead(const std::string& strType, std::vector<Type>& vValues, int32_t nLimit = 1000)
         {
             /* The current file being read. */
-            uint32_t nFile = 0;
-
-            /* Scan until limit is reached. */
-            while(nLimit == -1 || nLimit > 0)
-            {
-                /* Get filestream object. */
-                std::fstream stream = std::fstream(debug::safe_printstr(strBaseLocation, "_block.",
-                    std::setfill('0'), std::setw(5), nFile), std::ios::in | std::ios::binary);
-                if(!stream.is_open())
-                    return (vValues.size() > 0);
-
-                /* Read into serialize stream. */
-                DataStream ssData(SER_LLD, DATABASE_VERSION);
-
-                /* Get the current file position. */
-                uint64_t nStart = 0;
-
-                /* Get the Binary Size. */
-                uint64_t nFileSize = 0;
-
-                /* Read file data. */
-                {
-                    LOCK(SECTOR_MUTEX);
-
-                    /* Get the Binary Size. */
-                    stream.seekg(0, std::ios::end);
-                    nFileSize = stream.tellg();
-
-                    /* Get the Binary Size. */
-                    uint64_t nBufferSize = ((nLimit == -1) ? nFileSize : (1024 * nLimit));
-
-                    /* Check for exceeding actual size. */
-                    if(nBufferSize > nFileSize)
-                        nBufferSize = nFileSize;
-
-                    /* Seek to beginning. */
-                    stream.seekg(0, std::ios::beg);
-
-                    /* Resize the buffer. */
-                    ssData.resize(nBufferSize);
-
-                    /* Read the data into the buffer. */
-                    stream.read((char*)ssData.data(), ssData.size());
-
-                    /* Set the start to read size. */
-                    nStart += ssData.size();
-                }
-
-                /* Get the current position. */
-                uint64_t nPos = 0;
-
-                /* Read records. */
-                while(!ssData.End())
-                {
-                    try
-                    {
-                        /* Read compact size. */
-                        uint64_t nSize = ReadCompactSize(ssData);
-                        if(nSize == 0)
-                            continue;
-
-                        /* Check for failures or serialization issues. */
-                        if(nPos + nSize + GetSizeOfCompactSize(nSize) > nFileSize)
-                            break;
-
-                        /* Deserialize the String. */
-                        std::string strThis;
-                        ssData >> strThis;
-
-                        /* Check the type. */
-                        if(strType == strThis && strThis != "NONE")
-                        {
-                            /* Get the value. */
-                            Type value;
-                            ssData >> value;
-
-                            /* Push next value. */
-                            vValues.push_back(value);
-
-                            /* Check limits. */
-                            if(nLimit != -1 && --nLimit == 0)
-                                return (vValues.size() > 0);
-                        }
-
-                        /* Iterate to next position. */
-                        nPos += nSize + GetSizeOfCompactSize(nSize);
-                        ssData.SetPos(nPos);
-
-                    }
-                    catch(const std::exception& e)
-                    {
-                        /* Read file data. */
-                        {
-                            LOCK(SECTOR_MUTEX);
-
-                            /* Get the Binary Size. */
-                            uint64_t nBufferSize = (1024 * nLimit);
-
-                            /* Check for exceeding of buffer size. */
-                            if(nStart + nBufferSize > nFileSize)
-                                nBufferSize = (nFileSize - nStart);
-
-                            /* Check for end. */
-                            if(nBufferSize == 0)
-                                break;
-
-                            /* Seek stream to beginning. */
-                            stream.seekg(nStart, std::ios::beg);
-                            ssData.resize(ssData.size() + nBufferSize);
-
-                            /* Read the data into the buffer. */
-                            stream.read((char*)ssData.data(ssData.size() - nBufferSize), nBufferSize);
-
-                            /* Set the start to read size. */
-                            nStart += nBufferSize;
-
-                            /* Reset the position. */
-                            ssData.SetPos(nPos);
-                        }
-                    }
-                }
-
-                /* Close the stream. */
-                stream.close();
-
-                /* Iterate to the next file. */
-                ++nFile;
-            }
-
-            return (vValues.size() > 0);
+            return GetBatch(0, 0, strType, vValues, nLimit);
         }
 
 
-        /** Read
+        /** BatchRead
          *
-         *  Read a database entry identified by the given key.
-         *Processed
-         *  @param[in] key The key to the database entry to read.
-         *  @param[out] value The database entry value to read out.
+         *  Sequential read from another key's position in datachain.
+         *
+         *  @param[in] key The key to start reading from
+         *  @param[in] strType The type specifier to read records from
+         *  @param[out] vValues The database entry value to read out.
+         *  @param[in] nLimit The total records to read.
+         *  @param[in] fExclude Flag to choose whether to exclude current key.
          *
          *  @return True if the entry read, false otherwise.
          *
          **/
         template<typename Key, typename Type>
-        bool BatchRead(const Key& key, const std::string& strType, std::vector<Type>& vValues, int32_t nLimit = 1000)
+        bool BatchRead(const Key& key, const std::string& strType,
+            std::vector<Type>& vValues, int32_t nLimit = 1000, bool fExclude = true)
         {
             /* Serialize Key into Bytes. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
@@ -449,148 +325,102 @@ namespace LLD
                 return false;
 
             /* The current file being read. */
-            uint32_t nFile = cKey.nSectorFile;
+            return GetBatch(cKey.nSectorStart + (fExclude ? cKey.nSectorSize : 0), cKey.nSectorFile, strType, vValues, nLimit);
+        }
 
+
+        /** GetBatch
+         *
+         *  Sequential read from a specified binary position.
+         *
+         *  @param[in] nStart The starting binary position
+         *  @param[in] nFile The starting file
+         *  @param[in] strType The type specifier to read records from
+         *  @param[out] vValues The database entry value to read out.
+         *  @param[in] nLimit The total records to read.
+         *
+         *  @return True if the entry read, false otherwise.
+         *
+         **/
+        template<typename Type>
+        bool GetBatch(uint64_t nStart, uint32_t nFile, const std::string& strType,
+            std::vector<Type>& vValues, int32_t nLimit = 1000)
+        {
             /* Scan until limit is reached. */
             while(nLimit == -1 || nLimit > 0)
             {
                 /* Get filestream object. */
-                std::fstream stream = std::fstream(debug::safe_printstr(strBaseLocation, "_block.",
-                    std::setfill('0'), std::setw(5), nFile), std::ios::in | std::ios::binary);
-                if(!stream.is_open())
-                    return (vValues.size() > 0);
-
-                /* Read into serialize stream. */
-                DataStream ssData(SER_LLD, DATABASE_VERSION);
-
-                /* Get the current position. */
-                uint64_t nPos = 0;
-
-                /* Get the current file position. */
-                uint64_t nStart = 0;
+                std::ifstream stream = std::ifstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nFile), std::ios::in | std::ios::binary);
+                if(!stream)
+                    break;
 
                 /* Get the Binary Size. */
-                uint64_t nFileSize = 0;
+                uint64_t nBufferSize = 1024 * 1024; //1 MB read buffer
 
-                /* Read file data. */
+                /* Loop until stream encounters exceptions. */
+                while(stream)
                 {
-                    LOCK(SECTOR_MUTEX);
+                    /* Read into serialize stream. */
+                    DataStream ssData(SER_LLD, DATABASE_VERSION);
+                    ssData.resize(nBufferSize);
 
-                    /* Get the Binary Size. */
-                    stream.seekg(0, std::ios::end);
-                    nFileSize = stream.tellg();
-
-                    /* Get the Binary Size. */
-                    uint64_t nBufferSize = ((nLimit == -1) ? nFileSize : (1024 * nLimit));
-
-                    /* Check for exceeding actual size. */
-                    if(nBufferSize > nFileSize)
-                        nBufferSize = nFileSize;
-
-                    /* Seek to the key's binary location. */
-                    if(nFile == cKey.nSectorFile)
                     {
-                        /* Set the position. */
-                        nStart = cKey.nSectorStart + cKey.nSectorSize;
+                        LOCK(SECTOR_MUTEX);
 
-                        /* Seek stream to sector position. */
-                        stream.seekg(nStart, std::ios::beg);
-                        ssData.resize(nBufferSize);
-                    }
-
-                    /* Otherwise seek to beginning if next file. */
-                    else
-                    {
                         /* Seek stream to beginning. */
-                        stream.seekg(0, std::ios::beg);
-                        ssData.resize(nBufferSize);
+                        stream.seekg(nStart, std::ios::beg);
+
+                        /* Read the data into the buffer. */
+                        stream.read((char*)ssData.data(), nBufferSize);
+                        if(!stream)
+                            ssData.resize(stream.gcount());
                     }
 
-                    /* Read the data into the buffer. */
-                    stream.read((char*)ssData.data(), nBufferSize);
-
-                    /* Set the start to read size. */
-                    nStart += ssData.size();
-                }
-
-                /* Read records. */
-                while(!ssData.End())
-                {
-                    try
+                    /* Read records. */
+                    while(!ssData.End())
                     {
-                        /* Read compact size. */
-                        uint64_t nSize = ReadCompactSize(ssData);
-                        if(nSize == 0)
-                            continue;
+                        try
+                        {
+                            /* Read compact size. */
+                            uint64_t nSize = ReadCompactSize(ssData);
 
-                        /* Check for failures or serialization issues. */
-                        if((nPos + nSize + GetSizeOfCompactSize(nSize)) > nFileSize)
+                            /* Deserialize the String. */
+                            std::string strThis;
+                            ssData >> strThis;
+
+                            /* Check the type. */
+                            if(strType == strThis && strThis != "NONE")
+                            {
+                                /* Get the value. */
+                                Type value;
+                                ssData >> value;
+
+                                /* Push next value. */
+                                vValues.push_back(value);
+
+                                /* Check limits. */
+                                if(nLimit != -1 && --nLimit == 0)
+                                    return (vValues.size() > 0);
+                            }
+
+                            /* Iterate to next position. */
+                            nStart += nSize + GetSizeOfCompactSize(nSize);
+                        }
+                        catch(const std::exception& e)
+                        {
+                            /* Allocate a larger buffer if full record exceeds default buffer. */
+                            nBufferSize *= 2;
+
                             break;
-
-                        /* Deserialize the String. */
-                        std::string strThis;
-                        ssData >> strThis;
-
-                        /* Check the type. */
-                        if(strType == strThis && strThis != "NONE")
-                        {
-                            /* Get the value. */
-                            Type value;
-                            ssData >> value;
-
-                            /* Push next value. */
-                            vValues.push_back(value);
-
-                            /* Check limits. */
-                            if(nLimit != -1 && --nLimit == 0)
-                                return (vValues.size() > 0);
-                        }
-
-                        /* Iterate to next position. */
-                        nPos += nSize + GetSizeOfCompactSize(nSize);
-                        ssData.SetPos(nPos);
-
-                    }
-                    catch(const std::exception& e)
-                    {
-                        /* Read file data. */
-                        {
-                            LOCK(SECTOR_MUTEX);
-
-                            /* Get the Binary Size. */
-                            uint64_t nBufferSize = (1024 * nLimit);
-
-                            /* Check for exceeding of buffer size. */
-                            if(nStart + nBufferSize > nFileSize)
-                                nBufferSize = (nFileSize - nStart);
-
-                            /* Check for end. */
-                            if(nBufferSize == 0)
-                                break;
-
-                            /* Seek stream to beginning. */
-                            stream.seekg(nStart, std::ios::beg);
-                            ssData.resize(ssData.size() + nBufferSize);
-
-                            /* Read the data into the buffer. */
-                            stream.read((char*)ssData.data(ssData.size() - nBufferSize), nBufferSize);
-
-                            /* Set the start to read size. */
-                            nStart += nBufferSize;
-
-                            /* Reset the position. */
-                            ssData.SetPos(nPos);
                         }
                     }
                 }
-
-
-                /* Close the stream. */
-                if(stream.is_open())
-                    stream.close();
 
                 /* Iterate to the next file. */
                 ++nFile;
+
+                /* Reset the start position. */
+                nStart = 0;
             }
 
             return (vValues.size() > 0);

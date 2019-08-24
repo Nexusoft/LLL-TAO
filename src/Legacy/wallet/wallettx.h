@@ -61,8 +61,10 @@ namespace Legacy
         /** Mutex for thread concurrency across transaction operations. **/
         static std::mutex cs_wallettx;
 
+
         /** Pointer to the wallet to which this transaction is bound **/
-        Wallet* ptransactionWallet;
+        Wallet* pWallet;
+
 
         /** Flag indicating whether or not transaction bound to wallet **/
         bool fHaveWallet;
@@ -232,7 +234,7 @@ namespace Legacy
             if(fRead)
             {
                 pthis->fHaveWallet = false;
-                pthis->ptransactionWallet = nullptr;
+                pthis->pWallet = nullptr;
                 pthis->InitWalletTx();
             }
             bool fSpent = false;
@@ -373,20 +375,6 @@ namespace Legacy
         uint64_t GetTxTime() const;
 
 
-
-        /** GetRequestCount
-         *
-         *  Get the number of remote requests recorded for this transaction.
-         *
-         *  Coinbase and Coinstake transactions are tracked at the block level,
-         *  so count records requests for the block containing them.
-         *
-         *  @return The request count as recorded by request tracking, -1 if not tracked, 0 if no wallet bound
-         *
-         **/
-        int32_t GetRequestCount() const;
-
-
         /** IsFromMe
          *
          *  Checks whether this transaction contains any inputs belonging to the bound wallet.
@@ -495,8 +483,9 @@ namespace Legacy
          *  @param[out] strSentAccount The sent from account assigned to this transaction, if any
          *
          **/
-        void GetAmounts(int64_t& nGeneratedImmature, int64_t& nGeneratedMature, std::list<std::pair<Legacy::Script, int64_t> >& listReceived,
-                        std::list<std::pair<Legacy::Script, int64_t> >& listSent, int64_t& nFee, std::string& strSentAccount) const;
+        void GetAmounts(int64_t& nGeneratedImmature, int64_t& nGeneratedMature,
+            std::list<std::pair<Legacy::Script, int64_t> >& listReceived,
+            std::list<std::pair<Legacy::Script, int64_t> >& listSent, int64_t& nFee, std::string& strSentAccount) const;
 
 
         /** GetAmounts
@@ -533,7 +522,7 @@ namespace Legacy
          *  Send this transaction to the network if not in our database, yet.
          *
          **/
-        void RelayWalletTransaction() const;
+        bool RelayWalletTransaction() const;
 
     };
 
