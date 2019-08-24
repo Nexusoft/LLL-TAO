@@ -41,20 +41,6 @@ namespace Legacy
      **/
 	class MerkleTx : public Transaction
 	{
-	private:
-
-        /** Init
-         *
-         *  Initializes an empty merkle transaction
-         *
-         **/
-		void Init()
-		{
-			hashBlock = 0;
-			nIndex = -1;
-		}
-
-
 	public:
 
 		/** The block hash of the block containing this transaction **/
@@ -83,8 +69,11 @@ namespace Legacy
          *
          **/
 		MerkleTx()
+		: Transaction()
+		, hashBlock(0)
+		, vMerkleBranch()
+		, nIndex(-1)
 		{
-			Init();
 		}
 
 
@@ -99,8 +88,10 @@ namespace Legacy
          **/
 		MerkleTx(const Transaction& txIn)
 		: Transaction(txIn)
+		, hashBlock(0)
+		, vMerkleBranch()
+		, nIndex(-1)
 		{
-			Init();
 		}
 
 

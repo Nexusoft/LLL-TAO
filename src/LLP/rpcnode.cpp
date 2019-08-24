@@ -130,6 +130,7 @@ namespace LLP
     /** Main message handler once a packet is received. **/
     bool RPCNode::ProcessPacket()
     {
+
         /* Check HTTP authorization */
         if(!Authorized(INCOMING.mapHeaders))
         {
@@ -173,6 +174,10 @@ namespace LLP
             /* Check the parameters type for array. */
             if(!jsonParams.is_array())
                 throw APIException(-32600, "Params must be an array");
+
+            /* Check that the node is initialized. */
+            if(!config::fInitialized)
+                throw APIException(-1, "Daemon is still initializing");
 
             /* Execute the RPC method. */
             json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);

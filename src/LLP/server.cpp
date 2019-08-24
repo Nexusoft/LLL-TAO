@@ -366,7 +366,7 @@ namespace LLP
             return;
 
         /* Address to select. */
-        BaseAddress addr;
+        BaseAddress addr = BaseAddress();
 
         /* Read the address database. */
         pAddressManager->ReadDatabase();

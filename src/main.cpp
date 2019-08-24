@@ -167,6 +167,14 @@ int main(int argc, char** argv)
         LLD::Initialize();
 
 
+        /* Initialize ChainState. */
+        TAO::Ledger::ChainState::Initialize();
+
+
+        /* Initialize the scripts for legacy mode. */
+        Legacy::InitializeScripts();
+
+
         /* Load the Wallet Database. */
         bool fFirstRun;
         if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
@@ -183,26 +191,23 @@ int main(int argc, char** argv)
                 return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
             else if (nLoadWalletRet == Legacy::DB_NEEDS_RESCAN)
             {
-                debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning...");
+                debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning now");
 
-                Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+                Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
             }
             else
                 return debug::error("Failed loading wallet.dat");
         }
 
 
-        /* Initialize ChainState. */
-        TAO::Ledger::ChainState::Initialize();
-
-
-        /* Initialize the scripts for legacy mode. */
-        Legacy::InitializeScripts();
-
-
         /* Handle Rescanning. */
         if(config::GetBoolArg(std::string("-rescan")))
-            Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+            Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+
+
+        /* Relay transactions. */
+        Legacy::Wallet::GetInstance().ResendWalletTransactions();
+
 
         /* Initialize the Main Net LLP's. */
         if(!config::GetBoolArg(std::string("-beta")))
@@ -267,6 +272,10 @@ int main(int argc, char** argv)
 
         /* Startup performance metric. */
         debug::log(0, FUNCTION, "Started up in ", nElapsed, "ms");
+
+
+        /* Set the initialized flags. */
+        config::fInitialized.store(true);
 
 
         /* Initialize generator thread. */

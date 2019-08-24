@@ -467,6 +467,19 @@ namespace TAO
             json::json GetTransaction(const json::json& params, bool fHelp);
 
 
+            /** GetGlobalTransaction
+             *
+             *  getglobaltransaction <txid>
+             *  Get detailed information about <txid>
+             *
+             *  @param[in] params Parameters array passed by the caller.
+             *
+             *  @return JSON containing the information.
+             *
+             **/
+            json::json GetGlobalTransaction(const json::json& params, bool fHelp);
+
+
             /** GetRawTransaction
              *
              *  getrawtransaction <txid>

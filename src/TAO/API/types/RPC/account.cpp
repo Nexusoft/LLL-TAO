@@ -1267,17 +1267,31 @@ namespace TAO
             return ListReceived(params, true);
         }
 
-        void WalletTxToJSON(const Legacy::WalletTx& wtx, json::json& entry)
+        /* Added ftxValid because wallet data can potentially include invalid transactions that are not on chain.
+         * If one is recognized, this flag allows us to still generate output for it. Set the value false and function
+         * will generate output as a tx with zero confirms rather than potentially incorrect data.
+         */
+        void WalletTxToJSON(const Legacy::WalletTx& wtx, json::json& entry, bool ftxValid = true)
         {
-            int confirms = wtx.GetDepthInMainChain();
-            entry["confirmations"] = confirms;
-            if(confirms)
+            if(!ftxValid)
             {
-                entry["blockhash"] = wtx.hashBlock.GetHex();
-                entry["blockindex"] = wtx.nIndex;
+                entry["confirmations"] = 0;
             }
+            else
+            {
+                int confirms = wtx.GetDepthInMainChain();
+                entry["confirmations"] = confirms;
+
+                if(confirms > 0)
+                {
+                    entry["blockhash"] = wtx.hashBlock.GetHex();
+                    entry["blockindex"] = wtx.nIndex;
+                }
+            }
+
             entry["txid"] = wtx.GetHash().GetHex();
             entry["time"] = (int64_t)wtx.GetTxTime();
+
             for(const auto& item : wtx.mapValue)
                 entry[item.first] = item.second;
         }
@@ -1298,7 +1312,7 @@ namespace TAO
             if((nGeneratedMature + nGeneratedImmature) != 0 && (fAllAccounts || strAccount == ""))
             {
                 json::json entry;
-                entry["account"] = std::string("");
+                entry["account"] = std::string("default");
 
                 /* For coinbase / coinstake transactions we need to extract the address from the first TxOut in vout */
                 if(wtx.vout.size() == 0)
@@ -1329,7 +1343,17 @@ namespace TAO
                     std::map<uint512_t, std::pair<uint8_t, DataStream>> mapInputs;
                     wtx.FetchInputs(mapInputs);
 
-                    nAmount -= wtx.GetValueIn(mapInputs);
+                    /* If there is are invalid stake transactions saved in wallet file, FetchInputs can fail with logged error.
+                     * Thus inputs are unavailable. If we allow it to proceed with GetValueIn, it will throw an exception
+                     * and this method will not return anything besides the exception. To handle things more gracefully,
+                     * set amount for current tx to zero and set txValid flag to false. This will allow us to still produce
+                     * a transaction list that will show the invalid one as "pending" confirms where it can be seen and
+                     * dealt with.
+                     */
+                    if(wtx.FetchInputs(mapInputs))
+                        nAmount -= wtx.GetValueIn(mapInputs);
+                    else
+                        nAmount = 0;
                 }
 
                 if (nGeneratedImmature)
@@ -1350,6 +1374,7 @@ namespace TAO
 
                 if(fLong)
                     WalletTxToJSON(wtx, entry);
+
                 ret.push_back(entry);
             }
 
@@ -1644,6 +1669,98 @@ namespace TAO
 
             json::json ret;
             ret["transactions"] = transactions;
+
+            return ret;
+        }
+
+        /* RPC Method to bridge limitation of Transaction Lookup from Wallet. Allows lookup from any wallet. */
+        json::json RPC::GetGlobalTransaction(const json::json& params, bool fHelp)
+        {
+            if (fHelp || params.size() != 1)
+                return std::string(
+                    "getglobaltransaction [txid]\n"
+                    "Get detailed information about [txid]");
+
+            /* Get hash Index. */
+            uint512_t hash;
+            hash.SetHex(params[0].get<std::string>());
+
+            /* Get the transaction object. */
+            Legacy::Transaction tx;
+            if(!TAO::Ledger::mempool.Get(hash, tx))
+            {
+                if(!LLD::Legacy->ReadTx(hash, tx))
+                    throw APIException(-5, "No information available about transaction");
+            }
+
+            /* Build return json object. */
+            json::json ret;
+
+            /* Get confirmations. */
+            uint32_t nConfirmations = 0;
+            TAO::Ledger::BlockState state;
+            if(LLD::Ledger->ReadBlock(hash, state))
+            {
+                /* Set block hash. */
+                ret["blockhash"] = state.GetHash().GetHex();
+
+                /* Calculate confirmations. */
+                nConfirmations = (TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight) + 1;
+            }
+
+            /* Set confirmations. */
+            ret["confirmations"] = nConfirmations;
+
+            /* Fill other relevant data. */
+            ret["txid"]   = hash.GetHex();
+            ret["time"]   = tx.nTime;
+            ret["amount"] = Legacy::SatoshisToAmount(tx.GetValueOut());
+
+            /* Get the outputs. */
+            json::json outputs;
+            for(const auto& out : tx.vout)
+            {
+                Legacy::NexusAddress address;
+                if(!Legacy::ExtractAddress(out.scriptPubKey, address))
+                    throw APIException(-5, "failed to extract output address");
+
+                outputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(out.nValue)));
+            }
+
+            /* Get the inputs. */
+            if(!tx.IsCoinBase())
+            {
+                /* Get the number of inputs to the transaction. */
+                uint32_t nSize = static_cast<uint32_t>(tx.vin.size());
+
+                /* Read all of the inputs. */
+                json::json inputs;
+                for (uint32_t i = (uint32_t)tx.IsCoinStake(); i < nSize; ++i)
+                {
+                    /* Skip inputs that are already found. */
+                    Legacy::OutPoint prevout = tx.vin[i].prevout;
+
+                    /* Read the previous transaction. */
+                    Legacy::Transaction txPrev;
+                    if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
+                        throw APIException(-5, debug::safe_printstr("tx ", prevout.hash.ToString().substr(0, 20), " not found"));
+
+                    /* Extract the address. */
+                    Legacy::NexusAddress address;
+                    if(!Legacy::ExtractAddress(txPrev.vout[prevout.n].scriptPubKey, address))
+                        throw APIException(-5, "failed to extract input address");
+
+                    /* Add inputs to json. */
+                    inputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed,
+                     Legacy::SatoshisToAmount(txPrev.vout[prevout.n].nValue)));
+                }
+
+                /* Add to return value. */
+                ret["inputs"] = inputs;
+            }
+
+            /* Add to return value. */
+            ret["outputs"] = outputs;
 
             return ret;
         }

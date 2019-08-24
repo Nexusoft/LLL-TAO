@@ -218,7 +218,7 @@ namespace TAO
 
 
         /** Not operator overloading. **/
-        bool BlockState::operator!(void)
+        bool BlockState::operator!(void) const
         {
             return IsNull();
         }
@@ -553,17 +553,17 @@ namespace TAO
             timer.Start();
 
             /* Get the hash. */
-            uint1024_t nHash = GetHash();
+            uint1024_t hash = GetHash();
 
             /* Watch for genesis. */
             if(!ChainState::stateGenesis)
             {
                 /* Write the best chain pointer. */
-                if(!LLD::Ledger->WriteBestChain(nHash))
+                if(!LLD::Ledger->WriteBestChain(hash))
                     return debug::error(FUNCTION, "failed to write best chain");
 
                 /* Write the block to disk. */
-                if(!LLD::Ledger->WriteBlock(nHash, *this))
+                if(!LLD::Ledger->WriteBlock(hash, *this))
                     return debug::error(FUNCTION, "block state already exists");
 
                 /* Set the genesis block. */
@@ -624,7 +624,7 @@ namespace TAO
                         "..",  ChainState::stateBest.load().GetHash().SubString());
 
                     debug::log(0, FUNCTION, "REORGANIZE: Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
-                        "..", nHash.SubString());
+                        "..", hash.SubString());
                 }
 
                 /* Disconnect given blocks. */
@@ -676,7 +676,8 @@ namespace TAO
                 }
 
                 /* Set the best chain variables. */
-                ChainState::hashBestChain      = nHash;
+                ChainState::stateBest          = *this;
+                ChainState::hashBestChain      = hash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
 
@@ -686,7 +687,7 @@ namespace TAO
 
                 /* Debug output about the best chain. */
                 debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
-                    "New Best Block hash=", nHash.SubString(),
+                    "New Best Block hash=", hash.SubString(),
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
                     " tx=", vtx.size(),
