@@ -383,11 +383,11 @@ namespace TAO
             /* Declare token name to return  */
             std::string strTokenName;
 
-            /* Get the object standard. */
-            uint8_t nStandard = account.Standard();
+            /* Get the object base type. */
+            uint8_t nBase = account.Base();
 
             /* Check the object register standard. */
-            if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
+            if(nBase == TAO::Register::OBJECTS::ACCOUNT)
             {
                 /* The token name is obtained by first looking at the token field int the account,
                    which contains the register address of the issuing token */

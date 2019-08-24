@@ -882,6 +882,7 @@ namespace TAO
 
                     /* Handle for a regular account. */
                     case TAO::Register::OBJECTS::ACCOUNT:
+                    case TAO::Register::OBJECTS::TRUST:
                     {
                         ret["address"]    = hashRegister.ToString();
 
@@ -891,32 +892,55 @@ namespace TAO
                             ret["token_name"] = strTokenName;
 
                         /* Set the value to the token contract address. */
-                        ret["token"] = object.get<uint256_t>("token").GetHex();
+                        uint256_t hashToken = object.get<uint256_t>("token");
+                        ret["token"] = hashToken.GetHex();
 
                         /* Handle digit conversion. */
                         uint64_t nDigits = GetDigits(object);
 
-                        ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
+                        /* In order to get the balance for this account we need to ensure that we use the state from disk, which 
+                           will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the 
+                           confirmed balance is 0 */
+                        uint64_t nConfirmedBalance = 0;
+                        TAO::Register::Object account;
+                        if(LLD::Register->ReadState(hashRegister, account))
+                        {
+                            /* Parse the object register. */
+                            if(!account.Parse())
+                                throw APIException(-14, "Object failed to parse");
+                            
+                            nConfirmedBalance = account.get<uint64_t>("balance");
+                        }
 
-                        break;
-                    }
+                        /* Find all pending debits to NXS accounts */
+                        uint64_t nPending = GetPending(object.hashOwner, hashToken, hashRegister);
 
+                        /* Get unconfirmed debits coming in and credits we have made */
+                        uint64_t nUnconfirmed = GetUnconfirmed(object.hashOwner, hashToken, false, hashRegister);
 
-                    /* Handle for a trust account. */
-                    case TAO::Register::OBJECTS::TRUST:
-                    {
-                        ret["address"]    = hashRegister.ToString();
-                        ret["token_name"] = "NXS";
-                        ret["token"] = object.get<uint256_t>("token").GetHex();
+                        /* Get all new debits that we have made */
+                        uint64_t nUnconfirmedOutgoing = GetUnconfirmed(object.hashOwner, hashToken, true, hashRegister);
 
-                        /* Handle digit conversion. */
-                        uint64_t nDigits = GetDigits(object);
+                        /* Calculate the available balance which is the last confirmed balance minus and mempool debits */
+                        uint64_t nAvailable = nConfirmedBalance - nUnconfirmedOutgoing;
 
-                        ret["balance"]    = (double)object.get<uint64_t>("balance") / pow(10, nDigits);
+                        ret["balance"]      = (double)nAvailable / pow(10, nDigits);
+                        ret["pending"]      = (double)nPending / pow(10, nDigits);
+                        ret["unconfirmed"]  = (double)nUnconfirmed / pow(10, nDigits);
 
-                        /* General trust account output same as ACCOUNT. Leave off stake-related values */
-                        //ret["trust"]    = (double)object.get<uint64_t>("trust") / pow(10, nDigits);
-                        //ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDigits);
+                        /* Add Trust specific fields */
+                        if(nStandard == TAO::Register::OBJECTS::TRUST)
+                        {
+                            /* The amount being staked */
+                            ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDigits);
+
+                            /* Get immature mined / staked */
+                            uint64_t nImmatureMined, nImmatureStake;
+                            GetImmature(object.hashOwner, nImmatureMined, nImmatureStake);
+
+                            ret["immature"]  = (double)nImmatureStake / pow(10, nDigits);
+                        }
+
 
                         break;
                     }
@@ -925,16 +949,43 @@ namespace TAO
                     /* Handle for a token contract. */
                     case TAO::Register::OBJECTS::TOKEN:
                     {
-                        /* Handle the digits.  The digits represent the maximum number of decimal places supported by the token
-                        Therefore, to convert the internal value to a floating point value we need to reduce the internal value
-                        by 10^digits  */
+                        /* Handle digit conversion. */
                         uint64_t nDigits = GetDigits(object);
 
+                        /* In order to get the balance for this account we need to ensure that we use the state from disk, which 
+                           will contain the confirmed balance.  If this is a new account then it won't be on disk yet so the 
+                           confirmed balance is 0 */
+                        uint64_t nConfirmedBalance = 0;
+                        TAO::Register::Object account;
+                        if(LLD::Register->ReadState(hashRegister, account))
+                        {
+                            /* Parse the object register. */
+                            if(!account.Parse())
+                                throw APIException(-14, "Object failed to parse");
+                            
+                            nConfirmedBalance = account.get<uint64_t>("balance");
+                        }
+
+                        /* Find all pending debits to NXS accounts */
+                        uint64_t nPending = GetPending(object.hashOwner, hashRegister, hashRegister);
+
+                        /* Get unconfirmed debits coming in and credits we have made */
+                        uint64_t nUnconfirmed = GetUnconfirmed(object.hashOwner, hashRegister, false, hashRegister);
+
+                        /* Get all new debits that we have made */
+                        uint64_t nUnconfirmedOutgoing = GetUnconfirmed(object.hashOwner, hashRegister, true, hashRegister);
+
+                        /* Calculate the available balance which is the last confirmed balance minus and mempool debits */
+                        uint64_t nAvailable = nConfirmedBalance - nUnconfirmedOutgoing;
+
                         ret["address"]          = hashRegister.ToString();
-                        ret["balance"]          = (double) object.get<uint64_t>("balance") / pow(10, nDigits);
+                        ret["balance"]          = (double)nAvailable / pow(10, nDigits);
+                        ret["pending"]          = (double)nPending / pow(10, nDigits);
+                        ret["unconfirmed"]      = (double)nUnconfirmed / pow(10, nDigits);
+                        
                         ret["maxsupply"]        = (double) object.get<uint64_t>("supply") / pow(10, nDigits);
                         ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
-                                                - object.get<uint64_t>("balance")) / pow(10, nDigits);
+                                                - object.get<uint64_t>("balance")) / pow(10, nDigits); // current supply is based on unconfirmed balance
                         ret["digits"]           = nDigits;
 
                         break;

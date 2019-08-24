@@ -224,11 +224,18 @@ Additionally the API supports passing a field name in the URL after the account 
 ### Return value JSON object:
 ```
 {
-    "name": "main",
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "owner": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+    "created": 1566534164,
+    "modified": 1566616211,
+    "name": "default",
+    "address": "d449ceeb23b7ef11004d29494891e01de393ad50d7cc225c179303e8c89a42d4",
+    "token_name": "NXS",
     "token": "0000000000000000000000000000000000000000000000000000000000000000",
-    "balance": 990
+    "balance": 2903.239792,
+    "pending": 0.0,
+    "unconfirmed": 76.492244
 }
+
 ```
 
 
@@ -246,7 +253,16 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `token` : This will always be set to 0 for NXS accounts.
 
-`balance` : The current balance of this account.
+`balance` : The available balance of this account.  This is the last confirmed balance less any new debits that you have made since the last block
+
+`pending` : This is the sum of all confirmed debit transactions that have been made to this account, that have not yet been credited.  To move coins from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
+
+`unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this account PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to your account it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
+
+`immature` : Only returned for the trust account, this is the sum of trust transactions that have not yet matured.  Once they reach maturity, the value of the trust transaction will move into `balance`
+
+`stake` : Only returned for the trust account, this is the amount of NXS currently staked in the trust account.
+
 
 ***
 
