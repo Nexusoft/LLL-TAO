@@ -18,6 +18,7 @@ ________________________________________________________________________________
 
 #include <LLD/keychain/filemap.h>
 #include <LLD/keychain/hashmap.h>
+#include <LLD/keychain/shard_hashmap.h>
 #include <LLD/keychain/hashtree.h>
 
 #include <Util/include/filesystem.h>
@@ -811,6 +812,7 @@ namespace LLD
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class SectorDatabase<BinaryHashMap,  BinaryLRU>;
+    template class SectorDatabase<ShardHashMap,   BinaryLRU>;
     template class SectorDatabase<BinaryHashMap,  BinaryLFU>;
     template class SectorDatabase<BinaryHashTree, BinaryLRU>;
 

@@ -64,20 +64,18 @@ namespace LLD
         , Key(KeyIn)
         , Data(DataIn)
         {
-
         }
 
         /** Destructor. **/
         ~TemplateNode()
         {
-            Delete(Key);
             Delete(Data);
         }
 
         TemplateNode<KeyType, DataType> *pprev;
         TemplateNode<KeyType, DataType> *pnext;
 
-        KeyType Key;
+        KeyType  Key;
         DataType Data;
     };
 
@@ -99,28 +97,20 @@ namespace LLD
         uint32_t MAX_CACHE_ELEMENTS;
 
 
-        /* The total buckets available. */
-        uint32_t MAX_CACHE_BUCKETS;
-
-
-        /* The current size of the pool. */
-        uint32_t nTotalElements;
-
-
         /* Mutex for thread concurrency. */
         mutable std::mutex MUTEX;
 
 
         /* Map of the current holding data. */
-        std::vector<TemplateNode<KeyType, DataType> *> hashmap;
+        std::map<KeyType, TemplateNode<KeyType, DataType>* > cache;
 
 
         /* Keep track of the first object in linked list. */
-        TemplateNode<KeyType, DataType> *pfirst;
+        TemplateNode<KeyType, DataType>* pfirst;
 
 
         /* Keep track of the last object in linked list. */
-        TemplateNode<KeyType, DataType> *plast;
+        TemplateNode<KeyType, DataType>* plast;
 
 
     public:
@@ -133,10 +123,8 @@ namespace LLD
          **/
         TemplateLRU()
         : MAX_CACHE_ELEMENTS(256)
-        , MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS * 2)
-        , nTotalElements(0)
         , MUTEX()
-        , hashmap(MAX_CACHE_BUCKETS)
+        , cache()
         , pfirst(0)
         , plast(0)
         {
@@ -153,16 +141,11 @@ namespace LLD
          **/
         TemplateLRU(uint32_t nTotalElementsIn)
         : MAX_CACHE_ELEMENTS(nTotalElementsIn)
-        , MAX_CACHE_BUCKETS(MAX_CACHE_ELEMENTS * 2)
-        , nTotalElements(0)
         , MUTEX()
-        , hashmap(MAX_CACHE_BUCKETS)
+        , cache()
         , pfirst(0)
         , plast(0)
         {
-            /* Resize the hashmap vector. */
-            hashmap.resize(MAX_CACHE_BUCKETS);
-
             /* Set the start and end pointers. */
             pfirst = nullptr;
             plast  = nullptr;
@@ -173,10 +156,10 @@ namespace LLD
         ~TemplateLRU()
         {
             /* Loop through the linked list. */
-            for(auto & item : hashmap)
+            for(auto & item : cache)
             {
-                if(item)
-                    delete item;
+                if(item.second)
+                    delete item.second;
             }
         }
 
@@ -184,10 +167,8 @@ namespace LLD
         TemplateLRU& operator=(TemplateLRU map)
         {
             MAX_CACHE_ELEMENTS = map.MAX_CACHE_ELEMENTS;
-            MAX_CACHE_BUCKETS  = map.MAX_CACHE_BUCKETS;
-            nTotalElements     = map.nTotalElements;
 
-            hashmap            = map.hashmap;
+            cache              = map.cache;
             pfirst             = map.pfirst;
             plast              = map.plast;
 
@@ -199,62 +180,10 @@ namespace LLD
         TemplateLRU(const TemplateLRU& map)
         {
             MAX_CACHE_ELEMENTS = map.MAX_CACHE_ELEMENTS;
-            MAX_CACHE_BUCKETS  = map.MAX_CACHE_BUCKETS;
-            nTotalElements     = map.nTotalElements;
 
-            hashmap            = map.hashmap;
+            cache              = map.cache;
             pfirst             = map.pfirst;
             plast              = map.plast;
-        }
-
-
-        /** Bucket
-         *
-         *  Find a bucket for cache key management.
-         *  This is an overload for vector specific rules.
-         *
-         *  @param[in] Key The key to get bucket for.
-         *
-         **/
-        uint32_t Bucket(const std::vector<uint8_t>& Key) const
-        {
-            /* Get an xxHash. */
-            uint64_t nBucket = XXH64((uint8_t*)&Key[0], Key.size(), 0);
-
-            return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
-        }
-
-
-        /** Bucket
-         *
-         *  Find a bucket for cache key management.
-         *  This is an overload for string specific rules.
-         *
-         *  @param[in] Key The key to get bucket for.
-         *
-         **/
-        uint32_t Bucket(const std::string& Key) const
-        {
-            /* Get an xxHash. */
-            uint64_t nBucket = XXH64((uint8_t*)&Key[0], Key.size(), 0);
-
-            return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
-        }
-
-
-        /** Bucket
-         *
-         *  Find a bucket for cache key management.
-         *
-         *  @param[in] Key The key to get bucket for.
-         *
-         **/
-        uint32_t Bucket(const KeyType& Key) const
-        {
-            /* Get an xxHash. */
-            uint64_t nBucket = XXH64((uint8_t*)&Key, sizeof(Key), 0);
-
-            return static_cast<uint32_t>(nBucket % static_cast<uint64_t>(MAX_CACHE_BUCKETS));
         }
 
 
@@ -271,8 +200,7 @@ namespace LLD
         {
             LOCK(MUTEX);
 
-            uint32_t nBucket = Bucket(Key);
-            return (hashmap[nBucket] != nullptr && hashmap[nBucket]->Key == Key);
+            return cache.count(Key);
         }
 
 
@@ -283,7 +211,7 @@ namespace LLD
          *  @param[in] pthis The node to remove from list.
          *
          **/
-        void RemoveNode(TemplateNode<KeyType, DataType> *pthis)
+        void RemoveNode(TemplateNode<KeyType, DataType>* pthis)
         {
             /* Relink last pointer. */
             if(plast && pthis == plast)
@@ -320,7 +248,7 @@ namespace LLD
          *  @param[in] pthis The node to move to front.
          *
          **/
-        void MoveToFront(TemplateNode<KeyType, DataType> *pthis)
+        void MoveToFront(TemplateNode<KeyType, DataType>* pthis)
         {
             /* Don't move to front if already in the front. */
             if(pthis == pfirst)
@@ -373,12 +301,12 @@ namespace LLD
         {
             LOCK(MUTEX);
 
-            /* Get the data. */
-            TemplateNode<KeyType, DataType> *pthis = hashmap[Bucket(Key)];
-
             /* Check if the Record Exists. */
-            if(pthis == nullptr || pthis->Key != Key)
+            if(!cache.count(Key))
                 return false;
+
+            /* Get the data. */
+            TemplateNode<KeyType, DataType> *pthis = cache[Key];
 
             /* Get the data. */
             Data = pthis->Data;
@@ -402,44 +330,31 @@ namespace LLD
         {
             LOCK(MUTEX);
 
-            /* If has a key, check for bucket collisions. */
-            uint32_t nBucket = Bucket(Key);
-
             /* Check for bucket collisions. */
-            if(hashmap[nBucket] != nullptr)
+            if(cache.count(Key))
             {
                 /* Get the node we are working on. */
-                TemplateNode<KeyType, DataType>* pthis = hashmap[nBucket];
+                TemplateNode<KeyType, DataType>* pthis = cache[Key];
 
                 /* Remove the node from the linked list. */
                 RemoveNode(pthis);
 
                 /* Clear the pointer data. */
-                hashmap[nBucket] = nullptr;
-                pthis->pprev     = nullptr;
-                pthis->pnext     = nullptr;
+                cache.erase(Key);
 
                 /* Free the memory. */
                 delete pthis;
-
-                /* Reduce the total elements. */
-                --nTotalElements;
             }
 
             /* Create a new cache node. */
             TemplateNode<KeyType, DataType>* pthis = new TemplateNode<KeyType, DataType>(Key, Data);
-
-            /* Add cache node to objects map. */
-            hashmap[nBucket] = pthis;
-
-            /* Increase the total elements. */
-            ++nTotalElements;
+            cache[Key] = pthis;
 
             /* Set the new cache node to the front */
             MoveToFront(pthis);
 
             /* Remove the last node if cache too large. */
-            if(nTotalElements > MAX_CACHE_ELEMENTS)
+            if(cache.size() > MAX_CACHE_ELEMENTS)
             {
                 if(plast && plast->pprev)
                 {
@@ -451,7 +366,7 @@ namespace LLD
                     plast->pnext = nullptr;
 
                     /* Reset hashmap pointer */
-                    hashmap[Bucket(pnode->Key)] = nullptr; //TODO: hashmap linked list for collisions
+                    cache.erase(pnode->Key);
                     pnode->pprev = nullptr;
                     pnode->pnext = nullptr;
 
@@ -460,9 +375,6 @@ namespace LLD
 
                     /* Clear the pointers. */
                     pnode = nullptr;
-
-                    /* Change the total elements. */
-                    --nTotalElements;
                 }
             }
         }
@@ -481,29 +393,23 @@ namespace LLD
         {
             LOCK(MUTEX);
 
-            /* Get the key bucket. */
-            uint32_t nBucket = Bucket(Key);
+            /* Check for key. */
+            if(!cache.count(Key))
+                return false;
 
             /* Get the node we are working on. */
-            TemplateNode<KeyType, DataType>* pthis = hashmap[nBucket];
-
-            /* Check that key exists. */
-            if(pthis == nullptr || pthis->Key != Key)
-                return false;
+            TemplateNode<KeyType, DataType>* pthis = cache[Key];
 
             /* Remove the node from the linked list. */
             RemoveNode(pthis);
 
             /* Clear the pointer data. */
-            hashmap[nBucket] = nullptr;
+            cache.erase(Key);
             pthis->pprev     = nullptr;
             pthis->pnext     = nullptr;
 
             /* Free the memory. */
             delete pthis;
-
-            /* Reduce the total elements. */
-            --nTotalElements;
 
             return true;
         }

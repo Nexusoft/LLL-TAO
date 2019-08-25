@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/hashmap.h>
+#include <LLD/keychain/shard_hashmap.h>
 #include <LLD/templates/sector.h>
 
 #include <Util/include/debug.h>
@@ -48,13 +48,13 @@ ________________________________________________________________________________
 #include <variant>
 
 
-class TestDB : public LLD::SectorDatabase<LLD::BinaryHashMap, LLD::BinaryLRU>
+class TestDB : public LLD::SectorDatabase<LLD::ShardHashMap, LLD::BinaryLRU>
 {
 public:
     TestDB()
     : SectorDatabase("testdb"
-    , LLD::FLAGS::CREATE | LLD::FLAGS::FORCE | LLD::FLAGS::APPEND
-    , 1024
+    , LLD::FLAGS::CREATE | LLD::FLAGS::WRITE
+    , 1024 * 1024
     , 1024)
     {
     }
@@ -66,7 +66,7 @@ public:
 
     bool WriteHash(const uint1024_t& hash)
     {
-        return Write(hash, hash);
+        return Write(std::make_pair(std::string("hash"), hash), hash);
     }
 };
 
@@ -82,18 +82,35 @@ Keep caches of Disk Index files (LRU) for low memory footprint
 
 Check the timestamp range of bucket whether to iterate forwards or backwards
 
+
+_hashmap.000.0000
+_name.shard.file
+  t0 t1 t2
+  |  |  |
+
+  timestamp each hashmap file if specified
+  keep indexes in TemplateLRU
+
+  search from nTimestamp < timestamp[nShard][nHashmap]
+
+
+
 */
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-
     //uint1024_t hash = ;
 
     TestDB* testDB = new TestDB();
-    for(int i = 0; i < 10000000; ++i)
-        testDB->WriteHash(LLC::GetRand1024());
+    for(uint1024_t i = 0; i < 100000; ++i)
+    {
+        if(i.Get64() % 100000 == 0)
+            debug::log(0, "Written ", i.Get64(), " Total Records...");
+
+        testDB->WriteHash(i);
+    }
 
     delete testDB;
 
