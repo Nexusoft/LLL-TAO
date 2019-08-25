@@ -11,9 +11,11 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/version.h>
+#include <LLD/include/global.h>
 
 #include <Legacy/types/script.h>
+#include <Legacy/types/transaction.h>
+
 #include <Legacy/wallet/accountingentry.h>
 #include <Legacy/wallet/keypoolentry.h>
 #include <Legacy/wallet/wallet.h>
@@ -21,6 +23,8 @@ ________________________________________________________________________________
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/wallet/walletkey.h>
 #include <Legacy/wallet/wallettx.h>
+
+#include <TAO/Ledger/include/timelocks.h>
 
 #include <Util/include/args.h>
 #include <Util/include/config.h>
@@ -365,7 +369,7 @@ namespace Legacy
         bool fIsEncrypted = false;
         uint32_t nRet = 0;
 
-        std::vector<uint512_t> vWalletRemove;
+        std::vector<uint512_t> vRemove;
 
         /* Flush thread shouldn't be running while we load, but ensure it doesn't try to flush during load if it is.
          * This will atomically set flag to true if it is currently false as expected, otherwise it returns false and wait loop executes.
@@ -476,16 +480,40 @@ namespace Legacy
                 if(config::GetBoolArg("-walletclean", false))
                 {
                     /* Add all transactions to remove list if -walletclean argument is set */
-                    vWalletRemove.push_back(hash);
+                    vRemove.push_back(hash);
 
                 }
-                else if(config::GetBoolArg("-walletcheck", false) && wtx.GetHash() != hash)
+                else if(config::GetBoolArg("-walletcheck", true))
                 {
-                    debug::error(FUNCTION, "Error in ", strWalletFile,
-                                 ", hash mismatch, resolving");
+                    /* Skip check for tritium transactions. */
+                    if(TAO::Ledger::VersionActive(wtx.nTime, 7) && hash.GetType() == TAO::Ledger::TRITIUM)
+                    {
+                        /* Read the transaction from ledger database. */
+                        TAO::Ledger::Transaction tx;
+                        if(LLD::Ledger->ReadTx(hash, tx))
+                        {
+                            /* Convert the disk transaction into WalletTx. */
+                            Transaction ltx(tx);
+                            WalletTx wtx2(&wallet, ltx);
 
-                    /* Add mismatched transaction to list of transactions to remove from database */
-                    vWalletRemove.push_back(hash);
+                            /* Add mismatched transaction to list of transactions to remove from database */
+                            if(wtx.GetHash() != ltx.GetHash())
+                            {
+                                debug::error(FUNCTION, "Error in ", strWalletFile, ", hash mismatch, resolving");
+
+                                vRemove.push_back(hash);
+                            }
+                        }
+                        else
+                            vRemove.push_back(hash);
+                    }
+                    else if(wtx.GetHash() != hash)
+                    {
+                        debug::error(FUNCTION, "Error in ", strWalletFile, ", hash mismatch, resolving");
+
+                        /* Add mismatched transaction to list of transactions to remove from database */
+                        vRemove.push_back(hash);
+                    }
                 }
                 else
                     wtx.BindWallet(wallet);
@@ -674,13 +702,13 @@ namespace Legacy
         if(nRet == DB_NOTFOUND)
         {
             /* Remove transactions flagged for removal */
-            if(vWalletRemove.size() > 0)
+            if(vRemove.size() > 0)
             {
                 /* Debug output. */
-                debug::log(0, FUNCTION, "Erasing ", vWalletRemove.size(), " Transactions from WalletDB");
+                debug::log(0, FUNCTION, "Erasing ", vRemove.size(), " Transactions from WalletDB");
 
                 /* Erase the flagged transactions. */
-                for(const auto& hash : vWalletRemove)
+                for(const auto& hash : vRemove)
                 {
                     EraseTx(hash);
                     wallet.mapWallet.erase(hash);

@@ -123,15 +123,14 @@ namespace TAO
 
             /* Get the starting timelock for version. */
             uint64_t nStart = StartTimelock(nVersion);
+            if(nStart == 0)
+                return false;
 
             /* Get the ending timelock for version. */
             uint64_t nEnd = EndTimelock(nVersion);
 
-            /* Check that the requested version has valid timelocks */
-            if(nStart == 0)
-                return false;
-
-            if((nVersion < nCurrent) && nEnd == 0) //Current will not have an ending timelock, so that is valid
+            /* Current will not have an ending timelock, so that is valid */
+            if((nVersion < nCurrent) && nEnd == 0)
                 return false;
 
             /* Version is inactive if before starting timestamp */
