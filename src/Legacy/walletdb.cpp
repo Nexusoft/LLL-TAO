@@ -497,7 +497,7 @@ namespace Legacy
                             WalletTx wtx2(&wallet, ltx);
 
                             /* Add mismatched transaction to list of transactions to remove from database */
-                            if(wtx.GetHash() != ltx.GetHash())
+                            if(wtx.GetHash() != wtx2.GetHash())
                             {
                                 debug::error(FUNCTION, "Error in ", strWalletFile, ", hash mismatch, resolving");
 
