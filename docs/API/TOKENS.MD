@@ -51,7 +51,7 @@ Create a new token object register. The API supports an alternative endpoint tha
 
 `name` : An optional name to identify the token. If provided a Name object will also be created in the users local namespace, allowing the token to be accessed/retrieved by name. If no name is provided the token will need to be accessed/retrieved by its 256-bit register address.
 
-`supply` : The initial token supply amount.
+`supply` : The initial token supply amount.  Must be a whole number amount.
 
 `digits` : The maximum number of decimal places that can be applied to token amounts.  For example digits=2 will allow a token amount to be given to 2 decimal places.
 
@@ -215,9 +215,14 @@ Additionally the API supports passing a field name in the URL after the token na
 ### Return value JSON object:
 ```    
 {
+    "owner": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+    "created": 1566534164,
+    "modified": 1566616211,
     "name": "mytoken",
     "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
     "balance": 990,
+    "pending": 0,
+    "unconfirmed": 0,
     "maxsupply": 1000,
     "currentsupply": 10,
     "digits": 0
@@ -236,7 +241,11 @@ Additionally the API supports passing a field name in the URL after the token na
 
 `address` : The register address of the token.  If the token was created with a token name then the address is a hash based on the owners username and token name.   
 
-`balance` : The current balance of this token.  Initially the balance of the token is equal to the max supply, until the tokens have been distributed to accounts.
+`balance` : The available balance of this token.  Initially the balance of the token is equal to the max supply, until the tokens have been distributed to accounts. This is the last confirmed balance less any new debits that you have made since the last block.
+
+`pending` : This is the sum of all confirmed debit transactions that have been made to this token, that have not yet been credited.  To move tokens from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
+
+`unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this token PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to the token it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
 
 `maxsupply` : The maximum token supply amount.
 
@@ -574,11 +583,16 @@ Additionally the API supports passing a field name in the URL after the account 
 ### Return value JSON object:
 ```    
 {
+    "owner": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+    "created": 1566534164,
+    "modified": 1566616211,
     "name": "myaccount",
     "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
     "token_name": "mytoken"
     "token": "f9ee3e63c845794d577d54c5087f0ff2f2053195bf007907e8134977bb1f1e24",
-    "balance": 990
+    "balance": 990,
+    "pending": 0.0,
+    "unconfirmed": 10
 }
 ```   
 
@@ -596,9 +610,13 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `token_name` : The name of the token that this account can be used with.  
 
-`token_address` : This is register address of the token that this account can be used with.  
+`token` : This is register address of the token that this account can be used with.  
 
-`balance` : The current balance of this token account.  
+`balance` : The available balance of this account.  This is the last confirmed balance less any new debits that you have made since the last block
+
+`pending` : This is the sum of all confirmed debit transactions that have been made to this account, that have not yet been credited.  To move coins from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
+
+`unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this account PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to your account it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
 
 ****
 
