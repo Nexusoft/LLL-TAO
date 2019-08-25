@@ -126,6 +126,7 @@ namespace LLD
 
 
     /* Loads a disk index containing shard data into memory.*/
+    static uint64_t TOTAL_KEYS = 0;
     void ShardHashMap::LoadShardIndex(const uint32_t nShard)
     {
         /* Check that disk index isn't already loaded. */
@@ -187,6 +188,8 @@ namespace LLD
                 std::copy((uint8_t *)&vIndex[nBucket * 2], (uint8_t *)&vIndex[nBucket * 2] + 2, (uint8_t *)&hashmap->at(nBucket));
 
                 nTotalKeys += hashmap->at(nBucket);
+
+                TOTAL_KEYS += hashmap->at(nBucket);
             }
 
             /* Debug output showing loading of disk index. */
@@ -237,6 +240,8 @@ namespace LLD
 
             fileCache->Put(std::make_pair(nShard, 0), pstream);
         }
+
+        debug::log(0, FUNCTION, "Shard Hashmap Initialized with ", TOTAL_KEYS, " total keys");
     }
 
 

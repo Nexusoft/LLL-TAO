@@ -122,9 +122,8 @@ int main(int argc, char** argv)
     TestDB* testDB = new TestDB();
 
 
-    for(int t = 0; t < 10; ++t)
+    for(int t = 0; t < 1000; ++t)
     {
-
         uint1024_t last = 0;
         testDB->ReadLast(last);
 
