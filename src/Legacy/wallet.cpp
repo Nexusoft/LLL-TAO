@@ -1073,7 +1073,7 @@ namespace Legacy
             {
                 /* Read the block state. */
                 if(!LLD::Ledger->ReadBlock(hash, state))
-                    return debug::error(FUNCTION, "tx ", hash.ToString().substr(0, 20), " is an ORPHAN");
+                    return debug::error(FUNCTION, "tx ", hash.SubString(), " is an ORPHAN");
 
                 wtx.hashBlock = state.GetHash();
             }
@@ -1125,13 +1125,14 @@ namespace Legacy
                 wtx.nTimeReceived = tx.nTime;
             }
 
+            /* If find is enabled, read the block from LLD. */
             if(fFindBlock)
             {
-                /* If have transaction, but need its block, read it now */
-                state.SetNull();
+                /* Read the block state. */
+                if(!LLD::Ledger->ReadBlock(hash, state))
+                    return debug::error(FUNCTION, "tx ", hash.SubString(), " is an ORPHAN");
 
-                if (LLD::Ledger->ReadBlock(tx.GetHash(), state))
-                    wtx.hashBlock = state.GetHash();
+                wtx.hashBlock = state.GetHash();
             }
             else if(!state.IsNull())
             {
