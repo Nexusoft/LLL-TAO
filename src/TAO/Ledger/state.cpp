@@ -957,7 +957,7 @@ namespace TAO
                     /* Get the total weighting. */
                     uint64_t nWeight = ((~hashProof / (hashProof + 1)) + 1).Get64() / 10000;
 
-                    return nWeight;
+                    return nWeight + 1;
                 }
 
                 /* Proof of stake channel. */
@@ -982,7 +982,7 @@ namespace TAO
                         uint64_t nBalance;
                         if(!tx.GetTrustInfo(nBalance, nTrust, nStake))
                             throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get trust info"));
-                        
+
                         /* If this is a genesis then there will be nothing in stake at this point, as the balance is not moved
                            to the stake until the operations layer.  So for the purpose of the weight calculation here we will
                            use the balance from the trust account for the stake amount */
@@ -1027,7 +1027,6 @@ namespace TAO
                         /* Check for genesis. */
                         if(tx.IsTrust())
                         {
-
                             /* Extract the trust key from the coinstake. */
                             uint576_t cKey;
                             if(!tx.TrustKey(cKey))
@@ -1051,7 +1050,7 @@ namespace TAO
                     uint64_t nWeight = (((~hashProof / (hashProof + 1)) + 1).Get64() / 10000) * (nStake / NXS_COIN);
 
                     /* Include trust info in weighting. */
-                    return nWeight + nTrust;
+                    return nWeight + nTrust + 1;
                 }
 
                 /* Prime (for now) is the weight of the prime difficulty. */
@@ -1064,7 +1063,7 @@ namespace TAO
                     /* Get the prime difficulty. */
                     uint64_t nWeight = SetBits(GetPrimeDifficulty(GetPrime(), vOffsets)) * 25;
 
-                    return nWeight;
+                    return nWeight + 1;
                 }
             }
 
