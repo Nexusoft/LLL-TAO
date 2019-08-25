@@ -1013,7 +1013,7 @@ namespace Legacy
 
         /* Write to disk */
         if(fInsertedNew || fUpdated)
-            if(!wtx.WriteToDisk())
+            if(!wtx.WriteToDisk(hash))
                 return false;
 
         /* If default receiving address gets used, replace it with a new one */
@@ -1191,7 +1191,7 @@ namespace Legacy
                     if (txin.prevout.n < txPrev.vout.size() && IsMine(txPrev.vout[txin.prevout.n]))
                     {
                         txPrev.MarkUnspent(txin.prevout.n);
-                        txPrev.WriteToDisk();
+                        txPrev.WriteToDisk(tx.GetHash());
                     }
                 }
             }
@@ -1377,7 +1377,7 @@ namespace Legacy
                         debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(wtx.GetCredit()), " NXS ", wtx.GetHash().SubString());
 
                         wtx.MarkSpent(txin.prevout.n);
-                        wtx.WriteToDisk();
+                        wtx.WriteToDisk(txin.prevout.hash);
                     }
                 }
             }
@@ -1426,7 +1426,7 @@ namespace Legacy
                         if (!fCheckOnly)
                         {
                             wtx.MarkUnspent(n);
-                            wtx.WriteToDisk();
+                            wtx.WriteToDisk(map.first);
 
                             mapRepaired[map.first] = map.second;
                         }
@@ -1444,7 +1444,7 @@ namespace Legacy
                         if (!fCheckOnly)
                         {
                             wtx.MarkSpent(n);
-                            wtx.WriteToDisk();
+                            wtx.WriteToDisk(map.first);
 
                             mapRepaired[map.first] = map.second;
                         }
@@ -1930,7 +1930,7 @@ namespace Legacy
 
                 txPrev.BindWallet(this);
                 txPrev.MarkSpent(txin.prevout.n);
-                txPrev.WriteToDisk(); //Stores to wallet database
+                txPrev.WriteToDisk(wtxNew.GetHash()); //Stores to wallet database
             }
         }
 

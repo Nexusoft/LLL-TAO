@@ -456,10 +456,10 @@ namespace Legacy
          *  Store this transaction in the database for the bound wallet
          *  when wallet is file backed.
          *
-         *  @param[in] nOut The index value of the output to mark
+         *  @param[in] hash The hash of the transaction
          *
          **/
-        bool WriteToDisk();
+        bool WriteToDisk(const uint512_t& hash);
 
 
         /** GetAmounts

@@ -485,14 +485,12 @@ namespace Legacy
 
 
     /* Store this transaction in the database for the bound wallet */
-    bool WalletTx::WriteToDisk()
+    bool WalletTx::WriteToDisk(const uint512_t& hash)
     {
-        LOCK(WalletTx::cs_wallettx);
-
         if (IsBound() && pWallet->IsFileBacked())
         {
             WalletDB walletDB(pWallet->GetWalletFile());
-            bool ret = walletDB.WriteTx(GetHash(), *this);
+            bool ret = walletDB.WriteTx(hash, *this);
 
             return ret;
         }
