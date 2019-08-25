@@ -119,6 +119,16 @@ public:
     void SetPos(uint64_t nNewPos) const;
 
 
+    /** GetPos
+     *
+     *  Gets the position in the stream.
+     *
+     *  @return the current read position in the stream.
+     *
+     **/
+    uint64_t GetPos() const;
+
+
     /** SetNull
      *
      *  Sets the object into null state.

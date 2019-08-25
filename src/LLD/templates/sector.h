@@ -387,8 +387,13 @@ namespace LLD
                     {
                         try
                         {
+                            /* Get the current stream position. */
+                            uint64_t nPos  = ssData.GetPos();
+
                             /* Read compact size. */
                             uint64_t nSize = ReadCompactSize(ssData);
+                            if(nSize == 0)
+                                return debug::error(FUNCTION, "malformed batch read, size cannot be zero");
 
                             /* Deserialize the String. */
                             std::string strThis;
@@ -408,6 +413,8 @@ namespace LLD
                                 if(nLimit != -1 && --nLimit == 0)
                                     return (vValues.size() > 0);
                             }
+                            else
+                                ssData.SetPos(nPos + nSize + GetSizeOfCompactSize(nSize));
 
                             /* Iterate to next position. */
                             nStart += nSize + GetSizeOfCompactSize(nSize);
