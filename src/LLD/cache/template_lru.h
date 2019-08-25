@@ -69,6 +69,7 @@ namespace LLD
         /** Destructor. **/
         ~TemplateNode()
         {
+            Delete(Key);
             Delete(Data);
         }
 

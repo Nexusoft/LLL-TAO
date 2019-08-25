@@ -128,8 +128,6 @@ namespace LLD
     /* Loads a disk index containing shard data into memory.*/
     void ShardHashMap::LoadShardIndex(const uint32_t nShard)
     {
-        LOCK(KEY_MUTEX);
-
         /* Check that disk index isn't already loaded. */
         if(diskShards->Has(nShard))
             return;
@@ -192,7 +190,7 @@ namespace LLD
             }
 
             /* Debug output showing loading of disk index. */
-            debug::log(0, FUNCTION, "Loaded Disk Index of ", vIndex.size(), " bytes and ", nTotalKeys, " keys");
+            //debug::log(0, FUNCTION, "Loaded Shard ", nShard, " Index of ", vIndex.size(), " bytes and ", nTotalKeys, " keys");
 
             /* Add to the LRU cache. */
             diskShards->Put(nShard, hashmap);
@@ -261,14 +259,14 @@ namespace LLD
         std::vector<uint8_t> vKeyCompressed = vKey;
         CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
-        /* Check for disk index. */
-        if(!diskShards->Has(nShard))
-            LoadShardIndex(nShard);
-
         /* Get the disk index. */
         std::vector<uint16_t>* hashmap;
         if(!diskShards->Get(nShard, hashmap))
-            return false;
+        {
+            LoadShardIndex(nShard);
+            if(!diskShards->Get(nShard, hashmap))
+                return debug::error(FUNCTION, "couldn't get shard index");
+        }
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
@@ -346,14 +344,14 @@ namespace LLD
         std::vector<uint8_t> vKeyCompressed = vKey;
         CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
-        /* Check for disk index. */
-        if(!diskShards->Has(nShard))
-            LoadShardIndex(nShard);
-
         /* Get the disk index. */
         std::vector<uint16_t>* hashmap;
         if(!diskShards->Get(nShard, hashmap))
-            return false;
+        {
+            LoadShardIndex(nShard);
+            if(!diskShards->Get(nShard, hashmap))
+                return debug::error(FUNCTION, "couldn't get shard index");
+        }
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
@@ -435,14 +433,14 @@ namespace LLD
         std::vector<uint8_t> vKeyCompressed = cKey.vKey;
         CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
-        /* Check for disk index. */
-        if(!diskShards->Has(nShard))
-            LoadShardIndex(nShard);
-
         /* Get the disk index. */
         std::vector<uint16_t>* hashmap;
         if(!diskShards->Get(nShard, hashmap))
-            return false;
+        {
+            LoadShardIndex(nShard);
+            if(!diskShards->Get(nShard, hashmap))
+                return debug::error(FUNCTION, "couldn't get shard index");
+        }
 
         /* Handle if not in append mode which will update the key. */
         if(!(nFlags & FLAGS::APPEND))
@@ -628,14 +626,14 @@ namespace LLD
         std::vector<uint8_t> vKeyCompressed = vKey;
         CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
-        /* Check for disk index. */
-        if(!diskShards->Has(nShard))
-            LoadShardIndex(nShard);
-
         /* Get the disk index. */
         std::vector<uint16_t>* hashmap;
         if(!diskShards->Get(nShard, hashmap))
-            return false;
+        {
+            LoadShardIndex(nShard);
+            if(!diskShards->Get(nShard, hashmap))
+                return debug::error(FUNCTION, "couldn't get shard index");
+        }
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);
@@ -718,14 +716,14 @@ namespace LLD
         std::vector<uint8_t> vKeyCompressed = vKey;
         CompressKey(vKeyCompressed, HASHMAP_MAX_KEY_SIZE);
 
-        /* Check for disk index. */
-        if(!diskShards->Has(nShard))
-            LoadShardIndex(nShard);
-
         /* Get the disk index. */
         std::vector<uint16_t>* hashmap;
         if(!diskShards->Get(nShard, hashmap))
-            return false;
+        {
+            LoadShardIndex(nShard);
+            if(!diskShards->Get(nShard, hashmap))
+                return debug::error(FUNCTION, "couldn't get shard index");
+        }
 
         /* Reverse iterate the linked file list from hashmap to get most recent keys first. */
         std::vector<uint8_t> vBucket(HASHMAP_KEY_ALLOCATION, 0);

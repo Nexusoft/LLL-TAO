@@ -53,9 +53,9 @@ class TestDB : public LLD::SectorDatabase<LLD::ShardHashMap, LLD::BinaryLRU>
 public:
     TestDB()
     : SectorDatabase("testdb"
-    , LLD::FLAGS::CREATE | LLD::FLAGS::WRITE
-    , 1024 * 1024
-    , 1024)
+    , LLD::FLAGS::CREATE | LLD::FLAGS::FORCE
+    , 256 * 256 * 64
+    , 1024 * 1024 * 4)
     {
     }
 
@@ -78,6 +78,11 @@ public:
     bool WriteHash(const uint1024_t& hash)
     {
         return Write(std::make_pair(std::string("hash"), hash), hash);
+    }
+
+    bool ReadHash(const uint1024_t& hash, uint1024_t& hash2)
+    {
+        return Read(std::make_pair(std::string("hash"), hash), hash2);
     }
 };
 
@@ -116,18 +121,46 @@ int main(int argc, char** argv)
 
     TestDB* testDB = new TestDB();
 
-    uint1024_t last = 0;
-    testDB->ReadLast(last);
 
-    for( ; last < last + 100000; ++last)
+    for(int t = 0; t < 10; ++t)
     {
-        if(last.Get64() % 100000 == 0)
-            debug::log(0, "Written ", last.Get64(), " Total Records...");
 
-        testDB->WriteHash(last);
+        uint1024_t last = 0;
+        testDB->ReadLast(last);
+
+        debug::log(0, "Last is ", last.Get64());
+
+        runtime::timer timer;
+        timer.Start();
+        for(uint1024_t i = 1 ; i < last; ++i)
+        {
+            if(i.Get64() % 10000 == 0)
+            {
+                uint64_t nElapsed = timer.ElapsedMilliseconds();
+                debug::log(0, "Read ", i.Get64(), " Total Records in ", nElapsed, " ms (", i.Get64() * 1000 / nElapsed, " per / s)");
+            }
+
+            uint1024_t hash;
+            testDB->ReadHash(i, hash);
+        }
+
+
+        timer.Reset();
+        uint32_t nTotal = 0;
+        for(uint1024_t i = last + 1 ; i < last + 100000; ++i)
+        {
+            if(++nTotal % 10000 == 0)
+            {
+                uint64_t nElapsed = timer.ElapsedMilliseconds();
+                debug::log(0, "Wrote ", nTotal, " Total Records in ", nElapsed, " ms (", nTotal * 1000 / nElapsed, " per / s)");
+            }
+
+            testDB->WriteHash(i);
+        }
+
+        testDB->WriteLast(last + 100000);
+
     }
-
-    testDB->WriteLast(last + 100000);
 
     delete testDB;
 

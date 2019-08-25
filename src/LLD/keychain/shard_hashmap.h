@@ -91,7 +91,7 @@ namespace LLD
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
         ShardHashMap(const std::string& strBaseLocationIn, const uint8_t nFlagsIn = FLAGS::APPEND,
-            const uint64_t nBucketsIn = 256 * 256 * 64, const uint32_t nShardsIn = 16);
+            const uint64_t nBucketsIn = 256 * 256 * 64, const uint32_t nShardsIn = 4);
 
 
         /** Copy Assignment Operator **/
