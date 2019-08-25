@@ -691,11 +691,9 @@ namespace TAO
 
                         /* Check for that the debit is meant for us. */
                         if(nOp == TAO::Operation::OP::DEBIT)
-                        {
-                            /* The proof to check for this contract */
-                            uint256_t hashFrom = 0;
-                            
+                        {   
                             /* Get the source address which is the proof for the debit */
+                            uint256_t hashFrom = 0;
                             tx[nContract] >> hashFrom;
                             
                             /* Get the recipient account */
@@ -829,6 +827,32 @@ namespace TAO
 
                             /* Add this amount to our total */
                             nUnconfirmed += nCredit;
+                        }
+                        /* Check for outgoing OP::LEGACY */
+                        else if(fOutgoing && nOp == TAO::Operation::OP::LEGACY)
+                        {
+                            /* Check the token filter is 0 as OP::LEGACY are only for NXS accounts*/
+                            if(hashToken != 0)
+                                continue;
+
+                            /* Get the source address which is the proof for the debit */
+                            uint256_t hashFrom = 0;
+                            tx[nContract] >> hashFrom;
+                            
+                            /* Get the amount */
+                            uint64_t nAmount = 0;
+                            tx[nContract] >> nAmount;
+
+                            /* Check we made the transaction */
+                            if(tx.hashGenesis != hashGenesis)
+                                continue;
+
+                            /* Check the account filter based on the originating account*/
+                            if(hashAccount != 0 && hashAccount != hashFrom)
+                                continue;
+
+                            /* Add this amount to our total */
+                            nUnconfirmed += nAmount;
                         } 
                     }
                 }

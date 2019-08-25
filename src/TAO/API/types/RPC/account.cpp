@@ -32,8 +32,13 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 
 #include <TAO/API/include/utils.h>
+#include <TAO/API/include/json.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>
+
+#include <TAO/Operation/include/enum.h>
+
+#include <TAO/Register/include/unpack.h>
 
 #include <Util/include/allocators.h>
 #include <Util/include/base64.h>
@@ -1289,7 +1294,23 @@ namespace TAO
                 }
             }
 
-            entry["txid"] = wtx.GetHash().GetHex();
+            /* If this transaction has no inputs but is not a coinbase/coinstake then it must be a pseudo-legacy transation
+               from a tritium OP::LEGACY.  In this case the pseudo legacy transaction hash is not the correct one to output
+               so we must search for it instead in mapwallet, where the map key is the correct hash*/
+            if(wtx.vin.size() == 0 && !wtx.IsCoinBase() && !wtx.IsCoinStake())
+            {
+                /* use lamda shortcut with find_if to find the entry for this wtx */
+                auto it = std::find_if(std::begin(Legacy::Wallet::GetInstance().mapWallet), 
+                                       std::end(Legacy::Wallet::GetInstance().mapWallet),
+                                       [&](const std::pair<uint512_t, Legacy::WalletTx> &p) { return p.second == wtx; });
+
+                if(it != std::end(Legacy::Wallet::GetInstance().mapWallet))
+                    entry["txid"] = it->first.GetHex();
+                
+            }
+            else
+                entry["txid"] = wtx.GetHash().GetHex();
+
             entry["time"] = (int64_t)wtx.GetTxTime();
 
             for(const auto& item : wtx.mapValue)
@@ -1681,87 +1702,153 @@ namespace TAO
                     "getglobaltransaction [txid]\n"
                     "Get detailed information about [txid]");
 
+            /* Build return json object. */
+            json::json ret;
+
             /* Get hash Index. */
             uint512_t hash;
             hash.SetHex(params[0].get<std::string>());
-
-            /* Get the transaction object. */
-            Legacy::Transaction tx;
-            if(!TAO::Ledger::mempool.Get(hash, tx))
-            {
-                if(!LLD::Legacy->ReadTx(hash, tx))
-                    throw APIException(-5, "No information available about transaction");
-            }
-
-            /* Build return json object. */
-            json::json ret;
 
             /* Get confirmations. */
             uint32_t nConfirmations = 0;
             TAO::Ledger::BlockState state;
             if(LLD::Ledger->ReadBlock(hash, state))
-            {
-                /* Set block hash. */
-                ret["blockhash"] = state.GetHash().GetHex();
-
                 /* Calculate confirmations. */
                 nConfirmations = (TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight) + 1;
-            }
+
+            /* Set block hash. */
+            if(!state.IsNull())
+                ret["blockhash"] = state.GetHash().GetHex();
 
             /* Set confirmations. */
             ret["confirmations"] = nConfirmations;
 
-            /* Fill other relevant data. */
+            /* Add TX ID */
             ret["txid"]   = hash.GetHex();
-            ret["time"]   = tx.nTime;
-            ret["amount"] = Legacy::SatoshisToAmount(tx.GetValueOut());
+                
+            /* Legacy transaction object */
+            Legacy::Transaction txLegacy;
 
-            /* Get the outputs. */
-            json::json outputs;
-            for(const auto& out : tx.vout)
+            /* Tritium transaction object */
+            TAO::Ledger::Transaction txTritium;
+
+            /* Get the transaction object. */
+            if(TAO::Ledger::mempool.Get(hash, txLegacy) || LLD::Legacy->ReadTx(hash, txLegacy))
             {
-                Legacy::NexusAddress address;
-                if(!Legacy::ExtractAddress(out.scriptPubKey, address))
-                    throw APIException(-5, "failed to extract output address");
+                /* Fill other relevant data. */   
+                ret["type"]   = txLegacy.TypeString();
+                ret["time"]   = txLegacy.nTime;
+                ret["amount"] = Legacy::SatoshisToAmount(txLegacy.GetValueOut());
 
-                outputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(out.nValue)));
-            }
-
-            /* Get the inputs. */
-            if(!tx.IsCoinBase())
-            {
-                /* Get the number of inputs to the transaction. */
-                uint32_t nSize = static_cast<uint32_t>(tx.vin.size());
-
-                /* Read all of the inputs. */
-                json::json inputs;
-                for (uint32_t i = (uint32_t)tx.IsCoinStake(); i < nSize; ++i)
+                /* Get the outputs. */
+                json::json outputs;
+                for(const auto& out : txLegacy.vout)
                 {
-                    /* Skip inputs that are already found. */
-                    Legacy::OutPoint prevout = tx.vin[i].prevout;
-
-                    /* Read the previous transaction. */
-                    Legacy::Transaction txPrev;
-                    if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
-                        throw APIException(-5, debug::safe_printstr("tx ", prevout.hash.ToString().substr(0, 20), " not found"));
-
-                    /* Extract the address. */
                     Legacy::NexusAddress address;
-                    if(!Legacy::ExtractAddress(txPrev.vout[prevout.n].scriptPubKey, address))
-                        throw APIException(-5, "failed to extract input address");
+                    if(!Legacy::ExtractAddress(out.scriptPubKey, address))
+                        throw APIException(-5, "failed to extract output address");
 
-                    /* Add inputs to json. */
-                    inputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed,
-                     Legacy::SatoshisToAmount(txPrev.vout[prevout.n].nValue)));
+                    outputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(out.nValue)));
+                }
+
+                /* Get the inputs. */
+                if(!txLegacy.IsCoinBase())
+                {
+                    /* Get the number of inputs to the transaction. */
+                    uint32_t nSize = static_cast<uint32_t>(txLegacy.vin.size());
+
+                    /* Read all of the inputs. */
+                    json::json inputs;
+                    for (uint32_t i = (uint32_t)txLegacy.IsCoinStake(); i < nSize; ++i)
+                    {
+                        /* Skip inputs that are already found. */
+                        Legacy::OutPoint prevout = txLegacy.vin[i].prevout;
+
+                        /* Read the previous transaction. */
+                        Legacy::Transaction txPrev;
+                        if(!LLD::Legacy->ReadTx(prevout.hash, txPrev))
+                            throw APIException(-5, debug::safe_printstr("tx ", prevout.hash.ToString().substr(0, 20), " not found"));
+
+                        /* Extract the address. */
+                        Legacy::NexusAddress address;
+                        if(!Legacy::ExtractAddress(txPrev.vout[prevout.n].scriptPubKey, address))
+                            throw APIException(-5, "failed to extract input address");
+
+                        /* Add inputs to json. */
+                        inputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed,
+                        Legacy::SatoshisToAmount(txPrev.vout[prevout.n].nValue)));
+                    }
+
+                    /* Add to return value. */
+                    ret["inputs"] = inputs;
                 }
 
                 /* Add to return value. */
-                ret["inputs"] = inputs;
+                ret["outputs"] = outputs;
+
             }
+            else if(TAO::Ledger::mempool.Get(hash, txTritium) || LLD::Ledger->ReadTx(hash, txTritium))
+            {
+                /* Sun of OP::LEGACY contracts for this transaction  */
+                uint64_t nTotal = 0;
 
-            /* Add to return value. */
-            ret["outputs"] = outputs;
+                /* Get the outputs. */
+                json::json outputs;
 
+                /* Iterate through contracts to fill the outputs with all OP::LEGACY contracts */
+                uint32_t nContracts = txTritium.Size();
+                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                {
+                    /* Check that the contract is an op legacy */
+                    if(TAO::Register::Unpack(txTritium[nContract], TAO::Operation::OP::LEGACY ))
+                    {
+                        /* The amount for this op legacy contract */
+                        uint64_t nAmount;
+
+                        /* Get the amount */
+                        TAO::Register::Unpack(txTritium[nContract], nAmount );
+
+                        /* add to our total */
+                        nTotal += nAmount;                    
+
+                        /* Get the output script from the op legacy */
+                        Legacy::Script script;
+                        TAO::Register::Unpack(txTritium[nContract], script );
+
+                        /* Get the recipient address from the script*/
+                        Legacy::NexusAddress address(script);
+
+                        /* Add this address/amout to the outputs */
+                        outputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(nAmount)));
+                    }
+                    
+                    /* If we found any op legacy contracts then add the rest of the data */
+                    if(outputs.size() > 0)
+                    {
+                        ret["type"]   = txTritium.TypeString();
+                        ret["time"]   = txTritium.nTimestamp;
+                        ret["amount"] = Legacy::SatoshisToAmount(nTotal);
+
+                        /* Add to return value. */
+                        ret["outputs"] = outputs;
+                    }
+                    else
+                    {
+                        throw APIException(-1, "This is a Tritium transaction.  Please use the Tritium API to retrieve data for this transaction" );
+                    }
+                    
+
+                }
+                
+            }
+            else
+            {
+                throw APIException(-5, "No information available about transaction" );
+            }
+            
+
+            
+            
             return ret;
         }
 

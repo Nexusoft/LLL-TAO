@@ -100,6 +100,19 @@ namespace TAO
          **/
         bool Unpack(const TAO::Operation::Contract& contract, const uint8_t nCode);
 
+
+        /** Unpack
+         *
+         *  Unpack an op legacy contract to find it's output script.
+         *
+         *  @param[in] tx the transaction to unpack
+         *  @param[out] script The script to populate from the contract
+         *
+         *  @return true if the transaction contains the requested op code
+         *
+         **/
+        bool Unpack(const TAO::Operation::Contract& contract, Legacy::Script& script);
+
     }
 }
 
