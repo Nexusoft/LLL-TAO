@@ -64,6 +64,17 @@ public:
 
     }
 
+    bool WriteLast(const uint1024_t& last)
+    {
+        return Write(std::string("last"), last);
+    }
+
+    bool ReadLast(uint1024_t& last)
+    {
+        return Read(std::string("last"), last);
+    }
+
+
     bool WriteHash(const uint1024_t& hash)
     {
         return Write(std::make_pair(std::string("hash"), hash), hash);
@@ -104,13 +115,19 @@ int main(int argc, char** argv)
     //uint1024_t hash = ;
 
     TestDB* testDB = new TestDB();
-    for(uint1024_t i = 0; i < 100000; ++i)
-    {
-        if(i.Get64() % 100000 == 0)
-            debug::log(0, "Written ", i.Get64(), " Total Records...");
 
-        testDB->WriteHash(i);
+    uint1024_t last = 0;
+    testDB->ReadLast(last);
+
+    for( ; last < last + 100000; ++last)
+    {
+        if(last.Get64() % 100000 == 0)
+            debug::log(0, "Written ", last.Get64(), " Total Records...");
+
+        testDB->WriteHash(last);
     }
+
+    testDB->WriteLast(last + 100000);
 
     delete testDB;
 
