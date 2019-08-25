@@ -167,7 +167,7 @@ namespace LLD
     /* Writes a transaction to the ledger DB. */
     bool LedgerDB::WriteTx(const uint512_t& hashTx, const TAO::Ledger::Transaction& tx)
     {
-        return Write(hashTx, tx);
+        return Write(hashTx, tx, "tx");
     }
 
 

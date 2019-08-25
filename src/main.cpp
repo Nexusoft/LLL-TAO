@@ -68,9 +68,6 @@ int main(int argc, char** argv)
     /* Initalize the debug logger. */
     debug::Initialize();
 
-    /* ensure that apiuser / apipassword has been configured */
-    if( config::mapArgs.find("-apiuser") == config::mapArgs.end() || config::mapArgs.find("-apipassword") == config::mapArgs.end())
-        return debug::error("You must set apiuser=<user> and apipassword=<password> in your configuration file or startup parameters.  If you intend to run the API server without authenticating requests (not recommended), please set apiuser and apipassword to blank values.");
 
     /* Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) */
     LLP::Initialize();
@@ -234,18 +231,31 @@ int main(int argc, char** argv)
         /* Get the port for the Core API Server. */
         nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
 
-        /* Create the Core API Server. */
-        LLP::API_SERVER = new LLP::Server<LLP::APINode>(
-            nPort,
-            10,
-            30,
-            false,
-            0,
-            0,
-            60,
-            true,
-            false,
-            false);
+
+        /* ensure that apiuser / apipassword has been configured */
+        if(config::mapArgs.find("-apiuser") == config::mapArgs.end()
+        || config::mapArgs.find("-apipassword") == config::mapArgs.end())
+        {
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!!WARNING!!! API DISABLED", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> in nexus.conf", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "or commandline arguments.  If you intend to run the API server without", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "authenticating requests (not recommended), please start with set apiauth=0", ANSI_COLOR_RESET);
+        }
+        else
+        {
+            /* Create the Core API Server. */
+            LLP::API_SERVER = new LLP::Server<LLP::APINode>(
+                nPort,
+                10,
+                30,
+                false,
+                0,
+                0,
+                60,
+                true,
+                false,
+                false);
+        }
 
 
         /* Handle Manual Connections from Command Line, if there are any. */

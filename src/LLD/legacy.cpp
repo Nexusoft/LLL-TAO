@@ -37,7 +37,7 @@ namespace LLD
     /* Writes a transaction to the legacy DB. */
     bool LegacyDB::WriteTx(const uint512_t& hashTx, const Legacy::Transaction& tx)
     {
-        return Write(std::make_pair(std::string("tx"), hashTx), tx);
+        return Write(std::make_pair(std::string("tx"), hashTx), tx, "tx");
     }
 
 
