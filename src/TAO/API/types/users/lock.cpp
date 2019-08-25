@@ -25,6 +25,9 @@ namespace TAO
         /* Lock an account for mining (TODO: make this much more secure) */
         json::json Users::Lock(const json::json& params, bool fHelp)
         {
+            /* JSON return value. */
+            json::json ret;
+
             /* Restrict Unlock / Lock to sessionless API */
             if(config::fMultiuser.load())
                 throw APIException(-131, "Lock not supported in multiuser mode");
@@ -45,7 +48,8 @@ namespace TAO
             if(stakeMinter.IsStarted())
                 stakeMinter.Stop();
 
-            return true;
+            ret["success"] = true;
+            return ret;
         }
     }
 }

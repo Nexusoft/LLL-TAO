@@ -162,16 +162,26 @@ namespace TAO
             if(!LLD::Trust->BatchRead("trust", vKeys, -1))
                 return debug::safe_printstr("No Trust Keys ", vKeys.size());
 
+            /* Cutoff time for v4 trust keys. Anything prior to v4 end plus the original one timespan grace period.
+             * This addresses an issue that some v4 keys produced one v5 block during grace period, but then incorrectly "expired"
+             * and were replaced with a new v5 key.
+             */
+            uint64_t nCutoff = TAO::Ledger::EndTimelock(4) + (uint64_t)(config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET
+                                                                                         : TAO::Ledger::TRUST_KEY_TIMESPAN);
+
+            /* Trust keys are considered active if have stake blocks within timespan x 10 = 30 days mainnet */
+            uint64_t nActiveTime = (uint64_t)(config::fTestNet ? (TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 10)
+                                                               : (TAO::Ledger::TRUST_KEY_TIMESPAN * 10));
+
             /* Search through the trust keys. */
-            for (const auto& trustKey : vKeys)
+            for(const auto& trustKey : vKeys)
             {
                 /* Ignore v4 trust keys */
-                if (trustKey.nLastBlockTime < (config::fTestNet ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[3] : TAO::Ledger::NETWORK_VERSION_TIMELOCK[3]))
+                if(trustKey.nLastBlockTime < nCutoff)
                     continue;
 
-                /* Ignore trust keys that are inactive (no trust blocks within timespan x 10 = 30 days mainnet) */
-                if (trustKey.nLastBlockTime + (config::fTestNet ? TAO::Ledger::TRUST_KEY_TIMESPAN_TESTNET * 10 : TAO::Ledger::TRUST_KEY_TIMESPAN * 10)
-                    < TAO::Ledger::ChainState::stateBest.load().GetBlockTime())
+                /* Ignore inactive trust keys */
+                if((trustKey.nLastBlockTime + nActiveTime) < TAO::Ledger::ChainState::stateBest.load().GetBlockTime())
                     continue;
 
                 /* Put trust keys into a map keyed by stake rate (sorts them by rate) */

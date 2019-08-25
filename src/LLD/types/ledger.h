@@ -446,8 +446,7 @@ namespace LLD
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast,
-                      const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+        bool ReadLast(const uint256_t& hashGenesis, uint512_t& hashLast, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteProof

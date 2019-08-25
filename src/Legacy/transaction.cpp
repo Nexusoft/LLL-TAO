@@ -32,6 +32,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/stake.h>
+
 #include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/runtime.h>
@@ -98,8 +100,8 @@ namespace Legacy
         /* Get the hash. */
 	    uint512_t hash = LLC::SK512(ss.begin(), ss.end());
 
-        /* Type of 0xfe designates legacy tx. */
-        if(TAO::Ledger::VersionActive(nTime, 7))
+        /* Type of 0xfe designates legacy tx beginning with v7 timelock activation. */
+        if(TAO::Ledger::VersionActive(nTime, 7) || TAO::Ledger::CurrentVersion() > 7)
             hash.SetType(TAO::Ledger::LEGACY);
 
         return hash;
@@ -827,9 +829,9 @@ namespace Legacy
                 continue;
 
             /* Check for Tritium version transactions.
-             * Becomes ACTIVE 2 hours after time-lock.
+             * Becomes ACTIVE 2 hours after v7 timelock activation.
              */
-            if(TAO::Ledger::VersionActive(nTime + 7200, 7))
+            if(TAO::Ledger::VersionActive((nTime - 7200), 7) || TAO::Ledger::CurrentVersion() > 7)
             {
                 /* Get the type of transaction. */
                 if(prevout.hash.GetType() == TAO::Ledger::TRITIUM)
@@ -1015,7 +1017,13 @@ namespace Legacy
                             return debug::error(FUNCTION, "failed to read previous tx block");
 
                         /* Check the maturity. */
-                        if((state.nHeight - statePrev.nHeight) < (config::fTestNet.load() ? TAO::Ledger::TESTNET_MATURITY_BLOCKS : TAO::Ledger::NEXUS_MATURITY_BLOCKS))
+                        uint32_t nMaturity;
+                        if(txPrev.IsCoinBase())
+                            nMaturity = TAO::Ledger::MaturityCoinBase();
+                        else
+                            nMaturity = TAO::Ledger::MaturityCoinStake();
+
+                        if((state.nHeight - statePrev.nHeight) < nMaturity)
                             return debug::error(FUNCTION, "tried to spend immature balance ", (state.nHeight - statePrev.nHeight));
                     }
 
@@ -1047,9 +1055,9 @@ namespace Legacy
                 case TAO::Ledger::TRITIUM:
                 {
                     /* Check for Tritium version transactions.
-                     * Becomes ACTIVE 2 hours after time-lock.
+                     * Becomes ACTIVE 2 hours after v7 activation timelock
                      */
-                    if(!TAO::Ledger::VersionActive(nTime + 7200, 7))
+                    if(!(TAO::Ledger::VersionActive((nTime - 7200), 7) || TAO::Ledger::CurrentVersion() > 7))
                         return debug::error(FUNCTION, "tritium transactions not available until version 7");
 
                     /* Get the previous transaction. */
@@ -1274,12 +1282,8 @@ namespace Legacy
         if(!LLD::Legacy->ReadTx(stateLast.vtx[0].second, txLast))
             return debug::error(FUNCTION, "last state coinstake tx not found");
 
-        /* Enforce the minimum trust key interval of 120 blocks. */
-        const uint32_t nMinimumInterval = config::fTestNet.load()
-                                            ? TAO::Ledger::TESTNET_MINIMUM_INTERVAL
-                                            : TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
-
-        if(state.nHeight - stateLast.nHeight < nMinimumInterval)
+        /* Enforce the minimum trust key interval */
+        if((state.nHeight - stateLast.nHeight) < TAO::Ledger::MinStakeInterval())
             return debug::error(FUNCTION, "trust key interval below minimum interval ", state.nHeight - stateLast.nHeight);
 
         /* Current key to verify */

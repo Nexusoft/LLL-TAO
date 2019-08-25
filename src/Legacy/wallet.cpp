@@ -82,7 +82,6 @@ namespace Legacy
     , nWalletUnlockTime(0)
     , cs_wallet()
     , mapWallet()
-    , mapRequestCount()
     {
     }
 
@@ -130,7 +129,7 @@ namespace Legacy
     bool Wallet::SetMinVersion(const enum Legacy::WalletFeature nVersion, const bool fForceLatest)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Allows potential to override nVersion with FEATURE_LATEST */
             Legacy::WalletFeature nVersionToSet = nVersion;
@@ -166,7 +165,7 @@ namespace Legacy
     bool Wallet::SetMaxVersion(const enum Legacy::WalletFeature nVersion)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Cannot downgrade below current version */
             if(nWalletVersion > nVersion)
@@ -195,7 +194,7 @@ namespace Legacy
 
         {
             /* Lock wallet so WalletDB can load all data into it */
-            //LOCK(cs_wallet);
+            //RLOCK(cs_wallet);
 
             uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
 
@@ -259,23 +258,6 @@ namespace Legacy
         fLoaded = true;
 
         return DB_LOAD_OK;
-    }
-
-
-    /*  Tracks requests for transactions contained in this wallet, or the blocks that contain them. */
-    void Wallet::Inventory(const uint1024_t& hash)
-    {
-        {
-            LOCK(cs_wallet);
-
-            auto mi = mapRequestCount.find(hash);
-
-            if(mi != mapRequestCount.end())
-            {
-                /* Map contains an entry for the given block hash (we have one or more transactions in that block) */
-                (*mi).second++;
-            }
-        }
     }
 
 
@@ -345,7 +327,7 @@ namespace Legacy
     bool Wallet::AddScript(const Script& redeemScript)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Call overridden inherited method to add key to key store */
             if(!CryptoKeyStore::AddScript(redeemScript))
@@ -386,7 +368,7 @@ namespace Legacy
     bool Wallet::SetDefaultKey(const std::vector<uint8_t>& vchPubKey)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             if(fFileBacked)
             {
@@ -408,7 +390,7 @@ namespace Legacy
     bool Wallet::SetTrustKey(const std::vector<uint8_t>& vchPubKey)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             if(fFileBacked)
             {
@@ -430,7 +412,7 @@ namespace Legacy
     bool Wallet::RemoveTrustKey()
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             if(fFileBacked)
             {
@@ -499,7 +481,7 @@ namespace Legacy
         /* kMasterKey now contains the master key encrypted by the provided passphrase. Ready to perform wallet encryption. */
         {
             /* Lock for writing master key and converting keys */
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             nNewMasterKeyId = ++nMasterKeyMaxID;
             mapMasterKeys[nNewMasterKeyId] = kMasterKey;
@@ -541,7 +523,7 @@ namespace Legacy
 
         /* Replace key pool with encrypted keys */
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             keyPool.NewKeyPool();
         }
@@ -554,7 +536,7 @@ namespace Legacy
          */
         bool rewriteResult = true;
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             if(fFileBacked)
             {
@@ -597,7 +579,7 @@ namespace Legacy
         bool fUnlockSuccessful = false;
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* If more than one master key in wallet's map (unusual), this will attempt each one with the passphrase.
              * If any one master key decryption works and unlocks the wallet, then the unlock is successful.
@@ -667,7 +649,7 @@ namespace Legacy
          */
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Save current lock state so it can be reset when done */
             bool fWasLocked = IsLocked();
@@ -742,28 +724,25 @@ namespace Legacy
     int64_t Wallet::GetBalance()
     {
         int64_t nTotalBalance = 0;
-
-        TransactionMap mapWalletCopy;
-
         {
             /* Lock wallet only to take a snapshot of current transaction map for calculating balance
              * After unlock, mapWallet can change but it won't affect balance calculation
              */
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
-            mapWalletCopy = mapWallet;
+            for (const auto& item : mapWallet)
+            {
+                const WalletTx& wtx = item.second;
+
+                /* Skip any transaction that isn't final, isn't completely confirmed, or has a future timestamp */
+                if (!wtx.IsFinal() || !wtx.IsConfirmed() || wtx.nTime > runtime::unifiedtimestamp())
+                    continue;
+
+                nTotalBalance += wtx.GetAvailableCredit();
+            }
         }
 
-        for(const auto& item : mapWalletCopy)
-        {
-            const WalletTx& walletTx = item.second;
 
-            /* Skip any transaction that isn't final, isn't completely confirmed, or has a future timestamp */
-            if(!walletTx.IsFinal() || !walletTx.IsConfirmed() || walletTx.nTime > runtime::unifiedtimestamp())
-                continue;
-
-            nTotalBalance += walletTx.GetAvailableCredit();
-        }
 
         return nTotalBalance;
     }
@@ -774,7 +753,7 @@ namespace Legacy
     bool Wallet::BalanceByAccount(std::string strAccount, int64_t& nBalance, int32_t nMinDepth)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
             nBalance = 0;
             for(auto it = mapWallet.begin(); it != mapWallet.end(); ++it)
             {
@@ -832,27 +811,24 @@ namespace Legacy
     int64_t Wallet::GetUnconfirmedBalance()
     {
         int64_t nUnconfirmedBalance = 0;
-
-        TransactionMap mapWalletCopy;
-
         {
             /* Lock wallet only to take a snapshot of current transaction map for calculating balance
              * After unlock, mapWallet can change but it won't affect balance calculation
              */
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
-            mapWalletCopy = mapWallet;
+            for (const auto& item : mapWallet)
+            {
+                const WalletTx& wtx = item.second;
+
+                if (wtx.IsFinal() && wtx.IsConfirmed())
+                    continue;
+
+                nUnconfirmedBalance += wtx.GetAvailableCredit();
+            }
         }
 
-        for(const auto& item : mapWalletCopy)
-        {
-            const WalletTx& walletTx = item.second;
 
-            if(walletTx.IsFinal() && walletTx.IsConfirmed())
-                continue;
-
-            nUnconfirmedBalance += walletTx.GetAvailableCredit();
-        }
 
         return nUnconfirmedBalance;
     }
@@ -864,15 +840,15 @@ namespace Legacy
         int64_t nTotalStake = 0;
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             for(const auto& item : mapWallet)
             {
-                const WalletTx& walletTx = item.second;
+                const WalletTx& wtx = item.second;
 
                 /* Amount currently being staked is that amount in a coinstake tx that is not yet mature but has been added to chain */
-                if (walletTx.IsCoinStake() && walletTx.GetBlocksToMaturity() > 0 && walletTx.GetDepthInMainChain() > 0)
-                    nTotalStake += GetCredit(walletTx);
+                if (wtx.IsCoinStake() && wtx.GetBlocksToMaturity() > 0 && wtx.GetDepthInMainChain() > 0)
+                    nTotalStake += GetCredit(wtx);
             }
         }
 
@@ -886,14 +862,14 @@ namespace Legacy
         int64_t nTotalMint = 0;
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             for(const auto& item : mapWallet)
             {
-                const WalletTx& walletTx = item.second;
+                const WalletTx& wtx = item.second;
 
-                if(walletTx.IsCoinBase() && walletTx.GetBlocksToMaturity() > 0 && walletTx.GetDepthInMainChain() > 1)
-                    nTotalMint += GetCredit(walletTx);
+                if (wtx.IsCoinBase() && wtx.GetBlocksToMaturity() > 0 && wtx.GetDepthInMainChain() > 1)
+                    nTotalMint += GetCredit(wtx);
             }
         }
 
@@ -905,37 +881,37 @@ namespace Legacy
     void Wallet::AvailableCoins(const uint32_t nSpendTime, std::vector<Output>& vCoins, const bool fOnlyConfirmed)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             vCoins.clear();
 
             for(const auto& item : mapWallet)
             {
-                const WalletTx& walletTx = item.second;
+                const WalletTx& wtx = item.second;
 
                 /* Filter transactions not final */
-                if(!walletTx.IsFinal())
+                if (!wtx.IsFinal())
                     continue;
 
                 /* Filter unconfirmed transactions unless want unconfirmed */
-                if(fOnlyConfirmed && !walletTx.IsConfirmed())
+                if (fOnlyConfirmed && !wtx.IsConfirmed())
                     continue;
 
                 /* Filter immature minting and staking transactions */
-                if((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
+                if ((wtx.IsCoinBase() || wtx.IsCoinStake()) && wtx.GetBlocksToMaturity() > 0)
                     continue;
 
-                for(uint32_t i = 0; i < walletTx.vout.size(); i++)
+                for (uint32_t i = 0; i < wtx.vout.size(); i++)
                 {
                     /* Filter transactions after requested spend time */
-                    if(walletTx.nTime > nSpendTime)
+                    if (wtx.nTime > nSpendTime)
                         continue;
 
                     /* To be included in result, vout must not be spent, must belong to current wallet, and must have positive value */
-                    if(!(walletTx.IsSpent(i)) && IsMine(walletTx.vout[i]) && walletTx.vout[i].nValue > 0)
+                    if (!(wtx.IsSpent(i)) && IsMine(wtx.vout[i]) && wtx.vout[i].nValue > 0)
                     {
                         /* Create output from the current vout and add to result */
-                        Output txOutput(walletTx, i, walletTx.GetDepthInMainChain());
+                        Output txOutput(wtx, i, wtx.GetDepthInMainChain());
                         vCoins.push_back(txOutput);
                     }
                 }
@@ -948,7 +924,7 @@ namespace Legacy
     void Wallet::MarkDirty()
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             for(auto& item : mapWallet)
                 item.second.MarkDirty();
@@ -960,7 +936,7 @@ namespace Legacy
     bool Wallet::GetTransaction(const uint512_t& hashTx, WalletTx& wtx)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Find the requested transaction in the wallet */
             TransactionMap::iterator mi = mapWallet.find(hashTx);
@@ -976,49 +952,6 @@ namespace Legacy
     }
 
 
-    int32_t Wallet::GetRequestCount(const WalletTx& wtx) const
-    {
-        /* Returns -1 if it wasn't being tracked */
-        int32_t nRequests = -1;
-
-        if(wtx.IsCoinBase() || wtx.IsCoinStake())
-        {
-            LOCK(cs_wallet);
-
-            /* If this is a block generated via minting, use request count entry for the block */
-            /* Blocks created via staking/mining have block hash added to request tracking */
-            if(wtx.hashBlock != 0)
-            {
-                auto mi = mapRequestCount.find(wtx.hashBlock);
-
-                if(mi != mapRequestCount.end())
-                    nRequests = (*mi).second;
-            }
-        }
-        else
-        {
-            LOCK(cs_wallet);
-
-            /* Did anyone request this transaction? */
-            auto mi = mapRequestCount.find(wtx.GetHash());
-            if(mi != mapRequestCount.end())
-            {
-                nRequests = (*mi).second;
-
-                /* If no request specifically for the transaction hash, check the count for the block containing it */
-                if(nRequests == 0 && wtx.hashBlock != 0)
-                {
-                    auto mi = mapRequestCount.find(wtx.hashBlock);
-                    if(mi != mapRequestCount.end())
-                        nRequests = (*mi).second;
-                }
-            }
-        }
-
-        return nRequests;
-    }
-
-
     /* Adds a wallet transaction to the wallet. */
     bool Wallet::AddToWallet(const WalletTx& wtxIn, uint512_t hash)
     {
@@ -1029,16 +962,16 @@ namespace Legacy
         /* Use the returned tx, not wtxIn, in case insert returned an existing transaction */
         std::pair<TransactionMap::iterator, bool> ret;
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Inserts only if not already there, returns tx inserted or tx found */
             ret = mapWallet.insert(std::make_pair(hash, wtxIn));
         }
 
         WalletTx& wtx = (*ret.first).second;
-        bool fInsertedNew = ret.second;
         wtx.BindWallet(this);
 
+        bool fInsertedNew = ret.second;
         if (fInsertedNew && wtx.nTimeReceived == 0) // Time will be non-zero if preset by processing (such as rescan)
         {
             /* wtx.nTimeReceive must remain uint32_t for backward compatability */
@@ -1080,7 +1013,7 @@ namespace Legacy
 
         /* Write to disk */
         if(fInsertedNew || fUpdated)
-            if(!wtx.WriteToDisk())
+            if(!wtx.WriteToDisk(hash))
                 return false;
 
         /* If default receiving address gets used, replace it with a new one */
@@ -1135,13 +1068,14 @@ namespace Legacy
                 wtx.nTimeReceived = tx.nTime;
             }
 
+            /* If find is enabled, read the block from LLD. */
             if(fFindBlock)
             {
-                /* If have transaction, but need its block, read it now */
-                state.SetNull();
+                /* Read the block state. */
+                if(!LLD::Ledger->ReadBlock(hash, state))
+                    return debug::error(FUNCTION, "tx ", hash.SubString(), " is an ORPHAN");
 
-                if (LLD::Ledger->ReadBlock(tx.GetHash(), state))
-                    wtx.hashBlock = state.GetHash();
+                wtx.hashBlock = state.GetHash();
             }
             else if(!state.IsNull())
             {
@@ -1152,8 +1086,9 @@ namespace Legacy
             /* AddToWallet preforms merge (update) for transactions already in wallet */
             return AddToWallet(wtx);
         }
-        else
-            WalletUpdateSpent(tx);
+
+        /* Check for spent flags if this transaction was not ours. */
+        WalletUpdateSpent(tx);
 
         return false;
     }
@@ -1190,13 +1125,14 @@ namespace Legacy
                 wtx.nTimeReceived = tx.nTime;
             }
 
+            /* If find is enabled, read the block from LLD. */
             if(fFindBlock)
             {
-                /* If have transaction, but need its block, read it now */
-                state.SetNull();
+                /* Read the block state. */
+                if(!LLD::Ledger->ReadBlock(hash, state))
+                    return debug::error(FUNCTION, "tx ", hash.SubString(), " is an ORPHAN");
 
-                if (LLD::Ledger->ReadBlock(tx.GetHash(), state))
-                    wtx.hashBlock = state.GetHash();
+                wtx.hashBlock = state.GetHash();
             }
             else if(!state.IsNull())
             {
@@ -1218,7 +1154,7 @@ namespace Legacy
         if(!fFileBacked)
             return false;
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             if(mapWallet.erase(hash))
             {
@@ -1242,7 +1178,7 @@ namespace Legacy
 
         {
             /* Disconnecting coinstake requires marking input unspent */
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             for(const TxIn& txin : tx.vin)
             {
@@ -1251,12 +1187,12 @@ namespace Legacy
 
                 if(mi != mapWallet.end())
                 {
-                    WalletTx& prevTx = (*mi).second;
+                    WalletTx& txPrev = (*mi).second;
 
-                    if(txin.prevout.n < prevTx.vout.size() && IsMine(prevTx.vout[txin.prevout.n]))
+                    if (txin.prevout.n < txPrev.vout.size() && IsMine(txPrev.vout[txin.prevout.n]))
                     {
-                        prevTx.MarkUnspent(txin.prevout.n);
-                        prevTx.WriteToDisk();
+                        txPrev.MarkUnspent(txin.prevout.n);
+                        txPrev.WriteToDisk(tx.GetHash());
                     }
                 }
             }
@@ -1267,27 +1203,99 @@ namespace Legacy
     /* Scan the block chain for transactions from or to keys in this wallet.
      * Add/update the current wallet transactions for any found.
      */
-    uint32_t Wallet::ScanForWalletTransactions(const TAO::Ledger::BlockState* pstartBlock, const bool fUpdate)
+    uint32_t Wallet::ScanForWalletTransactions(const TAO::Ledger::BlockState& stateBegin, const bool fUpdate)
     {
         /* Count the number of transactions process for this wallet to use as return value */
         uint32_t nTransactionCount = 0;
         uint32_t nScannedCount     = 0;
 
-        TAO::Ledger::BlockState state;
-
         runtime::timer timer;
         timer.Start();
 
-        /* Do a batch read from legacy database. */
-        std::vector<Legacy::Transaction> vtx;
-        if(!LLD::Legacy->BatchRead("tx", vtx, 1000))
-            return 0;
+        /* Check for null. */
+        if(!stateBegin)
+            return debug::error(FUNCTION, "search from block is invalid");
 
-        /* Loop in batches of 1000 until finished. */
-        uint512_t hashLast = vtx.back().GetHash();
-        do
+        /* Check for genesis. */
+        uint512_t hashLast = 0;
+        if(stateBegin.nHeight == 0)
         {
+            /* Check next block. */
+            TAO::Ledger::BlockState stateNext = stateBegin.Next();
+            if(!stateNext)
+                return debug::error(FUNCTION, "next block is null");
+
+            hashLast = stateNext.vtx[0].second;
+        }
+        else
+            hashLast = stateBegin.vtx[0].second;
+
+        /* Check for Tritium Timestamp. */
+        if(stateBegin.nVersion < 7)
+        {
+            /* Loop until complete. */
+            debug::log(0, FUNCTION, "Scanning Legacy from tx ", hashLast.ToString().substr(0, 20));
+            while(!config::fShutdown.load())
+            {
+                /* Read the next batch of inventory. */
+                std::vector<Legacy::Transaction> vtx;
+                if(!LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), hashLast), "tx", vtx, 1000, nScannedCount > 0))
+                    break;
+
+                /* Loop through found transactions. */
+                TAO::Ledger::BlockState state;
+                for(const auto& tx : vtx)
+                {
+                    /* Add to the wallet */
+                    if(AddToWalletIfInvolvingMe(tx, state, fUpdate, true, true))
+                        ++nTransactionCount;
+
+                    /* Update the scanned count for meters. */
+                    ++nScannedCount;
+
+                    /* Meter for output. */
+                    if(nScannedCount % 100000 == 0)
+                    {
+                        /* Get the time it took to rescan. */
+                        uint32_t nElapsedSeconds = timer.Elapsed();
+                        debug::log(0, FUNCTION, "Processed ", nTransactionCount,
+                            " tx of ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
+                            std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
+                    }
+                }
+
+                /* Set hash Last. */
+                hashLast = vtx.back().GetHash();
+
+                /* Check for end. */
+                if(vtx.size() != 1000)
+                    break;
+            }
+        }
+
+
+        /* Check for version 7. */
+        hashLast = 0;
+        if(stateBegin.nVersion < 7)
+        {
+            /* Read the next batch of inventory. */
+            std::vector<TAO::Ledger::Transaction> vtx;
+            if(LLD::Ledger->BatchRead("tx", vtx, 1))
+                hashLast = vtx.back().GetHash();
+        }
+
+
+        /* Loop through tritium transactions. */
+        bool fFirst = true;
+        while(!config::fShutdown.load())
+        {
+            /* Read the next batch of inventory. */
+            std::vector<TAO::Ledger::Transaction> vtx;
+            if(!LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), hashLast), "tx", vtx, 1000, !fFirst))
+                break;
+
             /* Loop through found transactions. */
+            TAO::Ledger::BlockState state;
             for(const auto& tx : vtx)
             {
                 /* Add to the wallet */
@@ -1296,15 +1304,28 @@ namespace Legacy
 
                 /* Update the scanned count for meters. */
                 ++nScannedCount;
+
+                /* Meter for output. */
+                if(nScannedCount % 100000 == 0)
+                {
+                    /* Get the time it took to rescan. */
+                    uint32_t nElapsedSeconds = timer.Elapsed();
+                    debug::log(0, FUNCTION, "Processed ", nTransactionCount,
+                        " tx of ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
+                        std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
+                }
             }
 
             /* Set hash Last. */
             hashLast = vtx.back().GetHash();
 
-            /* Clear the transactions. */
-            vtx.clear();
+            /* Check for end. */
+            if(vtx.size() != 1000)
+                break;
 
-        } while(!config::fShutdown.load() && LLD::Legacy->BatchRead(std::make_pair(std::string("tx"), hashLast), "tx", vtx, 1000));
+            /* Set first flag. */
+            fFirst = false;
+        }
 
         /* Get the time it took to rescan. */
         uint32_t nElapsedSeconds = timer.Elapsed();
@@ -1327,10 +1348,10 @@ namespace Legacy
          * and returns. Any subsequent calls will only process resend if at least that much time
          * has passed.
          */
-        static std::atomic<int64_t> snNextTime;
+        static std::atomic<uint64_t> snNextTime;
 
         /* Also keep track of best height on last resend, because no need to process again if has not changed */
-        static std::atomic<int32_t> snLastHeight;
+        static std::atomic<uint32_t> snLastHeight;
 
 
         bool fFirst = (snNextTime == 0);
@@ -1340,7 +1361,7 @@ namespace Legacy
             return;
 
         /* Set a random time until resend is processed */
-        snNextTime = runtime::unifiedtimestamp() + LLC::GetRand(30 * 5);
+        snNextTime = runtime::unifiedtimestamp() + LLC::GetRand(5 * 30);
 
         /* On first iteration, just return. All it does is set snNextTime */
         if(fFirst)
@@ -1353,28 +1374,29 @@ namespace Legacy
         /* Record that it is processing resend now */
         snLastHeight = TAO::Ledger::ChainState::nBestHeight.load();
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Find any sent tx not in block and sort them in chronological order */
-            std::multimap<uint64_t, WalletTx> mapSorted;
+            std::multimap<uint64_t, const WalletTx*> mapSorted;
             for(const auto& item : mapWallet)
             {
                 const WalletTx& wtx = item.second;
+                if(wtx.hashBlock != 0)
+                    continue;
 
                 /* Don't put in sorted map for rebroadcast until it's had enough time to be added to a block */
                 if(runtime::timestamp() - wtx.nTimeReceived > 1 * 60)
-                    mapSorted.insert(std::make_pair(wtx.nTimeReceived, wtx));
+                    mapSorted.insert(std::make_pair(wtx.nTimeReceived, &wtx));
             }
 
+            /* Loop through sorted transactions. */
             for(const auto& item : mapSorted)
             {
-                const WalletTx& wtx = item.second;
+                const WalletTx* wtx = item.second;
 
                 /* Validate the transaction, then process rebroadcast on it */
-                if(wtx.CheckTransaction())
-                    wtx.RelayWalletTransaction();
-                else
-                    debug::log(0, FUNCTION, "CheckTransaction failed");
+                if(wtx->CheckTransaction())
+                    wtx->RelayWalletTransaction();
             }
         }
     }
@@ -1384,10 +1406,10 @@ namespace Legacy
      * in this wallet. For any it finds, verifies that the outputs are marked as spent, updating
      * them as needed.
      */
-    void Wallet::WalletUpdateSpent(const Transaction &tx)
+    void Wallet::WalletUpdateSpent(const Transaction& tx)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Loop through and the tx inputs, checking each separately */
             for(const auto& txin : tx.vin)
@@ -1398,17 +1420,21 @@ namespace Legacy
                 if(mi != mapWallet.end())
                 {
                     /* When there is a match to the prevout hash, get the previous wallet transaction */
-                    WalletTx& prevTx = (*mi).second;
+                    WalletTx& wtx = (*mi).second;
+
+                    /* Check if wallet is bound. */
+                    if(!wtx.IsBound())
+                        wtx.BindWallet(this);
 
                     /* Outputs in wallet tx will have same index recorded in transaction txin
                      * Check any that are not flagged spent for belonging to this wallet and mark them as spent
                      */
-                    if(!prevTx.IsSpent(txin.prevout.n) && IsMine(prevTx.vout[txin.prevout.n]))
+                    if(!wtx.IsSpent(txin.prevout.n) && IsMine(wtx.vout[txin.prevout.n]))
                     {
-                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(prevTx.GetCredit()), " NXS ", (*mi).first.SubString());
+                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(wtx.GetCredit()), " NXS ", wtx.GetHash().SubString());
 
-                        prevTx.MarkSpent(txin.prevout.n);
-                        prevTx.WriteToDisk();
+                        wtx.MarkSpent(txin.prevout.n);
+                        wtx.WriteToDisk(txin.prevout.hash);
                     }
                 }
             }
@@ -1419,7 +1445,7 @@ namespace Legacy
     /*  Identifies and fixes mismatches of spent coins between the wallet and the index db.  */
     void Wallet::FixSpentCoins(uint32_t& nMismatchFound, int64_t& nBalanceInQuestion, const bool fCheckOnly)
     {
-        LOCK(cs_wallet);
+        RLOCK(cs_wallet);
 
         nMismatchFound = 0;
         nBalanceInQuestion = 0;
@@ -1427,51 +1453,58 @@ namespace Legacy
         /* Keep track of repaired coins. */
         std::map<uint512_t, WalletTx> mapRepaired;
 
-        /* Loop through all UTXO inputs. */
-        for(auto& tx : mapWallet)
         {
-            /* Check all the outputs to make sure the flags are all set properly. */
-            for(uint32_t n=0; n < tx.second.vout.size(); ++n)
+            RLOCK(cs_wallet);
+
+            /* Loop through all values in the wallet map. */
+            for(auto& map : mapWallet)
             {
-                if (!IsMine(tx.second.vout[n]))
-                    continue;
+                /* Get a reference of value. */
+                WalletTx& wtx = map.second;
 
-                bool fSpent = LLD::Legacy->IsSpent(tx.first, n);
-
-                /* Handle when Transaction on chain records output as unspent but wallet accounting has it as spent */
-                if (tx.second.IsSpent(n) && !fSpent)
+                /* Check all the outputs to make sure the flags are all set properly. */
+                for (uint32_t n=0; n < wtx.vout.size(); n++)
                 {
-                    debug::log(0, FUNCTION, "Found unspent coin ", FormatMoney(tx.second.vout[n].nValue), " NXS ", tx.first.SubString(),
-                        "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
+                    if (!IsMine(wtx.vout[n]))
+                        continue;
 
-                    ++nMismatchFound;
-                    nBalanceInQuestion += tx.second.vout[n].nValue;
+                    /* Check in LLD keychains and memory pool for spends. */
+                    bool fSpentOnChain = LLD::Legacy->IsSpent(map.first, n) || TAO::Ledger::mempool.IsSpent(map.first, n);
 
-                    if(!fCheckOnly)
+                    /* Handle when Transaction on chain records output as unspent but wallet accounting has it as spent */
+                    if (wtx.IsSpent(n) && !fSpentOnChain)
                     {
-                        tx.second.MarkUnspent(n);
-                        tx.second.WriteToDisk();
+                        debug::log(2, FUNCTION, "Found unspent coin ", FormatMoney(wtx.vout[n].nValue), " NXS ", wtx.GetHash().SubString(),
+                            "[", n, "] ", fCheckOnly ? "repair not attempted" : "repairing");
 
-                        mapRepaired[tx.first] = tx.second;
+                        ++nMismatchFound;
+                        nBalanceInQuestion += wtx.vout[n].nValue;
+
+                        if (!fCheckOnly)
+                        {
+                            wtx.MarkUnspent(n);
+                            wtx.WriteToDisk(map.first);
+
+                            mapRepaired[map.first] = map.second;
+                        }
                     }
-                }
 
-                /* Handle when Transaction on chain records output as spent but wallet accounting has it as unspent */
-                else if (!tx.second.IsSpent(n) && fSpent)
-                {
-                    debug::log(0, FUNCTION, "Found spent coin ", FormatMoney(tx.second.vout[n].nValue), " NXS ", tx.first.SubString(),
-                        "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
-
-                    ++nMismatchFound;
-
-                    nBalanceInQuestion += tx.second.vout[n].nValue;
-
-                    if(!fCheckOnly)
+                    /* Handle when Transaction on chain records output as spent but wallet accounting has it as unspent */
+                    else if (!wtx.IsSpent(n) && fSpentOnChain)
                     {
-                        tx.second.MarkSpent(n);
-                        tx.second.WriteToDisk();
+                        debug::log(2, FUNCTION, "Found spent coin ", FormatMoney(wtx.vout[n].nValue), " NXS ", wtx.GetHash().SubString(),
+                            "[", n, "] ", fCheckOnly? "repair not attempted" : "repairing");
 
-                        mapRepaired[tx.first] = tx.second;
+                        ++nMismatchFound;
+                        nBalanceInQuestion += wtx.vout[n].nValue;
+
+                        if (!fCheckOnly)
+                        {
+                            wtx.MarkSpent(n);
+                            wtx.WriteToDisk(map.first);
+
+                            mapRepaired[map.first] = map.second;
+                        }
                     }
                 }
             }
@@ -1480,11 +1513,11 @@ namespace Legacy
         /* Update map wallet if mismatched found. */
         if (nMismatchFound > 0 && mapRepaired.size() > 0)
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Update mapWallet with repaired transactions */
-            for (const auto& tx : mapRepaired)
-                mapWallet[tx.first] = tx.second;
+            for (const auto& map : mapRepaired)
+                mapWallet[map.first] = map.second;
         }
     }
 
@@ -1526,7 +1559,7 @@ namespace Legacy
     bool Wallet::IsMine(const TxIn &txin)
     {
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Any input from this wallet will have a corresponding UTXO in the previous transaction
              * Thus, if the wallet doesn't contain the previous transaction, the input is not from this wallet.
@@ -1617,13 +1650,12 @@ namespace Legacy
             return 0;
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* A debit spends the txout value from a previous output
              * so begin by finding the previous transaction in the wallet
              */
             auto mi = mapWallet.find(txin.prevout.hash);
-
             if(mi != mapWallet.end())
             {
                 const WalletTx& prev = (*mi).second;
@@ -1677,7 +1709,7 @@ namespace Legacy
         NexusAddress address;
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             if(ExtractAddress(txout.scriptPubKey, address) && HaveKey(address))
             {
@@ -1783,7 +1815,7 @@ namespace Legacy
         }
 
         {
-            //LOCK(cs_wallet);
+            //RLOCK(cs_wallet);
 
             /* Link wallet to transaction, don't add to wallet yet (will be done when transaction committed) */
             wtxNew.BindWallet(this);
@@ -1946,22 +1978,18 @@ namespace Legacy
         changeKey.KeepKey();
 
         {
-            LOCK(cs_wallet);
+            RLOCK(cs_wallet);
 
             /* Mark old coins as spent */
-            std::set<WalletTx*> setCoins;
-            for(const TxIn& txin : wtxNew.vin)
+            for (const TxIn& txin : wtxNew.vin)
             {
-                WalletTx& prevTx = mapWallet[txin.prevout.hash];
-                prevTx.BindWallet(this);
-                prevTx.MarkSpent(txin.prevout.n);
-                prevTx.WriteToDisk(); //Stores to wallet database
+                WalletTx& txPrev = mapWallet[txin.prevout.hash];
+
+                txPrev.BindWallet(this);
+                txPrev.MarkSpent(txin.prevout.n);
+                txPrev.WriteToDisk(wtxNew.GetHash()); //Stores to wallet database
             }
         }
-
-        /* Add to tracking for how many getdata requests our transaction gets */
-        /* This entry tracks the transaction hash (not block hash) */
-        mapRequestCount[wtxNew.GetHash()] = 0;
 
         /* Broadcast transaction to network */
         if(!TAO::Ledger::mempool.Accept(wtxNew))
@@ -1980,51 +2008,49 @@ namespace Legacy
     /* Add inputs (and output amount with reward) to the coinstake txin for a coinstake block */
     bool Wallet::AddCoinstakeInputs(LegacyBlock& block)
     {
-        LOCK(cs_wallet);
+        RLOCK(cs_wallet);
 
         const uint32_t nMinimumCoinAge = (config::fTestNet ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE);
 
-        /* Add Each Input to Transaction. */
-        std::vector<WalletTx> vInputs;
-
-        /* Make a copy of mapWallet. */
+        /* Keep a local list of wallet pointers. */
         std::vector<uint512_t> vCoins;
 
-        /* Set the first output value to zero. */
-        block.vtx[0].vout[0].nValue = 0;
-
-        /* Copy each individual element. */
-        for(const auto item : mapWallet)
+        /* Build a set of wallet transactions from all transaction in the wallet map */
+        vCoins.reserve(mapWallet.size());
+        for (const auto& item : mapWallet)
             vCoins.push_back(item.first);
 
+        /* Randomly order the transactions as potential inputs */
         std::random_shuffle(vCoins.begin(), vCoins.end(), LLC::GetRandInt);
 
-        for(const auto& hash : vCoins)
+        /* Add Each Input to Transaction. */
+        std::vector<const WalletTx*> vInputs;
+        for(const uint512_t& hash : vCoins)
         {
             /* Get a reference from wallet map. */
-            const WalletTx& walletTx = mapWallet[hash];
+            const WalletTx* wtx = &mapWallet[hash];
 
             /* Can't spend balance that is unconfirmed or not final */
-            if(!walletTx.IsFinal() || !walletTx.IsConfirmed())
+            if (!wtx->IsFinal() || !wtx->IsConfirmed())
                 continue;
 
             /* Can't spend coinbase or coinstake transactions that are immature */
-            if((walletTx.IsCoinBase() || walletTx.IsCoinStake()) && walletTx.GetBlocksToMaturity() > 0)
+            if ((wtx->IsCoinBase() || wtx->IsCoinStake()) && wtx->GetBlocksToMaturity() > 0)
                 continue;
 
             /* Do not add coins to Genesis block if age less than trust timestamp */
-            if(block.vtx[0].IsGenesis() && (block.vtx[0].nTime - walletTx.nTime) < nMinimumCoinAge)
+            if (block.vtx[0].IsGenesis() && (block.vtx[0].nTime - wtx->nTime) < nMinimumCoinAge)
                 continue;
 
             /* Do not add transaction from after Coinstake time */
-            if(walletTx.nTime > block.vtx[0].nTime)
+            if (wtx->nTime > block.vtx[0].nTime)
                 continue;
 
             /* Transaction is ok to use. Now determine which transaction outputs to include in coinstake input */
-            for(uint32_t i = 0; i < walletTx.vout.size(); i++)
+            for (uint32_t i = 0; i < wtx->vout.size(); i++)
             {
                 /* Can't spend outputs that are already spent or not belonging to this wallet */
-                if(walletTx.IsSpent(i) || !IsMine(walletTx.vout[i]))
+                if (wtx->IsSpent(i) || !IsMine(wtx->vout[i]))
                     continue;
 
                 /* Stop adding Inputs if has reached Maximum Transaction Size. */
@@ -2032,14 +2058,14 @@ namespace Legacy
                 if(nBytes >= TAO::Ledger::MAX_BLOCK_SIZE_GEN / 5)
                     break;
 
+                /* Add the inputs to coinstake. */
                 block.vtx[0].vin.push_back(TxIn(hash, i));
-                vInputs.push_back(walletTx);
+                vInputs.push_back(wtx);
 
                 /** Add the input value to the Coinstake output. **/
-                block.vtx[0].vout[0].nValue += walletTx.vout[i].nValue;
+                block.vtx[0].vout[0].nValue += wtx->vout[i].nValue;
             }
         }
-
         if(block.vtx[0].vin.size() == 1)
             return false; // No transactions added
 
@@ -2054,7 +2080,7 @@ namespace Legacy
         /* Sign Each Input to Transaction. */
         for(uint32_t nIndex = 0; nIndex < vInputs.size(); nIndex++)
         {
-            if(!SignSignature(*this, vInputs[nIndex], block.vtx[0], nIndex + 1))
+            if (!SignSignature(*this, *vInputs[nIndex], block.vtx[0], nIndex + 1))
                 return debug::error(FUNCTION, "Unable to sign Coinstake Transaction Input.");
 
         }
@@ -2115,8 +2141,9 @@ namespace Legacy
 
 
     /* Selects the unspent transaction outputs to use as inputs when creating a transaction that sends balance from this wallet. */
-    bool Wallet::SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
-                              int64_t& nValueRet, const std::string& strAccount, uint32_t nMinDepth)
+    bool Wallet::SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime,
+        std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
+        int64_t& nValueRet, const std::string& strAccount, uint32_t nMinDepth)
     {
         /* Call detailed select up to 3 times if it fails, using the returns from the first successful call.
          * This allows it to attempt multiple input sets if it doesn't find a workable one on the first try.
@@ -2131,8 +2158,10 @@ namespace Legacy
     /* Selects the unspent outputs to use as inputs when creating a transaction to send
      * balance from this wallet while requiring a minimum confirmation depth to be included in result.
      */
-    bool Wallet::SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const uint32_t nConfMine, const uint32_t nConfTheirs,
-                                std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet, int64_t& nValueRet, const std::string& strAccount)
+    bool Wallet::SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime,
+        const uint32_t nConfMine, const uint32_t nConfTheirs,
+        std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
+        int64_t& nValueRet, const std::string& strAccount)
     {
         /* cs_wallet should already be locked when this is called (CreateTransaction) */
         mapCoinsRet.clear();
@@ -2155,40 +2184,40 @@ namespace Legacy
         for(const uint512_t& hash : vCoins)
         {
             /* Get the transaction. */
-            const WalletTx* walletTx = &mapWallet[hash];
+            const WalletTx* wtx = &mapWallet[hash];
 
             /* Can't spend transaction from after spend time */
-            if(walletTx->nTime > nSpendTime)
+            if(wtx->nTime > nSpendTime)
                 continue;
 
             /* Can't spend balance that is unconfirmed or not final */
-            if(!walletTx->IsFinal() || !walletTx->IsConfirmed())
+            if(!wtx->IsFinal() || !wtx->IsConfirmed())
                 continue;
 
             /* Can't spend transaction that has not reached minimum depth setting for mine/theirs */
-            if(walletTx->GetDepthInMainChain() < (walletTx->IsFromMe() ? nConfMine : nConfTheirs))
+            if(wtx->GetDepthInMainChain() < (wtx->IsFromMe() ? nConfMine : nConfTheirs))
                 continue;
 
             /* Can't spend coinbase or coinstake transactions that are immature */
-            if((walletTx->IsCoinBase() || walletTx->IsCoinStake()) && walletTx->GetBlocksToMaturity() > 0)
+            if((wtx->IsCoinBase() || wtx->IsCoinStake()) && wtx->GetBlocksToMaturity() > 0)
                 continue;
 
             /* So far, the transaction itself is available, now have to check each output to see if there are any we can use */
-            for(uint32_t i = 0; i < walletTx->vout.size(); i++)
+            for(uint32_t i = 0; i < wtx->vout.size(); i++)
             {
                 /* Check for null values. */
-                if(walletTx->vout[i].IsNull())
+                if(wtx->vout[i].IsNull())
                     continue;
 
                 /* Can't spend outputs that are already spent or not belonging to this wallet */
-                if(walletTx->IsSpent(i) || !IsMine(walletTx->vout[i]))
+                if(wtx->IsSpent(i) || !IsMine(wtx->vout[i]))
                     continue;
 
                 /* Handle account selection here. */
                 if(strAccount != "*")
                 {
                     NexusAddress address;
-                    if(!ExtractAddress(walletTx->vout[i].scriptPubKey, address) || !address.IsValid())
+                    if(!ExtractAddress(wtx->vout[i].scriptPubKey, address) || !address.IsValid())
                         continue;
 
                     if(addressBook.HasAddress(address))
@@ -2200,15 +2229,15 @@ namespace Legacy
                         if(strEntry == strAccount)
                         {
                             /* Account label for transaction address matches request, include in result */
-                            mapCoinsRet[std::make_pair(hash, i)] = walletTx;
-                            nValueRet += walletTx->vout[i].nValue;
+                            mapCoinsRet[std::make_pair(hash, i)] = wtx;
+                            nValueRet += wtx->vout[i].nValue;
                         }
                     }
                     else if(strAccount == "default")
                     {
                         /* Not in address book (no label), include if default requested */
-                        mapCoinsRet[std::make_pair(hash, i)] = walletTx;
-                        nValueRet += walletTx->vout[i].nValue;
+                        mapCoinsRet[std::make_pair(hash, i)] = wtx;
+                        nValueRet += wtx->vout[i].nValue;
                     }
                 }
 
@@ -2216,10 +2245,10 @@ namespace Legacy
                 else
                 {
                     /* Add transaction with selected vout index to result set */
-                    mapCoinsRet[std::make_pair(hash, i)] = walletTx;
+                    mapCoinsRet[std::make_pair(hash, i)] = wtx;
 
                     /* Accumulate total value available to spend in result set */
-                    nValueRet += walletTx->vout[i].nValue;
+                    nValueRet += wtx->vout[i].nValue;
                 }
 
                 /* If value available to spend in result set exceeds target value, we are done */

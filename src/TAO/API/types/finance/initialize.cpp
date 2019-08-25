@@ -33,6 +33,7 @@ namespace TAO
             mapFunctions["get/stakeinfo"]   = Function(std::bind(&Finance::Info, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["set/stake"]       = Function(std::bind(&Finance::Stake, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/account/transactions"]  = Function(std::bind(&Finance::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/balances"]   = Function(std::bind(&Finance::GetBalances, this, std::placeholders::_1, std::placeholders::_2)); 
         }
 
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not

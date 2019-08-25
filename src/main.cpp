@@ -68,9 +68,6 @@ int main(int argc, char** argv)
     /* Initalize the debug logger. */
     debug::Initialize();
 
-    /* ensure that apiuser / apipassword has been configured */
-    if( config::mapArgs.find("-apiuser") == config::mapArgs.end() || config::mapArgs.find("-apipassword") == config::mapArgs.end())
-        return debug::error("You must set apiuser=<user> and apipassword=<password> in your configuration file or startup parameters.  If you intend to run the API server without authenticating requests (not recommended), please set apiuser and apipassword to blank values.");
 
     /* Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) */
     LLP::Initialize();
@@ -167,6 +164,14 @@ int main(int argc, char** argv)
         LLD::Initialize();
 
 
+        /* Initialize ChainState. */
+        TAO::Ledger::ChainState::Initialize();
+
+
+        /* Initialize the scripts for legacy mode. */
+        Legacy::InitializeScripts();
+
+
         /* Load the Wallet Database. */
         bool fFirstRun;
         if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
@@ -183,26 +188,23 @@ int main(int argc, char** argv)
                 return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
             else if (nLoadWalletRet == Legacy::DB_NEEDS_RESCAN)
             {
-                debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning...");
+                debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning now");
 
-                Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+                Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
             }
             else
                 return debug::error("Failed loading wallet.dat");
         }
 
 
-        /* Initialize ChainState. */
-        TAO::Ledger::ChainState::Initialize();
-
-
-        /* Initialize the scripts for legacy mode. */
-        Legacy::InitializeScripts();
-
-
         /* Handle Rescanning. */
         if(config::GetBoolArg(std::string("-rescan")))
-            Legacy::Wallet::GetInstance().ScanForWalletTransactions(&TAO::Ledger::ChainState::stateGenesis, true);
+            Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+
+
+        /* Relay transactions. */
+        Legacy::Wallet::GetInstance().ResendWalletTransactions();
+
 
         /* Initialize the Main Net LLP's. */
         if(!config::GetBoolArg(std::string("-beta")))
@@ -229,18 +231,31 @@ int main(int argc, char** argv)
         /* Get the port for the Core API Server. */
         nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
 
-        /* Create the Core API Server. */
-        LLP::API_SERVER = new LLP::Server<LLP::APINode>(
-            nPort,
-            10,
-            30,
-            false,
-            0,
-            0,
-            60,
-            true,
-            false,
-            false);
+
+        /* ensure that apiuser / apipassword has been configured */
+        if(config::mapArgs.find("-apiuser") == config::mapArgs.end()
+        || config::mapArgs.find("-apipassword") == config::mapArgs.end())
+        {
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!!WARNING!!! API DISABLED", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> in nexus.conf", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "or commandline arguments.  If you intend to run the API server without", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "authenticating requests (not recommended), please start with set apiauth=0", ANSI_COLOR_RESET);
+        }
+        else
+        {
+            /* Create the Core API Server. */
+            LLP::API_SERVER = new LLP::Server<LLP::APINode>(
+                nPort,
+                10,
+                30,
+                false,
+                0,
+                0,
+                60,
+                true,
+                false,
+                false);
+        }
 
 
         /* Handle Manual Connections from Command Line, if there are any. */
@@ -261,12 +276,16 @@ int main(int argc, char** argv)
 
 
         /* If wallet is not encrypted, it is unlocked by default. Start stake minter now. It will run until stopped by system shutdown. */
-        if (!Legacy::Wallet::GetInstance().IsCrypted())
+        if(config::GetBoolArg(std::string("-beta")) && !Legacy::Wallet::GetInstance().IsCrypted())
             Legacy::LegacyMinter::GetInstance().Start();
 
 
         /* Startup performance metric. */
         debug::log(0, FUNCTION, "Started up in ", nElapsed, "ms");
+
+
+        /* Set the initialized flags. */
+        config::fInitialized.store(true);
 
 
         /* Initialize generator thread. */

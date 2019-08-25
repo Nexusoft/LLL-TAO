@@ -11,7 +11,8 @@ The following methods are currently supported by this API
 [`get/block`](#getblock)   
 [`list/blocks`](#listblocks)   
 [`get/transaction`](#gettransaction)   
-[`submit/transaction`](#submittransaction)   
+[`submit/transaction`](#submittransaction)  
+[`void/transaction`](#voidtransaction)   
 [`get/mininginfo`](#getmininginfo)  
 
 
@@ -497,6 +498,44 @@ Submits a transaction to be included in the mempool and broadcast to the network
 ### Return values:
 
 `hash` : The tranaction hash, if successfully committed to the mempool / broadcast.
+
+
+****
+
+
+# `void/transaction`
+
+Voids (reverses) a debit or transfer transaction that you have previously made, that has not yet been credited or claimed by the recipient.  The method creates a corresponding credit or claim transaction but back to the originating account/signature chain.  This means that any applicable fees will apply, as will conditions on the debit/transfer transaction (such as expiration conditions). 
+
+For debits that were made to a tokenized asset as part of a split payment transaction, the reversing credit will be made for the debit amount minus any partial amounts that have already been credited by the token holders.   
+
+
+### Endpoint:
+
+`/ledger/void/transaction`
+
+
+### Parameters:
+
+`pin` : The PIN for the signature chain voiding the transaction.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) created the transaction being voided. For single-user API mode the session should not be supplied.
+
+`txid` : The transaction ID (hash) of the debit or transfer transaction that you wish to void.  
+
+
+### Return value JSON object:
+```    
+{
+    "hash": "47959e245f45aab773c0ce5320a5454f49ac15f63e15acb36855ac654d54d6314fe36b61dd64ec7a9a546bcc439a628e9badcdccb6e5f8072d04a0a3b67f8679"
+}
+
+```
+
+### Return values:
+
+`hash` : The transaction hash of the credit/claim transaction, if successfully committed to the mempool / broadcast.
+
 
 ***
 

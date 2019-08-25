@@ -1,15 +1,21 @@
 # Names API
 -----------------------------------
 
-Names and Namespaces are special kinds of object registers that are used as locators to other object registers in the blockchain.  When an object register is first created (an asset for example) the caller can provide a name for the register.  If a name is provided then a Name object register is also created with its register address based on a hash of the name.  The Name object also has a address field, which is populated with the register address of the asset that the Name "points" to.  In this way, the asset object can be retrieved by name by first hashing the name to get the Name object's address, retrieving the Name object, and then using the address stored within it to retrieve the asset object.  A Name then, is best thought of as a named index to object registers.
+Names and Namespaces are special kinds of object registers that are used as locators to other object registers in the blockchain.  When an object register is first created (an asset for example) the caller can provide a name for the register.  If a name is provided then a Name object register is also created with its register address based on a hash of the name.  The Name object also has a address field, which is populated with the register address of the register (asset, token, account etc) that the Name "points" to.  In this way, objects can be retrieved by name by first hashing the name to get the Name object's address, retrieving the Name object, and then using the address stored within it to retrieve the object register.  A Name then, is best thought of as a named index to object registers.  
 
-By default all Name objects are created within the users local namespace, meaning that when accessing an object by name it must be prefixed with the owners username, e.g. paul:someasset.  Local namespaces are denoted by the format username:objectname, allowing the same objectname to be used by more than one user.   Alternatively Nexus allows for global namespaces to be registered and then used when creating Names, allowing the asset name to be decoupled from the user owning the asset.  Names that use global namespaces are denoted by the format objectname.namespace.      
+The Tritium Naming System (TNS) allows Name objects to be created in one of three different contexts, or namespaces - `local`, `namespaced`, and `global`.  Names must be unique within the namespace in which it was defined.
+
+Local Names are those created within the context of a signature chain.  To use a local name you must prefix the name with the owners username separated by a single colon, e.g. `bob:savings`.  This is equivalent to saying "look at all the Names registered in the sig chain `bob` and find one called `savings` and then see what object register it points to".   There can only be one Name called `savings` in the sig chain `bob`, but another user `alice` can also create a local name called `savings`  
+
+Namespaced Names are those created within the context of a namespace, which itself is a globally unique keyword.  Namespaces allow users to provide user-friendly names for their object registers without needing to disclose their username.  This is useful for privacy, but also to allow names to be related to a business or some other meaningful context.  To use a namespaced name you must prefix the name with the namespace separated by a double colon, e.g. `bobscoffeeshop::payments`.  In this example bob would have first registered the namespace `bobscoffeeshop` and created an account to receive payments to (which could be called anything).  He then creates a Name with a `name=payments`, `namespace=bobscoffeeshop` and `address=(register address of the account)`.  From then on, anyone can use the name `bobscoffeeshop::payments` and it will resolve to the register address of the account.  To avoid name-squatting registering a namespace name attracts a high fee (`1000 NXS`).  However once registered, creating Names within that namespace costs only `1 NXS`  
+
+Global Names require no username or namespace prefix, and are therefore globally unique.  These will be likely reserved for use cases where a succinct, unique, name is necessary, for example a token ticker symbol. To avoid needless name-squatting, global names attract a high fee (`2000 NXS`). 
 
 The Names API allows callers to access and manage both Names and Namespaces.  Names can be created to "point" to any register address you wish, whether the caller owns the register or not.  This is useful, for example, if somebody gives you the register address of a NXS account to receive payments and you wish to add a friendly Name for it for future use.
 
 Namespaces can be transferred to other signature chains, opening the possibility for a secondary market to buy and sell namespaces (similar to internet domain names).
 
-Names that have been created within a namespace can also be transferred to other signature chains.  Names created without a namespace (user local names) cannot be transferred.
+Global Names and Names that have been created within a namespace can also be transferred to other signature chains.  Local names cannot be transferred.
 
 
 ## `Methods`
@@ -35,7 +41,7 @@ The following methods are currently supported by this API
 
 This will create a new namespace.  The API supports an alternative endpoint that can include the new namespace name in the URL.  For example `/names/create/namespace/mynamespace` will resolve to `names/create/namespace?name=mynamespace`.  
 
-**NOTE** : Namespace names must not contain either colon `:` or full stop `.` characters
+**NOTE** : Namespace names cannot contain colon `:` characters
 
 
 ### Endpoint:
@@ -269,17 +275,23 @@ This will create a new name.  The API supports an alternative endpoint that can 
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the name should be created with. For single-user API mode the session should not be supplied.
 
-`name` : The name of the object that this name will point to. The name can be provided in the format myname.mynamespace, in which case the caller must own the Namespace "mynamespace".  If the name is provided without the namespace suffix then the name is created in the users local namespace, and from then on will need to be referred to by username:name
+`name` : The name of the object that this name will point to. The name can contain any characters, but must not START with a colon `:`
 
-`register_address` : The register address of the the object that this Name will point to. 
+`namespace` : This optional field allows callers to specify the namespace that the name should be created in.  If the namespace is provided then the caller must also be the owner of the namespace.  i.e. you cannot create a name in someone elses namespace.  If the namespace is left blank (the default) then the Name will be created in the users local namespace (unless specifically flagged as global).
+
+`global` : This optional, boolean field indicates that the Name should be created in the global namespace, i.e. it will be globally unique.  If the caller sets this field to true, the namespace parameter is ignored.
+
+`register_address` : The 256-bit hexadecimal register address of the the object that this Name will point to. 
+
 
 ### Example
 
-The following example creates a name for "asset1" in the namespace "ourcompany", which points to an asset at the register address beginning with bf501...  The caller must own the namespace "ourcompany" but the asset asset1 can be owned by someone else.  Once created, the asset can be retrieved by the name "asset1.ourcompany"
+The following example creates a name for "asset1" in the namespace "ourcompany", which points to an asset at the register address beginning with bf501...  The caller must own the namespace "ourcompany" but the asset asset1 can be owned by someone else.  Once created, the asset can be retrieved by the name "ourcompany::asset1"
 
 ```
 {
-    "name": "asset1.ourcompany",
+    "name": "asset1",
+    "namespace": "ourcompany",
     "register_address": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
 }
 ```
@@ -325,10 +337,13 @@ The API supports an alternative endpoint that can include the name in the URL.  
 ### Return value JSON object:
 ```
 {
-    "name": "asset1.ourcompany",
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
-    "register_address": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1",
-    "owner": "bf501d4f3d81c31f62038984e923ad01546ff678e305a7cc11b1931742524ce1"
+    "owner": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+    "created": 1565934825,
+    "modified": 1565934825,
+    "address": "d73828704de4820e3fc71ca4043de3a32ea13ad1ccc48e7459b5cd8bcec41b74",
+    "name": "asset1",
+    "namespace": "somenamespace",
+    "register_address": "d3ddbe2522c638a91eb3ab15e7b788621c59c4e8f79ffb4f1f666870e29e1dbf"
 }
 ```
 
@@ -341,6 +356,8 @@ The API supports an alternative endpoint that can include the name in the URL.  
 `modified` : The UNIX timestamp when the Name was last modified.
 
 `name` : The name identifying the object register. 
+
+`namespace` : The namespace that the name was created in.  For global names, this will be set to `~GLOBAL~`. 
 
 `address` : The register address of the Name.  
 
@@ -365,7 +382,7 @@ This method allows the register_address within a Name object to be changed .  Th
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the name. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the Name object to update. This is optional if the address is provided.  The name should be in the format usermame:name (for local names) or name.namespace (for names in a global namespace).  However, if the asset was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the Name object to update. This is optional if the address is provided.  The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the asset was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `address` : The register address of the name to update. This is optional if the name is provided.
 
@@ -404,7 +421,7 @@ The following example updates the register_address field for the name "asset1.ou
 
 # `transfer/name`
 
-This will transfer ownership of a name .  Only names created in a global namespace (with a name in the format of myname.mynamespace) can be transferred. This is a generic endpoint requiring the name or address to be passed as parameters. The API supports an alternative endpoint that can include the name or register address in the URL.  For example `/names/transfer/name/myname` will resolve to `names/transfer/name?name=myname`.  
+This will transfer ownership of a name .  Only global names or names created in a namespace (with a name in the format of mynamespace::myname) can be transferred. This is a generic endpoint requiring the name or address to be passed as parameters. The API supports an alternative endpoint that can include the name or register address in the URL.  For example `/names/transfer/name/myname` will resolve to `names/transfer/name?name=myname`.  
 
 
 ### Endpoint:
@@ -418,7 +435,7 @@ This will transfer ownership of a name .  Only names created in a global namespa
 
 `session` : For multi-user API mode (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the name. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the name to be transferred. The name should be in the format usermame:name (for local names) or name.namespace (for names in a global namespace).  This is optional if the address is provided. 
+`name` : The name identifying the name to be transferred. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  This is optional if the address is provided. 
 
 `address` : The register address of the name to be transferred. This is optional if the name is provided.
 
@@ -495,7 +512,7 @@ This will get the history of a name as well as it's ownership. The API supports 
 
 ### Parameters:
 
-`name` : The name identifying the name. The name should be in the format usermame:name (for local names) or name.namespace (for names in a global namespace). This is optional if the address is provided.  
+`name` : The name identifying the name. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the address is provided.  
 
 `address` : The register address of the name. This is optional if the name is provided.
 

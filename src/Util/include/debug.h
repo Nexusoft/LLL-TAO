@@ -272,7 +272,21 @@ namespace debug
     std::string rfc1123Time();
 
 
-    /** GetLastError
+    /** InitializeLog
+      *
+      *  Write startup information into the log file
+      *
+      *  @param argc The argc value from main()
+      *  @param argv The argv value from main()
+      *
+      */
+    void InitializeLog(int argc, char** argv);
+
+
+    /** GetFilesize
+     *
+     *  Gets the size of the file in bytes.
+>>>>>>> master
      *
      *  Gets the last error string logged via debug::error and clears the last error
      *

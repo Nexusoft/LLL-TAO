@@ -76,11 +76,22 @@ namespace TAO
             if(params.find("name") == params.end())
                 throw APIException(-88, "Missing name.");
 
+            /* The name */
+            std::string strName = "";
+            
+            /* The namespace to create the name in */
+            std::string strNamespace = "";
+
+            /* Flag to indicate that this should be a global name */
+            bool fGlobal = false;
 
             /* The register address to create the name for */
             uint256_t hashRegister = 0;
 
-            /* Check caller has provided the register adress parameter */
+            /* Get the name from the params */
+            strName = params["name"].get<std::string>();
+
+            /* Check caller has provided the register address parameter */
             if(params.find("register_address") != params.end() )
             {
                 /* Check that the register address is a valid address */
@@ -91,8 +102,25 @@ namespace TAO
                 hashRegister.SetHex(params["register_address"].get<std::string>());
             }
 
+            /* Check to see caller has provided the namespace parameter */
+            if(params.find("namespace") != params.end())
+                strNamespace = params["namespace"].get<std::string>();
+            
+            /* Check to see caller has provided the global flag parameter */
+            if(params.find("global") != params.end())
+                fGlobal = params["global"].get<std::string>() == "1" || params["global"].get<std::string>() == "true";
+
+            /* If the caller has specified the fGlobal flag then the namespace must have been specified as blank */
+            if(fGlobal && strNamespace.length() > 0)
+                throw APIException(-170, "Global names cannot be created in a namespace");
+
+            /* If the caller has specified the global flag then set the namespace to the reserved global namespace name */
+            if(fGlobal)
+                strNamespace = TAO::Register::NAMESPACE::GLOBAL;
+
+
             /* Create the Name object contract */
-            tx[0] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), hashRegister);
+            tx[0] = Names::CreateName(user->Genesis(), strName, strNamespace, hashRegister);
 
             /* Add the fee */
             AddFee(tx);
@@ -163,7 +191,7 @@ namespace TAO
             std::string strNamespace = params["name"].get<std::string>();
 
             /* Don't allow : and . */
-            if(strNamespace.find(":") != strNamespace.npos || strNamespace.find(".") != strNamespace.npos)
+            if(strNamespace.find(":") != strNamespace.npos )
                 throw APIException(-162, "Namespace contains invalid characters");
 
 

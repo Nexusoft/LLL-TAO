@@ -45,14 +45,33 @@ namespace TAO
 
             /* Read the debit. */
             debit.Reset();
-            debit.Seek(1);
+
+            /* Get the operation byte. */
+            uint8_t nType = 0;
+            debit >> nType;
 
             /* Get address from. */
             uint256_t hashFrom = 0;
-            debit  >> hashFrom;
+            debit >> hashFrom;
 
-            /* Check for partial credits. */
-            if(account.hashOwner != hashProof && hashFrom != hashProof)
+            /* Flag indicating this is a split dividend payment / partial credit. We can determine this by comparing the hashFrom
+               to the hashProof as, for a normal account to account debit, the hashFrom and hashProof are the same, whereas for
+               a split dividend payment the hashProof is the address of the token account proving your partial payment. */
+            bool fIsPartial = hashFrom != hashProof;
+
+            /* Flag indicating this is a return to self credit, i.e. the hashFrom account is the same as the hashAddress account */
+            bool fIsReturn = hashFrom == hashAddress;
+
+            /* Check if there are any partial claims against the debit and update the the claimed amount to reflect this credit. 
+               NOTE we can skip this check for coinbase transactions or for regular account to account transactions, unless
+               we are returning to self. 
+               NOTE We cannot rely on the IsPartial flag if IsReturn is true because, when returning to self (voiding), the only way
+               we can know for sure that this is a potential partial credit is by checking the object type of the hashTo in the debit
+               to see if it is a non-account and then checking that the owner is a token (e.g. a tokenized asset).  However we do
+               not want to incur the overhead of a DB read to check this for every credit, so instead we will incur the hit of
+               reading the claimed and writing the claimed whenever we are returning to self, which occurs far less often. */
+            if(nType != OP::COINBASE 
+            && (fIsPartial || fIsReturn))
             {
                 /* Get the partial amount. */
                 uint64_t nClaimed = 0;
@@ -319,6 +338,10 @@ namespace TAO
                     uint64_t nClaimed = 0;
                     if(LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
                     {
+                        /* Check to see if debit has been fully credited */
+                        if(nClaimed == nDebit)
+                            return debug::error(FUNCTION, "credit is already claimed");
+                            
                         /* Check the partial to the debit amount. */
                         if(nDebit != (nClaimed + nCredit))
                             return debug::error(FUNCTION, "debit and partial credit value mismatch");
@@ -358,7 +381,7 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to parse owner object register");
 
             /* Compare the last timestamp update to transaction timestamp. */
-            if(proof.nModified > contract.Timestamp())
+            if(proof.nModified > debit.Timestamp())
                 return debug::error(FUNCTION, "temporal proof is stale");
 
             /* Check that owner is of a valid type. */

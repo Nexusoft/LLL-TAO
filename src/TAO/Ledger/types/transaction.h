@@ -317,13 +317,14 @@ namespace TAO
              *
              *  Gets the total trust and stake of pre-state.
              *
+             *  @param[out] nBalance The balance in the trust account.
              *  @param[out] nTrust The total trust in object.
              *  @param[out] nStake The total stake in object.
              *
              *  @return true if succeeded
              *
              **/
-            bool GetTrustInfo(uint64_t& nTrust, uint64_t& nStake) const;
+            bool GetTrustInfo(uint64_t& nBalance, uint64_t& nTrust, uint64_t& nStake) const;
 
 
             /** GetHash

@@ -11,9 +11,11 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/version.h>
+#include <LLD/include/global.h>
 
 #include <Legacy/types/script.h>
+#include <Legacy/types/transaction.h>
+
 #include <Legacy/wallet/accountingentry.h>
 #include <Legacy/wallet/keypoolentry.h>
 #include <Legacy/wallet/wallet.h>
@@ -21,6 +23,8 @@ ________________________________________________________________________________
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/wallet/walletkey.h>
 #include <Legacy/wallet/wallettx.h>
+
+#include <TAO/Ledger/include/timelocks.h>
 
 #include <Util/include/args.h>
 #include <Util/include/config.h>
@@ -282,12 +286,12 @@ namespace Legacy
         bool fAllAccounts = (strAccount == "*");
 
         /* Don't flush during cursor operations. See LoadWallet() for discussion of this code. */
-        bool expectedValue = false;
-        bool desiredValue = true;
-        while(!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
+        bool fExpectedValue = false;
+        bool fDesiredValue = true;
+        while (!WalletDB::fDbInProgress.compare_exchange_weak(fExpectedValue, fDesiredValue))
         {
             runtime::sleep(100);
-            expectedValue = false;
+            fExpectedValue = false;
         }
 
         BerkeleyDB& db = BerkeleyDB::GetInstance();
@@ -361,11 +365,11 @@ namespace Legacy
     uint32_t WalletDB::LoadWallet(Wallet& wallet)
     {
         uint32_t nFileVersion = 0;
-        uint64_t startTimestamp = runtime::timestamp(true);
+        uint64_t nStartTimestamp = runtime::timestamp(true);
         bool fIsEncrypted = false;
         uint32_t nRet = 0;
 
-        std::vector<uint512_t> vWalletRemove;
+        std::vector<uint512_t> vRemove;
 
         /* Flush thread shouldn't be running while we load, but ensure it doesn't try to flush during load if it is.
          * This will atomically set flag to true if it is currently false as expected, otherwise it returns false and wait loop executes.
@@ -381,12 +385,12 @@ namespace Legacy
          *
          * Weak form is used because it is faster, and its possibility of a spurious fail is ok. We are already checking in a loop.
          */
-        bool expectedValue = false;
-        bool desiredValue = true;
-        while(!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
+        bool fExpectedValue = false;
+        bool fDesiredValue = true;
+        while (!WalletDB::fDbInProgress.compare_exchange_weak(fExpectedValue, fDesiredValue))
         {
             runtime::sleep(100);
-            expectedValue = false;
+            fExpectedValue = false;
         }
 
         BerkeleyDB& db = BerkeleyDB::GetInstance();
@@ -395,7 +399,7 @@ namespace Legacy
         wallet.vchDefaultKey.clear();
 
         /* Debug output for walletcheck. */
-        if(config::GetBoolArg("-walletcheck", false))
+        if(config::GetBoolArg("-walletcheck", true))
             debug::log(0, FUNCTION, "Checking transactions for consistency");
 
         /* Read and validate minversion required by database file */
@@ -476,20 +480,43 @@ namespace Legacy
                 if(config::GetBoolArg("-walletclean", false))
                 {
                     /* Add all transactions to remove list if -walletclean argument is set */
-                    vWalletRemove.push_back(hash);
+                    vRemove.push_back(hash);
 
                 }
-                else if(config::GetBoolArg("-walletcheck", false) && wtx.GetHash() != hash)
+                else if(config::GetBoolArg("-walletcheck", true))
                 {
-                    debug::error(FUNCTION, "Error in ", strWalletFile,
-                                 ", hash mismatch. Removing Transaction from wallet map. Run the rescan command to restore.");
+                    /* Skip check for tritium transactions. */
+                    if((TAO::Ledger::VersionActive(wtx.nTime, 7) || TAO::Ledger::CurrentVersion() >= 7) && hash.GetType() == TAO::Ledger::TRITIUM)
+                    {
+                        /* Read the transaction from ledger database. */
+                        TAO::Ledger::Transaction tx;
+                        if(LLD::Ledger->ReadTx(hash, tx))
+                        {
+                            /* Convert the disk transaction into WalletTx. */
+                            Transaction ltx(tx);
+                            WalletTx wtx2(&wallet, ltx);
 
-                    /* Add mismatched transaction to list of transactions to remove from database */
-                    vWalletRemove.push_back(hash);
+                            /* Add mismatched transaction to list of transactions to remove from database */
+                            if(wtx.GetHash() != wtx2.GetHash())
+                            {
+                                debug::error(FUNCTION, "Error in ", strWalletFile, ", hash mismatch, resolving");
+
+                                vRemove.push_back(hash);
+                            }
+                        }
+                        else
+                            vRemove.push_back(hash);
+                    }
+                    else if(wtx.GetHash() != hash)
+                    {
+                        debug::error(FUNCTION, "Error in ", strWalletFile, ", hash mismatch, resolving");
+
+                        /* Add mismatched transaction to list of transactions to remove from database */
+                        vRemove.push_back(hash);
+                    }
                 }
                 else
                     wtx.BindWallet(wallet);
-
             }
 
             else if(strType == "defaultkey")
@@ -675,16 +702,18 @@ namespace Legacy
         if(nRet == DB_NOTFOUND)
         {
             /* Remove transactions flagged for removal */
-            if(vWalletRemove.size() > 0)
+            if(vRemove.size() > 0)
             {
-                for(const auto& hash : vWalletRemove)
+                /* Debug output. */
+                debug::log(0, FUNCTION, "Erasing ", vRemove.size(), " Transactions from WalletDB");
+
+                /* Erase the flagged transactions. */
+                for(const auto& hash : vRemove)
                 {
                     EraseTx(hash);
                     wallet.mapWallet.erase(hash);
                     ++nWalletDBUpdated;
                 }
-
-                debug::log(0, FUNCTION, "Erasing ", vWalletRemove.size(), " Transactions from WalletDB");
 
                 nRet = DB_NEEDS_RESCAN; // Will return this on successful completion
             }
@@ -695,9 +724,8 @@ namespace Legacy
             if(nFileVersion < LLD::DATABASE_VERSION)
                 db.WriteVersion(LLD::DATABASE_VERSION);
 
-            uint64_t elapsedTime = runtime::timestamp(true) - startTimestamp;
-
-            debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", elapsedTime, " ms file version = ", nFileVersion);
+            uint64_t nElapsed = runtime::timestamp(true) - nStartTimestamp;
+            debug::log(0, FUNCTION, "", fIsEncrypted ? "Encrypted Wallet" : "Wallet", " Loaded in ", nElapsed, " ms file version = ", nFileVersion);
         }
 
         /* Ok to flush again */
@@ -713,12 +741,12 @@ namespace Legacy
         bool fSuccessful = true;
 
         /* Don't flush during encryption transaction. See LoadWallet() for discussion of this code. */
-        bool expectedValue = false;
-        bool desiredValue = true;
-        while(!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
+        bool fExpectedValue = false;
+        bool fDesiredValue = true;
+        while (!WalletDB::fDbInProgress.compare_exchange_weak(fExpectedValue, fDesiredValue))
         {
             runtime::sleep(100);
-            expectedValue = false;
+            fExpectedValue = false;
         }
 
         BerkeleyDB& db = BerkeleyDB::GetInstance();
@@ -804,7 +832,9 @@ namespace Legacy
         if(config::GetBoolArg("-flushwallet", true))
         {
             WalletDB::fShutdownFlushThread.store(true);
-            WalletDB::flushThread.join();
+
+            if(WalletDB::flushThread.joinable())
+                WalletDB::flushThread.join();
         }
     }
 
@@ -857,9 +887,9 @@ namespace Legacy
                  * Otherwise, value has changed since the check above. Skip flush this iteration.
                  * Use strong compare here instead of weak to avoid possible spurious fail that would require an unnecessary loop iteration.
                  */
-                bool expectedValue = false;
-                bool desiredValue = true;
-                if(WalletDB::fDbInProgress.compare_exchange_strong(expectedValue, desiredValue))
+                bool fExpectedValue = false;
+                bool fDesiredValue = true;
+                if (WalletDB::fDbInProgress.compare_exchange_strong(fExpectedValue, fDesiredValue))
                 {
                     BerkeleyDB::GetInstance().DBFlush();
                     nLastFlushed = nLastSeen;
@@ -894,12 +924,12 @@ namespace Legacy
         while(!config::fShutdown.load()) //Loop used so we can easily break to the end on error. Only iterates once.
         {
             /* Tell flush thread not to flush during backup (backup will flush below). See LoadWallet() for discussion of this code. */
-            bool expectedValue = false;
-            bool desiredValue = true;
-            while(!WalletDB::fDbInProgress.compare_exchange_weak(expectedValue, desiredValue))
+            bool fExpectedValue = false;
+            bool fDesiredValue = true;
+            while (!WalletDB::fDbInProgress.compare_exchange_weak(fExpectedValue, fDesiredValue))
             {
                 runtime::sleep(100);
-                expectedValue = false;
+                fExpectedValue = false;
             }
 
             if(config::fShutdown.load()) //Just in case we had to wait and it changed

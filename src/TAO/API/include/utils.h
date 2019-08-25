@@ -67,41 +67,82 @@ namespace TAO
 
 
         /** AddFee
-        *
-        *  Calculates the required fee for the transaction and adds the OP::FEE contract to the transaction if necessary.
-        *  The method will lookup the "default" NXS account and use this account to pay the fees.  An exception will be thrown
-        *  If there are insufficient funds to pay the fee.
-        *
-        *  @param[in] tx The transaction to add the fee to
-        *
-        *  @return true if the fee was successfully added, otherwise false
-        *
-        **/
+         *
+         *  Calculates the required fee for the transaction and adds the OP::FEE contract to the transaction if necessary.
+         *  The method will lookup the "default" NXS account and use this account to pay the fees.  An exception will be thrown
+         *  If there are insufficient funds to pay the fee.
+         *
+         *  @param[in] tx The transaction to add the fee to
+         *
+         *  @return true if the fee was successfully added, otherwise false
+         *
+         **/
         bool AddFee(TAO::Ledger::Transaction& tx);
 
 
         /** RegisterType
-        *
-        *  Returns a type string for the register type
-        *
-        *  @param[in] nType The register type enum
-        *
-        *  @return A string representation of the register type
-        *
-        **/  
+         *
+         *  Returns a type string for the register type
+         *
+         *  @param[in] nType The register type enum
+         *
+         *  @return A string representation of the register type
+         *
+         **/  
         std::string RegisterType(uint8_t nType);
 
 
         /** ObjectType
-        *
-        *  Returns a type string for the register object type
-        *
-        *  @param[in] nType The object type enum
-        *
-        *  @return A string representation of the object register type
-        *
-        **/
+         *
+         *  Returns a type string for the register object type
+         *
+         *  @param[in] nType The object type enum
+         *
+         *  @return A string representation of the object register type
+         *
+         **/
         std::string ObjectType(uint8_t nType);
+
+
+        /** GetPending
+         *
+         *  Get the sum of all debit notifications for the the specified token
+         *
+         *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+         *  @param[in] hashToken The token to find the pending for .
+         *  @param[in] hashAccount Optional account/token register to filter on
+         * 
+         *  @return The sum of all pending debits
+         *
+         **/
+        uint64_t GetPending(const uint256_t& hashGenesis, const uint256_t& hashToken, const uint256_t& hashAccount = 0);
+
+
+        /** GetUnconfirmed
+         *
+         *  Get the sum of all incoming/outgoing debit transactions and outgoing credits in the mempool for the the specified token
+         *
+         *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+         *  @param[in] hashToken The token to find the pending for.
+         *  @param[in] fOutgoing Flag indicating to include outgoing debits, i.e. debits in the mempool that we have made.
+         *  @param[in] hashAccount Optional account/token register to filter on
+         * 
+         *  @return The sum of all pending debits
+         *
+         **/
+        uint64_t GetUnconfirmed(const uint256_t& hashGenesis, const uint256_t& hashToken, bool fOutgoing, const uint256_t& hashAccount = 0);
+
+
+        /** GetImmature
+         *
+         *  Get the sum of all immature coinbase / coinstake transactions 
+         *
+         *  @param[in] hashGenesis The genesis hash for the sig chain owner.
+         * 
+         *  @return The sum of all pending debits
+         *
+         **/
+        void GetImmature(const uint256_t& hashGenesis, uint64_t& nCoinbase, uint64_t& nCoinstake);
 
 
     }

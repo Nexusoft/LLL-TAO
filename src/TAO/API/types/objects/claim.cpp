@@ -151,7 +151,7 @@ namespace TAO
 
                     /* If the caller has passed in a name then create a name record using the new name */
                     if(!strName.empty())
-                        nameContract = Names::CreateName(user->Genesis(), strName, hashAddress);
+                        nameContract = Names::CreateName(user->Genesis(), strName, "", hashAddress);
 
                     /* Otherwise create a new name from the previous owners name */
                     else

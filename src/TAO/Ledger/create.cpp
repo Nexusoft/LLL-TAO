@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/Ledger/include/create.h>
+
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/legacy.h>
 
@@ -22,16 +24,15 @@ ________________________________________________________________________________
 
 #include <LLP/types/tritium.h>
 
-#include <TAO/Ledger/include/create.h>
-#include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/ambassador.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/timelocks.h>
-
 #include <TAO/Ledger/include/difficulty.h>
+#include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
-#include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/include/ambassador.h>
+#include <TAO/Ledger/include/timelocks.h>
+
 #include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -177,21 +178,12 @@ namespace TAO
         {
 
             /* Modulate the Block Versions if they correspond to their proper time stamp */
-            /* Normally, if condition is true and block version is NETWORK_BLOCK_CURRENT_VERSION unless an activation is pending */
-            if(runtime::unifiedtimestamp() >= (config::fTestNet.load() ?
-                TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2] :
-                NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2]))
-            {
-                block.nVersion = config::fTestNet.load() ?
-                    TESTNET_BLOCK_CURRENT_VERSION :
-                    NETWORK_BLOCK_CURRENT_VERSION; // --> New Block Version Activation Switch
-            }
+            /* Normally, if condition is true and block version is current version unless an activation is pending */
+            uint32_t nCurrent = CurrentVersion();
+            if(VersionActive(runtime::unifiedtimestamp(), nCurrent)) // --> New Block Version Activation Switch
+                block.nVersion = nCurrent;
             else
-            {
-                block.nVersion = config::fTestNet.load() ?
-                    TESTNET_BLOCK_CURRENT_VERSION - 1 :
-                    NETWORK_BLOCK_CURRENT_VERSION - 1;
-            }
+                block.nVersion = nCurrent - 1;
 
             /* Calculate the merkle root (stake minter must handle channel 0 after completing coinstake producer setup) */
             if(nChannel != 0)

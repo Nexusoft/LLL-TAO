@@ -126,32 +126,37 @@ namespace TAO
                             /* Declare the namespace hash */
                             uint256_t hashNamespace = 0;
 
+                            /* The name */
+                            std::string strName = object.get<std::string>("name");
+
                             /* If the Name contains a namespace then use a hash of this to verify the register address hash */
                             std::string strNamespace = object.get<std::string>("namespace");
                             if(!strNamespace.empty())
                             {
                                 /* Namespace hash is a SK256 hash of the namespace name */
                                 hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
+                                
+                                /* If the namespace is NOT the global namespace then retrieve the namespace object 
+                                   and check that the hashGenesis is the owner */
+                                if(strNamespace != TAO::Register::NAMESPACE::GLOBAL)
+                                {
+                                    TAO::Register::Object objectNamespace;
+                                    if(!TAO::Register::GetNamespaceRegister(strNamespace, objectNamespace))
+                                        return debug::error(FUNCTION, "Namespace does not exist: ", strNamespace);
 
-                                /* Retrieve the namespace object and check that the hashGenesis is the owner */
-                                TAO::Register::Object objectNamespace;
-                                if(!TAO::Register::GetNamespaceRegister(strNamespace, objectNamespace))
-                                    return debug::error(FUNCTION, "Namespace does not exist: ", strNamespace);
-
-                                /* Check the owner is the hashGenesis */
-                                if(objectNamespace.hashOwner != state.hashOwner)
-                                    return debug::error(FUNCTION, "Namespace not owned by caller: ", strNamespace );
+                                    /* Check the owner is the hashGenesis */
+                                    if(objectNamespace.hashOwner != state.hashOwner)
+                                        return debug::error(FUNCTION, "Namespace not owned by caller: ", strNamespace );
+                                }
                             }
                             else
                                 /* Otherwise we use the owner genesis Hash */
                                 hashNamespace = state.hashOwner;
 
-
                             /* Build vector to hold the genesis + name data for hashing */
                             std::vector<uint8_t> vData((uint8_t*)&hashNamespace, (uint8_t*)&hashNamespace + 32);
 
                             /* Insert the name of from the Name object */
-                            std::string strName = object.get<std::string>("name");
                             vData.insert(vData.end(), strName.begin(), strName.end());
 
                             /* Hash this in the same was as the caller would have to generate hashAddress */
@@ -320,6 +325,48 @@ namespace TAO
                         /* Check that the current supply and max supply are the same. */
                         if(object.get<uint64_t>("supply") != object.get<uint64_t>("balance"))
                             return debug::error(FUNCTION, "token current supply and balance can't mismatch");
+
+                        break;
+                    }
+
+                    /* Check name for invalid characters. */
+                    case TAO::Register::OBJECTS::NAME:
+                    {
+                        /* Get the namespace. */
+                        std::string strNamespace = object.get<std::string>("namespace");
+
+                        /* Get the name. */
+                        std::string strName = object.get<std::string>("name");
+                        
+                        /* Global names must not contain a : or :: */
+                        if(strNamespace == TAO::Register::NAMESPACE::GLOBAL)
+                        {
+                            if(strName.find(":") != strName.npos)
+                                return debug::error(FUNCTION, "Global names cannot contain colons: ", strName);
+                        }
+                        else
+                        {
+                            /* Local and namespaced names must not start with a : or :: */
+                            if(strName[0] == ':')
+                                return debug::error(FUNCTION, "Names cannot start with a colon: ", strName);
+                        }
+
+                        break;
+                    }
+
+                    /* Check namespace name is not reserved. */
+                    case TAO::Register::OBJECTS::NAMESPACE:
+                    {
+                        /* Get the token identifier. */
+                        std::string strNamespace = object.get<std::string>("namespace");
+
+                        /* Check for reserved names. */
+                        if(strNamespace == TAO::Register::NAMESPACE::GLOBAL)
+                            return debug::error(FUNCTION, "namespace can't be created with reserved name ", strNamespace);
+
+                        /* Check that name doesn't contain colons */
+                        if(strNamespace.find(":") != strNamespace.npos)
+                            return debug::error(FUNCTION, "Namespace names cannot contain colons: ", strNamespace);
 
                         break;
                     }

@@ -181,6 +181,19 @@ namespace TAO
              **/
             json::json ListTransactions(const json::json& params, bool fHelp);
 
+
+            /** GetBalances
+             *
+             *  Get a summary of balance information for all NXS accounts belonging to the currently logged in signature chain
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json GetBalances(const json::json& params, bool fHelp);
+
         };
     }
 }

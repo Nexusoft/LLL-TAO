@@ -99,6 +99,15 @@ void DataStream::SetPos(uint64_t nNewPos) const
 }
 
 
+
+/*  Gets the position in the stream. */
+uint64_t DataStream::GetPos() const
+{
+    return nReadPos;
+}
+
+
+
 /*  Sets the object into null state. */
 void DataStream::SetNull()
 {

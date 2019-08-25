@@ -147,6 +147,17 @@ namespace TAO
                 POSTSTATE  = 0x02
             };
         }
+
+        /** NAMESPACE
+         *  
+         *  The NAMESPACE namespace to hold constants for Namespace Object registers 
+         *
+         **/
+        namespace NAMESPACE
+        {
+            /* Constant used to indicate a global namespace */
+            const std::string GLOBAL = "~GLOBAL~";
+        }
     }
 }
 

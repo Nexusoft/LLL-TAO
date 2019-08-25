@@ -61,8 +61,16 @@ namespace TAO
             /* MEMORY ONLY: The cached cost of this contract */
             mutable uint64_t nCost;
 
-            /** MEMORY ONLY: The transaction pointer bound to. **/
-            mutable TAO::Ledger::Transaction* ptx;
+            /** MEMORY ONLY: the calling public-id. **/
+            mutable uint256_t hashCaller;
+
+
+            /** MEMORY ONLY: the calling timestamp. **/
+            mutable uint64_t nTimestamp;
+
+
+            /** MEMORY ONLY: the calling txid. **/
+            mutable uint512_t hashTx;
 
 
         public:
@@ -169,7 +177,7 @@ namespace TAO
              *  @return Returns the txid of calling tx
              *
              **/
-            const uint512_t Hash() const;
+            const uint512_t& Hash() const;
 
 
             /** Value

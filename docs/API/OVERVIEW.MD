@@ -289,7 +289,12 @@ Error Codes
 | -166 | "Account is a NXS account.  Please use the finance API for accessing NXS accounts." |
 | -167 | Invalid reference |
 | -168 | Invalid expiration time |
-
+| -169 | Names cannot start with a colon |
+| -170 | Global names cannot be created in a namespace |
+| -171 | Global names cannot cannot contain a colon |
+| -172 | Cannot void a transaction that does not belong to you |
+| -173 | Cannot void debit transaction as it has already been fully credited by all recipients |
+| -174 | Transaction contains no contracts that can be voided |
 
 
 

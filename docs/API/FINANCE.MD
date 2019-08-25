@@ -27,6 +27,7 @@ The following methods are currently supported by this API
 [`list/account/transactions`](#listaccounttransactions)    
 [`get/stakeinfo`](#getstakeinfo)    
 [`set/stake`](#setstake)    
+[`get/balances`](#getbalances)    
 
 
 -----------------------------------
@@ -48,7 +49,7 @@ Create a new account for receiving NXS. The API supports an alternative endpoint
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the account should be created with. For single-user API mode the session should not be supplied.
 
-`name` : A name to identify the account. A hash of the name will determine the register address. If no name is provided, a random 256-bit register hash will be generated.
+`name` : An optional name to identify the account. If provided a Name object will also be created in the users local namespace, allowing the account to be accessed/retrieved by name. If no name is provided the account will need to be accessed/retrieved by its 256-bit register address.
 
 
 ### Example:
@@ -98,7 +99,7 @@ Deduct an amount of NXS from an account and send it to another account or legacy
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the account owner. For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the account to debit. This is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the account to debit. This is optional if the address is provided.  The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `address` : The register address of the account to debit. This is optional if the name is provided.
 
@@ -160,11 +161,11 @@ Increment an amount received from another NXS account to an account owned by you
 
 `txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.  The transaction can also be a legacy transaction created from sendtoaddress or sendmany where the inputs are UTXO but the output is an account register address. 
 
-`name` : The name identifying the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `address` : The register address of the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the name is provided.
 
-`name_proof` : The name identifying the account that proves your ownership of the share of the debit. This is only required for split payments and is optional if the address is provided.  The name should be in username:name format.  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name_proof` : The name identifying the account that proves your ownership of the share of the debit. This is only required for split payments and is optional if the address is provided.  The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `address_proof` : The register address of the account that proves your ownership of the share of the debit. This is only required for spit payments and is optional if the name is provided.
 
@@ -211,7 +212,7 @@ Additionally the API supports passing a field name in the URL after the account 
 
 ### Parameters:
 
-`name` : The name identifying the NXS account to retrieve. This is optional if the address is provided.  The name should be in username:name format.  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the NXS account to retrieve. This is optional if the address is provided.  The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the name in order to deduce the register address of the object.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
@@ -223,11 +224,18 @@ Additionally the API supports passing a field name in the URL after the account 
 ### Return value JSON object:
 ```
 {
-    "name": "main",
-    "address": "5efc8a9437d93e894defd50f8ba73a0b2b5529cc593d5e4a7ea413022a9c35e9",
+    "owner": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+    "created": 1566534164,
+    "modified": 1566616211,
+    "name": "default",
+    "address": "d449ceeb23b7ef11004d29494891e01de393ad50d7cc225c179303e8c89a42d4",
+    "token_name": "NXS",
     "token": "0000000000000000000000000000000000000000000000000000000000000000",
-    "balance": 990
+    "balance": 2903.239792,
+    "pending": 0.0,
+    "unconfirmed": 76.492244
 }
+
 ```
 
 
@@ -245,7 +253,16 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `token` : This will always be set to 0 for NXS accounts.
 
-`balance` : The current balance of this account.
+`balance` : The available balance of this account.  This is the last confirmed balance less any new debits that you have made since the last block
+
+`pending` : This is the sum of all confirmed debit transactions that have been made to this account, that have not yet been credited.  To move coins from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
+
+`unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this account PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to your account it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
+
+`immature` : Only returned for the trust account, this is the sum of trust transactions that have not yet matured.  Once they reach maturity, the value of the trust transaction will move into `balance`
+
+`stake` : Only returned for the trust account, this is the amount of NXS currently staked in the trust account.
+
 
 ***
 
@@ -317,7 +334,7 @@ This will list off all of the transactions related to a given account. You DO NO
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the account name in order to deduce the register address of the account.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
 
-`name` : The name identifying the NXS account to list transactions for. This is optional if the address is provided. The name should be in username:name format.  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the NXS account to list transactions for. This is optional if the address is provided. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
 `address` : The register address of the NXS account to list transactions for. This is optional if the name is provided.
 
@@ -502,5 +519,50 @@ This sets the stake amount for a signature chain's trust account to the requeste
 ### Return values:
 
 `txid` : The ID (hash) of the transaction that includes the stake change.
+
+***
+
+# `get/balances`
+
+This will retrieve a summary of balance information for all NXS accounts belonging to the currently logged in signature chain.
+
+
+### Endpoint:
+
+`/finance/get/balances`
+
+
+### Parameters:
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the trust account. For single-user API mode the session should not be supplied.
+
+
+### Return value JSON object:
+```
+{
+    "available": 1000,
+    "pending": 50,
+    "unconfirmed": 5,
+    "stake": 5000,
+    "immature_mined": 100,
+    "immature_stake": 0.01234
+}
+```
+
+
+### Return values:
+
+`available` : The current balance across all NXS accounts that is available to be spent.
+
+`pending` : The sum of all debit and coinbase transactions made to your NXS accounts that are confirmed but have not yet been credited.  This does NOT include immature and unconfirmed amounts
+
+`unconfirmed` : The sum of all debit transactions made to your NXS accounts that are not confirmed, or credits you have made to your accounts that are not yet confirmed (not yet included in a block)
+
+`immature_mined`  The sum of all coinbase transactions that have not yet reached maturity.   
+
+`immature_stake`  The sum of all stake transactions that have not yet reached maturity.   
+
+`stake` : The amount of NXS currently staked in the trust account.
+
 
 ***

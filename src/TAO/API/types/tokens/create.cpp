@@ -119,9 +119,9 @@ namespace TAO
                     throw APIException(-119, "Missing supply");
 
                 /* Extract the supply parameter */
-                double dSupply = 0;
+                uint64_t nSupply = 0;
                 if(params.find("supply") != params.end())
-                    dSupply = std::stoll(params["supply"].get<std::string>());
+                    nSupply = std::stoll(params["supply"].get<std::string>());
 
                 /* For tokens being created without a global namespaced name, the identifier is equal to the register address */
                 uint256_t hashIdentifier = hashRegister;
@@ -132,7 +132,7 @@ namespace TAO
                     nDigits = std::stod(params["digits"].get<std::string>());
 
                 /* Multiply the supply by 10^digits to give the supply in the divisible units */
-                uint64_t nSupply = dSupply * pow(10, nDigits);
+                nSupply = nSupply * pow(10, nDigits);
 
                 /* Create a token object register. */
                 TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier,
@@ -147,7 +147,7 @@ namespace TAO
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
             if(params.find("name") != params.end())
-                tx[1] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), hashRegister);
+                tx[1] = Names::CreateName(user->Genesis(), params["name"].get<std::string>(), "", hashRegister);
 
             /* Add the fee */
             AddFee(tx);

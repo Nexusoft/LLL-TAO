@@ -224,14 +224,11 @@ namespace Legacy
 
     public:
         /** Mutex for thread concurrency across wallet operations **/
-        mutable std::mutex cs_wallet;
+        mutable std::recursive_mutex cs_wallet;
 
 
         /** Map of wallet transactions contained in this wallet **/
         TransactionMap mapWallet;
-
-
-        std::map<uint1024_t, uint32_t> mapRequestCount;
 
 
     /*----------------------------------------------------------------------------------------*/
@@ -349,19 +346,6 @@ namespace Legacy
          *
          */
         uint32_t LoadWallet(bool& fFirstRunRet);
-
-
-        /** Inventory
-         *
-         *  Tracks requests for transactions contained in this wallet, or the blocks that contain them.
-         *
-         *  When mapRequestCount contains the given block hash, wallet has one or more
-         *  transactions in that block and increments the request count.
-         *
-         *  @param[in] hash Block hash to track
-         *
-         */
-        void Inventory(const uint1024_t& hash);  //Not really a very intuitive method name
 
 
         /** GetWalletUnlockTime
@@ -676,21 +660,6 @@ namespace Legacy
         bool GetTransaction(const uint512_t& hashTx, WalletTx& wtx);
 
 
-        /** GetRequestCount
-         *
-         *  Get the number of remote requests recorded for a transaction.
-         *
-         *  Coinbase and Coinstake transactions are tracked at the block level,
-         *  so count records requests for the block containing them.
-         *
-         *  @param[in] wtx The wallet transaction to check
-         *
-         *  @return The request count as recorded by request tracking, -1 if not tracked
-         *
-         **/
-        int32_t GetRequestCount(const WalletTx& wtx) const;
-
-
         /** AddToWallet
          *
          *  Adds a wallet transaction to the wallet. If this transaction already exists
@@ -795,7 +764,7 @@ namespace Legacy
          *  @return The number of transactions added/updated by the scan
          *
          **/
-        uint32_t ScanForWalletTransactions(const TAO::Ledger::BlockState* pState, const bool fUpdate = false);
+        uint32_t ScanForWalletTransactions(const TAO::Ledger::BlockState& stateBegin, const bool fUpdate = false);
 
 
         /** ResendWalletTransactions
@@ -1188,8 +1157,9 @@ namespace Legacy
          *  @return true if result set was successfully populated
          *
          **/
-        bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime, std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
-                        int64_t& nValueRet, const std::string& strAccount = "*", const uint32_t nMinDepth = 1);
+        bool SelectCoins(const int64_t nTargetValue, const uint32_t nSpendTime,
+            std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
+            int64_t& nValueRet, const std::string& strAccount = "*", const uint32_t nMinDepth = 1);
 
 
         /** SelectCoinsMinConf
@@ -1215,9 +1185,10 @@ namespace Legacy
          *  @return true if script was successfully added
          *
          **/
-        bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime, const uint32_t nConfMine, const uint32_t nConfTheirs,
-                                std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
-                                int64_t& nValueRet, const std::string& strAccount = "*");
+        bool SelectCoinsMinConf(const int64_t nTargetValue, const uint32_t nSpendTime,
+            const uint32_t nConfMine, const uint32_t nConfTheirs,
+            std::map<std::pair<uint512_t, uint32_t>, const WalletTx*>& mapCoinsRet,
+            int64_t& nValueRet, const std::string& strAccount = "*");
 
     };
 

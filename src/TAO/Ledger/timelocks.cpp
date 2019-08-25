@@ -66,18 +66,18 @@ namespace TAO
         /* Lock to activate each corresponding proof channel. */
         const uint32_t CHANNEL_TESTNET_TIMELOCK[] =
         {
-            1421949600,        //--- Stake Testnet Activation:              05/10/2015 08:01:00 GMT - 6
-            1411437371,        //--- Prime Testnet Activation:              09/22/2014 18:56:11 GMT - 6
-            1411437371         //--- Hash Testnet Activation:              09/22/2014 18:56:11 GMT - 6
+            1421949600,        //--- Stake Testnet Activation:            05/10/2015 08:01:00 GMT - 6
+            1411437371,        //--- Prime Testnet Activation:            09/22/2014 18:56:11 GMT - 6
+            1411437371         //--- Hash Testnet Activation:             09/22/2014 18:56:11 GMT - 6
         };
 
 
         /* Lock to activate each corresponding proof channel. */
         const uint32_t CHANNEL_NETWORK_TIMELOCK[] =
         {
-            1438369200,        //--- Stake Channel Activation:              07/31/2015 12:00:00 GMT - 7
-            1411510800,        //--- Prime Channel Activation:              09/23/2014 16:20:00 GMT - 6
-            1413914400         //--- Hash Channel Activation:              10/21/2014 12:00:00 GMT - 6
+            1438369200,        //--- Stake Channel Activation:            07/31/2015 12:00:00 GMT - 7
+            1411510800,        //--- Prime Channel Activation:            09/23/2014 16:20:00 GMT - 6
+            1413914400         //--- Hash Channel Activation:             10/21/2014 12:00:00 GMT - 6
         };
 
 
@@ -107,51 +107,90 @@ namespace TAO
         }
 
 
-        /* Helper function to determine if a give block version is active. */
+        /* Test if a given block version is active at the time of the provided timestamp. */
         bool VersionActive(const uint64_t nTimestamp, const uint32_t nVersion)
         {
             /* Check for version 0. */
             if(nVersion == 0)
                 return false;
 
-            /* Version 1 is always active. */
-            if(nVersion == 1)
-                return true;
-
             /* Get current version. */
-            uint32_t nCurrent  = CurrentVersion();
+            uint32_t nCurrent = CurrentVersion();
 
-            /* Get the current timelock. */
-            uint64_t nTimelock = CurrentTimelock();
-
-            /* Check current version. */
+            /* Check for version after current. */
             if(nVersion > nCurrent)
                 return false;
 
-            /* Check the Current Version Block Time-Lock. Allow Version (Current -1) Blocks for 1 Hour after Time Lock. */
-            if(nVersion <= (nCurrent - 1) && (nTimestamp - 3600) > nTimelock)
+            /* Get the starting timelock for version. */
+            uint64_t nStart = StartTimelock(nVersion);
+            if(nStart == 0)
                 return false;
 
-            /* Check the Current Version Block Time-Lock. */
-            if(nVersion >= nCurrent && nTimestamp <= nTimelock)
+            /* Get the ending timelock for version. */
+            uint64_t nEnd = EndTimelock(nVersion);
+
+            /* Current will not have an ending timelock, so that is valid */
+            if((nVersion < nCurrent) && nEnd == 0)
+                return false;
+
+            /* Version is inactive if before starting timestamp */
+            if(nTimestamp < nStart)
+                return false;
+
+            /* Version is inactive if more than one hour after ending timestamp */
+            if((nVersion < nCurrent) && (nTimestamp - 3600) > nEnd)
                 return false;
 
             return true;
         }
 
 
-        /* Returns current block version from mainnet or testnet. */
+        /* Retrieve the current block version from mainnet or testnet. */
         uint32_t CurrentVersion()
         {
             return config::fTestNet.load() ? TESTNET_BLOCK_CURRENT_VERSION : NETWORK_BLOCK_CURRENT_VERSION;
         }
 
 
-        /* Returns current block timelock activation from mainnet or testnet. */
+        /* Retrieve the current block timelock activation from mainnet or testnet. */
         uint32_t CurrentTimelock()
         {
-           return config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2]
-                                          : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2];
+            return config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[TESTNET_BLOCK_CURRENT_VERSION - 2]
+                                           : NETWORK_VERSION_TIMELOCK[NETWORK_BLOCK_CURRENT_VERSION - 2];
+        }
+
+
+        /* Retrieve the timelock activation for a given block version on mainnet or testnet. */
+        uint64_t StartTimelock(const uint32_t nVersion)
+        {
+            uint32_t nCurrent = CurrentVersion();
+
+            /* Version 0 or invalid versions that have no timelock activation */
+            if((nVersion == 0) || (nVersion > nCurrent))
+                return 0;
+
+            /* Timelock activation for version 1 is the start of network */
+            if(nVersion == 1)
+                return config::fTestNet.load() ? NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK;
+
+            /* For other versions, return the timelock activation time */
+            return config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[nVersion - 2]
+                                           : NETWORK_VERSION_TIMELOCK[nVersion - 2];
+        }
+
+
+        /* Retrieve the ending timelock for a given block version on mainnet or testnet. */
+        uint64_t EndTimelock(const uint32_t nVersion)
+        {
+            uint32_t nCurrent = CurrentVersion();
+
+            /* Version 0 or versions that have no ending timelock (including current) */
+            if((nVersion == 0) || (nVersion >= nCurrent))
+                return 0;
+
+            /* For other versions, ending timelock is the timelock activation time for the next version */
+            return config::fTestNet.load() ? TESTNET_VERSION_TIMELOCK[nVersion - 1]
+                                           : NETWORK_VERSION_TIMELOCK[nVersion - 1];
         }
 
     }

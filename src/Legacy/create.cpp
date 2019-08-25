@@ -58,20 +58,12 @@ namespace Legacy
         TAO::Ledger::BlockState prevBlockState = TAO::Ledger::ChainState::stateBest.load();
 
         /* Modulate the Block Versions if they correspond to their proper time stamp */
-        if(runtime::unifiedtimestamp() >= (config::fTestNet.load()
-            ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 2]
-            : TAO::Ledger::NETWORK_VERSION_TIMELOCK[TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 2]))
-        {
-            newBlock.nVersion = config::fTestNet.load()
-                                ? TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION
-                                : TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION; // --> New Block Version Activation Switch
-        }
+        /* Normally, if condition is true and block version is current version unless an activation is pending */
+        uint32_t nCurrent = TAO::Ledger::CurrentVersion();
+        if(TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), nCurrent)) // --> New Block Version Activation Switch
+            newBlock.nVersion = nCurrent;
         else
-        {
-            newBlock.nVersion = config::fTestNet.load()
-                                ? TAO::Ledger::TESTNET_BLOCK_CURRENT_VERSION - 1
-                                : TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION - 1;
-        }
+            newBlock.nVersion = nCurrent - 1;
 
         /* Coinbase / Coinstake Transaction. **/
         Transaction txNew;
@@ -356,14 +348,10 @@ namespace Legacy
 
             /* Timestamp limit. If before v7 activation, keep legacy tx compatible with legacy setting. */
             uint64_t nMaxDrift = MAX_UNIFIED_DRIFT;
+            uint32_t nCurrent = TAO::Ledger::CurrentVersion();
 
-            if(TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7
-            || (runtime::unifiedtimestamp() < (config::fTestNet.load()
-                                            ? TAO::Ledger::TESTNET_VERSION_TIMELOCK[5]
-                                            : TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])))
-            {
+            if(nCurrent < 7 || (nCurrent == 7 && !TAO::Ledger::VersionActive(runtime::unifiedtimestamp(), 7)))
                 nMaxDrift = MAX_UNIFIED_DRIFT_LEGACY;
-            }
 
             if(tx.nTime > runtime::unifiedtimestamp() + nMaxDrift)
             {
@@ -525,12 +513,6 @@ namespace Legacy
 
         if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
             return debug::error(FUNCTION, "Generated block is stale");
-
-        /* Add new block to request tracking in wallet */
-        {
-            LOCK(wallet.cs_wallet);
-            wallet.mapRequestCount[block.GetHash()] = 0;
-        }
 
         /* Print the newly found block. Accept() prints a duplicate if verbose >= 2 because it prints all blocks, not just mined ones */
         block.print();

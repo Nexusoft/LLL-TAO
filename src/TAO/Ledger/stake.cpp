@@ -61,17 +61,20 @@ namespace TAO
         /* Retrieve the minimum number of blocks required between an account's stake transactions.*/
         uint32_t MinStakeInterval()
         {
-            if(config::fTestNet.load())
-                return TAO::Ledger::TESTNET_MINIMUM_INTERVAL;
+            if(config::fTestNet)
+                return TESTNET_MINIMUM_INTERVAL;
 
-            else if(TAO::Ledger::NETWORK_BLOCK_CURRENT_VERSION < 7)
-                return TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
+            int32_t nCurrent = CurrentVersion();
 
-            else if(runtime::timestamp() > TAO::Ledger::NETWORK_VERSION_TIMELOCK[5])  //timelock activation for Tritium interval
-                return TAO::Ledger::MAINNET_MINIMUM_INTERVAL;
+            /* Apply legacy interval for all versions prior to version 7 */
+            if(nCurrent < 7)
+                return MAINNET_MINIMUM_INTERVAL_LEGACY;
 
-            else
-                return TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
+            /* Legacy interval for version 7 until after timelock activation */
+            if(nCurrent == 7 && !VersionActive(runtime::unifiedtimestamp(), 7))
+                return MAINNET_MINIMUM_INTERVAL_LEGACY;
+
+            return MAINNET_MINIMUM_INTERVAL;
         }
 
 

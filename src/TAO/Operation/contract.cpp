@@ -32,7 +32,9 @@ namespace TAO
         , ssCondition()
         , ssRegister()
         , nCost()
-        , ptx(nullptr)
+        , hashCaller(0)
+        , nTimestamp(0)
+        , hashTx(0)
         {
         }
 
@@ -43,7 +45,9 @@ namespace TAO
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
         , nCost(contract.nCost)
-        , ptx(contract.ptx)
+        , hashCaller(contract.hashCaller)
+        , nTimestamp(contract.nTimestamp)
+        , hashTx(contract.hashTx)
         {
         }
 
@@ -54,7 +58,9 @@ namespace TAO
         , ssCondition(contract.ssCondition)
         , ssRegister(contract.ssRegister)
         , nCost(contract.nCost)
-        , ptx(contract.ptx)
+        , hashCaller(contract.hashCaller)
+        , nTimestamp(contract.nTimestamp)
+        , hashTx(contract.hashTx)
         {
         }
 
@@ -71,7 +77,9 @@ namespace TAO
             nCost = contract.nCost;
             
             /* Set the transaction reference. */
-            ptx         = contract.ptx;
+            hashCaller  = contract.hashCaller;
+            nTimestamp  = contract.nTimestamp;
+            hashTx      = contract.hashTx;
 
             return *this;
         }
@@ -80,7 +88,9 @@ namespace TAO
         /* Bind the contract to a transaction. */
         void Contract::Bind(const TAO::Ledger::Transaction* tx) const
         {
-            ptx = const_cast<TAO::Ledger::Transaction*>(tx);
+            hashCaller = tx->hashGenesis;
+            nTimestamp = tx->nTimestamp;
+            hashTx     = tx->GetHash();
         }
 
 
@@ -134,34 +144,21 @@ namespace TAO
         /* Get this contract's execution time. */
         const uint64_t& Contract::Timestamp() const
         {
-            /* Check for nullptr. */
-            if(!ptx)
-                throw debug::exception(FUNCTION, "timestamp access for nullptr");
-
-            return ptx->nTimestamp;
+            return nTimestamp;
         }
 
 
         /* Get this contract's caller */
         const uint256_t& Contract::Caller() const
         {
-            /* Check for nullptr. */
-            if(!ptx)
-                throw debug::exception(FUNCTION, "caller access for nullptr");
-
-            return ptx->hashGenesis;
+            return hashCaller;
         }
 
 
         /* Get the hash of calling tx */
-        const uint512_t Contract::Hash() const
+        const uint512_t& Contract::Hash() const
         {
-            /* Check for nullptr. */
-            if(!ptx)
-                throw debug::exception(FUNCTION, "hash access for nullptr");
-
-            //TODO: optimize with keeping txid cached
-            return ptx->GetHash();
+            return hashTx;
         }
 
 

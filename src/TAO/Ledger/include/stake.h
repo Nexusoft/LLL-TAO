@@ -15,11 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_LEDGER_INCLUDE_STAKE_H
 #define NEXUS_TAO_LEDGER_INCLUDE_STAKE_H
 
-#include <TAO/Ledger/types/sigchain.h>
-#include <TAO/Ledger/types/state.h>
-#include <TAO/Ledger/types/transaction.h>
-
-#include <Util/include/memory.h>
+#include <LLC/types/uint1024.h>
 
 
 /**

@@ -218,7 +218,7 @@ namespace TAO
 
 
         /** Not operator overloading. **/
-        bool BlockState::operator!(void)
+        bool BlockState::operator!(void) const
         {
             return IsNull();
         }
@@ -553,17 +553,17 @@ namespace TAO
             timer.Start();
 
             /* Get the hash. */
-            uint1024_t nHash = GetHash();
+            uint1024_t hash = GetHash();
 
             /* Watch for genesis. */
             if(!ChainState::stateGenesis)
             {
                 /* Write the best chain pointer. */
-                if(!LLD::Ledger->WriteBestChain(nHash))
+                if(!LLD::Ledger->WriteBestChain(hash))
                     return debug::error(FUNCTION, "failed to write best chain");
 
                 /* Write the block to disk. */
-                if(!LLD::Ledger->WriteBlock(nHash, *this))
+                if(!LLD::Ledger->WriteBlock(hash, *this))
                     return debug::error(FUNCTION, "block state already exists");
 
                 /* Set the genesis block. */
@@ -624,7 +624,7 @@ namespace TAO
                         "..",  ChainState::stateBest.load().GetHash().SubString());
 
                     debug::log(0, FUNCTION, "REORGANIZE: Connect ", vConnect.size(), " blocks; ", fork.GetHash().SubString(),
-                        "..", nHash.SubString());
+                        "..", hash.SubString());
                 }
 
                 /* Disconnect given blocks. */
@@ -676,7 +676,8 @@ namespace TAO
                 }
 
                 /* Set the best chain variables. */
-                ChainState::hashBestChain      = nHash;
+                ChainState::stateBest          = *this;
+                ChainState::hashBestChain      = hash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
 
@@ -686,7 +687,7 @@ namespace TAO
 
                 /* Debug output about the best chain. */
                 debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
-                    "New Best Block hash=", nHash.SubString(),
+                    "New Best Block hash=", hash.SubString(),
                     " height=", ChainState::nBestHeight.load(),
                     " trust=", ChainState::nBestChainTrust.load(),
                     " tx=", vtx.size(),
@@ -956,14 +957,14 @@ namespace TAO
                     /* Get the total weighting. */
                     uint64_t nWeight = ((~hashProof / (hashProof + 1)) + 1).Get64() / 10000;
 
-                    return nWeight;
+                    return nWeight + 1;
                 }
 
                 /* Proof of stake channel. */
                 case CHANNEL::STAKE:
                 {
                     /* Get the proof hash. */
-                    uint1024_t hashProof = ProofHash();
+                    uint1024_t hashProof = StakeHash();
 
                     /* Trust inforamtion variables. */
                     uint64_t nTrust = 0;
@@ -977,9 +978,16 @@ namespace TAO
                         if(!LLD::Ledger->ReadTx(vtx.back().second, tx))
                             throw std::runtime_error(debug::safe_printstr(FUNCTION, "could not read producer"));
 
-                        /* Get trust information. */
-                        if(!tx.GetTrustInfo(nTrust, nStake))
+                        /* Get trust information */
+                        uint64_t nBalance;
+                        if(!tx.GetTrustInfo(nBalance, nTrust, nStake))
                             throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to get trust info"));
+
+                        /* If this is a genesis then there will be nothing in stake at this point, as the balance is not moved
+                           to the stake until the operations layer.  So for the purpose of the weight calculation here we will
+                           use the balance from the trust account for the stake amount */
+                        if(tx.IsGenesis())
+                            nStake = nBalance;
                     }
 
                     /* Handle for version 5 blocks. */
@@ -1019,7 +1027,6 @@ namespace TAO
                         /* Check for genesis. */
                         if(tx.IsTrust())
                         {
-
                             /* Extract the trust key from the coinstake. */
                             uint576_t cKey;
                             if(!tx.TrustKey(cKey))
@@ -1043,7 +1050,7 @@ namespace TAO
                     uint64_t nWeight = (((~hashProof / (hashProof + 1)) + 1).Get64() / 10000) * (nStake / NXS_COIN);
 
                     /* Include trust info in weighting. */
-                    return nWeight + nTrust;
+                    return nWeight + nTrust + 1;
                 }
 
                 /* Prime (for now) is the weight of the prime difficulty. */
@@ -1056,7 +1063,7 @@ namespace TAO
                     /* Get the prime difficulty. */
                     uint64_t nWeight = SetBits(GetPrimeDifficulty(GetPrime(), vOffsets)) * 25;
 
-                    return nWeight;
+                    return nWeight + 1;
                 }
             }
 
