@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <LLD/templates/sector.h>
 #include <LLD/cache/binary_lru.h>
-#include <LLD/keychain/hashmap.h>
+#include <LLD/keychain/shard_hashmap.h>
 
 #include <Legacy/types/transaction.h>
 
@@ -33,7 +33,7 @@ namespace LLD
      *  Database class for storing legacy transactions.
      *
      **/
-    class LegacyDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class LegacyDB : public SectorDatabase<ShardHashMap, BinaryLRU>
     {
     public:
 

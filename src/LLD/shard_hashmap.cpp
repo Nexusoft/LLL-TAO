@@ -616,7 +616,7 @@ namespace LLD
 
     /*  Erase a key from the disk hashmaps.
      *  TODO: This should be optimized further. */
-    bool ShardHashMap::Erase(const std::vector<uint8_t> &vKey)
+    bool ShardHashMap::Erase(const std::vector<uint8_t>& vKey)
     {
         LOCK(KEY_MUTEX);
 

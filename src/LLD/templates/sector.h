@@ -386,8 +386,8 @@ namespace LLD
 
                             /* Read compact size. */
                             uint64_t nSize = ReadCompactSize(ssData);
-                            if(nSize == 0)
-                                return debug::error(FUNCTION, "malformed batch read, size cannot be zero");
+                            if(nSize == 0) //reached end of current file
+                                break;
 
                             /* Deserialize the String. */
                             std::string strThis;

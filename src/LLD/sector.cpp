@@ -338,12 +338,16 @@ namespace LLD
                 /* Create new file if above current file size. */
                 if(nCurrentFileSize > MAX_SECTOR_FILE_SIZE)
                 {
+                    static const std::vector<uint8_t> vBlank(MAX_SECTOR_FILE_SIZE, 0);
+
                     debug::log(4, FUNCTION, "allocating new sector file ", nCurrentFile + 1);
 
                     ++nCurrentFile;
                     nCurrentFileSize = 0;
 
-                    std::ofstream stream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary);
+                    std::ofstream stream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile),
+                        std::ios::out | std::ios::binary | std::ios::trunc);
+                    //stream.write((char*)&vBlank[0], vBlank.size());
                     stream.close();
                 }
 
