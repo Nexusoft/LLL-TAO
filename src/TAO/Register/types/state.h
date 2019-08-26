@@ -52,7 +52,7 @@ namespace TAO
 
 
             /** The owner of the register. **/
-            TAO::Register::Address hashOwner;
+            uint256_t hashOwner;
 
 
             /** The created timestamp of the register. **/
