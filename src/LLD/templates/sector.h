@@ -274,8 +274,7 @@ namespace LLD
                 }
             }
 
-            /* Return the Key existance in the Keychain Database. */
-            return pSectorKeys->Erase(ssKey.Bytes());
+            return Delete(ssKey.Bytes());
         }
 
 
@@ -735,6 +734,19 @@ namespace LLD
          *
          **/
         bool Put(const std::vector<uint8_t>& vKey, const std::vector<uint8_t>& vData);
+
+
+        /** Delete
+         *
+         *  Delete a record from the sector database
+         *
+         *  @param[in] vKey The binary data of the key to get.
+         *  @param[out] vData The binary data of the record to get.
+         *
+         *  @return True if the record was deleted successfully.
+         *
+         **/
+        bool Delete(const std::vector<uint8_t>& vKey);
 
 
         /** CacheWriter

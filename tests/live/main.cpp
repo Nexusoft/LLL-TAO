@@ -77,7 +77,7 @@ public:
 
     bool WriteHash(const uint1024_t& hash)
     {
-        return Write(std::make_pair(std::string("hash"), hash), hash);
+        return Write(std::make_pair(std::string("hash"), hash), hash, "hash");
     }
 
     bool ReadHash(const uint1024_t& hash, uint1024_t& hash2)
@@ -126,6 +126,20 @@ int main(int argc, char** argv)
     //uint1024_t hash = ;
 
     TestDB* testDB = new TestDB();
+
+    std::vector<uint1024_t> vRecords;
+    if(!testDB->BatchRead("hash", vRecords, 10))
+        return debug::error("failed to batch read");
+
+    for(const auto& a : vRecords)
+    {
+        debug::log(0, "Record ", a.Get64());
+        if(!testDB->Erase(std::make_pair(std::string("hash"), a)))
+            return debug::error("failed to erase");
+    }
+
+    return 0;
+
     for(int t = 0; t < 1000; ++t)
     {
         uint1024_t last = 0;

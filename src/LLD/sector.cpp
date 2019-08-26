@@ -437,6 +437,63 @@ namespace LLD
     }
 
 
+    /*  Update a record on disk. */
+    template<class KeychainType, class CacheType>
+    bool SectorDatabase<KeychainType, CacheType>::Delete(const std::vector<uint8_t>& vKey)
+    {
+        /* Check the keychain for key. */
+        SectorKey key;
+        if(!pSectorKeys->Get(vKey, key))
+            return false;
+
+        /* Return the Key existance in the Keychain Database. */
+        if(!pSectorKeys->Erase(vKey))
+            return false;
+
+        {
+            LOCK(SECTOR_MUTEX);
+
+            /* Find the file stream for LRU cache. */
+            std::fstream* pstream;
+            if(!fileCache->Get(key.nSectorFile, pstream))
+            {
+                /* Set the new stream pointer. */
+                pstream = new std::fstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+                if(!pstream->is_open())
+                {
+                    delete pstream;
+                    return false;
+                }
+
+                /* If file not found add to LRU cache. */
+                fileCache->Put(key.nSectorFile, pstream);
+            }
+
+            /* If it is a New Sector, Assign a Binary Position. */
+            pstream->seekg(key.nSectorStart, std::ios::beg);
+
+            /* Write the size of record. */
+            uint64_t nSize = ReadCompactSize(*pstream);
+
+            /* Seek to write at specific location. */
+            pstream->seekp(key.nSectorStart + GetSizeOfCompactSize(nSize), std::ios::beg);
+
+            /* Update the record with blank data. */
+            DataStream ssData(SER_LLD, DATABASE_VERSION);
+            ssData << std::string("NONE");
+
+            /* Write the data record. */
+            if(!pstream->write((char*)ssData.data(), ssData.size()))
+                return debug::error(FUNCTION, "only ", pstream->gcount(), " bytes written");
+
+            /* Flush the rest of the write buffer in stream. */
+            pstream->flush();
+        }
+
+        return true;
+    }
+
+
     /*  Flushes periodically data from the cache buffer to disk. */
     template<class KeychainType, class CacheType>
     void SectorDatabase<KeychainType, CacheType>::CacheWriter()
@@ -659,7 +716,7 @@ namespace LLD
 
         /* Erase data set to be removed. */
         for(const auto& item : pTransaction->mapEraseData)
-            if(!pSectorKeys->Erase(item.first))
+            if(!Delete(item.first))
                 return debug::error(FUNCTION, "failed to erase from keychain");
 
         /* Commit the sector data. */
